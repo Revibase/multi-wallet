@@ -17,16 +17,11 @@ pub enum MultisigError {
     #[msg("Too many members specified. A maximum of 65,535 members is allowed.")]
     TooManyMembers,
 
-    #[msg("Invalid threshold specified. The threshold must be between 1 and the total number of members.")]
+    #[msg("Threshold must be between 1 and the total number of voting members. Note: only one passkey voter is counted toward this limit, even if more are registered.")]
     InvalidThreshold,
 
     #[msg("The provided TransactionMessage is malformed or improperly formatted.")]
     InvalidTransactionMessage,
-
-    #[msg(
-        "Insufficient signers. The number of signers must meet or exceed the minimum threshold."
-    )]
-    NotEnoughSigners,
 
     #[msg("Incorrect number of accounts provided. Verify the account count matches the expected number.")]
     InvalidNumberOfAccounts,
@@ -82,14 +77,29 @@ pub enum MultisigError {
     #[msg("Origin must be lesser than 256 characters.")]
     MaxLengthExceeded,
 
-    #[msg("Slot hash is either invalid or 2.5 min has passed since the transaction was signed.")]
-    InvalidSlotHash,
+    #[msg("Slot history sysvar is missing.")]
+    MissingSysvarSlotHistory,
+
+    #[msg("Failed to parse sysvar data.")]
+    InvalidSysvarDataFormat,
+
+    #[msg("Slot number not found in slot history.")]
+    SlotNumberNotFound,
+
+    #[msg("Slot hash does not match the expected value.")]
+    SlotHashMismatch,
 
     #[msg("Domain Config is missing.")]
     DomainConfigIsMissing,
 
-    #[msg("Rp Id is Invalid")]
-    RpIdIsInvalid,
+    #[msg("Member does not belong to the specified domain config.")]
+    MemberDoesNotBelongToDomainConfig,
+
+    #[msg("Rp Id does not match with the specified domain config.")]
+    RpIdHashMismatch,
+
+    #[msg("Metadata containing the pubkey of the domain config account is required when adding a passkey")]
+    MissingMetadata,
 
     #[msg("Unable to parse json data.")]
     InvalidJson,

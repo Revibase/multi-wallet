@@ -1,10 +1,10 @@
 use crate::{
     state::{
         DomainConfig, KeyType, MemberKey, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings,
-        TransactionBufferActionType, SEED_DOMAIN_CONFIG, SEED_MULTISIG,
+        TransactionActionType,
     },
     utils::realloc_if_needed,
-    MultisigError, Permission, TransactionBuffer, SEED_TRANSACTION_BUFFER,
+    MultisigError, Permission, TransactionBuffer,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
@@ -15,23 +15,9 @@ pub struct TransactionBufferVote<'info> {
     )]
     pub settings: Account<'info, Settings>,
 
-    #[account(
-        seeds = [SEED_DOMAIN_CONFIG, domain_config.load()?.rp_id_hash.as_ref()],
-        bump = domain_config.load()?.bump,
-    )]
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
 
-    #[account(
-        mut,
-        seeds = [
-            SEED_MULTISIG,
-            transaction_buffer.multi_wallet_settings.as_ref(),
-            SEED_TRANSACTION_BUFFER,
-            transaction_buffer.creator.get_seed(),
-            transaction_buffer.buffer_index.to_le_bytes().as_ref()
-        ],
-        bump = transaction_buffer.bump,
-    )]
+    #[account(mut)]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
     pub voter: Option<Signer<'info>>,
@@ -45,7 +31,7 @@ pub struct TransactionBufferVote<'info> {
     #[account(
         address = SlotHashes::id()
     )]
-    pub slot_hash_sysvar: UncheckedAccount<'info>,
+    pub slot_hash_sysvar: Option<UncheckedAccount<'info>>,
 }
 
 impl TransactionBufferVote<'_> {
@@ -64,39 +50,48 @@ impl TransactionBufferVote<'_> {
 
         let signer = MemberKey::get_signer(voter, secp256r1_verify_args)?;
 
+        let member = settings
+            .members
+            .iter()
+            .find(|x| x.pubkey.eq(&signer))
+            .ok_or(MultisigError::MissingAccount)?;
+
         require!(
-            settings
-                .members
-                .iter()
-                .any(|x| x.pubkey.eq(&signer) && x.permissions.has(Permission::VoteTransaction)),
+            member.permissions.has(Permission::InitiateTransaction),
             MultisigError::InsufficientSignersWithVotePermission
         );
 
         if signer.get_type().eq(&KeyType::Secp256r1) {
+            let metadata = member.metadata.ok_or(MultisigError::MissingMetadata)?;
+
+            require!(
+                domain_config.is_some() && domain_config.as_ref().unwrap().key().eq(&metadata),
+                MultisigError::MemberDoesNotBelongToDomainConfig
+            );
             Secp256r1Pubkey::verify_secp256r1(
                 secp256r1_verify_args,
-                &slot_hash_sysvar.to_account_info(),
+                slot_hash_sysvar,
                 domain_config,
                 &transaction_buffer.key(),
                 &transaction_buffer.final_buffer_hash,
-                TransactionBufferActionType::Vote,
+                TransactionActionType::Vote,
             )?;
         }
 
         Ok(())
     }
 
-    #[access_control(ctx.accounts.validate(secp256r1_verify_args))]
+    #[access_control(ctx.accounts.validate(&secp256r1_verify_args))]
     pub fn process(
         ctx: Context<Self>,
-        secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
+        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
         let current_size = transaction_buffer.to_account_info().data.borrow().len();
         let voter = &ctx.accounts.voter;
-        let signer = MemberKey::get_signer(voter, secp256r1_verify_args)?;
+        let signer = MemberKey::get_signer(voter, &secp256r1_verify_args)?;
 
-        transaction_buffer.add_voter(signer);
+        transaction_buffer.add_voter(&signer);
 
         realloc_if_needed(
             &transaction_buffer.to_account_info(),

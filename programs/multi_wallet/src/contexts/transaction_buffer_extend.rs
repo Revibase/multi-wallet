@@ -1,9 +1,9 @@
 use crate::{
     state::{
-        DomainConfig, KeyType, MemberKey, Secp256r1Pubkey, Secp256r1VerifyArgs,
-        TransactionBufferActionType, SEED_DOMAIN_CONFIG, SEED_MULTISIG,
+        DomainConfig, KeyType, MemberKey, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings,
+        TransactionActionType,
     },
-    MultisigError, TransactionBuffer, SEED_TRANSACTION_BUFFER,
+    MultisigError, TransactionBuffer,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
@@ -16,22 +16,12 @@ pub struct TransactionBufferExtendArgs {
 #[derive(Accounts)]
 pub struct TransactionBufferExtend<'info> {
     #[account(
-        mut,
-        seeds = [
-            SEED_MULTISIG,
-            transaction_buffer.multi_wallet_settings.as_ref(),
-            SEED_TRANSACTION_BUFFER,
-            transaction_buffer.creator.get_seed(),
-            &transaction_buffer.buffer_index.to_le_bytes()
-        ],
-        bump = transaction_buffer.bump,
+        address = transaction_buffer.multi_wallet_settings,
     )]
+    pub settings: Option<Account<'info, Settings>>,
+    #[account(mut)]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
-    #[account(
-        seeds = [SEED_DOMAIN_CONFIG, domain_config.load()?.rp_id_hash.as_ref()],
-        bump = domain_config.load()?.bump,
-    )]
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
 
     pub creator: Option<Signer<'info>>,
@@ -40,7 +30,7 @@ pub struct TransactionBufferExtend<'info> {
     #[account(
         address = SlotHashes::id(),
     )]
-    pub slot_hash_sysvar: UncheckedAccount<'info>,
+    pub slot_hash_sysvar: Option<UncheckedAccount<'info>>,
 }
 
 impl TransactionBufferExtend<'_> {
@@ -50,6 +40,7 @@ impl TransactionBufferExtend<'_> {
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
         let Self {
+            settings,
             creator,
             transaction_buffer,
             domain_config,
@@ -80,13 +71,29 @@ impl TransactionBufferExtend<'_> {
         );
 
         if signer.get_type().eq(&KeyType::Secp256r1) {
+            let settings_members = &settings
+                .as_ref()
+                .ok_or(MultisigError::MissingAccount)?
+                .members;
+
+            let member = settings_members
+                .iter()
+                .find(|x| x.pubkey.eq(&signer))
+                .ok_or(MultisigError::MissingAccount)?;
+
+            let metadata = member.metadata.ok_or(MultisigError::MissingMetadata)?;
+
+            require!(
+                domain_config.is_some() && domain_config.as_ref().unwrap().key().eq(&metadata),
+                MultisigError::MemberDoesNotBelongToDomainConfig
+            );
             Secp256r1Pubkey::verify_secp256r1(
                 secp256r1_verify_args,
-                &slot_hash_sysvar.to_account_info(),
+                slot_hash_sysvar,
                 domain_config,
                 &transaction_buffer.key(),
                 &transaction_buffer.final_buffer_hash,
-                TransactionBufferActionType::Create,
+                TransactionActionType::Create,
             )?;
         }
 
@@ -94,11 +101,11 @@ impl TransactionBufferExtend<'_> {
     }
 
     /// Create a new vault transaction.
-    #[access_control(ctx.accounts.validate(args,secp256r1_verify_args))]
+    #[access_control(ctx.accounts.validate(&args,&secp256r1_verify_args))]
     pub fn process(
         ctx: Context<Self>,
-        args: &TransactionBufferExtendArgs,
-        secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
+        args: TransactionBufferExtendArgs,
+        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
         // Mutable Accounts
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;

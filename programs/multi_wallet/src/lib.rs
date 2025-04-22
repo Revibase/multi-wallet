@@ -12,7 +12,7 @@ use error::*;
 use state::*;
 use utils::*;
 
-declare_id!("mu1LDWh4VGHhnZHB85s92HNBapj3b9s5DgzTkiAyeKY");
+declare_id!("HomqiGa9FxngxAPbVEFzXM3pjicY5RbGCBu3dVNui3ry");
 
 #[program]
 pub mod multi_wallet {
@@ -68,12 +68,12 @@ pub mod multi_wallet {
     /// # Returns
     /// - `Result<()>`: The result of the multi-wallet creation.
     pub fn create<'info>(
-        ctx: Context<'_, '_, '_, 'info, CreateMultiWallet<'info>>,
-        initial_member: Member,
+        ctx: Context<'_, '_, 'info, 'info, CreateMultiWallet<'info>>,
         create_key: Pubkey,
+        initial_members: Vec<MemberWithVerifyArgs>,
         metadata: Option<Pubkey>,
     ) -> Result<()> {
-        CreateMultiWallet::process(ctx, initial_member, create_key, metadata)
+        CreateMultiWallet::process(ctx, create_key, initial_members, metadata)
     }
 
     /// # Parameters
@@ -83,10 +83,11 @@ pub mod multi_wallet {
     /// # Returns
     /// - `Result<()>`: The result of the multi-action execution.
     pub fn change_config<'info>(
-        ctx: Context<'_, '_, '_, 'info, ChangeConfig<'info>>,
+        ctx: Context<'_, '_, 'info, 'info, ChangeConfig<'info>>,
         config_actions: Vec<ConfigAction>,
+        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
-        ChangeConfig::process(ctx, config_actions)
+        ChangeConfig::process(ctx, config_actions, secp256r1_verify_args)
     }
 
     /// Creates a new transaction buffer.
@@ -103,7 +104,7 @@ pub mod multi_wallet {
         args: TransactionBufferCreateArgs,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
-        TransactionBufferCreate::process(ctx, &args, &secp256r1_verify_args)
+        TransactionBufferCreate::process(ctx, args, secp256r1_verify_args)
     }
 
     /// Sign to approve a transaction buffer.
@@ -119,7 +120,7 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, '_, 'info, TransactionBufferVote<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
-        TransactionBufferVote::process(ctx, &secp256r1_verify_args)
+        TransactionBufferVote::process(ctx, secp256r1_verify_args)
     }
 
     /// Extends an existing transaction buffer.
@@ -136,7 +137,7 @@ pub mod multi_wallet {
         args: TransactionBufferExtendArgs,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
-        TransactionBufferExtend::process(ctx, &args, &secp256r1_verify_args)
+        TransactionBufferExtend::process(ctx, args, secp256r1_verify_args)
     }
 
     /// Closes an existing transaction buffer.
@@ -152,7 +153,7 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, '_, 'info, TransactionBufferClose<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
-        TransactionBufferClose::process(ctx, &secp256r1_verify_args)
+        TransactionBufferClose::process(ctx, secp256r1_verify_args)
     }
 
     /// Executes a transaction buffer.
@@ -167,6 +168,23 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, '_, 'info, TransactionBufferExecute<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
-        TransactionBufferExecute::process(ctx, &secp256r1_verify_args)
+        TransactionBufferExecute::process(ctx, secp256r1_verify_args)
+    }
+
+    /// Executes a transaction synchronously.
+    ///
+    /// # Parameters
+    /// - `ctx`: The context of the vault transaction execution.
+    /// - `transaction_message`: The transaction message to be executed.
+    /// - `args`: Arguments for executing the vault transaction.
+    ///
+    /// # Returns
+    /// - `Result<()>`: The result of the vault transaction execution.
+    pub fn transaction_execute_sync<'info>(
+        ctx: Context<'_, '_, '_, 'info, TransactionExecuteSync<'info>>,
+        transaction_message: TransactionMessage,
+        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
+    ) -> Result<()> {
+        TransactionExecuteSync::process(ctx, transaction_message, secp256r1_verify_args)
     }
 }

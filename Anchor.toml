@@ -5,13 +5,13 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-multi_wallet = "mu1LDWh4VGHhnZHB85s92HNBapj3b9s5DgzTkiAyeKY"
+multi_wallet = "HomqiGa9FxngxAPbVEFzXM3pjicY5RbGCBu3dVNui3ry"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

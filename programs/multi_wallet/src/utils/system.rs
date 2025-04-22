@@ -82,10 +82,10 @@ pub fn create_account_if_none_exist<'a, 'info>(
     let rent = Rent::get()?;
     anchor_lang::system_program::create_account(
         CpiContext::new(
-            system_program.clone(),
+            system_program.to_account_info(),
             anchor_lang::system_program::CreateAccount {
-                from: payer.clone(),
-                to: new_account.clone(),
+                from: payer.to_account_info(),
+                to: new_account.to_account_info(),
             },
         )
         .with_signer(&[seeds]),

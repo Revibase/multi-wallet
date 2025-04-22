@@ -1,319 +1,353 @@
-import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 import {
-  createInitializeMintInstruction,
-  getMinimumBalanceForRentExemptMint,
-  MINT_SIZE,
-  TOKEN_PROGRAM_ID,
-} from "@solana/spl-token";
+  getCreateAccountInstruction,
+  getTransferSolInstruction,
+} from "@solana-program/system";
 import {
-  Connection,
-  Keypair,
-  LAMPORTS_PER_SOL,
-  PublicKey,
-  sendAndConfirmTransaction,
-  SendTransactionError,
-  SystemProgram,
-  Transaction,
-} from "@solana/web3.js";
+  getInitializeMint2Instruction,
+  getMintSize,
+  TOKEN_PROGRAM_ADDRESS,
+} from "@solana-program/token";
+import {
+  Address,
+  address,
+  appendTransactionMessageInstructions,
+  createKeyPairSignerFromPrivateKeyBytes,
+  createNoopSigner,
+  createSolanaRpc,
+  createSolanaRpcSubscriptions,
+  createTransactionMessage,
+  IInstruction,
+  KeyPairSigner,
+  lamports,
+  pipe,
+  Rpc,
+  sendAndConfirmTransactionFactory,
+  setTransactionMessageFeePayerSigner,
+  setTransactionMessageLifetimeUsingBlockhash,
+  signTransactionMessageWithSigners,
+  SolanaRpcApi,
+} from "@solana/kit";
 import { expect } from "chai";
 import {
   changeConfig,
   createDomainConfig,
   createWallet,
   fetchDelegateData,
-  fetchDomainConfigData,
   fetchSettingsData,
+  getMemberKeyString,
   Permission,
   Permissions,
-  prepareTransactionBundle,
-} from "../sdk";
+  prepareTransactionMessage,
+  prepareTransactionSync,
+} from "../packages/sdk";
 
 describe("multi_wallet", () => {
-  const connection = new Connection("http://localhost:8899", "confirmed");
-  const payer = Keypair.generate();
-  const wallet = Keypair.generate();
-  let settings;
-  let multi_wallet_vault;
-  xit("Create Multi Wallet!", async () => {
-    const txSig = await connection.requestAirdrop(
-      payer.publicKey,
-      LAMPORTS_PER_SOL
-    );
-    await connection.confirmTransaction(txSig);
-    const txSig2 = await connection.requestAirdrop(
-      wallet.publicKey,
-      LAMPORTS_PER_SOL
-    );
-    await connection.confirmTransaction(txSig2);
-
-    const createWalletIx = await createWallet({
-      feePayer: payer.publicKey,
-      walletAddress: {
-        pubkey: wallet.publicKey,
-        permissions: Permissions.all(),
-      },
-      metadata: new PublicKey("9n6LHACaLSjm6dyQ1unbP4y4Azigq5xGuzRCG2XRZf9v"),
-    });
-    const setDomainIx = await createDomainConfig({
-      payer: payer.publicKey,
-      rpId: "revibase.com",
-      origin: "https://auth.revibase.com",
-      authority: wallet.publicKey,
-    });
-
-    const tx = new Transaction().add(createWalletIx).add(setDomainIx);
-    tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-    tx.feePayer = payer.publicKey;
-
-    const sig = await sendAndConfirmTransaction(connection, tx, [payer]);
-    await connection.confirmTransaction(sig);
-
-    // Validation
-    const delegateData = await fetchDelegateData(connection, wallet.publicKey);
-    const domainData = await fetchDomainConfigData(connection, "revibase.com");
-    console.log(domainData);
-    settings = delegateData.multiWalletSettings;
-    multi_wallet_vault = delegateData.multiWallet;
-    const accountData = await fetchSettingsData(connection, settings);
-    expect(accountData.members.length).equal(1); // Only creator is a member
-    expect(accountData.threshold).equal(1); // Single-sig wallet
-    expect(accountData.metadata.toBase58()).equal(
-      "9n6LHACaLSjm6dyQ1unbP4y4Azigq5xGuzRCG2XRZf9v"
-    );
-
-    const vaultBalance = await connection.getBalance(multi_wallet_vault);
-    expect(vaultBalance).equal(LAMPORTS_PER_SOL * 0.001);
+  const connection = createSolanaRpc("http://localhost:8899");
+  const rpcSubscriptions = createSolanaRpcSubscriptions("ws://localhost:8900");
+  const sendAndConfirm = sendAndConfirmTransactionFactory({
+    rpc: connection,
+    rpcSubscriptions,
   });
 
-  xit("Add Member", async () => {
-    const ix = await changeConfig({
-      connection,
-      settings,
-      feePayer: payer.publicKey,
-      configActions: [
+  let payer: KeyPairSigner;
+  let wallet: KeyPairSigner;
+  let settings: Address;
+  let multi_wallet_vault: Address;
+
+  xit("Set Up", async () => {
+    await connection
+      .requestAirdrop(
+        address("CrDrYQs5fux37ZfdLeSFPEM6BUFH2WcyrvWm16bGMHMw"),
+        lamports(BigInt(10 ** 9))
+      )
+      .send();
+  });
+
+  it("Create Multi Wallet!", async () => {
+    payer = await createKeyPairSignerFromPrivateKeyBytes(
+      crypto.getRandomValues(new Uint8Array(32))
+    );
+
+    wallet = await createKeyPairSignerFromPrivateKeyBytes(
+      crypto.getRandomValues(new Uint8Array(32))
+    );
+
+    await connection
+      .requestAirdrop(address(payer.address), lamports(BigInt(10 ** 9)))
+      .send();
+
+    await connection
+      .requestAirdrop(wallet.address, lamports(BigInt(10 ** 9)))
+      .send();
+
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+
+    const setDomainIx = await createDomainConfig({
+      payer: payer,
+      rpId: "revibase.com",
+      origin: "https://auth.revibase.com",
+      authority: wallet.address,
+    });
+    const createWalletIx = await createWallet({
+      feePayer: payer,
+      initialMembers: [
         {
-          type: "addMembers",
-          members: [
-            {
-              pubkey: payer.publicKey,
-              permissions: Permissions.fromPermissions([
-                Permission.VoteTransaction,
-              ]),
-            },
-          ],
+          pubkey: wallet.address,
+          permissions: Permissions.all(),
+          metadata: null,
         },
-        { type: "setThreshold", threshold: 2 },
-        { type: "setMetadata", metadata: null },
       ],
+      metadata: address("9n6LHACaLSjm6dyQ1unbP4y4Azigq5xGuzRCG2XRZf9v"),
     });
 
-    const result = await prepareTransactionBundle({
+    await sendTx(
       connection,
-      feePayer: payer.publicKey,
-      instructions: [ix],
-      settings,
-      creator: wallet.publicKey,
-      executor: wallet.publicKey,
-    });
+      [setDomainIx, createWalletIx],
+      payer,
+      sendAndConfirm
+    );
 
-    for (const x of result) {
-      const tx = new Transaction().add(...x.ixs);
-      tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-      tx.feePayer = x.feePayer;
-      await sendAndConfirmTransaction(
-        connection,
-        tx,
-        x.signers.length > 1 ? [wallet, payer] : [payer]
+    // Validation
+    const delegateData = await fetchDelegateData(connection, wallet.address);
+    settings = delegateData.multiWalletSettings;
+    multi_wallet_vault = delegateData.multiWallet;
+    const accountData = await fetchSettingsData(
+      connection,
+      delegateData.multiWalletSettings
+    );
+    expect(accountData.members.length).equal(1); // Only creator is a member
+    expect(accountData.threshold).equal(1); // Single-sig wallet
+    if (accountData.metadata.__option === "Some") {
+      expect(accountData.metadata.value).equal(
+        "9n6LHACaLSjm6dyQ1unbP4y4Azigq5xGuzRCG2XRZf9v"
       );
     }
 
+    const transfer = getTransferSolInstruction({
+      source: payer,
+      destination: delegateData.multiWallet,
+      amount: lamports(BigInt(10 ** 9 * 0.01)),
+    });
+
+    await sendTx(connection, [transfer], payer, sendAndConfirm);
+
+    const vaultBalance = await connection.getBalance(multi_wallet_vault).send();
+    expect(vaultBalance.value).equal(lamports(BigInt(10 ** 9 * 0.01)));
+  });
+
+  it("Add Member", async () => {
+    const ix = await changeConfig({
+      signers: [wallet],
+      feePayer: payer,
+      rpc: connection,
+      settings,
+      configActions: [
+        {
+          type: "AddMembers",
+          members: [
+            {
+              pubkey: payer.address,
+              permissions: Permissions.fromPermissions([
+                Permission.VoteTransaction,
+              ]),
+              metadata: null,
+            },
+          ],
+        },
+        { type: "SetThreshold", threshold: 2 },
+        { type: "SetMetadata", metadata: null },
+      ],
+    });
+
+    await sendTx(connection, [ix], payer, sendAndConfirm);
     const accountData = await fetchSettingsData(connection, settings);
-    const delegateData = await fetchDelegateData(connection, payer.publicKey);
+    const delegateData = await fetchDelegateData(connection, payer.address);
     expect(delegateData).equal(null);
     expect(accountData.members.length).equal(2); // Creator + Payer
-    expect(bs58.encode(accountData.members[1].pubkey.key)).equal(
-      payer.publicKey.toBase58()
+    expect(getMemberKeyString(accountData.members[1].pubkey)).equal(
+      payer.address.toString()
     );
     expect(accountData.threshold).equal(2);
   });
 
-  xit("Remove Member", async () => {
+  it("Remove Member", async () => {
     const ix = await changeConfig({
-      connection,
+      signers: [wallet, payer],
+      feePayer: payer,
+      rpc: connection,
       settings,
-      feePayer: payer.publicKey,
       configActions: [
         {
-          type: "removeMembers",
-          members: [payer.publicKey],
+          type: "RemoveMembers",
+          members: [payer.address],
         },
-        { type: "setThreshold", threshold: 1 },
+        { type: "SetThreshold", threshold: 1 },
       ],
     });
 
-    const result = await prepareTransactionBundle({
-      connection,
-      feePayer: payer.publicKey,
-      instructions: [ix],
-      settings,
-      creator: wallet.publicKey,
-      additionalVoters: [payer.publicKey],
-      executor: wallet.publicKey,
-    });
+    await sendTx(connection, [ix], payer, sendAndConfirm);
 
-    for (const x of result) {
-      try {
-        const tx = new Transaction().add(...x.ixs);
-        tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-        tx.feePayer = x.feePayer;
-        await sendAndConfirmTransaction(
-          connection,
-          tx,
-          x.signers.length > 1 ? [wallet, payer] : [payer]
-        );
-      } catch (error) {
-        console.log(await (error as SendTransactionError).getLogs(connection));
-      }
-    }
     const accountData = await fetchSettingsData(connection, settings);
 
-    const delegateData = await fetchDelegateData(connection, payer.publicKey);
+    const delegateData = await fetchDelegateData(connection, payer.address);
     expect(delegateData).equal(null);
     expect(accountData.members.length).equal(1); // Only creator remains
-    expect(bs58.encode(accountData.members[0].pubkey.key)).equal(
-      wallet.publicKey.toBase58()
+    expect(getMemberKeyString(accountData.members[0].pubkey)).equal(
+      wallet.address
     );
   });
 
-  const test = Keypair.generate();
-  xit("Set Member", async () => {
-    const ix = SystemProgram.transfer({
-      fromPubkey: payer.publicKey,
-      toPubkey: multi_wallet_vault,
-      lamports: LAMPORTS_PER_SOL * 0.5,
+  let test: KeyPairSigner;
+  it("Set Member", async () => {
+    test = await createKeyPairSignerFromPrivateKeyBytes(
+      crypto.getRandomValues(new Uint8Array(32))
+    );
+    const ix = getTransferSolInstruction({
+      source: payer,
+      destination: multi_wallet_vault,
+      amount: lamports(BigInt(10 ** 9 * 0.5)),
     });
 
-    const tx = new Transaction().add(ix);
-    await sendAndConfirmTransaction(connection, tx, [payer]);
+    await sendTx(connection, [ix], payer, sendAndConfirm);
 
-    const transferIx1 = SystemProgram.transfer({
-      fromPubkey: multi_wallet_vault,
-      toPubkey: wallet.publicKey,
-      lamports: LAMPORTS_PER_SOL * 0.00002,
+    const transferIx1 = getTransferSolInstruction({
+      source: createNoopSigner(multi_wallet_vault),
+      destination: wallet.address,
+      amount: lamports(BigInt(10 ** 9 * 0.00002)),
     });
-    const transferIx2 = SystemProgram.transfer({
-      fromPubkey: multi_wallet_vault,
-      toPubkey: test.publicKey,
-      lamports: LAMPORTS_PER_SOL * 0.001,
+    const transferIx2 = getTransferSolInstruction({
+      source: createNoopSigner(multi_wallet_vault),
+      destination: test.address,
+      amount: lamports(BigInt(10 ** 9 * 0.3)),
+    });
+
+    const recentBlockHash = await connection.getLatestBlockhash().send();
+    const transactionMessageBytes = await prepareTransactionMessage(
+      recentBlockHash.value.blockhash,
+      payer.address,
+      [transferIx1, transferIx2]
+    );
+
+    const result = await prepareTransactionSync({
+      rpc: connection,
+      feePayer: payer,
+      transactionMessageBytes,
+      signers: [wallet],
+      settings,
     });
 
     const changeConfigIx = await changeConfig({
-      connection,
+      signers: [wallet],
+      rpc: connection,
+      feePayer: payer,
       settings,
-      feePayer: payer.publicKey,
       configActions: [
         {
-          type: "setMembers",
+          type: "SetMembers",
           members: [
             {
-              pubkey: test.publicKey,
+              pubkey: test.address,
               permissions: Permissions.all(),
+              metadata: null,
             },
           ],
         },
-        { type: "setThreshold", threshold: 1 },
+        { type: "SetThreshold", threshold: 1 },
       ],
     });
 
-    const result = await prepareTransactionBundle({
+    await sendTx(
       connection,
-      feePayer: payer.publicKey,
-      instructions: [transferIx1, transferIx2, changeConfigIx],
-      settings,
-      creator: wallet.publicKey,
-      executor: wallet.publicKey,
-    });
-    for (const x of result) {
-      const tx = new Transaction().add(...x.ixs);
-      tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-      tx.feePayer = x.feePayer;
-      await sendAndConfirmTransaction(
-        connection,
-        tx,
-        x.signers.length > 1 ? [wallet, payer] : [payer]
-      );
-    }
+      [...result.ixs, changeConfigIx],
+      payer,
+      sendAndConfirm
+    );
 
     const accountData = await fetchSettingsData(connection, settings);
-    const delegateData = await fetchDelegateData(connection, test.publicKey);
-    expect(delegateData.multiWalletSettings.toBase58()).equal(
-      settings.toBase58()
+    const delegateData = await fetchDelegateData(connection, test.address);
+    expect(delegateData.multiWalletSettings.toString()).equal(
+      settings.toString()
     );
-    expect(delegateData.multiWallet.toBase58()).equal(
-      multi_wallet_vault.toBase58()
+    expect(delegateData.multiWallet.toString()).equal(
+      multi_wallet_vault.toString()
     );
     expect(accountData.members.length).equal(1); // wallet + test
     expect(accountData.threshold).equal(1);
   });
 
-  xit("Ephermeral Tx", async () => {
-    const ix = SystemProgram.transfer({
-      fromPubkey: payer.publicKey,
-      toPubkey: multi_wallet_vault,
-      lamports: LAMPORTS_PER_SOL * 0.2,
+  it("Ephermeral Tx", async () => {
+    const ix = getTransferSolInstruction({
+      source: payer,
+      destination: multi_wallet_vault,
+      amount: lamports(BigInt(10 ** 9 * 0.3)),
     });
 
-    const tx = new Transaction().add(ix);
-    await sendAndConfirmTransaction(connection, tx, [payer]);
+    await sendTx(connection, [ix], payer, sendAndConfirm);
 
-    const ephermeralKeypair = Keypair.generate();
-    const lamports = await getMinimumBalanceForRentExemptMint(connection);
-    const createAccount = SystemProgram.createAccount({
-      fromPubkey: multi_wallet_vault,
-      newAccountPubkey: ephermeralKeypair.publicKey,
-      space: MINT_SIZE,
-      lamports: lamports,
-      programId: TOKEN_PROGRAM_ID,
-    });
-    const createMint = createInitializeMintInstruction(
-      ephermeralKeypair.publicKey,
-      5,
-      multi_wallet_vault,
-      null
+    const ephermeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
+      crypto.getRandomValues(new Uint8Array(32))
     );
 
-    const result = await prepareTransactionBundle({
-      connection,
-      feePayer: payer.publicKey,
-      instructions: [createAccount, createMint],
-      settings,
-      creator: test.publicKey,
-      executor: test.publicKey,
+    const createAccount = getCreateAccountInstruction({
+      payer: createNoopSigner(multi_wallet_vault),
+      newAccount: ephermeralKeypair,
+      space: getMintSize(),
+      lamports: await connection
+        .getMinimumBalanceForRentExemption(BigInt(getMintSize()))
+        .send(),
+
+      programAddress: TOKEN_PROGRAM_ADDRESS,
     });
-    for (const x of result) {
-      const tx = new Transaction().add(...x.ixs);
-      tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-      tx.feePayer = x.feePayer;
-      await sendAndConfirmTransaction(
-        connection,
-        tx,
-        x.signers.length > 2
-          ? [test, payer, ephermeralKeypair]
-          : x.signers.length > 1
-          ? [test, payer]
-          : [payer]
-      );
-    }
+    const createMint = getInitializeMint2Instruction({
+      mint: ephermeralKeypair.address,
+      decimals: 5,
+      mintAuthority: multi_wallet_vault,
+    });
+
+    const recentBlockHash = await connection.getLatestBlockhash().send();
+    const transactionMessageBytes = await prepareTransactionMessage(
+      recentBlockHash.value.blockhash,
+      payer.address,
+      [createAccount, createMint]
+    );
+
+    const result = await prepareTransactionSync({
+      rpc: connection,
+      feePayer: payer,
+      transactionMessageBytes,
+      signers: [ephermeralKeypair, test],
+      settings,
+    });
+
+    await sendTx(connection, [...result.ixs], payer, sendAndConfirm);
 
     const accountData = await fetchSettingsData(connection, settings);
-    const delegateData = await fetchDelegateData(connection, test.publicKey);
-    expect(delegateData.multiWalletSettings.toBase58()).equal(
-      settings.toBase58()
+    const delegateData = await fetchDelegateData(connection, test.address);
+    expect(delegateData.multiWalletSettings.toString()).equal(
+      settings.toString()
     );
-    expect(delegateData.multiWallet.toBase58()).equal(
-      multi_wallet_vault.toBase58()
+    expect(delegateData.multiWallet.toString()).equal(
+      multi_wallet_vault.toString()
     );
     expect(accountData.members.length).equal(1); //  test
     expect(accountData.threshold).equal(1);
   });
 });
+async function sendTx(
+  connection: Rpc<SolanaRpcApi>,
+  ixs: IInstruction[],
+  payer: KeyPairSigner,
+  sendAndConfirm
+) {
+  const latestBlockHash = await connection.getLatestBlockhash().send();
+  const tx = await pipe(
+    createTransactionMessage({ version: 0 }),
+    (tx) => appendTransactionMessageInstructions(ixs, tx),
+    (tx) => setTransactionMessageFeePayerSigner(payer, tx),
+    (tx) =>
+      setTransactionMessageLifetimeUsingBlockhash(latestBlockHash.value, tx),
+    async (tx) => await signTransactionMessageWithSigners(tx)
+  );
+
+  await sendAndConfirm(tx, { commitment: "confirmed" });
+}

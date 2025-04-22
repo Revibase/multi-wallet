@@ -251,7 +251,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                         AccountMeta::new_readonly(*account_info.key, is_signer)
                     };
 
-                    (account_info.clone(), account_meta)
+                    (account_info.to_account_info(), account_meta)
                 })
                 .collect();
 
@@ -273,7 +273,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 .map(|(account_info, _)| account_info)
                 .collect();
             // Add Program ID
-            account_infos.push(ix_program_account_info.clone());
+            account_infos.push(ix_program_account_info.to_account_info());
 
             executable_instructions.push((ix, account_infos));
         }

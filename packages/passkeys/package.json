@@ -1,0 +1,47 @@
+{
+  "name": "@revibase/passkeys-sdk",
+  "version": "1.0.28",
+  "scripts": {
+    "build": "rimraf ./dist && tsup src/index.ts --format cjs,esm --dts --sourcemap"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "import": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "require": {
+      "types": "./dist/index.d.cts",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "types"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "rimraf": "^6.0.1",
+    "typescript": "^5.8.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Revibase/multi-wallet.git"
+  },
+  "author": "jychab",
+  "bugs": {
+    "url": "https://github.com/Revibase/multi-wallet/issues"
+  },
+  "homepage": "https://github.com/Revibase/multi-wallet#readme",
+  "description": "",
+  "dependencies": {
+    "@levischuck/tiny-cbor": "^0.2.11",
+    "@noble/curves": "^1.8.1",
+    "@simplewebauthn/server": "^13.1.1",
+    "@solana/addresses": "^2.1.0",
+    "bs58": "^6.0.0"
+  }
+}

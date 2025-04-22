@@ -1,12 +1,15 @@
 use crate::error::MultisigError;
 use crate::id;
 use crate::state::member::{Member, MemberKey};
-use crate::state::{Delegate, Permission, SEED_DELEGATE};
+use crate::state::{Delegate, KeyType, Permission, SEED_DELEGATE, SEED_DOMAIN_CONFIG};
 use crate::utils::{close, create_account_if_none_exist};
 use anchor_lang::prelude::*;
 use std::collections::HashSet;
 
-use super::{SEED_MULTISIG, SEED_VAULT};
+use super::{
+    DomainConfig, MemberWithVerifyArgs, Secp256r1Pubkey, TransactionActionType, SEED_MULTISIG,
+    SEED_VAULT,
+};
 
 #[account]
 pub struct Settings {
@@ -20,8 +23,8 @@ pub struct Settings {
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub enum ConfigAction {
-    SetMembers(Vec<Member>),
-    AddMembers(Vec<Member>),
+    SetMembers(Vec<MemberWithVerifyArgs>),
+    AddMembers(Vec<MemberWithVerifyArgs>),
     RemoveMembers(Vec<MemberKey>),
     SetThreshold(u8),
     SetMetadata(Option<Pubkey>),
@@ -61,13 +64,10 @@ impl Settings {
             MultisigError::TooManyMembers
         );
         require!(threshold > 0, MultisigError::InvalidThreshold);
-        require!(
-            threshold as usize <= member_count,
-            MultisigError::InvalidThreshold
-        );
 
         let mut seen: HashSet<&MemberKey> = std::collections::HashSet::new();
         let mut permission_counts = PermissionCounts::default();
+        let mut is_secp256r1_key_voter = false;
 
         for member in members {
             // Check for duplicate public keys
@@ -75,12 +75,12 @@ impl Settings {
                 return Err(MultisigError::DuplicateMember.into());
             }
 
-            //validate member is of correct type
-            member.pubkey.validate_type()?;
-
             // Count permissions
             let permissions = &member.permissions;
-            if permissions.has(Permission::VoteTransaction) {
+            if permissions.has(Permission::VoteTransaction) && !is_secp256r1_key_voter {
+                if member.pubkey.get_type().eq(&KeyType::Secp256r1) {
+                    is_secp256r1_key_voter = true;
+                }
                 permission_counts.voters += 1;
             }
             if permissions.has(Permission::InitiateTransaction) {
@@ -122,40 +122,42 @@ impl Settings {
     /// Add `new_member` to the multisig `members` vec.
     pub fn add_members<'a>(
         &mut self,
-        new_members: Vec<Member>,
-        remaining_accounts: &[AccountInfo<'a>],
+        settings: &Pubkey,
+        multi_wallet: &Pubkey,
+        new_members: Vec<MemberWithVerifyArgs>,
+        remaining_accounts: &'a [AccountInfo<'a>],
         payer: &Signer<'a>,
         system_program: &Program<'a, System>,
+        sysvar_slot_history: &Option<UncheckedAccount<'a>>,
     ) -> Result<()> {
-        let multi_wallet_settings = Pubkey::create_program_address(
-            &[SEED_MULTISIG, self.create_key.as_ref(), &[self.bump]],
-            &id(),
-        )
-        .unwrap();
-        let multi_wallet = Pubkey::create_program_address(
-            &[
-                SEED_MULTISIG,
-                multi_wallet_settings.key().as_ref(),
-                SEED_VAULT,
-                &[self.multi_wallet_bump],
-            ],
-            &id(),
-        )
-        .unwrap();
         for member in &new_members {
-            if member.permissions.has(Permission::IsDelegate) {
+            if member.data.pubkey.get_type().eq(&super::KeyType::Secp256r1) {
+                let (domain_config, rp_id_hash) =
+                    verify_domain_config(remaining_accounts, &member.data.metadata)?;
+                Secp256r1Pubkey::verify_secp256r1(
+                    &member.verify_args,
+                    sysvar_slot_history,
+                    &domain_config,
+                    settings,
+                    &rp_id_hash,
+                    TransactionActionType::AddNewMember,
+                )?;
+            }
+
+            if member.data.permissions.has(Permission::IsDelegate) {
                 create_delegate_account(
                     remaining_accounts,
                     payer,
                     system_program,
-                    multi_wallet_settings,
+                    settings,
                     multi_wallet,
-                    member,
+                    &member.data.pubkey,
                 )?;
             }
         }
 
-        self.members.extend(new_members);
+        self.members
+            .extend(new_members.iter().map(|f| f.data).collect::<Vec<Member>>());
         Ok(())
     }
 
@@ -180,54 +182,73 @@ impl Settings {
     /// set `new_members` as the multisig `members` vec.
     pub fn set_members<'a>(
         &mut self,
-        new_members: Vec<Member>,
-        remaining_accounts: &[AccountInfo<'a>],
+        settings: &Pubkey,
+        new_members: Vec<MemberWithVerifyArgs>,
+        remaining_accounts: &'a [AccountInfo<'a>],
         payer: &Signer<'a>,
         system_program: &Program<'a, System>,
+        sysvar_slot_history: &Option<UncheckedAccount<'a>>,
     ) -> Result<()> {
-        let multi_wallet_settings = Pubkey::create_program_address(
-            &[SEED_MULTISIG, self.create_key.as_ref(), &[self.bump]],
-            &id(),
-        )
-        .unwrap();
         let multi_wallet = Pubkey::create_program_address(
             &[
                 SEED_MULTISIG,
-                multi_wallet_settings.key().as_ref(),
+                settings.key().as_ref(),
                 SEED_VAULT,
                 &[self.multi_wallet_bump],
             ],
             &id(),
         )
         .unwrap();
-        let members_to_create_account = new_members
-            .iter()
-            .filter(|f| !self.members.contains(f) && f.permissions.has(Permission::IsDelegate))
-            .cloned()
-            .collect::<Vec<Member>>();
-        let members_to_close_account = self
+        let members_to_close_account: Vec<_> = self
             .members
             .iter()
-            .filter(|f| !new_members.contains(f) && f.permissions.has(Permission::IsDelegate))
-            .cloned()
-            .collect::<Vec<Member>>();
+            .filter(|f| f.permissions.has(Permission::IsDelegate))
+            .filter(|f| {
+                !new_members
+                    .iter()
+                    .any(|member| member.data.pubkey.eq(&f.pubkey))
+            })
+            .collect();
 
-        for member in &members_to_create_account {
-            create_delegate_account(
-                remaining_accounts,
-                payer,
-                system_program,
-                multi_wallet_settings,
-                multi_wallet,
-                member,
-            )?;
+        for member in &new_members {
+            if self
+                .members
+                .iter()
+                .any(|f| f.pubkey.eq(&member.data.pubkey))
+            {
+                continue;
+            }
+
+            if member.data.pubkey.get_type().eq(&super::KeyType::Secp256r1) {
+                let (domain_config, rp_id_hash) =
+                    verify_domain_config(remaining_accounts, &member.data.metadata)?;
+                Secp256r1Pubkey::verify_secp256r1(
+                    &member.verify_args,
+                    sysvar_slot_history,
+                    &domain_config,
+                    settings,
+                    &rp_id_hash,
+                    TransactionActionType::AddNewMember,
+                )?;
+            }
+
+            if member.data.permissions.has(Permission::IsDelegate) {
+                create_delegate_account(
+                    remaining_accounts,
+                    payer,
+                    system_program,
+                    settings,
+                    &multi_wallet,
+                    &member.data.pubkey,
+                )?;
+            }
         }
 
-        for member in &members_to_close_account {
+        for member in members_to_close_account {
             close_delegate_account(remaining_accounts, payer, member)?;
         }
 
-        self.members = new_members;
+        self.members = new_members.iter().map(|f| f.data).collect();
         Ok(())
     }
 
@@ -241,6 +262,39 @@ impl Settings {
         self.metadata = metadata;
     }
 }
+fn verify_domain_config<'a>(
+    remaining_accounts: &'a [AccountInfo<'a>],
+    metadata: &Option<Pubkey>,
+) -> Result<(Option<AccountLoader<'a, DomainConfig>>, [u8; 32])> {
+    let metadata_key = metadata.ok_or(MultisigError::MissingMetadata)?;
+
+    let domain_account = remaining_accounts
+        .iter()
+        .find(|f| f.key.eq(&metadata_key))
+        .ok_or(MultisigError::MissingAccount)?;
+    let account_loader = AccountLoader::<DomainConfig>::try_from(domain_account)
+        .map_err(|_| MultisigError::DomainConfigIsMissing)?;
+    let rp_id_hash = {
+        let domain_data = account_loader.load()?;
+        let seeds = &[
+            SEED_DOMAIN_CONFIG,
+            domain_data.rp_id_hash.as_ref(),
+            &[domain_data.bump],
+        ];
+
+        let delegate_account = Pubkey::create_program_address(seeds, &id())
+            .map_err(|_| MultisigError::RpIdHashMismatch)?;
+
+        require!(
+            delegate_account == *domain_account.key,
+            MultisigError::RpIdHashMismatch
+        );
+
+        domain_data.rp_id_hash
+    };
+
+    Ok((Some(account_loader), rp_id_hash))
+}
 
 fn close_delegate_account<'a>(
     remaining_accounts: &[AccountInfo<'a>],
@@ -253,10 +307,7 @@ fn close_delegate_account<'a>(
         .iter()
         .find(|f| f.key.eq(&delegate_account));
     require!(new_account.is_some(), MultisigError::MissingAccount);
-    require!(
-        new_account.unwrap().is_writable,
-        MultisigError::InvalidAccount
-    );
+
     close(
         new_account.as_ref().unwrap().to_account_info(),
         payer.to_account_info(),
@@ -268,27 +319,24 @@ fn create_delegate_account<'a>(
     remaining_accounts: &[AccountInfo<'a>],
     payer: &Signer<'a>,
     system_program: &Program<'a, System>,
-    multi_wallet_settings: Pubkey,
-    multi_wallet: Pubkey,
-    member: &Member,
+    multi_wallet_settings: &Pubkey,
+    multi_wallet: &Pubkey,
+    member_key: &MemberKey,
 ) -> Result<()> {
-    let seeds = &[SEED_DELEGATE, member.pubkey.get_seed()];
+    let seeds = &[SEED_DELEGATE, member_key.get_seed()];
     let (delegate_account, bump) = Pubkey::find_program_address(seeds, &id());
     let new_account = remaining_accounts
         .iter()
         .find(|f| f.key.eq(&delegate_account));
     require!(new_account.is_some(), MultisigError::MissingAccount);
-    require!(
-        new_account.unwrap().is_writable,
-        MultisigError::InvalidAccount
-    );
+
     create_account_if_none_exist(
         &payer.to_account_info(),
         new_account.unwrap(),
         &system_program.to_account_info(),
         &id(),
         Delegate::size(),
-        &[SEED_DELEGATE, member.pubkey.get_seed(), &[bump]],
+        &[SEED_DELEGATE, member_key.get_seed(), &[bump]],
     )?;
     let mut data = new_account.unwrap().try_borrow_mut_data()?;
     data[..8].copy_from_slice(Delegate::DISCRIMINATOR);

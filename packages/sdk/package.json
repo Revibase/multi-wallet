@@ -1,0 +1,53 @@
+{
+  "name": "@revibase/sdk",
+  "version": "1.0.38",
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --sourcemap",
+    "clean": "rimraf dist",
+    "generate": "node ./src/utils/codama.ts"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "import": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "require": {
+      "types": "./dist/index.d.cts",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "types"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@codama/nodes-from-anchor": "^1.1.11",
+    "@codama/renderers-js": "^1.2.10",
+    "@types/node": "^22.14.0",
+    "codama": "^1.2.11",
+    "prettier": "^3.5.3",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Revibase/multi-wallet.git"
+  },
+  "author": "jychab",
+  "bugs": {
+    "url": "https://github.com/Revibase/multi-wallet/issues"
+  },
+  "homepage": "https://github.com/Revibase/multi-wallet#readme",
+  "description": "",
+  "dependencies": {
+    "@solana-program/system": "^0.7.0"
+  },
+  "peerDependencies": {
+    "@solana/kit": "^2.1.0"
+  }
+}

@@ -1,0 +1,1400 @@
+{
+  "address": "HomqiGa9FxngxAPbVEFzXM3pjicY5RbGCBu3dVNui3ry",
+  "metadata": {
+    "name": "multi_wallet",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "change_config",
+      "docs": [
+        "# Parameters",
+        "- `ctx`: The context of the multi-action execution.",
+        "- `config_actions`: The list of actions to be executed.",
+        "",
+        "# Returns",
+        "- `Result<()>`: The result of the multi-action execution."
+      ],
+      "discriminator": [24, 158, 114, 115, 94, 210, 244, 233],
+      "accounts": [
+        {
+          "name": "settings",
+          "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        }
+      ],
+      "args": [
+        {
+          "name": "config_actions",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "ConfigAction"
+              }
+            }
+          }
+        },
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "create",
+      "docs": [
+        "Creates a new multi-wallet.",
+        "",
+        "# Parameters",
+        "- `ctx`: The context of the multi-wallet creation.",
+        "- `initial_member`: The member key used to create the multi-wallet.",
+        "- `metadata`: An optional metadata for the multi-wallet.",
+        "- `label`: An optional label for the multi-wallet.",
+        "",
+        "# Returns",
+        "- `Result<()>`: The result of the multi-wallet creation."
+      ],
+      "discriminator": [24, 30, 200, 40, 5, 28, 7, 119],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "settings",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "create_key"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "create_key",
+          "type": "pubkey"
+        },
+        {
+          "name": "initial_members",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "MemberWithVerifyArgs"
+              }
+            }
+          }
+        },
+        {
+          "name": "metadata",
+          "type": {
+            "option": "pubkey"
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_domain_config",
+      "docs": [
+        "Create the domain config needed for secp256r1 verification.",
+        "",
+        "# Parameters",
+        "- `ctx`: The context of the domain config.",
+        "",
+        "# Returns",
+        "- `Result<()>`: The result of the domain config creation."
+      ],
+      "discriminator": [197, 81, 191, 2, 164, 140, 184, 90],
+      "accounts": [
+        {
+          "name": "domain_config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100, 111, 109, 97, 105, 110, 95, 99, 111, 110, 102, 105, 103
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "args.rp_id_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "CreateDomainConfigArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "delete_domain_config",
+      "docs": [
+        "Delete the domain config needed for secp256r1 verification.",
+        "",
+        "# Parameters",
+        "- `ctx`: The context of the domain config.",
+        "",
+        "# Returns",
+        "- `Result<()>`: The result of the domain config Delete."
+      ],
+      "discriminator": [225, 169, 39, 18, 125, 147, 36, 29],
+      "accounts": [
+        {
+          "name": "domain_config",
+          "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "edit_domain_config",
+      "docs": [
+        "Edit the domain config needed for secp256r1 verification.",
+        "",
+        "# Parameters",
+        "- `ctx`: The context of the domain config.",
+        "",
+        "# Returns",
+        "- `Result<()>`: The result of the domain config edit."
+      ],
+      "discriminator": [110, 212, 99, 229, 72, 93, 185, 231],
+      "accounts": [
+        {
+          "name": "domain_config",
+          "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "EditDomainConfigArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "transaction_buffer_close",
+      "docs": [
+        "Closes an existing transaction buffer.",
+        "",
+        "# Parameters",
+        "- `ctx`: Context containing all necessary accounts.",
+        "- `args`: Arguments for closing the transaction buffer.",
+        "",
+        "# Returns",
+        "- `Ok(())`: If the transaction buffer is successfully closed.",
+        "- `Err`: If validation fails or the accounts are invalid."
+      ],
+      "discriminator": [17, 182, 208, 228, 136, 24, 178, 102],
+      "accounts": [
+        {
+          "name": "settings"
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        },
+        {
+          "name": "transaction_buffer",
+          "writable": true
+        },
+        {
+          "name": "closer",
+          "signer": true,
+          "optional": true
+        },
+        {
+          "name": "rent_payer",
+          "writable": true
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "transaction_buffer_create",
+      "docs": [
+        "Creates a new transaction buffer.",
+        "",
+        "# Parameters",
+        "- `ctx`: Context containing all necessary accounts.",
+        "- `args`: Arguments for the transaction buffer creation.",
+        "",
+        "# Returns",
+        "- `Ok(())`: If the transaction buffer is successfully created.",
+        "- `Err`: If validation fails or the provided arguments are invalid."
+      ],
+      "discriminator": [245, 201, 113, 108, 37, 63, 29, 89],
+      "accounts": [
+        {
+          "name": "settings"
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        },
+        {
+          "name": "transaction_buffer",
+          "writable": true
+        },
+        {
+          "name": "creator",
+          "signer": true,
+          "optional": true
+        },
+        {
+          "name": "rent_payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "instructions_sysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "TransactionBufferCreateArgs"
+            }
+          }
+        },
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "transaction_buffer_execute",
+      "docs": [
+        "Executes a transaction buffer.",
+        "",
+        "# Parameters",
+        "- `ctx`: The context of the vault transaction execution.",
+        "- `args`: Arguments for executing the vault transaction.",
+        "",
+        "# Returns",
+        "- `Result<()>`: The result of the vault transaction execution."
+      ],
+      "discriminator": [48, 73, 34, 19, 129, 99, 128, 73],
+      "accounts": [
+        {
+          "name": "domain_config",
+          "optional": true
+        },
+        {
+          "name": "settings"
+        },
+        {
+          "name": "rent_payer",
+          "writable": true
+        },
+        {
+          "name": "executor",
+          "signer": true,
+          "optional": true
+        },
+        {
+          "name": "transaction_buffer",
+          "writable": true
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "transaction_buffer_extend",
+      "docs": [
+        "Extends an existing transaction buffer.",
+        "",
+        "# Parameters",
+        "- `ctx`: Context containing all necessary accounts.",
+        "- `args`: Arguments for extending the transaction buffer.",
+        "",
+        "# Returns",
+        "- `Ok(())`: If the transaction buffer is successfully extended.",
+        "- `Err`: If validation fails or the provided arguments are invalid."
+      ],
+      "discriminator": [230, 157, 67, 56, 5, 238, 245, 146],
+      "accounts": [
+        {
+          "name": "settings",
+          "optional": true
+        },
+        {
+          "name": "transaction_buffer",
+          "writable": true
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        },
+        {
+          "name": "creator",
+          "signer": true,
+          "optional": true
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "TransactionBufferExtendArgs"
+            }
+          }
+        },
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "transaction_buffer_vote",
+      "docs": [
+        "Sign to approve a transaction buffer.",
+        "",
+        "# Parameters",
+        "- `ctx`: Context containing all necessary accounts.",
+        "- `args`: Arguments for the transaction buffer vote.",
+        "",
+        "# Returns",
+        "- `Ok(())`: If the transaction buffer is successfully approved.",
+        "- `Err`: If validation fails or the provided arguments are invalid."
+      ],
+      "discriminator": [203, 50, 79, 187, 94, 53, 82, 122],
+      "accounts": [
+        {
+          "name": "settings"
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        },
+        {
+          "name": "transaction_buffer",
+          "writable": true
+        },
+        {
+          "name": "voter",
+          "signer": true,
+          "optional": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "transaction_execute_sync",
+      "docs": [
+        "Executes a transaction synchronously.",
+        "",
+        "# Parameters",
+        "- `ctx`: The context of the vault transaction execution.",
+        "- `transaction_message`: The transaction message to be executed.",
+        "- `args`: Arguments for executing the vault transaction.",
+        "",
+        "# Returns",
+        "- `Result<()>`: The result of the vault transaction execution."
+      ],
+      "discriminator": [149, 138, 204, 32, 181, 61, 153, 227],
+      "accounts": [
+        {
+          "name": "settings"
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        }
+      ],
+      "args": [
+        {
+          "name": "transaction_message",
+          "type": {
+            "defined": {
+              "name": "TransactionMessage"
+            }
+          }
+        },
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "DomainConfig",
+      "discriminator": [201, 232, 212, 229, 59, 241, 106, 197]
+    },
+    {
+      "name": "Settings",
+      "discriminator": [223, 179, 163, 190, 177, 224, 67, 173]
+    },
+    {
+      "name": "TransactionBuffer",
+      "discriminator": [90, 36, 35, 219, 93, 225, 110, 96]
+    }
+  ],
+  "events": [
+    {
+      "name": "ConfigEvent",
+      "discriminator": [162, 6, 172, 68, 201, 128, 119, 230]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "PublicKeyLengthMismatch",
+      "msg": "Public Key Length does not match the Public Key Type"
+    },
+    {
+      "code": 6001,
+      "name": "DurableNonceDetected",
+      "msg": "Durable nonce detected. Durable nonce is not allowed for this transaction."
+    },
+    {
+      "code": 6002,
+      "name": "DuplicateMember",
+      "msg": "Duplicate public keys found in the members array. Each member must have a unique public key."
+    },
+    {
+      "code": 6003,
+      "name": "EmptyMembers",
+      "msg": "The members array cannot be empty. Add at least one member."
+    },
+    {
+      "code": 6004,
+      "name": "TooManyMembers",
+      "msg": "Too many members specified. A maximum of 65,535 members is allowed."
+    },
+    {
+      "code": 6005,
+      "name": "InvalidThreshold",
+      "msg": "Threshold must be between 1 and the total number of voting members. Note: only one passkey voter is counted toward this limit, even if more are registered."
+    },
+    {
+      "code": 6006,
+      "name": "InvalidTransactionMessage",
+      "msg": "The provided TransactionMessage is malformed or improperly formatted."
+    },
+    {
+      "code": 6007,
+      "name": "InvalidNumberOfAccounts",
+      "msg": "Incorrect number of accounts provided. Verify the account count matches the expected number."
+    },
+    {
+      "code": 6008,
+      "name": "InvalidAccount",
+      "msg": "One or more accounts provided are invalid. Ensure all accounts meet the requirements."
+    },
+    {
+      "code": 6009,
+      "name": "MissingAccount",
+      "msg": "Required account is missing. Ensure all necessary accounts are included."
+    },
+    {
+      "code": 6010,
+      "name": "AccountAlreadyExist",
+      "msg": "The account already exist."
+    },
+    {
+      "code": 6011,
+      "name": "IllegalAccountOwner",
+      "msg": "Account is not owned by the Multisig program. Only accounts under the Multisig program can be used."
+    },
+    {
+      "code": 6012,
+      "name": "MissingOwner",
+      "msg": "The members array cannot have a length of one. Add an additional member."
+    },
+    {
+      "code": 6013,
+      "name": "CannotRemoveDelegateKeyFromMember",
+      "msg": "You cannot remove delegate key from the member. Change the delegate first before removing it as a member."
+    },
+    {
+      "code": 6014,
+      "name": "InsufficientSignerWithExecutePermission",
+      "msg": "Require at least one signer to have the execute permission."
+    },
+    {
+      "code": 6015,
+      "name": "InsufficientSignerWithInitiatePermission",
+      "msg": "Require at least one signer to have the initiate permission."
+    },
+    {
+      "code": 6016,
+      "name": "InsufficientSignersWithVotePermission",
+      "msg": "Require threshold to be lesser than or equal to the number of members with vote permission."
+    },
+    {
+      "code": 6017,
+      "name": "InsufficientSignerWithIsDelegatePermission",
+      "msg": "Require at least one signer to have isDelegate permission."
+    },
+    {
+      "code": 6018,
+      "name": "UnauthorisedToModifyBuffer",
+      "msg": "Only the creator of the transaction buffer have permission to modify the buffer."
+    },
+    {
+      "code": 6019,
+      "name": "FinalBufferHashMismatch",
+      "msg": "Final message buffer hash doesnt match the expected hash"
+    },
+    {
+      "code": 6020,
+      "name": "FinalBufferSizeExceeded",
+      "msg": "Final buffer size cannot exceed 4000 bytes"
+    },
+    {
+      "code": 6021,
+      "name": "FinalBufferSizeMismatch",
+      "msg": "Final buffer size mismatch"
+    },
+    {
+      "code": 6022,
+      "name": "TransactionHasExpired",
+      "msg": "Transaction has expired. 3 min has passed since the transaction was created."
+    },
+    {
+      "code": 6023,
+      "name": "ProtectedAccount",
+      "msg": "Account is protected, it cannot be passed into a CPI as writable"
+    },
+    {
+      "code": 6024,
+      "name": "MaxLengthExceeded",
+      "msg": "Origin must be lesser than 256 characters."
+    },
+    {
+      "code": 6025,
+      "name": "MissingSysvarSlotHistory",
+      "msg": "Slot history sysvar is missing."
+    },
+    {
+      "code": 6026,
+      "name": "InvalidSysvarDataFormat",
+      "msg": "Failed to parse sysvar data."
+    },
+    {
+      "code": 6027,
+      "name": "SlotNumberNotFound",
+      "msg": "Slot number not found in slot history."
+    },
+    {
+      "code": 6028,
+      "name": "SlotHashMismatch",
+      "msg": "Slot hash does not match the expected value."
+    },
+    {
+      "code": 6029,
+      "name": "DomainConfigIsMissing",
+      "msg": "Domain Config is missing."
+    },
+    {
+      "code": 6030,
+      "name": "MemberDoesNotBelongToDomainConfig",
+      "msg": "Member does not belong to the specified domain config."
+    },
+    {
+      "code": 6031,
+      "name": "RpIdHashMismatch",
+      "msg": "Rp Id does not match with the specified domain config."
+    },
+    {
+      "code": 6032,
+      "name": "MissingMetadata",
+      "msg": "Metadata containing the pubkey of the domain config account is required when adding a passkey"
+    },
+    {
+      "code": 6033,
+      "name": "InvalidJson",
+      "msg": "Unable to parse json data."
+    },
+    {
+      "code": 6034,
+      "name": "MissingOrigin",
+      "msg": "Origin is missing in client data json"
+    },
+    {
+      "code": 6035,
+      "name": "InvalidOrigin",
+      "msg": "Origin in client data json is invalid."
+    },
+    {
+      "code": 6036,
+      "name": "MissingType",
+      "msg": "Type is missing in client data json"
+    },
+    {
+      "code": 6037,
+      "name": "InvalidType",
+      "msg": "Type in client data json is not equals to webauthn.get"
+    },
+    {
+      "code": 6038,
+      "name": "MissingChallenge",
+      "msg": "Challenge is missing in client data json"
+    },
+    {
+      "code": 6039,
+      "name": "InvalidChallenge",
+      "msg": "Challenge in client data json is invalid."
+    },
+    {
+      "code": 6040,
+      "name": "Secp256r1VerifyArgsIsMissing",
+      "msg": "Secp256r1 Verify Args is missing."
+    }
+  ],
+  "types": [
+    {
+      "name": "CompiledInstruction",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "program_id_index",
+            "type": "u8"
+          },
+          {
+            "name": "account_indexes",
+            "docs": [
+              "Indices into the tx's `account_keys` list indicating which accounts to pass to the instruction."
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "data",
+            "docs": ["Instruction data."],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConfigAction",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "SetMembers",
+            "fields": [
+              {
+                "vec": {
+                  "defined": {
+                    "name": "MemberWithVerifyArgs"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "AddMembers",
+            "fields": [
+              {
+                "vec": {
+                  "defined": {
+                    "name": "MemberWithVerifyArgs"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "RemoveMembers",
+            "fields": [
+              {
+                "vec": {
+                  "defined": {
+                    "name": "MemberKey"
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "name": "SetThreshold",
+            "fields": ["u8"]
+          },
+          {
+            "name": "SetMetadata",
+            "fields": [
+              {
+                "option": "pubkey"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "ConfigEvent",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "create_key",
+            "type": "pubkey"
+          },
+          {
+            "name": "members",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "Member"
+                }
+              }
+            }
+          },
+          {
+            "name": "threshold",
+            "type": "u8"
+          },
+          {
+            "name": "metadata",
+            "type": {
+              "option": "pubkey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CreateDomainConfigArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "rp_id",
+            "type": "string"
+          },
+          {
+            "name": "rp_id_hash",
+            "type": {
+              "array": ["u8", 32]
+            }
+          },
+          {
+            "name": "origin",
+            "type": "string"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DomainConfig",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "rp_id_hash",
+            "type": {
+              "array": ["u8", 32]
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "rp_id_length",
+            "type": "u8"
+          },
+          {
+            "name": "origin_length",
+            "type": "u8"
+          },
+          {
+            "name": "rp_id",
+            "type": {
+              "array": ["u8", 256]
+            }
+          },
+          {
+            "name": "origin",
+            "type": {
+              "array": ["u8", 256]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "EditDomainConfigArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "origin",
+            "type": "string"
+          },
+          {
+            "name": "authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Member",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pubkey",
+            "type": {
+              "defined": {
+                "name": "MemberKey"
+              }
+            }
+          },
+          {
+            "name": "permissions",
+            "type": {
+              "defined": {
+                "name": "Permissions"
+              }
+            }
+          },
+          {
+            "name": "metadata",
+            "type": {
+              "option": "pubkey"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MemberKey",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "key_type",
+            "type": "u8"
+          },
+          {
+            "name": "key",
+            "type": {
+              "array": ["u8", 33]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MemberWithVerifyArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "data",
+            "type": {
+              "defined": {
+                "name": "Member"
+              }
+            }
+          },
+          {
+            "name": "verify_args",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "Secp256r1VerifyArgs"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Permissions",
+      "docs": ["Bitmask for permissions."],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "mask",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Secp256r1VerifyArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "signature",
+            "type": {
+              "array": ["u8", 64]
+            }
+          },
+          {
+            "name": "pubkey",
+            "type": {
+              "array": ["u8", 33]
+            }
+          },
+          {
+            "name": "truncated_auth_data",
+            "type": "bytes"
+          },
+          {
+            "name": "client_data_json",
+            "type": "bytes"
+          },
+          {
+            "name": "slot_number",
+            "type": "u64"
+          },
+          {
+            "name": "slot_hash",
+            "type": {
+              "array": ["u8", 32]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "Settings",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "create_key",
+            "type": "pubkey"
+          },
+          {
+            "name": "threshold",
+            "type": "u8"
+          },
+          {
+            "name": "multi_wallet_bump",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "metadata",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "members",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "Member"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransactionBuffer",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "multi_wallet_settings",
+            "docs": ["The multisig settings this belongs to."],
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "docs": [
+              "Member of the Multisig who created the TransactionBuffer."
+            ],
+            "type": {
+              "defined": {
+                "name": "MemberKey"
+              }
+            }
+          },
+          {
+            "name": "voters",
+            "docs": ["Members that voted for this transaction"],
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "MemberKey"
+                }
+              }
+            }
+          },
+          {
+            "name": "expiry",
+            "type": "u64"
+          },
+          {
+            "name": "rent_payer",
+            "docs": ["Rent payer for the transaction buffer"],
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "docs": ["transaction bump"],
+            "type": "u8"
+          },
+          {
+            "name": "buffer_index",
+            "docs": ["Index to seed address derivation"],
+            "type": "u8"
+          },
+          {
+            "name": "final_buffer_hash",
+            "docs": ["Hash of the final assembled transaction message."],
+            "type": {
+              "array": ["u8", 32]
+            }
+          },
+          {
+            "name": "final_buffer_size",
+            "docs": ["The size of the final assembled transaction message."],
+            "type": "u16"
+          },
+          {
+            "name": "buffer",
+            "docs": ["The buffer of the transaction message."],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransactionBufferCreateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buffer_index",
+            "docs": [
+              "Index of the buffer account to seed the account derivation"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "final_buffer_hash",
+            "docs": ["Hash of the final assembled transaction message."],
+            "type": {
+              "array": ["u8", 32]
+            }
+          },
+          {
+            "name": "final_buffer_size",
+            "docs": ["Final size of the buffer."],
+            "type": "u16"
+          },
+          {
+            "name": "buffer",
+            "docs": ["Initial slice of the buffer."],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransactionBufferExtendArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buffer",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransactionMessage",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "num_signers",
+            "docs": ["The number of signer pubkeys in the account_keys vec."],
+            "type": "u8"
+          },
+          {
+            "name": "num_writable_signers",
+            "docs": [
+              "The number of writable signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "num_writable_non_signers",
+            "docs": [
+              "The number of writable non-signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "num_account_keys",
+            "docs": [
+              "The number of static account keys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "instructions",
+            "docs": ["List of instructions making up the tx."],
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "CompiledInstruction"
+                }
+              }
+            }
+          },
+          {
+            "name": "address_table_lookups",
+            "docs": [
+              "List of address table lookups used to load additional accounts",
+              "for this transaction."
+            ],
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "TransactionMessageAddressTableLookup"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransactionMessageAddressTableLookup",
+      "docs": [
+        "Address table lookups describe an on-chain address lookup table to use",
+        "for loading more readonly and writable accounts in a single tx."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account_key_index",
+            "docs": ["Address lookup table account key"],
+            "type": "u8"
+          },
+          {
+            "name": "writable_indexes",
+            "docs": ["List of indexes used to load writable account addresses"],
+            "type": "bytes"
+          },
+          {
+            "name": "readonly_indexes",
+            "docs": ["List of indexes used to load readonly account addresses"],
+            "type": "bytes"
+          }
+        ]
+      }
+    }
+  ]
+}

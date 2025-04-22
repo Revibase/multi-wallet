@@ -2,88 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::MultisigError;
 
-// Concise serialization schema for instructions that make up transaction.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct CompiledInstruction {
-    pub program_id_index: u8,
-    /// Indices into the tx's `account_keys` list indicating which accounts to pass to the instruction.
-    pub account_indexes: Vec<u8>,
-    /// Instruction data.
-    pub data: Vec<u8>,
-}
-
-impl From<CompiledInstruction> for MultisigCompiledInstruction {
-    fn from(compiled_instruction: CompiledInstruction) -> Self {
-        Self {
-            program_id_index: compiled_instruction.program_id_index,
-            account_indexes: compiled_instruction.account_indexes.into(),
-            data: compiled_instruction.data.into(),
-        }
-    }
-}
-
-/// Address table lookups describe an on-chain address lookup table to use
-/// for loading more readonly and writable accounts in a single tx.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct MessageAddressTableLookup {
-    /// Address lookup table account key
-    pub account_key: Pubkey,
-    /// List of indexes used to load writable account addresses
-    pub writable_indexes: Vec<u8>,
-    /// List of indexes used to load readonly account addresses
-    pub readonly_indexes: Vec<u8>,
-}
-
-impl From<MessageAddressTableLookup> for MultisigMessageAddressTableLookup {
-    fn from(m: MessageAddressTableLookup) -> Self {
-        Self {
-            account_key: m.account_key,
-            writable_indexes: m.writable_indexes.into(),
-            readonly_indexes: m.readonly_indexes.into(),
-        }
-    }
-}
-
-/// Unvalidated instruction data, must be treated as untrusted.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct TransactionMessage {
-    /// The number of signer pubkeys in the account_keys vec.
-    pub num_signers: u8,
-    /// The number of writable signer pubkeys in the account_keys vec.
-    pub num_writable_signers: u8,
-    /// The number of writable non-signer pubkeys in the account_keys vec.
-    pub num_writable_non_signers: u8,
-    /// The list of unique account public keys (including program IDs) that will be used in the provided instructions.
-    pub account_keys: Vec<Pubkey>,
-    /// The list of instructions to execute.
-    pub instructions: Vec<CompiledInstruction>,
-    /// List of address table lookups used to load additional accounts
-    /// for this transaction.
-    pub address_table_lookups: Vec<MessageAddressTableLookup>,
-}
-
-/// Concise serialization schema for instructions that make up a transaction.
-/// Closely mimics the Solana transaction wire format.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct MultisigCompiledInstruction {
-    pub program_id_index: u8,
-    /// Indices into the tx's `account_keys` list indicating which accounts to pass to the instruction.
-    pub account_indexes: Vec<u8>,
-    /// Instruction data.
-    pub data: Vec<u8>,
-}
-
-/// Address table lookups describe an on-chain address lookup table to use
-/// for loading more readonly and writable accounts into a transaction.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct MultisigMessageAddressTableLookup {
-    /// Address lookup table account key.
-    pub account_key: Pubkey,
-    /// List of indexes used to load writable accounts.
-    pub writable_indexes: Vec<u8>,
-    /// List of indexes used to load readonly accounts.
-    pub readonly_indexes: Vec<u8>,
-}
+use super::TransactionMessage;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct VaultTransactionMessage {
@@ -105,13 +24,89 @@ pub struct VaultTransactionMessage {
     /// ```
     pub account_keys: Vec<Pubkey>,
     /// List of instructions making up the tx.
-    pub instructions: Vec<MultisigCompiledInstruction>,
+    pub instructions: Vec<CompiledInstruction>,
     /// List of address table lookups used to load additional accounts
     /// for this transaction.
-    pub address_table_lookups: Vec<MultisigMessageAddressTableLookup>,
+    pub address_table_lookups: Vec<MessageAddressTableLookup>,
 }
 
 impl VaultTransactionMessage {
+    pub fn convert_from_transaction_message(
+        value: &TransactionMessage,
+        remaining_accounts: &[AccountInfo],
+    ) -> Result<Self> {
+        let account_keys = remaining_accounts
+            .get(value.address_table_lookups.len()..)
+            .ok_or(MultisigError::InvalidNumberOfAccounts)?
+            .iter()
+            .map(|f| f.key())
+            .collect::<Vec<_>>();
+
+        let message_address_table_loopups = value
+            .address_table_lookups
+            .iter()
+            .map(|f| MessageAddressTableLookup {
+                account_key: remaining_accounts
+                    .get(f.account_key_index as usize)
+                    .ok_or(MultisigError::InvalidNumberOfAccounts)
+                    .unwrap()
+                    .key(),
+                writable_indexes: f.writable_indexes.clone(),
+                readonly_indexes: f.readonly_indexes.clone(),
+            })
+            .collect::<Vec<MessageAddressTableLookup>>();
+
+        Ok(Self {
+            num_signers: value.num_signers,
+            num_writable_signers: value.num_writable_signers,
+            num_writable_non_signers: value.num_writable_non_signers,
+            account_keys,
+            instructions: value.instructions.clone(),
+            address_table_lookups: message_address_table_loopups,
+        })
+    }
+    pub fn validate(&self) -> Result<()> {
+        let num_all_account_keys = self.account_keys.len()
+            + self
+                .address_table_lookups
+                .iter()
+                .map(|lookup| lookup.writable_indexes.len() + lookup.readonly_indexes.len())
+                .sum::<usize>();
+
+        require!(
+            usize::from(self.num_signers) <= self.account_keys.len(),
+            MultisigError::InvalidTransactionMessage
+        );
+        require!(
+            self.num_writable_signers <= self.num_signers,
+            MultisigError::InvalidTransactionMessage
+        );
+        require!(
+            usize::from(self.num_writable_non_signers)
+                <= self
+                    .account_keys
+                    .len()
+                    .saturating_sub(usize::from(self.num_signers)),
+            MultisigError::InvalidTransactionMessage
+        );
+
+        for instruction in &self.instructions {
+            require!(
+                usize::from(instruction.program_id_index) < num_all_account_keys,
+                MultisigError::InvalidTransactionMessage
+            );
+
+            for account_index in &instruction.account_indexes {
+                require!(
+                    usize::from(*account_index) < num_all_account_keys,
+                    MultisigError::InvalidTransactionMessage
+                );
+            }
+        }
+
+        Ok(())
+    }
+
     /// Returns the number of all the account keys (static + dynamic) in the message.
     pub fn num_all_account_keys(&self) -> usize {
         let num_account_keys_from_lookups = self
@@ -156,63 +151,24 @@ impl VaultTransactionMessage {
     }
 }
 
-impl TryFrom<TransactionMessage> for VaultTransactionMessage {
-    type Error = Error;
+// Concise serialization schema for instructions that make up transaction.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct CompiledInstruction {
+    pub program_id_index: u8,
+    /// Indices into the tx's `account_keys` list indicating which accounts to pass to the instruction.
+    pub account_indexes: Vec<u8>,
+    /// Instruction data.
+    pub data: Vec<u8>,
+}
 
-    fn try_from(message: TransactionMessage) -> Result<Self> {
-        let num_all_account_keys = message.account_keys.len()
-            + message
-                .address_table_lookups
-                .iter()
-                .map(|lookup| lookup.writable_indexes.len() + lookup.readonly_indexes.len())
-                .sum::<usize>();
-
-        require!(
-            usize::from(message.num_signers) <= message.account_keys.len(),
-            MultisigError::InvalidTransactionMessage
-        );
-        require!(
-            message.num_writable_signers <= message.num_signers,
-            MultisigError::InvalidTransactionMessage
-        );
-        require!(
-            usize::from(message.num_writable_non_signers)
-                <= message
-                    .account_keys
-                    .len()
-                    .saturating_sub(usize::from(message.num_signers)),
-            MultisigError::InvalidTransactionMessage
-        );
-
-        for instruction in &message.instructions {
-            require!(
-                usize::from(instruction.program_id_index) < num_all_account_keys,
-                MultisigError::InvalidTransactionMessage
-            );
-
-            for account_index in &instruction.account_indexes {
-                require!(
-                    usize::from(*account_index) < num_all_account_keys,
-                    MultisigError::InvalidTransactionMessage
-                );
-            }
-        }
-
-        Ok(Self {
-            num_signers: message.num_signers,
-            num_writable_signers: message.num_writable_signers,
-            num_writable_non_signers: message.num_writable_non_signers,
-            account_keys: message.account_keys,
-            instructions: message
-                .instructions
-                .into_iter()
-                .map(MultisigCompiledInstruction::from)
-                .collect(),
-            address_table_lookups: message
-                .address_table_lookups
-                .into_iter()
-                .map(MultisigMessageAddressTableLookup::from)
-                .collect(),
-        })
-    }
+/// Address table lookups describe an on-chain address lookup table to use
+/// for loading more readonly and writable accounts in a single tx.
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct MessageAddressTableLookup {
+    /// Address lookup table account key
+    pub account_key: Pubkey,
+    /// List of indexes used to load writable account addresses
+    pub writable_indexes: Vec<u8>,
+    /// List of indexes used to load readonly account addresses
+    pub readonly_indexes: Vec<u8>,
 }

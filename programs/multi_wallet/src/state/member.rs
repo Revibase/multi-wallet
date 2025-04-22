@@ -1,21 +1,27 @@
-use anchor_lang::{prelude::*, solana_program::pubkey::PUBKEY_BYTES};
+use anchor_lang::prelude::*;
 use bytemuck::Zeroable;
 
 use crate::error::MultisigError;
 
 use super::{Secp256r1VerifyArgs, SECP256R1_PUBLIC_KEY_LENGTH};
 
-#[derive(InitSpace, Eq, PartialEq, Clone, Hash, AnchorSerialize, AnchorDeserialize)]
+#[derive(InitSpace, Eq, PartialEq, Clone, Copy, Hash, AnchorSerialize, AnchorDeserialize)]
 pub struct Member {
     pub pubkey: MemberKey,
     pub permissions: Permissions,
+    pub metadata: Option<Pubkey>,
 }
 
-#[derive(InitSpace, Eq, PartialEq, Clone, Hash, AnchorSerialize, AnchorDeserialize)]
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct MemberWithVerifyArgs {
+    pub data: Member,
+    pub verify_args: Option<Secp256r1VerifyArgs>,
+}
+
+#[derive(InitSpace, Eq, PartialEq, Clone, Copy, Hash, AnchorSerialize, AnchorDeserialize)]
 pub struct MemberKey {
     pub key_type: u8,
-    #[max_len(SECP256R1_PUBLIC_KEY_LENGTH)]
-    pub key: Vec<u8>,
+    pub key: [u8; 33],
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -35,12 +41,11 @@ impl KeyType {
 }
 
 impl MemberKey {
-    pub fn new(key_type: KeyType, key: Vec<u8>) -> Result<Self> {
+    pub fn new(key_type: KeyType, key: [u8; 33]) -> Result<Self> {
         let member_key = Self {
             key_type: key_type as u8,
             key,
         };
-        member_key.validate_type()?;
         Ok(member_key)
     }
 
@@ -61,36 +66,24 @@ impl MemberKey {
     }
 
     pub fn convert_ed25519(pubkey: &Pubkey) -> Result<MemberKey> {
-        MemberKey::new(KeyType::Ed25519, pubkey.as_ref().to_vec())
+        let mut padded = [0u8; 33];
+        padded[1..33].copy_from_slice(pubkey.as_ref());
+        MemberKey::new(KeyType::Ed25519, padded)
     }
 
     pub fn convert_secp256r1(pubkey: &[u8; SECP256R1_PUBLIC_KEY_LENGTH]) -> Result<MemberKey> {
-        MemberKey::new(KeyType::Secp256r1, pubkey.as_ref().to_vec())
+        MemberKey::new(KeyType::Secp256r1, *pubkey)
     }
 
     pub fn get_seed(&self) -> &[u8] {
         match KeyType::from(self.key_type) {
-            KeyType::Ed25519 => self.as_ref(),
+            KeyType::Ed25519 => &self.key[1..],
             KeyType::Secp256r1 => &self.key[1..],
         }
     }
 
     pub fn get_type(&self) -> KeyType {
         KeyType::from(self.key_type)
-    }
-
-    pub fn validate_type(&self) -> Result<bool> {
-        match KeyType::from(self.key_type) {
-            KeyType::Ed25519 => require!(
-                self.key.len() == PUBKEY_BYTES,
-                MultisigError::PublicKeyLengthMismatch
-            ),
-            KeyType::Secp256r1 => require!(
-                self.key.len() == SECP256R1_PUBLIC_KEY_LENGTH,
-                MultisigError::PublicKeyLengthMismatch
-            ),
-        };
-        Ok(true)
     }
 }
 
@@ -127,7 +120,6 @@ pub struct Permissions {
 }
 
 impl Permissions {
-    /// Currently unused.
     pub fn from_vec(permissions: &[Permission]) -> Self {
         let mut mask = 0;
         for permission in permissions {

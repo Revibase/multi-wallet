@@ -1,12 +1,6 @@
-use super::{DomainConfig, TransactionBufferActionType};
+use super::{DomainConfig, TransactionActionType};
 use crate::error::MultisigError;
-use anchor_lang::{
-    prelude::*,
-    solana_program::{
-        hash::{self},
-        sysvar::SysvarId,
-    },
-};
+use anchor_lang::{prelude::*, solana_program::hash::hash};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use serde_json::Value;
 use std::str::from_utf8;
@@ -15,7 +9,7 @@ use std::str::from_utf8;
 pub struct Secp256r1VerifyArgs {
     pub signature: [u8; SECP256R1_SIGNATURE_LENGTH],
     pub pubkey: [u8; SECP256R1_PUBLIC_KEY_LENGTH],
-    pub auth_data: Vec<u8>,
+    pub truncated_auth_data: Vec<u8>,
     pub client_data_json: Vec<u8>,
     pub slot_number: u64,
     pub slot_hash: [u8; 32],
@@ -63,59 +57,65 @@ impl Secp256r1Pubkey {
     }
 
     fn verify_slot_hash<'info>(
-        sysvar_slot_history: &AccountInfo<'info>,
+        sysvar_slot_history: &Option<UncheckedAccount<'info>>,
         slot_number: u64,
         slot_hash: [u8; 32],
     ) -> Result<()> {
-        if !sysvar_slot_history.key().eq(&SlotHashes::id()) {
-            return err!(MultisigError::InvalidSlotHash);
-        }
+        let sysvar_slot_history = sysvar_slot_history
+            .as_ref()
+            .ok_or(MultisigError::MissingSysvarSlotHistory)?;
 
-        let data = sysvar_slot_history.try_borrow_data()?;
+        let data = sysvar_slot_history
+            .try_borrow_data()
+            .map_err(|_| MultisigError::InvalidSysvarDataFormat)?;
 
         let num_slot_hashes = u64::from_le_bytes(
             data[..8]
                 .try_into()
-                .map_err(|_| MultisigError::InvalidSlotHash)?,
+                .map_err(|_| MultisigError::InvalidSysvarDataFormat)?,
         );
 
-        let mut left = 0;
-        let mut right = num_slot_hashes as usize;
+        let first_slot = u64::from_le_bytes(
+            data[8..16]
+                .try_into()
+                .map_err(|_| MultisigError::InvalidSysvarDataFormat)?,
+        );
 
-        while left < right {
-            let mid = left + (right - left) / 2;
-            let pos = 8 + mid * 40; // Each entry is 40 bytes (8 for slot, 32 for hash)
+        let offset = first_slot
+            .checked_sub(slot_number)
+            .ok_or(MultisigError::SlotNumberNotFound)? as usize;
 
-            let slot = u64::from_le_bytes(
-                data[pos..pos + 8]
-                    .try_into()
-                    .map_err(|_| MultisigError::InvalidSlotHash)?,
-            );
-
-            match slot.cmp(&slot_number) {
-                std::cmp::Ordering::Equal => {
-                    let hash = &data[pos + 8..pos + 40];
-                    return if hash == slot_hash.as_ref() {
-                        Ok(())
-                    } else {
-                        err!(MultisigError::InvalidSlotHash)
-                    };
-                }
-                std::cmp::Ordering::Greater => left = mid + 1, // Search right half
-                std::cmp::Ordering::Less => right = mid,       // Search left half
-            }
+        if offset >= num_slot_hashes as usize {
+            return err!(MultisigError::SlotNumberNotFound);
         }
 
-        err!(MultisigError::InvalidSlotHash)
+        let pos = 8 + offset * 40;
+
+        let slot = u64::from_le_bytes(
+            data[pos..pos + 8]
+                .try_into()
+                .map_err(|_| MultisigError::InvalidSysvarDataFormat)?,
+        );
+
+        if slot != slot_number {
+            return err!(MultisigError::SlotNumberNotFound);
+        }
+
+        let hash = &data[pos + 8..pos + 40];
+        if hash == slot_hash.as_ref() {
+            Ok(())
+        } else {
+            err!(MultisigError::SlotHashMismatch)
+        }
     }
 
     pub fn verify_secp256r1<'info>(
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
-        sysvar_slot_history: &AccountInfo<'info>,
+        sysvar_slot_history: &Option<UncheckedAccount<'info>>,
         domain_config: &Option<AccountLoader<'info, DomainConfig>>,
-        transaction_buffer_key: &Pubkey,
-        transaction_buffer_final_hash: &[u8; 32],
-        transaction_buffer_action_type: TransactionBufferActionType,
+        key: &Pubkey,
+        message_hash: &[u8; 32],
+        action_type: TransactionActionType,
     ) -> Result<bool> {
         let secp256r1_verify_data = secp256r1_verify_args
             .as_ref()
@@ -125,13 +125,6 @@ impl Secp256r1Pubkey {
             .as_ref()
             .ok_or(MultisigError::DomainConfigIsMissing)?
             .load()?;
-
-        require!(
-            domain_data
-                .rp_id_hash
-                .eq(&secp256r1_verify_data.auth_data[..32]),
-            MultisigError::RpIdIsInvalid
-        );
 
         Self::verify_slot_hash(
             sysvar_slot_history,
@@ -151,13 +144,17 @@ impl Secp256r1Pubkey {
 
         require!(webauthn_type.eq("webauthn.get"), MultisigError::InvalidType);
 
-        let expected_challenge = [
-            transaction_buffer_action_type.to_bytes().as_ref(),
-            transaction_buffer_key.as_ref(),
-            transaction_buffer_final_hash,
-            secp256r1_verify_data.slot_hash.as_ref(),
-        ]
-        .concat();
+        let expected_challenge = hash(
+            [
+                action_type.to_bytes().as_ref(),
+                key.as_ref(),
+                message_hash,
+                secp256r1_verify_data.slot_hash.as_ref(),
+            ]
+            .concat()
+            .as_ref(),
+        )
+        .to_bytes();
 
         let decoded_challenge = Self::decode_base64url(&challenge)?;
 
@@ -166,12 +163,13 @@ impl Secp256r1Pubkey {
             MultisigError::InvalidChallenge
         );
 
-        let client_data_hash = hash::hash(&secp256r1_verify_data.client_data_json);
+        let client_data_hash = hash(&secp256r1_verify_data.client_data_json);
 
-        let _message = hash::hash(
+        let _message = hash(
             &[
-                secp256r1_verify_data.auth_data.clone(),
-                client_data_hash.to_bytes().to_vec(),
+                domain_data.rp_id_hash.as_ref(),
+                secp256r1_verify_data.truncated_auth_data.as_ref(),
+                client_data_hash.to_bytes().as_ref(),
             ]
             .concat(),
         )

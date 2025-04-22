@@ -32,26 +32,56 @@ pub struct TransactionBuffer {
     pub buffer: Vec<u8>,
 }
 
-#[derive(Clone, Copy)]
-pub enum TransactionBufferActionType {
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum TransactionActionType {
     Create,
     Execute,
     Close,
     Vote,
+    Sync,
+    ChangeConfig,
+    AddNewMember,
 }
 
-impl TransactionBufferActionType {
+impl TransactionActionType {
     pub fn to_bytes(&self) -> &[u8] {
         match &self {
-            TransactionBufferActionType::Create => b"create",
-            TransactionBufferActionType::Execute => b"execute",
-            TransactionBufferActionType::Close => b"close",
-            TransactionBufferActionType::Vote => b"vote",
+            TransactionActionType::Create => b"create",
+            TransactionActionType::Execute => b"execute",
+            TransactionActionType::Close => b"close",
+            TransactionActionType::Vote => b"vote",
+            TransactionActionType::Sync => b"sync",
+            TransactionActionType::ChangeConfig => b"change_config",
+            TransactionActionType::AddNewMember => b"add_new_member",
         }
     }
 }
 
 impl TransactionBuffer {
+    pub fn init(
+        &mut self,
+        settings: &Pubkey,
+        creator: &MemberKey,
+        rent_payer: &Pubkey,
+        buffer_index: u8,
+        final_buffer_hash: &[u8; 32],
+        final_buffer_size: u16,
+        buffer: &[u8],
+        bump: u8,
+    ) -> Result<()> {
+        self.multi_wallet_settings = settings.key();
+        self.creator = *creator;
+        self.rent_payer = *rent_payer;
+        self.buffer_index = buffer_index;
+        self.final_buffer_hash = *final_buffer_hash;
+        self.final_buffer_size = final_buffer_size;
+        self.buffer = buffer.to_vec();
+        self.bump = bump;
+        self.expiry = Clock::get().unwrap().unix_timestamp as u64 + 3 * 60; // transaction only valid for 3 mins
+        self.voters = Vec::new();
+        Ok(())
+    }
+
     pub fn size(number_of_voters: u8, final_message_buffer_size: u16) -> Result<usize> {
         // Make sure final size is not greater than MAX_BUFFER_SIZE bytes.
         if (final_message_buffer_size as usize) > MAX_BUFFER_SIZE {
@@ -112,9 +142,9 @@ impl TransactionBuffer {
         Ok(())
     }
 
-    pub fn add_voter(&mut self, voter: MemberKey) {
-        if !self.voters.contains(&voter) {
-            self.voters.push(voter);
+    pub fn add_voter(&mut self, voter: &MemberKey) {
+        if !self.voters.contains(voter) {
+            self.voters.push(*voter);
         }
     }
 }

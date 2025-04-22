@@ -24,3 +24,6 @@ pub use secp256r1::*;
 
 pub mod domain_config;
 pub use domain_config::*;
+
+pub mod transaction_message;
+pub use transaction_message::*;

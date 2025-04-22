@@ -1,7 +1,4 @@
-use crate::{
-    error::MultisigError,
-    state::{DomainConfig, SEED_DOMAIN_CONFIG},
-};
+use crate::{error::MultisigError, state::DomainConfig};
 use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -13,13 +10,12 @@ pub struct EditDomainConfigArgs {
 #[derive(Accounts)]
 #[instruction(args: EditDomainConfigArgs)]
 pub struct EditDomainConfig<'info> {
+    #[account(mut)]
+    pub domain_config: AccountLoader<'info, DomainConfig>,
     #[account(
         mut,
-        seeds = [SEED_DOMAIN_CONFIG, domain_config.load()?.rp_id_hash.as_ref()],
-        bump = domain_config.load()?.bump,
+        constraint = payer.key() == domain_config.load()?.authority,
     )]
-    pub domain_config: AccountLoader<'info, DomainConfig>,
-    #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
