@@ -48,7 +48,7 @@ impl TransactionBufferVote<'_> {
         transaction_buffer.validate_hash()?;
         transaction_buffer.validate_size()?;
 
-        let signer = MemberKey::get_signer(voter, secp256r1_verify_args)?;
+        let signer = MemberKey::get_signer(voter, &secp256r1_verify_args)?;
 
         let member = settings
             .members
@@ -57,7 +57,7 @@ impl TransactionBufferVote<'_> {
             .ok_or(MultisigError::MissingAccount)?;
 
         require!(
-            member.permissions.has(Permission::InitiateTransaction),
+            member.permissions.has(Permission::VoteTransaction),
             MultisigError::InsufficientSignersWithVotePermission
         );
 
@@ -68,8 +68,13 @@ impl TransactionBufferVote<'_> {
                 domain_config.is_some() && domain_config.as_ref().unwrap().key().eq(&metadata),
                 MultisigError::MemberDoesNotBelongToDomainConfig
             );
-            Secp256r1Pubkey::verify_secp256r1(
-                secp256r1_verify_args,
+
+            let secp256r1_verify_data = secp256r1_verify_args
+                .as_ref()
+                .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
+
+            Secp256r1Pubkey::verify_webauthn(
+                secp256r1_verify_data,
                 slot_hash_sysvar,
                 domain_config,
                 &transaction_buffer.key(),
@@ -99,6 +104,7 @@ impl TransactionBufferVote<'_> {
             TransactionBuffer::size(
                 transaction_buffer.voters.len() as u8,
                 transaction_buffer.final_buffer_size,
+                transaction_buffer.buffer_extend_hashes.len(),
             )?,
             &ctx.accounts.payer.to_account_info(),
             &ctx.accounts.system_program.to_account_info(),

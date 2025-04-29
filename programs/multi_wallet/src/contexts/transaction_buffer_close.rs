@@ -18,7 +18,7 @@ pub struct TransactionBufferClose<'info> {
 
     #[account(
         mut,
-        close = rent_payer,
+        close = payer,
     )]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
@@ -27,9 +27,9 @@ pub struct TransactionBufferClose<'info> {
     /// CHECK:
     #[account(
         mut,
-        constraint = rent_payer.key() == transaction_buffer.rent_payer @MultisigError::InvalidAccount
+        constraint = payer.key() == transaction_buffer.payer @MultisigError::InvalidAccount
     )]
-    pub rent_payer: UncheckedAccount<'info>,
+    pub payer: UncheckedAccount<'info>,
 
     /// CHECK:
     #[account(
@@ -49,18 +49,18 @@ impl TransactionBufferClose<'_> {
             ..
         } = self;
 
-        let signer = MemberKey::get_signer(closer, secp256r1_verify_args)?;
+        let signer = MemberKey::get_signer(closer, &secp256r1_verify_args)?;
 
         // allow rent payer to become the closer after transaction has expired
         if Clock::get().unwrap().unix_timestamp as u64 > transaction_buffer.expiry
             && signer.get_type().eq(&KeyType::Ed25519)
-            && MemberKey::convert_ed25519(&transaction_buffer.rent_payer)?.eq(&signer)
+            && MemberKey::convert_ed25519(&transaction_buffer.payer)?.eq(&signer)
         {
             Ok(())
         } else {
             require!(
                 transaction_buffer.creator.eq(&signer),
-                MultisigError::UnauthorisedToModifyBuffer
+                MultisigError::UnauthorisedToCloseTransactionBuffer
             );
 
             if signer.get_type().eq(&KeyType::Secp256r1) {
@@ -76,8 +76,13 @@ impl TransactionBufferClose<'_> {
                     domain_config.is_some() && domain_config.as_ref().unwrap().key().eq(&metadata),
                     MultisigError::MemberDoesNotBelongToDomainConfig
                 );
-                Secp256r1Pubkey::verify_secp256r1(
-                    secp256r1_verify_args,
+
+                let secp256r1_verify_data = secp256r1_verify_args
+                    .as_ref()
+                    .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
+
+                Secp256r1Pubkey::verify_webauthn(
+                    secp256r1_verify_data,
                     slot_hash_sysvar,
                     domain_config,
                     &transaction_buffer.key(),

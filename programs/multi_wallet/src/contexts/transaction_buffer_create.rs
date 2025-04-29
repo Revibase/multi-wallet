@@ -13,6 +13,10 @@ use anchor_lang::{
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct TransactionBufferCreateArgs {
+    /// Allow execution without sigverify
+    pub permissionless_execution: bool,
+    /// Buffer hashes for the subsequent extend instruction
+    pub buffer_extend_hashes: Vec<[u8; 32]>,
     /// Index of the buffer account to seed the account derivation
     pub buffer_index: u8,
     /// Hash of the final assembled transaction message.
@@ -26,14 +30,14 @@ pub struct TransactionBufferCreateArgs {
 #[derive(Accounts)]
 #[instruction(args: TransactionBufferCreateArgs, secp256r1_verify_args: Option<Secp256r1VerifyArgs> )]
 pub struct TransactionBufferCreate<'info> {
-    pub settings: Account<'info, Settings>,
+    pub settings: Box<Account<'info, Settings>>,
 
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
 
     #[account(
         init,
-        payer = rent_payer,
-        space = TransactionBuffer::size(settings.threshold, args.final_buffer_size)?,
+        payer = payer,
+        space = TransactionBuffer::size(settings.threshold, args.final_buffer_size, args.buffer_extend_hashes.len())?,
         seeds = [
             SEED_MULTISIG,
             settings.key().as_ref(),
@@ -43,12 +47,12 @@ pub struct TransactionBufferCreate<'info> {
         ],
         bump
     )]
-    pub transaction_buffer: Account<'info, TransactionBuffer>,
+    pub transaction_buffer: Box<Account<'info, TransactionBuffer>>,
 
     pub creator: Option<Signer<'info>>,
 
     #[account(mut)]
-    pub rent_payer: Signer<'info>,
+    pub payer: Signer<'info>,
 
     pub system_program: Program<'info, System>,
 
@@ -94,7 +98,7 @@ impl TransactionBufferCreate<'_> {
             MultisigError::FinalBufferSizeExceeded
         );
 
-        let signer: MemberKey = MemberKey::get_signer(creator, secp256r1_verify_args)?;
+        let signer: MemberKey = MemberKey::get_signer(creator, &secp256r1_verify_args)?;
 
         let member = settings
             .members
@@ -107,6 +111,13 @@ impl TransactionBufferCreate<'_> {
             MultisigError::InsufficientSignerWithInitiatePermission
         );
 
+        if args.permissionless_execution {
+            require!(
+                member.permissions.has(Permission::ExecuteTransaction),
+                MultisigError::InsufficientSignerWithExecutePermission
+            );
+        }
+
         if signer.get_type().eq(&KeyType::Secp256r1) {
             let metadata = member.metadata.ok_or(MultisigError::MissingMetadata)?;
 
@@ -115,13 +126,21 @@ impl TransactionBufferCreate<'_> {
                 MultisigError::MemberDoesNotBelongToDomainConfig
             );
 
-            Secp256r1Pubkey::verify_secp256r1(
-                secp256r1_verify_args,
+            let secp256r1_verify_data = secp256r1_verify_args
+                .as_ref()
+                .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
+
+            Secp256r1Pubkey::verify_webauthn(
+                secp256r1_verify_data,
                 slot_hash_sysvar,
                 domain_config,
                 &transaction_buffer.key(),
-                &transaction_buffer.final_buffer_hash,
-                TransactionActionType::Create,
+                &args.final_buffer_hash,
+                if args.permissionless_execution {
+                    TransactionActionType::CreateWithPermissionlessExecution
+                } else {
+                    TransactionActionType::Create
+                },
             )?;
         }
 
@@ -140,34 +159,31 @@ impl TransactionBufferCreate<'_> {
         // Readonly Accounts
         let settings = &ctx.accounts.settings;
         let creator = &ctx.accounts.creator;
-        let rent_payer = &ctx.accounts.rent_payer;
+        let payer = &ctx.accounts.payer;
 
         // Get the buffer index.
         let buffer_index = args.buffer_index;
-        let signer = settings
+
+        let signer: MemberKey = MemberKey::get_signer(creator, &secp256r1_verify_args)?;
+
+        let member = settings
             .members
             .iter()
-            .find(|f| {
-                f.pubkey
-                    .eq(&MemberKey::get_signer(creator, &secp256r1_verify_args).unwrap())
-            })
-            .unwrap();
+            .find(|x| x.pubkey.eq(&signer))
+            .ok_or(MultisigError::MissingAccount)?;
 
-        // Initialize the transaction fields.
         transaction_buffer.init(
-            &settings.key(),
-            &signer.pubkey,
-            &rent_payer.key(),
+            &settings,
+            member.pubkey,
+            payer.key(),
             buffer_index,
-            &args.final_buffer_hash,
-            args.final_buffer_size,
-            &args.buffer.as_ref(),
+            &args,
             ctx.bumps.transaction_buffer,
         )?;
 
         // add creator as signer if creator has vote permission
-        if signer.permissions.has(Permission::VoteTransaction) {
-            transaction_buffer.add_voter(&signer.pubkey);
+        if member.permissions.has(Permission::VoteTransaction) {
+            transaction_buffer.add_voter(&member.pubkey);
         }
 
         // Invariant function on the transaction buffer

@@ -3,7 +3,7 @@ use bytemuck::Zeroable;
 
 use crate::error::MultisigError;
 
-use super::{Secp256r1VerifyArgs, SECP256R1_PUBLIC_KEY_LENGTH};
+use super::{Secp256r1Pubkey, Secp256r1VerifyArgs};
 
 #[derive(InitSpace, Eq, PartialEq, Clone, Copy, Hash, AnchorSerialize, AnchorDeserialize)]
 pub struct Member {
@@ -61,7 +61,7 @@ impl MemberKey {
             },
         };
 
-        require!(signer.is_some(), MultisigError::UnauthorisedToModifyBuffer);
+        require!(signer.is_some(), MultisigError::NoSignerFound);
         Ok(signer.unwrap())
     }
 
@@ -71,8 +71,8 @@ impl MemberKey {
         MemberKey::new(KeyType::Ed25519, padded)
     }
 
-    pub fn convert_secp256r1(pubkey: &[u8; SECP256R1_PUBLIC_KEY_LENGTH]) -> Result<MemberKey> {
-        MemberKey::new(KeyType::Secp256r1, *pubkey)
+    pub fn convert_secp256r1(pubkey: &Secp256r1Pubkey) -> Result<MemberKey> {
+        MemberKey::new(KeyType::Secp256r1, pubkey.to_bytes())
     }
 
     pub fn get_seed(&self) -> &[u8] {

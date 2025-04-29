@@ -1,6 +1,6 @@
 {
   "name": "@revibase/passkeys-sdk",
-  "version": "1.0.28",
+  "version": "1.0.38",
   "scripts": {
     "build": "rimraf ./dist && tsup src/index.ts --format cjs,esm --dts --sourcemap"
   },
@@ -39,9 +39,9 @@
   "description": "",
   "dependencies": {
     "@levischuck/tiny-cbor": "^0.2.11",
-    "@noble/curves": "^1.8.1",
+    "@noble/curves": "1.9.0",
     "@simplewebauthn/server": "^13.1.1",
     "@solana/addresses": "^2.1.0",
-    "bs58": "^6.0.0"
+    "@solana/codecs": "^2.1.0"
   }
 }

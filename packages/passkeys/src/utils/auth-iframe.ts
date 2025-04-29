@@ -3,7 +3,7 @@ export function createAuthIframe(options: {
   onClose: () => void;
 }): Window | null {
   const { authUrl, onClose } = options;
-  const isMobile = window.innerWidth <= 768;
+  const isMobile = window.innerWidth <= 600 && window.innerHeight < 1024;
 
   let startY = 0;
   let currentY = 0;
@@ -59,7 +59,7 @@ export function createAuthIframe(options: {
     top: "0",
     left: "0",
     width: "100vw",
-    height: "100vh",
+    height: "100dvh",
     backgroundColor: "rgba(0, 0, 0, 0.5)",
     backdropFilter: "blur(4px)",
     display: "flex",
@@ -176,7 +176,7 @@ export function createAuthIframe(options: {
 
   Object.assign(iframe.style, {
     width: "100%",
-    height: isMobile ? `80vh` : "600px",
+    height: isMobile ? `90dvh` : "600px",
     border: "none",
     display: "block",
   });
@@ -206,7 +206,7 @@ export function closeAuthModal() {
   if (!container) return;
 
   const modal = document.getElementById("revibase-auth-modal");
-  const isMobile = window.innerWidth <= 768;
+  const isMobile = window.innerWidth <= 600 && window.innerHeight < 1024;
 
   if (modal && isMobile) {
     modal.style.transition = "transform 0.3s ease";

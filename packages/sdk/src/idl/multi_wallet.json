@@ -257,6 +257,163 @@
       ]
     },
     {
+      "name": "native_transfer_intent",
+      "docs": [
+        "Executes a native transfer based on a signed intent.",
+        "# Parameters",
+        "- `ctx`: The context of the native transfer.",
+        "- `amount`: The amount of tokens to transfer.",
+        "- `args`: Arguments for executing the native transfer.",
+        "",
+        "# Returns",
+        "- `Result<()>`: The result of the native transfer."
+      ],
+      "discriminator": [57, 156, 213, 157, 88, 202, 2, 151],
+      "accounts": [
+        {
+          "name": "settings"
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "domain_config"
+        },
+        {
+          "name": "source",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "settings"
+              },
+              {
+                "kind": "const",
+                "value": [118, 97, 117, 108, 116]
+              }
+            ]
+          }
+        },
+        {
+          "name": "destination",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "defined": {
+              "name": "Secp256r1VerifyArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "token_transfer_intent",
+      "docs": [
+        "Executes a token transfer based on a signed intent.",
+        "# Parameters",
+        "- `ctx`: The context of the token transfer.",
+        "- `amount`: The amount of tokens to transfer.",
+        "- `args`: Arguments for executing the token transfer.",
+        "",
+        "# Returns",
+        "- `Result<()>`: The result of the token transfer."
+      ],
+      "discriminator": [51, 91, 96, 155, 132, 232, 179, 48],
+      "accounts": [
+        {
+          "name": "settings"
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "domain_config"
+        },
+        {
+          "name": "source",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "settings"
+              },
+              {
+                "kind": "const",
+                "value": [118, 97, 117, 108, 116]
+              }
+            ]
+          }
+        },
+        {
+          "name": "source_token_account",
+          "writable": true
+        },
+        {
+          "name": "destination"
+        },
+        {
+          "name": "destination_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "defined": {
+              "name": "Secp256r1VerifyArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "transaction_buffer_close",
       "docs": [
         "Closes an existing transaction buffer.",
@@ -288,7 +445,7 @@
           "optional": true
         },
         {
-          "name": "rent_payer",
+          "name": "payer",
           "writable": true
         },
         {
@@ -342,7 +499,7 @@
           "optional": true
         },
         {
-          "name": "rent_payer",
+          "name": "payer",
           "writable": true,
           "signer": true
         },
@@ -384,7 +541,7 @@
     {
       "name": "transaction_buffer_execute",
       "docs": [
-        "Executes a transaction buffer.",
+        "Approve a transaction buffer for execution.",
         "",
         "# Parameters",
         "- `ctx`: The context of the vault transaction execution.",
@@ -401,10 +558,6 @@
         },
         {
           "name": "settings"
-        },
-        {
-          "name": "rent_payer",
-          "writable": true
         },
         {
           "name": "executor",
@@ -450,26 +603,8 @@
       "discriminator": [230, 157, 67, 56, 5, 238, 245, 146],
       "accounts": [
         {
-          "name": "settings",
-          "optional": true
-        },
-        {
           "name": "transaction_buffer",
           "writable": true
-        },
-        {
-          "name": "domain_config",
-          "optional": true
-        },
-        {
-          "name": "creator",
-          "signer": true,
-          "optional": true
-        },
-        {
-          "name": "slot_hash_sysvar",
-          "optional": true,
-          "address": "SysvarS1otHashes111111111111111111111111111"
         }
       ],
       "args": [
@@ -478,16 +613,6 @@
           "type": {
             "defined": {
               "name": "TransactionBufferExtendArgs"
-            }
-          }
-        },
-        {
-          "name": "secp256r1_verify_args",
-          "type": {
-            "option": {
-              "defined": {
-                "name": "Secp256r1VerifyArgs"
-              }
             }
           }
         }
@@ -551,6 +676,30 @@
           }
         }
       ]
+    },
+    {
+      "name": "transaction_execute",
+      "docs": [
+        "Executes a transaction.",
+        "",
+        "# Parameters",
+        "- `ctx`: The context of the vault transaction execution.",
+        "",
+        "# Returns",
+        "- `Result<()>`: The result of the vault transaction execution."
+      ],
+      "discriminator": [93, 171, 78, 134, 252, 84, 186, 189],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true
+        },
+        {
+          "name": "transaction_buffer",
+          "writable": true
+        }
+      ],
+      "args": []
     },
     {
       "name": "transaction_execute_sync",
@@ -625,8 +774,8 @@
   "errors": [
     {
       "code": 6000,
-      "name": "PublicKeyLengthMismatch",
-      "msg": "Public Key Length does not match the Public Key Type"
+      "name": "InvalidSecp256r1VerifyArg",
+      "msg": "Missing webauthn signature verify arguments."
     },
     {
       "code": 6001,
@@ -685,38 +834,38 @@
     },
     {
       "code": 6012,
-      "name": "MissingOwner",
-      "msg": "The members array cannot have a length of one. Add an additional member."
-    },
-    {
-      "code": 6013,
-      "name": "CannotRemoveDelegateKeyFromMember",
-      "msg": "You cannot remove delegate key from the member. Change the delegate first before removing it as a member."
-    },
-    {
-      "code": 6014,
       "name": "InsufficientSignerWithExecutePermission",
       "msg": "Require at least one signer to have the execute permission."
     },
     {
-      "code": 6015,
+      "code": 6013,
       "name": "InsufficientSignerWithInitiatePermission",
       "msg": "Require at least one signer to have the initiate permission."
     },
     {
-      "code": 6016,
+      "code": 6014,
       "name": "InsufficientSignersWithVotePermission",
       "msg": "Require threshold to be lesser than or equal to the number of members with vote permission."
     },
     {
-      "code": 6017,
+      "code": 6015,
       "name": "InsufficientSignerWithIsDelegatePermission",
       "msg": "Require at least one signer to have isDelegate permission."
     },
     {
+      "code": 6016,
+      "name": "NoSignerFound",
+      "msg": "No signer found."
+    },
+    {
+      "code": 6017,
+      "name": "UnauthorisedToCloseTransactionBuffer",
+      "msg": "Only the creator or rent payer of the transaction buffer have permission to close the buffer."
+    },
+    {
       "code": 6018,
-      "name": "UnauthorisedToModifyBuffer",
-      "msg": "Only the creator of the transaction buffer have permission to modify the buffer."
+      "name": "InvalidBuffer",
+      "msg": "Buffer does not match the pre defined buffer."
     },
     {
       "code": 6019,
@@ -740,93 +889,93 @@
     },
     {
       "code": 6023,
+      "name": "TransactionNotApproved",
+      "msg": "Transaction isn't approved for execution yet."
+    },
+    {
+      "code": 6024,
       "name": "ProtectedAccount",
       "msg": "Account is protected, it cannot be passed into a CPI as writable"
     },
     {
-      "code": 6024,
+      "code": 6025,
       "name": "MaxLengthExceeded",
-      "msg": "Origin must be lesser than 256 characters."
+      "msg": "String must be lesser than 256 characters."
     },
     {
-      "code": 6025,
+      "code": 6026,
       "name": "MissingSysvarSlotHistory",
       "msg": "Slot history sysvar is missing."
     },
     {
-      "code": 6026,
+      "code": 6027,
       "name": "InvalidSysvarDataFormat",
       "msg": "Failed to parse sysvar data."
     },
     {
-      "code": 6027,
+      "code": 6028,
       "name": "SlotNumberNotFound",
       "msg": "Slot number not found in slot history."
     },
     {
-      "code": 6028,
+      "code": 6029,
       "name": "SlotHashMismatch",
       "msg": "Slot hash does not match the expected value."
     },
     {
-      "code": 6029,
+      "code": 6030,
       "name": "DomainConfigIsMissing",
       "msg": "Domain Config is missing."
     },
     {
-      "code": 6030,
+      "code": 6031,
       "name": "MemberDoesNotBelongToDomainConfig",
       "msg": "Member does not belong to the specified domain config."
     },
     {
-      "code": 6031,
+      "code": 6032,
       "name": "RpIdHashMismatch",
       "msg": "Rp Id does not match with the specified domain config."
     },
     {
-      "code": 6032,
+      "code": 6033,
       "name": "MissingMetadata",
       "msg": "Metadata containing the pubkey of the domain config account is required when adding a passkey"
     },
     {
-      "code": 6033,
+      "code": 6034,
       "name": "InvalidJson",
       "msg": "Unable to parse json data."
     },
     {
-      "code": 6034,
+      "code": 6035,
       "name": "MissingOrigin",
       "msg": "Origin is missing in client data json"
     },
     {
-      "code": 6035,
+      "code": 6036,
       "name": "InvalidOrigin",
       "msg": "Origin in client data json is invalid."
     },
     {
-      "code": 6036,
+      "code": 6037,
       "name": "MissingType",
       "msg": "Type is missing in client data json"
     },
     {
-      "code": 6037,
+      "code": 6038,
       "name": "InvalidType",
       "msg": "Type in client data json is not equals to webauthn.get"
     },
     {
-      "code": 6038,
+      "code": 6039,
       "name": "MissingChallenge",
       "msg": "Challenge is missing in client data json"
     },
     {
-      "code": 6039,
+      "code": 6040,
       "name": "InvalidChallenge",
       "msg": "Challenge in client data json is invalid."
-    },
-    {
-      "code": 6040,
-      "name": "Secp256r1VerifyArgsIsMissing",
-      "msg": "Secp256r1 Verify Args is missing."
     }
   ],
   "types": [
@@ -1118,6 +1267,28 @@
       }
     },
     {
+      "name": "Secp256r1Pubkey",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "array": ["u8", 33]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Secp256r1Signature",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "array": ["u8", 64]
+          }
+        ]
+      }
+    },
+    {
       "name": "Secp256r1VerifyArgs",
       "type": {
         "kind": "struct",
@@ -1125,13 +1296,17 @@
           {
             "name": "signature",
             "type": {
-              "array": ["u8", 64]
+              "defined": {
+                "name": "Secp256r1Signature"
+              }
             }
           },
           {
             "name": "pubkey",
             "type": {
-              "array": ["u8", 33]
+              "defined": {
+                "name": "Secp256r1Pubkey"
+              }
             }
           },
           {
@@ -1206,34 +1381,29 @@
             "type": "pubkey"
           },
           {
-            "name": "creator",
-            "docs": [
-              "Member of the Multisig who created the TransactionBuffer."
-            ],
-            "type": {
-              "defined": {
-                "name": "MemberKey"
-              }
-            }
+            "name": "multi_wallet_bump",
+            "docs": ["The bump for the multi_wallet"],
+            "type": "u8"
           },
           {
-            "name": "voters",
-            "docs": ["Members that voted for this transaction"],
-            "type": {
-              "vec": {
-                "defined": {
-                  "name": "MemberKey"
-                }
-              }
-            }
+            "name": "can_execute",
+            "docs": ["Flag to allow transaction to be executed"],
+            "type": "bool"
+          },
+          {
+            "name": "permissionless_execution",
+            "docs": [
+              "Flag to allow execution without sigverify once sufficient threshold is met"
+            ],
+            "type": "bool"
           },
           {
             "name": "expiry",
             "type": "u64"
           },
           {
-            "name": "rent_payer",
-            "docs": ["Rent payer for the transaction buffer"],
+            "name": "payer",
+            "docs": ["Payer for the transaction buffer"],
             "type": "pubkey"
           },
           {
@@ -1259,6 +1429,37 @@
             "type": "u16"
           },
           {
+            "name": "creator",
+            "docs": [
+              "Member of the Multisig who created the TransactionBuffer."
+            ],
+            "type": {
+              "defined": {
+                "name": "MemberKey"
+              }
+            }
+          },
+          {
+            "name": "buffer_extend_hashes",
+            "docs": ["Buffer hash for all the buffer extend instruction"],
+            "type": {
+              "vec": {
+                "array": ["u8", 32]
+              }
+            }
+          },
+          {
+            "name": "voters",
+            "docs": ["Members that voted for this transaction"],
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "MemberKey"
+                }
+              }
+            }
+          },
+          {
             "name": "buffer",
             "docs": ["The buffer of the transaction message."],
             "type": "bytes"
@@ -1271,6 +1472,20 @@
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "permissionless_execution",
+            "docs": ["Allow execution without sigverify"],
+            "type": "bool"
+          },
+          {
+            "name": "buffer_extend_hashes",
+            "docs": ["Buffer hashes for the subsequent extend instruction"],
+            "type": {
+              "vec": {
+                "array": ["u8", 32]
+              }
+            }
+          },
           {
             "name": "buffer_index",
             "docs": [

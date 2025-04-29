@@ -2,8 +2,8 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum MultisigError {
-    #[msg("Public Key Length does not match the Public Key Type")]
-    PublicKeyLengthMismatch,
+    #[msg("Missing webauthn signature verify arguments.")]
+    InvalidSecp256r1VerifyArg,
 
     #[msg("Durable nonce detected. Durable nonce is not allowed for this transaction.")]
     DurableNonceDetected,
@@ -38,12 +38,6 @@ pub enum MultisigError {
     #[msg("Account is not owned by the Multisig program. Only accounts under the Multisig program can be used.")]
     IllegalAccountOwner,
 
-    #[msg("The members array cannot have a length of one. Add an additional member.")]
-    MissingOwner,
-
-    #[msg("You cannot remove delegate key from the member. Change the delegate first before removing it as a member.")]
-    CannotRemoveDelegateKeyFromMember,
-
     #[msg("Require at least one signer to have the execute permission.")]
     InsufficientSignerWithExecutePermission,
 
@@ -56,8 +50,14 @@ pub enum MultisigError {
     #[msg("Require at least one signer to have isDelegate permission.")]
     InsufficientSignerWithIsDelegatePermission,
 
-    #[msg("Only the creator of the transaction buffer have permission to modify the buffer.")]
-    UnauthorisedToModifyBuffer,
+    #[msg("No signer found.")]
+    NoSignerFound,
+
+    #[msg("Only the creator or rent payer of the transaction buffer have permission to close the buffer.")]
+    UnauthorisedToCloseTransactionBuffer,
+
+    #[msg("Buffer does not match the pre defined buffer.")]
+    InvalidBuffer,
 
     #[msg("Final message buffer hash doesnt match the expected hash")]
     FinalBufferHashMismatch,
@@ -71,10 +71,13 @@ pub enum MultisigError {
     #[msg("Transaction has expired. 3 min has passed since the transaction was created.")]
     TransactionHasExpired,
 
+    #[msg("Transaction isn't approved for execution yet.")]
+    TransactionNotApproved,
+
     #[msg("Account is protected, it cannot be passed into a CPI as writable")]
     ProtectedAccount,
 
-    #[msg("Origin must be lesser than 256 characters.")]
+    #[msg("String must be lesser than 256 characters.")]
     MaxLengthExceeded,
 
     #[msg("Slot history sysvar is missing.")]
@@ -121,7 +124,4 @@ pub enum MultisigError {
 
     #[msg("Challenge in client data json is invalid.")]
     InvalidChallenge,
-
-    #[msg("Secp256r1 Verify Args is missing.")]
-    Secp256r1VerifyArgsIsMissing,
 }

@@ -59,7 +59,7 @@ export type TransactionBufferCloseInstruction<
   TAccountDomainConfig extends string | IAccountMeta<string> = string,
   TAccountTransactionBuffer extends string | IAccountMeta<string> = string,
   TAccountCloser extends string | IAccountMeta<string> = string,
-  TAccountRentPayer extends string | IAccountMeta<string> = string,
+  TAccountPayer extends string | IAccountMeta<string> = string,
   TAccountSlotHashSysvar extends
     | string
     | IAccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
@@ -81,9 +81,9 @@ export type TransactionBufferCloseInstruction<
         ? ReadonlySignerAccount<TAccountCloser> &
             IAccountSignerMeta<TAccountCloser>
         : TAccountCloser,
-      TAccountRentPayer extends string
-        ? WritableAccount<TAccountRentPayer>
-        : TAccountRentPayer,
+      TAccountPayer extends string
+        ? WritableAccount<TAccountPayer>
+        : TAccountPayer,
       TAccountSlotHashSysvar extends string
         ? ReadonlyAccount<TAccountSlotHashSysvar>
         : TAccountSlotHashSysvar,
@@ -138,14 +138,14 @@ export type TransactionBufferCloseInput<
   TAccountDomainConfig extends string = string,
   TAccountTransactionBuffer extends string = string,
   TAccountCloser extends string = string,
-  TAccountRentPayer extends string = string,
+  TAccountPayer extends string = string,
   TAccountSlotHashSysvar extends string = string,
 > = {
   settings: Address<TAccountSettings>;
   domainConfig?: Address<TAccountDomainConfig>;
   transactionBuffer: Address<TAccountTransactionBuffer>;
   closer?: TransactionSigner<TAccountCloser>;
-  rentPayer: Address<TAccountRentPayer>;
+  payer: Address<TAccountPayer>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   secp256r1VerifyArgs: TransactionBufferCloseInstructionDataArgs['secp256r1VerifyArgs'];
 };
@@ -155,7 +155,7 @@ export function getTransactionBufferCloseInstruction<
   TAccountDomainConfig extends string,
   TAccountTransactionBuffer extends string,
   TAccountCloser extends string,
-  TAccountRentPayer extends string,
+  TAccountPayer extends string,
   TAccountSlotHashSysvar extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
@@ -164,7 +164,7 @@ export function getTransactionBufferCloseInstruction<
     TAccountDomainConfig,
     TAccountTransactionBuffer,
     TAccountCloser,
-    TAccountRentPayer,
+    TAccountPayer,
     TAccountSlotHashSysvar
   >,
   config?: { programAddress?: TProgramAddress }
@@ -174,7 +174,7 @@ export function getTransactionBufferCloseInstruction<
   TAccountDomainConfig,
   TAccountTransactionBuffer,
   TAccountCloser,
-  TAccountRentPayer,
+  TAccountPayer,
   TAccountSlotHashSysvar
 > {
   // Program address.
@@ -189,7 +189,7 @@ export function getTransactionBufferCloseInstruction<
       isWritable: true,
     },
     closer: { value: input.closer ?? null, isWritable: false },
-    rentPayer: { value: input.rentPayer ?? null, isWritable: true },
+    payer: { value: input.payer ?? null, isWritable: true },
     slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
@@ -213,7 +213,7 @@ export function getTransactionBufferCloseInstruction<
       getAccountMeta(accounts.domainConfig),
       getAccountMeta(accounts.transactionBuffer),
       getAccountMeta(accounts.closer),
-      getAccountMeta(accounts.rentPayer),
+      getAccountMeta(accounts.payer),
       getAccountMeta(accounts.slotHashSysvar),
     ],
     programAddress,
@@ -226,7 +226,7 @@ export function getTransactionBufferCloseInstruction<
     TAccountDomainConfig,
     TAccountTransactionBuffer,
     TAccountCloser,
-    TAccountRentPayer,
+    TAccountPayer,
     TAccountSlotHashSysvar
   >;
 
@@ -243,7 +243,7 @@ export type ParsedTransactionBufferCloseInstruction<
     domainConfig?: TAccountMetas[1] | undefined;
     transactionBuffer: TAccountMetas[2];
     closer?: TAccountMetas[3] | undefined;
-    rentPayer: TAccountMetas[4];
+    payer: TAccountMetas[4];
     slotHashSysvar?: TAccountMetas[5] | undefined;
   };
   data: TransactionBufferCloseInstructionData;
@@ -280,7 +280,7 @@ export function parseTransactionBufferCloseInstruction<
       domainConfig: getNextOptionalAccount(),
       transactionBuffer: getNextAccount(),
       closer: getNextOptionalAccount(),
-      rentPayer: getNextAccount(),
+      payer: getNextAccount(),
       slotHashSysvar: getNextOptionalAccount(),
     },
     data: getTransactionBufferCloseInstructionDataDecoder().decode(

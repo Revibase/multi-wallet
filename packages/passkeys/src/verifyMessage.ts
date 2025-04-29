@@ -5,6 +5,7 @@ import {
   DEFAULT_AUTH_URL,
   DEFAULT_RP_ID,
 } from "./utils";
+import { bufferToBase64URLString } from "./utils/internal";
 
 export async function verifyMessage({
   message,
@@ -34,14 +35,4 @@ export async function verifyMessage({
   });
 
   return verified;
-}
-
-function bufferToBase64URLString(buffer: any) {
-  const bytes = new Uint8Array(buffer);
-  let str = "";
-  for (const charCode of bytes) {
-    str += String.fromCharCode(charCode);
-  }
-  const base64String = btoa(str);
-  return base64String.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }

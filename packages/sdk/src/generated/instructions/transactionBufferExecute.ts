@@ -57,7 +57,6 @@ export type TransactionBufferExecuteInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountDomainConfig extends string | IAccountMeta<string> = string,
   TAccountSettings extends string | IAccountMeta<string> = string,
-  TAccountRentPayer extends string | IAccountMeta<string> = string,
   TAccountExecutor extends string | IAccountMeta<string> = string,
   TAccountTransactionBuffer extends string | IAccountMeta<string> = string,
   TAccountSlotHashSysvar extends
@@ -74,9 +73,6 @@ export type TransactionBufferExecuteInstruction<
       TAccountSettings extends string
         ? ReadonlyAccount<TAccountSettings>
         : TAccountSettings,
-      TAccountRentPayer extends string
-        ? WritableAccount<TAccountRentPayer>
-        : TAccountRentPayer,
       TAccountExecutor extends string
         ? ReadonlySignerAccount<TAccountExecutor> &
             IAccountSignerMeta<TAccountExecutor>
@@ -136,51 +132,41 @@ export function getTransactionBufferExecuteInstructionDataCodec(): Codec<
 export type TransactionBufferExecuteInput<
   TAccountDomainConfig extends string = string,
   TAccountSettings extends string = string,
-  TAccountRentPayer extends string = string,
   TAccountExecutor extends string = string,
   TAccountTransactionBuffer extends string = string,
   TAccountSlotHashSysvar extends string = string,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = {
   domainConfig?: Address<TAccountDomainConfig>;
   settings: Address<TAccountSettings>;
-  rentPayer: Address<TAccountRentPayer>;
   executor?: TransactionSigner<TAccountExecutor>;
   transactionBuffer: Address<TAccountTransactionBuffer>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   secp256r1VerifyArgs: TransactionBufferExecuteInstructionDataArgs["secp256r1VerifyArgs"];
-  remainingAccounts: TRemainingAccounts;
 };
 
 export function getTransactionBufferExecuteInstruction<
   TAccountDomainConfig extends string,
   TAccountSettings extends string,
-  TAccountRentPayer extends string,
   TAccountExecutor extends string,
   TAccountTransactionBuffer extends string,
   TAccountSlotHashSysvar extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 >(
   input: TransactionBufferExecuteInput<
     TAccountDomainConfig,
     TAccountSettings,
-    TAccountRentPayer,
     TAccountExecutor,
     TAccountTransactionBuffer,
-    TAccountSlotHashSysvar,
-    TRemainingAccounts
+    TAccountSlotHashSysvar
   >,
   config?: { programAddress?: TProgramAddress }
 ): TransactionBufferExecuteInstruction<
   TProgramAddress,
   TAccountDomainConfig,
   TAccountSettings,
-  TAccountRentPayer,
   TAccountExecutor,
   TAccountTransactionBuffer,
-  TAccountSlotHashSysvar,
-  TRemainingAccounts
+  TAccountSlotHashSysvar
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -189,7 +175,6 @@ export function getTransactionBufferExecuteInstruction<
   const originalAccounts = {
     domainConfig: { value: input.domainConfig ?? null, isWritable: false },
     settings: { value: input.settings ?? null, isWritable: false },
-    rentPayer: { value: input.rentPayer ?? null, isWritable: true },
     executor: { value: input.executor ?? null, isWritable: false },
     transactionBuffer: {
       value: input.transactionBuffer ?? null,
@@ -205,22 +190,14 @@ export function getTransactionBufferExecuteInstruction<
   // Original args.
   const args = { ...input };
 
-  // Resolve default values.
-  if (!accounts.slotHashSysvar.value) {
-    accounts.slotHashSysvar.value =
-      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
-  }
-
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   const instruction = {
     accounts: [
       getAccountMeta(accounts.domainConfig),
       getAccountMeta(accounts.settings),
-      getAccountMeta(accounts.rentPayer),
       getAccountMeta(accounts.executor),
       getAccountMeta(accounts.transactionBuffer),
       getAccountMeta(accounts.slotHashSysvar),
-      ...input.remainingAccounts,
     ],
     programAddress,
     data: getTransactionBufferExecuteInstructionDataEncoder().encode(
@@ -230,11 +207,9 @@ export function getTransactionBufferExecuteInstruction<
     TProgramAddress,
     TAccountDomainConfig,
     TAccountSettings,
-    TAccountRentPayer,
     TAccountExecutor,
     TAccountTransactionBuffer,
-    TAccountSlotHashSysvar,
-    TRemainingAccounts
+    TAccountSlotHashSysvar
   >;
 
   return instruction;
@@ -248,10 +223,9 @@ export type ParsedTransactionBufferExecuteInstruction<
   accounts: {
     domainConfig?: TAccountMetas[0] | undefined;
     settings: TAccountMetas[1];
-    rentPayer: TAccountMetas[2];
-    executor?: TAccountMetas[3] | undefined;
-    transactionBuffer: TAccountMetas[4];
-    slotHashSysvar?: TAccountMetas[5] | undefined;
+    executor?: TAccountMetas[2] | undefined;
+    transactionBuffer: TAccountMetas[3];
+    slotHashSysvar?: TAccountMetas[4] | undefined;
   };
   data: TransactionBufferExecuteInstructionData;
 };
@@ -264,7 +238,7 @@ export function parseTransactionBufferExecuteInstruction<
     IInstructionWithAccounts<TAccountMetas> &
     IInstructionWithData<Uint8Array>
 ): ParsedTransactionBufferExecuteInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 6) {
+  if (instruction.accounts.length < 5) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -285,7 +259,6 @@ export function parseTransactionBufferExecuteInstruction<
     accounts: {
       domainConfig: getNextOptionalAccount(),
       settings: getNextAccount(),
-      rentPayer: getNextAccount(),
       executor: getNextOptionalAccount(),
       transactionBuffer: getNextAccount(),
       slotHashSysvar: getNextOptionalAccount(),

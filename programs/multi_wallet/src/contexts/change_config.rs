@@ -121,8 +121,12 @@ impl<'info> ChangeConfig<'info> {
 
             let message_hash = hash(&writer).to_bytes();
 
-            Secp256r1Pubkey::verify_secp256r1(
-                secp256r1_verify_args,
+            let secp256r1_verify_data = secp256r1_verify_args
+                .as_ref()
+                .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
+
+            Secp256r1Pubkey::verify_webauthn(
+                secp256r1_verify_data,
                 slot_hash_sysvar,
                 domain_config,
                 &settings.key(),

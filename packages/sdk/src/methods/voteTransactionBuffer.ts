@@ -1,9 +1,9 @@
 import { Address, TransactionSigner } from "@solana/kit";
 import { getTransactionBufferVoteInstruction } from "../generated";
 import { Secp256r1Key } from "../types";
-import { extractSecp256r1VerificationArgs } from "../utils/private";
+import { extractSecp256r1VerificationArgs } from "../utils/internal";
 
-export async function voteTransactionBuffer({
+export function voteTransactionBuffer({
   feePayer,
   settings,
   voter,

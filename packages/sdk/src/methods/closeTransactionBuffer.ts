@@ -1,9 +1,9 @@
 import { Address, TransactionSigner } from "@solana/kit";
 import { getTransactionBufferCloseInstruction } from "../generated";
 import { Secp256r1Key } from "../types";
-import { extractSecp256r1VerificationArgs } from "../utils/private";
+import { extractSecp256r1VerificationArgs } from "../utils/internal";
 
-export async function closeTransactionBuffer({
+export function closeTransactionBuffer({
   settings,
   feePayer,
   closer,
@@ -23,7 +23,7 @@ export async function closeTransactionBuffer({
     domainConfig: domainConfig,
     closer: closer instanceof Secp256r1Key ? undefined : closer,
     settings,
-    rentPayer: feePayer,
+    payer: feePayer,
     secp256r1VerifyArgs: verifyArgs,
   });
 }

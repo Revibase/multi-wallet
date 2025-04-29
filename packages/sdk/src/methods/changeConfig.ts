@@ -21,7 +21,7 @@ import {
   convertMemberkeyToPubKey,
   extractSecp256r1VerificationArgs,
   getDeduplicatedSigners,
-} from "../utils/private";
+} from "../utils/internal";
 
 export async function changeConfig({
   rpc,

@@ -1,6 +1,6 @@
 {
   "name": "@revibase/sdk",
-  "version": "1.0.38",
+  "version": "1.0.49",
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --sourcemap",
     "clean": "rimraf dist",
@@ -45,7 +45,9 @@
   "homepage": "https://github.com/Revibase/multi-wallet#readme",
   "description": "",
   "dependencies": {
-    "@solana-program/system": "^0.7.0"
+    "@solana-program/system": "^0.7.0",
+    "@solana-program/token": "^0.5.1",
+    "@solana-program/token-2022": "^0.4.0"
   },
   "peerDependencies": {
     "@solana/kit": "^2.1.0"

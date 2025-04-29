@@ -12,23 +12,26 @@ import {
   getBytesEncoder,
   type Address,
   type ReadonlyUint8Array,
-} from "@solana/kit";
+} from '@solana/kit';
 import {
   type ParsedChangeConfigInstruction,
   type ParsedCreateDomainConfigInstruction,
   type ParsedCreateInstruction,
   type ParsedDeleteDomainConfigInstruction,
   type ParsedEditDomainConfigInstruction,
+  type ParsedNativeTransferIntentInstruction,
+  type ParsedTokenTransferIntentInstruction,
   type ParsedTransactionBufferCloseInstruction,
   type ParsedTransactionBufferCreateInstruction,
   type ParsedTransactionBufferExecuteInstruction,
   type ParsedTransactionBufferExtendInstruction,
   type ParsedTransactionBufferVoteInstruction,
+  type ParsedTransactionExecuteInstruction,
   type ParsedTransactionExecuteSyncInstruction,
-} from "../instructions";
+} from '../instructions';
 
 export const MULTI_WALLET_PROGRAM_ADDRESS =
-  "HomqiGa9FxngxAPbVEFzXM3pjicY5RbGCBu3dVNui3ry" as Address<"HomqiGa9FxngxAPbVEFzXM3pjicY5RbGCBu3dVNui3ry">;
+  'HomqiGa9FxngxAPbVEFzXM3pjicY5RbGCBu3dVNui3ry' as Address<'HomqiGa9FxngxAPbVEFzXM3pjicY5RbGCBu3dVNui3ry'>;
 
 export enum MultiWalletAccount {
   DomainConfig,
@@ -39,7 +42,7 @@ export enum MultiWalletAccount {
 export function identifyMultiWalletAccount(
   account: { data: ReadonlyUint8Array } | ReadonlyUint8Array
 ): MultiWalletAccount {
-  const data = "data" in account ? account.data : account;
+  const data = 'data' in account ? account.data : account;
   if (
     containsBytes(
       data,
@@ -74,7 +77,7 @@ export function identifyMultiWalletAccount(
     return MultiWalletAccount.TransactionBuffer;
   }
   throw new Error(
-    "The provided account could not be identified as a multiWallet account."
+    'The provided account could not be identified as a multiWallet account.'
   );
 }
 
@@ -84,18 +87,21 @@ export enum MultiWalletInstruction {
   CreateDomainConfig,
   DeleteDomainConfig,
   EditDomainConfig,
+  NativeTransferIntent,
+  TokenTransferIntent,
   TransactionBufferClose,
   TransactionBufferCreate,
   TransactionBufferExecute,
   TransactionBufferExtend,
   TransactionBufferVote,
+  TransactionExecute,
   TransactionExecuteSync,
 }
 
 export function identifyMultiWalletInstruction(
   instruction: { data: ReadonlyUint8Array } | ReadonlyUint8Array
 ): MultiWalletInstruction {
-  const data = "data" in instruction ? instruction.data : instruction;
+  const data = 'data' in instruction ? instruction.data : instruction;
   if (
     containsBytes(
       data,
@@ -150,6 +156,28 @@ export function identifyMultiWalletInstruction(
     )
   ) {
     return MultiWalletInstruction.EditDomainConfig;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([57, 156, 213, 157, 88, 202, 2, 151])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.NativeTransferIntent;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([51, 91, 96, 155, 132, 232, 179, 48])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.TokenTransferIntent;
   }
   if (
     containsBytes(
@@ -210,6 +238,17 @@ export function identifyMultiWalletInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([93, 171, 78, 134, 252, 84, 186, 189])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.TransactionExecute;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([149, 138, 204, 32, 181, 61, 153, 227])
       ),
       0
@@ -218,12 +257,12 @@ export function identifyMultiWalletInstruction(
     return MultiWalletInstruction.TransactionExecuteSync;
   }
   throw new Error(
-    "The provided instruction could not be identified as a multiWallet instruction."
+    'The provided instruction could not be identified as a multiWallet instruction.'
   );
 }
 
 export type ParsedMultiWalletInstruction<
-  TProgram extends string = "HomqiGa9FxngxAPbVEFzXM3pjicY5RbGCBu3dVNui3ry",
+  TProgram extends string = 'HomqiGa9FxngxAPbVEFzXM3pjicY5RbGCBu3dVNui3ry',
 > =
   | ({
       instructionType: MultiWalletInstruction.ChangeConfig;
@@ -241,6 +280,12 @@ export type ParsedMultiWalletInstruction<
       instructionType: MultiWalletInstruction.EditDomainConfig;
     } & ParsedEditDomainConfigInstruction<TProgram>)
   | ({
+      instructionType: MultiWalletInstruction.NativeTransferIntent;
+    } & ParsedNativeTransferIntentInstruction<TProgram>)
+  | ({
+      instructionType: MultiWalletInstruction.TokenTransferIntent;
+    } & ParsedTokenTransferIntentInstruction<TProgram>)
+  | ({
       instructionType: MultiWalletInstruction.TransactionBufferClose;
     } & ParsedTransactionBufferCloseInstruction<TProgram>)
   | ({
@@ -255,6 +300,9 @@ export type ParsedMultiWalletInstruction<
   | ({
       instructionType: MultiWalletInstruction.TransactionBufferVote;
     } & ParsedTransactionBufferVoteInstruction<TProgram>)
+  | ({
+      instructionType: MultiWalletInstruction.TransactionExecute;
+    } & ParsedTransactionExecuteInstruction<TProgram>)
   | ({
       instructionType: MultiWalletInstruction.TransactionExecuteSync;
     } & ParsedTransactionExecuteSyncInstruction<TProgram>);

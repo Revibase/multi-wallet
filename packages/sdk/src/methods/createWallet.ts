@@ -14,7 +14,7 @@ import {
 } from "../generated";
 import { Permission, Permissions, Secp256r1Key } from "../types";
 import { getDelegateAddress } from "../utils";
-import { convertMember } from "../utils/private";
+import { convertMember } from "../utils/internal";
 
 export async function createWallet({
   feePayer,

@@ -10,7 +10,9 @@ import {
 import {
   addJitoTip,
   createTransactionBuffer,
+  executeTransaction,
   executeTransactionBuffer,
+  extendTransactionBuffer,
   voteTransactionBuffer,
 } from "../methods";
 import { Permission, Permissions, Secp256r1Key } from "../types";
@@ -18,7 +20,7 @@ import { getMemberKeyString, getTransactionBufferAddress } from "../utils";
 import {
   deduplicateSignersAndFeePayer,
   getPubkeyString,
-} from "../utils/private";
+} from "../utils/internal";
 import { fetchSettingsData } from "./fetchSettingsData";
 
 interface CreateTransactionBundleArgs {
@@ -28,11 +30,14 @@ interface CreateTransactionBundleArgs {
   bufferIndex: number;
   transactionMessageBytes: Uint8Array;
   creator: TransactionSigner | Secp256r1Key;
-  executor: TransactionSigner | Secp256r1Key;
+  executor?: TransactionSigner | Secp256r1Key;
+  executeWithoutSigverify?: boolean;
   additionalVoters?: (TransactionSigner | Secp256r1Key)[];
   additionalSigners?: TransactionSigner[];
   jitoBundlesTipAmount?: number;
   skipChecks?: boolean;
+  createChunkSize?: number;
+  extendChunkSize?: number;
 }
 
 export async function prepareTransactionBundle({
@@ -47,6 +52,8 @@ export async function prepareTransactionBundle({
   additionalSigners = [],
   jitoBundlesTipAmount,
   skipChecks = false,
+  createChunkSize = 400,
+  extendChunkSize = 832,
 }: CreateTransactionBundleArgs): Promise<
   {
     id: string;
@@ -61,8 +68,8 @@ export async function prepareTransactionBundle({
       rpc,
       settings,
       creator,
-      executor,
-      additionalVoters
+      additionalVoters,
+      executor
     );
   }
 
@@ -72,37 +79,71 @@ export async function prepareTransactionBundle({
     bufferIndex
   );
 
-  const { transactionBufferCreateIx, transactionBufferExtendIx } =
-    await createTransactionBuffer({
-      transactionMessageBytes,
-      bufferIndex,
-      feePayer,
-      transactionBufferAddress,
-      settings,
-      creator,
-    });
+  const finalBufferHash = new Uint8Array(
+    await crypto.subtle.digest("SHA-256", transactionMessageBytes)
+  );
 
-  let transactionVoteIxs: IInstruction[] = [];
-  if (additionalVoters.length > 0) {
-    transactionVoteIxs = await Promise.all(
-      additionalVoters.map((voter) =>
-        voteTransactionBuffer({
-          feePayer,
-          voter,
-          transactionBufferAddress,
-          settings,
-        })
-      )
+  const finalBufferSize = transactionMessageBytes.length;
+
+  const createChunk = transactionMessageBytes.subarray(0, createChunkSize);
+  const extendChunks: Uint8Array[] = [];
+  const extendChunksHash: Uint8Array[] = [];
+  for (
+    let i = createChunkSize;
+    i < transactionMessageBytes.length;
+    i += extendChunkSize
+  ) {
+    const extendChunk = transactionMessageBytes.subarray(
+      i,
+      i + extendChunkSize
+    );
+    extendChunks.push(extendChunk);
+    extendChunksHash.push(
+      new Uint8Array(await crypto.subtle.digest("SHA-256", extendChunk))
     );
   }
 
-  const { transactionBufferExecuteIx, addressLookupTableAccounts } =
-    await executeTransactionBuffer({
+  const transactionBufferCreateIx = createTransactionBuffer({
+    finalBufferHash,
+    finalBufferSize,
+    transactionMessageBytes: createChunk,
+    bufferIndex,
+    feePayer,
+    transactionBufferAddress,
+    settings,
+    creator,
+    permissionlessExecution: !executor,
+    bufferExtendHashes: extendChunksHash,
+  });
+
+  const transactionBufferExtendIxs = extendChunks.map((chunk) =>
+    extendTransactionBuffer({
+      transactionMessageBytes: chunk,
+      transactionBufferAddress,
+    })
+  );
+
+  const transactionVoteIxs = additionalVoters.map((voter) =>
+    voteTransactionBuffer({
+      feePayer,
+      voter,
+      transactionBufferAddress,
+      settings,
+    })
+  );
+
+  const transactionBufferExecuteIx = executeTransactionBuffer({
+    settings,
+    executor,
+    transactionBufferAddress,
+  });
+
+  const { transactionExecuteIx, addressLookupTableAccounts } =
+    await executeTransaction({
       rpc,
       settings,
-      executor,
-      transactionBufferAddress,
       transactionMessageBytes,
+      transactionBufferAddress,
       feePayer,
       additionalSigners,
     });
@@ -115,8 +156,8 @@ export async function prepareTransactionBundle({
     ixs: [transactionBufferCreateIx],
   });
 
-  if (transactionBufferExtendIx) {
-    txs.push({
+  txs.push(
+    ...transactionBufferExtendIxs.map((transactionBufferExtendIx) => ({
       id: "Extend Transaction Buffer",
       signers: deduplicateSignersAndFeePayer(
         transactionBufferExtendIx,
@@ -124,8 +165,8 @@ export async function prepareTransactionBundle({
       ),
       feePayer,
       ixs: [transactionBufferExtendIx],
-    });
-  }
+    }))
+  );
 
   if (transactionVoteIxs.length > 0) {
     txs.push({
@@ -144,24 +185,26 @@ export async function prepareTransactionBundle({
   }
 
   txs.push({
-    id: "Execute Transaction",
+    id: "Execute Transaction Approval",
     signers: deduplicateSignersAndFeePayer(
       transactionBufferExecuteIx,
       feePayer
     ),
     feePayer,
+    ixs: [transactionBufferExecuteIx],
+  });
+
+  txs.push({
+    id: "Execute Transaction",
+    signers: deduplicateSignersAndFeePayer(transactionExecuteIx, feePayer),
+    feePayer,
     ixs: [
-      transactionBufferExecuteIx,
+      transactionExecuteIx,
       ...(jitoBundlesTipAmount
-        ? [
-            await addJitoTip({
-              feePayer,
-              tipAmount: jitoBundlesTipAmount,
-            }),
-          ]
+        ? [addJitoTip({ feePayer, tipAmount: jitoBundlesTipAmount })]
         : []),
     ],
-    addressLookupTableAccounts: addressLookupTableAccounts,
+    addressLookupTableAccounts,
   });
 
   return txs;
@@ -171,8 +214,8 @@ async function preTransactionChecks(
   rpc: Rpc<SolanaRpcApi>,
   settings: Address,
   creator: TransactionSigner | Secp256r1Key,
-  executor: TransactionSigner | Secp256r1Key,
-  additionalVoters: (TransactionSigner | Secp256r1Key)[]
+  additionalVoters: (TransactionSigner | Secp256r1Key)[],
+  executor?: TransactionSigner | Secp256r1Key
 ) {
   const settingsData = await fetchSettingsData(rpc, settings);
 
@@ -198,12 +241,14 @@ async function preTransactionChecks(
 
   const executorMember = settingsData.members.find(
     (x) =>
-      getPubkeyString(executor) === getMemberKeyString(x.pubkey) &&
+      getPubkeyString(executor ?? creator) === getMemberKeyString(x.pubkey) &&
       Permissions.has(x.permissions, Permission.ExecuteTransaction)
   );
 
   if (!executorMember) {
-    throw new Error("Executor does not have execute transaction permission.");
+    throw new Error(
+      `${executor ? "Executor" : "Creator"} does not have execute transaction permission.`
+    );
   }
 
   if (
@@ -220,7 +265,7 @@ async function preTransactionChecks(
     .filter(
       (x) =>
         getPubkeyString(x) !== getPubkeyString(creator) &&
-        getPubkeyString(x) !== getPubkeyString(executor)
+        getPubkeyString(x) !== getPubkeyString(executor ?? creator)
     )
     .filter((x) =>
       settingsData.members.some(

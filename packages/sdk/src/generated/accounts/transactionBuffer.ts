@@ -21,6 +21,8 @@ import {
   getAddressEncoder,
   getArrayDecoder,
   getArrayEncoder,
+  getBooleanDecoder,
+  getBooleanEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getStructDecoder,
@@ -67,13 +69,15 @@ export type TransactionBuffer = {
   discriminator: ReadonlyUint8Array;
   /** The multisig settings this belongs to. */
   multiWalletSettings: Address;
-  /** Member of the Multisig who created the TransactionBuffer. */
-  creator: MemberKey;
-  /** Members that voted for this transaction */
-  voters: Array<MemberKey>;
+  /** The bump for the multi_wallet */
+  multiWalletBump: number;
+  /** Flag to allow transaction to be executed */
+  canExecute: boolean;
+  /** Flag to allow execution without sigverify once sufficient threshold is met */
+  executeWithoutSigverify: boolean;
   expiry: bigint;
-  /** Rent payer for the transaction buffer */
-  rentPayer: Address;
+  /** Payer for the transaction buffer */
+  payer: Address;
   /** transaction bump */
   bump: number;
   /** Index to seed address derivation */
@@ -82,6 +86,12 @@ export type TransactionBuffer = {
   finalBufferHash: ReadonlyUint8Array;
   /** The size of the final assembled transaction message. */
   finalBufferSize: number;
+  /** Member of the Multisig who created the TransactionBuffer. */
+  creator: MemberKey;
+  /** Buffer hash for all the buffer extend instruction */
+  bufferExtendHashes: Array<ReadonlyUint8Array>;
+  /** Members that voted for this transaction */
+  voters: Array<MemberKey>;
   /** The buffer of the transaction message. */
   buffer: ReadonlyUint8Array;
 };
@@ -89,13 +99,15 @@ export type TransactionBuffer = {
 export type TransactionBufferArgs = {
   /** The multisig settings this belongs to. */
   multiWalletSettings: Address;
-  /** Member of the Multisig who created the TransactionBuffer. */
-  creator: MemberKeyArgs;
-  /** Members that voted for this transaction */
-  voters: Array<MemberKeyArgs>;
+  /** The bump for the multi_wallet */
+  multiWalletBump: number;
+  /** Flag to allow transaction to be executed */
+  canExecute: boolean;
+  /** Flag to allow execution without sigverify once sufficient threshold is met */
+  executeWithoutSigverify: boolean;
   expiry: number | bigint;
-  /** Rent payer for the transaction buffer */
-  rentPayer: Address;
+  /** Payer for the transaction buffer */
+  payer: Address;
   /** transaction bump */
   bump: number;
   /** Index to seed address derivation */
@@ -104,6 +116,12 @@ export type TransactionBufferArgs = {
   finalBufferHash: ReadonlyUint8Array;
   /** The size of the final assembled transaction message. */
   finalBufferSize: number;
+  /** Member of the Multisig who created the TransactionBuffer. */
+  creator: MemberKeyArgs;
+  /** Buffer hash for all the buffer extend instruction */
+  bufferExtendHashes: Array<ReadonlyUint8Array>;
+  /** Members that voted for this transaction */
+  voters: Array<MemberKeyArgs>;
   /** The buffer of the transaction message. */
   buffer: ReadonlyUint8Array;
 };
@@ -113,14 +131,21 @@ export function getTransactionBufferEncoder(): Encoder<TransactionBufferArgs> {
     getStructEncoder([
       ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
       ['multiWalletSettings', getAddressEncoder()],
-      ['creator', getMemberKeyEncoder()],
-      ['voters', getArrayEncoder(getMemberKeyEncoder())],
+      ['multiWalletBump', getU8Encoder()],
+      ['canExecute', getBooleanEncoder()],
+      ['executeWithoutSigverify', getBooleanEncoder()],
       ['expiry', getU64Encoder()],
-      ['rentPayer', getAddressEncoder()],
+      ['payer', getAddressEncoder()],
       ['bump', getU8Encoder()],
       ['bufferIndex', getU8Encoder()],
       ['finalBufferHash', fixEncoderSize(getBytesEncoder(), 32)],
       ['finalBufferSize', getU16Encoder()],
+      ['creator', getMemberKeyEncoder()],
+      [
+        'bufferExtendHashes',
+        getArrayEncoder(fixEncoderSize(getBytesEncoder(), 32)),
+      ],
+      ['voters', getArrayEncoder(getMemberKeyEncoder())],
       ['buffer', addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
     ]),
     (value) => ({ ...value, discriminator: TRANSACTION_BUFFER_DISCRIMINATOR })
@@ -131,14 +156,21 @@ export function getTransactionBufferDecoder(): Decoder<TransactionBuffer> {
   return getStructDecoder([
     ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
     ['multiWalletSettings', getAddressDecoder()],
-    ['creator', getMemberKeyDecoder()],
-    ['voters', getArrayDecoder(getMemberKeyDecoder())],
+    ['multiWalletBump', getU8Decoder()],
+    ['canExecute', getBooleanDecoder()],
+    ['executeWithoutSigverify', getBooleanDecoder()],
     ['expiry', getU64Decoder()],
-    ['rentPayer', getAddressDecoder()],
+    ['payer', getAddressDecoder()],
     ['bump', getU8Decoder()],
     ['bufferIndex', getU8Decoder()],
     ['finalBufferHash', fixDecoderSize(getBytesDecoder(), 32)],
     ['finalBufferSize', getU16Decoder()],
+    ['creator', getMemberKeyDecoder()],
+    [
+      'bufferExtendHashes',
+      getArrayDecoder(fixDecoderSize(getBytesDecoder(), 32)),
+    ],
+    ['voters', getArrayDecoder(getMemberKeyDecoder())],
     ['buffer', addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
   ]);
 }

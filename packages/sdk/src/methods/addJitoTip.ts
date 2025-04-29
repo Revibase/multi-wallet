@@ -2,7 +2,7 @@ import { getTransferSolInstruction } from "@solana-program/system";
 import { address, TransactionSigner } from "@solana/kit";
 import { JITO_TIP_ACCOUNTS } from "../utils/consts";
 
-export async function addJitoTip({
+export function addJitoTip({
   feePayer,
   tipAmount,
 }: {

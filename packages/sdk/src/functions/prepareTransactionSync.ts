@@ -12,7 +12,7 @@ import { getMemberKeyString } from "../utils";
 import {
   deduplicateSignersAndFeePayer,
   getPubkeyString,
-} from "../utils/private";
+} from "../utils/internal";
 import { fetchSettingsData } from "./fetchSettingsData";
 
 interface CreateTransactionSyncArgs {
@@ -42,7 +42,7 @@ export async function prepareTransactionSync({
     await preTransactionChecks(rpc, settings, signers);
   }
 
-  const { transactionExecuteSyncIx: ix, addressLookupTableAccounts } =
+  const { transactionExecuteSyncIx, addressLookupTableAccounts } =
     await executeTransactionSync({
       rpc,
       settings,
@@ -52,9 +52,9 @@ export async function prepareTransactionSync({
 
   return {
     id: "Execute Transaction Sync",
-    signers: deduplicateSignersAndFeePayer(ix, feePayer),
+    signers: deduplicateSignersAndFeePayer(transactionExecuteSyncIx, feePayer),
     feePayer,
-    ixs: [ix],
+    ixs: [transactionExecuteSyncIx],
     addressLookupTableAccounts,
   };
 }

@@ -1,174 +1,7 @@
 import { CBORType, decodeCBOR, encodeCBOR } from "@levischuck/tiny-cbor";
 import { p256 } from "@noble/curves/p256";
-import { PublicKeyCredentialHint } from "@simplewebauthn/server";
-import bs58 from "bs58";
-import { closeAuthModal, createAuthIframe } from "./auth-iframe.js";
+import { getBase58Decoder, getBase58Encoder } from "@solana/codecs";
 import { DEFAULT_AUTH_URL } from "./consts.js";
-import { AuthenticationResponse, RegistrationResponse } from "./types.js";
-
-let activeMessageHandler: ((event: MessageEvent) => void) | null = null;
-const HEARTBEAT_INTERVAL = 2000;
-const TIMEOUT_BUFFER = 3000;
-
-export async function openAuthUrl({
-  authUrl,
-  hints,
-  isRegister = false,
-  message,
-  publicKey,
-  transaction,
-  popUp = null,
-  timeout = 2 * 60 * 1000, // 2 minutes default timeout
-  debug = false,
-}: {
-  authUrl: string;
-  hints?: PublicKeyCredentialHint[];
-  isRegister?: boolean;
-  message?: string;
-  publicKey?: string;
-  transaction?: string;
-  popUp?: Window | null;
-  timeout?: number;
-  debug?: boolean;
-}): Promise<AuthenticationResponse | RegistrationResponse> {
-  if (typeof window === "undefined") {
-    throw new Error("Function can only be called in a browser environment");
-  }
-
-  return new Promise((resolve, reject) => {
-    const origin = new URL(authUrl).origin;
-    const isIframeAllowed =
-      !isRegister &&
-      getBaseDomain(authUrl) === getBaseDomain(window.location.href);
-    let source: Window | null = null;
-    let heartbeatTimeout: NodeJS.Timeout | null = null;
-
-    const closeCheckInterval = setInterval(() => {
-      if (source && source.closed) {
-        cleanUp();
-        reject(new Error("User closed the authentication window"));
-      }
-    }, 500);
-
-    const globalTimeout = setTimeout(() => {
-      log("Global timeout reached.");
-      cleanUp();
-      reject(new Error("Authentication timed out"));
-    }, timeout);
-
-    function cleanUp() {
-      clearInterval(closeCheckInterval);
-      clearTimeout(globalTimeout);
-      if (heartbeatTimeout) clearTimeout(heartbeatTimeout);
-      if (activeMessageHandler)
-        window.removeEventListener("message", activeMessageHandler);
-      if (source) source.close();
-      if (isIframeAllowed) closeAuthModal();
-    }
-
-    if (isIframeAllowed) {
-      if (popUp) popUp.close();
-      source = createAuthIframe({
-        authUrl,
-        onClose: () => {
-          cleanUp();
-          reject(new Error("User closed the authentication window"));
-        },
-      });
-      if (!source) {
-        reject(new Error("An error occured while populating the iframe."));
-        return;
-      }
-    } else {
-      source = popUp;
-      if (source) {
-        source.location.replace(authUrl);
-      } else {
-        source = createPopUp(authUrl);
-      }
-
-      if (!source) {
-        reject(new Error("Disable your popup blocker to continue."));
-        return;
-      }
-    }
-
-    function log(...args: any[]) {
-      if (debug) console.debug("[Popup]", ...args);
-    }
-
-    const messageReceivedHandler = (event: MessageEvent) => {
-      const isSameOrigin = event.origin === origin;
-      const isSameWindow = event.source === source;
-
-      if (!isSameOrigin || !isSameWindow || !event.isTrusted) {
-        log("Ignored message from unknown source", event);
-        return;
-      }
-
-      switch (event.data.type) {
-        case "popup-ready":
-          log("Popup is ready, sending auth data");
-          source.postMessage(
-            {
-              type: "popup-init",
-              payload: {
-                message,
-                publicKey,
-                transaction,
-                isRegister,
-                hints,
-              },
-            },
-            origin
-          );
-          heartbeatTimeout = setTimeout(() => {
-            cleanUp();
-            reject(new Error("User closed the authentication window"));
-          }, HEARTBEAT_INTERVAL + TIMEOUT_BUFFER);
-          break;
-
-        case "popup-authentication-complete":
-        case "popup-registration-complete":
-          log("Received completion message");
-          try {
-            const payload = JSON.parse(event.data.payload);
-            cleanUp();
-            resolve(payload);
-          } catch (error) {
-            reject(new Error("Failed to parse response payload"));
-          }
-          break;
-
-        case "popup-heartbeat":
-          log("Received heartbeat");
-          if (heartbeatTimeout) {
-            clearTimeout(heartbeatTimeout);
-            heartbeatTimeout = setTimeout(() => {
-              cleanUp();
-              reject(new Error("User closed the authentication window"));
-            }, HEARTBEAT_INTERVAL + TIMEOUT_BUFFER);
-          }
-          break;
-
-        case "popup-closed":
-          log("Popup explicitly closed");
-          cleanUp();
-          reject(new Error("User closed the authentication window"));
-          break;
-
-        default:
-          log("Unknown message type", event.data.type);
-      }
-    };
-
-    if (activeMessageHandler) {
-      window.removeEventListener("message", activeMessageHandler);
-    }
-    activeMessageHandler = messageReceivedHandler;
-    window.addEventListener("message", activeMessageHandler);
-  });
-}
 
 export function createPopUp(authUrl = `${DEFAULT_AUTH_URL}/loading`) {
   if (typeof window === "undefined") {
@@ -234,13 +67,15 @@ export function convertPubkeyCoseToCompressed(
     x: BigInt("0x" + toHex(decodedPublicKey.get(-2) as Uint8Array)),
     y: BigInt("0x" + toHex(decodedPublicKey.get(-3) as Uint8Array)),
   });
-  const compressedPubKey = bs58.encode(uncompressedPublicKey.toRawBytes(true));
+  const compressedPubKey = getBase58Decoder().decode(
+    uncompressedPublicKey.toRawBytes(true)
+  );
   return compressedPubKey;
 }
 
 export function convertPubkeyCompressedToCose(publicKey: string) {
   const compressedPublicKey = p256.ProjectivePoint.fromHex(
-    new Uint8Array(bs58.decode(publicKey))
+    new Uint8Array(getBase58Encoder().encode(publicKey))
   );
   const uncompressedPublicKey = compressedPublicKey.toRawBytes(false);
 
@@ -297,14 +132,4 @@ export function convertSignatureDERtoRS(derSig: Uint8Array): Uint8Array {
 function toHex(array: Uint8Array) {
   const hexParts = Array.from(array, (i) => i.toString(16).padStart(2, "0"));
   return hexParts.join("");
-}
-
-function getBaseDomain(url: string): string {
-  const { hostname } = new URL(url);
-  const parts = hostname.split(".");
-
-  if (parts.length > 2) {
-    return parts.slice(parts.length - 2).join(".");
-  }
-  return hostname;
 }

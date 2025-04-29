@@ -14,8 +14,8 @@ import {
 } from '@solana/kit';
 import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
 
-/** PublicKeyLengthMismatch: Public Key Length does not match the Public Key Type */
-export const MULTI_WALLET_ERROR__PUBLIC_KEY_LENGTH_MISMATCH = 0x1770; // 6000
+/** InvalidSecp256r1VerifyArg: Missing webauthn signature verify arguments. */
+export const MULTI_WALLET_ERROR__INVALID_SECP256R1_VERIFY_ARG = 0x1770; // 6000
 /** DurableNonceDetected: Durable nonce detected. Durable nonce is not allowed for this transaction. */
 export const MULTI_WALLET_ERROR__DURABLE_NONCE_DETECTED = 0x1771; // 6001
 /** DuplicateMember: Duplicate public keys found in the members array. Each member must have a unique public key. */
@@ -38,20 +38,20 @@ export const MULTI_WALLET_ERROR__MISSING_ACCOUNT = 0x1779; // 6009
 export const MULTI_WALLET_ERROR__ACCOUNT_ALREADY_EXIST = 0x177a; // 6010
 /** IllegalAccountOwner: Account is not owned by the Multisig program. Only accounts under the Multisig program can be used. */
 export const MULTI_WALLET_ERROR__ILLEGAL_ACCOUNT_OWNER = 0x177b; // 6011
-/** MissingOwner: The members array cannot have a length of one. Add an additional member. */
-export const MULTI_WALLET_ERROR__MISSING_OWNER = 0x177c; // 6012
-/** CannotRemoveDelegateKeyFromMember: You cannot remove delegate key from the member. Change the delegate first before removing it as a member. */
-export const MULTI_WALLET_ERROR__CANNOT_REMOVE_DELEGATE_KEY_FROM_MEMBER = 0x177d; // 6013
 /** InsufficientSignerWithExecutePermission: Require at least one signer to have the execute permission. */
-export const MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_EXECUTE_PERMISSION = 0x177e; // 6014
+export const MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_EXECUTE_PERMISSION = 0x177c; // 6012
 /** InsufficientSignerWithInitiatePermission: Require at least one signer to have the initiate permission. */
-export const MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_INITIATE_PERMISSION = 0x177f; // 6015
+export const MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_INITIATE_PERMISSION = 0x177d; // 6013
 /** InsufficientSignersWithVotePermission: Require threshold to be lesser than or equal to the number of members with vote permission. */
-export const MULTI_WALLET_ERROR__INSUFFICIENT_SIGNERS_WITH_VOTE_PERMISSION = 0x1780; // 6016
+export const MULTI_WALLET_ERROR__INSUFFICIENT_SIGNERS_WITH_VOTE_PERMISSION = 0x177e; // 6014
 /** InsufficientSignerWithIsDelegatePermission: Require at least one signer to have isDelegate permission. */
-export const MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_IS_DELEGATE_PERMISSION = 0x1781; // 6017
-/** UnauthorisedToModifyBuffer: Only the creator of the transaction buffer have permission to modify the buffer. */
-export const MULTI_WALLET_ERROR__UNAUTHORISED_TO_MODIFY_BUFFER = 0x1782; // 6018
+export const MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_IS_DELEGATE_PERMISSION = 0x177f; // 6015
+/** NoSignerFound: No signer found. */
+export const MULTI_WALLET_ERROR__NO_SIGNER_FOUND = 0x1780; // 6016
+/** UnauthorisedToCloseTransactionBuffer: Only the creator or rent payer of the transaction buffer have permission to close the buffer. */
+export const MULTI_WALLET_ERROR__UNAUTHORISED_TO_CLOSE_TRANSACTION_BUFFER = 0x1781; // 6017
+/** InvalidBuffer: Buffer does not match the pre defined buffer. */
+export const MULTI_WALLET_ERROR__INVALID_BUFFER = 0x1782; // 6018
 /** FinalBufferHashMismatch: Final message buffer hash doesnt match the expected hash */
 export const MULTI_WALLET_ERROR__FINAL_BUFFER_HASH_MISMATCH = 0x1783; // 6019
 /** FinalBufferSizeExceeded: Final buffer size cannot exceed 4000 bytes */
@@ -60,46 +60,45 @@ export const MULTI_WALLET_ERROR__FINAL_BUFFER_SIZE_EXCEEDED = 0x1784; // 6020
 export const MULTI_WALLET_ERROR__FINAL_BUFFER_SIZE_MISMATCH = 0x1785; // 6021
 /** TransactionHasExpired: Transaction has expired. 3 min has passed since the transaction was created. */
 export const MULTI_WALLET_ERROR__TRANSACTION_HAS_EXPIRED = 0x1786; // 6022
+/** TransactionNotApproved: Transaction isn't approved for execution yet. */
+export const MULTI_WALLET_ERROR__TRANSACTION_NOT_APPROVED = 0x1787; // 6023
 /** ProtectedAccount: Account is protected, it cannot be passed into a CPI as writable */
-export const MULTI_WALLET_ERROR__PROTECTED_ACCOUNT = 0x1787; // 6023
-/** MaxLengthExceeded: Origin must be lesser than 256 characters. */
-export const MULTI_WALLET_ERROR__MAX_LENGTH_EXCEEDED = 0x1788; // 6024
+export const MULTI_WALLET_ERROR__PROTECTED_ACCOUNT = 0x1788; // 6024
+/** MaxLengthExceeded: String must be lesser than 256 characters. */
+export const MULTI_WALLET_ERROR__MAX_LENGTH_EXCEEDED = 0x1789; // 6025
 /** MissingSysvarSlotHistory: Slot history sysvar is missing. */
-export const MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY = 0x1789; // 6025
+export const MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY = 0x178a; // 6026
 /** InvalidSysvarDataFormat: Failed to parse sysvar data. */
-export const MULTI_WALLET_ERROR__INVALID_SYSVAR_DATA_FORMAT = 0x178a; // 6026
+export const MULTI_WALLET_ERROR__INVALID_SYSVAR_DATA_FORMAT = 0x178b; // 6027
 /** SlotNumberNotFound: Slot number not found in slot history. */
-export const MULTI_WALLET_ERROR__SLOT_NUMBER_NOT_FOUND = 0x178b; // 6027
+export const MULTI_WALLET_ERROR__SLOT_NUMBER_NOT_FOUND = 0x178c; // 6028
 /** SlotHashMismatch: Slot hash does not match the expected value. */
-export const MULTI_WALLET_ERROR__SLOT_HASH_MISMATCH = 0x178c; // 6028
+export const MULTI_WALLET_ERROR__SLOT_HASH_MISMATCH = 0x178d; // 6029
 /** DomainConfigIsMissing: Domain Config is missing. */
-export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_MISSING = 0x178d; // 6029
+export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_MISSING = 0x178e; // 6030
 /** MemberDoesNotBelongToDomainConfig: Member does not belong to the specified domain config. */
-export const MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG = 0x178e; // 6030
+export const MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG = 0x178f; // 6031
 /** RpIdHashMismatch: Rp Id does not match with the specified domain config. */
-export const MULTI_WALLET_ERROR__RP_ID_HASH_MISMATCH = 0x178f; // 6031
+export const MULTI_WALLET_ERROR__RP_ID_HASH_MISMATCH = 0x1790; // 6032
 /** MissingMetadata: Metadata containing the pubkey of the domain config account is required when adding a passkey */
-export const MULTI_WALLET_ERROR__MISSING_METADATA = 0x1790; // 6032
+export const MULTI_WALLET_ERROR__MISSING_METADATA = 0x1791; // 6033
 /** InvalidJson: Unable to parse json data. */
-export const MULTI_WALLET_ERROR__INVALID_JSON = 0x1791; // 6033
+export const MULTI_WALLET_ERROR__INVALID_JSON = 0x1792; // 6034
 /** MissingOrigin: Origin is missing in client data json */
-export const MULTI_WALLET_ERROR__MISSING_ORIGIN = 0x1792; // 6034
+export const MULTI_WALLET_ERROR__MISSING_ORIGIN = 0x1793; // 6035
 /** InvalidOrigin: Origin in client data json is invalid. */
-export const MULTI_WALLET_ERROR__INVALID_ORIGIN = 0x1793; // 6035
+export const MULTI_WALLET_ERROR__INVALID_ORIGIN = 0x1794; // 6036
 /** MissingType: Type is missing in client data json */
-export const MULTI_WALLET_ERROR__MISSING_TYPE = 0x1794; // 6036
+export const MULTI_WALLET_ERROR__MISSING_TYPE = 0x1795; // 6037
 /** InvalidType: Type in client data json is not equals to webauthn.get */
-export const MULTI_WALLET_ERROR__INVALID_TYPE = 0x1795; // 6037
+export const MULTI_WALLET_ERROR__INVALID_TYPE = 0x1796; // 6038
 /** MissingChallenge: Challenge is missing in client data json */
-export const MULTI_WALLET_ERROR__MISSING_CHALLENGE = 0x1796; // 6038
+export const MULTI_WALLET_ERROR__MISSING_CHALLENGE = 0x1797; // 6039
 /** InvalidChallenge: Challenge in client data json is invalid. */
-export const MULTI_WALLET_ERROR__INVALID_CHALLENGE = 0x1797; // 6039
-/** Secp256r1VerifyArgsIsMissing: Secp256r1 Verify Args is missing. */
-export const MULTI_WALLET_ERROR__SECP256R1_VERIFY_ARGS_IS_MISSING = 0x1798; // 6040
+export const MULTI_WALLET_ERROR__INVALID_CHALLENGE = 0x1798; // 6040
 
 export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__ACCOUNT_ALREADY_EXIST
-  | typeof MULTI_WALLET_ERROR__CANNOT_REMOVE_DELEGATE_KEY_FROM_MEMBER
   | typeof MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_MISSING
   | typeof MULTI_WALLET_ERROR__DUPLICATE_MEMBER
   | typeof MULTI_WALLET_ERROR__DURABLE_NONCE_DETECTED
@@ -113,10 +112,12 @@ export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_INITIATE_PERMISSION
   | typeof MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_IS_DELEGATE_PERMISSION
   | typeof MULTI_WALLET_ERROR__INVALID_ACCOUNT
+  | typeof MULTI_WALLET_ERROR__INVALID_BUFFER
   | typeof MULTI_WALLET_ERROR__INVALID_CHALLENGE
   | typeof MULTI_WALLET_ERROR__INVALID_JSON
   | typeof MULTI_WALLET_ERROR__INVALID_NUMBER_OF_ACCOUNTS
   | typeof MULTI_WALLET_ERROR__INVALID_ORIGIN
+  | typeof MULTI_WALLET_ERROR__INVALID_SECP256R1_VERIFY_ARG
   | typeof MULTI_WALLET_ERROR__INVALID_SYSVAR_DATA_FORMAT
   | typeof MULTI_WALLET_ERROR__INVALID_THRESHOLD
   | typeof MULTI_WALLET_ERROR__INVALID_TRANSACTION_MESSAGE
@@ -127,24 +128,22 @@ export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__MISSING_CHALLENGE
   | typeof MULTI_WALLET_ERROR__MISSING_METADATA
   | typeof MULTI_WALLET_ERROR__MISSING_ORIGIN
-  | typeof MULTI_WALLET_ERROR__MISSING_OWNER
   | typeof MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY
   | typeof MULTI_WALLET_ERROR__MISSING_TYPE
+  | typeof MULTI_WALLET_ERROR__NO_SIGNER_FOUND
   | typeof MULTI_WALLET_ERROR__PROTECTED_ACCOUNT
-  | typeof MULTI_WALLET_ERROR__PUBLIC_KEY_LENGTH_MISMATCH
   | typeof MULTI_WALLET_ERROR__RP_ID_HASH_MISMATCH
-  | typeof MULTI_WALLET_ERROR__SECP256R1_VERIFY_ARGS_IS_MISSING
   | typeof MULTI_WALLET_ERROR__SLOT_HASH_MISMATCH
   | typeof MULTI_WALLET_ERROR__SLOT_NUMBER_NOT_FOUND
   | typeof MULTI_WALLET_ERROR__TOO_MANY_MEMBERS
   | typeof MULTI_WALLET_ERROR__TRANSACTION_HAS_EXPIRED
-  | typeof MULTI_WALLET_ERROR__UNAUTHORISED_TO_MODIFY_BUFFER;
+  | typeof MULTI_WALLET_ERROR__TRANSACTION_NOT_APPROVED
+  | typeof MULTI_WALLET_ERROR__UNAUTHORISED_TO_CLOSE_TRANSACTION_BUFFER;
 
 let multiWalletErrorMessages: Record<MultiWalletError, string> | undefined;
 if (process.env.NODE_ENV !== 'production') {
   multiWalletErrorMessages = {
     [MULTI_WALLET_ERROR__ACCOUNT_ALREADY_EXIST]: `The account already exist.`,
-    [MULTI_WALLET_ERROR__CANNOT_REMOVE_DELEGATE_KEY_FROM_MEMBER]: `You cannot remove delegate key from the member. Change the delegate first before removing it as a member.`,
     [MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_MISSING]: `Domain Config is missing.`,
     [MULTI_WALLET_ERROR__DUPLICATE_MEMBER]: `Duplicate public keys found in the members array. Each member must have a unique public key.`,
     [MULTI_WALLET_ERROR__DURABLE_NONCE_DETECTED]: `Durable nonce detected. Durable nonce is not allowed for this transaction.`,
@@ -158,32 +157,33 @@ if (process.env.NODE_ENV !== 'production') {
     [MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_INITIATE_PERMISSION]: `Require at least one signer to have the initiate permission.`,
     [MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_IS_DELEGATE_PERMISSION]: `Require at least one signer to have isDelegate permission.`,
     [MULTI_WALLET_ERROR__INVALID_ACCOUNT]: `One or more accounts provided are invalid. Ensure all accounts meet the requirements.`,
+    [MULTI_WALLET_ERROR__INVALID_BUFFER]: `Buffer does not match the pre defined buffer.`,
     [MULTI_WALLET_ERROR__INVALID_CHALLENGE]: `Challenge in client data json is invalid.`,
     [MULTI_WALLET_ERROR__INVALID_JSON]: `Unable to parse json data.`,
     [MULTI_WALLET_ERROR__INVALID_NUMBER_OF_ACCOUNTS]: `Incorrect number of accounts provided. Verify the account count matches the expected number.`,
     [MULTI_WALLET_ERROR__INVALID_ORIGIN]: `Origin in client data json is invalid.`,
+    [MULTI_WALLET_ERROR__INVALID_SECP256R1_VERIFY_ARG]: `Missing webauthn signature verify arguments.`,
     [MULTI_WALLET_ERROR__INVALID_SYSVAR_DATA_FORMAT]: `Failed to parse sysvar data.`,
     [MULTI_WALLET_ERROR__INVALID_THRESHOLD]: `Threshold must be between 1 and the total number of voting members. Note: only one passkey voter is counted toward this limit, even if more are registered.`,
     [MULTI_WALLET_ERROR__INVALID_TRANSACTION_MESSAGE]: `The provided TransactionMessage is malformed or improperly formatted.`,
     [MULTI_WALLET_ERROR__INVALID_TYPE]: `Type in client data json is not equals to webauthn.get`,
-    [MULTI_WALLET_ERROR__MAX_LENGTH_EXCEEDED]: `Origin must be lesser than 256 characters.`,
+    [MULTI_WALLET_ERROR__MAX_LENGTH_EXCEEDED]: `String must be lesser than 256 characters.`,
     [MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG]: `Member does not belong to the specified domain config.`,
     [MULTI_WALLET_ERROR__MISSING_ACCOUNT]: `Required account is missing. Ensure all necessary accounts are included.`,
     [MULTI_WALLET_ERROR__MISSING_CHALLENGE]: `Challenge is missing in client data json`,
     [MULTI_WALLET_ERROR__MISSING_METADATA]: `Metadata containing the pubkey of the domain config account is required when adding a passkey`,
     [MULTI_WALLET_ERROR__MISSING_ORIGIN]: `Origin is missing in client data json`,
-    [MULTI_WALLET_ERROR__MISSING_OWNER]: `The members array cannot have a length of one. Add an additional member.`,
     [MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY]: `Slot history sysvar is missing.`,
     [MULTI_WALLET_ERROR__MISSING_TYPE]: `Type is missing in client data json`,
+    [MULTI_WALLET_ERROR__NO_SIGNER_FOUND]: `No signer found.`,
     [MULTI_WALLET_ERROR__PROTECTED_ACCOUNT]: `Account is protected, it cannot be passed into a CPI as writable`,
-    [MULTI_WALLET_ERROR__PUBLIC_KEY_LENGTH_MISMATCH]: `Public Key Length does not match the Public Key Type`,
     [MULTI_WALLET_ERROR__RP_ID_HASH_MISMATCH]: `Rp Id does not match with the specified domain config.`,
-    [MULTI_WALLET_ERROR__SECP256R1_VERIFY_ARGS_IS_MISSING]: `Secp256r1 Verify Args is missing.`,
     [MULTI_WALLET_ERROR__SLOT_HASH_MISMATCH]: `Slot hash does not match the expected value.`,
     [MULTI_WALLET_ERROR__SLOT_NUMBER_NOT_FOUND]: `Slot number not found in slot history.`,
     [MULTI_WALLET_ERROR__TOO_MANY_MEMBERS]: `Too many members specified. A maximum of 65,535 members is allowed.`,
     [MULTI_WALLET_ERROR__TRANSACTION_HAS_EXPIRED]: `Transaction has expired. 3 min has passed since the transaction was created.`,
-    [MULTI_WALLET_ERROR__UNAUTHORISED_TO_MODIFY_BUFFER]: `Only the creator of the transaction buffer have permission to modify the buffer.`,
+    [MULTI_WALLET_ERROR__TRANSACTION_NOT_APPROVED]: `Transaction isn't approved for execution yet.`,
+    [MULTI_WALLET_ERROR__UNAUTHORISED_TO_CLOSE_TRANSACTION_BUFFER]: `Only the creator or rent payer of the transaction buffer have permission to close the buffer.`,
   };
 }
 

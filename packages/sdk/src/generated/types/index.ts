@@ -13,5 +13,7 @@ export * from './member';
 export * from './memberKey';
 export * from './memberWithVerifyArgs';
 export * from './permissions';
+export * from './secp256r1Pubkey';
+export * from './secp256r1Signature';
 export * from './secp256r1VerifyArgs';
 export * from './transactionMessageAddressTableLookup';

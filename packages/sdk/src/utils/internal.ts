@@ -8,9 +8,11 @@ import {
   IAccountMeta,
   IAccountSignerMeta,
   IInstruction,
+  none,
   OptionOrNullable,
   Rpc,
   SolanaRpcApi,
+  some,
   TransactionSigner,
 } from "@solana/kit";
 import {
@@ -95,16 +97,8 @@ export async function accountsForTransactionExecute({
 }) {
   const message = customTransactionMessageDeserialize(transactionMessageBytes);
 
-  let addressTableLookups:
-    | Readonly<{
-        lookupTableAddress: Address;
-        readableIndices: readonly number[];
-        writableIndices: readonly number[];
-      }>[]
-    | undefined = [];
-
   const addressLookupTableAccounts = await fetchAddressesForLookupTables(
-    addressTableLookups?.map((x) => x.lookupTableAddress) || [],
+    message.addressTableLookups.map((x) => x.accountKey),
     rpc
   );
 
@@ -112,10 +106,10 @@ export async function accountsForTransactionExecute({
   const accountMetas: (IAccountMeta | IAccountSignerMeta)[] = [];
   // First add the lookup table accounts used by the transaction. They are needed for on-chain validation.
   accountMetas.push(
-    ...(addressTableLookups?.map((key) => {
+    ...(message.addressTableLookups?.map((lookup) => {
       return {
         role: AccountRole.READONLY,
-        address: key.lookupTableAddress,
+        address: lookup.accountKey,
       };
     }) ?? [])
   );
@@ -127,20 +121,19 @@ export async function accountsForTransactionExecute({
     });
   }
   // Then add accounts that will be loaded with address lookup tables.
-  for (const lookup of addressTableLookups || []) {
-    const lookupTableAccount =
-      addressLookupTableAccounts[lookup.lookupTableAddress];
+  for (const lookup of message.addressTableLookups) {
+    const lookupTableAccount = addressLookupTableAccounts[lookup.accountKey];
     if (!lookupTableAccount) {
       throw new Error(
-        `Address lookup table account ${lookup.lookupTableAddress} not found`
+        `Address lookup table account ${lookup.accountKey} not found`
       );
     }
 
-    for (const accountIndex of lookup.writableIndices) {
-      const address: Address = lookupTableAccount[accountIndex];
+    for (const accountIndex of lookup.writableIndexes) {
+      const address = lookupTableAccount[accountIndex];
       if (!address) {
         throw new Error(
-          `Address lookup table account ${lookup.lookupTableAddress} does not contain address at index ${accountIndex}`
+          `Address lookup table account ${lookup.accountKey} does not contain address at index ${accountIndex}`
         );
       }
 
@@ -149,11 +142,11 @@ export async function accountsForTransactionExecute({
         role: AccountRole.WRITABLE,
       });
     }
-    for (const accountIndex of lookup.readableIndices) {
+    for (const accountIndex of lookup.readonlyIndexes) {
       const address = lookupTableAccount[accountIndex];
-      if (address) {
+      if (!address) {
         throw new Error(
-          `Address lookup table account ${lookup.lookupTableAddress} does not contain address at index ${accountIndex}`
+          `Address lookup table account ${lookup.accountKey} does not contain address at index ${accountIndex}`
         );
       }
       accountMetas.push({
@@ -201,7 +194,6 @@ export async function accountsForTransactionExecute({
     accountMetas,
     addressLookupTableAccounts,
     message,
-    addressTableLookups,
   };
 }
 export function convertPubkeyToMemberkey(
@@ -254,17 +246,17 @@ export function extractSecp256r1VerificationArgs(
   const secp256r1PublicKey =
     pubKey instanceof Secp256r1Key ? pubKey : undefined;
   const verifyArgs: OptionOrNullable<Secp256r1VerifyArgs> =
-    secp256r1PublicKey?.verifyArgs
-      ? { __option: "Some", value: secp256r1PublicKey.verifyArgs }
-      : { __option: "None" };
+    secp256r1PublicKey?.verifyArgs ? some(secp256r1PublicKey.verifyArgs) : null;
   const slotHashSysvar = secp256r1PublicKey?.verifyArgs
     ? address("SysvarS1otHashes111111111111111111111111111")
     : undefined;
   const domainConfig = secp256r1PublicKey?.verifyArgs
     ? secp256r1PublicKey?.domainConfig
     : undefined;
+
   return { slotHashSysvar, domainConfig, verifyArgs };
 }
+
 export function getDeduplicatedSigners(
   signers: (Secp256r1Key | TransactionSigner)[]
 ) {
@@ -327,11 +319,7 @@ export function convertConfigActionWrapper(
       case "SetMetadata":
         configActions.push({
           __kind: "SetMetadata",
-          fields: [
-            action.metadata
-              ? { __option: "Some", value: action.metadata }
-              : { __option: "None" },
-          ],
+          fields: [action.metadata ? some(action.metadata) : none()],
         });
         break;
     }
@@ -348,23 +336,13 @@ export function convertMember(x: {
   return {
     data: {
       permissions: x.permissions,
-      metadata: x.metadata
-        ? {
-            __option: "Some",
-            value: x.metadata,
-          }
-        : { __option: "None" },
+      metadata: x.metadata ? some(x.metadata) : none(),
       pubkey: convertPubkeyToMemberkey(x.pubkey),
     },
     verifyArgs:
       x.pubkey instanceof Secp256r1Key && x.pubkey.verifyArgs
-        ? {
-            __option: "Some",
-            value: x.pubkey.verifyArgs,
-          }
-        : {
-            __option: "None",
-          },
+        ? some(x.pubkey.verifyArgs)
+        : none(),
   };
 }
 export function getPubkeyString(pubkey: TransactionSigner | Secp256r1Key) {

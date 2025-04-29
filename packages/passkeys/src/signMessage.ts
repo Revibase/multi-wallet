@@ -1,5 +1,10 @@
-import { PublicKeyCredentialHint } from "@simplewebauthn/server";
-import { AuthenticationResponse, DEFAULT_AUTH_URL, openAuthUrl } from "./utils";
+import {
+  AuthenticationResponse,
+  BasePayload,
+  DEFAULT_AUTH_URL,
+  MessagePayload,
+} from "./utils";
+import { openAuthUrl } from "./utils/internal";
 
 export async function signMessage({
   message,
@@ -8,20 +13,15 @@ export async function signMessage({
   popUp,
   hints,
   debug,
-}: {
-  message: string;
-  authUrl?: string;
-  hints?: PublicKeyCredentialHint[];
-  popUp?: Window | null;
-  publicKey?: string;
-  debug?: boolean;
-}) {
+  additionalInfo,
+}: MessagePayload & BasePayload) {
   return (await openAuthUrl({
     authUrl: `${authUrl}/?redirectUrl=${encodeURIComponent(window.origin)}`,
-    message,
+    data: { type: "message", payload: message },
     publicKey,
     popUp,
     debug,
     hints,
+    additionalInfo,
   })) as AuthenticationResponse;
 }

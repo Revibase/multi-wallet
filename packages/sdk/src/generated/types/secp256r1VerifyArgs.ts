@@ -25,10 +25,20 @@ import {
   type Encoder,
   type ReadonlyUint8Array,
 } from '@solana/kit';
+import {
+  getSecp256r1PubkeyDecoder,
+  getSecp256r1PubkeyEncoder,
+  getSecp256r1SignatureDecoder,
+  getSecp256r1SignatureEncoder,
+  type Secp256r1Pubkey,
+  type Secp256r1PubkeyArgs,
+  type Secp256r1Signature,
+  type Secp256r1SignatureArgs,
+} from '.';
 
 export type Secp256r1VerifyArgs = {
-  signature: ReadonlyUint8Array;
-  pubkey: ReadonlyUint8Array;
+  signature: Secp256r1Signature;
+  pubkey: Secp256r1Pubkey;
   truncatedAuthData: ReadonlyUint8Array;
   clientDataJson: ReadonlyUint8Array;
   slotNumber: bigint;
@@ -36,8 +46,8 @@ export type Secp256r1VerifyArgs = {
 };
 
 export type Secp256r1VerifyArgsArgs = {
-  signature: ReadonlyUint8Array;
-  pubkey: ReadonlyUint8Array;
+  signature: Secp256r1SignatureArgs;
+  pubkey: Secp256r1PubkeyArgs;
   truncatedAuthData: ReadonlyUint8Array;
   clientDataJson: ReadonlyUint8Array;
   slotNumber: number | bigint;
@@ -46,8 +56,8 @@ export type Secp256r1VerifyArgsArgs = {
 
 export function getSecp256r1VerifyArgsEncoder(): Encoder<Secp256r1VerifyArgsArgs> {
   return getStructEncoder([
-    ['signature', fixEncoderSize(getBytesEncoder(), 64)],
-    ['pubkey', fixEncoderSize(getBytesEncoder(), 33)],
+    ['signature', getSecp256r1SignatureEncoder()],
+    ['pubkey', getSecp256r1PubkeyEncoder()],
     [
       'truncatedAuthData',
       addEncoderSizePrefix(getBytesEncoder(), getU32Encoder()),
@@ -63,8 +73,8 @@ export function getSecp256r1VerifyArgsEncoder(): Encoder<Secp256r1VerifyArgsArgs
 
 export function getSecp256r1VerifyArgsDecoder(): Decoder<Secp256r1VerifyArgs> {
   return getStructDecoder([
-    ['signature', fixDecoderSize(getBytesDecoder(), 64)],
-    ['pubkey', fixDecoderSize(getBytesDecoder(), 33)],
+    ['signature', getSecp256r1SignatureDecoder()],
+    ['pubkey', getSecp256r1PubkeyDecoder()],
     [
       'truncatedAuthData',
       addDecoderSizePrefix(getBytesDecoder(), getU32Decoder()),

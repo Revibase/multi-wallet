@@ -1,9 +1,10 @@
 use crate::{
+    id,
     state::{
         DomainConfig, MemberKey, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings,
         TransactionActionType, TransactionMessage, SEED_MULTISIG,
     },
-    ExecutableTransactionMessage, MultisigError, Permission, VaultTransactionMessage, SEED_VAULT,
+    ExecutableTransactionMessage, MultisigError, Permission, SEED_VAULT,
 };
 use anchor_lang::solana_program::hash::hash;
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
@@ -100,17 +101,18 @@ impl<'info> TransactionExecuteSync<'info> {
                 MultisigError::MemberDoesNotBelongToDomainConfig
             );
             let vault_transaction_message =
-                VaultTransactionMessage::convert_from_transaction_message(
-                    transaction_message,
-                    ctx.remaining_accounts,
-                )?;
+                transaction_message.convert_to_vault_transaction_message(ctx.remaining_accounts)?;
 
             let mut writer = Vec::new();
             vault_transaction_message.serialize(&mut writer)?;
             let transaction_message_hash = hash(&writer);
 
-            Secp256r1Pubkey::verify_secp256r1(
-                secp256r1_verify_args,
+            let secp256r1_verify_data = secp256r1_verify_args
+                .as_ref()
+                .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
+
+            Secp256r1Pubkey::verify_webauthn(
+                secp256r1_verify_data,
                 slot_hash_sysvar,
                 domain_config,
                 &settings.key(),
@@ -128,11 +130,9 @@ impl<'info> TransactionExecuteSync<'info> {
         transaction_message: TransactionMessage,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
-        let settings = &mut ctx.accounts.settings;
-        let vault_transaction_message = VaultTransactionMessage::convert_from_transaction_message(
-            &transaction_message,
-            ctx.remaining_accounts,
-        )?;
+        let settings = &ctx.accounts.settings;
+        let vault_transaction_message =
+            transaction_message.convert_to_vault_transaction_message(ctx.remaining_accounts)?;
         vault_transaction_message.validate()?;
         let num_lookups = vault_transaction_message.address_table_lookups.len();
         let message_end_index = num_lookups + vault_transaction_message.num_all_account_keys();
@@ -155,8 +155,7 @@ impl<'info> TransactionExecuteSync<'info> {
             &[settings.multi_wallet_bump],
         ];
 
-        let vault_pubkey =
-            Pubkey::create_program_address(vault_signer_seed, ctx.program_id).unwrap();
+        let vault_pubkey = Pubkey::create_program_address(vault_signer_seed, &id()).unwrap();
 
         let executable_message = ExecutableTransactionMessage::new_validated(
             vault_transaction_message,

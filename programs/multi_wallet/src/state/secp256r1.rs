@@ -5,18 +5,18 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use serde_json::Value;
 use std::str::from_utf8;
 
-#[derive(AnchorDeserialize, AnchorSerialize, Clone, Debug)]
+#[derive(AnchorDeserialize, AnchorSerialize, Clone)]
 pub struct Secp256r1VerifyArgs {
-    pub signature: [u8; SECP256R1_SIGNATURE_LENGTH],
-    pub pubkey: [u8; SECP256R1_PUBLIC_KEY_LENGTH],
+    pub signature: Secp256r1Signature,
+    pub pubkey: Secp256r1Pubkey,
     pub truncated_auth_data: Vec<u8>,
     pub client_data_json: Vec<u8>,
     pub slot_number: u64,
     pub slot_hash: [u8; 32],
 }
 
-pub const SECP256R1_PUBLIC_KEY_LENGTH: usize = 33;
-pub const SECP256R1_SIGNATURE_LENGTH: usize = 64;
+const SECP256R1_PUBLIC_KEY_LENGTH: usize = 33;
+const SECP256R1_SIGNATURE_LENGTH: usize = 64;
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct Secp256r1Signature(pub(crate) [u8; SECP256R1_SIGNATURE_LENGTH]);
@@ -25,6 +25,10 @@ pub struct Secp256r1Signature(pub(crate) [u8; SECP256R1_SIGNATURE_LENGTH]);
 pub struct Secp256r1Pubkey(pub(crate) [u8; SECP256R1_PUBLIC_KEY_LENGTH]);
 
 impl Secp256r1Pubkey {
+    pub fn to_bytes(&self) -> [u8; SECP256R1_PUBLIC_KEY_LENGTH] {
+        self.0
+    }
+
     fn decode_base64url(input: &str) -> Result<Vec<u8>> {
         Ok(URL_SAFE_NO_PAD
             .decode(input)
@@ -109,18 +113,40 @@ impl Secp256r1Pubkey {
         }
     }
 
-    pub fn verify_secp256r1<'info>(
-        secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
+    fn get_webauthn_message_hash(
+        client_data_json: &Vec<u8>,
+        truncated_auth_data: &Vec<u8>,
+        rp_id_hash: &[u8; 32],
+    ) -> [u8; 32] {
+        let client_data_hash = hash(client_data_json);
+        let message = hash(
+            &[
+                rp_id_hash.as_ref(),
+                truncated_auth_data.as_ref(),
+                client_data_hash.to_bytes().as_ref(),
+            ]
+            .concat(),
+        )
+        .to_bytes();
+        message
+    }
+
+    fn verify_signature(
+        _message: &[u8; 32],
+        _signature: &Secp256r1Signature,
+        _pubkey: &Secp256r1Pubkey,
+    ) -> bool {
+        true
+    }
+
+    pub fn verify_webauthn<'info>(
+        secp256r1_verify_data: &Secp256r1VerifyArgs,
         sysvar_slot_history: &Option<UncheckedAccount<'info>>,
         domain_config: &Option<AccountLoader<'info, DomainConfig>>,
         key: &Pubkey,
         message_hash: &[u8; 32],
         action_type: TransactionActionType,
     ) -> Result<bool> {
-        let secp256r1_verify_data = secp256r1_verify_args
-            .as_ref()
-            .ok_or(MultisigError::Secp256r1VerifyArgsIsMissing)?;
-
         let domain_data = domain_config
             .as_ref()
             .ok_or(MultisigError::DomainConfigIsMissing)?
@@ -163,19 +189,17 @@ impl Secp256r1Pubkey {
             MultisigError::InvalidChallenge
         );
 
-        let client_data_hash = hash(&secp256r1_verify_data.client_data_json);
+        let message = Self::get_webauthn_message_hash(
+            &secp256r1_verify_data.client_data_json,
+            &secp256r1_verify_data.truncated_auth_data,
+            &domain_data.rp_id_hash,
+        );
 
-        let _message = hash(
-            &[
-                domain_data.rp_id_hash.as_ref(),
-                secp256r1_verify_data.truncated_auth_data.as_ref(),
-                client_data_hash.to_bytes().as_ref(),
-            ]
-            .concat(),
-        )
-        .to_bytes();
-
-        Ok(true)
+        Ok(Self::verify_signature(
+            &message,
+            &secp256r1_verify_data.signature,
+            &secp256r1_verify_data.pubkey,
+        ))
     }
 }
 

@@ -6,7 +6,7 @@ import {
   accountsForTransactionExecute,
   extractSecp256r1VerificationArgs,
   getDeduplicatedSigners,
-} from "../utils/private";
+} from "../utils/internal";
 
 export async function executeTransactionSync({
   rpc,
@@ -23,19 +23,15 @@ export async function executeTransactionSync({
 
   const multiWallet = await getMultiWalletFromSettings(settings);
 
-  const {
-    accountMetas,
-    addressLookupTableAccounts,
-    message,
-    addressTableLookups,
-  } = await accountsForTransactionExecute({
-    rpc,
-    transactionMessageBytes,
-    multiWallet,
-    additionalSigners: dedupSigners.filter(
-      (x) => !(x instanceof Secp256r1Key)
-    ) as TransactionSigner[],
-  });
+  const { accountMetas, addressLookupTableAccounts, message } =
+    await accountsForTransactionExecute({
+      rpc,
+      transactionMessageBytes,
+      multiWallet,
+      additionalSigners: dedupSigners.filter(
+        (x) => !(x instanceof Secp256r1Key)
+      ) as TransactionSigner[],
+    });
   const { slotHashSysvar, domainConfig, verifyArgs } =
     extractSecp256r1VerificationArgs(
       dedupSigners.find((x) => x instanceof Secp256r1Key)
@@ -55,12 +51,12 @@ export async function executeTransactionSync({
       accountIndexes: new Uint8Array(x.accountIndexes),
       data: new Uint8Array(x.data),
     })),
-    addressTableLookups: addressTableLookups.map((x) => ({
+    addressTableLookups: message.addressTableLookups.map((x) => ({
       accountKeyIndex: accountMetas.findIndex(
-        (y) => y.address === x.lookupTableAddress
+        (y) => y.address === x.accountKey
       ),
-      writableIndexes: new Uint8Array(x.writableIndices),
-      readonlyIndexes: new Uint8Array(x.readableIndices),
+      writableIndexes: new Uint8Array(x.writableIndexes),
+      readonlyIndexes: new Uint8Array(x.readonlyIndexes),
     })),
     remainingAccounts: accountMetas,
   });

@@ -134,8 +134,13 @@ impl Settings {
             if member.data.pubkey.get_type().eq(&super::KeyType::Secp256r1) {
                 let (domain_config, rp_id_hash) =
                     verify_domain_config(remaining_accounts, &member.data.metadata)?;
-                Secp256r1Pubkey::verify_secp256r1(
-                    &member.verify_args,
+                let secp256r1_verify_data = member
+                    .verify_args
+                    .as_ref()
+                    .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
+
+                Secp256r1Pubkey::verify_webauthn(
+                    secp256r1_verify_data,
                     sysvar_slot_history,
                     &domain_config,
                     settings,
@@ -222,8 +227,12 @@ impl Settings {
             if member.data.pubkey.get_type().eq(&super::KeyType::Secp256r1) {
                 let (domain_config, rp_id_hash) =
                     verify_domain_config(remaining_accounts, &member.data.metadata)?;
-                Secp256r1Pubkey::verify_secp256r1(
-                    &member.verify_args,
+                let secp256r1_verify_data = member
+                    .verify_args
+                    .as_ref()
+                    .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
+                Secp256r1Pubkey::verify_webauthn(
+                    secp256r1_verify_data,
                     sysvar_slot_history,
                     &domain_config,
                     settings,
@@ -282,12 +291,11 @@ fn verify_domain_config<'a>(
             &[domain_data.bump],
         ];
 
-        let delegate_account = Pubkey::create_program_address(seeds, &id())
-            .map_err(|_| MultisigError::RpIdHashMismatch)?;
+        let delegate_account = Pubkey::create_program_address(seeds, &id()).unwrap();
 
         require!(
             delegate_account == *domain_account.key,
-            MultisigError::RpIdHashMismatch
+            MultisigError::MemberDoesNotBelongToDomainConfig
         );
 
         domain_data.rp_id_hash

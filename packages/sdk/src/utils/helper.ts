@@ -24,7 +24,7 @@ import {
   getHash,
   getPubkeyString,
   normalizeKey,
-} from "./private";
+} from "./internal";
 
 export async function getDomainConfig({
   rpIdHash,

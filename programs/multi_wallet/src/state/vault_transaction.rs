@@ -1,10 +1,7 @@
+use crate::MultisigError;
 use anchor_lang::prelude::*;
 
-use crate::MultisigError;
-
-use super::TransactionMessage;
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Default, Debug)]
 pub struct VaultTransactionMessage {
     /// The number of signer pubkeys in the account_keys vec.
     pub num_signers: u8,
@@ -31,40 +28,6 @@ pub struct VaultTransactionMessage {
 }
 
 impl VaultTransactionMessage {
-    pub fn convert_from_transaction_message(
-        value: &TransactionMessage,
-        remaining_accounts: &[AccountInfo],
-    ) -> Result<Self> {
-        let account_keys = remaining_accounts
-            .get(value.address_table_lookups.len()..)
-            .ok_or(MultisigError::InvalidNumberOfAccounts)?
-            .iter()
-            .map(|f| f.key())
-            .collect::<Vec<_>>();
-
-        let message_address_table_loopups = value
-            .address_table_lookups
-            .iter()
-            .map(|f| MessageAddressTableLookup {
-                account_key: remaining_accounts
-                    .get(f.account_key_index as usize)
-                    .ok_or(MultisigError::InvalidNumberOfAccounts)
-                    .unwrap()
-                    .key(),
-                writable_indexes: f.writable_indexes.clone(),
-                readonly_indexes: f.readonly_indexes.clone(),
-            })
-            .collect::<Vec<MessageAddressTableLookup>>();
-
-        Ok(Self {
-            num_signers: value.num_signers,
-            num_writable_signers: value.num_writable_signers,
-            num_writable_non_signers: value.num_writable_non_signers,
-            account_keys,
-            instructions: value.instructions.clone(),
-            address_table_lookups: message_address_table_loopups,
-        })
-    }
     pub fn validate(&self) -> Result<()> {
         let num_all_account_keys = self.account_keys.len()
             + self
@@ -152,7 +115,7 @@ impl VaultTransactionMessage {
 }
 
 // Concise serialization schema for instructions that make up transaction.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct CompiledInstruction {
     pub program_id_index: u8,
     /// Indices into the tx's `account_keys` list indicating which accounts to pass to the instruction.
@@ -163,7 +126,7 @@ pub struct CompiledInstruction {
 
 /// Address table lookups describe an on-chain address lookup table to use
 /// for loading more readonly and writable accounts in a single tx.
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct MessageAddressTableLookup {
     /// Address lookup table account key
     pub account_key: Pubkey,

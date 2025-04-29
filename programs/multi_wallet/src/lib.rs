@@ -135,9 +135,8 @@ pub mod multi_wallet {
     pub fn transaction_buffer_extend<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferExtend<'info>>,
         args: TransactionBufferExtendArgs,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
-        TransactionBufferExtend::process(ctx, args, secp256r1_verify_args)
+        TransactionBufferExtend::process(ctx, args)
     }
 
     /// Closes an existing transaction buffer.
@@ -156,7 +155,7 @@ pub mod multi_wallet {
         TransactionBufferClose::process(ctx, secp256r1_verify_args)
     }
 
-    /// Executes a transaction buffer.
+    /// Approve a transaction buffer for execution.
     ///
     /// # Parameters
     /// - `ctx`: The context of the vault transaction execution.
@@ -169,6 +168,19 @@ pub mod multi_wallet {
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
         TransactionBufferExecute::process(ctx, secp256r1_verify_args)
+    }
+
+    /// Executes a transaction.
+    ///
+    /// # Parameters
+    /// - `ctx`: The context of the vault transaction execution.
+    ///
+    /// # Returns
+    /// - `Result<()>`: The result of the vault transaction execution.
+    pub fn transaction_execute<'info>(
+        ctx: Context<'_, '_, '_, 'info, TransactionExecute<'info>>,
+    ) -> Result<()> {
+        TransactionExecute::process(ctx)
     }
 
     /// Executes a transaction synchronously.
@@ -186,5 +198,37 @@ pub mod multi_wallet {
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
         TransactionExecuteSync::process(ctx, transaction_message, secp256r1_verify_args)
+    }
+
+    /// Executes a token transfer based on a signed intent.
+    /// # Parameters
+    /// - `ctx`: The context of the token transfer.
+    /// - `amount`: The amount of tokens to transfer.
+    /// - `args`: Arguments for executing the token transfer.
+    ///
+    /// # Returns
+    /// - `Result<()>`: The result of the token transfer.
+    pub fn token_transfer_intent<'info>(
+        ctx: Context<'_, '_, '_, 'info, TokenTransferIntent<'info>>,
+        amount: u64,
+        secp256r1_verify_args: Secp256r1VerifyArgs,
+    ) -> Result<()> {
+        TokenTransferIntent::process(ctx, amount, secp256r1_verify_args)
+    }
+
+    /// Executes a native transfer based on a signed intent.
+    /// # Parameters
+    /// - `ctx`: The context of the native transfer.
+    /// - `amount`: The amount of tokens to transfer.
+    /// - `args`: Arguments for executing the native transfer.
+    ///
+    /// # Returns
+    /// - `Result<()>`: The result of the native transfer.
+    pub fn native_transfer_intent<'info>(
+        ctx: Context<'_, '_, '_, 'info, NativeTransferIntent<'info>>,
+        amount: u64,
+        secp256r1_verify_args: Secp256r1VerifyArgs,
+    ) -> Result<()> {
+        NativeTransferIntent::process(ctx, amount, secp256r1_verify_args)
     }
 }
