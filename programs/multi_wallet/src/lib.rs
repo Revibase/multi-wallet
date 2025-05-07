@@ -61,19 +61,15 @@ pub mod multi_wallet {
     ///
     /// # Parameters
     /// - `ctx`: The context of the multi-wallet creation.
-    /// - `initial_member`: The member key used to create the multi-wallet.
-    /// - `metadata`: An optional metadata for the multi-wallet.
-    /// - `label`: An optional label for the multi-wallet.
     ///
     /// # Returns
     /// - `Result<()>`: The result of the multi-wallet creation.
     pub fn create<'info>(
         ctx: Context<'_, '_, 'info, 'info, CreateMultiWallet<'info>>,
-        create_key: Pubkey,
-        initial_members: Vec<MemberWithVerifyArgs>,
-        metadata: Option<Pubkey>,
+        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
+        domain_config: Option<Pubkey>,
     ) -> Result<()> {
-        CreateMultiWallet::process(ctx, create_key, initial_members, metadata)
+        CreateMultiWallet::process(ctx, secp256r1_verify_args, domain_config)
     }
 
     /// # Parameters

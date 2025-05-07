@@ -16,6 +16,7 @@ import {
   createSolanaRpc,
   createSolanaRpcSubscriptions,
   createTransactionMessage,
+  getSignatureFromTransaction,
   IInstruction,
   KeyPairSigner,
   lamports,
@@ -88,24 +89,15 @@ describe("multi_wallet", () => {
       origin: "https://auth.revibase.com",
       authority: wallet.address,
     });
+
+    await sendTx(connection, [setDomainIx], payer, sendAndConfirm);
+
     const createWalletIx = await createWallet({
       feePayer: payer,
-      initialMembers: [
-        {
-          pubkey: wallet.address,
-          permissions: Permissions.all(),
-          metadata: null,
-        },
-      ],
-      metadata: address("9n6LHACaLSjm6dyQ1unbP4y4Azigq5xGuzRCG2XRZf9v"),
+      initialMember: wallet,
     });
 
-    await sendTx(
-      connection,
-      [setDomainIx, createWalletIx],
-      payer,
-      sendAndConfirm
-    );
+    await sendTx(connection, [createWalletIx], payer, sendAndConfirm);
 
     // Validation
     const delegateData = await fetchDelegateData(connection, wallet.address);
@@ -117,11 +109,6 @@ describe("multi_wallet", () => {
     );
     expect(accountData.members.length).equal(1); // Only creator is a member
     expect(accountData.threshold).equal(1); // Single-sig wallet
-    if (accountData.metadata.__option === "Some") {
-      expect(accountData.metadata.value).equal(
-        "9n6LHACaLSjm6dyQ1unbP4y4Azigq5xGuzRCG2XRZf9v"
-      );
-    }
 
     const transfer = getTransferSolInstruction({
       source: payer,
@@ -139,7 +126,6 @@ describe("multi_wallet", () => {
     const ix = await changeConfig({
       signers: [wallet],
       feePayer: payer,
-      rpc: connection,
       settings,
       configActions: [
         {
@@ -150,12 +136,10 @@ describe("multi_wallet", () => {
               permissions: Permissions.fromPermissions([
                 Permission.VoteTransaction,
               ]),
-              metadata: null,
             },
           ],
         },
         { type: "SetThreshold", threshold: 2 },
-        { type: "SetMetadata", metadata: null },
       ],
     });
 
@@ -174,7 +158,6 @@ describe("multi_wallet", () => {
     const ix = await changeConfig({
       signers: [wallet, payer],
       feePayer: payer,
-      rpc: connection,
       settings,
       configActions: [
         {
@@ -238,30 +221,37 @@ describe("multi_wallet", () => {
 
     const changeConfigIx = await changeConfig({
       signers: [wallet],
-      rpc: connection,
       feePayer: payer,
       settings,
       configActions: [
         {
-          type: "SetMembers",
+          type: "EditPermissions",
           members: [
             {
-              pubkey: test.address,
-              permissions: Permissions.all(),
-              metadata: null,
+              pubkey: wallet.address,
+              permissions: Permissions.fromPermissions([
+                Permission.IsInitialMember,
+              ]),
             },
           ],
+        },
+        {
+          type: "AddMembers",
+          members: [{ pubkey: test.address, permissions: Permissions.all() }],
         },
         { type: "SetThreshold", threshold: 1 },
       ],
     });
-
-    await sendTx(
-      connection,
-      [...result.ixs, changeConfigIx],
-      payer,
-      sendAndConfirm
-    );
+    try {
+      await sendTx(
+        connection,
+        [...result.ixs, changeConfigIx],
+        payer,
+        sendAndConfirm
+      );
+    } catch (error) {
+      console.log(error);
+    }
 
     const accountData = await fetchSettingsData(connection, settings);
     const delegateData = await fetchDelegateData(connection, test.address);
@@ -271,7 +261,7 @@ describe("multi_wallet", () => {
     expect(delegateData.multiWallet.toString()).equal(
       multi_wallet_vault.toString()
     );
-    expect(accountData.members.length).equal(1); // wallet + test
+    expect(accountData.members.length).equal(2); // wallet + test
     expect(accountData.threshold).equal(1);
   });
 
@@ -329,7 +319,7 @@ describe("multi_wallet", () => {
     expect(delegateData.multiWallet.toString()).equal(
       multi_wallet_vault.toString()
     );
-    expect(accountData.members.length).equal(1); //  test
+    expect(accountData.members.length).equal(2); //  test + wallet
     expect(accountData.threshold).equal(1);
   });
 });
@@ -350,4 +340,5 @@ async function sendTx(
   );
 
   await sendAndConfirm(tx, { commitment: "confirmed" });
+  return getSignatureFromTransaction(tx);
 }

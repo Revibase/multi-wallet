@@ -4,11 +4,10 @@ import { IPermissions } from "../generated";
 
 export type ConfigActionWrapper =
   | {
-      type: "SetMembers";
+      type: "EditPermissions";
       members: {
         pubkey: Address | Secp256r1Key;
         permissions: IPermissions;
-        metadata: Address | null;
       }[];
     }
   | {
@@ -16,9 +15,7 @@ export type ConfigActionWrapper =
       members: {
         pubkey: Address | Secp256r1Key;
         permissions: IPermissions;
-        metadata: Address | null;
       }[];
     }
   | { type: "RemoveMembers"; members: (Address | Secp256r1Key)[] }
-  | { type: "SetThreshold"; threshold: number }
-  | { type: "SetMetadata"; metadata: Address | null };
+  | { type: "SetThreshold"; threshold: number };

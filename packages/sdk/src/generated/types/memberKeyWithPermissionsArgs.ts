@@ -8,18 +8,11 @@
 
 import {
   combineCodec,
-  getAddressDecoder,
-  getAddressEncoder,
-  getOptionDecoder,
-  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
-  type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type Option,
-  type OptionOrNullable,
 } from "@solana/kit";
 import {
   getMemberKeyDecoder,
@@ -32,34 +25,36 @@ import {
   type PermissionsArgs,
 } from ".";
 
-export type Member = {
+export type MemberKeyWithPermissionsArgs = {
   pubkey: MemberKey;
   permissions: IPermissions;
-  domainConfig: Option<Address>;
 };
 
-export type MemberArgs = {
+export type MemberKeyWithPermissionsArgsArgs = {
   pubkey: MemberKeyArgs;
   permissions: PermissionsArgs;
-  domainConfig: OptionOrNullable<Address>;
 };
 
-export function getMemberEncoder(): Encoder<MemberArgs> {
+export function getMemberKeyWithPermissionsArgsEncoder(): Encoder<MemberKeyWithPermissionsArgsArgs> {
   return getStructEncoder([
     ["pubkey", getMemberKeyEncoder()],
     ["permissions", getPermissionsEncoder()],
-    ["domainConfig", getOptionEncoder(getAddressEncoder())],
   ]);
 }
 
-export function getMemberDecoder(): Decoder<Member> {
+export function getMemberKeyWithPermissionsArgsDecoder(): Decoder<MemberKeyWithPermissionsArgs> {
   return getStructDecoder([
     ["pubkey", getMemberKeyDecoder()],
     ["permissions", getPermissionsDecoder()],
-    ["domainConfig", getOptionDecoder(getAddressDecoder())],
   ]);
 }
 
-export function getMemberCodec(): Codec<MemberArgs, Member> {
-  return combineCodec(getMemberEncoder(), getMemberDecoder());
+export function getMemberKeyWithPermissionsArgsCodec(): Codec<
+  MemberKeyWithPermissionsArgsArgs,
+  MemberKeyWithPermissionsArgs
+> {
+  return combineCodec(
+    getMemberKeyWithPermissionsArgsEncoder(),
+    getMemberKeyWithPermissionsArgsDecoder()
+  );
 }

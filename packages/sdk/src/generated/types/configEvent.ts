@@ -8,22 +8,15 @@
 
 import {
   combineCodec,
-  getAddressDecoder,
-  getAddressEncoder,
   getArrayDecoder,
   getArrayEncoder,
-  getOptionDecoder,
-  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
   getU8Decoder,
   getU8Encoder,
-  type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type Option,
-  type OptionOrNullable,
 } from '@solana/kit';
 import {
   getMemberDecoder,
@@ -32,35 +25,21 @@ import {
   type MemberArgs,
 } from '.';
 
-export type ConfigEvent = {
-  createKey: Address;
-  members: Array<Member>;
-  threshold: number;
-  metadata: Option<Address>;
-};
+export type ConfigEvent = { members: Array<Member>; threshold: number };
 
-export type ConfigEventArgs = {
-  createKey: Address;
-  members: Array<MemberArgs>;
-  threshold: number;
-  metadata: OptionOrNullable<Address>;
-};
+export type ConfigEventArgs = { members: Array<MemberArgs>; threshold: number };
 
 export function getConfigEventEncoder(): Encoder<ConfigEventArgs> {
   return getStructEncoder([
-    ['createKey', getAddressEncoder()],
     ['members', getArrayEncoder(getMemberEncoder())],
     ['threshold', getU8Encoder()],
-    ['metadata', getOptionEncoder(getAddressEncoder())],
   ]);
 }
 
 export function getConfigEventDecoder(): Decoder<ConfigEvent> {
   return getStructDecoder([
-    ['createKey', getAddressDecoder()],
     ['members', getArrayDecoder(getMemberDecoder())],
     ['threshold', getU8Decoder()],
-    ['metadata', getOptionDecoder(getAddressDecoder())],
   ]);
 }
 

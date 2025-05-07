@@ -72,9 +72,6 @@
         "",
         "# Parameters",
         "- `ctx`: The context of the multi-wallet creation.",
-        "- `initial_member`: The member key used to create the multi-wallet.",
-        "- `metadata`: An optional metadata for the multi-wallet.",
-        "- `label`: An optional label for the multi-wallet.",
         "",
         "# Returns",
         "- `Result<()>`: The result of the multi-wallet creation."
@@ -88,21 +85,12 @@
         },
         {
           "name": "settings",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "create_key"
-              }
-            ]
-          }
+          "writable": true
+        },
+        {
+          "name": "initial_member",
+          "signer": true,
+          "optional": true
         },
         {
           "name": "system_program",
@@ -116,21 +104,17 @@
       ],
       "args": [
         {
-          "name": "create_key",
-          "type": "pubkey"
-        },
-        {
-          "name": "initial_members",
+          "name": "secp256r1_verify_args",
           "type": {
-            "vec": {
+            "option": {
               "defined": {
-                "name": "MemberWithVerifyArgs"
+                "name": "Secp256r1VerifyArgs"
               }
             }
           }
         },
         {
-          "name": "metadata",
+          "name": "domain_config",
           "type": {
             "option": "pubkey"
           }
@@ -775,207 +759,207 @@
     {
       "code": 6000,
       "name": "InvalidSecp256r1VerifyArg",
-      "msg": "Missing webauthn signature verify arguments."
+      "msg": "Missing or malformed WebAuthn signature verification arguments (secp256r1)."
     },
     {
       "code": 6001,
       "name": "DurableNonceDetected",
-      "msg": "Durable nonce detected. Durable nonce is not allowed for this transaction."
+      "msg": "Durable nonce detected in the transaction. Durable nonces are unsupported."
     },
     {
       "code": 6002,
       "name": "DuplicateMember",
-      "msg": "Duplicate public keys found in the members array. Each member must have a unique public key."
+      "msg": "Duplicate public keys found in the 'members' vector. Keys must be unique."
     },
     {
       "code": 6003,
-      "name": "EmptyMembers",
-      "msg": "The members array cannot be empty. Add at least one member."
+      "name": "InitialMemberCannotBeModified",
+      "msg": "Cannot modify the initial member of the multisig."
     },
     {
       "code": 6004,
-      "name": "TooManyMembers",
-      "msg": "Too many members specified. A maximum of 65,535 members is allowed."
+      "name": "EmptyMembers",
+      "msg": "Multisig must have at least one member."
     },
     {
       "code": 6005,
-      "name": "InvalidThreshold",
-      "msg": "Threshold must be between 1 and the total number of voting members. Note: only one passkey voter is counted toward this limit, even if more are registered."
+      "name": "TooManyMembers",
+      "msg": "Member list exceeds maximum allowed length (65,535)."
     },
     {
       "code": 6006,
-      "name": "InvalidTransactionMessage",
-      "msg": "The provided TransactionMessage is malformed or improperly formatted."
+      "name": "InvalidThreshold",
+      "msg": "Invalid threshold. Must be ≥ 1 and ≤ voting members (only one passkey voter counts)."
     },
     {
       "code": 6007,
-      "name": "InvalidNumberOfAccounts",
-      "msg": "Incorrect number of accounts provided. Verify the account count matches the expected number."
+      "name": "InvalidTransactionMessage",
+      "msg": "Malformed or invalid TransactionMessage structure."
     },
     {
       "code": 6008,
-      "name": "InvalidAccount",
-      "msg": "One or more accounts provided are invalid. Ensure all accounts meet the requirements."
+      "name": "InvalidNumberOfAccounts",
+      "msg": "Mismatch in expected and provided account count."
     },
     {
       "code": 6009,
-      "name": "MissingAccount",
-      "msg": "Required account is missing. Ensure all necessary accounts are included."
+      "name": "InvalidAccount",
+      "msg": "One or more provided accounts failed validation."
     },
     {
       "code": 6010,
-      "name": "AccountAlreadyExist",
-      "msg": "The account already exist."
+      "name": "MissingAccount",
+      "msg": "Required account is missing from instruction context."
     },
     {
       "code": 6011,
-      "name": "IllegalAccountOwner",
-      "msg": "Account is not owned by the Multisig program. Only accounts under the Multisig program can be used."
+      "name": "AccountAlreadyExist",
+      "msg": "Target account already exists. Initialization is not allowed."
     },
     {
       "code": 6012,
-      "name": "InsufficientSignerWithExecutePermission",
-      "msg": "Require at least one signer to have the execute permission."
+      "name": "IllegalAccountOwner",
+      "msg": "Account is not owned by the multisig program."
     },
     {
       "code": 6013,
-      "name": "InsufficientSignerWithInitiatePermission",
-      "msg": "Require at least one signer to have the initiate permission."
+      "name": "InsufficientSignerWithExecutePermission",
+      "msg": "At least one signer must have 'execute' permission."
     },
     {
       "code": 6014,
-      "name": "InsufficientSignersWithVotePermission",
-      "msg": "Require threshold to be lesser than or equal to the number of members with vote permission."
+      "name": "InsufficientSignerWithInitiatePermission",
+      "msg": "At least one signer must have 'initiate' permission."
     },
     {
       "code": 6015,
-      "name": "InsufficientSignerWithIsDelegatePermission",
-      "msg": "Require at least one signer to have isDelegate permission."
+      "name": "InsufficientSignersWithVotePermission",
+      "msg": "Threshold exceeds number of members with 'vote' permission."
     },
     {
       "code": 6016,
-      "name": "NoSignerFound",
-      "msg": "No signer found."
+      "name": "InsufficientSignerWithIsDelegatePermission",
+      "msg": "At least one signer must have 'is_delegate' permission."
     },
     {
       "code": 6017,
-      "name": "UnauthorisedToCloseTransactionBuffer",
-      "msg": "Only the creator or rent payer of the transaction buffer have permission to close the buffer."
+      "name": "NoSignerFound",
+      "msg": "No valid signer was found in the current context."
     },
     {
       "code": 6018,
-      "name": "InvalidBuffer",
-      "msg": "Buffer does not match the pre defined buffer."
+      "name": "UnauthorisedToCloseTransactionBuffer",
+      "msg": "Only the transaction creator or rent payer may close the transaction buffer."
     },
     {
       "code": 6019,
-      "name": "FinalBufferHashMismatch",
-      "msg": "Final message buffer hash doesnt match the expected hash"
+      "name": "InvalidBuffer",
+      "msg": "Buffer content does not match the expected hash."
     },
     {
       "code": 6020,
-      "name": "FinalBufferSizeExceeded",
-      "msg": "Final buffer size cannot exceed 4000 bytes"
+      "name": "FinalBufferHashMismatch",
+      "msg": "Final buffer hash mismatch. Possibly tampered or improperly serialized."
     },
     {
       "code": 6021,
-      "name": "FinalBufferSizeMismatch",
-      "msg": "Final buffer size mismatch"
+      "name": "FinalBufferSizeExceeded",
+      "msg": "Final serialized buffer size exceeds the 10128-byte limit."
     },
     {
       "code": 6022,
-      "name": "TransactionHasExpired",
-      "msg": "Transaction has expired. 3 min has passed since the transaction was created."
+      "name": "FinalBufferSizeMismatch",
+      "msg": "Declared final buffer size does not match actual size."
     },
     {
       "code": 6023,
-      "name": "TransactionNotApproved",
-      "msg": "Transaction isn't approved for execution yet."
+      "name": "TransactionHasExpired",
+      "msg": "Transaction expired — TTL of 3 minutes exceeded."
     },
     {
       "code": 6024,
-      "name": "ProtectedAccount",
-      "msg": "Account is protected, it cannot be passed into a CPI as writable"
+      "name": "TransactionNotApproved",
+      "msg": "Transaction has not yet reached the required approval threshold."
     },
     {
       "code": 6025,
-      "name": "MaxLengthExceeded",
-      "msg": "String must be lesser than 256 characters."
+      "name": "ProtectedAccount",
+      "msg": "Writable CPI attempted on a protected account. This is not allowed."
     },
     {
       "code": 6026,
-      "name": "MissingSysvarSlotHistory",
-      "msg": "Slot history sysvar is missing."
+      "name": "MaxLengthExceeded",
+      "msg": "Input string exceeds 255 character limit."
     },
     {
       "code": 6027,
-      "name": "InvalidSysvarDataFormat",
-      "msg": "Failed to parse sysvar data."
+      "name": "MissingSysvarSlotHistory",
+      "msg": "Sysvar: Slot history is missing. Ensure it's passed as an account."
     },
     {
       "code": 6028,
-      "name": "SlotNumberNotFound",
-      "msg": "Slot number not found in slot history."
+      "name": "InvalidSysvarDataFormat",
+      "msg": "Sysvar parsing failed. Expected slot history format is invalid or corrupted."
     },
     {
       "code": 6029,
-      "name": "SlotHashMismatch",
-      "msg": "Slot hash does not match the expected value."
+      "name": "SlotNumberNotFound",
+      "msg": "Specified slot not found in the provided slot history."
     },
     {
       "code": 6030,
-      "name": "DomainConfigIsMissing",
-      "msg": "Domain Config is missing."
+      "name": "SlotHashMismatch",
+      "msg": "Slot hash does not match recorded history."
     },
     {
       "code": 6031,
-      "name": "MemberDoesNotBelongToDomainConfig",
-      "msg": "Member does not belong to the specified domain config."
+      "name": "DomainConfigIsMissing",
+      "msg": "Domain configuration account is missing."
     },
     {
       "code": 6032,
-      "name": "RpIdHashMismatch",
-      "msg": "Rp Id does not match with the specified domain config."
+      "name": "MemberDoesNotBelongToDomainConfig",
+      "msg": "Member is not registered in the specified domain config."
     },
     {
       "code": 6033,
-      "name": "MissingMetadata",
-      "msg": "Metadata containing the pubkey of the domain config account is required when adding a passkey"
+      "name": "RpIdHashMismatch",
+      "msg": "Client RP ID hash does not match domain configuration."
     },
     {
       "code": 6034,
       "name": "InvalidJson",
-      "msg": "Unable to parse json data."
+      "msg": "Failed to parse JSON in client data. Invalid format."
     },
     {
       "code": 6035,
       "name": "MissingOrigin",
-      "msg": "Origin is missing in client data json"
+      "msg": "Missing 'origin' field in clientDataJSON."
     },
     {
       "code": 6036,
       "name": "InvalidOrigin",
-      "msg": "Origin in client data json is invalid."
+      "msg": "Invalid or unexpected 'origin' in clientDataJSON."
     },
     {
       "code": 6037,
       "name": "MissingType",
-      "msg": "Type is missing in client data json"
+      "msg": "Missing 'type' field in clientDataJSON."
     },
     {
       "code": 6038,
       "name": "InvalidType",
-      "msg": "Type in client data json is not equals to webauthn.get"
+      "msg": "Invalid 'type' in clientDataJSON. Expected 'webauthn.get'."
     },
     {
       "code": 6039,
       "name": "MissingChallenge",
-      "msg": "Challenge is missing in client data json"
+      "msg": "Missing 'challenge' field in clientDataJSON."
     },
     {
       "code": 6040,
       "name": "InvalidChallenge",
-      "msg": "Challenge in client data json is invalid."
+      "msg": "Invalid or mismatched challenge in clientDataJSON."
     }
   ],
   "types": [
@@ -1009,12 +993,12 @@
         "kind": "enum",
         "variants": [
           {
-            "name": "SetMembers",
+            "name": "EditPermissions",
             "fields": [
               {
                 "vec": {
                   "defined": {
-                    "name": "MemberWithVerifyArgs"
+                    "name": "MemberKeyWithPermissionsArgs"
                   }
                 }
               }
@@ -1047,14 +1031,6 @@
           {
             "name": "SetThreshold",
             "fields": ["u8"]
-          },
-          {
-            "name": "SetMetadata",
-            "fields": [
-              {
-                "option": "pubkey"
-              }
-            ]
           }
         ]
       }
@@ -1064,10 +1040,6 @@
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "create_key",
-            "type": "pubkey"
-          },
           {
             "name": "members",
             "type": {
@@ -1081,12 +1053,6 @@
           {
             "name": "threshold",
             "type": "u8"
-          },
-          {
-            "name": "metadata",
-            "type": {
-              "option": "pubkey"
-            }
           }
         ]
       }
@@ -1201,7 +1167,7 @@
             }
           },
           {
-            "name": "metadata",
+            "name": "domain_config",
             "type": {
               "option": "pubkey"
             }
@@ -1222,6 +1188,30 @@
             "name": "key",
             "type": {
               "array": ["u8", 33]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MemberKeyWithPermissionsArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "pubkey",
+            "type": {
+              "defined": {
+                "name": "MemberKey"
+              }
+            }
+          },
+          {
+            "name": "permissions",
+            "type": {
+              "defined": {
+                "name": "Permissions"
+              }
             }
           }
         ]
@@ -1336,10 +1326,6 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "create_key",
-            "type": "pubkey"
-          },
-          {
             "name": "threshold",
             "type": "u8"
           },
@@ -1350,12 +1336,6 @@
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "metadata",
-            "type": {
-              "option": "pubkey"
-            }
           },
           {
             "name": "members",

@@ -70,10 +70,17 @@ impl TransactionBufferClose<'_> {
                     .find(|x| x.pubkey.eq(&signer))
                     .ok_or(MultisigError::MissingAccount)?;
 
-                let metadata = member.metadata.ok_or(MultisigError::MissingMetadata)?;
+                let expected_domain_config = member
+                    .domain_config
+                    .ok_or(MultisigError::DomainConfigIsMissing)?;
 
                 require!(
-                    domain_config.is_some() && domain_config.as_ref().unwrap().key().eq(&metadata),
+                    domain_config.is_some()
+                        && domain_config
+                            .as_ref()
+                            .unwrap()
+                            .key()
+                            .eq(&expected_domain_config),
                     MultisigError::MemberDoesNotBelongToDomainConfig
                 );
 

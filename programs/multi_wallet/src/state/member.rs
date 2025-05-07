@@ -9,7 +9,7 @@ use super::{Secp256r1Pubkey, Secp256r1VerifyArgs};
 pub struct Member {
     pub pubkey: MemberKey,
     pub permissions: Permissions,
-    pub metadata: Option<Pubkey>,
+    pub domain_config: Option<Pubkey>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -22,6 +22,12 @@ pub struct MemberWithVerifyArgs {
 pub struct MemberKey {
     pub key_type: u8,
     pub key: [u8; 33],
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct MemberKeyWithPermissionsArgs {
+    pub pubkey: MemberKey,
+    pub permissions: Permissions,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -75,10 +81,10 @@ impl MemberKey {
         MemberKey::new(KeyType::Secp256r1, pubkey.to_bytes())
     }
 
-    pub fn get_seed(&self) -> &[u8] {
+    pub fn get_seed(&self) -> [u8; 32] {
         match KeyType::from(self.key_type) {
-            KeyType::Ed25519 => &self.key[1..],
-            KeyType::Secp256r1 => &self.key[1..],
+            KeyType::Ed25519 => self.key[1..].try_into().unwrap(),
+            KeyType::Secp256r1 => self.key[1..].try_into().unwrap(),
         }
     }
 
@@ -99,6 +105,7 @@ pub enum Permission {
     VoteTransaction = 1 << 1,
     ExecuteTransaction = 1 << 2,
     IsDelegate = 1 << 3,
+    IsInitialMember = 1 << 4,
 }
 
 /// Bitmask for permissions.

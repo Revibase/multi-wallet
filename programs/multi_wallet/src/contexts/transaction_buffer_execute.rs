@@ -81,10 +81,17 @@ impl<'info> TransactionBufferExecute<'info> {
         );
 
         if signer.get_type().eq(&KeyType::Secp256r1) {
-            let metadata = member.metadata.ok_or(MultisigError::MissingMetadata)?;
+            let expected_domain_config = member
+                .domain_config
+                .ok_or(MultisigError::DomainConfigIsMissing)?;
 
             require!(
-                domain_config.is_some() && domain_config.as_ref().unwrap().key().eq(&metadata),
+                domain_config.is_some()
+                    && domain_config
+                        .as_ref()
+                        .unwrap()
+                        .key()
+                        .eq(&expected_domain_config),
                 MultisigError::MemberDoesNotBelongToDomainConfig
             );
 

@@ -2,126 +2,126 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum MultisigError {
-    #[msg("Missing webauthn signature verify arguments.")]
+    #[msg("Missing or malformed WebAuthn signature verification arguments (secp256r1).")]
     InvalidSecp256r1VerifyArg,
 
-    #[msg("Durable nonce detected. Durable nonce is not allowed for this transaction.")]
+    #[msg("Durable nonce detected in the transaction. Durable nonces are unsupported.")]
     DurableNonceDetected,
 
-    #[msg("Duplicate public keys found in the members array. Each member must have a unique public key.")]
+    #[msg("Duplicate public keys found in the 'members' vector. Keys must be unique.")]
     DuplicateMember,
 
-    #[msg("The members array cannot be empty. Add at least one member.")]
+    #[msg("Cannot modify the initial member of the multisig.")]
+    InitialMemberCannotBeModified,
+
+    #[msg("Multisig must have at least one member.")]
     EmptyMembers,
 
-    #[msg("Too many members specified. A maximum of 65,535 members is allowed.")]
+    #[msg("Member list exceeds maximum allowed length (65,535).")]
     TooManyMembers,
 
-    #[msg("Threshold must be between 1 and the total number of voting members. Note: only one passkey voter is counted toward this limit, even if more are registered.")]
+    #[msg("Invalid threshold. Must be ≥ 1 and ≤ voting members (only one passkey voter counts).")]
     InvalidThreshold,
 
-    #[msg("The provided TransactionMessage is malformed or improperly formatted.")]
+    #[msg("Malformed or invalid TransactionMessage structure.")]
     InvalidTransactionMessage,
 
-    #[msg("Incorrect number of accounts provided. Verify the account count matches the expected number.")]
+    #[msg("Mismatch in expected and provided account count.")]
     InvalidNumberOfAccounts,
 
-    #[msg("One or more accounts provided are invalid. Ensure all accounts meet the requirements.")]
+    #[msg("One or more provided accounts failed validation.")]
     InvalidAccount,
 
-    #[msg("Required account is missing. Ensure all necessary accounts are included.")]
+    #[msg("Required account is missing from instruction context.")]
     MissingAccount,
 
-    #[msg("The account already exist.")]
+    #[msg("Target account already exists. Initialization is not allowed.")]
     AccountAlreadyExist,
 
-    #[msg("Account is not owned by the Multisig program. Only accounts under the Multisig program can be used.")]
+    #[msg("Account is not owned by the multisig program.")]
     IllegalAccountOwner,
 
-    #[msg("Require at least one signer to have the execute permission.")]
+    #[msg("At least one signer must have 'execute' permission.")]
     InsufficientSignerWithExecutePermission,
 
-    #[msg("Require at least one signer to have the initiate permission.")]
+    #[msg("At least one signer must have 'initiate' permission.")]
     InsufficientSignerWithInitiatePermission,
 
-    #[msg("Require threshold to be lesser than or equal to the number of members with vote permission.")]
+    #[msg("Threshold exceeds number of members with 'vote' permission.")]
     InsufficientSignersWithVotePermission,
 
-    #[msg("Require at least one signer to have isDelegate permission.")]
+    #[msg("At least one signer must have 'is_delegate' permission.")]
     InsufficientSignerWithIsDelegatePermission,
 
-    #[msg("No signer found.")]
+    #[msg("No valid signer was found in the current context.")]
     NoSignerFound,
 
-    #[msg("Only the creator or rent payer of the transaction buffer have permission to close the buffer.")]
+    #[msg("Only the transaction creator or rent payer may close the transaction buffer.")]
     UnauthorisedToCloseTransactionBuffer,
 
-    #[msg("Buffer does not match the pre defined buffer.")]
+    #[msg("Buffer content does not match the expected hash.")]
     InvalidBuffer,
 
-    #[msg("Final message buffer hash doesnt match the expected hash")]
+    #[msg("Final buffer hash mismatch. Possibly tampered or improperly serialized.")]
     FinalBufferHashMismatch,
 
-    #[msg("Final buffer size cannot exceed 4000 bytes")]
+    #[msg("Final serialized buffer size exceeds the 10128-byte limit.")]
     FinalBufferSizeExceeded,
 
-    #[msg("Final buffer size mismatch")]
+    #[msg("Declared final buffer size does not match actual size.")]
     FinalBufferSizeMismatch,
 
-    #[msg("Transaction has expired. 3 min has passed since the transaction was created.")]
+    #[msg("Transaction expired — TTL of 3 minutes exceeded.")]
     TransactionHasExpired,
 
-    #[msg("Transaction isn't approved for execution yet.")]
+    #[msg("Transaction has not yet reached the required approval threshold.")]
     TransactionNotApproved,
 
-    #[msg("Account is protected, it cannot be passed into a CPI as writable")]
+    #[msg("Writable CPI attempted on a protected account. This is not allowed.")]
     ProtectedAccount,
 
-    #[msg("String must be lesser than 256 characters.")]
+    #[msg("Input string exceeds 255 character limit.")]
     MaxLengthExceeded,
 
-    #[msg("Slot history sysvar is missing.")]
+    #[msg("Sysvar: Slot history is missing. Ensure it's passed as an account.")]
     MissingSysvarSlotHistory,
 
-    #[msg("Failed to parse sysvar data.")]
+    #[msg("Sysvar parsing failed. Expected slot history format is invalid or corrupted.")]
     InvalidSysvarDataFormat,
 
-    #[msg("Slot number not found in slot history.")]
+    #[msg("Specified slot not found in the provided slot history.")]
     SlotNumberNotFound,
 
-    #[msg("Slot hash does not match the expected value.")]
+    #[msg("Slot hash does not match recorded history.")]
     SlotHashMismatch,
 
-    #[msg("Domain Config is missing.")]
+    #[msg("Domain configuration account is missing.")]
     DomainConfigIsMissing,
 
-    #[msg("Member does not belong to the specified domain config.")]
+    #[msg("Member is not registered in the specified domain config.")]
     MemberDoesNotBelongToDomainConfig,
 
-    #[msg("Rp Id does not match with the specified domain config.")]
+    #[msg("Client RP ID hash does not match domain configuration.")]
     RpIdHashMismatch,
 
-    #[msg("Metadata containing the pubkey of the domain config account is required when adding a passkey")]
-    MissingMetadata,
-
-    #[msg("Unable to parse json data.")]
+    #[msg("Failed to parse JSON in client data. Invalid format.")]
     InvalidJson,
 
-    #[msg("Origin is missing in client data json")]
+    #[msg("Missing 'origin' field in clientDataJSON.")]
     MissingOrigin,
 
-    #[msg("Origin in client data json is invalid.")]
+    #[msg("Invalid or unexpected 'origin' in clientDataJSON.")]
     InvalidOrigin,
 
-    #[msg("Type is missing in client data json")]
+    #[msg("Missing 'type' field in clientDataJSON.")]
     MissingType,
 
-    #[msg("Type in client data json is not equals to webauthn.get")]
+    #[msg("Invalid 'type' in clientDataJSON. Expected 'webauthn.get'.")]
     InvalidType,
 
-    #[msg("Challenge is missing in client data json")]
+    #[msg("Missing 'challenge' field in clientDataJSON.")]
     MissingChallenge,
 
-    #[msg("Challenge in client data json is invalid.")]
+    #[msg("Invalid or mismatched challenge in clientDataJSON.")]
     InvalidChallenge,
 }

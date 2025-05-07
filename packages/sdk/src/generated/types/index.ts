@@ -6,14 +6,15 @@
  * @see https://github.com/codama-idl/codama
  */
 
-export * from './compiledInstruction';
-export * from './configAction';
-export * from './configEvent';
-export * from './member';
-export * from './memberKey';
-export * from './memberWithVerifyArgs';
-export * from './permissions';
-export * from './secp256r1Pubkey';
-export * from './secp256r1Signature';
-export * from './secp256r1VerifyArgs';
-export * from './transactionMessageAddressTableLookup';
+export * from "./compiledInstruction";
+export * from "./configAction";
+export * from "./configEvent";
+export * from "./member";
+export * from "./memberKey";
+export * from "./memberKeyWithPermissionsArgs";
+export * from "./memberWithVerifyArgs";
+export * from "./permissions";
+export * from "./secp256r1Pubkey";
+export * from "./secp256r1Signature";
+export * from "./secp256r1VerifyArgs";
+export * from "./transactionMessageAddressTableLookup";

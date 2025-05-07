@@ -3,11 +3,8 @@ import {
   Address,
   IAccountMeta,
   IAccountSignerMeta,
-  Rpc,
-  SolanaRpcApi,
   TransactionSigner,
 } from "@solana/kit";
-import { fetchSettingsData } from "../functions";
 import { getChangeConfigInstruction } from "../generated";
 import {
   ConfigActionWrapper,
@@ -15,22 +12,19 @@ import {
   Permissions,
   Secp256r1Key,
 } from "../types";
-import { getDelegateAddress, getMemberKeyString } from "../utils";
+import { getDelegateAddress } from "../utils";
 import {
   convertConfigActionWrapper,
-  convertMemberkeyToPubKey,
   extractSecp256r1VerificationArgs,
   getDeduplicatedSigners,
 } from "../utils/internal";
 
 export async function changeConfig({
-  rpc,
   settings,
   feePayer,
   signers,
   configActions,
 }: {
-  rpc: Rpc<SolanaRpcApi>;
   feePayer: TransactionSigner;
   signers: (TransactionSigner | Secp256r1Key)[];
   settings: Address;
@@ -55,14 +49,14 @@ export async function changeConfig({
       case "AddMembers":
         for (const x of action.members) {
           if (x.pubkey instanceof Secp256r1Key) {
-            if (x.metadata) {
+            if (domainConfig) {
               remainingAccounts.push({
-                address: x.metadata,
+                address: domainConfig,
                 role: AccountRole.READONLY,
               });
             } else {
               throw new Error(
-                "Metadata cannot be null for Secp256r1Key. It needs to be linked to a domain config address."
+                "Domain config cannot be null for Secp256r1Key. It needs to be linked to a domain config address."
               );
             }
           }
@@ -82,67 +76,6 @@ export async function changeConfig({
               role: AccountRole.WRITABLE,
             }))
           ))
-        );
-        break;
-      case "SetMembers":
-        for (const x of action.members) {
-          if (x.pubkey instanceof Secp256r1Key) {
-            if (x.metadata) {
-              remainingAccounts.push({
-                address: x.metadata,
-                role: AccountRole.READONLY,
-              });
-            } else {
-              throw new Error(
-                "Metadata cannot be null for Secp256r1Key. It needs to be linked to a domain config address."
-              );
-            }
-          }
-        }
-        const settingsData = await fetchSettingsData(rpc, settings);
-        if (!settingsData) {
-          throw new Error("Unable to fetch settings data.");
-        }
-        const hashSet = new Set<string>();
-        const delegateAccounts: (Address | Secp256r1Key)[] = [];
-        action.members
-          .filter(
-            (f) =>
-              !settingsData.members.some(
-                (member) =>
-                  getMemberKeyString(member.pubkey) === f.pubkey.toString()
-              ) && Permissions.has(f.permissions, Permission.IsDelegate)
-          )
-          .forEach((f) => {
-            if (!hashSet.has(f.pubkey.toString())) {
-              delegateAccounts.push(f.pubkey);
-              hashSet.add(f.pubkey.toString());
-            }
-          });
-
-        settingsData.members
-          .filter(
-            (f) =>
-              !action.members.some(
-                (member) =>
-                  member.pubkey.toString() === getMemberKeyString(f.pubkey)
-              ) && Permissions.has(f.permissions, Permission.IsDelegate)
-          )
-          .forEach((f) => {
-            const pubkey = convertMemberkeyToPubKey(f.pubkey);
-            if (!hashSet.has(pubkey.toString())) {
-              delegateAccounts.push(pubkey);
-              hashSet.add(pubkey.toString());
-            }
-          });
-
-        await Promise.all(
-          delegateAccounts.map(async (x) =>
-            remainingAccounts.push({
-              address: await getDelegateAddress(x),
-              role: AccountRole.WRITABLE,
-            })
-          )
         );
         break;
     }

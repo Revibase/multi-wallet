@@ -46,15 +46,15 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from "@solana/kit";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from '@solana/kit';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-} from "../types";
+} from '../types';
 
 export const TRANSACTION_BUFFER_CREATE_DISCRIMINATOR = new Uint8Array([
   245, 201, 113, 108, 37, 63, 29, 89,
@@ -75,13 +75,13 @@ export type TransactionBufferCreateInstruction<
   TAccountPayer extends string | IAccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = "11111111111111111111111111111111",
+    | IAccountMeta<string> = '11111111111111111111111111111111',
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+    | IAccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+    | IAccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
   TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = IInstruction<TProgram> &
   IInstructionWithData<Uint8Array> &
@@ -119,7 +119,7 @@ export type TransactionBufferCreateInstruction<
 
 export type TransactionBufferCreateInstructionData = {
   discriminator: ReadonlyUint8Array;
-  /** Allow execution with sigverify */
+  /** Allow execution without sigverify */
   permissionlessExecution: boolean;
   /** Buffer hashes for the subsequent extend instruction */
   bufferExtendHashes: Array<ReadonlyUint8Array>;
@@ -135,7 +135,7 @@ export type TransactionBufferCreateInstructionData = {
 };
 
 export type TransactionBufferCreateInstructionDataArgs = {
-  /** Allow execution with sigverify */
+  /** Allow execution without sigverify */
   permissionlessExecution: boolean;
   /** Buffer hashes for the subsequent extend instruction */
   bufferExtendHashes: Array<ReadonlyUint8Array>;
@@ -153,18 +153,18 @@ export type TransactionBufferCreateInstructionDataArgs = {
 export function getTransactionBufferCreateInstructionDataEncoder(): Encoder<TransactionBufferCreateInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["permissionlessExecution", getBooleanEncoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['permissionlessExecution', getBooleanEncoder()],
       [
-        "bufferExtendHashes",
+        'bufferExtendHashes',
         getArrayEncoder(fixEncoderSize(getBytesEncoder(), 32)),
       ],
-      ["bufferIndex", getU8Encoder()],
-      ["finalBufferHash", fixEncoderSize(getBytesEncoder(), 32)],
-      ["finalBufferSize", getU16Encoder()],
-      ["buffer", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
+      ['bufferIndex', getU8Encoder()],
+      ['finalBufferHash', fixEncoderSize(getBytesEncoder(), 32)],
+      ['finalBufferSize', getU16Encoder()],
+      ['buffer', addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
       [
-        "secp256r1VerifyArgs",
+        'secp256r1VerifyArgs',
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
     ]),
@@ -177,17 +177,17 @@ export function getTransactionBufferCreateInstructionDataEncoder(): Encoder<Tran
 
 export function getTransactionBufferCreateInstructionDataDecoder(): Decoder<TransactionBufferCreateInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["permissionlessExecution", getBooleanDecoder()],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['permissionlessExecution', getBooleanDecoder()],
     [
-      "bufferExtendHashes",
+      'bufferExtendHashes',
       getArrayDecoder(fixDecoderSize(getBytesDecoder(), 32)),
     ],
-    ["bufferIndex", getU8Decoder()],
-    ["finalBufferHash", fixDecoderSize(getBytesDecoder(), 32)],
-    ["finalBufferSize", getU16Decoder()],
-    ["buffer", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
-    ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
+    ['bufferIndex', getU8Decoder()],
+    ['finalBufferHash', fixDecoderSize(getBytesDecoder(), 32)],
+    ['finalBufferSize', getU16Decoder()],
+    ['buffer', addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
+    ['secp256r1VerifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
 }
 
@@ -219,13 +219,13 @@ export type TransactionBufferCreateInput<
   systemProgram?: Address<TAccountSystemProgram>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
-  permissionlessExecution: TransactionBufferCreateInstructionDataArgs["permissionlessExecution"];
-  bufferExtendHashes: TransactionBufferCreateInstructionDataArgs["bufferExtendHashes"];
-  bufferIndex: TransactionBufferCreateInstructionDataArgs["bufferIndex"];
-  finalBufferHash: TransactionBufferCreateInstructionDataArgs["finalBufferHash"];
-  finalBufferSize: TransactionBufferCreateInstructionDataArgs["finalBufferSize"];
-  buffer: TransactionBufferCreateInstructionDataArgs["buffer"];
-  secp256r1VerifyArgs: TransactionBufferCreateInstructionDataArgs["secp256r1VerifyArgs"];
+  permissionlessExecution: TransactionBufferCreateInstructionDataArgs['permissionlessExecution'];
+  bufferExtendHashes: TransactionBufferCreateInstructionDataArgs['bufferExtendHashes'];
+  bufferIndex: TransactionBufferCreateInstructionDataArgs['bufferIndex'];
+  finalBufferHash: TransactionBufferCreateInstructionDataArgs['finalBufferHash'];
+  finalBufferSize: TransactionBufferCreateInstructionDataArgs['finalBufferSize'];
+  buffer: TransactionBufferCreateInstructionDataArgs['buffer'];
+  secp256r1VerifyArgs: TransactionBufferCreateInstructionDataArgs['secp256r1VerifyArgs'];
 };
 
 export function getTransactionBufferCreateInstruction<
@@ -292,18 +292,18 @@ export function getTransactionBufferCreateInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
   if (!accounts.instructionsSysvar.value) {
     accounts.instructionsSysvar.value =
-      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
+      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
   }
   if (!accounts.slotHashSysvar.value) {
     accounts.slotHashSysvar.value =
-      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
+      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
   }
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   const instruction = {
     accounts: [
       getAccountMeta(accounts.settings),
@@ -362,7 +362,7 @@ export function parseTransactionBufferCreateInstruction<
 ): ParsedTransactionBufferCreateInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 8) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {

@@ -1,11 +1,12 @@
+use std::{collections::HashMap, vec};
+
 use crate::{
     error::MultisigError,
-    id,
     state::{
         DomainConfig, MemberKey, Permission, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings,
-        TransactionActionType, SEED_MULTISIG, SEED_VAULT,
+        TransactionActionType,
     },
-    utils::realloc_if_needed,
+    utils::{close_delegate_account, create_delegate_account, realloc_if_needed},
     ConfigAction, ConfigEvent,
 };
 use anchor_lang::{
@@ -27,6 +28,12 @@ pub struct ChangeConfig<'info> {
     pub slot_hash_sysvar: Option<UncheckedAccount<'info>>,
 
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
+}
+
+#[derive(PartialEq, Eq)]
+enum DelegateOp {
+    Create(MemberKey),
+    Close(MemberKey),
 }
 
 impl<'info> ChangeConfig<'info> {
@@ -102,10 +109,17 @@ impl<'info> ChangeConfig<'info> {
                 })
                 .ok_or(MultisigError::MissingAccount)?;
 
-            let metadata = member.metadata.ok_or(MultisigError::MissingMetadata)?;
+            let expected_domain_config = member
+                .domain_config
+                .ok_or(MultisigError::DomainConfigIsMissing)?;
 
             require!(
-                domain_config.is_some() && domain_config.as_ref().unwrap().key().eq(&metadata),
+                domain_config.is_some()
+                    && domain_config
+                        .as_ref()
+                        .unwrap()
+                        .key()
+                        .eq(&expected_domain_config),
                 MultisigError::MemberDoesNotBelongToDomainConfig
             );
 
@@ -148,53 +162,80 @@ impl<'info> ChangeConfig<'info> {
         let settings = &mut ctx.accounts.settings;
         let system_program = &ctx.accounts.system_program;
         let payer = &ctx.accounts.payer;
-        let settings_account_info = settings.to_account_info();
-        let current_size = settings_account_info.data.borrow().len();
-        let settings_key = settings_account_info.key();
         let remaining_accounts = ctx.remaining_accounts;
+
+        let settings_account_info = settings.to_account_info();
+        let current_size = settings_account_info.data_len();
+        let settings_key = settings_account_info.key();
+
+        let initial_member_pubkey = settings
+            .members
+            .iter()
+            .find(|m| m.permissions.has(Permission::IsInitialMember))
+            .map(|m| m.pubkey)
+            .unwrap();
+
+        let mut delegate_ops: Vec<DelegateOp> = vec![];
         for action in config_actions {
             match action {
+                ConfigAction::EditPermissions(members) => {
+                    settings.edit_permissions(members);
+                }
                 ConfigAction::AddMembers(members) => {
-                    let multi_wallet = Pubkey::create_program_address(
-                        &[
-                            SEED_MULTISIG,
-                            settings.key().as_ref(),
-                            SEED_VAULT,
-                            &[settings.multi_wallet_bump],
-                        ],
-                        &id(),
-                    )
-                    .unwrap();
-                    settings.add_members(
+                    let ops = settings.add_members(
                         &settings_key,
-                        &multi_wallet,
                         members,
                         remaining_accounts,
-                        payer,
-                        system_program,
                         slot_hash_sysvar,
                     )?;
+                    delegate_ops.extend(ops.into_iter().map(DelegateOp::Create));
                 }
                 ConfigAction::RemoveMembers(members) => {
-                    settings.remove_members(members, remaining_accounts, payer)?;
-                }
-                ConfigAction::SetMembers(members) => {
-                    settings.set_members(
-                        &settings_key,
-                        members,
-                        remaining_accounts,
-                        payer,
-                        system_program,
-                        slot_hash_sysvar,
-                    )?;
+                    let ops = settings.remove_members(members)?;
+                    delegate_ops.extend(ops.into_iter().map(DelegateOp::Close));
                 }
                 ConfigAction::SetThreshold(new_threshold) => {
-                    settings.threshold = new_threshold;
-                }
-                ConfigAction::SetMetadata(metadata) => {
-                    settings.metadata = metadata;
+                    settings.set_threshold(new_threshold);
                 }
             }
+        }
+
+        let mut net_ops: HashMap<MemberKey, Option<DelegateOp>> = HashMap::new();
+
+        for op in delegate_ops {
+            let key = match op {
+                DelegateOp::Create(pk) | DelegateOp::Close(pk) => pk,
+            };
+            match net_ops.get(&key) {
+                Some(Some(prev)) if prev != &op => {
+                    net_ops.insert(key, None); // cancel out
+                }
+                _ => {
+                    net_ops.insert(key, Some(op));
+                }
+            }
+        }
+        let mut final_creates: Vec<MemberKey> = vec![];
+        let mut final_closes: Vec<MemberKey> = vec![];
+        for action in net_ops.values().flatten() {
+            match action {
+                DelegateOp::Create(pk) => final_creates.push(*pk),
+                DelegateOp::Close(pk) => final_closes.push(*pk),
+            }
+        }
+
+        for pk in final_creates {
+            create_delegate_account(
+                remaining_accounts,
+                payer,
+                system_program,
+                &settings_key,
+                &pk,
+            )?
+        }
+
+        for pk in final_closes {
+            close_delegate_account(remaining_accounts, payer, &pk)?
         }
 
         realloc_if_needed(
@@ -205,13 +246,11 @@ impl<'info> ChangeConfig<'info> {
             &ctx.accounts.system_program.to_account_info(),
         )?;
 
-        settings.invariant()?;
+        settings.invariant(&initial_member_pubkey)?;
 
         emit!(ConfigEvent {
-            create_key: settings.create_key,
             members: settings.members.clone(),
             threshold: settings.threshold,
-            metadata: settings.metadata,
         });
 
         Ok(())

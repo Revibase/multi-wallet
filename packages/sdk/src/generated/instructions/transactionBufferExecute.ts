@@ -33,15 +33,15 @@ import {
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableAccount,
-} from "@solana/kit";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from '@solana/kit';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-} from "../types";
+} from '../types';
 
 export const TRANSACTION_BUFFER_EXECUTE_DISCRIMINATOR = new Uint8Array([
   48, 73, 34, 19, 129, 99, 128, 73,
@@ -61,7 +61,7 @@ export type TransactionBufferExecuteInstruction<
   TAccountTransactionBuffer extends string | IAccountMeta<string> = string,
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+    | IAccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
   TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = IInstruction<TProgram> &
   IInstructionWithData<Uint8Array> &
@@ -99,9 +99,9 @@ export type TransactionBufferExecuteInstructionDataArgs = {
 export function getTransactionBufferExecuteInstructionDataEncoder(): Encoder<TransactionBufferExecuteInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
       [
-        "secp256r1VerifyArgs",
+        'secp256r1VerifyArgs',
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
     ]),
@@ -114,8 +114,8 @@ export function getTransactionBufferExecuteInstructionDataEncoder(): Encoder<Tra
 
 export function getTransactionBufferExecuteInstructionDataDecoder(): Decoder<TransactionBufferExecuteInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['secp256r1VerifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
 }
 
@@ -141,7 +141,7 @@ export type TransactionBufferExecuteInput<
   executor?: TransactionSigner<TAccountExecutor>;
   transactionBuffer: Address<TAccountTransactionBuffer>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
-  secp256r1VerifyArgs: TransactionBufferExecuteInstructionDataArgs["secp256r1VerifyArgs"];
+  secp256r1VerifyArgs: TransactionBufferExecuteInstructionDataArgs['secp256r1VerifyArgs'];
 };
 
 export function getTransactionBufferExecuteInstruction<
@@ -190,7 +190,13 @@ export function getTransactionBufferExecuteInstruction<
   // Original args.
   const args = { ...input };
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  // Resolve default values.
+  if (!accounts.slotHashSysvar.value) {
+    accounts.slotHashSysvar.value =
+      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
+  }
+
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   const instruction = {
     accounts: [
       getAccountMeta(accounts.domainConfig),
@@ -240,7 +246,7 @@ export function parseTransactionBufferExecuteInstruction<
 ): ParsedTransactionBufferExecuteInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 5) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {

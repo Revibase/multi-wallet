@@ -1,6 +1,10 @@
 use anchor_lang::{prelude::*, system_program};
 
-use crate::{error::MultisigError, id};
+use crate::{
+    error::MultisigError,
+    id,
+    state::{Delegate, MemberKey, SEED_DELEGATE},
+};
 
 /// Closes an account by transferring all lamports to the `sol_destination`.
 ///
@@ -93,4 +97,52 @@ pub fn create_account_if_none_exist<'a, 'info>(
         space as u64,
         owner_program,
     )
+}
+
+pub fn close_delegate_account<'a>(
+    remaining_accounts: &[AccountInfo<'a>],
+    payer: &Signer<'a>,
+    member: &MemberKey,
+) -> Result<()> {
+    let seeds = &[SEED_DELEGATE, &member.get_seed()];
+    let (delegate_account, _) = Pubkey::find_program_address(seeds, &id());
+    let new_account = remaining_accounts
+        .iter()
+        .find(|f| f.key.eq(&delegate_account));
+    require!(new_account.is_some(), MultisigError::MissingAccount);
+
+    close(
+        new_account.as_ref().unwrap().to_account_info(),
+        payer.to_account_info(),
+    )?;
+    Ok(())
+}
+
+pub fn create_delegate_account<'a>(
+    remaining_accounts: &[AccountInfo<'a>],
+    payer: &Signer<'a>,
+    system_program: &Program<'a, System>,
+    multi_wallet_settings: &Pubkey,
+    member_key: &MemberKey,
+) -> Result<()> {
+    let seeds = &[SEED_DELEGATE, &member_key.get_seed()];
+    let (delegate_account, bump) = Pubkey::find_program_address(seeds, &id());
+    let new_account = remaining_accounts
+        .iter()
+        .find(|f| f.key.eq(&delegate_account));
+    require!(new_account.is_some(), MultisigError::MissingAccount);
+
+    create_account_if_none_exist(
+        &payer.to_account_info(),
+        new_account.unwrap(),
+        &system_program.to_account_info(),
+        &id(),
+        Delegate::size(),
+        &[SEED_DELEGATE, &member_key.get_seed(), &[bump]],
+    )?;
+    let mut data = new_account.unwrap().try_borrow_mut_data()?;
+    data[..8].copy_from_slice(Delegate::DISCRIMINATOR);
+    data[8..40].copy_from_slice(&multi_wallet_settings.to_bytes());
+    data[40] = bump;
+    Ok(())
 }

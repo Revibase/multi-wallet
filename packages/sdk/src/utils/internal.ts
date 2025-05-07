@@ -284,6 +284,17 @@ export function convertConfigActionWrapper(
   const configActions: ConfigAction[] = [];
   for (const action of configActionsWrapper) {
     switch (action.type) {
+      case "EditPermissions":
+        configActions.push({
+          __kind: "EditPermissions",
+          fields: [
+            action.members.map((x) => ({
+              pubkey: convertPubkeyToMemberkey(x.pubkey),
+              permissions: x.permissions,
+            })),
+          ],
+        });
+        break;
       case "AddMembers":
         const addMembers: MemberWithVerifyArgs[] = [];
         for (const x of action.members) {
@@ -300,26 +311,10 @@ export function convertConfigActionWrapper(
           fields: [action.members.map(convertPubkeyToMemberkey)],
         });
         break;
-      case "SetMembers":
-        const setMembers: MemberWithVerifyArgs[] = [];
-        for (const x of action.members) {
-          setMembers.push(convertMember(x));
-        }
-        configActions.push({
-          __kind: "SetMembers",
-          fields: [setMembers],
-        });
-        break;
       case "SetThreshold":
         configActions.push({
           __kind: "SetThreshold",
           fields: [action.threshold],
-        });
-        break;
-      case "SetMetadata":
-        configActions.push({
-          __kind: "SetMetadata",
-          fields: [action.metadata ? some(action.metadata) : none()],
         });
         break;
     }
@@ -331,12 +326,14 @@ export function convertConfigActionWrapper(
 export function convertMember(x: {
   pubkey: Address | Secp256r1Key;
   permissions: IPermissions;
-  metadata: Address | null;
 }): MemberWithVerifyArgs {
   return {
     data: {
       permissions: x.permissions,
-      metadata: x.metadata ? some(x.metadata) : none(),
+      domainConfig:
+        x.pubkey instanceof Secp256r1Key && x.pubkey.domainConfig
+          ? some(x.pubkey.domainConfig)
+          : none(),
       pubkey: convertPubkeyToMemberkey(x.pubkey),
     },
     verifyArgs:

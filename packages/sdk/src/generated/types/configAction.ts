@@ -8,89 +8,86 @@
 
 import {
   combineCodec,
-  getAddressDecoder,
-  getAddressEncoder,
   getArrayDecoder,
   getArrayEncoder,
   getDiscriminatedUnionDecoder,
   getDiscriminatedUnionEncoder,
-  getOptionDecoder,
-  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
   getTupleDecoder,
   getTupleEncoder,
   getU8Decoder,
   getU8Encoder,
-  type Address,
   type Codec,
   type Decoder,
   type Encoder,
   type GetDiscriminatedUnionVariant,
   type GetDiscriminatedUnionVariantContent,
-  type Option,
-  type OptionOrNullable,
-} from '@solana/kit';
+} from "@solana/kit";
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
+  getMemberKeyWithPermissionsArgsDecoder,
+  getMemberKeyWithPermissionsArgsEncoder,
   getMemberWithVerifyArgsDecoder,
   getMemberWithVerifyArgsEncoder,
   type MemberKey,
   type MemberKeyArgs,
+  type MemberKeyWithPermissionsArgs,
+  type MemberKeyWithPermissionsArgsArgs,
   type MemberWithVerifyArgs,
   type MemberWithVerifyArgsArgs,
-} from '.';
+} from ".";
 
 export type ConfigAction =
-  | { __kind: 'SetMembers'; fields: readonly [Array<MemberWithVerifyArgs>] }
-  | { __kind: 'AddMembers'; fields: readonly [Array<MemberWithVerifyArgs>] }
-  | { __kind: 'RemoveMembers'; fields: readonly [Array<MemberKey>] }
-  | { __kind: 'SetThreshold'; fields: readonly [number] }
-  | { __kind: 'SetMetadata'; fields: readonly [Option<Address>] };
+  | {
+      __kind: "EditPermissions";
+      fields: readonly [Array<MemberKeyWithPermissionsArgs>];
+    }
+  | { __kind: "AddMembers"; fields: readonly [Array<MemberWithVerifyArgs>] }
+  | { __kind: "RemoveMembers"; fields: readonly [Array<MemberKey>] }
+  | { __kind: "SetThreshold"; fields: readonly [number] };
 
 export type ConfigActionArgs =
-  | { __kind: 'SetMembers'; fields: readonly [Array<MemberWithVerifyArgsArgs>] }
-  | { __kind: 'AddMembers'; fields: readonly [Array<MemberWithVerifyArgsArgs>] }
-  | { __kind: 'RemoveMembers'; fields: readonly [Array<MemberKeyArgs>] }
-  | { __kind: 'SetThreshold'; fields: readonly [number] }
-  | { __kind: 'SetMetadata'; fields: readonly [OptionOrNullable<Address>] };
+  | {
+      __kind: "EditPermissions";
+      fields: readonly [Array<MemberKeyWithPermissionsArgsArgs>];
+    }
+  | { __kind: "AddMembers"; fields: readonly [Array<MemberWithVerifyArgsArgs>] }
+  | { __kind: "RemoveMembers"; fields: readonly [Array<MemberKeyArgs>] }
+  | { __kind: "SetThreshold"; fields: readonly [number] };
 
 export function getConfigActionEncoder(): Encoder<ConfigActionArgs> {
   return getDiscriminatedUnionEncoder([
     [
-      'SetMembers',
+      "EditPermissions",
       getStructEncoder([
         [
-          'fields',
+          "fields",
+          getTupleEncoder([
+            getArrayEncoder(getMemberKeyWithPermissionsArgsEncoder()),
+          ]),
+        ],
+      ]),
+    ],
+    [
+      "AddMembers",
+      getStructEncoder([
+        [
+          "fields",
           getTupleEncoder([getArrayEncoder(getMemberWithVerifyArgsEncoder())]),
         ],
       ]),
     ],
     [
-      'AddMembers',
+      "RemoveMembers",
       getStructEncoder([
-        [
-          'fields',
-          getTupleEncoder([getArrayEncoder(getMemberWithVerifyArgsEncoder())]),
-        ],
+        ["fields", getTupleEncoder([getArrayEncoder(getMemberKeyEncoder())])],
       ]),
     ],
     [
-      'RemoveMembers',
-      getStructEncoder([
-        ['fields', getTupleEncoder([getArrayEncoder(getMemberKeyEncoder())])],
-      ]),
-    ],
-    [
-      'SetThreshold',
-      getStructEncoder([['fields', getTupleEncoder([getU8Encoder()])]]),
-    ],
-    [
-      'SetMetadata',
-      getStructEncoder([
-        ['fields', getTupleEncoder([getOptionEncoder(getAddressEncoder())])],
-      ]),
+      "SetThreshold",
+      getStructEncoder([["fields", getTupleEncoder([getU8Encoder()])]]),
     ],
   ]);
 }
@@ -98,38 +95,34 @@ export function getConfigActionEncoder(): Encoder<ConfigActionArgs> {
 export function getConfigActionDecoder(): Decoder<ConfigAction> {
   return getDiscriminatedUnionDecoder([
     [
-      'SetMembers',
+      "EditPermissions",
       getStructDecoder([
         [
-          'fields',
+          "fields",
+          getTupleDecoder([
+            getArrayDecoder(getMemberKeyWithPermissionsArgsDecoder()),
+          ]),
+        ],
+      ]),
+    ],
+    [
+      "AddMembers",
+      getStructDecoder([
+        [
+          "fields",
           getTupleDecoder([getArrayDecoder(getMemberWithVerifyArgsDecoder())]),
         ],
       ]),
     ],
     [
-      'AddMembers',
+      "RemoveMembers",
       getStructDecoder([
-        [
-          'fields',
-          getTupleDecoder([getArrayDecoder(getMemberWithVerifyArgsDecoder())]),
-        ],
+        ["fields", getTupleDecoder([getArrayDecoder(getMemberKeyDecoder())])],
       ]),
     ],
     [
-      'RemoveMembers',
-      getStructDecoder([
-        ['fields', getTupleDecoder([getArrayDecoder(getMemberKeyDecoder())])],
-      ]),
-    ],
-    [
-      'SetThreshold',
-      getStructDecoder([['fields', getTupleDecoder([getU8Decoder()])]]),
-    ],
-    [
-      'SetMetadata',
-      getStructDecoder([
-        ['fields', getTupleDecoder([getOptionDecoder(getAddressDecoder())])],
-      ]),
+      "SetThreshold",
+      getStructDecoder([["fields", getTupleDecoder([getU8Decoder()])]]),
     ],
   ]);
 }
@@ -140,46 +133,38 @@ export function getConfigActionCodec(): Codec<ConfigActionArgs, ConfigAction> {
 
 // Data Enum Helpers.
 export function configAction(
-  kind: 'SetMembers',
+  kind: "EditPermissions",
   data: GetDiscriminatedUnionVariantContent<
     ConfigActionArgs,
-    '__kind',
-    'SetMembers'
-  >['fields']
-): GetDiscriminatedUnionVariant<ConfigActionArgs, '__kind', 'SetMembers'>;
+    "__kind",
+    "EditPermissions"
+  >["fields"]
+): GetDiscriminatedUnionVariant<ConfigActionArgs, "__kind", "EditPermissions">;
 export function configAction(
-  kind: 'AddMembers',
+  kind: "AddMembers",
   data: GetDiscriminatedUnionVariantContent<
     ConfigActionArgs,
-    '__kind',
-    'AddMembers'
-  >['fields']
-): GetDiscriminatedUnionVariant<ConfigActionArgs, '__kind', 'AddMembers'>;
+    "__kind",
+    "AddMembers"
+  >["fields"]
+): GetDiscriminatedUnionVariant<ConfigActionArgs, "__kind", "AddMembers">;
 export function configAction(
-  kind: 'RemoveMembers',
+  kind: "RemoveMembers",
   data: GetDiscriminatedUnionVariantContent<
     ConfigActionArgs,
-    '__kind',
-    'RemoveMembers'
-  >['fields']
-): GetDiscriminatedUnionVariant<ConfigActionArgs, '__kind', 'RemoveMembers'>;
+    "__kind",
+    "RemoveMembers"
+  >["fields"]
+): GetDiscriminatedUnionVariant<ConfigActionArgs, "__kind", "RemoveMembers">;
 export function configAction(
-  kind: 'SetThreshold',
+  kind: "SetThreshold",
   data: GetDiscriminatedUnionVariantContent<
     ConfigActionArgs,
-    '__kind',
-    'SetThreshold'
-  >['fields']
-): GetDiscriminatedUnionVariant<ConfigActionArgs, '__kind', 'SetThreshold'>;
-export function configAction(
-  kind: 'SetMetadata',
-  data: GetDiscriminatedUnionVariantContent<
-    ConfigActionArgs,
-    '__kind',
-    'SetMetadata'
-  >['fields']
-): GetDiscriminatedUnionVariant<ConfigActionArgs, '__kind', 'SetMetadata'>;
-export function configAction<K extends ConfigActionArgs['__kind'], Data>(
+    "__kind",
+    "SetThreshold"
+  >["fields"]
+): GetDiscriminatedUnionVariant<ConfigActionArgs, "__kind", "SetThreshold">;
+export function configAction<K extends ConfigActionArgs["__kind"], Data>(
   kind: K,
   data?: Data
 ) {
@@ -188,7 +173,7 @@ export function configAction<K extends ConfigActionArgs['__kind'], Data>(
     : { __kind: kind, ...(data ?? {}) };
 }
 
-export function isConfigAction<K extends ConfigAction['__kind']>(
+export function isConfigAction<K extends ConfigAction["__kind"]>(
   kind: K,
   value: ConfigAction
 ): value is ConfigAction & { __kind: K } {

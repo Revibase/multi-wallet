@@ -15,14 +15,10 @@ import {
   fetchEncodedAccounts,
   fixDecoderSize,
   fixEncoderSize,
-  getAddressDecoder,
-  getAddressEncoder,
   getArrayDecoder,
   getArrayEncoder,
   getBytesDecoder,
   getBytesEncoder,
-  getOptionDecoder,
-  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
   getU8Decoder,
@@ -38,8 +34,6 @@ import {
   type FetchAccountsConfig,
   type MaybeAccount,
   type MaybeEncodedAccount,
-  type Option,
-  type OptionOrNullable,
   type ReadonlyUint8Array,
 } from '@solana/kit';
 import {
@@ -59,20 +53,16 @@ export function getSettingsDiscriminatorBytes() {
 
 export type Settings = {
   discriminator: ReadonlyUint8Array;
-  createKey: Address;
   threshold: number;
   multiWalletBump: number;
   bump: number;
-  metadata: Option<Address>;
   members: Array<Member>;
 };
 
 export type SettingsArgs = {
-  createKey: Address;
   threshold: number;
   multiWalletBump: number;
   bump: number;
-  metadata: OptionOrNullable<Address>;
   members: Array<MemberArgs>;
 };
 
@@ -80,11 +70,9 @@ export function getSettingsEncoder(): Encoder<SettingsArgs> {
   return transformEncoder(
     getStructEncoder([
       ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
-      ['createKey', getAddressEncoder()],
       ['threshold', getU8Encoder()],
       ['multiWalletBump', getU8Encoder()],
       ['bump', getU8Encoder()],
-      ['metadata', getOptionEncoder(getAddressEncoder())],
       ['members', getArrayEncoder(getMemberEncoder())],
     ]),
     (value) => ({ ...value, discriminator: SETTINGS_DISCRIMINATOR })
@@ -94,11 +82,9 @@ export function getSettingsEncoder(): Encoder<SettingsArgs> {
 export function getSettingsDecoder(): Decoder<Settings> {
   return getStructDecoder([
     ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
-    ['createKey', getAddressDecoder()],
     ['threshold', getU8Decoder()],
     ['multiWalletBump', getU8Decoder()],
     ['bump', getU8Decoder()],
-    ['metadata', getOptionDecoder(getAddressDecoder())],
     ['members', getArrayDecoder(getMemberDecoder())],
   ]);
 }

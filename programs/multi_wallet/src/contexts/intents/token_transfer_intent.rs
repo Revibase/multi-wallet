@@ -65,7 +65,12 @@ pub struct TokenTransferIntent<'info> {
 }
 
 impl<'info> TokenTransferIntent<'info> {
-    fn validate(&self, amount: u64, secp256r1_verify_args: &Secp256r1VerifyArgs) -> Result<()> {
+    fn validate(
+        &self,
+        ctx: &Context<'_, '_, '_, 'info, Self>,
+        amount: u64,
+        secp256r1_verify_args: &Secp256r1VerifyArgs,
+    ) -> Result<()> {
         let Self {
             settings,
             domain_config,
@@ -84,11 +89,17 @@ impl<'info> TokenTransferIntent<'info> {
 
         for member in &settings.members {
             let has_permission = |perm| member.permissions.has(perm);
-            let is_member = member
+            let is_signer = member
                 .pubkey
-                .eq(&MemberKey::convert_secp256r1(&secp256r1_verify_args.pubkey).unwrap());
+                .eq(&MemberKey::convert_secp256r1(&secp256r1_verify_args.pubkey).unwrap())
+                || ctx.remaining_accounts.iter().any(|account| {
+                    account.is_signer
+                        && MemberKey::convert_ed25519(account.key)
+                            .unwrap()
+                            .eq(&member.pubkey)
+                });
 
-            if is_member {
+            if is_signer {
                 if has_permission(Permission::InitiateTransaction) {
                     initiate = true;
                 }
@@ -130,10 +141,12 @@ impl<'info> TokenTransferIntent<'info> {
             })
             .ok_or(MultisigError::MissingAccount)?;
 
-        let metadata = member.metadata.ok_or(MultisigError::MissingMetadata)?;
+        let expected_domain_config = member
+            .domain_config
+            .ok_or(MultisigError::DomainConfigIsMissing)?;
 
         require!(
-            domain_config.key().eq(&metadata),
+            domain_config.key().eq(&expected_domain_config),
             MultisigError::MemberDoesNotBelongToDomainConfig
         );
 
@@ -160,7 +173,7 @@ impl<'info> TokenTransferIntent<'info> {
         Ok(())
     }
 
-    #[access_control(ctx.accounts.validate(amount, &secp256r1_verify_args))]
+    #[access_control(ctx.accounts.validate(&ctx, amount, &secp256r1_verify_args))]
     pub fn process(
         ctx: Context<'_, '_, '_, 'info, Self>,
         amount: u64,

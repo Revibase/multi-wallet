@@ -1,70 +1,58 @@
 import {
   AccountRole,
   address,
-  Address,
   getBase58Decoder,
   IAccountMeta,
   IAccountSignerMeta,
+  none,
+  some,
   TransactionSigner,
 } from "@solana/kit";
-import {
-  getCreateInstructionAsync,
-  IPermissions,
-  MemberWithVerifyArgs,
-} from "../generated";
-import { Permission, Permissions, Secp256r1Key } from "../types";
-import { getDelegateAddress } from "../utils";
-import { convertMember } from "../utils/internal";
+import { getCreateInstruction } from "../generated";
+import { Secp256r1Key } from "../types";
+import { getDelegateAddress, getSettingsFromCreateKey } from "../utils";
+import { extractSecp256r1VerificationArgs } from "../utils/internal";
 
 export async function createWallet({
   feePayer,
-  initialMembers,
-  metadata,
-  createKey,
+  initialMember,
 }: {
   feePayer: TransactionSigner;
-  initialMembers: {
-    pubkey: Address | Secp256r1Key;
-    permissions: IPermissions;
-    metadata: Address | null;
-  }[];
-  metadata: Address | null;
-  createKey?: Address;
+  initialMember: TransactionSigner | Secp256r1Key;
 }) {
-  if (!createKey) {
-    createKey = address(
-      getBase58Decoder().decode(crypto.getRandomValues(new Uint8Array(32)))
-    );
-  }
-  const addMembers: MemberWithVerifyArgs[] = [];
   const remainingAccounts: (IAccountMeta | IAccountSignerMeta)[] = [];
-  for (const x of initialMembers) {
-    addMembers.push(convertMember(x));
-    if (x.pubkey instanceof Secp256r1Key) {
-      if (x.metadata) {
-        remainingAccounts.push({
-          address: x.metadata,
-          role: AccountRole.READONLY,
-        });
-      } else {
-        throw new Error(
-          "Metadata cannot be null for Secp256r1Key. It needs to be linked to a domain config address."
-        );
-      }
-    }
-    if (Permissions.has(x.permissions, Permission.IsDelegate)) {
-      remainingAccounts.push({
-        address: await getDelegateAddress(x.pubkey),
-        role: AccountRole.WRITABLE,
-      });
-    }
+
+  remainingAccounts.push({
+    address: await getDelegateAddress(
+      initialMember instanceof Secp256r1Key
+        ? initialMember
+        : initialMember.address
+    ),
+    role: AccountRole.WRITABLE,
+  });
+
+  const { domainConfig, verifyArgs } =
+    extractSecp256r1VerificationArgs(initialMember);
+  if (domainConfig) {
+    remainingAccounts.push({
+      address: domainConfig,
+      role: AccountRole.READONLY,
+    });
   }
 
-  return getCreateInstructionAsync({
+  const settings = await getSettingsFromCreateKey(
+    initialMember instanceof Secp256r1Key
+      ? address(getBase58Decoder().decode(initialMember.toTruncatedBuffer()))
+      : initialMember.address
+  );
+
+  return getCreateInstruction({
     payer: feePayer,
-    initialMembers: addMembers,
-    createKey,
-    metadata,
+    settings,
+    initialMember:
+      initialMember instanceof Secp256r1Key ? undefined : initialMember,
+    secp256r1VerifyArgs: verifyArgs,
+    domainConfig: domainConfig ? some(domainConfig) : none(),
     remainingAccounts,
   });
 }

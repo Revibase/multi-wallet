@@ -1,6 +1,6 @@
 {
   "name": "@revibase/sdk",
-  "version": "1.0.49",
+  "version": "1.0.51",
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts --sourcemap",
     "clean": "rimraf dist",
