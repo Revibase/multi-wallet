@@ -1,18 +1,24 @@
-use crate::state::DomainConfig;
+use crate::{state::DomainConfig, ADMIN};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct DeleteDomainConfig<'info> {
     #[account(
         mut,
-        close = payer,
+        close = admin,
     )]
     pub domain_config: AccountLoader<'info, DomainConfig>,
+    /// CHECK:
     #[account(
         mut,
-        constraint = payer.key() == domain_config.load()?.authority,
+        address = ADMIN
     )]
-    pub payer: Signer<'info>,
+    pub admin: UncheckedAccount<'info>,
+    #[account(
+        mut,
+        constraint = authority.key() == domain_config.load()?.authority,
+    )]
+    pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 

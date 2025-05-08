@@ -80,7 +80,7 @@ pub enum MultisigError {
     #[msg("Writable CPI attempted on a protected account. This is not allowed.")]
     ProtectedAccount,
 
-    #[msg("Input string exceeds 255 character limit.")]
+    #[msg("Input string exceeded the character limit.")]
     MaxLengthExceeded,
 
     #[msg("Sysvar: Slot history is missing. Ensure it's passed as an account.")]
@@ -94,6 +94,9 @@ pub enum MultisigError {
 
     #[msg("Slot hash does not match recorded history.")]
     SlotHashMismatch,
+
+    #[msg("The specified domain configuration account is temporarily disabled.")]
+    DomainConfigIsDisabled,
 
     #[msg("Domain configuration account is missing.")]
     DomainConfigIsMissing,

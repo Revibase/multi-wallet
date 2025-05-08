@@ -83,7 +83,6 @@ impl<'info> TokenTransferIntent<'info> {
 
         let mut initiate = false;
         let mut execute = false;
-        let mut is_delegate = false;
         let mut vote_count = 0;
         let threshold = settings.threshold as usize;
 
@@ -109,9 +108,6 @@ impl<'info> TokenTransferIntent<'info> {
                 if has_permission(Permission::VoteTransaction) {
                     vote_count += 1;
                 }
-                if has_permission(Permission::IsDelegate) {
-                    is_delegate = true;
-                }
             }
         }
 
@@ -126,10 +122,6 @@ impl<'info> TokenTransferIntent<'info> {
         require!(
             vote_count >= threshold,
             MultisigError::InsufficientSignersWithVotePermission
-        );
-        require!(
-            is_delegate,
-            MultisigError::InsufficientSignerWithIsDelegatePermission
         );
 
         let member = settings

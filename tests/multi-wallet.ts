@@ -1,4 +1,16 @@
 import {
+  changeConfig,
+  convertMemberKeyToString,
+  createDomainConfig,
+  createWallet,
+  fetchMaybeDelegate,
+  fetchSettings,
+  Permission,
+  Permissions,
+  prepareTransactionMessage,
+  prepareTransactionSync,
+} from "@revibase/wallet-sdk";
+import {
   getCreateAccountInstruction,
   getTransferSolInstruction,
 } from "@solana-program/system";
@@ -8,7 +20,7 @@ import {
   TOKEN_PROGRAM_ADDRESS,
 } from "@solana-program/token";
 import {
-  Address,
+  type Address,
   address,
   appendTransactionMessageInstructions,
   createKeyPairSignerFromPrivateKeyBytes,
@@ -17,30 +29,18 @@ import {
   createSolanaRpcSubscriptions,
   createTransactionMessage,
   getSignatureFromTransaction,
-  IInstruction,
-  KeyPairSigner,
+  type IInstruction,
+  type KeyPairSigner,
   lamports,
   pipe,
-  Rpc,
+  type Rpc,
   sendAndConfirmTransactionFactory,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
   signTransactionMessageWithSigners,
-  SolanaRpcApi,
+  type SolanaRpcApi,
 } from "@solana/kit";
 import { expect } from "chai";
-import {
-  changeConfig,
-  createDomainConfig,
-  createWallet,
-  fetchDelegateData,
-  fetchSettingsData,
-  getMemberKeyString,
-  Permission,
-  Permissions,
-  prepareTransactionMessage,
-  prepareTransactionSync,
-} from "../packages/sdk";
 
 describe("multi_wallet", () => {
   const connection = createSolanaRpc("http://localhost:8899");
@@ -84,7 +84,7 @@ describe("multi_wallet", () => {
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
     const setDomainIx = await createDomainConfig({
-      payer: payer,
+      admin: payer,
       rpId: "revibase.com",
       origin: "https://auth.revibase.com",
       authority: wallet.address,
@@ -100,25 +100,28 @@ describe("multi_wallet", () => {
     await sendTx(connection, [createWalletIx], payer, sendAndConfirm);
 
     // Validation
-    const delegateData = await fetchDelegateData(connection, wallet.address);
+    const delegateData = await fetchMaybeDelegate(connection, wallet.address);
     settings = delegateData.multiWalletSettings;
     multi_wallet_vault = delegateData.multiWallet;
-    const accountData = await fetchSettingsData(
+    const accountData = await fetchSettings(
       connection,
       delegateData.multiWalletSettings
     );
-    expect(accountData.members.length).equal(1); // Only creator is a member
-    expect(accountData.threshold).equal(1); // Single-sig wallet
+
+    expect(accountData.data.members.length).equal(1); // Only creator is a member
+    expect(accountData.data.threshold).equal(1); // Single-sig wallet
 
     const transfer = getTransferSolInstruction({
       source: payer,
-      destination: delegateData.multiWallet,
+      destination: address(delegateData.multiWallet.toString()),
       amount: lamports(BigInt(10 ** 9 * 0.01)),
     });
 
     await sendTx(connection, [transfer], payer, sendAndConfirm);
 
-    const vaultBalance = await connection.getBalance(multi_wallet_vault).send();
+    const vaultBalance = await connection
+      .getBalance(address(multi_wallet_vault))
+      .send();
     expect(vaultBalance.value).equal(lamports(BigInt(10 ** 9 * 0.01)));
   });
 
@@ -144,14 +147,14 @@ describe("multi_wallet", () => {
     });
 
     await sendTx(connection, [ix], payer, sendAndConfirm);
-    const accountData = await fetchSettingsData(connection, settings);
-    const delegateData = await fetchDelegateData(connection, payer.address);
+    const accountData = await fetchSettings(connection, settings);
+    const delegateData = await fetchMaybeDelegate(connection, payer.address);
     expect(delegateData).equal(null);
-    expect(accountData.members.length).equal(2); // Creator + Payer
-    expect(getMemberKeyString(accountData.members[1].pubkey)).equal(
+    expect(accountData.data.members.length).equal(2); // Creator + Payer
+    expect(convertMemberKeyToString(accountData.data.members[1].pubkey)).equal(
       payer.address.toString()
     );
-    expect(accountData.threshold).equal(2);
+    expect(accountData.data.threshold).equal(2);
   });
 
   it("Remove Member", async () => {
@@ -170,12 +173,12 @@ describe("multi_wallet", () => {
 
     await sendTx(connection, [ix], payer, sendAndConfirm);
 
-    const accountData = await fetchSettingsData(connection, settings);
+    const accountData = await fetchSettings(connection, settings);
 
-    const delegateData = await fetchDelegateData(connection, payer.address);
+    const delegateData = await fetchMaybeDelegate(connection, payer.address);
     expect(delegateData).equal(null);
-    expect(accountData.members.length).equal(1); // Only creator remains
-    expect(getMemberKeyString(accountData.members[0].pubkey)).equal(
+    expect(accountData.data.members.length).equal(1); // Only creator remains
+    expect(convertMemberKeyToString(accountData.data.members[0].pubkey)).equal(
       wallet.address
     );
   });
@@ -194,12 +197,12 @@ describe("multi_wallet", () => {
     await sendTx(connection, [ix], payer, sendAndConfirm);
 
     const transferIx1 = getTransferSolInstruction({
-      source: createNoopSigner(multi_wallet_vault),
+      source: createNoopSigner(address(multi_wallet_vault)),
       destination: wallet.address,
       amount: lamports(BigInt(10 ** 9 * 0.00002)),
     });
     const transferIx2 = getTransferSolInstruction({
-      source: createNoopSigner(multi_wallet_vault),
+      source: createNoopSigner(address(multi_wallet_vault)),
       destination: test.address,
       amount: lamports(BigInt(10 ** 9 * 0.3)),
     });
@@ -253,16 +256,16 @@ describe("multi_wallet", () => {
       console.log(error);
     }
 
-    const accountData = await fetchSettingsData(connection, settings);
-    const delegateData = await fetchDelegateData(connection, test.address);
+    const accountData = await fetchSettings(connection, settings);
+    const delegateData = await fetchMaybeDelegate(connection, test.address);
     expect(delegateData.multiWalletSettings.toString()).equal(
       settings.toString()
     );
     expect(delegateData.multiWallet.toString()).equal(
       multi_wallet_vault.toString()
     );
-    expect(accountData.members.length).equal(2); // wallet + test
-    expect(accountData.threshold).equal(1);
+    expect(accountData.data.members.length).equal(2); // wallet + test
+    expect(accountData.data.threshold).equal(1);
   });
 
   it("Ephermeral Tx", async () => {
@@ -279,7 +282,7 @@ describe("multi_wallet", () => {
     );
 
     const createAccount = getCreateAccountInstruction({
-      payer: createNoopSigner(multi_wallet_vault),
+      payer: createNoopSigner(address(multi_wallet_vault)),
       newAccount: ephermeralKeypair,
       space: getMintSize(),
       lamports: await connection
@@ -291,7 +294,7 @@ describe("multi_wallet", () => {
     const createMint = getInitializeMint2Instruction({
       mint: ephermeralKeypair.address,
       decimals: 5,
-      mintAuthority: multi_wallet_vault,
+      mintAuthority: address(multi_wallet_vault),
     });
 
     const recentBlockHash = await connection.getLatestBlockhash().send();
@@ -311,16 +314,16 @@ describe("multi_wallet", () => {
 
     await sendTx(connection, [...result.ixs], payer, sendAndConfirm);
 
-    const accountData = await fetchSettingsData(connection, settings);
-    const delegateData = await fetchDelegateData(connection, test.address);
+    const accountData = await fetchSettings(connection, settings);
+    const delegateData = await fetchMaybeDelegate(connection, test.address);
     expect(delegateData.multiWalletSettings.toString()).equal(
       settings.toString()
     );
     expect(delegateData.multiWallet.toString()).equal(
       multi_wallet_vault.toString()
     );
-    expect(accountData.members.length).equal(2); //  test + wallet
-    expect(accountData.threshold).equal(1);
+    expect(accountData.data.members.length).equal(2); //  test + wallet
+    expect(accountData.data.threshold).equal(1);
   });
 });
 async function sendTx(

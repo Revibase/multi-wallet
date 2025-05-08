@@ -152,6 +152,11 @@ impl Secp256r1Pubkey {
             .ok_or(MultisigError::DomainConfigIsMissing)?
             .load()?;
 
+        require!(
+            domain_data.is_disabled.eq(&0),
+            MultisigError::DomainConfigIsDisabled
+        );
+
         Self::verify_slot_hash(
             sysvar_slot_history,
             secp256r1_verify_data.slot_number,

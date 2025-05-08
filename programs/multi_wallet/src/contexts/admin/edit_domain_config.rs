@@ -13,10 +13,9 @@ pub struct EditDomainConfig<'info> {
     #[account(mut)]
     pub domain_config: AccountLoader<'info, DomainConfig>,
     #[account(
-        mut,
-        constraint = payer.key() == domain_config.load()?.authority,
+        constraint = authority.key() == domain_config.load()?.authority,
     )]
-    pub payer: Signer<'info>,
+    pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
@@ -24,9 +23,9 @@ impl<'info> EditDomainConfig<'info> {
     pub fn process(ctx: Context<Self>, args: EditDomainConfigArgs) -> Result<()> {
         let domain_config = &mut ctx.accounts.domain_config.load_mut()?;
         let origin = args.origin.as_bytes();
-        require!(origin.len() <= 256, MultisigError::MaxLengthExceeded);
+        require!(origin.len() <= 512, MultisigError::MaxLengthExceeded);
 
-        for i in 0..256 {
+        for i in 0..512 {
             if i < origin.len() {
                 domain_config.origin[i] = *origin.get(i).unwrap();
             } else {

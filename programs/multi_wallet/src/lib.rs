@@ -12,7 +12,9 @@ use error::*;
 use state::*;
 use utils::*;
 
-declare_id!("HomqiGa9FxngxAPbVEFzXM3pjicY5RbGCBu3dVNui3ry");
+declare_id!("pkeyt2Txg77e2JSS2K44hDnC2p6uE4jXnd2UQZxZ2oE");
+
+pub const ADMIN: Pubkey = pubkey!("G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF");
 
 #[program]
 pub mod multi_wallet {
@@ -55,6 +57,17 @@ pub mod multi_wallet {
     /// - `Result<()>`: The result of the domain config Delete.
     pub fn delete_domain_config(ctx: Context<DeleteDomainConfig>) -> Result<()> {
         DeleteDomainConfig::process(ctx)
+    }
+
+    /// Disable the domain config needed for secp256r1 verification.
+    ///
+    /// # Parameters
+    /// - `ctx`: The context of the domain config.
+    ///
+    /// # Returns
+    /// - `Result<()>`: The result of the domain config disable.
+    pub fn disable_domain_config(ctx: Context<DisableDomainConfig>, disable: bool) -> Result<()> {
+        DisableDomainConfig::process(ctx, disable)
     }
 
     /// Creates a new multi-wallet.
