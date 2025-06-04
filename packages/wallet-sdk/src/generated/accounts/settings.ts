@@ -15,6 +15,8 @@ import {
   fetchEncodedAccounts,
   fixDecoderSize,
   fixEncoderSize,
+  getAddressDecoder,
+  getAddressEncoder,
   getArrayDecoder,
   getArrayEncoder,
   getBytesDecoder,
@@ -56,6 +58,7 @@ export type Settings = {
   threshold: number;
   multiWalletBump: number;
   bump: number;
+  createKey: Address;
   members: Array<Member>;
 };
 
@@ -63,6 +66,7 @@ export type SettingsArgs = {
   threshold: number;
   multiWalletBump: number;
   bump: number;
+  createKey: Address;
   members: Array<MemberArgs>;
 };
 
@@ -73,6 +77,7 @@ export function getSettingsEncoder(): Encoder<SettingsArgs> {
       ['threshold', getU8Encoder()],
       ['multiWalletBump', getU8Encoder()],
       ['bump', getU8Encoder()],
+      ['createKey', getAddressEncoder()],
       ['members', getArrayEncoder(getMemberEncoder())],
     ]),
     (value) => ({ ...value, discriminator: SETTINGS_DISCRIMINATOR })
@@ -85,6 +90,7 @@ export function getSettingsDecoder(): Decoder<Settings> {
     ['threshold', getU8Decoder()],
     ['multiWalletBump', getU8Decoder()],
     ['bump', getU8Decoder()],
+    ['createKey', getAddressDecoder()],
     ['members', getArrayDecoder(getMemberDecoder())],
   ]);
 }

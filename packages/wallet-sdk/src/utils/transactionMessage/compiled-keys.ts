@@ -1,5 +1,4 @@
 import { AccountRole, Address, IInstruction } from "@solana/kit";
-import assert from "assert";
 
 export type CompiledKeyMeta = {
   isSigner: boolean;
@@ -76,7 +75,9 @@ export class CompiledKeys {
     Array<Address>,
   ] {
     const mapEntries = [...this.keyMetaMap.entries()];
-    assert(mapEntries.length <= 256, "Max static account keys length exceeded");
+    if (mapEntries.length > 256) {
+      throw new Error("Max static account keys length exceeded");
+    }
 
     const writableSigners = mapEntries.filter(
       ([, meta]) => meta.isSigner && meta.isWritable
@@ -99,15 +100,17 @@ export class CompiledKeys {
 
     // sanity checks
     {
-      assert(
-        writableSigners.length > 0,
-        "Expected at least one writable signer key"
-      );
+      if (writableSigners.length === 0) {
+        throw new Error("Expected at least one writable signer key");
+      }
+
       const [payerAddress] = writableSigners[0];
-      assert(
-        payerAddress === this.payer,
-        "Expected first writable signer key to be the fee payer"
-      );
+
+      if (payerAddress !== this.payer) {
+        throw new Error(
+          "Expected first writable signer key to be the fee payer"
+        );
+      }
     }
 
     const staticAccountKeys = [
@@ -167,7 +170,9 @@ export class CompiledKeys {
           (entry) => entry === key
         );
         if (lookupTableIndex >= 0) {
-          assert(lookupTableIndex < 256, "Max lookup table index exceeded");
+          if (lookupTableIndex >= 256) {
+            throw new Error("Max lookup table index exceeded");
+          }
           lookupTableIndexes.push(lookupTableIndex);
           drainedKeys.push(key);
           this.keyMetaMap.delete(addressKey);

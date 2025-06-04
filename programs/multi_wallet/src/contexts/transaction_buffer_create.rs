@@ -29,6 +29,9 @@ pub struct TransactionBufferCreateArgs {
 pub struct TransactionBufferCreate<'info> {
     pub settings: Account<'info, Settings>,
 
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
 
     #[account(
@@ -47,9 +50,6 @@ pub struct TransactionBufferCreate<'info> {
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
     pub creator: Option<Signer<'info>>,
-
-    #[account(mut)]
-    pub payer: Signer<'info>,
 
     pub system_program: Program<'info, System>,
 

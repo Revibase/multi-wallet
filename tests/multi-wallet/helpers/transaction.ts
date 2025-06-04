@@ -39,7 +39,7 @@ export async function sendTransaction(
     );
 
     const signature = getSignatureFromTransaction(tx);
-
+    console.log(signature);
     await sendAndConfirm(tx, { commitment: "confirmed", skipPreflight: true });
     return signature;
   } catch (error) {

@@ -15,6 +15,7 @@ pub struct Settings {
     pub threshold: u8,
     pub multi_wallet_bump: u8,
     pub bump: u8,
+    pub create_key: Pubkey,
     pub members: Vec<Member>,
 }
 
@@ -41,13 +42,14 @@ impl Settings {
         1  + // threshold
         1  + // vault_bump
         1  + // bump
+        32 + // create_key
         4  + // members vector length
         members_length * Member::INIT_SPACE // members
     }
 
     // Makes sure the multisig state is valid.
     // This must be called at the end of every instruction that modifies a Multisig account.
-    pub fn invariant(&self, initial_member: &MemberKey) -> Result<()> {
+    pub fn invariant(&self) -> Result<()> {
         let member_count = self.members.len();
         let threshold = self.threshold;
         let members = self.members.as_slice();
@@ -89,12 +91,6 @@ impl Settings {
             }
             if permissions.has(Permission::IsDelegate) {
                 permission_counts.delegators += 1;
-            }
-            if permissions.has(Permission::IsInitialMember) {
-                require!(
-                    member.pubkey.eq(initial_member),
-                    MultisigError::InitialMemberCannotBeModified
-                );
             }
         }
 

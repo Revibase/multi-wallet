@@ -37,9 +37,9 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from "@solana/kit";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from '@solana/kit';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 
 export const CREATE_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([
   197, 81, 191, 2, 164, 140, 184, 90,
@@ -56,11 +56,11 @@ export type CreateDomainConfigInstruction<
   TAccountDomainConfig extends string | IAccountMeta<string> = string,
   TAccountPayer extends
     | string
-    | IAccountMeta<string> = "G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF",
+    | IAccountMeta<string> = 'G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF',
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = "11111111111111111111111111111111",
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = []
+    | IAccountMeta<string> = '11111111111111111111111111111111',
+  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = IInstruction<TProgram> &
   IInstructionWithData<Uint8Array> &
   IInstructionWithAccounts<
@@ -75,7 +75,7 @@ export type CreateDomainConfigInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
-      ...TRemainingAccounts
+      ...TRemainingAccounts,
     ]
   >;
 
@@ -97,11 +97,11 @@ export type CreateDomainConfigInstructionDataArgs = {
 export function getCreateDomainConfigInstructionDataEncoder(): Encoder<CreateDomainConfigInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["rpId", addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
-      ["rpIdHash", fixEncoderSize(getBytesEncoder(), 32)],
-      ["origin", addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
-      ["authority", getAddressEncoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['rpId', addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
+      ['rpIdHash', fixEncoderSize(getBytesEncoder(), 32)],
+      ['origin', addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
+      ['authority', getAddressEncoder()],
     ]),
     (value) => ({ ...value, discriminator: CREATE_DOMAIN_CONFIG_DISCRIMINATOR })
   );
@@ -109,11 +109,11 @@ export function getCreateDomainConfigInstructionDataEncoder(): Encoder<CreateDom
 
 export function getCreateDomainConfigInstructionDataDecoder(): Decoder<CreateDomainConfigInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["rpId", addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
-    ["rpIdHash", fixDecoderSize(getBytesDecoder(), 32)],
-    ["origin", addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
-    ["authority", getAddressDecoder()],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['rpId', addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
+    ['rpIdHash', fixDecoderSize(getBytesDecoder(), 32)],
+    ['origin', addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
+    ['authority', getAddressDecoder()],
   ]);
 }
 
@@ -130,22 +130,22 @@ export function getCreateDomainConfigInstructionDataCodec(): Codec<
 export type CreateDomainConfigInput<
   TAccountDomainConfig extends string = string,
   TAccountPayer extends string = string,
-  TAccountSystemProgram extends string = string
+  TAccountSystemProgram extends string = string,
 > = {
   domainConfig: Address<TAccountDomainConfig>;
   payer?: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
-  rpId: CreateDomainConfigInstructionDataArgs["rpId"];
-  rpIdHash: CreateDomainConfigInstructionDataArgs["rpIdHash"];
-  origin: CreateDomainConfigInstructionDataArgs["origin"];
-  authority: CreateDomainConfigInstructionDataArgs["authority"];
+  rpId: CreateDomainConfigInstructionDataArgs['rpId'];
+  rpIdHash: CreateDomainConfigInstructionDataArgs['rpIdHash'];
+  origin: CreateDomainConfigInstructionDataArgs['origin'];
+  authority: CreateDomainConfigInstructionDataArgs['authority'];
 };
 
 export function getCreateDomainConfigInstruction<
   TAccountDomainConfig extends string,
   TAccountPayer extends string,
   TAccountSystemProgram extends string,
-  TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS
+  TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
   input: CreateDomainConfigInput<
     TAccountDomainConfig,
@@ -177,13 +177,16 @@ export function getCreateDomainConfigInstruction<
   const args = { ...input };
 
   // Resolve default values.
-
+  if (!accounts.payer.value) {
+    accounts.payer.value =
+      'G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF' as Address<'G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF'>;
+  }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   const instruction = {
     accounts: [
       getAccountMeta(accounts.domainConfig),
@@ -206,7 +209,7 @@ export function getCreateDomainConfigInstruction<
 
 export type ParsedCreateDomainConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[]
+  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -219,7 +222,7 @@ export type ParsedCreateDomainConfigInstruction<
 
 export function parseCreateDomainConfigInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[]
+  TAccountMetas extends readonly IAccountMeta[],
 >(
   instruction: IInstruction<TProgram> &
     IInstructionWithAccounts<TAccountMetas> &
@@ -227,7 +230,7 @@ export function parseCreateDomainConfigInstruction<
 ): ParsedCreateDomainConfigInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 3) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {

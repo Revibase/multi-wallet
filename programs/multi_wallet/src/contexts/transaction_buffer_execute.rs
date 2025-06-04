@@ -9,12 +9,12 @@ use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
 #[derive(Accounts)]
 pub struct TransactionBufferExecute<'info> {
-    pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
-
     #[account(
         address = transaction_buffer.multi_wallet_settings,
     )]
     pub settings: Account<'info, Settings>,
+
+    pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
 
     pub executor: Option<Signer<'info>>,
 
@@ -128,6 +128,7 @@ impl<'info> TransactionBufferExecute<'info> {
     ) -> Result<()> {
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
         transaction_buffer.can_execute = true;
+
         Ok(())
     }
 }

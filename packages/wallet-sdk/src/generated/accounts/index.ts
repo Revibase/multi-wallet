@@ -6,6 +6,7 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from './delegate';
 export * from './domainConfig';
 export * from './settings';
 export * from './transactionBuffer';

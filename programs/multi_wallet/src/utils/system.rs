@@ -134,10 +134,10 @@ pub fn close_delegate_account<'a>(
 }
 
 pub fn create_delegate_account<'a>(
-    remaining_accounts: &[AccountInfo<'a>],
+    remaining_accounts: &'a [AccountInfo<'a>],
     payer: &Signer<'a>,
     system_program: &Program<'a, System>,
-    multi_wallet_settings: &Pubkey,
+    multi_wallet_settings: Pubkey,
     member_key: &MemberKey,
 ) -> Result<()> {
     let seeds = &[SEED_DELEGATE, &member_key.get_seed()];
@@ -145,19 +145,20 @@ pub fn create_delegate_account<'a>(
     let new_account = remaining_accounts
         .iter()
         .find(|f| f.key.eq(&delegate_account));
-    require!(new_account.is_some(), MultisigError::MissingAccount);
+    let account = new_account.ok_or(MultisigError::MissingAccount)?;
 
     create_account_if_none_exist(
         &payer.to_account_info(),
-        new_account.unwrap(),
+        account,
         &system_program.to_account_info(),
         &id(),
         Delegate::size(),
         &[SEED_DELEGATE, &member_key.get_seed(), &[bump]],
     )?;
-    let mut data = new_account.unwrap().try_borrow_mut_data()?;
-    data[..8].copy_from_slice(Delegate::DISCRIMINATOR);
-    data[8..40].copy_from_slice(&multi_wallet_settings.to_bytes());
-    data[40] = bump;
+    let mut delegate = account.data.borrow_mut();
+    delegate[..8].copy_from_slice(&Delegate::DISCRIMINATOR);
+    delegate[8] = bump;
+    delegate[9..41].copy_from_slice(&multi_wallet_settings.to_bytes());
+
     Ok(())
 }

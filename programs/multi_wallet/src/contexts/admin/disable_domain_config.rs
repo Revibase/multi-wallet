@@ -15,7 +15,6 @@ impl<'info> DisableDomainConfig<'info> {
     pub fn process(ctx: Context<Self>, disable: bool) -> Result<()> {
         let domain_config = &mut ctx.accounts.domain_config.load_mut()?;
         domain_config.is_disabled = if disable { 1 } else { 0 };
-
         Ok(())
     }
 }

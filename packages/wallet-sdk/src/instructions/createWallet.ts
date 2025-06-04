@@ -1,36 +1,23 @@
 import {
-  AccountRole,
-  IAccountMeta,
-  IAccountSignerMeta,
+  getAddressDecoder,
   IInstruction,
-  none,
-  some,
   TransactionSigner,
 } from "@solana/kit";
-import { getCreateInstruction } from "../generated";
+import { getCreateInstructionAsync } from "../generated";
 import { Secp256r1Key } from "../types";
-import { getDelegateAddress, getSettingsFromInitialMember } from "../utils";
+import { getDelegateAddress, getSettingsFromCreateKey } from "../utils";
 import { extractSecp256r1VerificationArgs } from "../utils/internal";
 import { getSecp256r1VerifyInstruction } from "./secp256r1Verify";
 
 export async function createWallet({
   feePayer,
   initialMember,
+  createKey,
 }: {
   feePayer: TransactionSigner;
   initialMember: TransactionSigner | Secp256r1Key;
+  createKey: Uint8Array;
 }) {
-  const remainingAccounts: (IAccountMeta | IAccountSignerMeta)[] = [];
-
-  remainingAccounts.push({
-    address: await getDelegateAddress(
-      initialMember instanceof Secp256r1Key
-        ? initialMember
-        : initialMember.address
-    ),
-    role: AccountRole.WRITABLE,
-  });
-
   const {
     domainConfig,
     verifyArgs,
@@ -40,18 +27,8 @@ export async function createWallet({
     signature,
     publicKey,
   } = await extractSecp256r1VerificationArgs(initialMember);
-  if (domainConfig) {
-    remainingAccounts.push({
-      address: domainConfig,
-      role: AccountRole.READONLY,
-    });
-  }
 
-  const settings = await getSettingsFromInitialMember(
-    initialMember instanceof Secp256r1Key
-      ? initialMember
-      : initialMember.address
-  );
+  const settings = await getSettingsFromCreateKey(createKey);
 
   const instructions: IInstruction[] = [];
   if (message && signature && publicKey) {
@@ -67,9 +44,14 @@ export async function createWallet({
       })
     );
   }
+  const delegateAccount = await getDelegateAddress(
+    initialMember instanceof Secp256r1Key
+      ? initialMember
+      : initialMember.address
+  );
 
   instructions.push(
-    getCreateInstruction({
+    await getCreateInstructionAsync({
       instructionsSysvar,
       slotHashSysvar,
       payer: feePayer,
@@ -77,8 +59,9 @@ export async function createWallet({
       initialMember:
         initialMember instanceof Secp256r1Key ? undefined : initialMember,
       secp256r1VerifyArgs: verifyArgs,
-      domainConfig: domainConfig ? some(domainConfig) : none(),
-      remainingAccounts,
+      delegateAccount,
+      domainConfig,
+      createKey: getAddressDecoder().decode(createKey),
     })
   );
   return instructions;

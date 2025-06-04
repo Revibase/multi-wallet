@@ -123,6 +123,7 @@ export async function prepareTransactionBundle({
     extendTransactionBuffer({
       transactionMessageBytes: chunk,
       transactionBufferAddress,
+      settings,
     })
   );
 

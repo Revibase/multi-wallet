@@ -27,6 +27,7 @@ import {
   type IInstruction,
   type IInstructionWithAccounts,
   type IInstructionWithData,
+  type ReadonlyAccount,
   type ReadonlyUint8Array,
   type WritableAccount,
 } from '@solana/kit';
@@ -45,12 +46,16 @@ export function getTransactionBufferExtendDiscriminatorBytes() {
 
 export type TransactionBufferExtendInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
+  TAccountSettings extends string | IAccountMeta<string> = string,
   TAccountTransactionBuffer extends string | IAccountMeta<string> = string,
   TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = IInstruction<TProgram> &
   IInstructionWithData<Uint8Array> &
   IInstructionWithAccounts<
     [
+      TAccountSettings extends string
+        ? ReadonlyAccount<TAccountSettings>
+        : TAccountSettings,
       TAccountTransactionBuffer extends string
         ? WritableAccount<TAccountTransactionBuffer>
         : TAccountTransactionBuffer,
@@ -98,20 +103,27 @@ export function getTransactionBufferExtendInstructionDataCodec(): Codec<
 }
 
 export type TransactionBufferExtendInput<
+  TAccountSettings extends string = string,
   TAccountTransactionBuffer extends string = string,
 > = {
+  settings: Address<TAccountSettings>;
   transactionBuffer: Address<TAccountTransactionBuffer>;
   buffer: TransactionBufferExtendInstructionDataArgs['buffer'];
 };
 
 export function getTransactionBufferExtendInstruction<
+  TAccountSettings extends string,
   TAccountTransactionBuffer extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
-  input: TransactionBufferExtendInput<TAccountTransactionBuffer>,
+  input: TransactionBufferExtendInput<
+    TAccountSettings,
+    TAccountTransactionBuffer
+  >,
   config?: { programAddress?: TProgramAddress }
 ): TransactionBufferExtendInstruction<
   TProgramAddress,
+  TAccountSettings,
   TAccountTransactionBuffer
 > {
   // Program address.
@@ -119,6 +131,7 @@ export function getTransactionBufferExtendInstruction<
 
   // Original accounts.
   const originalAccounts = {
+    settings: { value: input.settings ?? null, isWritable: false },
     transactionBuffer: {
       value: input.transactionBuffer ?? null,
       isWritable: true,
@@ -134,13 +147,17 @@ export function getTransactionBufferExtendInstruction<
 
   const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   const instruction = {
-    accounts: [getAccountMeta(accounts.transactionBuffer)],
+    accounts: [
+      getAccountMeta(accounts.settings),
+      getAccountMeta(accounts.transactionBuffer),
+    ],
     programAddress,
     data: getTransactionBufferExtendInstructionDataEncoder().encode(
       args as TransactionBufferExtendInstructionDataArgs
     ),
   } as TransactionBufferExtendInstruction<
     TProgramAddress,
+    TAccountSettings,
     TAccountTransactionBuffer
   >;
 
@@ -153,7 +170,8 @@ export type ParsedTransactionBufferExtendInstruction<
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    transactionBuffer: TAccountMetas[0];
+    settings: TAccountMetas[0];
+    transactionBuffer: TAccountMetas[1];
   };
   data: TransactionBufferExtendInstructionData;
 };
@@ -166,7 +184,7 @@ export function parseTransactionBufferExtendInstruction<
     IInstructionWithAccounts<TAccountMetas> &
     IInstructionWithData<Uint8Array>
 ): ParsedTransactionBufferExtendInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 1) {
+  if (instruction.accounts.length < 2) {
     // TODO: Coded error.
     throw new Error('Not enough accounts');
   }
@@ -179,6 +197,7 @@ export function parseTransactionBufferExtendInstruction<
   return {
     programAddress: instruction.programAddress,
     accounts: {
+      settings: getNextAccount(),
       transactionBuffer: getNextAccount(),
     },
     data: getTransactionBufferExtendInstructionDataDecoder().decode(

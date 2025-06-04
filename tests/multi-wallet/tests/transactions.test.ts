@@ -1,6 +1,8 @@
 import {
-  fetchMaybeDelegate,
+  fetchDelegate,
   fetchSettings,
+  getDelegateAddress,
+  getMultiWalletFromSettings,
   prepareTransactionMessage,
   prepareTransactionSync,
 } from "@revibase/wallet-sdk";
@@ -96,19 +98,23 @@ export function runTransactionTests() {
           ctx.connection,
           address(ctx.settings)
         );
-        const delegateData = await fetchMaybeDelegate(
+        const delegateData = await fetchDelegate(
           ctx.connection,
-          ctx.wallet.address
+          await getDelegateAddress(ctx.wallet.address)
         );
 
-        expect(delegateData.multiWalletSettings.toString()).to.equal(
+        expect(delegateData.data.multiWalletSettings.toString()).to.equal(
           ctx.settings.toString(),
           "Delegate should be associated with the correct settings"
         );
-        expect(delegateData.multiWallet.toString()).to.equal(
+        const multiWallet = await getMultiWalletFromSettings(
+          delegateData.data.multiWalletSettings
+        );
+        expect(multiWallet.toString()).to.equal(
           ctx.multiWalletVault.toString(),
           "Delegate should be associated with the correct vault"
         );
+
         expect(accountData.data.members.length).to.be.greaterThan(
           0,
           "Should have at least one member"

@@ -137,8 +137,7 @@ export async function mockAuthenticationResponse(
       slotHash: new Uint8Array(getBase58Encoder().encode(slotHash)),
     },
     authData: mockAuthenticatorData,
-    domainConfig: domainConfig,
-    rpIdHash: mockAuthenticatorData.subarray(0, 32),
+    domainConfig,
     signature: normalizeSignatureToLowS(signatureRS),
   };
 }

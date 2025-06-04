@@ -7,9 +7,12 @@ import {
   Rpc,
   TransactionSigner,
 } from "@solana/kit";
-import { getNativeTransferIntentInstructionAsync } from "../../generated";
+import {
+  fetchMaybeDelegate,
+  getNativeTransferIntentInstructionAsync,
+} from "../../generated";
 import { Secp256r1Key } from "../../types";
-import { fetchMaybeDelegate } from "../../utils";
+import { getDelegateAddress, getMultiWalletFromSettings } from "../../utils";
 import {
   extractSecp256r1VerificationArgs,
   getDeduplicatedSigners,
@@ -31,15 +34,20 @@ export async function nativeTransferIntent({
 }) {
   const delegateData = await fetchMaybeDelegate(
     rpc,
-    creator instanceof Secp256r1Key ? creator : creator.address
+    await getDelegateAddress(
+      creator instanceof Secp256r1Key ? creator : creator.address
+    )
   );
-  if (!delegateData) {
+  if (!delegateData.exists) {
     throw new Error(
       "Missing delegate account: Signer is not authorized for delegated transfers."
     );
   }
+  const multiWallet = await getMultiWalletFromSettings(
+    delegateData.data.multiWalletSettings
+  );
 
-  const accountInfo = await rpc.getAccountInfo(delegateData.multiWallet).send();
+  const accountInfo = await rpc.getAccountInfo(multiWallet).send();
   if ((accountInfo.value?.lamports ?? 0) < amount) {
     throw new Error(`Insufficient balance.`);
   }
@@ -87,7 +95,7 @@ export async function nativeTransferIntent({
   }
   instructions.push(
     await getNativeTransferIntentInstructionAsync({
-      settings: delegateData.multiWalletSettings,
+      settings: delegateData.data.multiWalletSettings,
       domainConfig,
       destination,
       amount,

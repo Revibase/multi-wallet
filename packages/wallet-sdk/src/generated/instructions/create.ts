@@ -16,6 +16,7 @@ import {
   getBytesEncoder,
   getOptionDecoder,
   getOptionEncoder,
+  getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
@@ -36,15 +37,19 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from "@solana/kit";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from '@solana/kit';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import {
+  expectSome,
+  getAccountMetaFactory,
+  type ResolvedAccount,
+} from '../shared';
 import {
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-} from "../types";
+} from '../types';
 
 export const CREATE_DISCRIMINATOR = new Uint8Array([
   24, 30, 200, 40, 5, 28, 7, 119,
@@ -56,30 +61,32 @@ export function getCreateDiscriminatorBytes() {
 
 export type CreateInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountPayer extends string | IAccountMeta<string> = string,
   TAccountSettings extends string | IAccountMeta<string> = string,
+  TAccountPayer extends string | IAccountMeta<string> = string,
   TAccountInitialMember extends string | IAccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = "11111111111111111111111111111111",
+    | IAccountMeta<string> = '11111111111111111111111111111111',
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+    | IAccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+    | IAccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
+  TAccountDomainConfig extends string | IAccountMeta<string> = string,
+  TAccountDelegateAccount extends string | IAccountMeta<string> = string,
   TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = IInstruction<TProgram> &
   IInstructionWithData<Uint8Array> &
   IInstructionWithAccounts<
     [
+      TAccountSettings extends string
+        ? WritableAccount<TAccountSettings>
+        : TAccountSettings,
       TAccountPayer extends string
         ? WritableSignerAccount<TAccountPayer> &
             IAccountSignerMeta<TAccountPayer>
         : TAccountPayer,
-      TAccountSettings extends string
-        ? WritableAccount<TAccountSettings>
-        : TAccountSettings,
       TAccountInitialMember extends string
         ? ReadonlySignerAccount<TAccountInitialMember> &
             IAccountSignerMeta<TAccountInitialMember>
@@ -93,30 +100,36 @@ export type CreateInstruction<
       TAccountInstructionsSysvar extends string
         ? ReadonlyAccount<TAccountInstructionsSysvar>
         : TAccountInstructionsSysvar,
+      TAccountDomainConfig extends string
+        ? ReadonlyAccount<TAccountDomainConfig>
+        : TAccountDomainConfig,
+      TAccountDelegateAccount extends string
+        ? WritableAccount<TAccountDelegateAccount>
+        : TAccountDelegateAccount,
       ...TRemainingAccounts,
     ]
   >;
 
 export type CreateInstructionData = {
   discriminator: ReadonlyUint8Array;
+  createKey: Address;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
-  domainConfig: Option<Address>;
 };
 
 export type CreateInstructionDataArgs = {
+  createKey: Address;
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  domainConfig: OptionOrNullable<Address>;
 };
 
 export function getCreateInstructionDataEncoder(): Encoder<CreateInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['createKey', getAddressEncoder()],
       [
-        "secp256r1VerifyArgs",
+        'secp256r1VerifyArgs',
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
-      ["domainConfig", getOptionEncoder(getAddressEncoder())],
     ]),
     (value) => ({ ...value, discriminator: CREATE_DISCRIMINATOR })
   );
@@ -124,9 +137,9 @@ export function getCreateInstructionDataEncoder(): Encoder<CreateInstructionData
 
 export function getCreateInstructionDataDecoder(): Decoder<CreateInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ["domainConfig", getOptionDecoder(getAddressDecoder())],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['createKey', getAddressDecoder()],
+    ['secp256r1VerifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
 }
 
@@ -140,63 +153,70 @@ export function getCreateInstructionDataCodec(): Codec<
   );
 }
 
-export type CreateInput<
-  TAccountPayer extends string = string,
+export type CreateAsyncInput<
   TAccountSettings extends string = string,
+  TAccountPayer extends string = string,
   TAccountInitialMember extends string = string,
   TAccountSystemProgram extends string = string,
   TAccountSlotHashSysvar extends string = string,
   TAccountInstructionsSysvar extends string = string,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TAccountDomainConfig extends string = string,
+  TAccountDelegateAccount extends string = string,
 > = {
+  settings?: Address<TAccountSettings>;
   payer: TransactionSigner<TAccountPayer>;
-  settings: Address<TAccountSettings>;
   initialMember?: TransactionSigner<TAccountInitialMember>;
   systemProgram?: Address<TAccountSystemProgram>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  secp256r1VerifyArgs: CreateInstructionDataArgs["secp256r1VerifyArgs"];
-  domainConfig: CreateInstructionDataArgs["domainConfig"];
-  remainingAccounts: TRemainingAccounts;
+  domainConfig?: Address<TAccountDomainConfig>;
+  delegateAccount: Address<TAccountDelegateAccount>;
+  createKey: CreateInstructionDataArgs['createKey'];
+  secp256r1VerifyArgs: CreateInstructionDataArgs['secp256r1VerifyArgs'];
 };
 
-export function getCreateInstruction<
-  TAccountPayer extends string,
+export async function getCreateInstructionAsync<
   TAccountSettings extends string,
+  TAccountPayer extends string,
   TAccountInitialMember extends string,
   TAccountSystemProgram extends string,
   TAccountSlotHashSysvar extends string,
   TAccountInstructionsSysvar extends string,
+  TAccountDomainConfig extends string,
+  TAccountDelegateAccount extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 >(
-  input: CreateInput<
-    TAccountPayer,
+  input: CreateAsyncInput<
     TAccountSettings,
+    TAccountPayer,
     TAccountInitialMember,
     TAccountSystemProgram,
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar,
-    TRemainingAccounts
+    TAccountDomainConfig,
+    TAccountDelegateAccount
   >,
   config?: { programAddress?: TProgramAddress }
-): CreateInstruction<
-  TProgramAddress,
-  TAccountPayer,
-  TAccountSettings,
-  TAccountInitialMember,
-  TAccountSystemProgram,
-  TAccountSlotHashSysvar,
-  TAccountInstructionsSysvar,
-  TRemainingAccounts
+): Promise<
+  CreateInstruction<
+    TProgramAddress,
+    TAccountSettings,
+    TAccountPayer,
+    TAccountInitialMember,
+    TAccountSystemProgram,
+    TAccountSlotHashSysvar,
+    TAccountInstructionsSysvar,
+    TAccountDomainConfig,
+    TAccountDelegateAccount
+  >
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
-    payer: { value: input.payer ?? null, isWritable: true },
     settings: { value: input.settings ?? null, isWritable: true },
+    payer: { value: input.payer ?? null, isWritable: true },
     initialMember: { value: input.initialMember ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
     slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
@@ -204,6 +224,146 @@ export function getCreateInstruction<
       value: input.instructionsSysvar ?? null,
       isWritable: false,
     },
+    domainConfig: { value: input.domainConfig ?? null, isWritable: false },
+    delegateAccount: { value: input.delegateAccount ?? null, isWritable: true },
+  };
+  const accounts = originalAccounts as Record<
+    keyof typeof originalAccounts,
+    ResolvedAccount
+  >;
+
+  // Original args.
+  const args = { ...input };
+
+  // Resolve default values.
+  if (!accounts.settings.value) {
+    accounts.settings.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116,
+          ])
+        ),
+        getAddressEncoder().encode(expectSome(args.createKey)),
+      ],
+    });
+  }
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+  }
+  if (!accounts.slotHashSysvar.value) {
+    accounts.slotHashSysvar.value =
+      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
+  }
+  if (!accounts.instructionsSysvar.value) {
+    accounts.instructionsSysvar.value =
+      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
+  }
+
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const instruction = {
+    accounts: [
+      getAccountMeta(accounts.settings),
+      getAccountMeta(accounts.payer),
+      getAccountMeta(accounts.initialMember),
+      getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.slotHashSysvar),
+      getAccountMeta(accounts.instructionsSysvar),
+      getAccountMeta(accounts.domainConfig),
+      getAccountMeta(accounts.delegateAccount),
+    ],
+    programAddress,
+    data: getCreateInstructionDataEncoder().encode(
+      args as CreateInstructionDataArgs
+    ),
+  } as CreateInstruction<
+    TProgramAddress,
+    TAccountSettings,
+    TAccountPayer,
+    TAccountInitialMember,
+    TAccountSystemProgram,
+    TAccountSlotHashSysvar,
+    TAccountInstructionsSysvar,
+    TAccountDomainConfig,
+    TAccountDelegateAccount
+  >;
+
+  return instruction;
+}
+
+export type CreateInput<
+  TAccountSettings extends string = string,
+  TAccountPayer extends string = string,
+  TAccountInitialMember extends string = string,
+  TAccountSystemProgram extends string = string,
+  TAccountSlotHashSysvar extends string = string,
+  TAccountInstructionsSysvar extends string = string,
+  TAccountDomainConfig extends string = string,
+  TAccountDelegateAccount extends string = string,
+> = {
+  settings: Address<TAccountSettings>;
+  payer: TransactionSigner<TAccountPayer>;
+  initialMember?: TransactionSigner<TAccountInitialMember>;
+  systemProgram?: Address<TAccountSystemProgram>;
+  slotHashSysvar?: Address<TAccountSlotHashSysvar>;
+  instructionsSysvar?: Address<TAccountInstructionsSysvar>;
+  domainConfig?: Address<TAccountDomainConfig>;
+  delegateAccount: Address<TAccountDelegateAccount>;
+  createKey: CreateInstructionDataArgs['createKey'];
+  secp256r1VerifyArgs: CreateInstructionDataArgs['secp256r1VerifyArgs'];
+};
+
+export function getCreateInstruction<
+  TAccountSettings extends string,
+  TAccountPayer extends string,
+  TAccountInitialMember extends string,
+  TAccountSystemProgram extends string,
+  TAccountSlotHashSysvar extends string,
+  TAccountInstructionsSysvar extends string,
+  TAccountDomainConfig extends string,
+  TAccountDelegateAccount extends string,
+  TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
+>(
+  input: CreateInput<
+    TAccountSettings,
+    TAccountPayer,
+    TAccountInitialMember,
+    TAccountSystemProgram,
+    TAccountSlotHashSysvar,
+    TAccountInstructionsSysvar,
+    TAccountDomainConfig,
+    TAccountDelegateAccount
+  >,
+  config?: { programAddress?: TProgramAddress }
+): CreateInstruction<
+  TProgramAddress,
+  TAccountSettings,
+  TAccountPayer,
+  TAccountInitialMember,
+  TAccountSystemProgram,
+  TAccountSlotHashSysvar,
+  TAccountInstructionsSysvar,
+  TAccountDomainConfig,
+  TAccountDelegateAccount
+> {
+  // Program address.
+  const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
+
+  // Original accounts.
+  const originalAccounts = {
+    settings: { value: input.settings ?? null, isWritable: true },
+    payer: { value: input.payer ?? null, isWritable: true },
+    initialMember: { value: input.initialMember ?? null, isWritable: false },
+    systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
+    instructionsSysvar: {
+      value: input.instructionsSysvar ?? null,
+      isWritable: false,
+    },
+    domainConfig: { value: input.domainConfig ?? null, isWritable: false },
+    delegateAccount: { value: input.delegateAccount ?? null, isWritable: true },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -216,19 +376,28 @@ export function getCreateInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+  }
+  if (!accounts.slotHashSysvar.value) {
+    accounts.slotHashSysvar.value =
+      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
+  }
+  if (!accounts.instructionsSysvar.value) {
+    accounts.instructionsSysvar.value =
+      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
   }
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   const instruction = {
     accounts: [
-      getAccountMeta(accounts.payer),
       getAccountMeta(accounts.settings),
+      getAccountMeta(accounts.payer),
       getAccountMeta(accounts.initialMember),
       getAccountMeta(accounts.systemProgram),
       getAccountMeta(accounts.slotHashSysvar),
       getAccountMeta(accounts.instructionsSysvar),
-      ...input.remainingAccounts,
+      getAccountMeta(accounts.domainConfig),
+      getAccountMeta(accounts.delegateAccount),
     ],
     programAddress,
     data: getCreateInstructionDataEncoder().encode(
@@ -236,13 +405,14 @@ export function getCreateInstruction<
     ),
   } as CreateInstruction<
     TProgramAddress,
-    TAccountPayer,
     TAccountSettings,
+    TAccountPayer,
     TAccountInitialMember,
     TAccountSystemProgram,
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar,
-    TRemainingAccounts
+    TAccountDomainConfig,
+    TAccountDelegateAccount
   >;
 
   return instruction;
@@ -254,12 +424,14 @@ export type ParsedCreateInstruction<
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    payer: TAccountMetas[0];
-    settings: TAccountMetas[1];
+    settings: TAccountMetas[0];
+    payer: TAccountMetas[1];
     initialMember?: TAccountMetas[2] | undefined;
     systemProgram: TAccountMetas[3];
     slotHashSysvar?: TAccountMetas[4] | undefined;
     instructionsSysvar?: TAccountMetas[5] | undefined;
+    domainConfig?: TAccountMetas[6] | undefined;
+    delegateAccount: TAccountMetas[7];
   };
   data: CreateInstructionData;
 };
@@ -272,9 +444,9 @@ export function parseCreateInstruction<
     IInstructionWithAccounts<TAccountMetas> &
     IInstructionWithData<Uint8Array>
 ): ParsedCreateInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 6) {
+  if (instruction.accounts.length < 8) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -291,12 +463,14 @@ export function parseCreateInstruction<
   return {
     programAddress: instruction.programAddress,
     accounts: {
-      payer: getNextAccount(),
       settings: getNextAccount(),
+      payer: getNextAccount(),
       initialMember: getNextOptionalAccount(),
       systemProgram: getNextAccount(),
       slotHashSysvar: getNextOptionalAccount(),
       instructionsSysvar: getNextOptionalAccount(),
+      domainConfig: getNextOptionalAccount(),
+      delegateAccount: getNextAccount(),
     },
     data: getCreateInstructionDataDecoder().decode(instruction.data),
   };

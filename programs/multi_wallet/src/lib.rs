@@ -79,10 +79,10 @@ pub mod multi_wallet {
     /// - `Result<()>`: The result of the multi-wallet creation.
     pub fn create<'info>(
         ctx: Context<'_, '_, 'info, 'info, CreateMultiWallet<'info>>,
+        create_key: Pubkey,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        domain_config: Option<Pubkey>,
     ) -> Result<()> {
-        CreateMultiWallet::process(ctx, secp256r1_verify_args, domain_config)
+        CreateMultiWallet::process(ctx, create_key, secp256r1_verify_args)
     }
 
     /// # Parameters

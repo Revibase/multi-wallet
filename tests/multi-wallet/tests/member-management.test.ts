@@ -3,6 +3,7 @@ import {
   convertMemberKeyToString,
   fetchMaybeDelegate,
   fetchSettings,
+  getDelegateAddress,
   Permission,
   Permissions,
 } from "@revibase/wallet-sdk";
@@ -60,10 +61,13 @@ export function runMemberManagementTests() {
       );
       const delegateData = await fetchMaybeDelegate(
         ctx.connection,
-        ctx.payer.address
+        await getDelegateAddress(ctx.payer.address)
       );
 
-      expect(delegateData).to.equal(null, "Payer should not be a delegate");
+      expect(delegateData.exists).equal(
+        false,
+        "Payer should not be a delegate"
+      );
       expect(accountData.data.members.length).to.equal(
         2,
         "Should have two members"
@@ -153,10 +157,13 @@ export function runMemberManagementTests() {
       );
       const delegateData = await fetchMaybeDelegate(
         ctx.connection,
-        ctx.payer.address
+        await getDelegateAddress(ctx.payer.address)
       );
 
-      expect(delegateData).to.equal(null, "Payer should not be a delegate");
+      expect(delegateData.exists).equal(
+        false,
+        "Payer should not be a delegate"
+      );
       expect(accountData.data.members.length).to.equal(
         1,
         "Should have one member"

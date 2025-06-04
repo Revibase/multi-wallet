@@ -34,15 +34,15 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from "@solana/kit";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from '@solana/kit';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-} from "../types";
+} from '../types';
 
 export const TRANSACTION_BUFFER_VOTE_DISCRIMINATOR = new Uint8Array([
   203, 50, 79, 187, 94, 53, 82, 122,
@@ -57,19 +57,19 @@ export function getTransactionBufferVoteDiscriminatorBytes() {
 export type TransactionBufferVoteInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountSettings extends string | IAccountMeta<string> = string,
+  TAccountPayer extends string | IAccountMeta<string> = string,
   TAccountDomainConfig extends string | IAccountMeta<string> = string,
   TAccountTransactionBuffer extends string | IAccountMeta<string> = string,
   TAccountVoter extends string | IAccountMeta<string> = string,
-  TAccountPayer extends string | IAccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = "11111111111111111111111111111111",
+    | IAccountMeta<string> = '11111111111111111111111111111111',
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+    | IAccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+    | IAccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
   TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = IInstruction<TProgram> &
   IInstructionWithData<Uint8Array> &
@@ -78,6 +78,10 @@ export type TransactionBufferVoteInstruction<
       TAccountSettings extends string
         ? ReadonlyAccount<TAccountSettings>
         : TAccountSettings,
+      TAccountPayer extends string
+        ? WritableSignerAccount<TAccountPayer> &
+            IAccountSignerMeta<TAccountPayer>
+        : TAccountPayer,
       TAccountDomainConfig extends string
         ? ReadonlyAccount<TAccountDomainConfig>
         : TAccountDomainConfig,
@@ -88,10 +92,6 @@ export type TransactionBufferVoteInstruction<
         ? ReadonlySignerAccount<TAccountVoter> &
             IAccountSignerMeta<TAccountVoter>
         : TAccountVoter,
-      TAccountPayer extends string
-        ? WritableSignerAccount<TAccountPayer> &
-            IAccountSignerMeta<TAccountPayer>
-        : TAccountPayer,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
@@ -117,9 +117,9 @@ export type TransactionBufferVoteInstructionDataArgs = {
 export function getTransactionBufferVoteInstructionDataEncoder(): Encoder<TransactionBufferVoteInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
       [
-        "secp256r1VerifyArgs",
+        'secp256r1VerifyArgs',
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
     ]),
@@ -132,8 +132,8 @@ export function getTransactionBufferVoteInstructionDataEncoder(): Encoder<Transa
 
 export function getTransactionBufferVoteInstructionDataDecoder(): Decoder<TransactionBufferVoteInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['secp256r1VerifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
 }
 
@@ -149,31 +149,31 @@ export function getTransactionBufferVoteInstructionDataCodec(): Codec<
 
 export type TransactionBufferVoteInput<
   TAccountSettings extends string = string,
+  TAccountPayer extends string = string,
   TAccountDomainConfig extends string = string,
   TAccountTransactionBuffer extends string = string,
   TAccountVoter extends string = string,
-  TAccountPayer extends string = string,
   TAccountSystemProgram extends string = string,
   TAccountSlotHashSysvar extends string = string,
   TAccountInstructionsSysvar extends string = string,
 > = {
   settings: Address<TAccountSettings>;
+  payer: TransactionSigner<TAccountPayer>;
   domainConfig?: Address<TAccountDomainConfig>;
   transactionBuffer: Address<TAccountTransactionBuffer>;
   voter?: TransactionSigner<TAccountVoter>;
-  payer: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  secp256r1VerifyArgs: TransactionBufferVoteInstructionDataArgs["secp256r1VerifyArgs"];
+  secp256r1VerifyArgs: TransactionBufferVoteInstructionDataArgs['secp256r1VerifyArgs'];
 };
 
 export function getTransactionBufferVoteInstruction<
   TAccountSettings extends string,
+  TAccountPayer extends string,
   TAccountDomainConfig extends string,
   TAccountTransactionBuffer extends string,
   TAccountVoter extends string,
-  TAccountPayer extends string,
   TAccountSystemProgram extends string,
   TAccountSlotHashSysvar extends string,
   TAccountInstructionsSysvar extends string,
@@ -181,10 +181,10 @@ export function getTransactionBufferVoteInstruction<
 >(
   input: TransactionBufferVoteInput<
     TAccountSettings,
+    TAccountPayer,
     TAccountDomainConfig,
     TAccountTransactionBuffer,
     TAccountVoter,
-    TAccountPayer,
     TAccountSystemProgram,
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar
@@ -193,10 +193,10 @@ export function getTransactionBufferVoteInstruction<
 ): TransactionBufferVoteInstruction<
   TProgramAddress,
   TAccountSettings,
+  TAccountPayer,
   TAccountDomainConfig,
   TAccountTransactionBuffer,
   TAccountVoter,
-  TAccountPayer,
   TAccountSystemProgram,
   TAccountSlotHashSysvar,
   TAccountInstructionsSysvar
@@ -207,13 +207,13 @@ export function getTransactionBufferVoteInstruction<
   // Original accounts.
   const originalAccounts = {
     settings: { value: input.settings ?? null, isWritable: false },
+    payer: { value: input.payer ?? null, isWritable: true },
     domainConfig: { value: input.domainConfig ?? null, isWritable: false },
     transactionBuffer: {
       value: input.transactionBuffer ?? null,
       isWritable: true,
     },
     voter: { value: input.voter ?? null, isWritable: false },
-    payer: { value: input.payer ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
     slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
     instructionsSysvar: {
@@ -232,17 +232,25 @@ export function getTransactionBufferVoteInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+  }
+  if (!accounts.slotHashSysvar.value) {
+    accounts.slotHashSysvar.value =
+      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
+  }
+  if (!accounts.instructionsSysvar.value) {
+    accounts.instructionsSysvar.value =
+      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
   }
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   const instruction = {
     accounts: [
       getAccountMeta(accounts.settings),
+      getAccountMeta(accounts.payer),
       getAccountMeta(accounts.domainConfig),
       getAccountMeta(accounts.transactionBuffer),
       getAccountMeta(accounts.voter),
-      getAccountMeta(accounts.payer),
       getAccountMeta(accounts.systemProgram),
       getAccountMeta(accounts.slotHashSysvar),
       getAccountMeta(accounts.instructionsSysvar),
@@ -254,10 +262,10 @@ export function getTransactionBufferVoteInstruction<
   } as TransactionBufferVoteInstruction<
     TProgramAddress,
     TAccountSettings,
+    TAccountPayer,
     TAccountDomainConfig,
     TAccountTransactionBuffer,
     TAccountVoter,
-    TAccountPayer,
     TAccountSystemProgram,
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar
@@ -273,10 +281,10 @@ export type ParsedTransactionBufferVoteInstruction<
   programAddress: Address<TProgram>;
   accounts: {
     settings: TAccountMetas[0];
-    domainConfig?: TAccountMetas[1] | undefined;
-    transactionBuffer: TAccountMetas[2];
-    voter?: TAccountMetas[3] | undefined;
-    payer: TAccountMetas[4];
+    payer: TAccountMetas[1];
+    domainConfig?: TAccountMetas[2] | undefined;
+    transactionBuffer: TAccountMetas[3];
+    voter?: TAccountMetas[4] | undefined;
     systemProgram: TAccountMetas[5];
     slotHashSysvar?: TAccountMetas[6] | undefined;
     instructionsSysvar?: TAccountMetas[7] | undefined;
@@ -294,7 +302,7 @@ export function parseTransactionBufferVoteInstruction<
 ): ParsedTransactionBufferVoteInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 8) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -312,10 +320,10 @@ export function parseTransactionBufferVoteInstruction<
     programAddress: instruction.programAddress,
     accounts: {
       settings: getNextAccount(),
+      payer: getNextAccount(),
       domainConfig: getNextOptionalAccount(),
       transactionBuffer: getNextAccount(),
       voter: getNextOptionalAccount(),
-      payer: getNextAccount(),
       systemProgram: getNextAccount(),
       slotHashSysvar: getNextOptionalAccount(),
       instructionsSysvar: getNextOptionalAccount(),

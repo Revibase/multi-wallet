@@ -1,4 +1,4 @@
-use crate::{MultisigError, TransactionBuffer};
+use crate::{state::Settings, MultisigError, TransactionBuffer};
 use anchor_lang::{prelude::*, solana_program::hash::hash};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -9,6 +9,10 @@ pub struct TransactionBufferExtendArgs {
 
 #[derive(Accounts)]
 pub struct TransactionBufferExtend<'info> {
+    #[account(
+        address = transaction_buffer.multi_wallet_settings
+    )]
+    pub settings: Account<'info, Settings>,
     #[account(mut)]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 }

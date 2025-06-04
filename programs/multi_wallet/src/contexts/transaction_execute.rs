@@ -1,18 +1,23 @@
 use crate::{
-    id, state::SEED_MULTISIG, ExecutableTransactionMessage, MultisigError, TransactionBuffer,
-    VaultTransactionMessage, SEED_VAULT,
+    id,
+    state::{Settings, SEED_MULTISIG},
+    ExecutableTransactionMessage, MultisigError, TransactionBuffer, VaultTransactionMessage,
+    SEED_VAULT,
 };
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct TransactionExecute<'info> {
+    #[account(
+        address = transaction_buffer.multi_wallet_settings
+    )]
+    pub settings: Account<'info, Settings>,
     /// CHECK:
     #[account(
         mut,
         constraint = payer.key() == transaction_buffer.payer @MultisigError::InvalidAccount
     )]
     pub payer: UncheckedAccount<'info>,
-
     #[account(
         mut,
         close = payer,
@@ -76,6 +81,7 @@ impl<'info> TransactionExecute<'info> {
         )?;
 
         let protected_accounts = &[
+            transaction_buffer.payer,
             transaction_buffer.key(),
             transaction_buffer.multi_wallet_settings,
         ];

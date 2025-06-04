@@ -1,12 +1,12 @@
 import {
   changeConfig,
-  fetchMaybeDelegate,
+  fetchDelegate,
   fetchSettings,
-  Permission,
+  getDelegateAddress,
+  getMultiWalletFromSettings,
   Permissions,
   Secp256r1Key,
 } from "@revibase/wallet-sdk";
-import { address } from "@solana/kit";
 import { expect } from "chai";
 import {
   createMultiWallet,
@@ -44,10 +44,9 @@ export function runSecp256r1Tests() {
       );
 
       // Create Secp256r1Key
-      const secp256r1Key = new Secp256r1Key(
-        new Uint8Array(mockResult.verifyArgs.publicKey[0]),
-        { ...mockResult }
-      );
+      const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey, {
+        ...mockResult,
+      });
 
       // Add Secp256r1Key as member
       const changeConfigIxs = await changeConfig({
@@ -56,25 +55,18 @@ export function runSecp256r1Tests() {
         settings: ctx.settings,
         configActions: [
           {
-            type: "EditPermissions",
+            type: "AddMembers",
             members: [
               {
-                pubkey: ctx.wallet.address,
-                permissions: Permissions.fromPermissions([
-                  Permission.IsInitialMember,
-                ]),
+                pubkey: secp256r1Key,
+                permissions: Permissions.all(),
               },
             ],
           },
-          {
-            type: "AddMembers",
-            members: [{ pubkey: secp256r1Key, permissions: Permissions.all() }],
-          },
-          { type: "SetThreshold", threshold: 1 },
         ],
       });
 
-      await sendTransaction(
+      const tx = await sendTransaction(
         ctx.connection,
         changeConfigIxs,
         ctx.payer,
@@ -82,23 +74,25 @@ export function runSecp256r1Tests() {
       );
 
       // Verify Secp256r1Key was added as member
-      const accountData = await fetchSettings(
+      const accountData = await fetchSettings(ctx.connection, ctx.settings);
+
+      const delegateData = await fetchDelegate(
         ctx.connection,
-        address(ctx.settings)
-      );
-      const delegateData = await fetchMaybeDelegate(
-        ctx.connection,
-        secp256r1Key
+        await getDelegateAddress(secp256r1Key)
       );
 
-      expect(delegateData.multiWalletSettings.toString()).to.equal(
+      expect(delegateData.data.multiWalletSettings.toString()).to.equal(
         ctx.settings.toString(),
         "Delegate should be associated with the correct settings"
       );
-      expect(delegateData.multiWallet.toString()).to.equal(
+      const multiWallet = await getMultiWalletFromSettings(
+        delegateData.data.multiWalletSettings
+      );
+      expect(multiWallet.toString()).to.equal(
         ctx.multiWalletVault.toString(),
         "Delegate should be associated with the correct vault"
       );
+
       expect(accountData.data.members.length).to.equal(
         2,
         "Should have two members"

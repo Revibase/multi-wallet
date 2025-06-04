@@ -21,7 +21,6 @@ import {
   IPermissions,
   MemberKey,
   MemberWithVerifyArgs,
-  Secp256r1Pubkey,
   Secp256r1VerifyArgs,
 } from "../generated";
 import { ConfigActionWrapper, KeyType, Secp256r1Key } from "../types";
@@ -91,7 +90,7 @@ export async function accountsForTransactionExecute({
   rpc,
   multiWallet,
   transactionMessageBytes,
-  additionalSigners: additionalSigners,
+  additionalSigners,
 }: {
   rpc: Rpc<GetMultipleAccountsApi>;
   transactionMessageBytes: Uint8Array;
@@ -252,15 +251,7 @@ export function normalizeKey(key: any) {
 }
 export async function extractSecp256r1VerificationArgs(
   signer?: Secp256r1Key | TransactionSigner
-): Promise<{
-  slotHashSysvar: Address | undefined;
-  instructionsSysvar: Address | undefined;
-  domainConfig: Address | undefined;
-  verifyArgs: OptionOrNullable<Secp256r1VerifyArgs>;
-  signature: Uint8Array | undefined;
-  message: Uint8Array | undefined;
-  publicKey: Secp256r1Pubkey | undefined;
-}> {
+) {
   const secp256r1PublicKey =
     signer instanceof Secp256r1Key ? signer : undefined;
   const verifyArgs: OptionOrNullable<Secp256r1VerifyArgs> =
@@ -273,7 +264,7 @@ export async function extractSecp256r1VerificationArgs(
     ? address("SysvarS1otHashes111111111111111111111111111")
     : undefined;
   const domainConfig = secp256r1PublicKey?.domainConfig
-    ? address(secp256r1PublicKey?.domainConfig)
+    ? secp256r1PublicKey.domainConfig
     : undefined;
   const signature = secp256r1PublicKey?.verifyArgs
     ? secp256r1PublicKey.signature

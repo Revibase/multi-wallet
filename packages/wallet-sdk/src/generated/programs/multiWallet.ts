@@ -12,7 +12,7 @@ import {
   getBytesEncoder,
   type Address,
   type ReadonlyUint8Array,
-} from '@solana/kit';
+} from "@solana/kit";
 import {
   type ParsedChangeConfigInstruction,
   type ParsedCreateDomainConfigInstruction,
@@ -29,12 +29,13 @@ import {
   type ParsedTransactionBufferVoteInstruction,
   type ParsedTransactionExecuteInstruction,
   type ParsedTransactionExecuteSyncInstruction,
-} from '../instructions';
+} from "../instructions";
 
 export const MULTI_WALLET_PROGRAM_ADDRESS =
-  'pkeyt2Txg77e2JSS2K44hDnC2p6uE4jXnd2UQZxZ2oE' as Address<'pkeyt2Txg77e2JSS2K44hDnC2p6uE4jXnd2UQZxZ2oE'>;
+  "pkeyt2Txg77e2JSS2K44hDnC2p6uE4jXnd2UQZxZ2oE" as Address<"pkeyt2Txg77e2JSS2K44hDnC2p6uE4jXnd2UQZxZ2oE">;
 
 export enum MultiWalletAccount {
+  Delegate,
   DomainConfig,
   Settings,
   TransactionBuffer,
@@ -43,7 +44,18 @@ export enum MultiWalletAccount {
 export function identifyMultiWalletAccount(
   account: { data: ReadonlyUint8Array } | ReadonlyUint8Array
 ): MultiWalletAccount {
-  const data = 'data' in account ? account.data : account;
+  const data = "data" in account ? account.data : account;
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([92, 145, 166, 111, 11, 38, 38, 247])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletAccount.Delegate;
+  }
   if (
     containsBytes(
       data,
@@ -78,7 +90,7 @@ export function identifyMultiWalletAccount(
     return MultiWalletAccount.TransactionBuffer;
   }
   throw new Error(
-    'The provided account could not be identified as a multiWallet account.'
+    "The provided account could not be identified as a multiWallet account."
   );
 }
 
@@ -103,7 +115,7 @@ export enum MultiWalletInstruction {
 export function identifyMultiWalletInstruction(
   instruction: { data: ReadonlyUint8Array } | ReadonlyUint8Array
 ): MultiWalletInstruction {
-  const data = 'data' in instruction ? instruction.data : instruction;
+  const data = "data" in instruction ? instruction.data : instruction;
   if (
     containsBytes(
       data,
@@ -270,12 +282,12 @@ export function identifyMultiWalletInstruction(
     return MultiWalletInstruction.TransactionExecuteSync;
   }
   throw new Error(
-    'The provided instruction could not be identified as a multiWallet instruction.'
+    "The provided instruction could not be identified as a multiWallet instruction."
   );
 }
 
 export type ParsedMultiWalletInstruction<
-  TProgram extends string = 'pkeyt2Txg77e2JSS2K44hDnC2p6uE4jXnd2UQZxZ2oE',
+  TProgram extends string = "pkeyt2Txg77e2JSS2K44hDnC2p6uE4jXnd2UQZxZ2oE",
 > =
   | ({
       instructionType: MultiWalletInstruction.ChangeConfig;

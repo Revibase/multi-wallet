@@ -13,6 +13,12 @@ pub struct TransactionBufferClose<'info> {
         address = transaction_buffer.multi_wallet_settings,
     )]
     pub settings: Account<'info, Settings>,
+    /// CHECK:
+    #[account(
+            mut,
+            constraint = payer.key() == transaction_buffer.payer @MultisigError::InvalidAccount
+        )]
+    pub payer: UncheckedAccount<'info>,
 
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
 
@@ -23,13 +29,6 @@ pub struct TransactionBufferClose<'info> {
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
     pub closer: Option<Signer<'info>>,
-
-    /// CHECK:
-    #[account(
-        mut,
-        constraint = payer.key() == transaction_buffer.payer @MultisigError::InvalidAccount
-    )]
-    pub payer: UncheckedAccount<'info>,
 
     /// CHECK:
     #[account(

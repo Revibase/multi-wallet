@@ -17,16 +17,7 @@
         "# Returns",
         "- `Result<()>`: The result of the multi-action execution."
       ],
-      "discriminator": [
-        24,
-        158,
-        114,
-        115,
-        94,
-        210,
-        244,
-        233
-      ],
+      "discriminator": [24, 158, 114, 115, 94, 210, 244, 233],
       "accounts": [
         {
           "name": "settings",
@@ -89,25 +80,30 @@
         "# Returns",
         "- `Result<()>`: The result of the multi-wallet creation."
       ],
-      "discriminator": [
-        24,
-        30,
-        200,
-        40,
-        5,
-        28,
-        7,
-        119
-      ],
+      "discriminator": [24, 30, 200, 40, 5, 28, 7, 119],
       "accounts": [
+        {
+          "name": "settings",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "create_key"
+              }
+            ]
+          }
+        },
         {
           "name": "payer",
           "writable": true,
           "signer": true
-        },
-        {
-          "name": "settings",
-          "writable": true
         },
         {
           "name": "initial_member",
@@ -127,9 +123,21 @@
           "name": "instructions_sysvar",
           "optional": true,
           "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        },
+        {
+          "name": "delegate_account",
+          "writable": true
         }
       ],
       "args": [
+        {
+          "name": "create_key",
+          "type": "pubkey"
+        },
         {
           "name": "secp256r1_verify_args",
           "type": {
@@ -138,12 +146,6 @@
                 "name": "Secp256r1VerifyArgs"
               }
             }
-          }
-        },
-        {
-          "name": "domain_config",
-          "type": {
-            "option": "pubkey"
           }
         }
       ]
@@ -159,16 +161,7 @@
         "# Returns",
         "- `Result<()>`: The result of the domain config creation."
       ],
-      "discriminator": [
-        197,
-        81,
-        191,
-        2,
-        164,
-        140,
-        184,
-        90
-      ],
+      "discriminator": [197, 81, 191, 2, 164, 140, 184, 90],
       "accounts": [
         {
           "name": "domain_config",
@@ -178,19 +171,7 @@
               {
                 "kind": "const",
                 "value": [
-                  100,
-                  111,
-                  109,
-                  97,
-                  105,
-                  110,
-                  95,
-                  99,
-                  111,
-                  110,
-                  102,
-                  105,
-                  103
+                  100, 111, 109, 97, 105, 110, 95, 99, 111, 110, 102, 105, 103
                 ]
               },
               {
@@ -203,7 +184,8 @@
         {
           "name": "payer",
           "writable": true,
-          "signer": true
+          "signer": true,
+          "address": "G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF"
         },
         {
           "name": "system_program",
@@ -232,16 +214,7 @@
         "# Returns",
         "- `Result<()>`: The result of the domain config Delete."
       ],
-      "discriminator": [
-        225,
-        169,
-        39,
-        18,
-        125,
-        147,
-        36,
-        29
-      ],
+      "discriminator": [225, 169, 39, 18, 125, 147, 36, 29],
       "accounts": [
         {
           "name": "domain_config",
@@ -275,16 +248,7 @@
         "# Returns",
         "- `Result<()>`: The result of the domain config disable."
       ],
-      "discriminator": [
-        169,
-        163,
-        147,
-        131,
-        58,
-        46,
-        131,
-        51
-      ],
+      "discriminator": [169, 163, 147, 131, 58, 46, 131, 51],
       "accounts": [
         {
           "name": "domain_config",
@@ -314,16 +278,7 @@
         "# Returns",
         "- `Result<()>`: The result of the domain config edit."
       ],
-      "discriminator": [
-        110,
-        212,
-        99,
-        229,
-        72,
-        93,
-        185,
-        231
-      ],
+      "discriminator": [110, 212, 99, 229, 72, 93, 185, 231],
       "accounts": [
         {
           "name": "domain_config",
@@ -361,16 +316,7 @@
         "# Returns",
         "- `Result<()>`: The result of the native transfer."
       ],
-      "discriminator": [
-        57,
-        156,
-        213,
-        157,
-        88,
-        202,
-        2,
-        151
-      ],
+      "discriminator": [57, 156, 213, 157, 88, 202, 2, 151],
       "accounts": [
         {
           "name": "settings"
@@ -396,18 +342,7 @@
               {
                 "kind": "const",
                 "value": [
-                  109,
-                  117,
-                  108,
-                  116,
-                  105,
-                  95,
-                  119,
-                  97,
-                  108,
-                  108,
-                  101,
-                  116
+                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
                 ]
               },
               {
@@ -416,13 +351,7 @@
               },
               {
                 "kind": "const",
-                "value": [
-                  118,
-                  97,
-                  117,
-                  108,
-                  116
-                ]
+                "value": [118, 97, 117, 108, 116]
               }
             ]
           }
@@ -465,16 +394,7 @@
         "# Returns",
         "- `Result<()>`: The result of the token transfer."
       ],
-      "discriminator": [
-        51,
-        91,
-        96,
-        155,
-        132,
-        232,
-        179,
-        48
-      ],
+      "discriminator": [51, 91, 96, 155, 132, 232, 179, 48],
       "accounts": [
         {
           "name": "settings"
@@ -500,18 +420,7 @@
               {
                 "kind": "const",
                 "value": [
-                  109,
-                  117,
-                  108,
-                  116,
-                  105,
-                  95,
-                  119,
-                  97,
-                  108,
-                  108,
-                  101,
-                  116
+                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
                 ]
               },
               {
@@ -520,13 +429,7 @@
               },
               {
                 "kind": "const",
-                "value": [
-                  118,
-                  97,
-                  117,
-                  108,
-                  116
-                ]
+                "value": [118, 97, 117, 108, 116]
               }
             ]
           }
@@ -587,19 +490,14 @@
         "- `Ok(())`: If the transaction buffer is successfully closed.",
         "- `Err`: If validation fails or the accounts are invalid."
       ],
-      "discriminator": [
-        17,
-        182,
-        208,
-        228,
-        136,
-        24,
-        178,
-        102
-      ],
+      "discriminator": [17, 182, 208, 228, 136, 24, 178, 102],
       "accounts": [
         {
           "name": "settings"
+        },
+        {
+          "name": "payer",
+          "writable": true
         },
         {
           "name": "domain_config",
@@ -613,10 +511,6 @@
           "name": "closer",
           "signer": true,
           "optional": true
-        },
-        {
-          "name": "payer",
-          "writable": true
         },
         {
           "name": "slot_hash_sysvar",
@@ -655,19 +549,15 @@
         "- `Ok(())`: If the transaction buffer is successfully created.",
         "- `Err`: If validation fails or the provided arguments are invalid."
       ],
-      "discriminator": [
-        245,
-        201,
-        113,
-        108,
-        37,
-        63,
-        29,
-        89
-      ],
+      "discriminator": [245, 201, 113, 108, 37, 63, 29, 89],
       "accounts": [
         {
           "name": "settings"
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
         },
         {
           "name": "domain_config",
@@ -681,11 +571,6 @@
           "name": "creator",
           "signer": true,
           "optional": true
-        },
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
         },
         {
           "name": "system_program",
@@ -734,23 +619,14 @@
         "# Returns",
         "- `Result<()>`: The result of the vault transaction execution."
       ],
-      "discriminator": [
-        48,
-        73,
-        34,
-        19,
-        129,
-        99,
-        128,
-        73
-      ],
+      "discriminator": [48, 73, 34, 19, 129, 99, 128, 73],
       "accounts": [
+        {
+          "name": "settings"
+        },
         {
           "name": "domain_config",
           "optional": true
-        },
-        {
-          "name": "settings"
         },
         {
           "name": "executor",
@@ -798,17 +674,11 @@
         "- `Ok(())`: If the transaction buffer is successfully extended.",
         "- `Err`: If validation fails or the provided arguments are invalid."
       ],
-      "discriminator": [
-        230,
-        157,
-        67,
-        56,
-        5,
-        238,
-        245,
-        146
-      ],
+      "discriminator": [230, 157, 67, 56, 5, 238, 245, 146],
       "accounts": [
+        {
+          "name": "settings"
+        },
         {
           "name": "transaction_buffer",
           "writable": true
@@ -838,19 +708,15 @@
         "- `Ok(())`: If the transaction buffer is successfully approved.",
         "- `Err`: If validation fails or the provided arguments are invalid."
       ],
-      "discriminator": [
-        203,
-        50,
-        79,
-        187,
-        94,
-        53,
-        82,
-        122
-      ],
+      "discriminator": [203, 50, 79, 187, 94, 53, 82, 122],
       "accounts": [
         {
           "name": "settings"
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
         },
         {
           "name": "domain_config",
@@ -864,11 +730,6 @@
           "name": "voter",
           "signer": true,
           "optional": true
-        },
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
         },
         {
           "name": "system_program",
@@ -909,17 +770,11 @@
         "# Returns",
         "- `Result<()>`: The result of the vault transaction execution."
       ],
-      "discriminator": [
-        93,
-        171,
-        78,
-        134,
-        252,
-        84,
-        186,
-        189
-      ],
+      "discriminator": [93, 171, 78, 134, 252, 84, 186, 189],
       "accounts": [
+        {
+          "name": "settings"
+        },
         {
           "name": "payer",
           "writable": true
@@ -944,16 +799,7 @@
         "# Returns",
         "- `Result<()>`: The result of the vault transaction execution."
       ],
-      "discriminator": [
-        149,
-        138,
-        204,
-        32,
-        181,
-        61,
-        153,
-        227
-      ],
+      "discriminator": [149, 138, 204, 32, 181, 61, 153, 227],
       "accounts": [
         {
           "name": "settings"
@@ -996,58 +842,20 @@
   ],
   "accounts": [
     {
+      "name": "Delegate",
+      "discriminator": [92, 145, 166, 111, 11, 38, 38, 247]
+    },
+    {
       "name": "DomainConfig",
-      "discriminator": [
-        201,
-        232,
-        212,
-        229,
-        59,
-        241,
-        106,
-        197
-      ]
+      "discriminator": [201, 232, 212, 229, 59, 241, 106, 197]
     },
     {
       "name": "Settings",
-      "discriminator": [
-        223,
-        179,
-        163,
-        190,
-        177,
-        224,
-        67,
-        173
-      ]
+      "discriminator": [223, 179, 163, 190, 177, 224, 67, 173]
     },
     {
       "name": "TransactionBuffer",
-      "discriminator": [
-        90,
-        36,
-        35,
-        219,
-        93,
-        225,
-        110,
-        96
-      ]
-    }
-  ],
-  "events": [
-    {
-      "name": "ConfigEvent",
-      "discriminator": [
-        162,
-        6,
-        172,
-        68,
-        201,
-        128,
-        119,
-        230
-      ]
+      "discriminator": [90, 36, 35, 219, 93, 225, 110, 96]
     }
   ],
   "errors": [
@@ -1073,196 +881,191 @@
     },
     {
       "code": 6004,
-      "name": "InitialMemberCannotBeModified",
-      "msg": "Cannot modify the initial member of the multisig."
-    },
-    {
-      "code": 6005,
       "name": "EmptyMembers",
       "msg": "Multisig must have at least one member."
     },
     {
-      "code": 6006,
+      "code": 6005,
       "name": "TooManyMembers",
       "msg": "Member list exceeds maximum allowed length (65,535)."
     },
     {
-      "code": 6007,
+      "code": 6006,
       "name": "InvalidThreshold",
       "msg": "Invalid threshold. Must be ≥ 1 and ≤ voting members (only one passkey voter counts)."
     },
     {
-      "code": 6008,
+      "code": 6007,
       "name": "InvalidTransactionMessage",
       "msg": "Malformed or invalid TransactionMessage structure."
     },
     {
-      "code": 6009,
+      "code": 6008,
       "name": "InvalidNumberOfAccounts",
       "msg": "Mismatch in expected and provided account count."
     },
     {
-      "code": 6010,
+      "code": 6009,
       "name": "InvalidAccount",
       "msg": "One or more provided accounts failed validation."
     },
     {
-      "code": 6011,
+      "code": 6010,
       "name": "MissingAccount",
       "msg": "Required account is missing from instruction context."
     },
     {
-      "code": 6012,
+      "code": 6011,
       "name": "AccountAlreadyExist",
       "msg": "Target account already exists. Initialization is not allowed."
     },
     {
-      "code": 6013,
+      "code": 6012,
       "name": "IllegalAccountOwner",
       "msg": "Account is not owned by the multisig program."
     },
     {
-      "code": 6014,
+      "code": 6013,
       "name": "InsufficientSignerWithExecutePermission",
       "msg": "At least one signer must have 'execute' permission."
     },
     {
-      "code": 6015,
+      "code": 6014,
       "name": "InsufficientSignerWithInitiatePermission",
       "msg": "At least one signer must have 'initiate' permission."
     },
     {
-      "code": 6016,
+      "code": 6015,
       "name": "InsufficientSignersWithVotePermission",
       "msg": "Threshold exceeds number of members with 'vote' permission."
     },
     {
-      "code": 6017,
+      "code": 6016,
       "name": "InsufficientSignerWithIsDelegatePermission",
       "msg": "At least one signer must have 'is_delegate' permission."
     },
     {
-      "code": 6018,
+      "code": 6017,
       "name": "NoSignerFound",
       "msg": "No valid signer was found in the current context."
     },
     {
-      "code": 6019,
+      "code": 6018,
       "name": "UnauthorisedToCloseTransactionBuffer",
       "msg": "Only the transaction creator or rent payer may close the transaction buffer."
     },
     {
-      "code": 6020,
+      "code": 6019,
       "name": "InvalidBuffer",
       "msg": "Buffer content does not match the expected hash."
     },
     {
-      "code": 6021,
+      "code": 6020,
       "name": "FinalBufferHashMismatch",
       "msg": "Final buffer hash mismatch. Possibly tampered or improperly serialized."
     },
     {
-      "code": 6022,
+      "code": 6021,
       "name": "FinalBufferSizeExceeded",
       "msg": "Final serialized buffer size exceeds the 10128-byte limit."
     },
     {
-      "code": 6023,
+      "code": 6022,
       "name": "FinalBufferSizeMismatch",
       "msg": "Declared final buffer size does not match actual size."
     },
     {
-      "code": 6024,
+      "code": 6023,
       "name": "TransactionHasExpired",
       "msg": "Transaction expired — TTL of 3 minutes exceeded."
     },
     {
-      "code": 6025,
+      "code": 6024,
       "name": "TransactionNotApproved",
       "msg": "Transaction has not yet reached the required approval threshold."
     },
     {
-      "code": 6026,
+      "code": 6025,
       "name": "ProtectedAccount",
       "msg": "Writable CPI attempted on a protected account. This is not allowed."
     },
     {
-      "code": 6027,
+      "code": 6026,
       "name": "MaxLengthExceeded",
       "msg": "Input string exceeded the character limit."
     },
     {
-      "code": 6028,
+      "code": 6027,
       "name": "MissingSysvarSlotHistory",
       "msg": "Sysvar: Slot history is missing. Ensure it's passed as an account."
     },
     {
-      "code": 6029,
+      "code": 6028,
       "name": "InvalidSysvarDataFormat",
       "msg": "Sysvar parsing failed. Expected slot history format is invalid or corrupted."
     },
     {
-      "code": 6030,
+      "code": 6029,
       "name": "SlotNumberNotFound",
       "msg": "Specified slot not found in the provided slot history."
     },
     {
-      "code": 6031,
+      "code": 6030,
       "name": "SlotHashMismatch",
       "msg": "Slot hash does not match recorded history."
     },
     {
-      "code": 6032,
+      "code": 6031,
       "name": "DomainConfigIsDisabled",
       "msg": "The specified domain configuration account is temporarily disabled."
     },
     {
-      "code": 6033,
+      "code": 6032,
       "name": "DomainConfigIsMissing",
       "msg": "Domain configuration account is missing."
     },
     {
-      "code": 6034,
+      "code": 6033,
       "name": "MemberDoesNotBelongToDomainConfig",
       "msg": "Member is not registered in the specified domain config."
     },
     {
-      "code": 6035,
+      "code": 6034,
       "name": "RpIdHashMismatch",
       "msg": "Client RP ID hash does not match domain configuration."
     },
     {
-      "code": 6036,
+      "code": 6035,
       "name": "InvalidJson",
       "msg": "Failed to parse JSON in client data. Invalid format."
     },
     {
-      "code": 6037,
+      "code": 6036,
       "name": "MissingOrigin",
       "msg": "Missing 'origin' field in clientDataJSON."
     },
     {
-      "code": 6038,
+      "code": 6037,
       "name": "InvalidOrigin",
       "msg": "Invalid or unexpected 'origin' in clientDataJSON."
     },
     {
-      "code": 6039,
+      "code": 6038,
       "name": "MissingType",
       "msg": "Missing 'type' field in clientDataJSON."
     },
     {
-      "code": 6040,
+      "code": 6039,
       "name": "InvalidType",
       "msg": "Invalid 'type' in clientDataJSON. Expected 'webauthn.get'."
     },
     {
-      "code": 6041,
+      "code": 6040,
       "name": "MissingChallenge",
       "msg": "Missing 'challenge' field in clientDataJSON."
     },
     {
-      "code": 6042,
+      "code": 6041,
       "name": "InvalidChallenge",
       "msg": "Invalid or mismatched challenge in clientDataJSON."
     }
@@ -1286,9 +1089,7 @@
           },
           {
             "name": "data",
-            "docs": [
-              "Instruction data."
-            ],
+            "docs": ["Instruction data."],
             "type": "bytes"
           }
         ]
@@ -1337,31 +1138,7 @@
           },
           {
             "name": "SetThreshold",
-            "fields": [
-              "u8"
-            ]
-          }
-        ]
-      }
-    },
-    {
-      "name": "ConfigEvent",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "members",
-            "type": {
-              "vec": {
-                "defined": {
-                  "name": "Member"
-                }
-              }
-            }
-          },
-          {
-            "name": "threshold",
-            "type": "u8"
+            "fields": ["u8"]
           }
         ]
       }
@@ -1378,10 +1155,7 @@
           {
             "name": "rp_id_hash",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {
@@ -1390,6 +1164,26 @@
           },
           {
             "name": "authority",
+            "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Delegate",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "multi_wallet_settings",
             "type": "pubkey"
           }
         ]
@@ -1415,10 +1209,7 @@
           {
             "name": "rp_id_hash",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {
@@ -1436,28 +1227,19 @@
           {
             "name": "rp_id",
             "type": {
-              "array": [
-                "u8",
-                256
-              ]
+              "array": ["u8", 256]
             }
           },
           {
             "name": "origin",
             "type": {
-              "array": [
-                "u8",
-                512
-              ]
+              "array": ["u8", 512]
             }
           },
           {
             "name": "padding",
             "type": {
-              "array": [
-                "u8",
-                1
-              ]
+              "array": ["u8", 1]
             }
           }
         ]
@@ -1521,10 +1303,7 @@
           {
             "name": "key",
             "type": {
-              "array": [
-                "u8",
-                33
-              ]
+              "array": ["u8", 33]
             }
           }
         ]
@@ -1582,9 +1361,7 @@
     },
     {
       "name": "Permissions",
-      "docs": [
-        "Bitmask for permissions."
-      ],
+      "docs": ["Bitmask for permissions."],
       "type": {
         "kind": "struct",
         "fields": [
@@ -1601,10 +1378,7 @@
         "kind": "struct",
         "fields": [
           {
-            "array": [
-              "u8",
-              33
-            ]
+            "array": ["u8", 33]
           }
         ]
       }
@@ -1633,10 +1407,7 @@
           {
             "name": "slot_hash",
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           }
         ]
@@ -1660,6 +1431,10 @@
             "type": "u8"
           },
           {
+            "name": "create_key",
+            "type": "pubkey"
+          },
+          {
             "name": "members",
             "type": {
               "vec": {
@@ -1679,23 +1454,17 @@
         "fields": [
           {
             "name": "multi_wallet_settings",
-            "docs": [
-              "The multisig settings this belongs to."
-            ],
+            "docs": ["The multisig settings this belongs to."],
             "type": "pubkey"
           },
           {
             "name": "multi_wallet_bump",
-            "docs": [
-              "The bump for the multi_wallet"
-            ],
+            "docs": ["The bump for the multi_wallet"],
             "type": "u8"
           },
           {
             "name": "can_execute",
-            "docs": [
-              "Flag to allow transaction to be executed"
-            ],
+            "docs": ["Flag to allow transaction to be executed"],
             "type": "bool"
           },
           {
@@ -1711,42 +1480,29 @@
           },
           {
             "name": "payer",
-            "docs": [
-              "Payer for the transaction buffer"
-            ],
+            "docs": ["Payer for the transaction buffer"],
             "type": "pubkey"
           },
           {
             "name": "bump",
-            "docs": [
-              "transaction bump"
-            ],
+            "docs": ["transaction bump"],
             "type": "u8"
           },
           {
             "name": "buffer_index",
-            "docs": [
-              "Index to seed address derivation"
-            ],
+            "docs": ["Index to seed address derivation"],
             "type": "u8"
           },
           {
             "name": "final_buffer_hash",
-            "docs": [
-              "Hash of the final assembled transaction message."
-            ],
+            "docs": ["Hash of the final assembled transaction message."],
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {
             "name": "final_buffer_size",
-            "docs": [
-              "The size of the final assembled transaction message."
-            ],
+            "docs": ["The size of the final assembled transaction message."],
             "type": "u16"
           },
           {
@@ -1762,23 +1518,16 @@
           },
           {
             "name": "buffer_extend_hashes",
-            "docs": [
-              "Buffer hash for all the buffer extend instruction"
-            ],
+            "docs": ["Buffer hash for all the buffer extend instruction"],
             "type": {
               "vec": {
-                "array": [
-                  "u8",
-                  32
-                ]
+                "array": ["u8", 32]
               }
             }
           },
           {
             "name": "voters",
-            "docs": [
-              "Members that voted for this transaction"
-            ],
+            "docs": ["Members that voted for this transaction"],
             "type": {
               "vec": {
                 "defined": {
@@ -1789,9 +1538,7 @@
           },
           {
             "name": "buffer",
-            "docs": [
-              "The buffer of the transaction message."
-            ],
+            "docs": ["The buffer of the transaction message."],
             "type": "bytes"
           }
         ]
@@ -1804,22 +1551,15 @@
         "fields": [
           {
             "name": "permissionless_execution",
-            "docs": [
-              "Allow execution without sigverify"
-            ],
+            "docs": ["Allow execution without sigverify"],
             "type": "bool"
           },
           {
             "name": "buffer_extend_hashes",
-            "docs": [
-              "Buffer hashes for the subsequent extend instruction"
-            ],
+            "docs": ["Buffer hashes for the subsequent extend instruction"],
             "type": {
               "vec": {
-                "array": [
-                  "u8",
-                  32
-                ]
+                "array": ["u8", 32]
               }
             }
           },
@@ -1832,28 +1572,19 @@
           },
           {
             "name": "final_buffer_hash",
-            "docs": [
-              "Hash of the final assembled transaction message."
-            ],
+            "docs": ["Hash of the final assembled transaction message."],
             "type": {
-              "array": [
-                "u8",
-                32
-              ]
+              "array": ["u8", 32]
             }
           },
           {
             "name": "final_buffer_size",
-            "docs": [
-              "Final size of the buffer."
-            ],
+            "docs": ["Final size of the buffer."],
             "type": "u16"
           },
           {
             "name": "buffer",
-            "docs": [
-              "Initial slice of the buffer."
-            ],
+            "docs": ["Initial slice of the buffer."],
             "type": "bytes"
           }
         ]
@@ -1878,9 +1609,7 @@
         "fields": [
           {
             "name": "num_signers",
-            "docs": [
-              "The number of signer pubkeys in the account_keys vec."
-            ],
+            "docs": ["The number of signer pubkeys in the account_keys vec."],
             "type": "u8"
           },
           {
@@ -1906,9 +1635,7 @@
           },
           {
             "name": "instructions",
-            "docs": [
-              "List of instructions making up the tx."
-            ],
+            "docs": ["List of instructions making up the tx."],
             "type": {
               "vec": {
                 "defined": {
@@ -1945,23 +1672,17 @@
         "fields": [
           {
             "name": "account_key_index",
-            "docs": [
-              "Address lookup table account key"
-            ],
+            "docs": ["Address lookup table account key"],
             "type": "u8"
           },
           {
             "name": "writable_indexes",
-            "docs": [
-              "List of indexes used to load writable account addresses"
-            ],
+            "docs": ["List of indexes used to load writable account addresses"],
             "type": "bytes"
           },
           {
             "name": "readonly_indexes",
-            "docs": [
-              "List of indexes used to load readonly account addresses"
-            ],
+            "docs": ["List of indexes used to load readonly account addresses"],
             "type": "bytes"
           }
         ]

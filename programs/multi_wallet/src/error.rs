@@ -14,9 +14,6 @@ pub enum MultisigError {
     #[msg("Duplicate public keys found in the 'members' vector. Keys must be unique.")]
     DuplicateMember,
 
-    #[msg("Cannot modify the initial member of the multisig.")]
-    InitialMemberCannotBeModified,
-
     #[msg("Multisig must have at least one member.")]
     EmptyMembers,
 

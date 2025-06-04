@@ -16,9 +16,12 @@ import {
   Rpc,
   TransactionSigner,
 } from "@solana/kit";
-import { getTokenTransferIntentInstructionAsync } from "../../generated";
+import {
+  fetchMaybeDelegate,
+  getTokenTransferIntentInstructionAsync,
+} from "../../generated";
 import { Secp256r1Key } from "../../types";
-import { fetchMaybeDelegate } from "../../utils";
+import { getDelegateAddress, getMultiWalletFromSettings } from "../../utils";
 import {
   extractSecp256r1VerificationArgs,
   getDeduplicatedSigners,
@@ -44,16 +47,20 @@ export async function tokenTransferIntent({
 }) {
   const delegateData = await fetchMaybeDelegate(
     rpc,
-    creator instanceof Secp256r1Key ? creator : creator.address
+    await getDelegateAddress(
+      creator instanceof Secp256r1Key ? creator : creator.address
+    )
   );
-  if (!delegateData) {
+  if (!delegateData.exists) {
     throw new Error(
       "Missing delegate account: Signer is not authorized for delegated transfers."
     );
   }
-
+  const multiWallet = await getMultiWalletFromSettings(
+    delegateData.data.multiWalletSettings
+  );
   const [sourceTokenAccount] = await findAssociatedTokenPda({
-    owner: delegateData.multiWallet,
+    owner: multiWallet,
     tokenProgram,
     mint,
   });
@@ -125,7 +132,7 @@ export async function tokenTransferIntent({
 
   instructions.push(
     await getTokenTransferIntentInstructionAsync({
-      settings: delegateData.multiWalletSettings,
+      settings: delegateData.data.multiWalletSettings,
       domainConfig,
       sourceTokenAccount,
       destination,

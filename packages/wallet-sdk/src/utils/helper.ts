@@ -48,22 +48,21 @@ export async function getDomainConfig({
 export async function getDelegateAddress(
   walletAddress: Address | Secp256r1Key
 ) {
-  if (isAddress(walletAddress.toString())) {
-    const [delegatePda] = await getProgramDerivedAddress({
-      programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-      seeds: [
-        getUtf8Encoder().encode("delegate"),
-        getAddressEncoder().encode(address(walletAddress.toString())),
-      ],
-    });
-
-    return delegatePda;
-  } else if (walletAddress instanceof Secp256r1Key) {
+  if (walletAddress instanceof Secp256r1Key) {
     const [delegatePda] = await getProgramDerivedAddress({
       programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
       seeds: [
         getUtf8Encoder().encode("delegate"),
         walletAddress.toTruncatedBuffer(),
+      ],
+    });
+    return delegatePda;
+  } else if (isAddress(walletAddress.toString())) {
+    const [delegatePda] = await getProgramDerivedAddress({
+      programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
+      seeds: [
+        getUtf8Encoder().encode("delegate"),
+        getAddressEncoder().encode(address(walletAddress.toString())),
       ],
     });
 
@@ -73,32 +72,13 @@ export async function getDelegateAddress(
   }
 }
 
-export async function getSettingsFromInitialMember(
-  walletAddress: Address | Secp256r1Key
-) {
-  if (isAddress(walletAddress.toString())) {
-    const [settings] = await getProgramDerivedAddress({
-      programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-      seeds: [
-        getUtf8Encoder().encode("multi_wallet"),
-        getAddressEncoder().encode(address(walletAddress.toString())),
-      ],
-    });
+export async function getSettingsFromCreateKey(createKey: Uint8Array) {
+  const [settings] = await getProgramDerivedAddress({
+    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
+    seeds: [getUtf8Encoder().encode("multi_wallet"), createKey],
+  });
 
-    return settings;
-  } else if (walletAddress instanceof Secp256r1Key) {
-    const [settings] = await getProgramDerivedAddress({
-      programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-      seeds: [
-        getUtf8Encoder().encode("multi_wallet"),
-        walletAddress.toTruncatedBuffer(),
-      ],
-    });
-
-    return settings;
-  } else {
-    throw new Error("Unable to parse Public Key");
-  }
+  return settings;
 }
 
 export async function getMultiWalletFromSettings(settings: Address) {
@@ -122,20 +102,7 @@ export async function getTransactionBufferAddress(
   if (buffer_index > 255) {
     throw new Error("Index cannot be greater than 255.");
   }
-  if (isAddress(creator.toString())) {
-    const [transactionBuffer] = await getProgramDerivedAddress({
-      programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-      seeds: [
-        getUtf8Encoder().encode("multi_wallet"),
-        getAddressEncoder().encode(settings),
-        getUtf8Encoder().encode("transaction_buffer"),
-        getAddressEncoder().encode(address(creator.toString())),
-        getU8Encoder().encode(buffer_index),
-      ],
-    });
-
-    return transactionBuffer;
-  } else if (creator instanceof Secp256r1Key) {
+  if (creator instanceof Secp256r1Key) {
     const [transactionBuffer] = await getProgramDerivedAddress({
       programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
       seeds: [
@@ -143,6 +110,19 @@ export async function getTransactionBufferAddress(
         getAddressEncoder().encode(settings),
         getUtf8Encoder().encode("transaction_buffer"),
         creator.toTruncatedBuffer(),
+        getU8Encoder().encode(buffer_index),
+      ],
+    });
+
+    return transactionBuffer;
+  } else if (isAddress(creator.toString())) {
+    const [transactionBuffer] = await getProgramDerivedAddress({
+      programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
+      seeds: [
+        getUtf8Encoder().encode("multi_wallet"),
+        getAddressEncoder().encode(settings),
+        getUtf8Encoder().encode("transaction_buffer"),
+        getAddressEncoder().encode(address(creator.toString())),
         getU8Encoder().encode(buffer_index),
       ],
     });

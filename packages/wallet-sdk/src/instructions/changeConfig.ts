@@ -1,7 +1,6 @@
 import {
   AccountRole,
   Address,
-  createNoopSigner,
   IAccountMeta,
   IAccountSignerMeta,
   IInstruction,
@@ -71,16 +70,12 @@ export async function changeConfig({
             });
           }
         }
-        const newMembers = getDeduplicatedSigners(
-          action.members.map((x) =>
-            x.pubkey instanceof Secp256r1Key
-              ? x.pubkey
-              : createNoopSigner(x.pubkey)
-          )
-        );
+
         const { signature, message, publicKey, domainConfig } =
           await extractSecp256r1VerificationArgs(
-            newMembers.find((x) => x instanceof Secp256r1Key)
+            action.members
+              .map((x) => x.pubkey)
+              .find((x) => x instanceof Secp256r1Key)
           );
 
         if (message && signature && publicKey) {
@@ -90,6 +85,7 @@ export async function changeConfig({
             publicKey,
           });
         }
+
         if (domainConfig) {
           remainingAccounts.push({
             address: domainConfig,

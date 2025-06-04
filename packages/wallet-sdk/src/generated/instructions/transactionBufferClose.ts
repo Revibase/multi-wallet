@@ -33,15 +33,15 @@ import {
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableAccount,
-} from "@solana/kit";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from '@solana/kit';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-} from "../types";
+} from '../types';
 
 export const TRANSACTION_BUFFER_CLOSE_DISCRIMINATOR = new Uint8Array([
   17, 182, 208, 228, 136, 24, 178, 102,
@@ -56,16 +56,16 @@ export function getTransactionBufferCloseDiscriminatorBytes() {
 export type TransactionBufferCloseInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountSettings extends string | IAccountMeta<string> = string,
+  TAccountPayer extends string | IAccountMeta<string> = string,
   TAccountDomainConfig extends string | IAccountMeta<string> = string,
   TAccountTransactionBuffer extends string | IAccountMeta<string> = string,
   TAccountCloser extends string | IAccountMeta<string> = string,
-  TAccountPayer extends string | IAccountMeta<string> = string,
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+    | IAccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+    | IAccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
   TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = IInstruction<TProgram> &
   IInstructionWithData<Uint8Array> &
@@ -74,6 +74,9 @@ export type TransactionBufferCloseInstruction<
       TAccountSettings extends string
         ? ReadonlyAccount<TAccountSettings>
         : TAccountSettings,
+      TAccountPayer extends string
+        ? WritableAccount<TAccountPayer>
+        : TAccountPayer,
       TAccountDomainConfig extends string
         ? ReadonlyAccount<TAccountDomainConfig>
         : TAccountDomainConfig,
@@ -84,9 +87,6 @@ export type TransactionBufferCloseInstruction<
         ? ReadonlySignerAccount<TAccountCloser> &
             IAccountSignerMeta<TAccountCloser>
         : TAccountCloser,
-      TAccountPayer extends string
-        ? WritableAccount<TAccountPayer>
-        : TAccountPayer,
       TAccountSlotHashSysvar extends string
         ? ReadonlyAccount<TAccountSlotHashSysvar>
         : TAccountSlotHashSysvar,
@@ -109,9 +109,9 @@ export type TransactionBufferCloseInstructionDataArgs = {
 export function getTransactionBufferCloseInstructionDataEncoder(): Encoder<TransactionBufferCloseInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
       [
-        "secp256r1VerifyArgs",
+        'secp256r1VerifyArgs',
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
     ]),
@@ -124,8 +124,8 @@ export function getTransactionBufferCloseInstructionDataEncoder(): Encoder<Trans
 
 export function getTransactionBufferCloseInstructionDataDecoder(): Decoder<TransactionBufferCloseInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['secp256r1VerifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
 }
 
@@ -141,39 +141,39 @@ export function getTransactionBufferCloseInstructionDataCodec(): Codec<
 
 export type TransactionBufferCloseInput<
   TAccountSettings extends string = string,
+  TAccountPayer extends string = string,
   TAccountDomainConfig extends string = string,
   TAccountTransactionBuffer extends string = string,
   TAccountCloser extends string = string,
-  TAccountPayer extends string = string,
   TAccountSlotHashSysvar extends string = string,
   TAccountInstructionsSysvar extends string = string,
 > = {
   settings: Address<TAccountSettings>;
+  payer: Address<TAccountPayer>;
   domainConfig?: Address<TAccountDomainConfig>;
   transactionBuffer: Address<TAccountTransactionBuffer>;
   closer?: TransactionSigner<TAccountCloser>;
-  payer: Address<TAccountPayer>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  secp256r1VerifyArgs: TransactionBufferCloseInstructionDataArgs["secp256r1VerifyArgs"];
+  secp256r1VerifyArgs: TransactionBufferCloseInstructionDataArgs['secp256r1VerifyArgs'];
 };
 
 export function getTransactionBufferCloseInstruction<
   TAccountSettings extends string,
+  TAccountPayer extends string,
   TAccountDomainConfig extends string,
   TAccountTransactionBuffer extends string,
   TAccountCloser extends string,
-  TAccountPayer extends string,
   TAccountSlotHashSysvar extends string,
   TAccountInstructionsSysvar extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
   input: TransactionBufferCloseInput<
     TAccountSettings,
+    TAccountPayer,
     TAccountDomainConfig,
     TAccountTransactionBuffer,
     TAccountCloser,
-    TAccountPayer,
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar
   >,
@@ -181,10 +181,10 @@ export function getTransactionBufferCloseInstruction<
 ): TransactionBufferCloseInstruction<
   TProgramAddress,
   TAccountSettings,
+  TAccountPayer,
   TAccountDomainConfig,
   TAccountTransactionBuffer,
   TAccountCloser,
-  TAccountPayer,
   TAccountSlotHashSysvar,
   TAccountInstructionsSysvar
 > {
@@ -194,13 +194,13 @@ export function getTransactionBufferCloseInstruction<
   // Original accounts.
   const originalAccounts = {
     settings: { value: input.settings ?? null, isWritable: false },
+    payer: { value: input.payer ?? null, isWritable: true },
     domainConfig: { value: input.domainConfig ?? null, isWritable: false },
     transactionBuffer: {
       value: input.transactionBuffer ?? null,
       isWritable: true,
     },
     closer: { value: input.closer ?? null, isWritable: false },
-    payer: { value: input.payer ?? null, isWritable: true },
     slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
     instructionsSysvar: {
       value: input.instructionsSysvar ?? null,
@@ -216,14 +216,23 @@ export function getTransactionBufferCloseInstruction<
   const args = { ...input };
 
   // Resolve default values.
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  if (!accounts.slotHashSysvar.value) {
+    accounts.slotHashSysvar.value =
+      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
+  }
+  if (!accounts.instructionsSysvar.value) {
+    accounts.instructionsSysvar.value =
+      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
+  }
+
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   const instruction = {
     accounts: [
       getAccountMeta(accounts.settings),
+      getAccountMeta(accounts.payer),
       getAccountMeta(accounts.domainConfig),
       getAccountMeta(accounts.transactionBuffer),
       getAccountMeta(accounts.closer),
-      getAccountMeta(accounts.payer),
       getAccountMeta(accounts.slotHashSysvar),
       getAccountMeta(accounts.instructionsSysvar),
     ],
@@ -234,10 +243,10 @@ export function getTransactionBufferCloseInstruction<
   } as TransactionBufferCloseInstruction<
     TProgramAddress,
     TAccountSettings,
+    TAccountPayer,
     TAccountDomainConfig,
     TAccountTransactionBuffer,
     TAccountCloser,
-    TAccountPayer,
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar
   >;
@@ -252,10 +261,10 @@ export type ParsedTransactionBufferCloseInstruction<
   programAddress: Address<TProgram>;
   accounts: {
     settings: TAccountMetas[0];
-    domainConfig?: TAccountMetas[1] | undefined;
-    transactionBuffer: TAccountMetas[2];
-    closer?: TAccountMetas[3] | undefined;
-    payer: TAccountMetas[4];
+    payer: TAccountMetas[1];
+    domainConfig?: TAccountMetas[2] | undefined;
+    transactionBuffer: TAccountMetas[3];
+    closer?: TAccountMetas[4] | undefined;
     slotHashSysvar?: TAccountMetas[5] | undefined;
     instructionsSysvar?: TAccountMetas[6] | undefined;
   };
@@ -272,7 +281,7 @@ export function parseTransactionBufferCloseInstruction<
 ): ParsedTransactionBufferCloseInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 7) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -290,10 +299,10 @@ export function parseTransactionBufferCloseInstruction<
     programAddress: instruction.programAddress,
     accounts: {
       settings: getNextAccount(),
+      payer: getNextAccount(),
       domainConfig: getNextOptionalAccount(),
       transactionBuffer: getNextAccount(),
       closer: getNextOptionalAccount(),
-      payer: getNextAccount(),
       slotHashSysvar: getNextOptionalAccount(),
       instructionsSysvar: getNextOptionalAccount(),
     },

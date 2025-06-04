@@ -21,7 +21,6 @@ export async function openAuthUrl({
   authUrl,
   additionalInfo,
   hints,
-  isRegister = false,
   publicKey,
   popUp = null,
   timeout = 2 * 60 * 1000, // 2 minutes default timeout
@@ -35,7 +34,6 @@ export async function openAuthUrl({
     payload: string;
   };
   hints?: PublicKeyCredentialHint[];
-  isRegister?: boolean;
   publicKey?: string;
   popUp?: Window | null;
   timeout?: number;
@@ -48,7 +46,7 @@ export async function openAuthUrl({
   return new Promise((resolve, reject) => {
     const origin = new URL(authUrl).origin;
     const isIframeAllowed =
-      !isRegister &&
+      data?.type === "transaction" &&
       getBaseDomain(authUrl) === getBaseDomain(window.location.href);
     let source: Window | null = null;
     let heartbeatTimeout: NodeJS.Timeout | null = null;
@@ -124,7 +122,6 @@ export async function openAuthUrl({
               type: "popup-init",
               payload: {
                 publicKey,
-                isRegister,
                 hints,
                 data,
                 additionalInfo,
@@ -220,7 +217,7 @@ export function hexToUint8Array(hex: string): Uint8Array {
   return bytes;
 }
 
-function base64URLStringToBuffer(base64URLString: string) {
+export function base64URLStringToBuffer(base64URLString: string) {
   // Convert from Base64URL to Base64
   const base64 = base64URLString.replace(/-/g, "+").replace(/_/g, "/");
   /**

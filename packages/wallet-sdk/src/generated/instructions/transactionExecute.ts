@@ -23,6 +23,7 @@ import {
   type IInstruction,
   type IInstructionWithAccounts,
   type IInstructionWithData,
+  type ReadonlyAccount,
   type ReadonlyUint8Array,
   type WritableAccount,
 } from "@solana/kit";
@@ -41,6 +42,7 @@ export function getTransactionExecuteDiscriminatorBytes() {
 
 export type TransactionExecuteInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
+  TAccountSettings extends string | IAccountMeta<string> = string,
   TAccountPayer extends string | IAccountMeta<string> = string,
   TAccountTransactionBuffer extends string | IAccountMeta<string> = string,
   TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
@@ -48,6 +50,9 @@ export type TransactionExecuteInstruction<
   IInstructionWithData<Uint8Array> &
   IInstructionWithAccounts<
     [
+      TAccountSettings extends string
+        ? ReadonlyAccount<TAccountSettings>
+        : TAccountSettings,
       TAccountPayer extends string
         ? WritableAccount<TAccountPayer>
         : TAccountPayer,
@@ -88,22 +93,26 @@ export function getTransactionExecuteInstructionDataCodec(): Codec<
 }
 
 export type TransactionExecuteInput<
+  TAccountSettings extends string = string,
   TAccountPayer extends string = string,
   TAccountTransactionBuffer extends string = string,
   TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = {
+  settings: Address<TAccountSettings>;
   payer: Address<TAccountPayer>;
   transactionBuffer: Address<TAccountTransactionBuffer>;
   remainingAccounts: TRemainingAccounts;
 };
 
 export function getTransactionExecuteInstruction<
+  TAccountSettings extends string,
   TAccountPayer extends string,
   TAccountTransactionBuffer extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 >(
   input: TransactionExecuteInput<
+    TAccountSettings,
     TAccountPayer,
     TAccountTransactionBuffer,
     TRemainingAccounts
@@ -111,6 +120,7 @@ export function getTransactionExecuteInstruction<
   config?: { programAddress?: TProgramAddress }
 ): TransactionExecuteInstruction<
   TProgramAddress,
+  TAccountSettings,
   TAccountPayer,
   TAccountTransactionBuffer,
   TRemainingAccounts
@@ -120,6 +130,7 @@ export function getTransactionExecuteInstruction<
 
   // Original accounts.
   const originalAccounts = {
+    settings: { value: input.settings ?? null, isWritable: false },
     payer: { value: input.payer ?? null, isWritable: true },
     transactionBuffer: {
       value: input.transactionBuffer ?? null,
@@ -134,6 +145,7 @@ export function getTransactionExecuteInstruction<
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   const instruction = {
     accounts: [
+      getAccountMeta(accounts.settings),
       getAccountMeta(accounts.payer),
       getAccountMeta(accounts.transactionBuffer),
       ...input.remainingAccounts,
@@ -142,6 +154,7 @@ export function getTransactionExecuteInstruction<
     data: getTransactionExecuteInstructionDataEncoder().encode({}),
   } as TransactionExecuteInstruction<
     TProgramAddress,
+    TAccountSettings,
     TAccountPayer,
     TAccountTransactionBuffer,
     TRemainingAccounts
@@ -156,8 +169,9 @@ export type ParsedTransactionExecuteInstruction<
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    payer: TAccountMetas[0];
-    transactionBuffer: TAccountMetas[1];
+    settings: TAccountMetas[0];
+    payer: TAccountMetas[1];
+    transactionBuffer: TAccountMetas[2];
   };
   data: TransactionExecuteInstructionData;
 };
@@ -170,7 +184,7 @@ export function parseTransactionExecuteInstruction<
     IInstructionWithAccounts<TAccountMetas> &
     IInstructionWithData<Uint8Array>
 ): ParsedTransactionExecuteInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 2) {
+  if (instruction.accounts.length < 3) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -183,6 +197,7 @@ export function parseTransactionExecuteInstruction<
   return {
     programAddress: instruction.programAddress,
     accounts: {
+      settings: getNextAccount(),
       payer: getNextAccount(),
       transactionBuffer: getNextAccount(),
     },

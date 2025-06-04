@@ -9,7 +9,7 @@ use crate::{
     utils::{
         close_delegate_account, create_delegate_account, durable_nonce_check, realloc_if_needed,
     },
-    ConfigAction, ConfigEvent,
+    ConfigAction,
 };
 use anchor_lang::{
     prelude::*,
@@ -172,13 +172,6 @@ impl<'info> ChangeConfig<'info> {
         let current_size = settings_account_info.data_len();
         let settings_key = settings_account_info.key();
 
-        let initial_member_pubkey = settings
-            .members
-            .iter()
-            .find(|m| m.permissions.has(Permission::IsInitialMember))
-            .map(|m| m.pubkey)
-            .unwrap();
-
         let mut delegate_ops: Vec<DelegateOp> = vec![];
         for action in config_actions {
             match action {
@@ -230,13 +223,7 @@ impl<'info> ChangeConfig<'info> {
         }
 
         for pk in final_creates {
-            create_delegate_account(
-                remaining_accounts,
-                payer,
-                system_program,
-                &settings_key,
-                &pk,
-            )?
+            create_delegate_account(remaining_accounts, payer, system_program, settings_key, &pk)?
         }
 
         for pk in final_closes {
@@ -251,12 +238,7 @@ impl<'info> ChangeConfig<'info> {
             &ctx.accounts.system_program.to_account_info(),
         )?;
 
-        settings.invariant(&initial_member_pubkey)?;
-
-        emit!(ConfigEvent {
-            members: settings.members.clone(),
-            threshold: settings.threshold,
-        });
+        settings.invariant()?;
 
         Ok(())
     }

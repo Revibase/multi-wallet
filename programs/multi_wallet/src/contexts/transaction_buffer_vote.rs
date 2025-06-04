@@ -15,15 +15,18 @@ pub struct TransactionBufferVote<'info> {
     )]
     pub settings: Account<'info, Settings>,
 
+    #[account(
+        mut,
+        address = transaction_buffer.payer
+    )]
+    pub payer: Signer<'info>,
+
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
 
     #[account(mut)]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 
     pub voter: Option<Signer<'info>>,
-
-    #[account(mut)]
-    pub payer: Signer<'info>,
 
     pub system_program: Program<'info, System>,
 

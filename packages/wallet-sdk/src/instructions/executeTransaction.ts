@@ -37,6 +37,7 @@ export async function executeTransaction({
     transactionBuffer: transactionBufferAddress,
     payer: feePayer.address,
     remainingAccounts: accountMetas,
+    settings,
   });
 
   return {

@@ -5,11 +5,11 @@ use anchor_lang::{
     solana_program::{hash::hash, sysvar::instructions},
 };
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use bytemuck::{Pod, Zeroable};
 use serde_json::Value;
-use solana_secp256r1_program::Secp256r1SignatureOffsets;
 use std::str::from_utf8;
 
-#[derive(AnchorDeserialize, AnchorSerialize, Clone)]
+#[derive(AnchorDeserialize, AnchorSerialize, Clone, Debug)]
 pub struct Secp256r1VerifyArgs {
     pub public_key: Secp256r1Pubkey,
     pub client_data_json: Vec<u8>,
@@ -17,15 +17,43 @@ pub struct Secp256r1VerifyArgs {
     pub slot_hash: [u8; 32],
 }
 
+#[derive(Default, Debug, Copy, Clone, Zeroable, Eq, Pod, PartialEq)]
+#[repr(C)]
+pub struct Secp256r1SignatureOffsets {
+    /// Offset to compact secp256r1 signature of 64 bytes
+    pub signature_offset: u16,
+
+    /// Instruction index where the signature can be found
+    pub signature_instruction_index: u16,
+
+    /// Offset to compressed public key of 33 bytes
+    pub public_key_offset: u16,
+
+    /// Instruction index where the public key can be found
+    pub public_key_instruction_index: u16,
+
+    /// Offset to the start of message data
+    pub message_data_offset: u16,
+
+    /// Size of message data in bytes
+    pub message_data_size: u16,
+
+    /// Instruction index where the message data can be found
+    pub message_instruction_index: u16,
+}
+
 pub const COMPRESSED_PUBKEY_SERIALIZED_SIZE: usize = 33;
 pub const SIGNATURE_SERIALIZED_SIZE: usize = 64;
 pub const SIGNATURE_OFFSETS_SERIALIZED_SIZE: usize = 14;
 pub const SIGNATURE_OFFSETS_START: usize = 2;
+pub const SECP256R1_PROGRAM_ID: Pubkey = pubkey!("Secp256r1SigVerify1111111111111111111111111");
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct Secp256r1Signature(pub(crate) [u8; SIGNATURE_SERIALIZED_SIZE]);
 
-#[derive(AnchorSerialize, AnchorDeserialize, Copy, Clone, InitSpace, Eq, PartialEq, Hash)]
+#[derive(
+    AnchorSerialize, AnchorDeserialize, Copy, Clone, InitSpace, Eq, PartialEq, Hash, Debug,
+)]
 pub struct Secp256r1Pubkey(pub(crate) [u8; COMPRESSED_PUBKEY_SERIALIZED_SIZE]);
 
 impl Secp256r1Pubkey {
@@ -40,7 +68,7 @@ impl Secp256r1Pubkey {
         let instruction = instructions::get_instruction_relative(-1, instructions_sysvar)?;
 
         require!(
-            instruction.program_id.eq(&solana_secp256r1_program::ID),
+            instruction.program_id.eq(&SECP256R1_PROGRAM_ID),
             MultisigError::InvalidSignedMessage
         );
 

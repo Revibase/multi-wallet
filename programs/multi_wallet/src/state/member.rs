@@ -5,20 +5,24 @@ use crate::error::MultisigError;
 
 use super::{Secp256r1Pubkey, Secp256r1VerifyArgs, COMPRESSED_PUBKEY_SERIALIZED_SIZE};
 
-#[derive(InitSpace, Eq, PartialEq, Clone, Copy, Hash, AnchorSerialize, AnchorDeserialize)]
+#[derive(
+    InitSpace, Eq, PartialEq, Clone, Copy, Hash, AnchorSerialize, AnchorDeserialize, Debug,
+)]
 pub struct Member {
     pub pubkey: MemberKey,
     pub permissions: Permissions,
     pub domain_config: Option<Pubkey>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
+#[derive(AnchorSerialize, AnchorDeserialize, Debug)]
 pub struct MemberWithVerifyArgs {
     pub data: Member,
     pub verify_args: Option<Secp256r1VerifyArgs>,
 }
 
-#[derive(InitSpace, Eq, PartialEq, Clone, Copy, Hash, AnchorSerialize, AnchorDeserialize)]
+#[derive(
+    InitSpace, Eq, PartialEq, Clone, Copy, Hash, AnchorSerialize, AnchorDeserialize, Debug,
+)]
 pub struct MemberKey {
     pub key_type: u8,
     pub key: [u8; COMPRESSED_PUBKEY_SERIALIZED_SIZE],
@@ -105,7 +109,6 @@ pub enum Permission {
     VoteTransaction = 1 << 1,
     ExecuteTransaction = 1 << 2,
     IsDelegate = 1 << 3,
-    IsInitialMember = 1 << 4,
 }
 
 /// Bitmask for permissions.

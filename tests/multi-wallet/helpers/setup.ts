@@ -1,7 +1,9 @@
 import {
   createDomainConfig,
   createWallet,
-  fetchMaybeDelegate,
+  fetchDelegate,
+  getDelegateAddress,
+  getMultiWalletFromSettings,
 } from "@revibase/wallet-sdk";
 import {
   createKeyPairSignerFromPrivateKeyBytes,
@@ -79,6 +81,7 @@ export async function createMultiWallet(
   const createWalletIxs = await createWallet({
     feePayer: ctx.payer,
     initialMember: ctx.wallet,
+    createKey: crypto.getRandomValues(new Uint8Array(32)),
   });
 
   await sendTransaction(
@@ -89,15 +92,17 @@ export async function createMultiWallet(
   );
 
   // Get wallet data
-  const delegateData = await fetchMaybeDelegate(
+  const delegateData = await fetchDelegate(
     ctx.connection,
-    ctx.wallet.address
+    await getDelegateAddress(ctx.wallet.address)
   );
-
+  const multiWallet = await getMultiWalletFromSettings(
+    delegateData.data.multiWalletSettings
+  );
   // Return a new context with the updated settings and multiWalletVault
   return {
     ...ctx,
-    settings: delegateData.multiWalletSettings,
-    multiWalletVault: delegateData.multiWallet,
+    settings: delegateData.data.multiWalletSettings,
+    multiWalletVault: multiWallet,
   };
 }

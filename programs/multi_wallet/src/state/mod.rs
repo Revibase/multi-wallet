@@ -7,9 +7,6 @@ pub use vault_transaction::*;
 pub mod seeds;
 pub use seeds::*;
 
-pub mod events;
-pub use events::*;
-
 pub mod transaction_buffer;
 pub use transaction_buffer::*;
 

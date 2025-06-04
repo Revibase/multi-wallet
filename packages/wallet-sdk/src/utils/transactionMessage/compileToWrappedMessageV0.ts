@@ -1,4 +1,5 @@
 import {
+  address,
   Address,
   AddressesByLookupTableAddress,
   CompiledTransactionMessage,
@@ -37,7 +38,10 @@ export function compileToWrappedMessageV0({
     const extractResult = compiledKeys.extractTableLookup(lookupTable);
     if (extractResult !== undefined) {
       const { addressTableLookup, drainedKeys } = extractResult;
-      addressTableLookups.push(addressTableLookup);
+      addressTableLookups.push({
+        ...addressTableLookup,
+        lookupTableAddress: address(addressTableLookup.lookupTableAddress),
+      });
       accountKeysFromLookups.writable.push(...drainedKeys.writable);
       accountKeysFromLookups.readonly.push(...drainedKeys.readonly);
     }
