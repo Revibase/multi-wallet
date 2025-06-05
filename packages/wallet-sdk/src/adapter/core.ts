@@ -64,7 +64,10 @@ import {
 } from "./util";
 import { Revibase, RevibaseEvent } from "./window";
 
-export function createRevibaseAdapter(rpcEndpoint: string): Revibase {
+export function createRevibaseAdapter(
+  rpcEndpoint: string,
+  payer?: TransactionSigner
+): Revibase {
   const rpc = createSolanaRpc(rpcEndpoint);
   const computeBudgetEstimate =
     getComputeUnitEstimateForTransactionMessageFactory({
@@ -222,7 +225,7 @@ export function createRevibaseAdapter(rpcEndpoint: string): Revibase {
         ixs: IInstruction[];
         addressLookupTableAccounts?: AddressesByLookupTableAddress;
       }[] = [];
-      if (transactionMessageBytes.length < 500) {
+      if (transactionMessageBytes.length < 400) {
         const result = await signPasskeyTransaction({
           publicKey: member.value,
           transactionActionType: "sync",
@@ -230,7 +233,7 @@ export function createRevibaseAdapter(rpcEndpoint: string): Revibase {
           transactionMessageBytes,
         });
 
-        const feePayer = await getRandomPayer();
+        const feePayer = payer ?? (await getRandomPayer());
         payload.push(
           await prepareTransactionSync({
             rpc,
@@ -255,7 +258,7 @@ export function createRevibaseAdapter(rpcEndpoint: string): Revibase {
           transactionMessageBytes,
         });
         const jitoBundlesTipAmount = await estimateJitoTips();
-        const feePayer = await getRandomPayer();
+        const feePayer = payer ?? (await getRandomPayer());
 
         payload.push(
           ...(await prepareTransactionBundle({
