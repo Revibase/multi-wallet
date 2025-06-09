@@ -1,7 +1,6 @@
 use crate::{
     error::MultisigError,
     state::{DomainConfig, SEED_DOMAIN_CONFIG},
-    ADMIN,
 };
 use anchor_lang::{prelude::*, solana_program::hash};
 
@@ -24,10 +23,7 @@ pub struct CreateDomainConfig<'info> {
         bump,
     )]
     pub domain_config: AccountLoader<'info, DomainConfig>,
-    #[account(
-        mut,
-        address = ADMIN,
-    )]
+    #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }

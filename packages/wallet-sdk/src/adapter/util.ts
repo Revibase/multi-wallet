@@ -37,7 +37,7 @@ export function arraysEqual<T>(a: Indexed<T>, b: Indexed<T>): boolean {
 
 export async function estimateJitoTips() {
   const response = await fetch(
-    "https://bundles.jito.wtf/api/v1/bundles/tip_floor"
+    "https://proxy.revibase.com/?url=https://bundles.jito.wtf/api/v1/bundles/tip_floor"
   );
   const result = await response.json();
   const tipAmount = Math.round(
@@ -143,29 +143,25 @@ export async function getRandomPayer(): Promise<TransactionSigner> {
     signTransactions(transactions) {
       return new Promise(async (resolve, reject) => {
         try {
-          const signatures = await Promise.all(
-            transactions.map(async (x) => {
-              const signatureResponse = await fetch(`${PAYERS_ENDPOINT}/sign`, {
-                method: "POST",
-                body: JSON.stringify({
-                  publicKey: payer,
-                  transaction: getBase64Decoder().decode(
-                    getTransactionEncoder().encode(x)
-                  ),
-                }),
-              });
-              if (!signatureResponse.ok) {
-                throw new Error(await signatureResponse.text());
-              }
-              const { signature } = (await signatureResponse.json()) as {
-                signature: string;
-              };
-
-              return getBase58Encoder().encode(signature);
-            })
-          );
+          const signatureResponse = await fetch(`${PAYERS_ENDPOINT}/sign`, {
+            method: "POST",
+            body: JSON.stringify({
+              publicKey: payer,
+              transactions: transactions.map((x) =>
+                getBase64Decoder().decode(getTransactionEncoder().encode(x))
+              ),
+            }),
+          });
+          if (!signatureResponse.ok) {
+            throw new Error(await signatureResponse.text());
+          }
+          const { signatures } = (await signatureResponse.json()) as {
+            signatures: string[];
+          };
           resolve(
-            signatures.map((x) => ({ [address(payer)]: x as SignatureBytes }))
+            signatures.map((x) => ({
+              [address(payer)]: getBase58Encoder().encode(x) as SignatureBytes,
+            }))
           );
         } catch (error) {
           reject(error);
@@ -195,8 +191,8 @@ export function createSignInMessageText(input: SolanaSignInInput): string {
   // ...
   // - ${resources[n]}
 
-  let message = `${input.domain} wants you to sign in with your Solana account\n`;
-  message += `:${input.address}`;
+  let message = `${input.domain} wants you to sign in with your Solana account`;
+  message += input.address ? `:\n${input.address}` : `.`;
 
   if (input.statement) {
     message += `\n\n${input.statement}`;

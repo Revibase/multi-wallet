@@ -124,13 +124,13 @@ export class CompiledKeys {
   }
 
   extractTableLookup(lookupTableAddresses: [string, Address[]]) {
-    const [writableIndices, drainedWritableKeys] =
+    const [writableIndexes, drainedWritableKeys] =
       this.drainKeysFoundInLookupTable(
         lookupTableAddresses[1],
         (keyMeta) =>
           !keyMeta.isSigner && !keyMeta.isInvoked && keyMeta.isWritable
       );
-    const [readableIndices, drainedReadonlyKeys] =
+    const [readonlyIndexes, drainedReadonlyKeys] =
       this.drainKeysFoundInLookupTable(
         lookupTableAddresses[1],
         (keyMeta) =>
@@ -138,15 +138,15 @@ export class CompiledKeys {
       );
 
     // Don't extract lookup if no keys were found
-    if (writableIndices.length === 0 && readableIndices.length === 0) {
+    if (writableIndexes.length === 0 && readonlyIndexes.length === 0) {
       return;
     }
 
     return {
       addressTableLookup: {
         lookupTableAddress: lookupTableAddresses[0],
-        writableIndices,
-        readableIndices,
+        writableIndexes,
+        readonlyIndexes,
       },
       drainedKeys: {
         writable: drainedWritableKeys,

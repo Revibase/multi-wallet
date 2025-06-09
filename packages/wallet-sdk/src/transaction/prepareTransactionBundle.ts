@@ -2,13 +2,18 @@ import {
   Address,
   address,
   AddressesByLookupTableAddress,
+  CompiledTransactionMessage,
+  compileTransaction,
+  decompileTransactionMessageFetchingLookupTables,
   GetAccountInfoApi,
+  getBase64EncodedWireTransaction,
   GetMultipleAccountsApi,
   IInstruction,
   Rpc,
+  SimulateTransactionApi,
   TransactionSigner,
 } from "@solana/kit";
-import { fetchMaybeSettings } from "../generated";
+import { fetchMaybeSettings, MULTI_WALLET_PROGRAM_ADDRESS } from "../generated";
 import {
   createTransactionBuffer,
   executeTransaction,
@@ -19,6 +24,7 @@ import {
 import { Permission, Permissions, Secp256r1Key } from "../types";
 import {
   convertMemberKeyToString,
+  customTransactionMessageDeserialize,
   getTransactionBufferAddress,
 } from "../utils";
 import {
@@ -28,7 +34,7 @@ import {
 } from "../utils/internal";
 
 interface CreateTransactionBundleArgs {
-  rpc: Rpc<GetAccountInfoApi & GetMultipleAccountsApi>;
+  rpc: Rpc<GetAccountInfoApi & GetMultipleAccountsApi & SimulateTransactionApi>;
   feePayer: TransactionSigner;
   settings: Address;
   bufferIndex: number;
@@ -55,8 +61,8 @@ export async function prepareTransactionBundle({
   additionalSigners = [],
   jitoBundlesTipAmount,
   skipChecks = false,
-  createChunkSize = 400,
-  extendChunkSize = 832,
+  createChunkSize = 200,
+  extendChunkSize = 900,
 }: CreateTransactionBundleArgs): Promise<
   {
     id: string;
@@ -67,13 +73,10 @@ export async function prepareTransactionBundle({
   }[]
 > {
   if (!skipChecks) {
-    await preTransactionChecks(
-      rpc,
-      settings,
-      creator,
-      additionalVoters,
-      executor
-    );
+    await Promise.all([
+      preTransactionChecks(rpc, settings, creator, additionalVoters, executor),
+      simulateTransactionCheck(rpc, transactionMessageBytes),
+    ]);
   }
 
   const transactionBufferAddress = await getTransactionBufferAddress(
@@ -287,5 +290,67 @@ async function preTransactionChecks(
 
   if (votes < settingsData.data.threshold) {
     throw new Error("Insufficient voters with vote transaction permission.");
+  }
+}
+
+export async function simulateTransactionCheck(
+  rpc: Rpc<SimulateTransactionApi & GetMultipleAccountsApi>,
+  transactionMessageBytes: Uint8Array
+) {
+  const customCompiledMessage = customTransactionMessageDeserialize(
+    transactionMessageBytes
+  );
+  const compiledTransactionMessage: CompiledTransactionMessage = {
+    header: {
+      numSignerAccounts: customCompiledMessage.numSigners,
+      numReadonlySignerAccounts:
+        customCompiledMessage.numSigners -
+        customCompiledMessage.numWritableSigners,
+      numReadonlyNonSignerAccounts:
+        customCompiledMessage.accountKeys.length -
+        customCompiledMessage.numSigners -
+        customCompiledMessage.numWritableNonSigners,
+    },
+    instructions: customCompiledMessage.instructions.map((x) => ({
+      accountIndices: x.accountIndexes,
+      programAddressIndex: x.programIdIndex,
+      data: new Uint8Array(x.data),
+    })),
+    lifetimeToken: MULTI_WALLET_PROGRAM_ADDRESS.toString(),
+    staticAccounts: customCompiledMessage.accountKeys,
+    version: 0,
+    addressTableLookups: customCompiledMessage.addressTableLookups.map((x) => ({
+      ...x,
+      lookupTableAddress: x.accountKey,
+      writableIndices: x.writableIndexes,
+      readableIndices: x.readonlyIndexes,
+    })),
+  };
+
+  const decompiledTransactionMessage =
+    await decompileTransactionMessageFetchingLookupTables(
+      compiledTransactionMessage,
+      rpc
+    );
+
+  const transaction = getBase64EncodedWireTransaction(
+    compileTransaction(decompiledTransactionMessage)
+  );
+
+  const {
+    value: { err: transactionError, logs },
+  } = await rpc
+    .simulateTransaction(transaction, {
+      encoding: "base64",
+      replaceRecentBlockhash: true,
+      sigVerify: false,
+    })
+    .send();
+  if (transactionError) {
+    throw new Error(
+      JSON.stringify({ error: transactionError, logs }, (_, value) =>
+        typeof value === "bigint" ? value.toString() : value
+      )
+    );
   }
 }

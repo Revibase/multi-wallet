@@ -81,8 +81,8 @@ export function customTransactionMessageSerialize(
       compiledMessage.version !== "legacy"
         ? (compiledMessage.addressTableLookups?.map((x) => ({
             accountKey: x.lookupTableAddress,
-            readonlyIndexes: x.readableIndices as number[],
-            writableIndexes: x.writableIndices as number[],
+            readonlyIndexes: x.readonlyIndexes as number[],
+            writableIndexes: x.writableIndexes as number[],
           })) ?? [])
         : [],
   });

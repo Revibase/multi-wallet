@@ -22,9 +22,16 @@ export function compileToWrappedMessageV0({
   const compiledKeys = CompiledKeys.compile(instructions, payerKey);
 
   const addressTableLookups: {
+    /** The address of the address lookup table account. */
     lookupTableAddress: Address;
-    writableIndices: number[];
-    readableIndices: number[];
+    /** @deprecated Use `readonlyIndexes` */
+    readableIndices: readonly number[];
+    /** Indexes of accounts in a lookup table to load as read-only. */
+    readonlyIndexes: readonly number[];
+    /** Indexes of accounts in a lookup table to load as writable. */
+    writableIndexes: readonly number[];
+    /** @deprecated Use `writableIndexes` */
+    writableIndices: readonly number[];
   }[] = new Array();
   const accountKeysFromLookups: { writable: Address[]; readonly: Address[] } = {
     writable: [],
@@ -39,7 +46,10 @@ export function compileToWrappedMessageV0({
     if (extractResult !== undefined) {
       const { addressTableLookup, drainedKeys } = extractResult;
       addressTableLookups.push({
-        ...addressTableLookup,
+        readonlyIndexes: addressTableLookup.readonlyIndexes,
+        readableIndices: addressTableLookup.readonlyIndexes,
+        writableIndexes: addressTableLookup.writableIndexes,
+        writableIndices: addressTableLookup.writableIndexes,
         lookupTableAddress: address(addressTableLookup.lookupTableAddress),
       });
       accountKeysFromLookups.writable.push(...drainedKeys.writable);

@@ -6,10 +6,5 @@ export default defineConfig({
   format: ["cjs", "esm"],
   dts: true,
   sourcemap: true,
-  external: [
-    "@solana/kit",
-    "@solana-program/system",
-    "@solana-program/token",
-    "@solana-program/token-2022",
-  ],
+  external: ["@solana/kit"],
 });
