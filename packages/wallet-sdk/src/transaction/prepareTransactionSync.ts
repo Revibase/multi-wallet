@@ -8,7 +8,7 @@ import {
   TransactionSigner,
 } from "@solana/kit";
 import { fetchMaybeSettings } from "../generated";
-import { executeTransactionSync } from "../instructions";
+import { executeTransactionSync, Secp256r1VerifyInput } from "../instructions";
 import { Permission, Permissions, Secp256r1Key } from "../types";
 import { convertMemberKeyToString } from "../utils";
 import {
@@ -23,6 +23,7 @@ interface CreateTransactionSyncArgs {
   transactionMessageBytes: Uint8Array;
   signers: (TransactionSigner | Secp256r1Key)[];
   skipChecks?: boolean;
+  secp256r1VerifyInput?: Secp256r1VerifyInput;
 }
 
 export async function prepareTransactionSync({
@@ -32,6 +33,7 @@ export async function prepareTransactionSync({
   transactionMessageBytes,
   signers,
   skipChecks = false,
+  secp256r1VerifyInput,
 }: CreateTransactionSyncArgs): Promise<{
   id: string;
   signers: string[];
@@ -49,6 +51,7 @@ export async function prepareTransactionSync({
       settings,
       signers,
       transactionMessageBytes,
+      secp256r1VerifyInput,
     });
 
   return {

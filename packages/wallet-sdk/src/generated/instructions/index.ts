@@ -6,18 +6,18 @@
  * @see https://github.com/codama-idl/codama
  */
 
-export * from './changeConfig';
-export * from './create';
-export * from './createDomainConfig';
-export * from './deleteDomainConfig';
-export * from './disableDomainConfig';
-export * from './editDomainConfig';
-export * from './nativeTransferIntent';
-export * from './tokenTransferIntent';
-export * from './transactionBufferClose';
-export * from './transactionBufferCreate';
-export * from './transactionBufferExecute';
-export * from './transactionBufferExtend';
-export * from './transactionBufferVote';
-export * from './transactionExecute';
-export * from './transactionExecuteSync';
+export * from "./changeConfig";
+export * from "./create";
+export * from "./createDomainConfig";
+export * from "./deleteDomainConfig";
+export * from "./disableDomainConfig";
+export * from "./editDomainConfig";
+export * from "./nativeTransferIntent";
+export * from "./tokenTransferIntent";
+export * from "./transactionBufferClose";
+export * from "./transactionBufferCreate";
+export * from "./transactionBufferExecute";
+export * from "./transactionBufferExtend";
+export * from "./transactionBufferVote";
+export * from "./transactionExecute";
+export * from "./transactionExecuteSync";

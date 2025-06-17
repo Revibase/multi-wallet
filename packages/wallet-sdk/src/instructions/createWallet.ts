@@ -4,19 +4,21 @@ import {
   TransactionSigner,
 } from "@solana/kit";
 import { getCreateInstructionAsync } from "../generated";
-import { Secp256r1Key } from "../types";
+import { Permission, Permissions, Secp256r1Key } from "../types";
 import { getDelegateAddress, getSettingsFromCreateKey } from "../utils";
 import { extractSecp256r1VerificationArgs } from "../utils/internal";
-import { getSecp256r1VerifyInstruction } from "./secp256r1Verify";
+import { Secp256r1VerifyInput } from "./secp256r1Verify";
 
 export async function createWallet({
   feePayer,
   initialMember,
   createKey,
+  permissions,
 }: {
   feePayer: TransactionSigner;
   initialMember: TransactionSigner | Secp256r1Key;
   createKey: Uint8Array;
+  permissions: Permissions;
 }) {
   const {
     domainConfig,
@@ -31,24 +33,23 @@ export async function createWallet({
   const settings = await getSettingsFromCreateKey(createKey);
 
   const instructions: IInstruction[] = [];
+
+  const secp256r1VerifyInput: Secp256r1VerifyInput = [];
   if (message && signature && publicKey) {
-    instructions.push(
-      getSecp256r1VerifyInstruction({
-        payload: [
-          {
-            message,
-            signature,
-            publicKey,
-          },
-        ],
-      })
-    );
+    secp256r1VerifyInput.push({
+      message,
+      signature,
+      publicKey,
+    });
   }
-  const delegateAccount = await getDelegateAddress(
-    initialMember instanceof Secp256r1Key
-      ? initialMember
-      : initialMember.address
-  );
+
+  const delegateAccount = Permissions.has(permissions, Permission.IsDelegate)
+    ? await getDelegateAddress(
+        initialMember instanceof Secp256r1Key
+          ? initialMember
+          : initialMember.address
+      )
+    : undefined;
 
   instructions.push(
     await getCreateInstructionAsync({
@@ -62,7 +63,8 @@ export async function createWallet({
       delegateAccount,
       domainConfig,
       createKey: getAddressDecoder().decode(createKey),
+      permissions,
     })
   );
-  return instructions;
+  return { instructions, secp256r1VerifyInput };
 }

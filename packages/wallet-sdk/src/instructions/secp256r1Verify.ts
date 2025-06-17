@@ -38,7 +38,7 @@ export const SECP256R1_PROGRAM_ADDRESS = address(
 );
 
 export type Secp256r1VerifyInstruction<
-  TProgram extends string = typeof SECP256R1_PROGRAM_ADDRESS,
+  TProgram extends string = typeof SECP256R1_PROGRAM_ADDRESS
 > = IInstruction<TProgram> &
   IInstructionWithData<Uint8Array> &
   IInstructionWithAccounts<[]>;
@@ -207,25 +207,23 @@ export function getSecp256r1VerifyInstructionDataCodec(): Codec<
 }
 
 export type Secp256r1VerifyInput = {
-  payload: {
-    publicKey: Secp256r1Pubkey;
-    signature: ReadonlyUint8Array;
-    message: ReadonlyUint8Array;
-  }[];
-};
+  publicKey: Secp256r1Pubkey;
+  signature: ReadonlyUint8Array;
+  message: ReadonlyUint8Array;
+}[];
 
 export function getSecp256r1VerifyInstruction<
-  TProgramAddress extends Address = typeof SECP256R1_PROGRAM_ADDRESS,
+  TProgramAddress extends Address = typeof SECP256R1_PROGRAM_ADDRESS
 >(
   input: Secp256r1VerifyInput,
   config?: { programAddress?: TProgramAddress }
 ): Secp256r1VerifyInstruction<TProgramAddress> {
-  let numSignatures = input.payload.length;
+  let numSignatures = input.length;
   let currentOffset =
     SIGNATURE_OFFSETS_START + numSignatures * SIGNATURE_OFFSETS_SERIALIZED_SIZE;
   const offsets = [];
   for (let i = 0; i < numSignatures; i++) {
-    const { message } = input.payload[i];
+    const { message } = input[i];
     const publicKeyOffset = currentOffset;
     const signatureOffset = publicKeyOffset + COMPRESSED_PUBKEY_SERIALIZED_SIZE;
     const messageDataOffset = signatureOffset + SIGNATURE_SERIALIZED_SIZE;
@@ -252,7 +250,7 @@ export function getSecp256r1VerifyInstruction<
     numSignatures,
     padding: 0,
     offsets,
-    payload: input.payload,
+    payload: input,
   };
 
   // Resolve default values.
@@ -268,7 +266,7 @@ export function getSecp256r1VerifyInstruction<
 }
 
 export type ParsedSecp256r1VerifyInstruction<
-  TProgram extends string = typeof SECP256R1_PROGRAM_ADDRESS,
+  TProgram extends string = typeof SECP256R1_PROGRAM_ADDRESS
 > = {
   programAddress: Address<TProgram>;
   accounts: {};

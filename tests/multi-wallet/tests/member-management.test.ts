@@ -4,13 +4,17 @@ import {
   fetchMaybeDelegate,
   fetchSettings,
   getDelegateAddress,
+  MULTI_WALLET_PROGRAM_ADDRESS,
   Permission,
   Permissions,
+  prepareTransactionMessage,
+  prepareTransactionSync,
 } from "@revibase/wallet-sdk";
 import { address } from "@solana/kit";
 import { expect } from "chai";
 import {
   createMultiWallet,
+  fundMultiWalletVault,
   sendTransaction,
   setupTestEnvironment,
 } from "../helpers";
@@ -27,9 +31,9 @@ export function runMemberManagementTests() {
     });
 
     it("should add a new member and update threshold", async () => {
-      const instructions = await changeConfig({
-        signers: [ctx.wallet],
-        feePayer: ctx.payer,
+      // Fund the wallet
+      await fundMultiWalletVault(ctx, BigInt(10 ** 9 * 0.01));
+      const { instructions, secp256r1VerifyInput } = await changeConfig({
         settings: ctx.settings,
         configActions: [
           {
@@ -47,12 +51,21 @@ export function runMemberManagementTests() {
         ],
       });
 
-      await sendTransaction(
-        ctx.connection,
-        instructions,
-        ctx.payer,
-        ctx.sendAndConfirm
+      const transactionMessageBytes = await prepareTransactionMessage(
+        MULTI_WALLET_PROGRAM_ADDRESS.toString(),
+        ctx.multiWalletVault,
+        instructions
       );
+      const { ixs, feePayer } = await prepareTransactionSync({
+        rpc: ctx.connection,
+        feePayer: ctx.payer,
+        settings: ctx.settings,
+        signers: [ctx.wallet],
+        transactionMessageBytes,
+        secp256r1VerifyInput,
+      });
+
+      await sendTransaction(ctx.connection, ixs, feePayer, ctx.sendAndConfirm);
 
       // Verify member was added
       const accountData = await fetchSettings(
@@ -85,10 +98,10 @@ export function runMemberManagementTests() {
     });
 
     it("should handle permission updates correctly", async () => {
+      // Fund the wallet
+      await fundMultiWalletVault(ctx, BigInt(10 ** 9 * 0.01));
       // Test updating permissions for existing members
-      const instructions = await changeConfig({
-        signers: [ctx.wallet, ctx.payer],
-        feePayer: ctx.payer,
+      const { instructions, secp256r1VerifyInput } = await changeConfig({
         settings: ctx.settings,
         configActions: [
           {
@@ -107,12 +120,21 @@ export function runMemberManagementTests() {
         ],
       });
 
-      await sendTransaction(
-        ctx.connection,
-        instructions,
-        ctx.payer,
-        ctx.sendAndConfirm
+      const transactionMessageBytes = await prepareTransactionMessage(
+        MULTI_WALLET_PROGRAM_ADDRESS,
+        ctx.multiWalletVault,
+        instructions
       );
+      const { ixs, feePayer } = await prepareTransactionSync({
+        rpc: ctx.connection,
+        feePayer: ctx.payer,
+        settings: ctx.settings,
+        signers: [ctx.wallet, ctx.payer],
+        transactionMessageBytes,
+        secp256r1VerifyInput,
+      });
+
+      await sendTransaction(ctx.connection, ixs, feePayer, ctx.sendAndConfirm);
 
       // Verify permissions were updated
       const accountData = await fetchSettings(
@@ -130,9 +152,9 @@ export function runMemberManagementTests() {
     });
 
     it("should remove a member and update threshold", async () => {
-      const instructions = await changeConfig({
-        signers: [ctx.wallet, ctx.payer],
-        feePayer: ctx.payer,
+      // Fund the wallet
+      await fundMultiWalletVault(ctx, BigInt(10 ** 9 * 0.01));
+      const { instructions, secp256r1VerifyInput } = await changeConfig({
         settings: ctx.settings,
         configActions: [
           {
@@ -143,12 +165,21 @@ export function runMemberManagementTests() {
         ],
       });
 
-      await sendTransaction(
-        ctx.connection,
-        instructions,
-        ctx.payer,
-        ctx.sendAndConfirm
+      const transactionMessageBytes = await prepareTransactionMessage(
+        MULTI_WALLET_PROGRAM_ADDRESS,
+        ctx.multiWalletVault,
+        instructions
       );
+      const { ixs, feePayer } = await prepareTransactionSync({
+        rpc: ctx.connection,
+        feePayer: ctx.payer,
+        settings: ctx.settings,
+        signers: [ctx.wallet, ctx.payer],
+        transactionMessageBytes,
+        secp256r1VerifyInput,
+      });
+
+      await sendTransaction(ctx.connection, ixs, feePayer, ctx.sendAndConfirm);
 
       // Verify member was removed
       const accountData = await fetchSettings(

@@ -33,7 +33,6 @@ struct PermissionCounts {
     voters: usize,
     initiators: usize,
     executors: usize,
-    delegators: usize,
 }
 
 impl Settings {
@@ -89,20 +88,11 @@ impl Settings {
             if permissions.has(Permission::ExecuteTransaction) {
                 permission_counts.executors += 1;
             }
-            if permissions.has(Permission::IsDelegate) {
-                permission_counts.delegators += 1;
-            }
         }
 
         require!(
             threshold as usize <= permission_counts.voters,
             MultisigError::InsufficientSignersWithVotePermission
-        );
-
-        // Ensure at least one delegate
-        require!(
-            permission_counts.delegators >= 1,
-            MultisigError::InsufficientSignerWithIsDelegatePermission
         );
 
         // Ensure at least one member can initiate and execute transactions

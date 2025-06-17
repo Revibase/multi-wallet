@@ -37,19 +37,23 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from '@solana/kit';
-import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+} from "@solana/kit";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import {
   expectSome,
   getAccountMetaFactory,
   type ResolvedAccount,
-} from '../shared';
+} from "../shared";
 import {
+  getPermissionsDecoder,
+  getPermissionsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
+  type IPermissions,
+  type PermissionsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-} from '../types';
+} from "../types";
 
 export const CREATE_DISCRIMINATOR = new Uint8Array([
   24, 30, 200, 40, 5, 28, 7, 119,
@@ -66,13 +70,13 @@ export type CreateInstruction<
   TAccountInitialMember extends string | IAccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = '11111111111111111111111111111111',
+    | IAccountMeta<string> = "11111111111111111111111111111111",
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
+    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
+    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
   TAccountDomainConfig extends string | IAccountMeta<string> = string,
   TAccountDelegateAccount extends string | IAccountMeta<string> = string,
   TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
@@ -114,22 +118,25 @@ export type CreateInstructionData = {
   discriminator: ReadonlyUint8Array;
   createKey: Address;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
+  permissions: IPermissions;
 };
 
 export type CreateInstructionDataArgs = {
   createKey: Address;
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
+  permissions: PermissionsArgs;
 };
 
 export function getCreateInstructionDataEncoder(): Encoder<CreateInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
-      ['createKey', getAddressEncoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["createKey", getAddressEncoder()],
       [
-        'secp256r1VerifyArgs',
+        "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
+      ["permissions", getPermissionsEncoder()],
     ]),
     (value) => ({ ...value, discriminator: CREATE_DISCRIMINATOR })
   );
@@ -137,9 +144,10 @@ export function getCreateInstructionDataEncoder(): Encoder<CreateInstructionData
 
 export function getCreateInstructionDataDecoder(): Decoder<CreateInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
-    ['createKey', getAddressDecoder()],
-    ['secp256r1VerifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["createKey", getAddressDecoder()],
+    ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
+    ["permissions", getPermissionsDecoder()],
   ]);
 }
 
@@ -170,9 +178,10 @@ export type CreateAsyncInput<
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   domainConfig?: Address<TAccountDomainConfig>;
-  delegateAccount: Address<TAccountDelegateAccount>;
-  createKey: CreateInstructionDataArgs['createKey'];
-  secp256r1VerifyArgs: CreateInstructionDataArgs['secp256r1VerifyArgs'];
+  delegateAccount?: Address<TAccountDelegateAccount>;
+  createKey: CreateInstructionDataArgs["createKey"];
+  secp256r1VerifyArgs: CreateInstructionDataArgs["secp256r1VerifyArgs"];
+  permissions: CreateInstructionDataArgs["permissions"];
 };
 
 export async function getCreateInstructionAsync<
@@ -251,18 +260,18 @@ export async function getCreateInstructionAsync<
   }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
   if (!accounts.slotHashSysvar.value) {
     accounts.slotHashSysvar.value =
-      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
+      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
   }
   if (!accounts.instructionsSysvar.value) {
     accounts.instructionsSysvar.value =
-      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
+      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
   }
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   const instruction = {
     accounts: [
       getAccountMeta(accounts.settings),
@@ -310,9 +319,10 @@ export type CreateInput<
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   domainConfig?: Address<TAccountDomainConfig>;
-  delegateAccount: Address<TAccountDelegateAccount>;
-  createKey: CreateInstructionDataArgs['createKey'];
-  secp256r1VerifyArgs: CreateInstructionDataArgs['secp256r1VerifyArgs'];
+  delegateAccount?: Address<TAccountDelegateAccount>;
+  createKey: CreateInstructionDataArgs["createKey"];
+  secp256r1VerifyArgs: CreateInstructionDataArgs["secp256r1VerifyArgs"];
+  permissions: CreateInstructionDataArgs["permissions"];
 };
 
 export function getCreateInstruction<
@@ -376,18 +386,18 @@ export function getCreateInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
   if (!accounts.slotHashSysvar.value) {
     accounts.slotHashSysvar.value =
-      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
+      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
   }
   if (!accounts.instructionsSysvar.value) {
     accounts.instructionsSysvar.value =
-      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
+      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
   }
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   const instruction = {
     accounts: [
       getAccountMeta(accounts.settings),
@@ -431,7 +441,7 @@ export type ParsedCreateInstruction<
     slotHashSysvar?: TAccountMetas[4] | undefined;
     instructionsSysvar?: TAccountMetas[5] | undefined;
     domainConfig?: TAccountMetas[6] | undefined;
-    delegateAccount: TAccountMetas[7];
+    delegateAccount?: TAccountMetas[7] | undefined;
   };
   data: CreateInstructionData;
 };
@@ -446,7 +456,7 @@ export function parseCreateInstruction<
 ): ParsedCreateInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 8) {
     // TODO: Coded error.
-    throw new Error('Not enough accounts');
+    throw new Error("Not enough accounts");
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -470,7 +480,7 @@ export function parseCreateInstruction<
       slotHashSysvar: getNextOptionalAccount(),
       instructionsSysvar: getNextOptionalAccount(),
       domainConfig: getNextOptionalAccount(),
-      delegateAccount: getNextAccount(),
+      delegateAccount: getNextOptionalAccount(),
     },
     data: getCreateInstructionDataDecoder().decode(instruction.data),
   };

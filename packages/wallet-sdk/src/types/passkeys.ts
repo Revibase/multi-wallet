@@ -19,7 +19,6 @@ export type TransactionActionType =
   | "vote"
   | "sync"
   | "close"
-  | "change_config"
   | "add_new_member"
   | "token_transfer_intent"
   | "native_transfer_intent";

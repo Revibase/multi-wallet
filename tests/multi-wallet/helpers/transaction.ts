@@ -5,7 +5,7 @@ import {
   createTransactionMessage,
   getSignatureFromTransaction,
   type IInstruction,
-  type KeyPairSigner,
+  isSolanaError,
   lamports,
   pipe,
   type Rpc,
@@ -13,6 +13,7 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
   signTransactionMessageWithSigners,
   type SolanaRpcApi,
+  TransactionSigner,
 } from "@solana/kit";
 import type { TestContext } from "../types";
 
@@ -22,7 +23,7 @@ import type { TestContext } from "../types";
 export async function sendTransaction(
   connection: Rpc<SolanaRpcApi>,
   instructions: IInstruction[],
-  payer: KeyPairSigner,
+  payer: TransactionSigner,
   sendAndConfirm: any
 ): Promise<string | undefined> {
   // Get latest blockhash before starting transaction
@@ -39,11 +40,32 @@ export async function sendTransaction(
     );
 
     const signature = getSignatureFromTransaction(tx);
+    console.log(signature);
     await sendAndConfirm(tx, { commitment: "confirmed", skipPreflight: true });
     return signature;
   } catch (error) {
-    console.error("Transaction failed:", error);
-    throw error;
+    if (isSolanaError(error) && error.cause) {
+      const formattedError = JSON.stringify(error.cause, (key, value) =>
+        typeof value === "bigint" ? value.toString() : value
+      );
+
+      try {
+        // Try to parse and extract a more user-friendly message
+        const parsedError = JSON.parse(formattedError);
+        console.log(parsedError);
+        const errorMessage =
+          parsedError.message ||
+          parsedError.error?.message ||
+          "Transaction failed. Please try again.";
+
+        throw new Error(errorMessage);
+      } catch {
+        // If parsing fails, use the original error
+        throw new Error(`Transaction failed: ${formattedError}`);
+      }
+    } else {
+      throw error;
+    }
   }
 }
 

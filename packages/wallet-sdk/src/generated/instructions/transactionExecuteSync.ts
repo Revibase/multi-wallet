@@ -33,6 +33,7 @@ import {
   type OptionOrNullable,
   type ReadonlyAccount,
   type ReadonlyUint8Array,
+  type WritableAccount,
 } from "@solana/kit";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
@@ -77,7 +78,7 @@ export type TransactionExecuteSyncInstruction<
   IInstructionWithAccounts<
     [
       TAccountSettings extends string
-        ? ReadonlyAccount<TAccountSettings>
+        ? WritableAccount<TAccountSettings>
         : TAccountSettings,
       TAccountSlotHashSysvar extends string
         ? ReadonlyAccount<TAccountSlotHashSysvar>
@@ -232,7 +233,7 @@ export function getTransactionExecuteSyncInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: false },
+    settings: { value: input.settings ?? null, isWritable: true },
     slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
     domainConfig: { value: input.domainConfig ?? null, isWritable: false },
     instructionsSysvar: {

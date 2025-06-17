@@ -18,4 +18,5 @@ export interface TestContext {
   multiWalletVault: Address | undefined;
   rpId: string;
   origin: string;
+  createKey: Uint8Array | undefined;
 }

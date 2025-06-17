@@ -35,15 +35,13 @@ export async function executeTransactionBuffer({
   }
   if (message && signature && publicKey) {
     instructions.push(
-      getSecp256r1VerifyInstruction({
-        payload: [
-          {
-            message,
-            signature,
-            publicKey,
-          },
-        ],
-      })
+      getSecp256r1VerifyInstruction([
+        {
+          message,
+          signature,
+          publicKey,
+        },
+      ])
     );
   }
   const signer = executor instanceof Secp256r1Key ? undefined : executor;

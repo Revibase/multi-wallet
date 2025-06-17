@@ -1,9 +1,11 @@
 import {
+  closeWallet,
   createDomainConfig,
   createWallet,
-  fetchDelegate,
-  getDelegateAddress,
   getMultiWalletFromSettings,
+  getSecp256r1VerifyInstruction,
+  getSettingsFromCreateKey,
+  Permissions,
 } from "@revibase/wallet-sdk";
 import {
   createKeyPairSignerFromPrivateKeyBytes,
@@ -53,6 +55,7 @@ export async function setupTestEnvironment(): Promise<TestContext> {
     multiWalletVault: undefined, // Will be set during wallet creation
     rpId,
     origin,
+    createKey: undefined,
   };
 }
 
@@ -77,32 +80,52 @@ export async function createMultiWallet(
     ctx.sendAndConfirm
   );
 
+  const createKey = crypto.getRandomValues(new Uint8Array(32));
+  const settings = await getSettingsFromCreateKey(createKey);
+  const multiWallet = await getMultiWalletFromSettings(settings);
   // Create wallet
-  const createWalletIxs = await createWallet({
+  const { instructions, secp256r1VerifyInput } = await createWallet({
     feePayer: ctx.payer,
     initialMember: ctx.wallet,
-    createKey: crypto.getRandomValues(new Uint8Array(32)),
+    createKey,
+    permissions: Permissions.all(),
   });
+
+  if (secp256r1VerifyInput.length > 0) {
+    instructions.unshift(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
+  }
 
   await sendTransaction(
     ctx.connection,
-    createWalletIxs,
+    instructions,
     ctx.payer,
     ctx.sendAndConfirm
   );
 
-  // Get wallet data
-  const delegateData = await fetchDelegate(
-    ctx.connection,
-    await getDelegateAddress(ctx.wallet.address)
-  );
-  const multiWallet = await getMultiWalletFromSettings(
-    delegateData.data.multiWalletSettings
-  );
   // Return a new context with the updated settings and multiWalletVault
   return {
     ...ctx,
-    settings: delegateData.data.multiWalletSettings,
+    settings,
     multiWalletVault: multiWallet,
+    createKey,
   };
+}
+
+export async function closeMultiWallet(ctx: TestContext) {
+  const { instructions, secp256r1VerifyInput } = await closeWallet({
+    rentReceiver: ctx.payer.address,
+    settings: ctx.settings,
+    signers: [ctx.wallet],
+  });
+
+  if (secp256r1VerifyInput.length > 0) {
+    instructions.unshift(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
+  }
+
+  await sendTransaction(
+    ctx.connection,
+    instructions,
+    ctx.payer,
+    ctx.sendAndConfirm
+  );
 }

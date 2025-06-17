@@ -50,11 +50,5 @@ export function runWalletCreationTests() {
         "Wallet should have the correct balance"
       );
     });
-
-    it("should handle wallet creation with invalid parameters", async () => {
-      // Skip this test for now since it's not implemented
-      // In a real test suite, you would use this.skip() in Mocha
-      console.log("Skipping: Implement error case tests for wallet creation");
-    });
   });
 }

@@ -2,129 +2,143 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum MultisigError {
-    #[msg("Signed message does not match expected message.")]
+    #[msg("The provided signature doesn't match the expected message. Make sure you're signing the correct payload.")]
     InvalidSignedMessage,
 
-    #[msg("Missing or malformed WebAuthn signature verification arguments (secp256r1).")]
+    #[msg("Missing or incorrectly formatted WebAuthn verification arguments. Please check the secp256r1 signature input.")]
     InvalidSecp256r1VerifyArg,
 
-    #[msg("Durable nonce detected in the transaction. Durable nonces are unsupported.")]
+    #[msg("This transaction includes a durable nonce, which is not supported by this program.")]
     DurableNonceDetected,
 
-    #[msg("Duplicate public keys found in the 'members' vector. Keys must be unique.")]
+    #[msg(
+        "Duplicate public keys detected in the member list. Each member must have a unique key."
+    )]
     DuplicateMember,
 
-    #[msg("Multisig must have at least one member.")]
+    #[msg("No members were provided. A multisig must have at least one member.")]
     EmptyMembers,
 
-    #[msg("Member list exceeds maximum allowed length (65,535).")]
+    #[msg("The number of members exceeds the supported maximum (65,535).")]
     TooManyMembers,
 
-    #[msg("Invalid threshold. Must be ≥ 1 and ≤ voting members (only one passkey voter counts).")]
+    #[msg("Invalid threshold value. It must be at least 1 and not exceed the number of voting-eligible members.")]
     InvalidThreshold,
 
-    #[msg("Malformed or invalid TransactionMessage structure.")]
+    #[msg(
+        "The transaction message structure is malformed or does not follow expected formatting."
+    )]
     InvalidTransactionMessage,
 
-    #[msg("Mismatch in expected and provided account count.")]
+    #[msg(
+        "The number of provided accounts does not match what was expected for this instruction."
+    )]
     InvalidNumberOfAccounts,
 
-    #[msg("One or more provided accounts failed validation.")]
+    #[msg("One or more accounts provided failed validation. Ensure all required accounts are included and correct.")]
     InvalidAccount,
 
-    #[msg("Required account is missing from instruction context.")]
+    #[msg("A required account is missing from the transaction context.")]
     MissingAccount,
 
-    #[msg("Target account already exists. Initialization is not allowed.")]
+    #[msg("The account you're trying to initialize already exists.")]
     AccountAlreadyExist,
 
-    #[msg("Account is not owned by the multisig program.")]
+    #[msg("The account is not owned by the multisig program. Ensure the correct program owns this account.")]
     IllegalAccountOwner,
 
-    #[msg("At least one signer must have 'execute' permission.")]
+    #[msg("A delegate account is required when the initial member has requested delegate permissions.")]
+    InsuffientSignerWithDelegatePermission,
+
+    #[msg("At least one signer must have execute permissions to proceed.")]
     InsufficientSignerWithExecutePermission,
 
-    #[msg("At least one signer must have 'initiate' permission.")]
+    #[msg("At least one signer must have initiate permissions to perform this action.")]
     InsufficientSignerWithInitiatePermission,
 
-    #[msg("Threshold exceeds number of members with 'vote' permission.")]
+    #[msg("The approval threshold cannot be met because there aren't enough voters with the vote permission.")]
     InsufficientSignersWithVotePermission,
 
-    #[msg("At least one signer must have 'is_delegate' permission.")]
-    InsufficientSignerWithIsDelegatePermission,
-
-    #[msg("No valid signer was found in the current context.")]
+    #[msg("No valid signer was found in this transaction. Ensure at least one authorized signer is present.")]
     NoSignerFound,
 
-    #[msg("Only the transaction creator or rent payer may close the transaction buffer.")]
+    #[msg(
+        "Only the transaction's creator or rent payer is allowed to close the transaction buffer."
+    )]
     UnauthorisedToCloseTransactionBuffer,
 
-    #[msg("Buffer content does not match the expected hash.")]
+    #[msg("The contents of the buffer do not match the expected hash. It may have been tampered with.")]
     InvalidBuffer,
 
-    #[msg("Final buffer hash mismatch. Possibly tampered or improperly serialized.")]
+    #[msg("The final hash of the buffer doesn't match what was expected. The buffer might be corrupted or altered.")]
     FinalBufferHashMismatch,
 
-    #[msg("Final serialized buffer size exceeds the 10128-byte limit.")]
+    #[msg("The serialized transaction buffer exceeds the maximum allowed size of 10,128 bytes.")]
     FinalBufferSizeExceeded,
 
-    #[msg("Declared final buffer size does not match actual size.")]
+    #[msg("The declared size of the buffer does not match its actual size.")]
     FinalBufferSizeMismatch,
 
-    #[msg("Transaction expired — TTL of 3 minutes exceeded.")]
+    #[msg("The transaction has expired. It must be executed within 3 minutes of approval.")]
     TransactionHasExpired,
 
-    #[msg("Transaction has not yet reached the required approval threshold.")]
+    #[msg("The transaction hasn't received enough approvals yet to be executed.")]
     TransactionNotApproved,
 
-    #[msg("Writable CPI attempted on a protected account. This is not allowed.")]
+    #[msg("Writable CPI calls to protected accounts are not permitted.")]
     ProtectedAccount,
 
-    #[msg("Input string exceeded the character limit.")]
+    #[msg("One of the input strings exceeds the maximum allowed character limit.")]
     MaxLengthExceeded,
 
-    #[msg("Sysvar: Slot history is missing. Ensure it's passed as an account.")]
+    #[msg("The Slot History sysvar account is missing. It must be included as an account in this instruction.")]
     MissingSysvarSlotHistory,
 
-    #[msg("Sysvar parsing failed. Expected slot history format is invalid or corrupted.")]
+    #[msg("Failed to parse sysvar: slot history format is invalid or corrupted.")]
     InvalidSysvarDataFormat,
 
-    #[msg("Specified slot not found in the provided slot history.")]
+    #[msg("The specified slot number is not present in the provided slot history.")]
     SlotNumberNotFound,
 
-    #[msg("Slot hash does not match recorded history.")]
+    #[msg("The slot hash doesn't match the expected value from slot history.")]
     SlotHashMismatch,
 
-    #[msg("The specified domain configuration account is temporarily disabled.")]
+    #[msg("The domain configuration account is currently disabled. Contact support or try again later.")]
     DomainConfigIsDisabled,
 
-    #[msg("Domain configuration account is missing.")]
+    #[msg("Missing domain configuration account. Ensure it's passed in the instruction.")]
     DomainConfigIsMissing,
 
-    #[msg("Member is not registered in the specified domain config.")]
+    #[msg("This member is not registered in the provided domain configuration.")]
     MemberDoesNotBelongToDomainConfig,
 
-    #[msg("Client RP ID hash does not match domain configuration.")]
+    #[msg(
+        "The relying party ID hash does not match the one specified in the domain configuration."
+    )]
     RpIdHashMismatch,
 
-    #[msg("Failed to parse JSON in client data. Invalid format.")]
+    #[msg("Failed to parse the client data JSON. The format may be invalid.")]
     InvalidJson,
 
-    #[msg("Missing 'origin' field in clientDataJSON.")]
+    #[msg(
+        "Missing origin field in clientDataJSON. This field is required for WebAuthn validation."
+    )]
     MissingOrigin,
 
-    #[msg("Invalid or unexpected 'origin' in clientDataJSON.")]
+    #[msg("The origin value in clientDataJSON does not match the expected domain.")]
     InvalidOrigin,
 
-    #[msg("Missing 'type' field in clientDataJSON.")]
+    #[msg("Missing type field in clientDataJSON. This field is required for WebAuthn validation.")]
     MissingType,
 
-    #[msg("Invalid 'type' in clientDataJSON. Expected 'webauthn.get'.")]
+    #[msg("The type field in clientDataJSON is invalid. Expected value: webauthn.get.")]
     InvalidType,
 
-    #[msg("Missing 'challenge' field in clientDataJSON.")]
+    #[msg("Missing challenge field in clientDataJSON. This is required for validating the authentication request.")]
     MissingChallenge,
 
-    #[msg("Invalid or mismatched challenge in clientDataJSON.")]
+    #[msg(
+        "The challenge value in clientDataJSON is missing or doesn't match the expected challenge."
+    )]
     InvalidChallenge,
 }

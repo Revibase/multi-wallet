@@ -10,12 +10,7 @@
     {
       "name": "change_config",
       "docs": [
-        "# Parameters",
-        "- `ctx`: The context of the multi-action execution.",
-        "- `config_actions`: The list of actions to be executed.",
-        "",
-        "# Returns",
-        "- `Result<()>`: The result of the multi-action execution."
+        "Applies one or more configuration changes to an existing multi-wallet."
       ],
       "discriminator": [24, 158, 114, 115, 94, 210, 244, 233],
       "accounts": [
@@ -26,7 +21,25 @@
         {
           "name": "payer",
           "writable": true,
-          "signer": true
+          "signer": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "settings"
+              },
+              {
+                "kind": "const",
+                "value": [118, 97, 117, 108, 116]
+              }
+            ]
+          }
         },
         {
           "name": "system_program",
@@ -40,10 +53,6 @@
         {
           "name": "instructions_sysvar",
           "address": "Sysvar1nstructions1111111111111111111111111"
-        },
-        {
-          "name": "domain_config",
-          "optional": true
         }
       ],
       "args": [
@@ -56,29 +65,13 @@
               }
             }
           }
-        },
-        {
-          "name": "secp256r1_verify_args",
-          "type": {
-            "option": {
-              "defined": {
-                "name": "Secp256r1VerifyArgs"
-              }
-            }
-          }
         }
       ]
     },
     {
       "name": "create",
       "docs": [
-        "Creates a new multi-wallet.",
-        "",
-        "# Parameters",
-        "- `ctx`: The context of the multi-wallet creation.",
-        "",
-        "# Returns",
-        "- `Result<()>`: The result of the multi-wallet creation."
+        "Creates a new multi-wallet with the specified permissions and ownership."
       ],
       "discriminator": [24, 30, 200, 40, 5, 28, 7, 119],
       "accounts": [
@@ -130,7 +123,8 @@
         },
         {
           "name": "delegate_account",
-          "writable": true
+          "writable": true,
+          "optional": true
         }
       ],
       "args": [
@@ -147,19 +141,21 @@
               }
             }
           }
+        },
+        {
+          "name": "permissions",
+          "type": {
+            "defined": {
+              "name": "Permissions"
+            }
+          }
         }
       ]
     },
     {
       "name": "create_domain_config",
       "docs": [
-        "Create the domain config needed for secp256r1 verification.",
-        "",
-        "# Parameters",
-        "- `ctx`: The context of the domain config.",
-        "",
-        "# Returns",
-        "- `Result<()>`: The result of the domain config creation."
+        "Initializes a new domain configuration used for WebAuthn (secp256r1) verification."
       ],
       "discriminator": [197, 81, 191, 2, 164, 140, 184, 90],
       "accounts": [
@@ -184,8 +180,7 @@
         {
           "name": "payer",
           "writable": true,
-          "signer": true,
-          "address": "G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF"
+          "signer": true
         },
         {
           "name": "system_program",
@@ -206,13 +201,7 @@
     {
       "name": "delete_domain_config",
       "docs": [
-        "Delete the domain config needed for secp256r1 verification.",
-        "",
-        "# Parameters",
-        "- `ctx`: The context of the domain config.",
-        "",
-        "# Returns",
-        "- `Result<()>`: The result of the domain config Delete."
+        "Deletes an existing domain configuration used for WebAuthn (secp256r1) verification."
       ],
       "discriminator": [225, 169, 39, 18, 125, 147, 36, 29],
       "accounts": [
@@ -240,13 +229,7 @@
     {
       "name": "disable_domain_config",
       "docs": [
-        "Disable the domain config needed for secp256r1 verification.",
-        "",
-        "# Parameters",
-        "- `ctx`: The context of the domain config.",
-        "",
-        "# Returns",
-        "- `Result<()>`: The result of the domain config disable."
+        "Enables or disables a domain configuration. Useful for temporary suspension."
       ],
       "discriminator": [169, 163, 147, 131, 58, 46, 131, 51],
       "accounts": [
@@ -270,13 +253,7 @@
     {
       "name": "edit_domain_config",
       "docs": [
-        "Edit the domain config needed for secp256r1 verification.",
-        "",
-        "# Parameters",
-        "- `ctx`: The context of the domain config.",
-        "",
-        "# Returns",
-        "- `Result<()>`: The result of the domain config edit."
+        "Updates an existing domain configuration used for WebAuthn (secp256r1) verification."
       ],
       "discriminator": [110, 212, 99, 229, 72, 93, 185, 231],
       "accounts": [
@@ -306,16 +283,7 @@
     },
     {
       "name": "native_transfer_intent",
-      "docs": [
-        "Executes a native transfer based on a signed intent.",
-        "# Parameters",
-        "- `ctx`: The context of the native transfer.",
-        "- `amount`: The amount of tokens to transfer.",
-        "- `args`: Arguments for executing the native transfer.",
-        "",
-        "# Returns",
-        "- `Result<()>`: The result of the native transfer."
-      ],
+      "docs": ["Transfers SOL using a signed transfer intent."],
       "discriminator": [57, 156, 213, 157, 88, 202, 2, 151],
       "accounts": [
         {
@@ -384,16 +352,7 @@
     },
     {
       "name": "token_transfer_intent",
-      "docs": [
-        "Executes a token transfer based on a signed intent.",
-        "# Parameters",
-        "- `ctx`: The context of the token transfer.",
-        "- `amount`: The amount of tokens to transfer.",
-        "- `args`: Arguments for executing the token transfer.",
-        "",
-        "# Returns",
-        "- `Result<()>`: The result of the token transfer."
-      ],
+      "docs": ["Transfers SPL tokens using a signed transfer intent."],
       "discriminator": [51, 91, 96, 155, 132, 232, 179, 48],
       "accounts": [
         {
@@ -479,17 +438,7 @@
     },
     {
       "name": "transaction_buffer_close",
-      "docs": [
-        "Closes an existing transaction buffer.",
-        "",
-        "# Parameters",
-        "- `ctx`: Context containing all necessary accounts.",
-        "- `args`: Arguments for closing the transaction buffer.",
-        "",
-        "# Returns",
-        "- `Ok(())`: If the transaction buffer is successfully closed.",
-        "- `Err`: If validation fails or the accounts are invalid."
-      ],
+      "docs": ["Closes and cleans up a transaction buffer."],
       "discriminator": [17, 182, 208, 228, 136, 24, 178, 102],
       "accounts": [
         {
@@ -539,15 +488,7 @@
     {
       "name": "transaction_buffer_create",
       "docs": [
-        "Creates a new transaction buffer.",
-        "",
-        "# Parameters",
-        "- `ctx`: Context containing all necessary accounts.",
-        "- `args`: Arguments for the transaction buffer creation.",
-        "",
-        "# Returns",
-        "- `Ok(())`: If the transaction buffer is successfully created.",
-        "- `Err`: If validation fails or the provided arguments are invalid."
+        "Creates a new transaction buffer to stage a transaction before execution."
       ],
       "discriminator": [245, 201, 113, 108, 37, 63, 29, 89],
       "accounts": [
@@ -609,16 +550,7 @@
     },
     {
       "name": "transaction_buffer_execute",
-      "docs": [
-        "Approve a transaction buffer for execution.",
-        "",
-        "# Parameters",
-        "- `ctx`: The context of the vault transaction execution.",
-        "- `args`: Arguments for executing the vault transaction.",
-        "",
-        "# Returns",
-        "- `Result<()>`: The result of the vault transaction execution."
-      ],
+      "docs": ["Executes a previously approved transaction buffer."],
       "discriminator": [48, 73, 34, 19, 129, 99, 128, 73],
       "accounts": [
         {
@@ -664,15 +596,7 @@
     {
       "name": "transaction_buffer_extend",
       "docs": [
-        "Extends an existing transaction buffer.",
-        "",
-        "# Parameters",
-        "- `ctx`: Context containing all necessary accounts.",
-        "- `args`: Arguments for extending the transaction buffer.",
-        "",
-        "# Returns",
-        "- `Ok(())`: If the transaction buffer is successfully extended.",
-        "- `Err`: If validation fails or the provided arguments are invalid."
+        "Extends an existing transaction buffer to allow for updated data or additional time."
       ],
       "discriminator": [230, 157, 67, 56, 5, 238, 245, 146],
       "accounts": [
@@ -697,17 +621,7 @@
     },
     {
       "name": "transaction_buffer_vote",
-      "docs": [
-        "Sign to approve a transaction buffer.",
-        "",
-        "# Parameters",
-        "- `ctx`: Context containing all necessary accounts.",
-        "- `args`: Arguments for the transaction buffer vote.",
-        "",
-        "# Returns",
-        "- `Ok(())`: If the transaction buffer is successfully approved.",
-        "- `Err`: If validation fails or the provided arguments are invalid."
-      ],
+      "docs": ["Signs a transaction buffer to register approval."],
       "discriminator": [203, 50, 79, 187, 94, 53, 82, 122],
       "accounts": [
         {
@@ -761,19 +675,12 @@
     },
     {
       "name": "transaction_execute",
-      "docs": [
-        "Executes a transaction.",
-        "",
-        "# Parameters",
-        "- `ctx`: The context of the vault transaction execution.",
-        "",
-        "# Returns",
-        "- `Result<()>`: The result of the vault transaction execution."
-      ],
+      "docs": ["Executes a staged transaction from a buffer."],
       "discriminator": [93, 171, 78, 134, 252, 84, 186, 189],
       "accounts": [
         {
-          "name": "settings"
+          "name": "settings",
+          "writable": true
         },
         {
           "name": "payer",
@@ -789,20 +696,13 @@
     {
       "name": "transaction_execute_sync",
       "docs": [
-        "Executes a transaction synchronously.",
-        "",
-        "# Parameters",
-        "- `ctx`: The context of the vault transaction execution.",
-        "- `transaction_message`: The transaction message to be executed.",
-        "- `args`: Arguments for executing the vault transaction.",
-        "",
-        "# Returns",
-        "- `Result<()>`: The result of the vault transaction execution."
+        "Executes a transaction synchronously by directly submitting the message and verifying it."
       ],
       "discriminator": [149, 138, 204, 32, 181, 61, 153, 227],
       "accounts": [
         {
-          "name": "settings"
+          "name": "settings",
+          "writable": true
         },
         {
           "name": "slot_hash_sysvar",
@@ -862,212 +762,212 @@
     {
       "code": 6000,
       "name": "InvalidSignedMessage",
-      "msg": "Signed message does not match expected message."
+      "msg": "The provided signature doesn't match the expected message. Make sure you're signing the correct payload."
     },
     {
       "code": 6001,
       "name": "InvalidSecp256r1VerifyArg",
-      "msg": "Missing or malformed WebAuthn signature verification arguments (secp256r1)."
+      "msg": "Missing or incorrectly formatted WebAuthn verification arguments. Please check the secp256r1 signature input."
     },
     {
       "code": 6002,
       "name": "DurableNonceDetected",
-      "msg": "Durable nonce detected in the transaction. Durable nonces are unsupported."
+      "msg": "This transaction includes a durable nonce, which is not supported by this program."
     },
     {
       "code": 6003,
       "name": "DuplicateMember",
-      "msg": "Duplicate public keys found in the 'members' vector. Keys must be unique."
+      "msg": "Duplicate public keys detected in the member list. Each member must have a unique key."
     },
     {
       "code": 6004,
       "name": "EmptyMembers",
-      "msg": "Multisig must have at least one member."
+      "msg": "No members were provided. A multisig must have at least one member."
     },
     {
       "code": 6005,
       "name": "TooManyMembers",
-      "msg": "Member list exceeds maximum allowed length (65,535)."
+      "msg": "The number of members exceeds the supported maximum (65,535)."
     },
     {
       "code": 6006,
       "name": "InvalidThreshold",
-      "msg": "Invalid threshold. Must be ≥ 1 and ≤ voting members (only one passkey voter counts)."
+      "msg": "Invalid threshold value. It must be at least 1 and not exceed the number of voting-eligible members."
     },
     {
       "code": 6007,
       "name": "InvalidTransactionMessage",
-      "msg": "Malformed or invalid TransactionMessage structure."
+      "msg": "The transaction message structure is malformed or does not follow expected formatting."
     },
     {
       "code": 6008,
       "name": "InvalidNumberOfAccounts",
-      "msg": "Mismatch in expected and provided account count."
+      "msg": "The number of provided accounts does not match what was expected for this instruction."
     },
     {
       "code": 6009,
       "name": "InvalidAccount",
-      "msg": "One or more provided accounts failed validation."
+      "msg": "One or more accounts provided failed validation. Ensure all required accounts are included and correct."
     },
     {
       "code": 6010,
       "name": "MissingAccount",
-      "msg": "Required account is missing from instruction context."
+      "msg": "A required account is missing from the transaction context."
     },
     {
       "code": 6011,
       "name": "AccountAlreadyExist",
-      "msg": "Target account already exists. Initialization is not allowed."
+      "msg": "The account you're trying to initialize already exists."
     },
     {
       "code": 6012,
       "name": "IllegalAccountOwner",
-      "msg": "Account is not owned by the multisig program."
+      "msg": "The account is not owned by the multisig program. Ensure the correct program owns this account."
     },
     {
       "code": 6013,
-      "name": "InsufficientSignerWithExecutePermission",
-      "msg": "At least one signer must have 'execute' permission."
+      "name": "InsuffientSignerWithDelegatePermission",
+      "msg": "A delegate account is required when the initial member has requested delegate permissions."
     },
     {
       "code": 6014,
-      "name": "InsufficientSignerWithInitiatePermission",
-      "msg": "At least one signer must have 'initiate' permission."
+      "name": "InsufficientSignerWithExecutePermission",
+      "msg": "At least one signer must have execute permissions to proceed."
     },
     {
       "code": 6015,
-      "name": "InsufficientSignersWithVotePermission",
-      "msg": "Threshold exceeds number of members with 'vote' permission."
+      "name": "InsufficientSignerWithInitiatePermission",
+      "msg": "At least one signer must have initiate permissions to perform this action."
     },
     {
       "code": 6016,
-      "name": "InsufficientSignerWithIsDelegatePermission",
-      "msg": "At least one signer must have 'is_delegate' permission."
+      "name": "InsufficientSignersWithVotePermission",
+      "msg": "The approval threshold cannot be met because there aren't enough voters with the vote permission."
     },
     {
       "code": 6017,
       "name": "NoSignerFound",
-      "msg": "No valid signer was found in the current context."
+      "msg": "No valid signer was found in this transaction. Ensure at least one authorized signer is present."
     },
     {
       "code": 6018,
       "name": "UnauthorisedToCloseTransactionBuffer",
-      "msg": "Only the transaction creator or rent payer may close the transaction buffer."
+      "msg": "Only the transaction's creator or rent payer is allowed to close the transaction buffer."
     },
     {
       "code": 6019,
       "name": "InvalidBuffer",
-      "msg": "Buffer content does not match the expected hash."
+      "msg": "The contents of the buffer do not match the expected hash. It may have been tampered with."
     },
     {
       "code": 6020,
       "name": "FinalBufferHashMismatch",
-      "msg": "Final buffer hash mismatch. Possibly tampered or improperly serialized."
+      "msg": "The final hash of the buffer doesn't match what was expected. The buffer might be corrupted or altered."
     },
     {
       "code": 6021,
       "name": "FinalBufferSizeExceeded",
-      "msg": "Final serialized buffer size exceeds the 10128-byte limit."
+      "msg": "The serialized transaction buffer exceeds the maximum allowed size of 10,128 bytes."
     },
     {
       "code": 6022,
       "name": "FinalBufferSizeMismatch",
-      "msg": "Declared final buffer size does not match actual size."
+      "msg": "The declared size of the buffer does not match its actual size."
     },
     {
       "code": 6023,
       "name": "TransactionHasExpired",
-      "msg": "Transaction expired — TTL of 3 minutes exceeded."
+      "msg": "The transaction has expired. It must be executed within 3 minutes of approval."
     },
     {
       "code": 6024,
       "name": "TransactionNotApproved",
-      "msg": "Transaction has not yet reached the required approval threshold."
+      "msg": "The transaction hasn't received enough approvals yet to be executed."
     },
     {
       "code": 6025,
       "name": "ProtectedAccount",
-      "msg": "Writable CPI attempted on a protected account. This is not allowed."
+      "msg": "Writable CPI calls to protected accounts are not permitted."
     },
     {
       "code": 6026,
       "name": "MaxLengthExceeded",
-      "msg": "Input string exceeded the character limit."
+      "msg": "One of the input strings exceeds the maximum allowed character limit."
     },
     {
       "code": 6027,
       "name": "MissingSysvarSlotHistory",
-      "msg": "Sysvar: Slot history is missing. Ensure it's passed as an account."
+      "msg": "The Slot History sysvar account is missing. It must be included as an account in this instruction."
     },
     {
       "code": 6028,
       "name": "InvalidSysvarDataFormat",
-      "msg": "Sysvar parsing failed. Expected slot history format is invalid or corrupted."
+      "msg": "Failed to parse sysvar: slot history format is invalid or corrupted."
     },
     {
       "code": 6029,
       "name": "SlotNumberNotFound",
-      "msg": "Specified slot not found in the provided slot history."
+      "msg": "The specified slot number is not present in the provided slot history."
     },
     {
       "code": 6030,
       "name": "SlotHashMismatch",
-      "msg": "Slot hash does not match recorded history."
+      "msg": "The slot hash doesn't match the expected value from slot history."
     },
     {
       "code": 6031,
       "name": "DomainConfigIsDisabled",
-      "msg": "The specified domain configuration account is temporarily disabled."
+      "msg": "The domain configuration account is currently disabled. Contact support or try again later."
     },
     {
       "code": 6032,
       "name": "DomainConfigIsMissing",
-      "msg": "Domain configuration account is missing."
+      "msg": "Missing domain configuration account. Ensure it's passed in the instruction."
     },
     {
       "code": 6033,
       "name": "MemberDoesNotBelongToDomainConfig",
-      "msg": "Member is not registered in the specified domain config."
+      "msg": "This member is not registered in the provided domain configuration."
     },
     {
       "code": 6034,
       "name": "RpIdHashMismatch",
-      "msg": "Client RP ID hash does not match domain configuration."
+      "msg": "The relying party ID hash does not match the one specified in the domain configuration."
     },
     {
       "code": 6035,
       "name": "InvalidJson",
-      "msg": "Failed to parse JSON in client data. Invalid format."
+      "msg": "Failed to parse the client data JSON. The format may be invalid."
     },
     {
       "code": 6036,
       "name": "MissingOrigin",
-      "msg": "Missing 'origin' field in clientDataJSON."
+      "msg": "Missing origin field in clientDataJSON. This field is required for WebAuthn validation."
     },
     {
       "code": 6037,
       "name": "InvalidOrigin",
-      "msg": "Invalid or unexpected 'origin' in clientDataJSON."
+      "msg": "The origin value in clientDataJSON does not match the expected domain."
     },
     {
       "code": 6038,
       "name": "MissingType",
-      "msg": "Missing 'type' field in clientDataJSON."
+      "msg": "Missing type field in clientDataJSON. This field is required for WebAuthn validation."
     },
     {
       "code": 6039,
       "name": "InvalidType",
-      "msg": "Invalid 'type' in clientDataJSON. Expected 'webauthn.get'."
+      "msg": "The type field in clientDataJSON is invalid. Expected value: webauthn.get."
     },
     {
       "code": 6040,
       "name": "MissingChallenge",
-      "msg": "Missing 'challenge' field in clientDataJSON."
+      "msg": "Missing challenge field in clientDataJSON. This is required for validating the authentication request."
     },
     {
       "code": 6041,
       "name": "InvalidChallenge",
-      "msg": "Invalid or mismatched challenge in clientDataJSON."
+      "msg": "The challenge value in clientDataJSON is missing or doesn't match the expected challenge."
     }
   ],
   "types": [

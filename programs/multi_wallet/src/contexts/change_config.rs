@@ -1,26 +1,25 @@
 use std::{collections::HashMap, vec};
 
 use crate::{
-    error::MultisigError,
-    state::{
-        DomainConfig, MemberKey, Permission, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings,
-        TransactionActionType,
-    },
-    utils::{
-        close_delegate_account, create_delegate_account, durable_nonce_check, realloc_if_needed,
-    },
+    state::{MemberKey, Settings, SEED_MULTISIG, SEED_VAULT},
+    utils::{close_delegate_account, create_delegate_account, realloc_if_needed},
     ConfigAction,
 };
-use anchor_lang::{
-    prelude::*,
-    solana_program::{hash::hash, sysvar::SysvarId},
-};
+use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
 #[derive(Accounts)]
 pub struct ChangeConfig<'info> {
     #[account(mut)]
     pub settings: Account<'info, Settings>,
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [
+            SEED_MULTISIG,
+            settings.key().as_ref(),
+            SEED_VAULT,
+        ],
+        bump = settings.multi_wallet_bump
+    )]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
     /// CHECK:
@@ -28,14 +27,11 @@ pub struct ChangeConfig<'info> {
         address = SlotHashes::id()
     )]
     pub slot_hash_sysvar: Option<UncheckedAccount<'info>>,
-
     /// CHECK:
     #[account(
         address = Instructions::id(),
     )]
     pub instructions_sysvar: UncheckedAccount<'info>,
-
-    pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
 }
 
 #[derive(PartialEq, Eq)]
@@ -45,126 +41,12 @@ enum DelegateOp {
 }
 
 impl<'info> ChangeConfig<'info> {
-    fn validate(
-        &self,
-        ctx: &Context<'_, '_, '_, 'info, Self>,
-        config_actions: &Vec<ConfigAction>,
-        secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
-    ) -> Result<()> {
-        let Self {
-            settings,
-            domain_config,
-            slot_hash_sysvar,
-            instructions_sysvar,
-            ..
-        } = self;
-
-        durable_nonce_check(instructions_sysvar)?;
-
-        let mut initiate = false;
-        let mut execute = false;
-        let mut vote_count = 0;
-        let threshold = settings.threshold as usize;
-        let secp256r1_member_key = if secp256r1_verify_args.is_some() {
-            Some(MemberKey::convert_secp256r1(
-                &secp256r1_verify_args.as_ref().unwrap().public_key,
-            )?)
-        } else {
-            None
-        };
-
-        for member in &settings.members {
-            let has_permission = |perm| member.permissions.has(perm);
-            let is_secp256r1_signer =
-                secp256r1_member_key.is_some() && member.pubkey.eq(&secp256r1_member_key.unwrap());
-            let is_signer = is_secp256r1_signer
-                || ctx.remaining_accounts.iter().any(|account| {
-                    account.is_signer
-                        && MemberKey::convert_ed25519(account.key)
-                            .unwrap()
-                            .eq(&member.pubkey)
-                });
-
-            if is_signer {
-                if has_permission(Permission::InitiateTransaction) {
-                    initiate = true;
-                }
-                if has_permission(Permission::ExecuteTransaction) {
-                    execute = true;
-                }
-                if has_permission(Permission::VoteTransaction) {
-                    vote_count += 1;
-                }
-            }
-
-            if is_secp256r1_signer {
-                let expected_domain_config = member
-                    .domain_config
-                    .ok_or(MultisigError::DomainConfigIsMissing)?;
-
-                require!(
-                    domain_config.is_some()
-                        && domain_config
-                            .as_ref()
-                            .unwrap()
-                            .key()
-                            .eq(&expected_domain_config),
-                    MultisigError::MemberDoesNotBelongToDomainConfig
-                );
-
-                let mut writer = Vec::new();
-                for config in config_actions {
-                    let mut serialized = Vec::new();
-                    config.serialize(&mut serialized)?;
-
-                    let length = serialized.len() as u16;
-                    writer.extend_from_slice(&length.to_le_bytes());
-                    writer.extend_from_slice(&serialized);
-                }
-
-                let message_hash = hash(&writer).to_bytes();
-
-                let secp256r1_verify_data = secp256r1_verify_args
-                    .as_ref()
-                    .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
-
-                Secp256r1Pubkey::verify_webauthn(
-                    secp256r1_verify_data,
-                    slot_hash_sysvar,
-                    domain_config,
-                    &settings.key(),
-                    &message_hash,
-                    TransactionActionType::ChangeConfig,
-                    &Some(instructions_sysvar.clone()),
-                )?;
-            }
-        }
-
-        require!(
-            initiate,
-            MultisigError::InsufficientSignerWithInitiatePermission
-        );
-        require!(
-            execute,
-            MultisigError::InsufficientSignerWithExecutePermission
-        );
-        require!(
-            vote_count >= threshold,
-            MultisigError::InsufficientSignersWithVotePermission
-        );
-
-        Ok(())
-    }
-
-    #[access_control(ctx.accounts.validate(&ctx, &config_actions, &secp256r1_verify_args))]
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
         config_actions: Vec<ConfigAction>,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
         let slot_hash_sysvar = &ctx.accounts.slot_hash_sysvar;
         let settings = &mut ctx.accounts.settings;
-        let system_program = &ctx.accounts.system_program;
         let payer = &ctx.accounts.payer;
         let remaining_accounts = ctx.remaining_accounts;
 
@@ -223,7 +105,13 @@ impl<'info> ChangeConfig<'info> {
         }
 
         for pk in final_creates {
-            create_delegate_account(remaining_accounts, payer, system_program, settings_key, &pk)?
+            create_delegate_account(
+                remaining_accounts,
+                payer,
+                &ctx.accounts.system_program,
+                settings_key,
+                &pk,
+            )?
         }
 
         for pk in final_closes {

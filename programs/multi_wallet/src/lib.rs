@@ -20,13 +20,7 @@ pub const ADMIN: Pubkey = pubkey!("G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF"
 pub mod multi_wallet {
     use super::*;
 
-    /// Create the domain config needed for secp256r1 verification.
-    ///
-    /// # Parameters
-    /// - `ctx`: The context of the domain config.
-    ///
-    /// # Returns
-    /// - `Result<()>`: The result of the domain config creation.
+    /// Initializes a new domain configuration used for WebAuthn (secp256r1) verification.
     pub fn create_domain_config(
         ctx: Context<CreateDomainConfig>,
         args: CreateDomainConfigArgs,
@@ -34,13 +28,7 @@ pub mod multi_wallet {
         CreateDomainConfig::process(ctx, args)
     }
 
-    /// Edit the domain config needed for secp256r1 verification.
-    ///
-    /// # Parameters
-    /// - `ctx`: The context of the domain config.
-    ///
-    /// # Returns
-    /// - `Result<()>`: The result of the domain config edit.
+    /// Updates an existing domain configuration used for WebAuthn (secp256r1) verification.
     pub fn edit_domain_config(
         ctx: Context<EditDomainConfig>,
         args: EditDomainConfigArgs,
@@ -48,66 +36,35 @@ pub mod multi_wallet {
         EditDomainConfig::process(ctx, args)
     }
 
-    /// Delete the domain config needed for secp256r1 verification.
-    ///
-    /// # Parameters
-    /// - `ctx`: The context of the domain config.
-    ///
-    /// # Returns
-    /// - `Result<()>`: The result of the domain config Delete.
+    /// Deletes an existing domain configuration used for WebAuthn (secp256r1) verification.
     pub fn delete_domain_config(ctx: Context<DeleteDomainConfig>) -> Result<()> {
         DeleteDomainConfig::process(ctx)
     }
 
-    /// Disable the domain config needed for secp256r1 verification.
-    ///
-    /// # Parameters
-    /// - `ctx`: The context of the domain config.
-    ///
-    /// # Returns
-    /// - `Result<()>`: The result of the domain config disable.
+    /// Enables or disables a domain configuration. Useful for temporary suspension.
     pub fn disable_domain_config(ctx: Context<DisableDomainConfig>, disable: bool) -> Result<()> {
         DisableDomainConfig::process(ctx, disable)
     }
 
-    /// Creates a new multi-wallet.
-    ///
-    /// # Parameters
-    /// - `ctx`: The context of the multi-wallet creation.
-    ///
-    /// # Returns
-    /// - `Result<()>`: The result of the multi-wallet creation.
+    /// Creates a new multi-wallet with the specified permissions and ownership.
     pub fn create<'info>(
         ctx: Context<'_, '_, 'info, 'info, CreateMultiWallet<'info>>,
         create_key: Pubkey,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
+        permissions: Permissions,
     ) -> Result<()> {
-        CreateMultiWallet::process(ctx, create_key, secp256r1_verify_args)
+        CreateMultiWallet::process(ctx, create_key, secp256r1_verify_args, permissions)
     }
 
-    /// # Parameters
-    /// - `ctx`: The context of the multi-action execution.
-    /// - `config_actions`: The list of actions to be executed.
-    ///
-    /// # Returns
-    /// - `Result<()>`: The result of the multi-action execution.
+    /// Applies one or more configuration changes to an existing multi-wallet.
     pub fn change_config<'info>(
         ctx: Context<'_, '_, 'info, 'info, ChangeConfig<'info>>,
         config_actions: Vec<ConfigAction>,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
-        ChangeConfig::process(ctx, config_actions, secp256r1_verify_args)
+        ChangeConfig::process(ctx, config_actions)
     }
 
-    /// Creates a new transaction buffer.
-    ///
-    /// # Parameters
-    /// - `ctx`: Context containing all necessary accounts.
-    /// - `args`: Arguments for the transaction buffer creation.
-    ///
-    /// # Returns
-    /// - `Ok(())`: If the transaction buffer is successfully created.
-    /// - `Err`: If validation fails or the provided arguments are invalid.
+    /// Creates a new transaction buffer to stage a transaction before execution.
     pub fn transaction_buffer_create<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferCreate<'info>>,
         args: TransactionBufferCreateArgs,
@@ -116,15 +73,7 @@ pub mod multi_wallet {
         TransactionBufferCreate::process(ctx, args, secp256r1_verify_args)
     }
 
-    /// Sign to approve a transaction buffer.
-    ///
-    /// # Parameters
-    /// - `ctx`: Context containing all necessary accounts.
-    /// - `args`: Arguments for the transaction buffer vote.
-    ///
-    /// # Returns
-    /// - `Ok(())`: If the transaction buffer is successfully approved.
-    /// - `Err`: If validation fails or the provided arguments are invalid.
+    /// Signs a transaction buffer to register approval.
     pub fn transaction_buffer_vote<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferVote<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
@@ -132,15 +81,7 @@ pub mod multi_wallet {
         TransactionBufferVote::process(ctx, secp256r1_verify_args)
     }
 
-    /// Extends an existing transaction buffer.
-    ///
-    /// # Parameters
-    /// - `ctx`: Context containing all necessary accounts.
-    /// - `args`: Arguments for extending the transaction buffer.
-    ///
-    /// # Returns
-    /// - `Ok(())`: If the transaction buffer is successfully extended.
-    /// - `Err`: If validation fails or the provided arguments are invalid.
+    /// Extends an existing transaction buffer to allow for updated data or additional time.
     pub fn transaction_buffer_extend<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferExtend<'info>>,
         args: TransactionBufferExtendArgs,
@@ -148,15 +89,7 @@ pub mod multi_wallet {
         TransactionBufferExtend::process(ctx, args)
     }
 
-    /// Closes an existing transaction buffer.
-    ///
-    /// # Parameters
-    /// - `ctx`: Context containing all necessary accounts.
-    /// - `args`: Arguments for closing the transaction buffer.
-    ///
-    /// # Returns
-    /// - `Ok(())`: If the transaction buffer is successfully closed.
-    /// - `Err`: If validation fails or the accounts are invalid.
+    /// Closes and cleans up a transaction buffer.
     pub fn transaction_buffer_close<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferClose<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
@@ -164,14 +97,7 @@ pub mod multi_wallet {
         TransactionBufferClose::process(ctx, secp256r1_verify_args)
     }
 
-    /// Approve a transaction buffer for execution.
-    ///
-    /// # Parameters
-    /// - `ctx`: The context of the vault transaction execution.
-    /// - `args`: Arguments for executing the vault transaction.
-    ///
-    /// # Returns
-    /// - `Result<()>`: The result of the vault transaction execution.
+    /// Executes a previously approved transaction buffer.
     pub fn transaction_buffer_execute<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferExecute<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
@@ -179,28 +105,14 @@ pub mod multi_wallet {
         TransactionBufferExecute::process(ctx, secp256r1_verify_args)
     }
 
-    /// Executes a transaction.
-    ///
-    /// # Parameters
-    /// - `ctx`: The context of the vault transaction execution.
-    ///
-    /// # Returns
-    /// - `Result<()>`: The result of the vault transaction execution.
+    /// Executes a staged transaction from a buffer.
     pub fn transaction_execute<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionExecute<'info>>,
     ) -> Result<()> {
         TransactionExecute::process(ctx)
     }
 
-    /// Executes a transaction synchronously.
-    ///
-    /// # Parameters
-    /// - `ctx`: The context of the vault transaction execution.
-    /// - `transaction_message`: The transaction message to be executed.
-    /// - `args`: Arguments for executing the vault transaction.
-    ///
-    /// # Returns
-    /// - `Result<()>`: The result of the vault transaction execution.
+    /// Executes a transaction synchronously by directly submitting the message and verifying it.
     pub fn transaction_execute_sync<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionExecuteSync<'info>>,
         transaction_message: TransactionMessage,
@@ -209,14 +121,7 @@ pub mod multi_wallet {
         TransactionExecuteSync::process(ctx, transaction_message, secp256r1_verify_args)
     }
 
-    /// Executes a token transfer based on a signed intent.
-    /// # Parameters
-    /// - `ctx`: The context of the token transfer.
-    /// - `amount`: The amount of tokens to transfer.
-    /// - `args`: Arguments for executing the token transfer.
-    ///
-    /// # Returns
-    /// - `Result<()>`: The result of the token transfer.
+    /// Transfers SPL tokens using a signed transfer intent.
     pub fn token_transfer_intent<'info>(
         ctx: Context<'_, '_, '_, 'info, TokenTransferIntent<'info>>,
         amount: u64,
@@ -225,14 +130,7 @@ pub mod multi_wallet {
         TokenTransferIntent::process(ctx, amount, secp256r1_verify_args)
     }
 
-    /// Executes a native transfer based on a signed intent.
-    /// # Parameters
-    /// - `ctx`: The context of the native transfer.
-    /// - `amount`: The amount of tokens to transfer.
-    /// - `args`: Arguments for executing the native transfer.
-    ///
-    /// # Returns
-    /// - `Result<()>`: The result of the native transfer.
+    /// Transfers SOL using a signed transfer intent.
     pub fn native_transfer_intent<'info>(
         ctx: Context<'_, '_, '_, 'info, NativeTransferIntent<'info>>,
         amount: u64,

@@ -13,18 +13,23 @@ import {
   extractSecp256r1VerificationArgs,
   getDeduplicatedSigners,
 } from "../utils/internal";
-import { getSecp256r1VerifyInstruction } from "./secp256r1Verify";
+import {
+  getSecp256r1VerifyInstruction,
+  Secp256r1VerifyInput,
+} from "./secp256r1Verify";
 
 export async function executeTransactionSync({
   rpc,
   settings,
   transactionMessageBytes,
   signers,
+  secp256r1VerifyInput = [],
 }: {
   rpc: Rpc<GetMultipleAccountsApi>;
   settings: Address;
   signers: (TransactionSigner | Secp256r1Key)[];
   transactionMessageBytes: Uint8Array;
+  secp256r1VerifyInput?: Secp256r1VerifyInput;
 }) {
   const dedupSigners = getDeduplicatedSigners(signers);
 
@@ -52,18 +57,13 @@ export async function executeTransactionSync({
   );
 
   const instructions: IInstruction[] = [];
+
   if (message && signature && publicKey) {
-    instructions.push(
-      getSecp256r1VerifyInstruction({
-        payload: [
-          {
-            message,
-            signature,
-            publicKey,
-          },
-        ],
-      })
-    );
+    secp256r1VerifyInput.push({ message, signature, publicKey });
+  }
+
+  if (secp256r1VerifyInput.length > 0) {
+    instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
   }
 
   instructions.push(

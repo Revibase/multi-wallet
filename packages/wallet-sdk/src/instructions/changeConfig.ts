@@ -1,10 +1,10 @@
 import {
   AccountRole,
   Address,
+  createNoopSigner,
   IAccountMeta,
   IAccountSignerMeta,
   IInstruction,
-  TransactionSigner,
 } from "@solana/kit";
 import { getChangeConfigInstruction } from "../generated";
 import {
@@ -13,51 +13,23 @@ import {
   Permissions,
   Secp256r1Key,
 } from "../types";
-import { getDelegateAddress } from "../utils";
+import { getDelegateAddress, getMultiWalletFromSettings } from "../utils";
 import {
   convertConfigActionWrapper,
   extractSecp256r1VerificationArgs,
-  getDeduplicatedSigners,
 } from "../utils/internal";
-import { getSecp256r1VerifyInstruction } from "./secp256r1Verify";
+import { Secp256r1VerifyInput } from "./secp256r1Verify";
 
 export async function changeConfig({
   settings,
-  feePayer,
-  signers,
   configActions,
 }: {
-  feePayer: TransactionSigner;
-  signers: (TransactionSigner | Secp256r1Key)[];
   settings: Address;
   configActions: ConfigActionWrapper[];
 }) {
-  const dedupSigners = getDeduplicatedSigners(signers);
-  const remainingAccounts: (IAccountMeta | IAccountSignerMeta)[] = dedupSigners
-    .filter((x) => !(x instanceof Secp256r1Key))
-    .map(
-      (x) =>
-        ({
-          address: (x as TransactionSigner).address,
-          role: AccountRole.READONLY_SIGNER,
-          signer: x,
-        }) as IAccountSignerMeta
-    );
-
-  const payload = [];
-
-  const { verifyArgs, domainConfig, signature, message, publicKey } =
-    await extractSecp256r1VerificationArgs(
-      dedupSigners.find((x) => x instanceof Secp256r1Key)
-    );
-
-  if (message && signature && publicKey) {
-    payload.push({
-      message,
-      signature,
-      publicKey,
-    });
-  }
+  const multiWallet = await getMultiWalletFromSettings(settings);
+  const remainingAccounts: (IAccountMeta | IAccountSignerMeta)[] = [];
+  const secp256r1VerifyInput: Secp256r1VerifyInput = [];
 
   for (const action of configActions) {
     switch (action.type) {
@@ -79,7 +51,7 @@ export async function changeConfig({
           );
 
         if (message && signature && publicKey) {
-          payload.push({
+          secp256r1VerifyInput.push({
             message,
             signature,
             publicKey,
@@ -108,19 +80,14 @@ export async function changeConfig({
   }
 
   const instructions: IInstruction[] = [];
-  if (payload.length > 0) {
-    instructions.push(getSecp256r1VerifyInstruction({ payload }));
-  }
 
   instructions.push(
     getChangeConfigInstruction({
-      secp256r1VerifyArgs: verifyArgs,
-      domainConfig,
       configActions: convertConfigActionWrapper(configActions),
       settings,
-      payer: feePayer,
+      payer: createNoopSigner(multiWallet),
       remainingAccounts,
     })
   );
-  return instructions;
+  return { instructions, secp256r1VerifyInput };
 }

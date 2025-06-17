@@ -9,6 +9,7 @@ use anchor_lang::prelude::*;
 #[derive(Accounts)]
 pub struct TransactionExecute<'info> {
     #[account(
+        mut,
         address = transaction_buffer.multi_wallet_settings
     )]
     pub settings: Account<'info, Settings>,
@@ -46,8 +47,8 @@ impl<'info> TransactionExecute<'info> {
 
     #[access_control(ctx.accounts.validate())]
     pub fn process(ctx: Context<'_, '_, '_, 'info, Self>) -> Result<()> {
+        let settings = &mut ctx.accounts.settings;
         let transaction_buffer = &ctx.accounts.transaction_buffer;
-
         let vault_transaction_message =
             VaultTransactionMessage::deserialize(&mut transaction_buffer.buffer.as_slice())?;
         vault_transaction_message.validate()?;
@@ -80,13 +81,11 @@ impl<'info> TransactionExecute<'info> {
             &vault_pubkey,
         )?;
 
-        let protected_accounts = &[
-            transaction_buffer.payer,
-            transaction_buffer.key(),
-            transaction_buffer.multi_wallet_settings,
-        ];
+        let protected_accounts = &[transaction_buffer.payer, transaction_buffer.key()];
 
         executable_message.execute_message(vault_signer_seed, protected_accounts)?;
+
+        settings.reload()?;
 
         Ok(())
     }

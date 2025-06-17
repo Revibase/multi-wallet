@@ -2,6 +2,7 @@ import {
   Address,
   address,
   AddressesByLookupTableAddress,
+  assertIsTransactionMessageWithBlockhashLifetime,
   CompiledTransactionMessage,
   compileTransaction,
   decompileTransactionMessageFetchingLookupTables,
@@ -19,6 +20,8 @@ import {
   executeTransaction,
   executeTransactionBuffer,
   extendTransactionBuffer,
+  getSecp256r1VerifyInstruction,
+  Secp256r1VerifyInput,
   voteTransactionBuffer,
 } from "../instructions";
 import { Permission, Permissions, Secp256r1Key } from "../types";
@@ -28,7 +31,6 @@ import {
   getTransactionBufferAddress,
 } from "../utils";
 import {
-  addJitoTip,
   deduplicateSignersAndFeePayer,
   getPubkeyString,
 } from "../utils/internal";
@@ -43,6 +45,7 @@ interface CreateTransactionBundleArgs {
   executor?: TransactionSigner | Secp256r1Key;
   additionalVoters?: (TransactionSigner | Secp256r1Key)[];
   additionalSigners?: TransactionSigner[];
+  secp256r1VerifyInput?: Secp256r1VerifyInput;
   jitoBundlesTipAmount?: number;
   skipChecks?: boolean;
   createChunkSize?: number;
@@ -57,11 +60,12 @@ export async function prepareTransactionBundle({
   transactionMessageBytes,
   creator,
   executor,
+  secp256r1VerifyInput,
   additionalVoters = [],
   additionalSigners = [],
   jitoBundlesTipAmount,
   skipChecks = false,
-  createChunkSize = 200,
+  createChunkSize = 100,
   extendChunkSize = 900,
 }: CreateTransactionBundleArgs): Promise<
   {
@@ -75,7 +79,11 @@ export async function prepareTransactionBundle({
   if (!skipChecks) {
     await Promise.all([
       preTransactionChecks(rpc, settings, creator, additionalVoters, executor),
-      simulateTransactionCheck(rpc, transactionMessageBytes),
+      simulateTransactionCheck(
+        rpc,
+        transactionMessageBytes,
+        secp256r1VerifyInput
+      ),
     ]);
   }
 
@@ -147,7 +155,7 @@ export async function prepareTransactionBundle({
     transactionBufferAddress,
   });
 
-  const { transactionExecuteIx, addressLookupTableAccounts } =
+  const { instructions: transactionExecuteIx, addressLookupTableAccounts } =
     await executeTransaction({
       rpc,
       settings,
@@ -155,6 +163,8 @@ export async function prepareTransactionBundle({
       transactionBufferAddress,
       feePayer,
       additionalSigners,
+      secp256r1VerifyInput,
+      jitoBundlesTipAmount,
     });
 
   const txs = [];
@@ -208,14 +218,9 @@ export async function prepareTransactionBundle({
 
   txs.push({
     id: "Execute Transaction",
-    signers: deduplicateSignersAndFeePayer([transactionExecuteIx], feePayer),
+    signers: deduplicateSignersAndFeePayer(transactionExecuteIx, feePayer),
     feePayer,
-    ixs: [
-      transactionExecuteIx,
-      ...(jitoBundlesTipAmount
-        ? [addJitoTip({ feePayer, tipAmount: jitoBundlesTipAmount })]
-        : []),
-    ],
+    ixs: transactionExecuteIx,
     addressLookupTableAccounts,
   });
 
@@ -260,7 +265,9 @@ async function preTransactionChecks(
 
   if (!executorMember) {
     throw new Error(
-      `${executor ? "Executor" : "Creator"} does not have execute transaction permission.`
+      `${
+        executor ? "Executor" : "Creator"
+      } does not have execute transaction permission.`
     );
   }
 
@@ -295,7 +302,8 @@ async function preTransactionChecks(
 
 export async function simulateTransactionCheck(
   rpc: Rpc<SimulateTransactionApi & GetMultipleAccountsApi>,
-  transactionMessageBytes: Uint8Array
+  transactionMessageBytes: Uint8Array,
+  secp256r1VerifyInput?: Secp256r1VerifyInput
 ) {
   const customCompiledMessage = customTransactionMessageDeserialize(
     transactionMessageBytes
@@ -333,14 +341,24 @@ export async function simulateTransactionCheck(
       rpc
     );
 
-  const transaction = getBase64EncodedWireTransaction(
-    compileTransaction(decompiledTransactionMessage)
-  );
+  assertIsTransactionMessageWithBlockhashLifetime(decompiledTransactionMessage);
+  let instructions: IInstruction[] = [];
+  if (secp256r1VerifyInput && secp256r1VerifyInput.length > 0) {
+    instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
+  }
+  instructions.push(...decompiledTransactionMessage.instructions);
+
+  const transaction = compileTransaction({
+    instructions,
+    feePayer: decompiledTransactionMessage.feePayer,
+    lifetimeConstraint: decompiledTransactionMessage.lifetimeConstraint,
+    version: decompiledTransactionMessage.version,
+  });
 
   const {
     value: { err: transactionError, logs },
   } = await rpc
-    .simulateTransaction(transaction, {
+    .simulateTransaction(getBase64EncodedWireTransaction(transaction), {
       encoding: "base64",
       replaceRecentBlockhash: true,
       sigVerify: false,

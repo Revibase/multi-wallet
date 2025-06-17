@@ -12,6 +12,7 @@ use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
 #[derive(Accounts)]
 pub struct TransactionExecuteSync<'info> {
+    #[account(mut)]
     pub settings: Account<'info, Settings>,
     /// CHECK:
     #[account(
@@ -142,7 +143,7 @@ impl<'info> TransactionExecuteSync<'info> {
         transaction_message: TransactionMessage,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
-        let settings = &ctx.accounts.settings;
+        let settings = &mut ctx.accounts.settings;
         let vault_transaction_message =
             transaction_message.convert_to_vault_transaction_message(ctx.remaining_accounts)?;
         vault_transaction_message.validate()?;
@@ -176,9 +177,11 @@ impl<'info> TransactionExecuteSync<'info> {
             &vault_pubkey,
         )?;
 
-        let protected_accounts = &[settings.key()];
+        let protected_accounts = &[];
 
         executable_message.execute_message(vault_signer_seed, protected_accounts)?;
+
+        settings.reload()?;
 
         Ok(())
     }

@@ -82,15 +82,13 @@ export async function nativeTransferIntent({
   const instructions: IInstruction[] = [];
   if (message && signature && publicKey) {
     instructions.push(
-      getSecp256r1VerifyInstruction({
-        payload: [
-          {
-            message,
-            signature,
-            publicKey,
-          },
-        ],
-      })
+      getSecp256r1VerifyInstruction([
+        {
+          message,
+          signature,
+          publicKey,
+        },
+      ])
     );
   }
   instructions.push(

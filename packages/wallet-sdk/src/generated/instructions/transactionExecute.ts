@@ -23,7 +23,6 @@ import {
   type IInstruction,
   type IInstructionWithAccounts,
   type IInstructionWithData,
-  type ReadonlyAccount,
   type ReadonlyUint8Array,
   type WritableAccount,
 } from "@solana/kit";
@@ -51,7 +50,7 @@ export type TransactionExecuteInstruction<
   IInstructionWithAccounts<
     [
       TAccountSettings extends string
-        ? ReadonlyAccount<TAccountSettings>
+        ? WritableAccount<TAccountSettings>
         : TAccountSettings,
       TAccountPayer extends string
         ? WritableAccount<TAccountPayer>
@@ -130,7 +129,7 @@ export function getTransactionExecuteInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: false },
+    settings: { value: input.settings ?? null, isWritable: true },
     payer: { value: input.payer ?? null, isWritable: true },
     transactionBuffer: {
       value: input.transactionBuffer ?? null,

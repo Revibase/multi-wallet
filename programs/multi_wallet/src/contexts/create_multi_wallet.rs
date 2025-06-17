@@ -41,18 +41,27 @@ pub struct CreateMultiWallet<'info> {
         ],
         bump
     )]
-    pub delegate_account: AccountLoader<'info, Delegate>,
+    pub delegate_account: Option<AccountLoader<'info, Delegate>>,
 }
 
 impl<'info> CreateMultiWallet<'info> {
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, CreateMultiWallet<'info>>,
         create_key: Pubkey,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>
+        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
+        permissions: Permissions
     ) -> Result<()> {
         let settings = &mut ctx.accounts.settings;
         let initial_member = &ctx.accounts.initial_member;
         let settings_key = settings.to_account_info().key();
+
+        if permissions.has(Permission::IsDelegate) {
+            require!(ctx.accounts.delegate_account.is_some(), MultisigError::InsuffientSignerWithDelegatePermission);
+            let delegate_account = &mut ctx.accounts.delegate_account.as_ref().unwrap().load_init()?;
+            delegate_account.bump = ctx.bumps.delegate_account.unwrap();
+            delegate_account.multi_wallet_settings = settings_key;
+        }
+
         let (_, multi_wallet_bump) = Pubkey::find_program_address(
             &[
                 SEED_MULTISIG,
@@ -62,19 +71,9 @@ impl<'info> CreateMultiWallet<'info> {
             &id(),
         );
         let signer: MemberKey = MemberKey::get_signer(&initial_member, &secp256r1_verify_args)?;
-        let permissions = Permissions::from_vec(
-            &[
-            Permission::InitiateTransaction, 
-            Permission::VoteTransaction, 
-            Permission::ExecuteTransaction, 
-            Permission::IsDelegate,
-            ]
-        );
-        let delegate_account = &mut ctx.accounts.delegate_account.load_init()?;
-        delegate_account.bump = ctx.bumps.delegate_account;
-        delegate_account.multi_wallet_settings = settings_key;
 
         let domain_config = ctx.accounts.domain_config.as_ref().map(|f| f.key());
+        
         let member = Member { 
             pubkey: signer, 
             permissions, 

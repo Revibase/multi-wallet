@@ -4,12 +4,16 @@ import {
   fetchSettings,
   getDelegateAddress,
   getMultiWalletFromSettings,
+  MULTI_WALLET_PROGRAM_ADDRESS,
   Permissions,
+  prepareTransactionBundle,
+  prepareTransactionMessage,
   Secp256r1Key,
 } from "@revibase/wallet-sdk";
 import { expect } from "chai";
 import {
   createMultiWallet,
+  fundMultiWalletVault,
   generateSecp256r1KeyPair,
   mockAuthenticationResponse,
   sendTransaction,
@@ -30,6 +34,8 @@ export function runSecp256r1Tests() {
     });
 
     it("should add a Secp256r1 key as a member", async () => {
+      // Fund the wallet
+      await fundMultiWalletVault(ctx, BigInt(10 ** 9 * 0.01));
       // Mock authentication response
       const mockResult = await mockAuthenticationResponse(
         ctx.connection,
@@ -49,9 +55,7 @@ export function runSecp256r1Tests() {
       });
 
       // Add Secp256r1Key as member
-      const changeConfigIxs = await changeConfig({
-        signers: [ctx.wallet],
-        feePayer: ctx.payer,
+      const { instructions, secp256r1VerifyInput } = await changeConfig({
         settings: ctx.settings,
         configActions: [
           {
@@ -66,12 +70,29 @@ export function runSecp256r1Tests() {
         ],
       });
 
-      const tx = await sendTransaction(
-        ctx.connection,
-        changeConfigIxs,
-        ctx.payer,
-        ctx.sendAndConfirm
+      const transactionMessageBytes = await prepareTransactionMessage(
+        MULTI_WALLET_PROGRAM_ADDRESS.toString(),
+        ctx.multiWalletVault,
+        instructions
       );
+
+      const result = await prepareTransactionBundle({
+        rpc: ctx.connection,
+        feePayer: ctx.payer,
+        settings: ctx.settings,
+        creator: ctx.wallet,
+        transactionMessageBytes,
+        secp256r1VerifyInput,
+        bufferIndex: Math.round(Math.random() * 255),
+      });
+      for (const x of result) {
+        const tx = await sendTransaction(
+          ctx.connection,
+          x.ixs,
+          x.feePayer,
+          ctx.sendAndConfirm
+        );
+      }
 
       // Verify Secp256r1Key was added as member
       const accountData = await fetchSettings(ctx.connection, ctx.settings);
