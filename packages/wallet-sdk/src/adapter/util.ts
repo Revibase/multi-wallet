@@ -9,10 +9,6 @@ import {
 } from "@solana/kit";
 import { SolanaSignInInput } from "@solana/wallet-standard-features";
 
-export const JITO_API_URL = `https://mainnet.block-engine.jito.wtf/api/v1`;
-
-export const PAYERS_ENDPOINT = `https://payers.revibase.com`;
-
 export function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
   return arraysEqual(a, b);
 }
@@ -35,10 +31,8 @@ export function arraysEqual<T>(a: Indexed<T>, b: Indexed<T>): boolean {
   return true;
 }
 
-export async function estimateJitoTips() {
-  const response = await fetch(
-    "https://proxy.revibase.com/?url=https://bundles.jito.wtf/api/v1/bundles/tip_floor"
-  );
+export async function estimateJitoTips(estimateJitoTipEndpoint: string) {
+  const response = await fetch(estimateJitoTipEndpoint);
   const result = await response.json();
   const tipAmount = Math.round(
     result[0]["ema_landed_tips_50th_percentile"] * 10 ** 9
@@ -47,8 +41,11 @@ export async function estimateJitoTips() {
   return tipAmount;
 }
 
-export async function sendJitoBundle(serializedTransactions: string[]) {
-  const response = await fetch(`${JITO_API_URL}/bundles`, {
+export async function sendJitoBundle(
+  jitoBlockEngineUrl: string,
+  serializedTransactions: string[]
+) {
+  const response = await fetch(`${jitoBlockEngineUrl}/bundles`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -72,53 +69,6 @@ export async function sendJitoBundle(serializedTransactions: string[]) {
   return data.result;
 }
 
-export async function pollJitoBundleForConfirmation(
-  bundleId: string,
-  timeoutMs = 30000,
-  pollIntervalMs = 3000,
-  waitBeforePollMs = 5000
-): Promise<string> {
-  await new Promise((resolve) => setTimeout(resolve, waitBeforePollMs));
-  const startTime = Date.now();
-
-  while (Date.now() - startTime < timeoutMs) {
-    try {
-      const bundleStatus = await getJitoBundleStatus([bundleId]);
-      const status = bundleStatus.value[0]?.confirmation_status ?? "Unknown";
-
-      if (status === "confirmed" || status === "finalized") {
-        const transactions = bundleStatus.value[0]?.transactions;
-        return transactions[transactions.length - 1] ?? bundleId;
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-    } catch {
-      console.error("❌ - Error polling bundle status.");
-    }
-  }
-  throw new Error("Polling timeout reached without confirmation");
-}
-
-export const getJitoBundleStatus = async (bundleIds: string[]) => {
-  const response = await fetch(`${JITO_API_URL}/getBundleStatuses`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "getBundleStatuses",
-      params: [bundleIds],
-    }),
-  });
-  const data = await response.json();
-  if (data.error) {
-    throw new Error(
-      `Error getting bundle statuses: ${JSON.stringify(data.error, null, 2)}`
-    );
-  }
-  return data.result;
-};
-
 export function assertTransactionIsNotSigned(signatures: SignaturesMap) {
   const missingSigs = [];
   Object.entries(signatures).forEach(([address, signatureBytes]) => {
@@ -131,19 +81,21 @@ export function assertTransactionIsNotSigned(signatures: SignaturesMap) {
   }
 }
 
-async function fetchRandomPayer() {
-  const result = await fetch(`${PAYERS_ENDPOINT}`);
+async function fetchRandomPayer(apiEndpoint: string) {
+  const result = await fetch(`${apiEndpoint}`);
   return (await result.text()).replace(/"/g, "");
 }
 
-export async function getRandomPayer(): Promise<TransactionSigner> {
-  const payer = await fetchRandomPayer();
+export async function getRandomPayer(
+  apiEndpoint: string
+): Promise<TransactionSigner> {
+  const payer = await fetchRandomPayer(apiEndpoint);
   return {
     address: address(payer),
     signTransactions(transactions) {
       return new Promise(async (resolve, reject) => {
         try {
-          const signatureResponse = await fetch(`${PAYERS_ENDPOINT}/sign`, {
+          const signatureResponse = await fetch(`${apiEndpoint}/sign`, {
             method: "POST",
             body: JSON.stringify({
               publicKey: payer,

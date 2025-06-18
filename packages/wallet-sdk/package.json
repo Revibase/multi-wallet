@@ -1,6 +1,6 @@
 {
   "name": "@revibase/wallet-sdk",
-  "version": "1.5.2",
+  "version": "1.6.0",
   "scripts": {
     "build": "tsup",
     "clean": "rimraf dist",
@@ -55,7 +55,7 @@
     "@wallet-standard/features": "^1.1.0",
     "@solana-program/compute-budget": "^0.8.0",
     "@solana-program/system": "^0.7.0",
-    "@solana-program/token-2022": "^0.4.1"
+    "@solana-program/token-2022": "0.4.2"
   },
   "peerDependencies": {
     "@solana/kit": "^2.1.1"

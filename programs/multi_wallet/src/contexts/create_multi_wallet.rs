@@ -49,7 +49,7 @@ impl<'info> CreateMultiWallet<'info> {
         ctx: Context<'_, '_, 'info, 'info, CreateMultiWallet<'info>>,
         create_key: Pubkey,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        permissions: Permissions
+        permissions: Permissions,
     ) -> Result<()> {
         let settings = &mut ctx.accounts.settings;
         let initial_member = &ctx.accounts.initial_member;

@@ -8,6 +8,7 @@ import {
   AddressesByLookupTableAddress,
   appendTransactionMessageInstructions,
   assertTransactionIsFullySigned,
+  Commitment,
   compressTransactionMessageUsingAddressLookupTables,
   createSolanaRpc,
   createSolanaRpcSubscriptions,
@@ -28,8 +29,15 @@ import {
   sendAndConfirmTransactionFactory,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
+  Transaction,
   TransactionSigner,
 } from "@solana/kit";
+import {
+  createBlockHeightExceedencePromiseFactory,
+  createRecentSignatureConfirmationPromiseFactory,
+  TransactionWithLastValidBlockHeight,
+  waitForRecentTransactionConfirmation,
+} from "@solana/transaction-confirmation";
 import {
   SolanaSignAndSendTransactionOptions,
   SolanaSignInInput,
@@ -57,27 +65,52 @@ import {
   assertTransactionIsNotSigned,
   createSignInMessageText,
   estimateJitoTips,
-  getRandomPayer,
-  pollJitoBundleForConfirmation,
   sendJitoBundle,
 } from "./util";
 import { Revibase, RevibaseEvent } from "./window";
 
-export function createRevibaseAdapter(
-  rpcEndpoint: string,
-  payer?: TransactionSigner
-): Revibase {
+export function createRevibaseAdapter({
+  rpcEndpoint,
+  feePayer,
+  jitoBlockEngineEndpoint,
+  estimateJitoTipEndpoint,
+}: {
+  rpcEndpoint: string;
+  feePayer: TransactionSigner;
+  estimateJitoTipEndpoint: string;
+  jitoBlockEngineEndpoint: string;
+}): Revibase {
   const rpc = createSolanaRpc(rpcEndpoint);
   const computeBudgetEstimate =
     getComputeUnitEstimateForTransactionMessageFactory({
       rpc,
     });
-
+  const rpcSubscriptions = createSolanaRpcSubscriptions(
+    "wss://" + new URL(rpcEndpoint).hostname
+  );
+  const getBlockHeightExceedencePromise =
+    createBlockHeightExceedencePromiseFactory({
+      rpc,
+      rpcSubscriptions,
+    });
+  const getRecentSignatureConfirmationPromise =
+    createRecentSignatureConfirmationPromiseFactory({
+      rpc,
+      rpcSubscriptions,
+    });
+  const confirmTransaction = (config: {
+    transaction: Readonly<Transaction & TransactionWithLastValidBlockHeight>;
+    commitment: Commitment;
+    abortSignal?: AbortSignal;
+  }) =>
+    waitForRecentTransactionConfirmation({
+      getBlockHeightExceedencePromise,
+      getRecentSignatureConfirmationPromise,
+      ...config,
+    });
   const sendAndConfirm = sendAndConfirmTransactionFactory({
     rpc,
-    rpcSubscriptions: createSolanaRpcSubscriptions(
-      "wss://" + new URL(rpcEndpoint).hostname
-    ),
+    rpcSubscriptions,
   });
   // 👇 Event listener map
   const listeners: {
@@ -167,10 +200,23 @@ export function createRevibaseAdapter(
           );
           signature = getSignatureFromTransaction(signedTransaction);
         } else {
-          const bundleId = await sendJitoBundle(
+          await sendJitoBundle(
+            jitoBlockEngineEndpoint,
             signedTransactions.map(getBase64EncodedWireTransaction)
           );
-          signature = await pollJitoBundleForConfirmation(bundleId);
+          const lastTransaction =
+            signedTransactions[signedTransactions.length - 1];
+          await confirmTransaction({
+            transaction: {
+              ...lastTransaction,
+              lifetimeConstraint: {
+                lastValidBlockHeight: 2n ** 64n - 1n,
+              },
+            },
+            commitment: "confirmed",
+            ...options,
+          });
+          signature = getSignatureFromTransaction(lastTransaction);
         }
 
         return signature;
@@ -243,8 +289,6 @@ export function createRevibaseAdapter(
             transactionAddress: settings,
             transactionMessageBytes,
           });
-
-          const feePayer = payer ?? (await getRandomPayer());
           payload.push(
             await prepareTransactionSync({
               rpc,
@@ -268,9 +312,9 @@ export function createRevibaseAdapter(
             transactionAddress: transactionBufferAddress,
             transactionMessageBytes,
           });
-          const jitoBundlesTipAmount = await estimateJitoTips();
-          const feePayer = payer ?? (await getRandomPayer());
-
+          const jitoBundlesTipAmount = await estimateJitoTips(
+            estimateJitoTipEndpoint
+          );
           payload.push(
             ...(await prepareTransactionBundle({
               rpc,
