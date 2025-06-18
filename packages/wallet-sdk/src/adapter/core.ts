@@ -70,24 +70,29 @@ import {
 import { Revibase, RevibaseEvent } from "./window";
 
 export function createRevibaseAdapter({
-  rpcEndpoint,
   feePayer,
   jitoBlockEngineEndpoint,
   estimateJitoTipEndpoint,
+  rpcEndpoint,
 }: {
-  rpcEndpoint: string;
   feePayer: TransactionSigner;
   estimateJitoTipEndpoint: string;
   jitoBlockEngineEndpoint: string;
+  rpcEndpoint: string;
 }): Revibase {
   const rpc = createSolanaRpc(rpcEndpoint);
+  const rpcSubscriptions = createSolanaRpcSubscriptions(
+    "wss://" + new URL(rpcEndpoint).hostname
+  );
   const computeBudgetEstimate =
     getComputeUnitEstimateForTransactionMessageFactory({
       rpc,
     });
-  const rpcSubscriptions = createSolanaRpcSubscriptions(
-    "wss://" + new URL(rpcEndpoint).hostname
-  );
+
+  const sendAndConfirm = sendAndConfirmTransactionFactory({
+    rpc,
+    rpcSubscriptions,
+  });
   const getBlockHeightExceedencePromise =
     createBlockHeightExceedencePromiseFactory({
       rpc,
@@ -101,17 +106,12 @@ export function createRevibaseAdapter({
   const confirmTransaction = (config: {
     transaction: Readonly<Transaction & TransactionWithLastValidBlockHeight>;
     commitment: Commitment;
-    abortSignal?: AbortSignal;
   }) =>
     waitForRecentTransactionConfirmation({
       getBlockHeightExceedencePromise,
       getRecentSignatureConfirmationPromise,
       ...config,
     });
-  const sendAndConfirm = sendAndConfirmTransactionFactory({
-    rpc,
-    rpcSubscriptions,
-  });
   // 👇 Event listener map
   const listeners: {
     [E in keyof RevibaseEvent]?: Array<{ fn: RevibaseEvent[E]; ctx?: any }>;

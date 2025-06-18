@@ -7,7 +7,7 @@ import { RevibaseWallet } from "./wallet";
 export async function initializeAdapter({
   rpcEndpoint,
   feePayer,
-  estimateJitoTipEndpoint = `"https://proxy.revibase.com/?url=https://bundles.jito.wtf/api/v1/bundles/tip_floor"`,
+  estimateJitoTipEndpoint = `https://proxy.revibase.com/?url=https://bundles.jito.wtf/api/v1/bundles/tip_floor`,
   jitoBlockEngineEndpoint = `https://mainnet.block-engine.jito.wtf/api/v1`,
 }: {
   rpcEndpoint: string;
@@ -16,13 +16,14 @@ export async function initializeAdapter({
   jitoBlockEngineEndpoint?: string;
 }) {
   feePayer = feePayer ?? (await getRandomPayer("https://api.revibase.com"));
+
   registerWallet(
     new RevibaseWallet(
       createRevibaseAdapter({
-        rpcEndpoint,
         feePayer,
         jitoBlockEngineEndpoint,
         estimateJitoTipEndpoint,
+        rpcEndpoint,
       })
     )
   );
