@@ -1,28 +1,40 @@
 use crate::{
-    state::{Settings, SettingsArgs},
+    state::{verify_compressed_settings, ProofArgs, SettingsProofArgs},
     MultisigError, TransactionBuffer,
 };
 use anchor_lang::{prelude::*, solana_program::hash::hash};
-use light_sdk::account::LightAccount;
 
 #[derive(Accounts)]
 pub struct TransactionBufferExtendCompressed<'info> {
+    #[account(
+        mut,
+        address = transaction_buffer.payer
+    )]
+    pub payer: Signer<'info>,
     #[account(mut)]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 }
 
-impl TransactionBufferExtendCompressed<'_> {
-    fn validate(&self, buffer: &Vec<u8>, settings_args: &SettingsArgs) -> Result<()> {
+impl<'info> TransactionBufferExtendCompressed<'info> {
+    fn validate(
+        &self,
+        remaining_accounts: &[AccountInfo<'info>],
+        buffer: &Vec<u8>,
+        settings_args: &SettingsProofArgs,
+        compressed_proof_args: ProofArgs,
+    ) -> Result<()> {
         let Self {
-            transaction_buffer, ..
+            transaction_buffer,
+            payer,
+            ..
         } = self;
-        let settings = LightAccount::<'_, Settings>::new_mut(
-            &crate::ID,
-            &settings_args.account_meta,
-            settings_args.settings.clone(),
-        )
-        .map_err(ProgramError::from)?;
-        let settings_key = Pubkey::new_from_array(settings.address().unwrap());
+        let (_, settings_key) = verify_compressed_settings(
+            &payer.to_account_info(),
+            None,
+            &settings_args,
+            &remaining_accounts,
+            compressed_proof_args,
+        )?;
         require!(
             settings_key.eq(&transaction_buffer.multi_wallet_settings),
             MultisigError::InvalidAccount
@@ -54,8 +66,13 @@ impl TransactionBufferExtendCompressed<'_> {
         Ok(())
     }
 
-    #[access_control(ctx.accounts.validate(&buffer, &settings_args))]
-    pub fn process(ctx: Context<Self>, buffer: Vec<u8>, settings_args: SettingsArgs) -> Result<()> {
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, &buffer, &settings_args, compressed_proof_args))]
+    pub fn process(
+        ctx: Context<'_, '_, '_, 'info, Self>,
+        buffer: Vec<u8>,
+        settings_args: SettingsProofArgs,
+        compressed_proof_args: ProofArgs,
+    ) -> Result<()> {
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
 
         transaction_buffer.buffer.extend_from_slice(&buffer);

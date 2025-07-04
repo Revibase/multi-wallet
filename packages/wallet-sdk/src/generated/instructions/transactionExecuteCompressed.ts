@@ -27,9 +27,9 @@ import {
   type IInstructionWithData,
   type ReadonlyUint8Array,
   type WritableAccount,
-} from '@solana/kit';
-import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
-import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
+} from "@solana/kit";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 
 export const TRANSACTION_EXECUTE_COMPRESSED_DISCRIMINATOR = new Uint8Array([
   60, 99, 11, 42, 178, 216, 28, 158,
@@ -72,8 +72,8 @@ export type TransactionExecuteCompressedInstructionDataArgs = {
 export function getTransactionExecuteCompressedInstructionDataEncoder(): Encoder<TransactionExecuteCompressedInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
-      ['settingsKey', getAddressEncoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["settingsKey", getAddressEncoder()],
     ]),
     (value) => ({
       ...value,
@@ -84,8 +84,8 @@ export function getTransactionExecuteCompressedInstructionDataEncoder(): Encoder
 
 export function getTransactionExecuteCompressedInstructionDataDecoder(): Decoder<TransactionExecuteCompressedInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
-    ['settingsKey', getAddressDecoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["settingsKey", getAddressDecoder()],
   ]);
 }
 
@@ -102,26 +102,31 @@ export function getTransactionExecuteCompressedInstructionDataCodec(): Codec<
 export type TransactionExecuteCompressedInput<
   TAccountPayer extends string = string,
   TAccountTransactionBuffer extends string = string,
+  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = {
   payer: Address<TAccountPayer>;
   transactionBuffer: Address<TAccountTransactionBuffer>;
-  settingsKey: TransactionExecuteCompressedInstructionDataArgs['settingsKey'];
+  settingsKey: TransactionExecuteCompressedInstructionDataArgs["settingsKey"];
+  remainingAccounts: TRemainingAccounts;
 };
 
 export function getTransactionExecuteCompressedInstruction<
   TAccountPayer extends string,
   TAccountTransactionBuffer extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
+  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 >(
   input: TransactionExecuteCompressedInput<
     TAccountPayer,
-    TAccountTransactionBuffer
+    TAccountTransactionBuffer,
+    TRemainingAccounts
   >,
   config?: { programAddress?: TProgramAddress }
 ): TransactionExecuteCompressedInstruction<
   TProgramAddress,
   TAccountPayer,
-  TAccountTransactionBuffer
+  TAccountTransactionBuffer,
+  TRemainingAccounts
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -142,11 +147,12 @@ export function getTransactionExecuteCompressedInstruction<
   // Original args.
   const args = { ...input };
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   const instruction = {
     accounts: [
       getAccountMeta(accounts.payer),
       getAccountMeta(accounts.transactionBuffer),
+      ...input.remainingAccounts,
     ],
     programAddress,
     data: getTransactionExecuteCompressedInstructionDataEncoder().encode(
@@ -155,7 +161,8 @@ export function getTransactionExecuteCompressedInstruction<
   } as TransactionExecuteCompressedInstruction<
     TProgramAddress,
     TAccountPayer,
-    TAccountTransactionBuffer
+    TAccountTransactionBuffer,
+    TRemainingAccounts
   >;
 
   return instruction;
@@ -183,7 +190,7 @@ export function parseTransactionExecuteCompressedInstruction<
 ): ParsedTransactionExecuteCompressedInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 2) {
     // TODO: Coded error.
-    throw new Error('Not enough accounts');
+    throw new Error("Not enough accounts");
   }
   let accountIndex = 0;
   const getNextAccount = () => {

@@ -24,3 +24,9 @@ pub use domain_config::*;
 
 pub mod transaction_message;
 pub use transaction_message::*;
+
+pub mod global_counter;
+pub use global_counter::*;
+
+pub mod compressed;
+pub use compressed::*;

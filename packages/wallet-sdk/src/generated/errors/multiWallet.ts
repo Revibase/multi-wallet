@@ -11,8 +11,8 @@ import {
   type Address,
   type SOLANA_ERROR__INSTRUCTION_ERROR__CUSTOM,
   type SolanaError,
-} from "@solana/kit";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+} from '@solana/kit';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
 
 /** InvalidSignedMessage: The provided signature doesn't match the expected message. Make sure you're signing the correct payload. */
 export const MULTI_WALLET_ERROR__INVALID_SIGNED_MESSAGE = 0x1770; // 6000
@@ -40,8 +40,8 @@ export const MULTI_WALLET_ERROR__MISSING_ACCOUNT = 0x177a; // 6010
 export const MULTI_WALLET_ERROR__ACCOUNT_ALREADY_EXIST = 0x177b; // 6011
 /** IllegalAccountOwner: The account is not owned by the multisig program. Ensure the correct program owns this account. */
 export const MULTI_WALLET_ERROR__ILLEGAL_ACCOUNT_OWNER = 0x177c; // 6012
-/** InsuffientSignerWithDelegatePermission: A delegate account is required when the initial member has requested delegate permissions. */
-export const MULTI_WALLET_ERROR__INSUFFIENT_SIGNER_WITH_DELEGATE_PERMISSION = 0x177d; // 6013
+/** MissingDelegateArgs: A delegate creation args is required when the initial member has requested delegate permissions. */
+export const MULTI_WALLET_ERROR__MISSING_DELEGATE_ARGS = 0x177d; // 6013
 /** InsufficientSignerWithExecutePermission: At least one signer must have execute permissions to proceed. */
 export const MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_EXECUTE_PERMISSION = 0x177e; // 6014
 /** InsufficientSignerWithInitiatePermission: At least one signer must have initiate permissions to perform this action. */
@@ -113,7 +113,6 @@ export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__INSUFFICIENT_SIGNERS_WITH_VOTE_PERMISSION
   | typeof MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_EXECUTE_PERMISSION
   | typeof MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_INITIATE_PERMISSION
-  | typeof MULTI_WALLET_ERROR__INSUFFIENT_SIGNER_WITH_DELEGATE_PERMISSION
   | typeof MULTI_WALLET_ERROR__INVALID_ACCOUNT
   | typeof MULTI_WALLET_ERROR__INVALID_BUFFER
   | typeof MULTI_WALLET_ERROR__INVALID_CHALLENGE
@@ -130,6 +129,7 @@ export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG
   | typeof MULTI_WALLET_ERROR__MISSING_ACCOUNT
   | typeof MULTI_WALLET_ERROR__MISSING_CHALLENGE
+  | typeof MULTI_WALLET_ERROR__MISSING_DELEGATE_ARGS
   | typeof MULTI_WALLET_ERROR__MISSING_ORIGIN
   | typeof MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY
   | typeof MULTI_WALLET_ERROR__MISSING_TYPE
@@ -144,7 +144,7 @@ export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__UNAUTHORISED_TO_CLOSE_TRANSACTION_BUFFER;
 
 let multiWalletErrorMessages: Record<MultiWalletError, string> | undefined;
-if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV !== 'production') {
   multiWalletErrorMessages = {
     [MULTI_WALLET_ERROR__ACCOUNT_ALREADY_EXIST]: `The account you're trying to initialize already exists.`,
     [MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_DISABLED]: `The domain configuration account is currently disabled. Contact support or try again later.`,
@@ -159,7 +159,6 @@ if (process.env.NODE_ENV !== "production") {
     [MULTI_WALLET_ERROR__INSUFFICIENT_SIGNERS_WITH_VOTE_PERMISSION]: `The approval threshold cannot be met because there aren't enough voters with the vote permission.`,
     [MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_EXECUTE_PERMISSION]: `At least one signer must have execute permissions to proceed.`,
     [MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_INITIATE_PERMISSION]: `At least one signer must have initiate permissions to perform this action.`,
-    [MULTI_WALLET_ERROR__INSUFFIENT_SIGNER_WITH_DELEGATE_PERMISSION]: `A delegate account is required when the initial member has requested delegate permissions.`,
     [MULTI_WALLET_ERROR__INVALID_ACCOUNT]: `One or more accounts provided failed validation. Ensure all required accounts are included and correct.`,
     [MULTI_WALLET_ERROR__INVALID_BUFFER]: `The contents of the buffer do not match the expected hash. It may have been tampered with.`,
     [MULTI_WALLET_ERROR__INVALID_CHALLENGE]: `The challenge value in clientDataJSON is missing or doesn't match the expected challenge.`,
@@ -176,6 +175,7 @@ if (process.env.NODE_ENV !== "production") {
     [MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG]: `This member is not registered in the provided domain configuration.`,
     [MULTI_WALLET_ERROR__MISSING_ACCOUNT]: `A required account is missing from the transaction context.`,
     [MULTI_WALLET_ERROR__MISSING_CHALLENGE]: `Missing challenge field in clientDataJSON. This is required for validating the authentication request.`,
+    [MULTI_WALLET_ERROR__MISSING_DELEGATE_ARGS]: `A delegate creation args is required when the initial member has requested delegate permissions.`,
     [MULTI_WALLET_ERROR__MISSING_ORIGIN]: `Missing origin field in clientDataJSON. This field is required for WebAuthn validation.`,
     [MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY]: `The Slot History sysvar account is missing. It must be included as an account in this instruction.`,
     [MULTI_WALLET_ERROR__MISSING_TYPE]: `Missing type field in clientDataJSON. This field is required for WebAuthn validation.`,
@@ -192,11 +192,11 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export function getMultiWalletErrorMessage(code: MultiWalletError): string {
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== 'production') {
     return (multiWalletErrorMessages as Record<MultiWalletError, string>)[code];
   }
 
-  return "Error message not available in production bundles.";
+  return 'Error message not available in production bundles.';
 }
 
 export function isMultiWalletError<TProgramErrorCode extends MultiWalletError>(

@@ -21,7 +21,9 @@ export type TransactionActionType =
   | "close"
   | "add_new_member"
   | "token_transfer_intent"
-  | "native_transfer_intent";
+  | "native_transfer_intent"
+  | "compress"
+  | "decompress";
 
 export type TransactionPayload = {
   transactionActionType: TransactionActionType;

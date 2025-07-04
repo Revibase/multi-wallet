@@ -10,7 +10,6 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
-  getAddressDecoder,
   getAddressEncoder,
   getBytesDecoder,
   getBytesEncoder,
@@ -40,30 +39,40 @@ import {
 } from "@solana/kit";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import {
-  expectSome,
+  expectAddress,
   getAccountMetaFactory,
   type ResolvedAccount,
 } from "../shared";
 import {
+  getDelegateCreationArgsDecoder,
+  getDelegateCreationArgsEncoder,
   getPermissionsDecoder,
   getPermissionsEncoder,
+  getProofArgsDecoder,
+  getProofArgsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
+  type DelegateCreationArgs,
+  type DelegateCreationArgsArgs,
   type IPermissions,
   type PermissionsArgs,
+  type ProofArgs,
+  type ProofArgsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
 } from "../types";
 
-export const CREATE_DISCRIMINATOR = new Uint8Array([
-  24, 30, 200, 40, 5, 28, 7, 119,
+export const CREATE_MULTI_WALLET_DISCRIMINATOR = new Uint8Array([
+  37, 45, 100, 255, 58, 228, 239, 164,
 ]);
 
-export function getCreateDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(CREATE_DISCRIMINATOR);
+export function getCreateMultiWalletDiscriminatorBytes() {
+  return fixEncoderSize(getBytesEncoder(), 8).encode(
+    CREATE_MULTI_WALLET_DISCRIMINATOR
+  );
 }
 
-export type CreateInstruction<
+export type CreateMultiWalletInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountSettings extends string | IAccountMeta<string> = string,
   TAccountPayer extends string | IAccountMeta<string> = string,
@@ -78,7 +87,7 @@ export type CreateInstruction<
     | string
     | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
   TAccountDomainConfig extends string | IAccountMeta<string> = string,
-  TAccountDelegateAccount extends string | IAccountMeta<string> = string,
+  TAccountGlobalCounter extends string | IAccountMeta<string> = string,
   TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = IInstruction<TProgram> &
   IInstructionWithData<Uint8Array> &
@@ -107,61 +116,71 @@ export type CreateInstruction<
       TAccountDomainConfig extends string
         ? ReadonlyAccount<TAccountDomainConfig>
         : TAccountDomainConfig,
-      TAccountDelegateAccount extends string
-        ? WritableAccount<TAccountDelegateAccount>
-        : TAccountDelegateAccount,
+      TAccountGlobalCounter extends string
+        ? WritableAccount<TAccountGlobalCounter>
+        : TAccountGlobalCounter,
       ...TRemainingAccounts,
     ]
   >;
 
-export type CreateInstructionData = {
+export type CreateMultiWalletInstructionData = {
   discriminator: ReadonlyUint8Array;
-  createKey: Address;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
   permissions: IPermissions;
+  delegateCreationArgs: Option<DelegateCreationArgs>;
+  compressedProofArgs: Option<ProofArgs>;
 };
 
-export type CreateInstructionDataArgs = {
-  createKey: Address;
+export type CreateMultiWalletInstructionDataArgs = {
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
   permissions: PermissionsArgs;
+  delegateCreationArgs: OptionOrNullable<DelegateCreationArgsArgs>;
+  compressedProofArgs: OptionOrNullable<ProofArgsArgs>;
 };
 
-export function getCreateInstructionDataEncoder(): Encoder<CreateInstructionDataArgs> {
+export function getCreateMultiWalletInstructionDataEncoder(): Encoder<CreateMultiWalletInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["createKey", getAddressEncoder()],
       [
         "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
       ["permissions", getPermissionsEncoder()],
+      [
+        "delegateCreationArgs",
+        getOptionEncoder(getDelegateCreationArgsEncoder()),
+      ],
+      ["compressedProofArgs", getOptionEncoder(getProofArgsEncoder())],
     ]),
-    (value) => ({ ...value, discriminator: CREATE_DISCRIMINATOR })
+    (value) => ({ ...value, discriminator: CREATE_MULTI_WALLET_DISCRIMINATOR })
   );
 }
 
-export function getCreateInstructionDataDecoder(): Decoder<CreateInstructionData> {
+export function getCreateMultiWalletInstructionDataDecoder(): Decoder<CreateMultiWalletInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["createKey", getAddressDecoder()],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
     ["permissions", getPermissionsDecoder()],
+    [
+      "delegateCreationArgs",
+      getOptionDecoder(getDelegateCreationArgsDecoder()),
+    ],
+    ["compressedProofArgs", getOptionDecoder(getProofArgsDecoder())],
   ]);
 }
 
-export function getCreateInstructionDataCodec(): Codec<
-  CreateInstructionDataArgs,
-  CreateInstructionData
+export function getCreateMultiWalletInstructionDataCodec(): Codec<
+  CreateMultiWalletInstructionDataArgs,
+  CreateMultiWalletInstructionData
 > {
   return combineCodec(
-    getCreateInstructionDataEncoder(),
-    getCreateInstructionDataDecoder()
+    getCreateMultiWalletInstructionDataEncoder(),
+    getCreateMultiWalletInstructionDataDecoder()
   );
 }
 
-export type CreateAsyncInput<
+export type CreateMultiWalletAsyncInput<
   TAccountSettings extends string = string,
   TAccountPayer extends string = string,
   TAccountInitialMember extends string = string,
@@ -169,7 +188,8 @@ export type CreateAsyncInput<
   TAccountSlotHashSysvar extends string = string,
   TAccountInstructionsSysvar extends string = string,
   TAccountDomainConfig extends string = string,
-  TAccountDelegateAccount extends string = string,
+  TAccountGlobalCounter extends string = string,
+  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = {
   settings?: Address<TAccountSettings>;
   payer: TransactionSigner<TAccountPayer>;
@@ -178,13 +198,15 @@ export type CreateAsyncInput<
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   domainConfig?: Address<TAccountDomainConfig>;
-  delegateAccount?: Address<TAccountDelegateAccount>;
-  createKey: CreateInstructionDataArgs["createKey"];
-  secp256r1VerifyArgs: CreateInstructionDataArgs["secp256r1VerifyArgs"];
-  permissions: CreateInstructionDataArgs["permissions"];
+  globalCounter: Address<TAccountGlobalCounter>;
+  secp256r1VerifyArgs: CreateMultiWalletInstructionDataArgs["secp256r1VerifyArgs"];
+  permissions: CreateMultiWalletInstructionDataArgs["permissions"];
+  delegateCreationArgs: CreateMultiWalletInstructionDataArgs["delegateCreationArgs"];
+  compressedProofArgs: CreateMultiWalletInstructionDataArgs["compressedProofArgs"];
+  remainingAccounts: TRemainingAccounts;
 };
 
-export async function getCreateInstructionAsync<
+export async function getCreateMultiWalletInstructionAsync<
   TAccountSettings extends string,
   TAccountPayer extends string,
   TAccountInitialMember extends string,
@@ -192,10 +214,11 @@ export async function getCreateInstructionAsync<
   TAccountSlotHashSysvar extends string,
   TAccountInstructionsSysvar extends string,
   TAccountDomainConfig extends string,
-  TAccountDelegateAccount extends string,
+  TAccountGlobalCounter extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
+  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 >(
-  input: CreateAsyncInput<
+  input: CreateMultiWalletAsyncInput<
     TAccountSettings,
     TAccountPayer,
     TAccountInitialMember,
@@ -203,11 +226,12 @@ export async function getCreateInstructionAsync<
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar,
     TAccountDomainConfig,
-    TAccountDelegateAccount
+    TAccountGlobalCounter,
+    TRemainingAccounts
   >,
   config?: { programAddress?: TProgramAddress }
 ): Promise<
-  CreateInstruction<
+  CreateMultiWalletInstruction<
     TProgramAddress,
     TAccountSettings,
     TAccountPayer,
@@ -216,7 +240,8 @@ export async function getCreateInstructionAsync<
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar,
     TAccountDomainConfig,
-    TAccountDelegateAccount
+    TAccountGlobalCounter,
+    TRemainingAccounts
   >
 > {
   // Program address.
@@ -234,7 +259,7 @@ export async function getCreateInstructionAsync<
       isWritable: false,
     },
     domainConfig: { value: input.domainConfig ?? null, isWritable: false },
-    delegateAccount: { value: input.delegateAccount ?? null, isWritable: true },
+    globalCounter: { value: input.globalCounter ?? null, isWritable: true },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -254,7 +279,7 @@ export async function getCreateInstructionAsync<
             109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116,
           ])
         ),
-        getAddressEncoder().encode(expectSome(args.createKey)),
+        getAddressEncoder().encode(expectAddress(accounts.globalCounter.value)),
       ],
     });
   }
@@ -281,13 +306,14 @@ export async function getCreateInstructionAsync<
       getAccountMeta(accounts.slotHashSysvar),
       getAccountMeta(accounts.instructionsSysvar),
       getAccountMeta(accounts.domainConfig),
-      getAccountMeta(accounts.delegateAccount),
+      getAccountMeta(accounts.globalCounter),
+      ...input.remainingAccounts,
     ],
     programAddress,
-    data: getCreateInstructionDataEncoder().encode(
-      args as CreateInstructionDataArgs
+    data: getCreateMultiWalletInstructionDataEncoder().encode(
+      args as CreateMultiWalletInstructionDataArgs
     ),
-  } as CreateInstruction<
+  } as CreateMultiWalletInstruction<
     TProgramAddress,
     TAccountSettings,
     TAccountPayer,
@@ -296,13 +322,14 @@ export async function getCreateInstructionAsync<
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar,
     TAccountDomainConfig,
-    TAccountDelegateAccount
+    TAccountGlobalCounter,
+    TRemainingAccounts
   >;
 
   return instruction;
 }
 
-export type CreateInput<
+export type CreateMultiWalletInput<
   TAccountSettings extends string = string,
   TAccountPayer extends string = string,
   TAccountInitialMember extends string = string,
@@ -310,7 +337,7 @@ export type CreateInput<
   TAccountSlotHashSysvar extends string = string,
   TAccountInstructionsSysvar extends string = string,
   TAccountDomainConfig extends string = string,
-  TAccountDelegateAccount extends string = string,
+  TAccountGlobalCounter extends string = string,
 > = {
   settings: Address<TAccountSettings>;
   payer: TransactionSigner<TAccountPayer>;
@@ -319,13 +346,14 @@ export type CreateInput<
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   domainConfig?: Address<TAccountDomainConfig>;
-  delegateAccount?: Address<TAccountDelegateAccount>;
-  createKey: CreateInstructionDataArgs["createKey"];
-  secp256r1VerifyArgs: CreateInstructionDataArgs["secp256r1VerifyArgs"];
-  permissions: CreateInstructionDataArgs["permissions"];
+  globalCounter: Address<TAccountGlobalCounter>;
+  secp256r1VerifyArgs: CreateMultiWalletInstructionDataArgs["secp256r1VerifyArgs"];
+  permissions: CreateMultiWalletInstructionDataArgs["permissions"];
+  delegateCreationArgs: CreateMultiWalletInstructionDataArgs["delegateCreationArgs"];
+  compressedProofArgs: CreateMultiWalletInstructionDataArgs["compressedProofArgs"];
 };
 
-export function getCreateInstruction<
+export function getCreateMultiWalletInstruction<
   TAccountSettings extends string,
   TAccountPayer extends string,
   TAccountInitialMember extends string,
@@ -333,10 +361,10 @@ export function getCreateInstruction<
   TAccountSlotHashSysvar extends string,
   TAccountInstructionsSysvar extends string,
   TAccountDomainConfig extends string,
-  TAccountDelegateAccount extends string,
+  TAccountGlobalCounter extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
-  input: CreateInput<
+  input: CreateMultiWalletInput<
     TAccountSettings,
     TAccountPayer,
     TAccountInitialMember,
@@ -344,10 +372,10 @@ export function getCreateInstruction<
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar,
     TAccountDomainConfig,
-    TAccountDelegateAccount
+    TAccountGlobalCounter
   >,
   config?: { programAddress?: TProgramAddress }
-): CreateInstruction<
+): CreateMultiWalletInstruction<
   TProgramAddress,
   TAccountSettings,
   TAccountPayer,
@@ -356,7 +384,7 @@ export function getCreateInstruction<
   TAccountSlotHashSysvar,
   TAccountInstructionsSysvar,
   TAccountDomainConfig,
-  TAccountDelegateAccount
+  TAccountGlobalCounter
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -373,7 +401,7 @@ export function getCreateInstruction<
       isWritable: false,
     },
     domainConfig: { value: input.domainConfig ?? null, isWritable: false },
-    delegateAccount: { value: input.delegateAccount ?? null, isWritable: true },
+    globalCounter: { value: input.globalCounter ?? null, isWritable: true },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -407,13 +435,13 @@ export function getCreateInstruction<
       getAccountMeta(accounts.slotHashSysvar),
       getAccountMeta(accounts.instructionsSysvar),
       getAccountMeta(accounts.domainConfig),
-      getAccountMeta(accounts.delegateAccount),
+      getAccountMeta(accounts.globalCounter),
     ],
     programAddress,
-    data: getCreateInstructionDataEncoder().encode(
-      args as CreateInstructionDataArgs
+    data: getCreateMultiWalletInstructionDataEncoder().encode(
+      args as CreateMultiWalletInstructionDataArgs
     ),
-  } as CreateInstruction<
+  } as CreateMultiWalletInstruction<
     TProgramAddress,
     TAccountSettings,
     TAccountPayer,
@@ -422,13 +450,13 @@ export function getCreateInstruction<
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar,
     TAccountDomainConfig,
-    TAccountDelegateAccount
+    TAccountGlobalCounter
   >;
 
   return instruction;
 }
 
-export type ParsedCreateInstruction<
+export type ParsedCreateMultiWalletInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
 > = {
@@ -441,19 +469,19 @@ export type ParsedCreateInstruction<
     slotHashSysvar?: TAccountMetas[4] | undefined;
     instructionsSysvar?: TAccountMetas[5] | undefined;
     domainConfig?: TAccountMetas[6] | undefined;
-    delegateAccount?: TAccountMetas[7] | undefined;
+    globalCounter: TAccountMetas[7];
   };
-  data: CreateInstructionData;
+  data: CreateMultiWalletInstructionData;
 };
 
-export function parseCreateInstruction<
+export function parseCreateMultiWalletInstruction<
   TProgram extends string,
   TAccountMetas extends readonly IAccountMeta[],
 >(
   instruction: IInstruction<TProgram> &
     IInstructionWithAccounts<TAccountMetas> &
     IInstructionWithData<Uint8Array>
-): ParsedCreateInstruction<TProgram, TAccountMetas> {
+): ParsedCreateMultiWalletInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 8) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
@@ -480,8 +508,8 @@ export function parseCreateInstruction<
       slotHashSysvar: getNextOptionalAccount(),
       instructionsSysvar: getNextOptionalAccount(),
       domainConfig: getNextOptionalAccount(),
-      delegateAccount: getNextOptionalAccount(),
+      globalCounter: getNextAccount(),
     },
-    data: getCreateInstructionDataDecoder().decode(instruction.data),
+    data: getCreateMultiWalletInstructionDataDecoder().decode(instruction.data),
   };
 }

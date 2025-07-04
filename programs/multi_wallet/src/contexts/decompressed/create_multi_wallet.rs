@@ -1,5 +1,6 @@
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use crate::{error::MultisigError, id, state::{Delegate, DelegateCreationArgs, DomainConfig, GlobalCounter, KeyType, Member, MemberKey, Permission, Permissions, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings, TransactionActionType, SEED_MULTISIG, SEED_VAULT}};
+use light_sdk::cpi::{CpiAccounts, CpiInputs};
+use crate::{error::MultisigError, id, state::{ProofArgs, Delegate, DelegateCreationArgs, DomainConfig, GlobalCounter, KeyType, Member, MemberKey, Permission, Permissions, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings, TransactionActionType, SEED_MULTISIG, SEED_VAULT}, LIGHT_CPI_SIGNER};
 
 #[derive(Accounts)]
 #[instruction(secp256r1_verify_args: Option<Secp256r1VerifyArgs>)]
@@ -41,7 +42,8 @@ impl<'info> CreateMultiWallet<'info> {
         ctx: Context<'_, '_, 'info, 'info, CreateMultiWallet<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         permissions: Permissions,
-        delegate_creation_args: Option<DelegateCreationArgs>
+        compressed_proof_args: Option<ProofArgs>,
+        delegate_creation_args: Option<DelegateCreationArgs>,
     ) -> Result<()> {
         let settings = &mut ctx.accounts.settings;
         let initial_member = &ctx.accounts.initial_member;
@@ -82,11 +84,6 @@ impl<'info> CreateMultiWallet<'info> {
             )?;
         }
 
-
-        if permissions.has(Permission::IsDelegate) {
-            Delegate::create_delegate_account(delegate_creation_args, &signer, settings_key, ctx.accounts.payer.as_ref(), ctx.remaining_accounts)?;
-        }
-
         let global_counter =&mut  ctx.accounts.global_counter.load_mut()?;
         
         settings.bump = ctx.bumps.settings;
@@ -96,8 +93,27 @@ impl<'info> CreateMultiWallet<'info> {
         settings.index = global_counter.index;
         settings.invariant()?;
 
-        global_counter.index +=1;
+        
 
+        if permissions.has(Permission::IsDelegate) {
+            let proof_args = compressed_proof_args.ok_or(MultisigError::MissingDelegateArgs)?;
+            let light_cpi_accounts =
+                CpiAccounts::new(&ctx.accounts.payer, &ctx.remaining_accounts[proof_args.light_cpi_accounts_start_index as usize..], LIGHT_CPI_SIGNER);
+
+            let (account_info, new_address_params) = Delegate::create_delegate_account( 
+                delegate_creation_args,
+                &signer,
+                global_counter.index,
+                &light_cpi_accounts
+            )?;
+
+            let cpi_inputs = CpiInputs::new_with_address(proof_args.proof, vec![account_info], vec![new_address_params]);
+            cpi_inputs
+                .invoke_light_system_program(light_cpi_accounts)
+                .map_err(ProgramError::from)?;
+        }
+      
+        global_counter.index +=1;
         Ok(())
     }
 }

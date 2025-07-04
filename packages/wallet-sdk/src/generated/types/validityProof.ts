@@ -17,13 +17,13 @@ import {
   type Encoder,
   type Option,
   type OptionOrNullable,
-} from "@solana/kit";
+} from '@solana/kit';
 import {
   getCompressedProofDecoder,
   getCompressedProofEncoder,
   type CompressedProof,
   type CompressedProofArgs,
-} from ".";
+} from '.';
 
 export type ValidityProof = readonly [Option<CompressedProof>];
 

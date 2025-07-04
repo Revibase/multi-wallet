@@ -1,9 +1,16 @@
 use crate::{
-    state::{Delegate, DelegateOp, Settings, SEED_MULTISIG, SEED_VAULT},
+    error::MultisigError,
+    state::{
+        invoke_light_system_program_with_payer_seeds, Delegate, DelegateOp, ProofArgs, Settings,
+        SEED_MULTISIG, SEED_VAULT,
+    },
     utils::realloc_if_needed,
-    ConfigAction,
+    ConfigAction, LIGHT_CPI_SIGNER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
+use light_compressed_account::instruction_data::data::NewAddressParamsPacked;
+use light_compressed_account::instruction_data::with_account_info::CompressedAccountInfo;
+use light_sdk::cpi::{CpiAccounts, CpiInputs};
 use std::vec;
 
 #[derive(Accounts)]
@@ -37,6 +44,7 @@ impl<'info> ChangeConfig<'info> {
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
         config_actions: Vec<ConfigAction>,
+        compressed_proof_args: Option<ProofArgs>,
     ) -> Result<()> {
         let slot_hash_sysvar = &ctx.accounts.slot_hash_sysvar;
         let instructions_sysvar = &ctx.accounts.instructions_sysvar;
@@ -73,8 +81,51 @@ impl<'info> ChangeConfig<'info> {
                 }
             }
         }
+        settings.invariant()?;
 
-        Delegate::handle_delegate_accounts(delegate_ops, settings_key, payer, remaining_accounts)?;
+        if !delegate_ops.is_empty() {
+            let proof_args = compressed_proof_args.ok_or(MultisigError::MissingDelegateArgs)?;
+            let light_cpi_accounts = CpiAccounts::new(
+                &payer,
+                &remaining_accounts[proof_args.light_cpi_accounts_start_index as usize..],
+                LIGHT_CPI_SIGNER,
+            );
+            let (create_args, close_args) = Delegate::handle_delegate_accounts(
+                delegate_ops,
+                settings.index,
+                &light_cpi_accounts,
+            )?;
+
+            if create_args.len() > 0 || close_args.len() > 0 {
+                let mut account_infos = vec![];
+                let new_addresses: Vec<NewAddressParamsPacked> =
+                    create_args.iter().map(|f| f.1).collect();
+                account_infos.extend(
+                    create_args
+                        .iter()
+                        .map(|f| f.0.clone())
+                        .collect::<Vec<CompressedAccountInfo>>(),
+                );
+                account_infos.extend(close_args);
+
+                let cpi_inputs = if new_addresses.is_empty() {
+                    CpiInputs::new(proof_args.proof, account_infos)
+                } else {
+                    CpiInputs::new_with_address(proof_args.proof, account_infos, new_addresses)
+                };
+                let vault_signer_seed: &[&[u8]] = &[
+                    SEED_MULTISIG,
+                    settings_key.as_ref(),
+                    SEED_VAULT,
+                    &[settings.multi_wallet_bump],
+                ];
+                invoke_light_system_program_with_payer_seeds(
+                    cpi_inputs,
+                    light_cpi_accounts,
+                    vault_signer_seed,
+                )?;
+            }
+        }
 
         realloc_if_needed(
             &settings.to_account_info(),
@@ -83,8 +134,6 @@ impl<'info> ChangeConfig<'info> {
             &ctx.accounts.payer.to_account_info(),
             &ctx.accounts.system_program.to_account_info(),
         )?;
-
-        settings.invariant()?;
 
         Ok(())
     }

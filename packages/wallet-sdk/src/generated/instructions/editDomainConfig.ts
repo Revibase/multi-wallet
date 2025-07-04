@@ -79,21 +79,21 @@ export type EditDomainConfigInstruction<
 
 export type EditDomainConfigInstructionData = {
   discriminator: ReadonlyUint8Array;
-  origin: string;
-  authority: Address;
+  newOrigin: string;
+  newAuthority: Address;
 };
 
 export type EditDomainConfigInstructionDataArgs = {
-  origin: string;
-  authority: Address;
+  newOrigin: string;
+  newAuthority: Address;
 };
 
 export function getEditDomainConfigInstructionDataEncoder(): Encoder<EditDomainConfigInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
-      ['origin', addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
-      ['authority', getAddressEncoder()],
+      ['newOrigin', addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
+      ['newAuthority', getAddressEncoder()],
     ]),
     (value) => ({ ...value, discriminator: EDIT_DOMAIN_CONFIG_DISCRIMINATOR })
   );
@@ -102,8 +102,8 @@ export function getEditDomainConfigInstructionDataEncoder(): Encoder<EditDomainC
 export function getEditDomainConfigInstructionDataDecoder(): Decoder<EditDomainConfigInstructionData> {
   return getStructDecoder([
     ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
-    ['origin', addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
-    ['authority', getAddressDecoder()],
+    ['newOrigin', addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
+    ['newAuthority', getAddressDecoder()],
   ]);
 }
 
@@ -125,8 +125,8 @@ export type EditDomainConfigInput<
   domainConfig: Address<TAccountDomainConfig>;
   authority: TransactionSigner<TAccountAuthority>;
   systemProgram?: Address<TAccountSystemProgram>;
-  origin: EditDomainConfigInstructionDataArgs['origin'];
-  authorityArg: EditDomainConfigInstructionDataArgs['authority'];
+  newOrigin: EditDomainConfigInstructionDataArgs['newOrigin'];
+  newAuthority: EditDomainConfigInstructionDataArgs['newAuthority'];
 };
 
 export function getEditDomainConfigInstruction<
@@ -162,7 +162,7 @@ export function getEditDomainConfigInstruction<
   >;
 
   // Original args.
-  const args = { ...input, authority: input.authorityArg };
+  const args = { ...input };
 
   // Resolve default values.
   if (!accounts.systemProgram.value) {

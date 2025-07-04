@@ -12,31 +12,45 @@ import {
   getBytesEncoder,
   type Address,
   type ReadonlyUint8Array,
-} from "@solana/kit";
+} from '@solana/kit';
 import {
+  type ParsedChangeConfigCompressedInstruction,
   type ParsedChangeConfigInstruction,
+  type ParsedCompressSettingsAccountInstruction,
   type ParsedCreateDomainConfigInstruction,
-  type ParsedCreateInstruction,
+  type ParsedCreateGlobalCounterInstruction,
+  type ParsedCreateMultiWalletCompressedInstruction,
+  type ParsedCreateMultiWalletInstruction,
+  type ParsedDecompressSettingsAccountInstruction,
   type ParsedDeleteDomainConfigInstruction,
   type ParsedDisableDomainConfigInstruction,
   type ParsedEditDomainConfigInstruction,
+  type ParsedNativeTransferIntentCompressedInstruction,
   type ParsedNativeTransferIntentInstruction,
+  type ParsedTokenTransferIntentCompressedInstruction,
   type ParsedTokenTransferIntentInstruction,
+  type ParsedTransactionBufferCloseCompressedInstruction,
   type ParsedTransactionBufferCloseInstruction,
+  type ParsedTransactionBufferCreateCompressedInstruction,
   type ParsedTransactionBufferCreateInstruction,
+  type ParsedTransactionBufferExecuteCompressedInstruction,
   type ParsedTransactionBufferExecuteInstruction,
+  type ParsedTransactionBufferExtendCompressedInstruction,
   type ParsedTransactionBufferExtendInstruction,
+  type ParsedTransactionBufferVoteCompressedInstruction,
   type ParsedTransactionBufferVoteInstruction,
+  type ParsedTransactionExecuteCompressedInstruction,
   type ParsedTransactionExecuteInstruction,
+  type ParsedTransactionExecuteSyncCompressedInstruction,
   type ParsedTransactionExecuteSyncInstruction,
-} from "../instructions";
+} from '../instructions';
 
 export const MULTI_WALLET_PROGRAM_ADDRESS =
-  "pkeyt2Txg77e2JSS2K44hDnC2p6uE4jXnd2UQZxZ2oE" as Address<"pkeyt2Txg77e2JSS2K44hDnC2p6uE4jXnd2UQZxZ2oE">;
+  'pkeyt2Txg77e2JSS2K44hDnC2p6uE4jXnd2UQZxZ2oE' as Address<'pkeyt2Txg77e2JSS2K44hDnC2p6uE4jXnd2UQZxZ2oE'>;
 
 export enum MultiWalletAccount {
-  Delegate,
   DomainConfig,
+  GlobalCounter,
   Settings,
   TransactionBuffer,
 }
@@ -44,18 +58,7 @@ export enum MultiWalletAccount {
 export function identifyMultiWalletAccount(
   account: { data: ReadonlyUint8Array } | ReadonlyUint8Array
 ): MultiWalletAccount {
-  const data = "data" in account ? account.data : account;
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([92, 145, 166, 111, 11, 38, 38, 247])
-      ),
-      0
-    )
-  ) {
-    return MultiWalletAccount.Delegate;
-  }
+  const data = 'data' in account ? account.data : account;
   if (
     containsBytes(
       data,
@@ -66,6 +69,17 @@ export function identifyMultiWalletAccount(
     )
   ) {
     return MultiWalletAccount.DomainConfig;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([42, 206, 176, 58, 175, 129, 130, 233])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletAccount.GlobalCounter;
   }
   if (
     containsBytes(
@@ -90,32 +104,46 @@ export function identifyMultiWalletAccount(
     return MultiWalletAccount.TransactionBuffer;
   }
   throw new Error(
-    "The provided account could not be identified as a multiWallet account."
+    'The provided account could not be identified as a multiWallet account.'
   );
 }
 
 export enum MultiWalletInstruction {
   ChangeConfig,
-  Create,
+  ChangeConfigCompressed,
+  CompressSettingsAccount,
   CreateDomainConfig,
+  CreateGlobalCounter,
+  CreateMultiWallet,
+  CreateMultiWalletCompressed,
+  DecompressSettingsAccount,
   DeleteDomainConfig,
   DisableDomainConfig,
   EditDomainConfig,
   NativeTransferIntent,
+  NativeTransferIntentCompressed,
   TokenTransferIntent,
+  TokenTransferIntentCompressed,
   TransactionBufferClose,
+  TransactionBufferCloseCompressed,
   TransactionBufferCreate,
+  TransactionBufferCreateCompressed,
   TransactionBufferExecute,
+  TransactionBufferExecuteCompressed,
   TransactionBufferExtend,
+  TransactionBufferExtendCompressed,
   TransactionBufferVote,
+  TransactionBufferVoteCompressed,
   TransactionExecute,
+  TransactionExecuteCompressed,
   TransactionExecuteSync,
+  TransactionExecuteSyncCompressed,
 }
 
 export function identifyMultiWalletInstruction(
   instruction: { data: ReadonlyUint8Array } | ReadonlyUint8Array
 ): MultiWalletInstruction {
-  const data = "data" in instruction ? instruction.data : instruction;
+  const data = 'data' in instruction ? instruction.data : instruction;
   if (
     containsBytes(
       data,
@@ -131,12 +159,23 @@ export function identifyMultiWalletInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([24, 30, 200, 40, 5, 28, 7, 119])
+        new Uint8Array([33, 185, 159, 154, 181, 251, 157, 58])
       ),
       0
     )
   ) {
-    return MultiWalletInstruction.Create;
+    return MultiWalletInstruction.ChangeConfigCompressed;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([107, 157, 58, 253, 4, 163, 46, 145])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.CompressSettingsAccount;
   }
   if (
     containsBytes(
@@ -148,6 +187,50 @@ export function identifyMultiWalletInstruction(
     )
   ) {
     return MultiWalletInstruction.CreateDomainConfig;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([247, 232, 107, 198, 31, 73, 3, 236])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.CreateGlobalCounter;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([37, 45, 100, 255, 58, 228, 239, 164])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.CreateMultiWallet;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([79, 254, 201, 17, 187, 210, 128, 233])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.CreateMultiWalletCompressed;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([237, 87, 232, 84, 218, 176, 222, 134])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.DecompressSettingsAccount;
   }
   if (
     containsBytes(
@@ -197,12 +280,34 @@ export function identifyMultiWalletInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([215, 168, 194, 70, 97, 19, 81, 126])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.NativeTransferIntentCompressed;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([51, 91, 96, 155, 132, 232, 179, 48])
       ),
       0
     )
   ) {
     return MultiWalletInstruction.TokenTransferIntent;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([42, 48, 107, 147, 228, 201, 67, 173])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.TokenTransferIntentCompressed;
   }
   if (
     containsBytes(
@@ -219,12 +324,34 @@ export function identifyMultiWalletInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([82, 65, 25, 49, 208, 28, 191, 84])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.TransactionBufferCloseCompressed;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([245, 201, 113, 108, 37, 63, 29, 89])
       ),
       0
     )
   ) {
     return MultiWalletInstruction.TransactionBufferCreate;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([96, 163, 111, 240, 71, 192, 125, 64])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.TransactionBufferCreateCompressed;
   }
   if (
     containsBytes(
@@ -241,12 +368,34 @@ export function identifyMultiWalletInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([217, 17, 124, 197, 3, 110, 139, 7])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.TransactionBufferExecuteCompressed;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([230, 157, 67, 56, 5, 238, 245, 146])
       ),
       0
     )
   ) {
     return MultiWalletInstruction.TransactionBufferExtend;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([21, 112, 96, 97, 196, 102, 207, 203])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.TransactionBufferExtendCompressed;
   }
   if (
     containsBytes(
@@ -263,12 +412,34 @@ export function identifyMultiWalletInstruction(
     containsBytes(
       data,
       fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([86, 82, 187, 102, 103, 52, 135, 183])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.TransactionBufferVoteCompressed;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
         new Uint8Array([93, 171, 78, 134, 252, 84, 186, 189])
       ),
       0
     )
   ) {
     return MultiWalletInstruction.TransactionExecute;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([60, 99, 11, 42, 178, 216, 28, 158])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.TransactionExecuteCompressed;
   }
   if (
     containsBytes(
@@ -281,23 +452,49 @@ export function identifyMultiWalletInstruction(
   ) {
     return MultiWalletInstruction.TransactionExecuteSync;
   }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 8).encode(
+        new Uint8Array([251, 154, 149, 157, 125, 132, 60, 183])
+      ),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.TransactionExecuteSyncCompressed;
+  }
   throw new Error(
-    "The provided instruction could not be identified as a multiWallet instruction."
+    'The provided instruction could not be identified as a multiWallet instruction.'
   );
 }
 
 export type ParsedMultiWalletInstruction<
-  TProgram extends string = "pkeyt2Txg77e2JSS2K44hDnC2p6uE4jXnd2UQZxZ2oE",
+  TProgram extends string = 'pkeyt2Txg77e2JSS2K44hDnC2p6uE4jXnd2UQZxZ2oE',
 > =
   | ({
       instructionType: MultiWalletInstruction.ChangeConfig;
     } & ParsedChangeConfigInstruction<TProgram>)
   | ({
-      instructionType: MultiWalletInstruction.Create;
-    } & ParsedCreateInstruction<TProgram>)
+      instructionType: MultiWalletInstruction.ChangeConfigCompressed;
+    } & ParsedChangeConfigCompressedInstruction<TProgram>)
+  | ({
+      instructionType: MultiWalletInstruction.CompressSettingsAccount;
+    } & ParsedCompressSettingsAccountInstruction<TProgram>)
   | ({
       instructionType: MultiWalletInstruction.CreateDomainConfig;
     } & ParsedCreateDomainConfigInstruction<TProgram>)
+  | ({
+      instructionType: MultiWalletInstruction.CreateGlobalCounter;
+    } & ParsedCreateGlobalCounterInstruction<TProgram>)
+  | ({
+      instructionType: MultiWalletInstruction.CreateMultiWallet;
+    } & ParsedCreateMultiWalletInstruction<TProgram>)
+  | ({
+      instructionType: MultiWalletInstruction.CreateMultiWalletCompressed;
+    } & ParsedCreateMultiWalletCompressedInstruction<TProgram>)
+  | ({
+      instructionType: MultiWalletInstruction.DecompressSettingsAccount;
+    } & ParsedDecompressSettingsAccountInstruction<TProgram>)
   | ({
       instructionType: MultiWalletInstruction.DeleteDomainConfig;
     } & ParsedDeleteDomainConfigInstruction<TProgram>)
@@ -311,26 +508,53 @@ export type ParsedMultiWalletInstruction<
       instructionType: MultiWalletInstruction.NativeTransferIntent;
     } & ParsedNativeTransferIntentInstruction<TProgram>)
   | ({
+      instructionType: MultiWalletInstruction.NativeTransferIntentCompressed;
+    } & ParsedNativeTransferIntentCompressedInstruction<TProgram>)
+  | ({
       instructionType: MultiWalletInstruction.TokenTransferIntent;
     } & ParsedTokenTransferIntentInstruction<TProgram>)
+  | ({
+      instructionType: MultiWalletInstruction.TokenTransferIntentCompressed;
+    } & ParsedTokenTransferIntentCompressedInstruction<TProgram>)
   | ({
       instructionType: MultiWalletInstruction.TransactionBufferClose;
     } & ParsedTransactionBufferCloseInstruction<TProgram>)
   | ({
+      instructionType: MultiWalletInstruction.TransactionBufferCloseCompressed;
+    } & ParsedTransactionBufferCloseCompressedInstruction<TProgram>)
+  | ({
       instructionType: MultiWalletInstruction.TransactionBufferCreate;
     } & ParsedTransactionBufferCreateInstruction<TProgram>)
+  | ({
+      instructionType: MultiWalletInstruction.TransactionBufferCreateCompressed;
+    } & ParsedTransactionBufferCreateCompressedInstruction<TProgram>)
   | ({
       instructionType: MultiWalletInstruction.TransactionBufferExecute;
     } & ParsedTransactionBufferExecuteInstruction<TProgram>)
   | ({
+      instructionType: MultiWalletInstruction.TransactionBufferExecuteCompressed;
+    } & ParsedTransactionBufferExecuteCompressedInstruction<TProgram>)
+  | ({
       instructionType: MultiWalletInstruction.TransactionBufferExtend;
     } & ParsedTransactionBufferExtendInstruction<TProgram>)
+  | ({
+      instructionType: MultiWalletInstruction.TransactionBufferExtendCompressed;
+    } & ParsedTransactionBufferExtendCompressedInstruction<TProgram>)
   | ({
       instructionType: MultiWalletInstruction.TransactionBufferVote;
     } & ParsedTransactionBufferVoteInstruction<TProgram>)
   | ({
+      instructionType: MultiWalletInstruction.TransactionBufferVoteCompressed;
+    } & ParsedTransactionBufferVoteCompressedInstruction<TProgram>)
+  | ({
       instructionType: MultiWalletInstruction.TransactionExecute;
     } & ParsedTransactionExecuteInstruction<TProgram>)
   | ({
+      instructionType: MultiWalletInstruction.TransactionExecuteCompressed;
+    } & ParsedTransactionExecuteCompressedInstruction<TProgram>)
+  | ({
       instructionType: MultiWalletInstruction.TransactionExecuteSync;
-    } & ParsedTransactionExecuteSyncInstruction<TProgram>);
+    } & ParsedTransactionExecuteSyncInstruction<TProgram>)
+  | ({
+      instructionType: MultiWalletInstruction.TransactionExecuteSyncCompressed;
+    } & ParsedTransactionExecuteSyncCompressedInstruction<TProgram>);

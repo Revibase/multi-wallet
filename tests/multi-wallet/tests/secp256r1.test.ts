@@ -1,9 +1,9 @@
 import {
   changeConfig,
-  fetchDelegate,
-  fetchSettings,
-  getDelegateAddress,
+  fetchMaybeDelegate,
+  fetchSettingsData,
   getMultiWalletFromSettings,
+  getSettingsFromIndex,
   MULTI_WALLET_PROGRAM_ADDRESS,
   Permissions,
   prepareTransactionBundle,
@@ -36,12 +36,13 @@ export function runSecp256r1Tests() {
     it("should add a Secp256r1 key as a member", async () => {
       // Fund the wallet
       await fundMultiWalletVault(ctx, BigInt(10 ** 9 * 0.01));
+      const settings = await getSettingsFromIndex(ctx.index);
       // Mock authentication response
       const mockResult = await mockAuthenticationResponse(
         ctx.connection,
         {
           transactionActionType: "add_new_member",
-          transactionAddress: ctx.settings,
+          transactionAddress: settings,
           transactionMessageBytes: new TextEncoder().encode(ctx.rpId),
         },
         secp256r1Keys.privateKey,
@@ -56,7 +57,8 @@ export function runSecp256r1Tests() {
 
       // Add Secp256r1Key as member
       const { instructions, secp256r1VerifyInput } = await changeConfig({
-        settings: ctx.settings,
+        compressed: ctx.compressed,
+        index: ctx.index,
         configActions: [
           {
             type: "AddMembers",
@@ -73,52 +75,45 @@ export function runSecp256r1Tests() {
       const transactionMessageBytes = await prepareTransactionMessage(
         MULTI_WALLET_PROGRAM_ADDRESS.toString(),
         ctx.multiWalletVault,
-        instructions
+        instructions,
+        ctx.addressLookUpTable
       );
 
       const result = await prepareTransactionBundle({
-        rpc: ctx.connection,
-        feePayer: ctx.payer,
-        settings: ctx.settings,
+        compressed: ctx.compressed,
+        payer: ctx.payer,
+        index: ctx.index,
         creator: ctx.wallet,
         transactionMessageBytes,
         secp256r1VerifyInput,
-        bufferIndex: Math.round(Math.random() * 255),
       });
       for (const x of result) {
-        const tx = await sendTransaction(
+        console.log(x.id);
+        await sendTransaction(
           ctx.connection,
           x.ixs,
-          x.feePayer,
-          ctx.sendAndConfirm
+          x.payer,
+          ctx.sendAndConfirm,
+          x.addressLookupTableAccounts
         );
       }
-
       // Verify Secp256r1Key was added as member
-      const accountData = await fetchSettings(ctx.connection, ctx.settings);
+      const accountData = await fetchSettingsData(ctx.index);
 
-      const delegateData = await fetchDelegate(
-        ctx.connection,
-        await getDelegateAddress(secp256r1Key)
-      );
+      const delegateData = await fetchMaybeDelegate(secp256r1Key);
 
-      expect(delegateData.data.multiWalletSettings.toString()).to.equal(
-        ctx.settings.toString(),
+      expect(Number(delegateData.index)).to.equal(
+        Number(ctx.index),
         "Delegate should be associated with the correct settings"
       );
-      const multiWallet = await getMultiWalletFromSettings(
-        delegateData.data.multiWalletSettings
-      );
+      const multiWallet = await getMultiWalletFromSettings(settings);
       expect(multiWallet.toString()).to.equal(
         ctx.multiWalletVault.toString(),
         "Delegate should be associated with the correct vault"
       );
 
-      expect(accountData.data.members.length).to.equal(
-        2,
-        "Should have two members"
-      );
-      expect(accountData.data.threshold).to.equal(1, "Threshold should be 1");
+      expect(accountData.members.length).to.equal(2, "Should have two members");
+      expect(accountData.threshold).to.equal(1, "Threshold should be 1");
     });
   });
 }

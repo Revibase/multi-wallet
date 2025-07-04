@@ -47,8 +47,8 @@ pub enum MultisigError {
     #[msg("The account is not owned by the multisig program. Ensure the correct program owns this account.")]
     IllegalAccountOwner,
 
-    #[msg("A delegate account is required when the initial member has requested delegate permissions.")]
-    InsuffientSignerWithDelegatePermission,
+    #[msg("A delegate creation args is required when the initial member has requested delegate permissions.")]
+    MissingDelegateArgs,
 
     #[msg("At least one signer must have execute permissions to proceed.")]
     InsufficientSignerWithExecutePermission,

@@ -34,23 +34,27 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from '@solana/kit';
-import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
-import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
+} from "@solana/kit";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
+  getProofArgsDecoder,
+  getProofArgsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  getSettingsArgsDecoder,
-  getSettingsArgsEncoder,
+  getSettingsProofArgsDecoder,
+  getSettingsProofArgsEncoder,
   getTransactionBufferCreateArgsDecoder,
   getTransactionBufferCreateArgsEncoder,
+  type ProofArgs,
+  type ProofArgsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-  type SettingsArgs,
-  type SettingsArgsArgs,
+  type SettingsProofArgs,
+  type SettingsProofArgsArgs,
   type TransactionBufferCreateArgs,
   type TransactionBufferCreateArgsArgs,
-} from '../types';
+} from "../types";
 
 export const TRANSACTION_BUFFER_CREATE_COMPRESSED_DISCRIMINATOR =
   new Uint8Array([96, 163, 111, 240, 71, 192, 125, 64]);
@@ -69,13 +73,13 @@ export type TransactionBufferCreateCompressedInstruction<
   TAccountCreator extends string | IAccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = '11111111111111111111111111111111',
+    | IAccountMeta<string> = "11111111111111111111111111111111",
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
+    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
+    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
   TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = IInstruction<TProgram> &
   IInstructionWithData<Uint8Array> &
@@ -112,25 +116,28 @@ export type TransactionBufferCreateCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   args: TransactionBufferCreateArgs;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
-  settingsArgs: SettingsArgs;
+  settingsArgs: SettingsProofArgs;
+  compressedProofArgs: ProofArgs;
 };
 
 export type TransactionBufferCreateCompressedInstructionDataArgs = {
   args: TransactionBufferCreateArgsArgs;
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  settingsArgs: SettingsArgsArgs;
+  settingsArgs: SettingsProofArgsArgs;
+  compressedProofArgs: ProofArgsArgs;
 };
 
 export function getTransactionBufferCreateCompressedInstructionDataEncoder(): Encoder<TransactionBufferCreateCompressedInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
-      ['args', getTransactionBufferCreateArgsEncoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["args", getTransactionBufferCreateArgsEncoder()],
       [
-        'secp256r1VerifyArgs',
+        "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
-      ['settingsArgs', getSettingsArgsEncoder()],
+      ["settingsArgs", getSettingsProofArgsEncoder()],
+      ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
       ...value,
@@ -141,10 +148,11 @@ export function getTransactionBufferCreateCompressedInstructionDataEncoder(): En
 
 export function getTransactionBufferCreateCompressedInstructionDataDecoder(): Decoder<TransactionBufferCreateCompressedInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
-    ['args', getTransactionBufferCreateArgsDecoder()],
-    ['secp256r1VerifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ['settingsArgs', getSettingsArgsDecoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["args", getTransactionBufferCreateArgsDecoder()],
+    ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
+    ["settingsArgs", getSettingsProofArgsDecoder()],
+    ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }
 
@@ -166,6 +174,7 @@ export type TransactionBufferCreateCompressedInput<
   TAccountSystemProgram extends string = string,
   TAccountInstructionsSysvar extends string = string,
   TAccountSlotHashSysvar extends string = string,
+  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = {
   payer: TransactionSigner<TAccountPayer>;
   domainConfig?: Address<TAccountDomainConfig>;
@@ -174,9 +183,11 @@ export type TransactionBufferCreateCompressedInput<
   systemProgram?: Address<TAccountSystemProgram>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
-  args: TransactionBufferCreateCompressedInstructionDataArgs['args'];
-  secp256r1VerifyArgs: TransactionBufferCreateCompressedInstructionDataArgs['secp256r1VerifyArgs'];
-  settingsArgs: TransactionBufferCreateCompressedInstructionDataArgs['settingsArgs'];
+  args: TransactionBufferCreateCompressedInstructionDataArgs["args"];
+  secp256r1VerifyArgs: TransactionBufferCreateCompressedInstructionDataArgs["secp256r1VerifyArgs"];
+  settingsArgs: TransactionBufferCreateCompressedInstructionDataArgs["settingsArgs"];
+  compressedProofArgs: TransactionBufferCreateCompressedInstructionDataArgs["compressedProofArgs"];
+  remainingAccounts: TRemainingAccounts;
 };
 
 export function getTransactionBufferCreateCompressedInstruction<
@@ -188,6 +199,7 @@ export function getTransactionBufferCreateCompressedInstruction<
   TAccountInstructionsSysvar extends string,
   TAccountSlotHashSysvar extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
+  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 >(
   input: TransactionBufferCreateCompressedInput<
     TAccountPayer,
@@ -196,7 +208,8 @@ export function getTransactionBufferCreateCompressedInstruction<
     TAccountCreator,
     TAccountSystemProgram,
     TAccountInstructionsSysvar,
-    TAccountSlotHashSysvar
+    TAccountSlotHashSysvar,
+    TRemainingAccounts
   >,
   config?: { programAddress?: TProgramAddress }
 ): TransactionBufferCreateCompressedInstruction<
@@ -207,7 +220,8 @@ export function getTransactionBufferCreateCompressedInstruction<
   TAccountCreator,
   TAccountSystemProgram,
   TAccountInstructionsSysvar,
-  TAccountSlotHashSysvar
+  TAccountSlotHashSysvar,
+  TRemainingAccounts
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -239,18 +253,18 @@ export function getTransactionBufferCreateCompressedInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
   if (!accounts.instructionsSysvar.value) {
     accounts.instructionsSysvar.value =
-      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
+      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
   }
   if (!accounts.slotHashSysvar.value) {
     accounts.slotHashSysvar.value =
-      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
+      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
   }
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   const instruction = {
     accounts: [
       getAccountMeta(accounts.payer),
@@ -260,6 +274,7 @@ export function getTransactionBufferCreateCompressedInstruction<
       getAccountMeta(accounts.systemProgram),
       getAccountMeta(accounts.instructionsSysvar),
       getAccountMeta(accounts.slotHashSysvar),
+      ...input.remainingAccounts,
     ],
     programAddress,
     data: getTransactionBufferCreateCompressedInstructionDataEncoder().encode(
@@ -273,7 +288,8 @@ export function getTransactionBufferCreateCompressedInstruction<
     TAccountCreator,
     TAccountSystemProgram,
     TAccountInstructionsSysvar,
-    TAccountSlotHashSysvar
+    TAccountSlotHashSysvar,
+    TRemainingAccounts
   >;
 
   return instruction;
@@ -306,7 +322,7 @@ export function parseTransactionBufferCreateCompressedInstruction<
 ): ParsedTransactionBufferCreateCompressedInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 7) {
     // TODO: Coded error.
-    throw new Error('Not enough accounts');
+    throw new Error("Not enough accounts");
   }
   let accountIndex = 0;
   const getNextAccount = () => {

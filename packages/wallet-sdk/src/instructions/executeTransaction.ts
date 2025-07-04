@@ -1,12 +1,9 @@
+import { Address, IInstruction, TransactionSigner } from "@solana/kit";
 import {
-  Address,
-  GetMultipleAccountsApi,
-  IInstruction,
-  Rpc,
-  TransactionSigner,
-} from "@solana/kit";
-import { getTransactionExecuteInstruction } from "../generated";
-import { getMultiWalletFromSettings } from "../utils";
+  getTransactionExecuteCompressedInstruction,
+  getTransactionExecuteInstruction,
+} from "../generated";
+import { getMultiWalletFromSettings, getSettingsFromIndex } from "../utils";
 import { accountsForTransactionExecute, addJitoTip } from "../utils/internal";
 import {
   getSecp256r1VerifyInstruction,
@@ -14,29 +11,29 @@ import {
 } from "./secp256r1Verify";
 
 export async function executeTransaction({
-  rpc,
-  settings,
+  index,
   transactionBufferAddress,
   transactionMessageBytes,
-  feePayer,
+  payer,
   secp256r1VerifyInput = [],
   additionalSigners = [],
   jitoBundlesTipAmount,
+  compressed = false,
 }: {
-  rpc: Rpc<GetMultipleAccountsApi>;
-  settings: Address;
-  feePayer: TransactionSigner;
+  index: bigint | number;
+  payer: TransactionSigner;
   transactionBufferAddress: Address;
   transactionMessageBytes: Uint8Array;
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   additionalSigners?: TransactionSigner[];
   jitoBundlesTipAmount?: number;
+  compressed?: boolean;
 }) {
+  const settings = await getSettingsFromIndex(index);
   const multiWallet = await getMultiWalletFromSettings(settings);
 
   const { accountMetas, addressLookupTableAccounts } =
     await accountsForTransactionExecute({
-      rpc,
       transactionMessageBytes,
       multiWallet,
       additionalSigners,
@@ -48,18 +45,23 @@ export async function executeTransaction({
   }
 
   instructions.push(
-    getTransactionExecuteInstruction({
-      transactionBuffer: transactionBufferAddress,
-      payer: feePayer.address,
-      remainingAccounts: accountMetas,
-      settings,
-    })
+    compressed
+      ? getTransactionExecuteCompressedInstruction({
+          transactionBuffer: transactionBufferAddress,
+          payer: payer.address,
+          remainingAccounts: accountMetas,
+          settingsKey: settings,
+        })
+      : getTransactionExecuteInstruction({
+          transactionBuffer: transactionBufferAddress,
+          payer: payer.address,
+          remainingAccounts: accountMetas,
+          settings,
+        })
   );
 
   if (jitoBundlesTipAmount) {
-    instructions.push(
-      addJitoTip({ feePayer, tipAmount: jitoBundlesTipAmount })
-    );
+    instructions.push(addJitoTip({ payer, tipAmount: jitoBundlesTipAmount }));
   }
 
   return {

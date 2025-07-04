@@ -1,13 +1,25 @@
-use crate::contexts::TransactionBufferCreateArgs;
+use super::MemberKey;
 use crate::MultisigError;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
 
-use super::{MemberKey, Settings};
-
 // Maximum PDA allocation size in an inner ix is 10240 bytes.
 // 10240 - account contents = 10128 bytes
 pub const MAX_BUFFER_SIZE: usize = 10128;
+
+// Maximum amount of time a transaction is considered valid for execution
+// 3mins
+pub const TRANSACTION_TIME_LIMIT: u64 = 3 * 60;
+
+#[derive(AnchorDeserialize, AnchorSerialize)]
+pub struct TransactionBufferCreateArgs {
+    pub permissionless_execution: bool,
+    pub buffer_extend_hashes: Vec<[u8; 32]>,
+    pub buffer_index: u8,
+    pub final_buffer_hash: [u8; 32],
+    pub final_buffer_size: u16,
+    pub buffer: Vec<u8>,
+}
 
 #[account]
 pub struct TransactionBuffer {
@@ -17,10 +29,10 @@ pub struct TransactionBuffer {
     pub multi_wallet_bump: u8,
     /// Flag to allow transaction to be executed
     pub can_execute: bool,
-    /// Flag to allow execution without sigverify once sufficient threshold is met
+    /// Flag to allow execution straight away once sufficient threshold is met
     pub permissionless_execution: bool,
     // Transaction valid till
-    pub expiry: u64,
+    pub valid_till: u64,
     /// Payer for the transaction buffer
     pub payer: Pubkey,
     /// transaction bump
@@ -52,6 +64,8 @@ pub enum TransactionActionType {
     AddNewMember,
     TokenTransferIntent,
     NativeTransferIntent,
+    Compress,
+    Decompress,
 }
 
 impl TransactionActionType {
@@ -68,6 +82,8 @@ impl TransactionActionType {
             TransactionActionType::AddNewMember => b"add_new_member",
             TransactionActionType::TokenTransferIntent => b"token_transfer_intent",
             TransactionActionType::NativeTransferIntent => b"native_transfer_intent",
+            TransactionActionType::Compress => b"compress",
+            TransactionActionType::Decompress => b"decompress",
         }
     }
 }
@@ -75,15 +91,16 @@ impl TransactionActionType {
 impl TransactionBuffer {
     pub fn init(
         &mut self,
-        settings: &Account<'_, Settings>,
+        settings_key: Pubkey,
+        multi_wallet_bump: u8,
         creator: MemberKey,
         payer: Pubkey,
         buffer_index: u8,
         args: &TransactionBufferCreateArgs,
         bump: u8,
     ) -> Result<()> {
-        self.multi_wallet_settings = settings.key();
-        self.multi_wallet_bump = settings.multi_wallet_bump;
+        self.multi_wallet_settings = settings_key;
+        self.multi_wallet_bump = multi_wallet_bump;
         self.can_execute = false;
         self.permissionless_execution = args.permissionless_execution;
         self.buffer_extend_hashes = args.buffer_extend_hashes.to_vec();
@@ -94,7 +111,7 @@ impl TransactionBuffer {
         self.final_buffer_size = args.final_buffer_size;
         self.buffer = args.buffer.to_vec();
         self.bump = bump;
-        self.expiry = Clock::get().unwrap().unix_timestamp as u64 + 3 * 60; // transaction only valid for 3 mins
+        self.valid_till = Clock::get().unwrap().unix_timestamp as u64 + TRANSACTION_TIME_LIMIT;
         self.voters = Vec::new();
         Ok(())
     }
@@ -113,7 +130,7 @@ impl TransactionBuffer {
             32 +  // multisig
             1  +  // multi_wallet_bump
             1  +  // can execute
-            1  +  // execute without sigverify
+            1  +  // permissionless execute
             8  +  // transaction expiry
             32 +  // rent_payer
             1  +  // bump

@@ -1,7 +1,8 @@
 use crate::{
     state::{
-        DomainConfig, MemberKey, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings, SettingsArgs,
-        TransactionActionType, SEED_MULTISIG,
+        verify_compressed_settings, CompressedSettings, DomainConfig, MemberKey, ProofArgs,
+        Secp256r1Pubkey, Secp256r1VerifyArgs, Settings, SettingsProofArgs, TransactionActionType,
+        SEED_MULTISIG,
     },
     utils::durable_nonce_check,
     MultisigError, Permission, SEED_VAULT,
@@ -11,9 +12,9 @@ use anchor_lang::{
     solana_program::{hash::hash, sysvar::SysvarId},
     system_program::{transfer, Transfer},
 };
-use light_sdk::account::LightAccount;
 
 #[derive(Accounts)]
+#[instruction(amount: u64,secp256r1_verify_args: Option<Secp256r1VerifyArgs>,settings_args: SettingsProofArgs,)]
 pub struct NativeTransferIntentCompressed<'info> {
     /// CHECK:
     #[account(
@@ -30,7 +31,20 @@ pub struct NativeTransferIntentCompressed<'info> {
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
 
     /// CHECK:
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [
+            SEED_MULTISIG,
+            {
+                let data_slice = settings_args.account.data.as_ref().unwrap().data.as_slice();
+                let index = u128::from_le_bytes(data_slice[2..18].try_into().unwrap());
+                let bump = data_slice[1];
+                Settings::get_settings_key_from_index(index, bump)?.as_ref()
+            },
+            SEED_VAULT,
+        ],
+        bump
+    )]
     pub source: UncheckedAccount<'info>,
 
     /// CHECK:
@@ -42,10 +56,11 @@ pub struct NativeTransferIntentCompressed<'info> {
 
 impl<'info> NativeTransferIntentCompressed<'info> {
     fn validate(
-        ctx: &Context<'_, '_, '_, 'info, Self>,
+        &self,
         amount: u64,
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
-        settings: &LightAccount<'_, Settings>,
+        remaining_accounts: &[AccountInfo<'info>],
+        settings: CompressedSettings,
     ) -> Result<()> {
         let Self {
             domain_config,
@@ -54,7 +69,7 @@ impl<'info> NativeTransferIntentCompressed<'info> {
             system_program,
             instructions_sysvar,
             ..
-        } = &ctx.accounts;
+        } = &self;
 
         durable_nonce_check(instructions_sysvar)?;
 
@@ -76,7 +91,7 @@ impl<'info> NativeTransferIntentCompressed<'info> {
             let is_secp256r1_signer =
                 secp256r1_member_key.is_some() && member.pubkey.eq(&secp256r1_member_key.unwrap());
             let is_signer = is_secp256r1_signer
-                || ctx.remaining_accounts.iter().any(|account| {
+                || remaining_accounts.iter().any(|account| {
                     account.is_signer
                         && MemberKey::convert_ed25519(account.key)
                             .unwrap()
@@ -152,30 +167,34 @@ impl<'info> NativeTransferIntentCompressed<'info> {
         ctx: Context<'_, '_, '_, 'info, Self>,
         amount: u64,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_args: SettingsArgs,
+        settings_args: SettingsProofArgs,
+        compressed_proof_args: ProofArgs,
     ) -> Result<()> {
-        let settings = LightAccount::<'_, Settings>::new_mut(
-            &crate::ID,
-            &settings_args.account_meta,
-            settings_args.settings.clone(),
-        )
-        .map_err(ProgramError::from)?;
-        let settings_key = Pubkey::new_from_array(settings.address().unwrap());
-        Self::validate(&ctx, amount, &secp256r1_verify_args, &settings)?;
-
+        let data_slice = settings_args.account.data.as_ref().unwrap().data.as_slice();
+        let index = u128::from_le_bytes(data_slice[2..18].try_into().unwrap());
+        let bump = data_slice[1];
+        let multi_wallet_bump = data_slice[18];
+        let settings_key = Settings::get_settings_key_from_index(index, bump)?;
         let signer_seeds: &[&[u8]] = &[
             SEED_MULTISIG,
             settings_key.as_ref(),
             SEED_VAULT,
-            &[settings.multi_wallet_bump],
+            &[multi_wallet_bump],
         ];
+        let (settings, _) = verify_compressed_settings(
+            &ctx.accounts.source.to_account_info(),
+            Some(signer_seeds),
+            &settings_args,
+            &ctx.remaining_accounts,
+            compressed_proof_args,
+        )?;
 
-        let multi_wallet_key = Pubkey::create_program_address(signer_seeds, &crate::ID).unwrap();
-
-        require!(
-            multi_wallet_key.eq(&ctx.accounts.source.key()),
-            MultisigError::InvalidAccount
-        );
+        ctx.accounts.validate(
+            amount,
+            &secp256r1_verify_args,
+            ctx.remaining_accounts,
+            settings,
+        )?;
 
         transfer(
             CpiContext::new(

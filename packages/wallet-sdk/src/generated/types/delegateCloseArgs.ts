@@ -19,41 +19,33 @@ import {
   getCompressedAccountMetaCloseEncoder,
   getDelegateDecoder,
   getDelegateEncoder,
-  getValidityProofDecoder,
-  getValidityProofEncoder,
   type CompressedAccountMetaClose,
   type CompressedAccountMetaCloseArgs,
   type Delegate,
   type DelegateArgs,
-  type ValidityProof,
-  type ValidityProofArgs,
 } from '.';
 
 export type DelegateCloseArgs = {
-  proof: ValidityProof;
   accountMeta: CompressedAccountMetaClose;
-  delegate: Delegate;
+  data: Delegate;
 };
 
 export type DelegateCloseArgsArgs = {
-  proof: ValidityProofArgs;
   accountMeta: CompressedAccountMetaCloseArgs;
-  delegate: DelegateArgs;
+  data: DelegateArgs;
 };
 
 export function getDelegateCloseArgsEncoder(): Encoder<DelegateCloseArgsArgs> {
   return getStructEncoder([
-    ['proof', getValidityProofEncoder()],
     ['accountMeta', getCompressedAccountMetaCloseEncoder()],
-    ['delegate', getDelegateEncoder()],
+    ['data', getDelegateEncoder()],
   ]);
 }
 
 export function getDelegateCloseArgsDecoder(): Decoder<DelegateCloseArgs> {
   return getStructDecoder([
-    ['proof', getValidityProofDecoder()],
     ['accountMeta', getCompressedAccountMetaCloseDecoder()],
-    ['delegate', getDelegateDecoder()],
+    ['data', getDelegateDecoder()],
   ]);
 }
 

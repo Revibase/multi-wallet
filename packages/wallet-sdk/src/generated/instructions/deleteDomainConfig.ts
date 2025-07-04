@@ -46,9 +46,6 @@ export function getDeleteDomainConfigDiscriminatorBytes() {
 export type DeleteDomainConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountDomainConfig extends string | IAccountMeta<string> = string,
-  TAccountAdmin extends
-    | string
-    | IAccountMeta<string> = 'G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF',
   TAccountAuthority extends string | IAccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
@@ -61,9 +58,6 @@ export type DeleteDomainConfigInstruction<
       TAccountDomainConfig extends string
         ? WritableAccount<TAccountDomainConfig>
         : TAccountDomainConfig,
-      TAccountAdmin extends string
-        ? WritableAccount<TAccountAdmin>
-        : TAccountAdmin,
       TAccountAuthority extends string
         ? WritableSignerAccount<TAccountAuthority> &
             IAccountSignerMeta<TAccountAuthority>
@@ -106,26 +100,22 @@ export function getDeleteDomainConfigInstructionDataCodec(): Codec<
 
 export type DeleteDomainConfigInput<
   TAccountDomainConfig extends string = string,
-  TAccountAdmin extends string = string,
   TAccountAuthority extends string = string,
   TAccountSystemProgram extends string = string,
 > = {
   domainConfig: Address<TAccountDomainConfig>;
-  admin?: Address<TAccountAdmin>;
   authority: TransactionSigner<TAccountAuthority>;
   systemProgram?: Address<TAccountSystemProgram>;
 };
 
 export function getDeleteDomainConfigInstruction<
   TAccountDomainConfig extends string,
-  TAccountAdmin extends string,
   TAccountAuthority extends string,
   TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
   input: DeleteDomainConfigInput<
     TAccountDomainConfig,
-    TAccountAdmin,
     TAccountAuthority,
     TAccountSystemProgram
   >,
@@ -133,7 +123,6 @@ export function getDeleteDomainConfigInstruction<
 ): DeleteDomainConfigInstruction<
   TProgramAddress,
   TAccountDomainConfig,
-  TAccountAdmin,
   TAccountAuthority,
   TAccountSystemProgram
 > {
@@ -143,7 +132,6 @@ export function getDeleteDomainConfigInstruction<
   // Original accounts.
   const originalAccounts = {
     domainConfig: { value: input.domainConfig ?? null, isWritable: true },
-    admin: { value: input.admin ?? null, isWritable: true },
     authority: { value: input.authority ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
   };
@@ -153,10 +141,6 @@ export function getDeleteDomainConfigInstruction<
   >;
 
   // Resolve default values.
-  if (!accounts.admin.value) {
-    accounts.admin.value =
-      'G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF' as Address<'G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF'>;
-  }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
@@ -166,7 +150,6 @@ export function getDeleteDomainConfigInstruction<
   const instruction = {
     accounts: [
       getAccountMeta(accounts.domainConfig),
-      getAccountMeta(accounts.admin),
       getAccountMeta(accounts.authority),
       getAccountMeta(accounts.systemProgram),
     ],
@@ -175,7 +158,6 @@ export function getDeleteDomainConfigInstruction<
   } as DeleteDomainConfigInstruction<
     TProgramAddress,
     TAccountDomainConfig,
-    TAccountAdmin,
     TAccountAuthority,
     TAccountSystemProgram
   >;
@@ -190,9 +172,8 @@ export type ParsedDeleteDomainConfigInstruction<
   programAddress: Address<TProgram>;
   accounts: {
     domainConfig: TAccountMetas[0];
-    admin: TAccountMetas[1];
-    authority: TAccountMetas[2];
-    systemProgram: TAccountMetas[3];
+    authority: TAccountMetas[1];
+    systemProgram: TAccountMetas[2];
   };
   data: DeleteDomainConfigInstructionData;
 };
@@ -205,7 +186,7 @@ export function parseDeleteDomainConfigInstruction<
     IInstructionWithAccounts<TAccountMetas> &
     IInstructionWithData<Uint8Array>
 ): ParsedDeleteDomainConfigInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 4) {
+  if (instruction.accounts.length < 3) {
     // TODO: Coded error.
     throw new Error('Not enough accounts');
   }
@@ -219,7 +200,6 @@ export function parseDeleteDomainConfigInstruction<
     programAddress: instruction.programAddress,
     accounts: {
       domainConfig: getNextAccount(),
-      admin: getNextAccount(),
       authority: getNextAccount(),
       systemProgram: getNextAccount(),
     },

@@ -1,13 +1,5 @@
-import {
-  Address,
-  AddressesByLookupTableAddress,
-  GetAccountInfoApi,
-  GetMultipleAccountsApi,
-  IInstruction,
-  Rpc,
-  TransactionSigner,
-} from "@solana/kit";
-import { fetchMaybeSettings } from "../generated";
+import { TransactionSigner } from "@solana/kit";
+import { fetchSettingsData } from "../compressed";
 import { executeTransactionSync, Secp256r1VerifyInput } from "../instructions";
 import { Permission, Permissions, Secp256r1Key } from "../types";
 import { convertMemberKeyToString } from "../utils";
@@ -17,38 +9,32 @@ import {
 } from "../utils/internal";
 
 interface CreateTransactionSyncArgs {
-  rpc: Rpc<GetAccountInfoApi & GetMultipleAccountsApi>;
-  feePayer: TransactionSigner;
-  settings: Address;
+  payer: TransactionSigner;
+  index: bigint | number;
   transactionMessageBytes: Uint8Array;
   signers: (TransactionSigner | Secp256r1Key)[];
   skipChecks?: boolean;
   secp256r1VerifyInput?: Secp256r1VerifyInput;
+  compressed?: boolean;
 }
 
 export async function prepareTransactionSync({
-  rpc,
-  feePayer,
-  settings,
+  payer,
+  index,
   transactionMessageBytes,
   signers,
   skipChecks = false,
   secp256r1VerifyInput,
-}: CreateTransactionSyncArgs): Promise<{
-  id: string;
-  signers: string[];
-  feePayer: TransactionSigner;
-  ixs: IInstruction[];
-  addressLookupTableAccounts?: AddressesByLookupTableAddress;
-}> {
+  compressed = false,
+}: CreateTransactionSyncArgs) {
   if (!skipChecks) {
-    await preTransactionChecks(rpc, settings, signers);
+    await preTransactionChecks(index, signers);
   }
-
   const { instructions, addressLookupTableAccounts } =
     await executeTransactionSync({
-      rpc,
-      settings,
+      compressed,
+      payer: payer,
+      index,
       signers,
       transactionMessageBytes,
       secp256r1VerifyInput,
@@ -56,24 +42,19 @@ export async function prepareTransactionSync({
 
   return {
     id: "Execute Transaction Sync",
-    signers: deduplicateSignersAndFeePayer(instructions, feePayer),
-    feePayer,
+    signers: deduplicateSignersAndFeePayer(instructions, payer),
+    payer,
     ixs: instructions,
     addressLookupTableAccounts,
   };
 }
 async function preTransactionChecks(
-  rpc: Rpc<GetAccountInfoApi>,
-  settings: Address,
+  index: bigint | number,
   signers: (TransactionSigner | Secp256r1Key)[]
 ) {
-  const settingsData = await fetchMaybeSettings(rpc, settings);
+  const settingsData = await fetchSettingsData(index);
 
-  if (!settingsData.exists) {
-    throw new Error("Unable to fetch settings data");
-  }
-
-  const creatorMember = settingsData.data.members.some(
+  const creatorMember = settingsData.members.some(
     (x) =>
       Permissions.has(x.permissions, Permission.InitiateTransaction) &&
       signers.some(
@@ -87,7 +68,7 @@ async function preTransactionChecks(
     );
   }
 
-  const executorMember = settingsData.data.members.find(
+  const executorMember = settingsData.members.find(
     (x) =>
       Permissions.has(x.permissions, Permission.ExecuteTransaction) &&
       signers.some(
@@ -101,7 +82,7 @@ async function preTransactionChecks(
     );
   }
 
-  const votingMembers = settingsData.data.members.filter(
+  const votingMembers = settingsData.members.filter(
     (x) =>
       Permissions.has(x.permissions, Permission.VoteTransaction) &&
       signers.some(
@@ -109,7 +90,7 @@ async function preTransactionChecks(
       )
   );
 
-  if (votingMembers.length < settingsData.data.threshold) {
+  if (votingMembers.length < settingsData.threshold) {
     throw new Error("Insufficient signers with vote transaction permission.");
   }
 }

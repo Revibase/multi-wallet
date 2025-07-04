@@ -7,27 +7,15 @@
  */
 
 import {
-  addDecoderSizePrefix,
-  addEncoderSizePrefix,
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
-  getArrayDecoder,
-  getArrayEncoder,
-  getBooleanDecoder,
-  getBooleanEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getOptionDecoder,
   getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
-  getU16Decoder,
-  getU16Encoder,
-  getU32Decoder,
-  getU32Encoder,
-  getU8Decoder,
-  getU8Encoder,
   transformEncoder,
   type Address,
   type Codec,
@@ -52,8 +40,12 @@ import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
+  getTransactionBufferCreateArgsDecoder,
+  getTransactionBufferCreateArgsEncoder,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
+  type TransactionBufferCreateArgs,
+  type TransactionBufferCreateArgsArgs,
 } from '../types';
 
 export const TRANSACTION_BUFFER_CREATE_DISCRIMINATOR = new Uint8Array([
@@ -119,34 +111,12 @@ export type TransactionBufferCreateInstruction<
 
 export type TransactionBufferCreateInstructionData = {
   discriminator: ReadonlyUint8Array;
-  /** Allow execution without sigverify */
-  permissionlessExecution: boolean;
-  /** Buffer hashes for the subsequent extend instruction */
-  bufferExtendHashes: Array<ReadonlyUint8Array>;
-  /** Index of the buffer account to seed the account derivation */
-  bufferIndex: number;
-  /** Hash of the final assembled transaction message. */
-  finalBufferHash: ReadonlyUint8Array;
-  /** Final size of the buffer. */
-  finalBufferSize: number;
-  /** Initial slice of the buffer. */
-  buffer: ReadonlyUint8Array;
+  args: TransactionBufferCreateArgs;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
 };
 
 export type TransactionBufferCreateInstructionDataArgs = {
-  /** Allow execution without sigverify */
-  permissionlessExecution: boolean;
-  /** Buffer hashes for the subsequent extend instruction */
-  bufferExtendHashes: Array<ReadonlyUint8Array>;
-  /** Index of the buffer account to seed the account derivation */
-  bufferIndex: number;
-  /** Hash of the final assembled transaction message. */
-  finalBufferHash: ReadonlyUint8Array;
-  /** Final size of the buffer. */
-  finalBufferSize: number;
-  /** Initial slice of the buffer. */
-  buffer: ReadonlyUint8Array;
+  args: TransactionBufferCreateArgsArgs;
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
 };
 
@@ -154,15 +124,7 @@ export function getTransactionBufferCreateInstructionDataEncoder(): Encoder<Tran
   return transformEncoder(
     getStructEncoder([
       ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
-      ['permissionlessExecution', getBooleanEncoder()],
-      [
-        'bufferExtendHashes',
-        getArrayEncoder(fixEncoderSize(getBytesEncoder(), 32)),
-      ],
-      ['bufferIndex', getU8Encoder()],
-      ['finalBufferHash', fixEncoderSize(getBytesEncoder(), 32)],
-      ['finalBufferSize', getU16Encoder()],
-      ['buffer', addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
+      ['args', getTransactionBufferCreateArgsEncoder()],
       [
         'secp256r1VerifyArgs',
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
@@ -178,15 +140,7 @@ export function getTransactionBufferCreateInstructionDataEncoder(): Encoder<Tran
 export function getTransactionBufferCreateInstructionDataDecoder(): Decoder<TransactionBufferCreateInstructionData> {
   return getStructDecoder([
     ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
-    ['permissionlessExecution', getBooleanDecoder()],
-    [
-      'bufferExtendHashes',
-      getArrayDecoder(fixDecoderSize(getBytesDecoder(), 32)),
-    ],
-    ['bufferIndex', getU8Decoder()],
-    ['finalBufferHash', fixDecoderSize(getBytesDecoder(), 32)],
-    ['finalBufferSize', getU16Decoder()],
-    ['buffer', addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
+    ['args', getTransactionBufferCreateArgsDecoder()],
     ['secp256r1VerifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
 }
@@ -219,12 +173,7 @@ export type TransactionBufferCreateInput<
   systemProgram?: Address<TAccountSystemProgram>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
-  permissionlessExecution: TransactionBufferCreateInstructionDataArgs['permissionlessExecution'];
-  bufferExtendHashes: TransactionBufferCreateInstructionDataArgs['bufferExtendHashes'];
-  bufferIndex: TransactionBufferCreateInstructionDataArgs['bufferIndex'];
-  finalBufferHash: TransactionBufferCreateInstructionDataArgs['finalBufferHash'];
-  finalBufferSize: TransactionBufferCreateInstructionDataArgs['finalBufferSize'];
-  buffer: TransactionBufferCreateInstructionDataArgs['buffer'];
+  args: TransactionBufferCreateInstructionDataArgs['args'];
   secp256r1VerifyArgs: TransactionBufferCreateInstructionDataArgs['secp256r1VerifyArgs'];
 };
 

@@ -31,16 +31,6 @@ export function arraysEqual<T>(a: Indexed<T>, b: Indexed<T>): boolean {
   return true;
 }
 
-export async function estimateJitoTips(estimateJitoTipEndpoint: string) {
-  const response = await fetch(estimateJitoTipEndpoint);
-  const result = await response.json();
-  const tipAmount = Math.round(
-    result[0]["ema_landed_tips_50th_percentile"] * 10 ** 9
-  ) as number;
-
-  return tipAmount;
-}
-
 export async function sendJitoBundle(
   jitoBlockEngineUrl: string,
   serializedTransactions: string[]

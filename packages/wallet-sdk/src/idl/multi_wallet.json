@@ -52,6 +52,7 @@
         },
         {
           "name": "instructions_sysvar",
+          "optional": true,
           "address": "Sysvar1nstructions1111111111111111111111111"
         }
       ],
@@ -65,47 +66,30 @@
               }
             }
           }
+        },
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "ProofArgs"
+              }
+            }
+          }
         }
       ]
     },
     {
-      "name": "create",
+      "name": "change_config_compressed",
       "docs": [
-        "Creates a new multi-wallet with the specified permissions and ownership."
+        "Applies one or more configuration changes to an existing multi-wallet."
       ],
-      "discriminator": [24, 30, 200, 40, 5, 28, 7, 119],
+      "discriminator": [33, 185, 159, 154, 181, 251, 157, 58],
       "accounts": [
-        {
-          "name": "settings",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "create_key"
-              }
-            ]
-          }
-        },
         {
           "name": "payer",
           "writable": true,
           "signer": true
-        },
-        {
-          "name": "initial_member",
-          "signer": true,
-          "optional": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
         },
         {
           "name": "slot_hash_sysvar",
@@ -116,21 +100,84 @@
           "name": "instructions_sysvar",
           "optional": true,
           "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "config_actions",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "ConfigAction"
+              }
+            }
+          }
+        },
+        {
+          "name": "settings_args",
+          "type": {
+            "defined": {
+              "name": "SettingsMutArgs"
+            }
+          }
+        },
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "compress_settings_account",
+      "docs": [
+        "* Compressed Versions",
+        "Compress an existing settings account."
+      ],
+      "discriminator": [107, 157, 58, 253, 4, 163, 46, 145],
+      "accounts": [
+        {
+          "name": "settings",
+          "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
         },
         {
           "name": "domain_config",
           "optional": true
         },
         {
-          "name": "delegate_account",
-          "writable": true,
-          "optional": true
+          "name": "instructions_sysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "create_key",
-          "type": "pubkey"
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
+            }
+          }
+        },
+        {
+          "name": "settings_creation_args",
+          "type": {
+            "defined": {
+              "name": "SettingsCreationArgs"
+            }
+          }
         },
         {
           "name": "secp256r1_verify_args",
@@ -139,14 +186,6 @@
               "defined": {
                 "name": "Secp256r1VerifyArgs"
               }
-            }
-          }
-        },
-        {
-          "name": "permissions",
-          "type": {
-            "defined": {
-              "name": "Permissions"
             }
           }
         }
@@ -199,6 +238,299 @@
       ]
     },
     {
+      "name": "create_global_counter",
+      "docs": ["Create a global counter to index all multi wallets"],
+      "discriminator": [247, 232, 107, 198, 31, 73, 3, 236],
+      "accounts": [
+        {
+          "name": "global_counter",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103, 108, 111, 98, 97, 108, 95, 99, 111, 117, 110, 116, 101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "create_multi_wallet",
+      "docs": [
+        "Creates a new multi-wallet with the specified permissions and ownership."
+      ],
+      "discriminator": [37, 45, 100, 255, 58, 228, 239, 164],
+      "accounts": [
+        {
+          "name": "settings",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "global_counter"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "initial_member",
+          "signer": true,
+          "optional": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "instructions_sysvar",
+          "optional": true,
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        },
+        {
+          "name": "global_counter",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        },
+        {
+          "name": "permissions",
+          "type": {
+            "defined": {
+              "name": "Permissions"
+            }
+          }
+        },
+        {
+          "name": "delegate_creation_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "DelegateCreationArgs"
+              }
+            }
+          }
+        },
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "ProofArgs"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "create_multi_wallet_compressed",
+      "docs": [
+        "Creates a new multi-wallet with the specified permissions and ownership."
+      ],
+      "discriminator": [79, 254, 201, 17, 187, 210, 128, 233],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "initial_member",
+          "signer": true,
+          "optional": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "instructions_sysvar",
+          "optional": true,
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        },
+        {
+          "name": "global_counter",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        },
+        {
+          "name": "permissions",
+          "type": {
+            "defined": {
+              "name": "Permissions"
+            }
+          }
+        },
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
+            }
+          }
+        },
+        {
+          "name": "settings_creation_args",
+          "type": {
+            "defined": {
+              "name": "SettingsCreationArgs"
+            }
+          }
+        },
+        {
+          "name": "delegate_creation_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "DelegateCreationArgs"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "decompress_settings_account",
+      "docs": ["Decompress an existing settings account."],
+      "discriminator": [237, 87, 232, 84, 218, 176, 222, 134],
+      "accounts": [
+        {
+          "name": "settings",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "settings_close_args.data.index"
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        },
+        {
+          "name": "instructions_sysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "settings_close_args",
+          "type": {
+            "defined": {
+              "name": "SettingsCloseArgs"
+            }
+          }
+        },
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
+            }
+          }
+        },
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "delete_domain_config",
       "docs": [
         "Deletes an existing domain configuration used for WebAuthn (secp256r1) verification."
@@ -208,11 +540,6 @@
         {
           "name": "domain_config",
           "writable": true
-        },
-        {
-          "name": "admin",
-          "writable": true,
-          "address": "G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF"
         },
         {
           "name": "authority",
@@ -351,6 +678,70 @@
       ]
     },
     {
+      "name": "native_transfer_intent_compressed",
+      "docs": ["Transfers SOL using a signed transfer intent."],
+      "discriminator": [215, 168, 194, 70, 97, 19, 81, 126],
+      "accounts": [
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "instructions_sysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        },
+        {
+          "name": "source",
+          "writable": true
+        },
+        {
+          "name": "destination",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        },
+        {
+          "name": "settings_args",
+          "type": {
+            "defined": {
+              "name": "SettingsProofArgs"
+            }
+          }
+        },
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "token_transfer_intent",
       "docs": ["Transfers SPL tokens using a signed transfer intent."],
       "discriminator": [51, 91, 96, 155, 132, 232, 179, 48],
@@ -395,7 +786,31 @@
         },
         {
           "name": "source_token_account",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "source"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
+                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
+                219, 233, 248, 89
+              ]
+            }
+          }
         },
         {
           "name": "destination"
@@ -431,6 +846,111 @@
               "defined": {
                 "name": "Secp256r1VerifyArgs"
               }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "token_transfer_intent_compressed",
+      "docs": ["Transfers SPL tokens using a signed transfer intent."],
+      "discriminator": [42, 48, 107, 147, 228, 201, 67, 173],
+      "accounts": [
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "instructions_sysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        },
+        {
+          "name": "source",
+          "writable": true
+        },
+        {
+          "name": "source_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "source"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
+                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
+                219, 233, 248, 89
+              ]
+            }
+          }
+        },
+        {
+          "name": "destination"
+        },
+        {
+          "name": "destination_token_account",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "mint"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        },
+        {
+          "name": "settings_args",
+          "type": {
+            "defined": {
+              "name": "SettingsProofArgs"
+            }
+          }
+        },
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
             }
           }
         }
@@ -480,6 +1000,73 @@
               "defined": {
                 "name": "Secp256r1VerifyArgs"
               }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "transaction_buffer_close_compressed",
+      "docs": ["Closes and cleans up a transaction buffer."],
+      "discriminator": [82, 65, 25, 49, 208, 28, 191, 84],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "rent_collector",
+          "writable": true
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        },
+        {
+          "name": "transaction_buffer",
+          "writable": true
+        },
+        {
+          "name": "closer",
+          "signer": true,
+          "optional": true
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "instructions_sysvar",
+          "optional": true,
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        },
+        {
+          "name": "settings_args",
+          "type": {
+            "defined": {
+              "name": "SettingsProofArgs"
+            }
+          }
+        },
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
             }
           }
         }
@@ -549,6 +1136,82 @@
       ]
     },
     {
+      "name": "transaction_buffer_create_compressed",
+      "docs": [
+        "Creates a new transaction buffer to stage a transaction before execution."
+      ],
+      "discriminator": [96, 163, 111, 240, 71, 192, 125, 64],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        },
+        {
+          "name": "transaction_buffer",
+          "writable": true
+        },
+        {
+          "name": "creator",
+          "signer": true,
+          "optional": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "instructions_sysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "TransactionBufferCreateArgs"
+            }
+          }
+        },
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        },
+        {
+          "name": "settings_args",
+          "type": {
+            "defined": {
+              "name": "SettingsProofArgs"
+            }
+          }
+        },
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "transaction_buffer_execute",
       "docs": ["Executes a previously approved transaction buffer."],
       "discriminator": [48, 73, 34, 19, 129, 99, 128, 73],
@@ -594,6 +1257,69 @@
       ]
     },
     {
+      "name": "transaction_buffer_execute_compressed",
+      "docs": ["Executes a previously approved transaction buffer."],
+      "discriminator": [217, 17, 124, 197, 3, 110, 139, 7],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        },
+        {
+          "name": "executor",
+          "signer": true,
+          "optional": true
+        },
+        {
+          "name": "transaction_buffer",
+          "writable": true
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "instructions_sysvar",
+          "optional": true,
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        },
+        {
+          "name": "settings_args",
+          "type": {
+            "defined": {
+              "name": "SettingsProofArgs"
+            }
+          }
+        },
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "transaction_buffer_extend",
       "docs": [
         "Extends an existing transaction buffer to allow for updated data or additional time."
@@ -610,10 +1336,46 @@
       ],
       "args": [
         {
-          "name": "args",
+          "name": "buffer",
+          "type": "bytes"
+        }
+      ]
+    },
+    {
+      "name": "transaction_buffer_extend_compressed",
+      "docs": [
+        "Extends an existing transaction buffer to allow for updated data or additional time."
+      ],
+      "discriminator": [21, 112, 96, 97, 196, 102, 207, 203],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "transaction_buffer",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "buffer",
+          "type": "bytes"
+        },
+        {
+          "name": "settings_args",
           "type": {
             "defined": {
-              "name": "TransactionBufferExtendArgs"
+              "name": "SettingsProofArgs"
+            }
+          }
+        },
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
             }
           }
         }
@@ -626,11 +1388,6 @@
       "accounts": [
         {
           "name": "settings"
-        },
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
         },
         {
           "name": "domain_config",
@@ -674,6 +1431,73 @@
       ]
     },
     {
+      "name": "transaction_buffer_vote_compressed",
+      "docs": ["Signs a transaction buffer to register approval."],
+      "discriminator": [86, 82, 187, 102, 103, 52, 135, 183],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        },
+        {
+          "name": "transaction_buffer",
+          "writable": true
+        },
+        {
+          "name": "voter",
+          "signer": true,
+          "optional": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "instructions_sysvar",
+          "optional": true,
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        },
+        {
+          "name": "settings_args",
+          "type": {
+            "defined": {
+              "name": "SettingsProofArgs"
+            }
+          }
+        },
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "transaction_execute",
       "docs": ["Executes a staged transaction from a buffer."],
       "discriminator": [93, 171, 78, 134, 252, 84, 186, 189],
@@ -692,6 +1516,27 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "transaction_execute_compressed",
+      "docs": ["Executes a staged transaction from a buffer."],
+      "discriminator": [60, 99, 11, 42, 178, 216, 28, 158],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true
+        },
+        {
+          "name": "transaction_buffer",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "settings_key",
+          "type": "pubkey"
+        }
+      ]
     },
     {
       "name": "transaction_execute_sync",
@@ -738,16 +1583,79 @@
           }
         }
       ]
+    },
+    {
+      "name": "transaction_execute_sync_compressed",
+      "docs": [
+        "Executes a transaction synchronously by directly submitting the message and verifying it."
+      ],
+      "discriminator": [251, 154, 149, 157, 125, 132, 60, 183],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        },
+        {
+          "name": "instructions_sysvar",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "transaction_message",
+          "type": {
+            "defined": {
+              "name": "TransactionMessage"
+            }
+          }
+        },
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        },
+        {
+          "name": "settings_args",
+          "type": {
+            "defined": {
+              "name": "SettingsProofArgs"
+            }
+          }
+        },
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
+            }
+          }
+        }
+      ]
     }
   ],
   "accounts": [
     {
-      "name": "Delegate",
-      "discriminator": [92, 145, 166, 111, 11, 38, 38, 247]
-    },
-    {
       "name": "DomainConfig",
       "discriminator": [201, 232, 212, 229, 59, 241, 106, 197]
+    },
+    {
+      "name": "GlobalCounter",
+      "discriminator": [42, 206, 176, 58, 175, 129, 130, 233]
     },
     {
       "name": "Settings",
@@ -826,8 +1734,8 @@
     },
     {
       "code": 6013,
-      "name": "InsuffientSignerWithDelegatePermission",
-      "msg": "A delegate account is required when the initial member has requested delegate permissions."
+      "name": "MissingDelegateArgs",
+      "msg": "A delegate creation args is required when the initial member has requested delegate permissions."
     },
     {
       "code": 6014,
@@ -982,15 +1890,185 @@
           },
           {
             "name": "account_indexes",
-            "docs": [
-              "Indices into the tx's `account_keys` list indicating which accounts to pass to the instruction."
-            ],
             "type": "bytes"
           },
           {
             "name": "data",
-            "docs": ["Instruction data."],
             "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompressedAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "lamports",
+            "type": "u64"
+          },
+          {
+            "name": "address",
+            "type": {
+              "option": {
+                "array": ["u8", 32]
+              }
+            }
+          },
+          {
+            "name": "data",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "CompressedAccountData"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompressedAccountData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "discriminator",
+            "type": {
+              "array": ["u8", 8]
+            }
+          },
+          {
+            "name": "data",
+            "type": "bytes"
+          },
+          {
+            "name": "data_hash",
+            "type": {
+              "array": ["u8", 32]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompressedAccountMeta",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tree_info",
+            "docs": ["Merkle tree context."],
+            "type": {
+              "defined": {
+                "name": "PackedStateTreeInfo"
+              }
+            }
+          },
+          {
+            "name": "address",
+            "docs": ["Address."],
+            "type": {
+              "array": ["u8", 32]
+            }
+          },
+          {
+            "name": "output_state_tree_index",
+            "docs": ["Output merkle tree index."],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompressedAccountMetaClose",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tree_info",
+            "docs": ["State Merkle tree context."],
+            "type": {
+              "defined": {
+                "name": "PackedStateTreeInfo"
+              }
+            }
+          },
+          {
+            "name": "address",
+            "docs": ["Address."],
+            "type": {
+              "array": ["u8", 32]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompressedProof",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "a",
+            "type": {
+              "array": ["u8", 32]
+            }
+          },
+          {
+            "name": "b",
+            "type": {
+              "array": ["u8", 64]
+            }
+          },
+          {
+            "name": "c",
+            "type": {
+              "array": ["u8", 32]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompressedSettings",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "threshold",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "index",
+            "type": "u128"
+          },
+          {
+            "name": "multi_wallet_bump",
+            "type": "u8"
+          },
+          {
+            "name": "members",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "Member"
+                }
+              }
+            }
           }
         ]
       }
@@ -1018,7 +2096,7 @@
               {
                 "vec": {
                   "defined": {
-                    "name": "MemberWithVerifyArgs"
+                    "name": "MemberWithCreationArgs"
                   }
                 }
               }
@@ -1030,7 +2108,7 @@
               {
                 "vec": {
                   "defined": {
-                    "name": "MemberKey"
+                    "name": "MemberKeyWithCloseArgs"
                   }
                 }
               }
@@ -1071,20 +2149,56 @@
     },
     {
       "name": "Delegate",
-      "serialization": "bytemuck",
-      "repr": {
-        "kind": "c"
-      },
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "bump",
-            "type": "u8"
+            "name": "index",
+            "type": "u128"
+          }
+        ]
+      }
+    },
+    {
+      "name": "DelegateCloseArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account_meta",
+            "type": {
+              "defined": {
+                "name": "CompressedAccountMetaClose"
+              }
+            }
           },
           {
-            "name": "multi_wallet_settings",
-            "type": "pubkey"
+            "name": "data",
+            "type": {
+              "defined": {
+                "name": "Delegate"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "DelegateCreationArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "address_tree_info",
+            "type": {
+              "defined": {
+                "name": "PackedAddressTreeInfo"
+              }
+            }
+          },
+          {
+            "name": "output_state_tree_index",
+            "type": "u8"
           }
         ]
       }
@@ -1151,12 +2265,28 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "origin",
+            "name": "new_origin",
             "type": "string"
           },
           {
-            "name": "authority",
+            "name": "new_authority",
             "type": "pubkey"
+          }
+        ]
+      }
+    },
+    {
+      "name": "GlobalCounter",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "index",
+            "type": "u128"
           }
         ]
       }
@@ -1210,6 +2340,32 @@
       }
     },
     {
+      "name": "MemberKeyWithCloseArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "data",
+            "type": {
+              "defined": {
+                "name": "MemberKey"
+              }
+            }
+          },
+          {
+            "name": "delegate_args",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "DelegateCloseArgs"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "MemberKeyWithPermissionsArgs",
       "type": {
         "kind": "struct",
@@ -1234,7 +2390,7 @@
       }
     },
     {
-      "name": "MemberWithVerifyArgs",
+      "name": "MemberWithCreationArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -1255,6 +2411,88 @@
                 }
               }
             }
+          },
+          {
+            "name": "delegate_args",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "DelegateCreationArgs"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "PackedAddressTreeInfo",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "address_merkle_tree_pubkey_index",
+            "type": "u8"
+          },
+          {
+            "name": "address_queue_pubkey_index",
+            "type": "u8"
+          },
+          {
+            "name": "root_index",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PackedMerkleContext",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "merkle_tree_pubkey_index",
+            "type": "u8"
+          },
+          {
+            "name": "queue_pubkey_index",
+            "type": "u8"
+          },
+          {
+            "name": "leaf_index",
+            "type": "u32"
+          },
+          {
+            "name": "prove_by_index",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PackedStateTreeInfo",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "root_index",
+            "type": "u16"
+          },
+          {
+            "name": "prove_by_index",
+            "type": "bool"
+          },
+          {
+            "name": "merkle_tree_pubkey_index",
+            "type": "u8"
+          },
+          {
+            "name": "queue_pubkey_index",
+            "type": "u8"
+          },
+          {
+            "name": "leaf_index",
+            "type": "u32"
           }
         ]
       }
@@ -1267,6 +2505,26 @@
         "fields": [
           {
             "name": "mask",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ProofArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "proof",
+            "type": {
+              "defined": {
+                "name": "ValidityProof"
+              }
+            }
+          },
+          {
+            "name": "light_cpi_accounts_start_index",
             "type": "u8"
           }
         ]
@@ -1331,8 +2589,8 @@
             "type": "u8"
           },
           {
-            "name": "create_key",
-            "type": "pubkey"
+            "name": "index",
+            "type": "u128"
           },
           {
             "name": "members",
@@ -1341,6 +2599,102 @@
                 "defined": {
                   "name": "Member"
                 }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SettingsCloseArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account_meta",
+            "type": {
+              "defined": {
+                "name": "CompressedAccountMetaClose"
+              }
+            }
+          },
+          {
+            "name": "data",
+            "type": {
+              "defined": {
+                "name": "CompressedSettings"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SettingsCreationArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "address_tree_info",
+            "type": {
+              "defined": {
+                "name": "PackedAddressTreeInfo"
+              }
+            }
+          },
+          {
+            "name": "output_state_tree_index",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SettingsMutArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account_meta",
+            "type": {
+              "defined": {
+                "name": "CompressedAccountMeta"
+              }
+            }
+          },
+          {
+            "name": "data",
+            "type": {
+              "defined": {
+                "name": "CompressedSettings"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SettingsProofArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "merkle_context",
+            "type": {
+              "defined": {
+                "name": "PackedMerkleContext"
+              }
+            }
+          },
+          {
+            "name": "root_index",
+            "type": "u16"
+          },
+          {
+            "name": "account",
+            "type": {
+              "defined": {
+                "name": "CompressedAccount"
               }
             }
           }
@@ -1370,12 +2724,12 @@
           {
             "name": "permissionless_execution",
             "docs": [
-              "Flag to allow execution without sigverify once sufficient threshold is met"
+              "Flag to allow execution straight away once sufficient threshold is met"
             ],
             "type": "bool"
           },
           {
-            "name": "expiry",
+            "name": "valid_till",
             "type": "u64"
           },
           {
@@ -1451,12 +2805,10 @@
         "fields": [
           {
             "name": "permissionless_execution",
-            "docs": ["Allow execution without sigverify"],
             "type": "bool"
           },
           {
             "name": "buffer_extend_hashes",
-            "docs": ["Buffer hashes for the subsequent extend instruction"],
             "type": {
               "vec": {
                 "array": ["u8", 32]
@@ -1465,36 +2817,18 @@
           },
           {
             "name": "buffer_index",
-            "docs": [
-              "Index of the buffer account to seed the account derivation"
-            ],
             "type": "u8"
           },
           {
             "name": "final_buffer_hash",
-            "docs": ["Hash of the final assembled transaction message."],
             "type": {
               "array": ["u8", 32]
             }
           },
           {
             "name": "final_buffer_size",
-            "docs": ["Final size of the buffer."],
             "type": "u16"
           },
-          {
-            "name": "buffer",
-            "docs": ["Initial slice of the buffer."],
-            "type": "bytes"
-          }
-        ]
-      }
-    },
-    {
-      "name": "TransactionBufferExtendArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
           {
             "name": "buffer",
             "type": "bytes"
@@ -1509,33 +2843,22 @@
         "fields": [
           {
             "name": "num_signers",
-            "docs": ["The number of signer pubkeys in the account_keys vec."],
             "type": "u8"
           },
           {
             "name": "num_writable_signers",
-            "docs": [
-              "The number of writable signer pubkeys in the account_keys vec."
-            ],
             "type": "u8"
           },
           {
             "name": "num_writable_non_signers",
-            "docs": [
-              "The number of writable non-signer pubkeys in the account_keys vec."
-            ],
             "type": "u8"
           },
           {
             "name": "num_account_keys",
-            "docs": [
-              "The number of static account keys in the account_keys vec."
-            ],
             "type": "u8"
           },
           {
             "name": "instructions",
-            "docs": ["List of instructions making up the tx."],
             "type": {
               "vec": {
                 "defined": {
@@ -1546,10 +2869,6 @@
           },
           {
             "name": "address_table_lookups",
-            "docs": [
-              "List of address table lookups used to load additional accounts",
-              "for this transaction."
-            ],
             "type": {
               "vec": {
                 "defined": {
@@ -1563,27 +2882,35 @@
     },
     {
       "name": "TransactionMessageAddressTableLookup",
-      "docs": [
-        "Address table lookups describe an on-chain address lookup table to use",
-        "for loading more readonly and writable accounts in a single tx."
-      ],
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "account_key_index",
-            "docs": ["Address lookup table account key"],
             "type": "u8"
           },
           {
             "name": "writable_indexes",
-            "docs": ["List of indexes used to load writable account addresses"],
             "type": "bytes"
           },
           {
             "name": "readonly_indexes",
-            "docs": ["List of indexes used to load readonly account addresses"],
             "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ValidityProof",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "option": {
+              "defined": {
+                "name": "CompressedProof"
+              }
+            }
           }
         ]
       }

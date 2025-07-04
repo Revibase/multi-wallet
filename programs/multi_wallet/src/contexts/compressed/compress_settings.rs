@@ -1,82 +1,182 @@
 use crate::{
-    state::{Settings, SettingsCreationArgs, SEED_MULTISIG, SEED_VAULT},
+    error::MultisigError,
+    state::{
+        invoke_light_system_program_with_payer_seeds, CompressedSettings, DomainConfig, MemberKey,
+        Permission, ProofArgs, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings,
+        SettingsCreationArgs, TransactionActionType, SEED_MULTISIG, SEED_VAULT,
+    },
+    utils::durable_nonce_check,
     LIGHT_CPI_SIGNER,
 };
-use anchor_lang::prelude::*;
-use light_sdk::{
-    account::LightAccount,
-    address::v1::derive_address,
-    cpi::{CpiAccounts, CpiInputs},
-};
+use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
+use light_sdk::cpi::{CpiAccounts, CpiInputs};
 use std::vec;
 
 #[derive(Accounts)]
 pub struct CompressSettingsAccount<'info> {
     #[account(
         mut,
-        close = rent_collector,
+        close = payer,
     )]
     pub settings: Account<'info, Settings>,
-    #[account(
-        mut,
-        seeds = [
-            SEED_MULTISIG,
-            settings.key().as_ref(),
-            SEED_VAULT,
-        ],
-        bump = settings.multi_wallet_bump
-    )]
-    pub authority: Signer<'info>,
-    /// CHECK:
     #[account(mut)]
-    pub rent_collector: UncheckedAccount<'info>,
+    pub payer: Signer<'info>,
+    #[account(
+        address = SlotHashes::id()
+    )]
+    pub slot_hash_sysvar: Option<UncheckedAccount<'info>>,
+    pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
+    /// CHECK:
+    #[account(
+        address = Instructions::id(),
+    )]
+    pub instructions_sysvar: UncheckedAccount<'info>,
 }
 
 impl<'info> CompressSettingsAccount<'info> {
+    fn validate(
+        &self,
+        remaining_accounts: &[AccountInfo<'info>],
+        secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
+        settings: &Settings,
+        settings_key: &Pubkey,
+    ) -> Result<()> {
+        let Self {
+            domain_config,
+            slot_hash_sysvar,
+            instructions_sysvar,
+            payer,
+            ..
+        } = &self;
+
+        durable_nonce_check(instructions_sysvar)?;
+
+        let mut initiate = false;
+        let mut execute = false;
+        let mut vote_count = 0;
+
+        let threshold = settings.threshold as usize;
+        let secp256r1_member_key = if secp256r1_verify_args.is_some() {
+            Some(MemberKey::convert_secp256r1(
+                &secp256r1_verify_args.as_ref().unwrap().public_key,
+            )?)
+        } else {
+            None
+        };
+
+        for member in &settings.members {
+            let has_permission = |perm| member.permissions.has(perm);
+
+            let is_secp256r1_signer =
+                secp256r1_member_key.is_some() && member.pubkey.eq(&secp256r1_member_key.unwrap());
+            let is_signer = is_secp256r1_signer
+                || remaining_accounts.iter().any(|account| {
+                    account.is_signer
+                        && MemberKey::convert_ed25519(account.key)
+                            .unwrap()
+                            .eq(&member.pubkey)
+                });
+
+            if is_signer {
+                if has_permission(Permission::InitiateTransaction) {
+                    initiate = true;
+                }
+                if has_permission(Permission::ExecuteTransaction) {
+                    execute = true;
+                }
+                if has_permission(Permission::VoteTransaction) {
+                    vote_count += 1;
+                }
+            }
+
+            if is_secp256r1_signer {
+                let expected_domain_config = member
+                    .domain_config
+                    .ok_or(MultisigError::DomainConfigIsMissing)?;
+
+                require!(
+                    domain_config.is_some()
+                        && domain_config
+                            .as_ref()
+                            .unwrap()
+                            .key()
+                            .eq(&expected_domain_config),
+                    MultisigError::MemberDoesNotBelongToDomainConfig
+                );
+
+                let secp256r1_verify_data = secp256r1_verify_args
+                    .as_ref()
+                    .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
+
+                Secp256r1Pubkey::verify_webauthn(
+                    secp256r1_verify_data,
+                    slot_hash_sysvar,
+                    domain_config,
+                    &settings_key,
+                    &payer.key().to_bytes(),
+                    TransactionActionType::Compress,
+                    &Some(instructions_sysvar.clone()),
+                )?;
+            }
+        }
+
+        require!(
+            initiate,
+            MultisigError::InsufficientSignerWithInitiatePermission
+        );
+        require!(
+            execute,
+            MultisigError::InsufficientSignerWithExecutePermission
+        );
+        require!(
+            vote_count >= threshold,
+            MultisigError::InsufficientSignersWithVotePermission
+        );
+
+        Ok(())
+    }
+
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
+        compressed_proof_args: ProofArgs,
         settings_creation_args: SettingsCreationArgs,
+        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
-        let current_settings = &ctx.accounts.settings;
-        let payer = ctx.accounts.authority.to_account_info();
-        let light_cpi_accounts =
-            CpiAccounts::new(&payer, &ctx.remaining_accounts, LIGHT_CPI_SIGNER);
-
-        let (address, address_seed) = derive_address(
-            &[SEED_MULTISIG, current_settings.index.to_le_bytes().as_ref()],
-            &settings_creation_args
-                .address_tree_info
-                .get_tree_pubkey(&light_cpi_accounts)
-                .map_err(|_| ErrorCode::AccountNotEnoughKeys)?,
-            &crate::ID,
+        let settings = &ctx.accounts.settings;
+        let settings_data = settings.clone().into_inner();
+        let settings_key = &ctx.accounts.settings.key();
+        ctx.accounts.validate(
+            ctx.remaining_accounts,
+            &secp256r1_verify_args,
+            &settings_data,
+            settings_key,
+        )?;
+        let light_cpi_accounts = CpiAccounts::new(
+            &ctx.accounts.payer,
+            &ctx.remaining_accounts
+                [compressed_proof_args.light_cpi_accounts_start_index as usize..],
+            LIGHT_CPI_SIGNER,
         );
-
-        let new_address_params = settings_creation_args
-            .address_tree_info
-            .into_new_address_params_packed(address_seed);
-
-        let mut settings_account = LightAccount::<'_, Settings>::new_init(
-            &crate::ID,
-            Some(address),
-            settings_creation_args.output_state_tree_index,
-        );
-        settings_account.threshold = current_settings.threshold;
-        settings_account.multi_wallet_bump = current_settings.multi_wallet_bump;
-        settings_account.bump = current_settings.bump;
-        settings_account.index = current_settings.index;
-        settings_account.members = current_settings.members.clone();
-        settings_account.invariant()?;
+        let (settings_info, settings_new_address) = CompressedSettings::create_settings_account(
+            settings_creation_args,
+            settings_data,
+            &light_cpi_accounts,
+        )?;
 
         let cpi = CpiInputs::new_with_address(
-            settings_creation_args.proof,
-            vec![settings_account
-                .to_account_info()
-                .map_err(ProgramError::from)?],
-            vec![new_address_params],
+            compressed_proof_args.proof,
+            vec![settings_info],
+            vec![settings_new_address],
         );
 
-        cpi.invoke_light_system_program(light_cpi_accounts)
-            .map_err(ProgramError::from)?;
+        let settings_key = settings.key();
+        let vault_signer_seed: &[&[u8]] = &[
+            SEED_MULTISIG,
+            settings_key.as_ref(),
+            SEED_VAULT,
+            &[settings.multi_wallet_bump],
+        ];
+        invoke_light_system_program_with_payer_seeds(cpi, light_cpi_accounts, vault_signer_seed)?;
         Ok(())
     }
 }

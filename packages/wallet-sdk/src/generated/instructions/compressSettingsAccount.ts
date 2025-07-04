@@ -10,14 +10,12 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
-  getAddressEncoder,
   getBytesDecoder,
   getBytesEncoder,
-  getProgramDerivedAddress,
+  getOptionDecoder,
+  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
-  getU8Decoder,
-  getU8Encoder,
   transformEncoder,
   type Address,
   type Codec,
@@ -28,27 +26,30 @@ import {
   type IInstruction,
   type IInstructionWithAccounts,
   type IInstructionWithData,
+  type Option,
+  type OptionOrNullable,
+  type ReadonlyAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from '@solana/kit';
-import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+} from "@solana/kit";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
-  expectAddress,
-  getAccountMetaFactory,
-  type ResolvedAccount,
-} from '../shared';
-import {
-  getPackedAddressTreeInfoDecoder,
-  getPackedAddressTreeInfoEncoder,
-  getValidityProofDecoder,
-  getValidityProofEncoder,
-  type PackedAddressTreeInfo,
-  type PackedAddressTreeInfoArgs,
-  type ValidityProof,
-  type ValidityProofArgs,
-} from '../types';
+  getProofArgsDecoder,
+  getProofArgsEncoder,
+  getSecp256r1VerifyArgsDecoder,
+  getSecp256r1VerifyArgsEncoder,
+  getSettingsCreationArgsDecoder,
+  getSettingsCreationArgsEncoder,
+  type ProofArgs,
+  type ProofArgsArgs,
+  type Secp256r1VerifyArgs,
+  type Secp256r1VerifyArgsArgs,
+  type SettingsCreationArgs,
+  type SettingsCreationArgsArgs,
+} from "../types";
 
 export const COMPRESS_SETTINGS_ACCOUNT_DISCRIMINATOR = new Uint8Array([
   107, 157, 58, 253, 4, 163, 46, 145,
@@ -63,8 +64,14 @@ export function getCompressSettingsAccountDiscriminatorBytes() {
 export type CompressSettingsAccountInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountSettings extends string | IAccountMeta<string> = string,
-  TAccountAuthority extends string | IAccountMeta<string> = string,
-  TAccountRentCollector extends string | IAccountMeta<string> = string,
+  TAccountPayer extends string | IAccountMeta<string> = string,
+  TAccountSlotHashSysvar extends
+    | string
+    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+  TAccountDomainConfig extends string | IAccountMeta<string> = string,
+  TAccountInstructionsSysvar extends
+    | string
+    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
   TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = IInstruction<TProgram> &
   IInstructionWithData<Uint8Array> &
@@ -73,37 +80,46 @@ export type CompressSettingsAccountInstruction<
       TAccountSettings extends string
         ? WritableAccount<TAccountSettings>
         : TAccountSettings,
-      TAccountAuthority extends string
-        ? WritableSignerAccount<TAccountAuthority> &
-            IAccountSignerMeta<TAccountAuthority>
-        : TAccountAuthority,
-      TAccountRentCollector extends string
-        ? WritableAccount<TAccountRentCollector>
-        : TAccountRentCollector,
+      TAccountPayer extends string
+        ? WritableSignerAccount<TAccountPayer> &
+            IAccountSignerMeta<TAccountPayer>
+        : TAccountPayer,
+      TAccountSlotHashSysvar extends string
+        ? ReadonlyAccount<TAccountSlotHashSysvar>
+        : TAccountSlotHashSysvar,
+      TAccountDomainConfig extends string
+        ? ReadonlyAccount<TAccountDomainConfig>
+        : TAccountDomainConfig,
+      TAccountInstructionsSysvar extends string
+        ? ReadonlyAccount<TAccountInstructionsSysvar>
+        : TAccountInstructionsSysvar,
       ...TRemainingAccounts,
     ]
   >;
 
 export type CompressSettingsAccountInstructionData = {
   discriminator: ReadonlyUint8Array;
-  proof: ValidityProof;
-  addressTreeInfo: PackedAddressTreeInfo;
-  outputStateTreeIndex: number;
+  compressedProofArgs: ProofArgs;
+  settingsCreationArgs: SettingsCreationArgs;
+  secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
 };
 
 export type CompressSettingsAccountInstructionDataArgs = {
-  proof: ValidityProofArgs;
-  addressTreeInfo: PackedAddressTreeInfoArgs;
-  outputStateTreeIndex: number;
+  compressedProofArgs: ProofArgsArgs;
+  settingsCreationArgs: SettingsCreationArgsArgs;
+  secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
 };
 
 export function getCompressSettingsAccountInstructionDataEncoder(): Encoder<CompressSettingsAccountInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
-      ['proof', getValidityProofEncoder()],
-      ['addressTreeInfo', getPackedAddressTreeInfoEncoder()],
-      ['outputStateTreeIndex', getU8Encoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["compressedProofArgs", getProofArgsEncoder()],
+      ["settingsCreationArgs", getSettingsCreationArgsEncoder()],
+      [
+        "secp256r1VerifyArgs",
+        getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
+      ],
     ]),
     (value) => ({
       ...value,
@@ -114,10 +130,10 @@ export function getCompressSettingsAccountInstructionDataEncoder(): Encoder<Comp
 
 export function getCompressSettingsAccountInstructionDataDecoder(): Decoder<CompressSettingsAccountInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
-    ['proof', getValidityProofDecoder()],
-    ['addressTreeInfo', getPackedAddressTreeInfoDecoder()],
-    ['outputStateTreeIndex', getU8Decoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["compressedProofArgs", getProofArgsDecoder()],
+    ["settingsCreationArgs", getSettingsCreationArgsDecoder()],
+    ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
 }
 
@@ -131,38 +147,51 @@ export function getCompressSettingsAccountInstructionDataCodec(): Codec<
   );
 }
 
-export type CompressSettingsAccountAsyncInput<
+export type CompressSettingsAccountInput<
   TAccountSettings extends string = string,
-  TAccountAuthority extends string = string,
-  TAccountRentCollector extends string = string,
+  TAccountPayer extends string = string,
+  TAccountSlotHashSysvar extends string = string,
+  TAccountDomainConfig extends string = string,
+  TAccountInstructionsSysvar extends string = string,
+  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = {
   settings: Address<TAccountSettings>;
-  authority?: TransactionSigner<TAccountAuthority>;
-  rentCollector: Address<TAccountRentCollector>;
-  proof: CompressSettingsAccountInstructionDataArgs['proof'];
-  addressTreeInfo: CompressSettingsAccountInstructionDataArgs['addressTreeInfo'];
-  outputStateTreeIndex: CompressSettingsAccountInstructionDataArgs['outputStateTreeIndex'];
+  payer: TransactionSigner<TAccountPayer>;
+  slotHashSysvar?: Address<TAccountSlotHashSysvar>;
+  domainConfig?: Address<TAccountDomainConfig>;
+  instructionsSysvar?: Address<TAccountInstructionsSysvar>;
+  compressedProofArgs: CompressSettingsAccountInstructionDataArgs["compressedProofArgs"];
+  settingsCreationArgs: CompressSettingsAccountInstructionDataArgs["settingsCreationArgs"];
+  secp256r1VerifyArgs: CompressSettingsAccountInstructionDataArgs["secp256r1VerifyArgs"];
+  remainingAccounts: TRemainingAccounts;
 };
 
-export async function getCompressSettingsAccountInstructionAsync<
+export function getCompressSettingsAccountInstruction<
   TAccountSettings extends string,
-  TAccountAuthority extends string,
-  TAccountRentCollector extends string,
+  TAccountPayer extends string,
+  TAccountSlotHashSysvar extends string,
+  TAccountDomainConfig extends string,
+  TAccountInstructionsSysvar extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
+  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 >(
-  input: CompressSettingsAccountAsyncInput<
+  input: CompressSettingsAccountInput<
     TAccountSettings,
-    TAccountAuthority,
-    TAccountRentCollector
+    TAccountPayer,
+    TAccountSlotHashSysvar,
+    TAccountDomainConfig,
+    TAccountInstructionsSysvar,
+    TRemainingAccounts
   >,
   config?: { programAddress?: TProgramAddress }
-): Promise<
-  CompressSettingsAccountInstruction<
-    TProgramAddress,
-    TAccountSettings,
-    TAccountAuthority,
-    TAccountRentCollector
-  >
+): CompressSettingsAccountInstruction<
+  TProgramAddress,
+  TAccountSettings,
+  TAccountPayer,
+  TAccountSlotHashSysvar,
+  TAccountDomainConfig,
+  TAccountInstructionsSysvar,
+  TRemainingAccounts
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -170,8 +199,13 @@ export async function getCompressSettingsAccountInstructionAsync<
   // Original accounts.
   const originalAccounts = {
     settings: { value: input.settings ?? null, isWritable: true },
-    authority: { value: input.authority ?? null, isWritable: true },
-    rentCollector: { value: input.rentCollector ?? null, isWritable: true },
+    payer: { value: input.payer ?? null, isWritable: true },
+    slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
+    domainConfig: { value: input.domainConfig ?? null, isWritable: false },
+    instructionsSysvar: {
+      value: input.instructionsSysvar ?? null,
+      isWritable: false,
+    },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -182,27 +216,24 @@ export async function getCompressSettingsAccountInstructionAsync<
   const args = { ...input };
 
   // Resolve default values.
-  if (!accounts.authority.value) {
-    accounts.authority.value = await getProgramDerivedAddress({
-      programAddress,
-      seeds: [
-        getBytesEncoder().encode(
-          new Uint8Array([
-            109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116,
-          ])
-        ),
-        getAddressEncoder().encode(expectAddress(accounts.settings.value)),
-        getBytesEncoder().encode(new Uint8Array([118, 97, 117, 108, 116])),
-      ],
-    });
+  if (!accounts.slotHashSysvar.value) {
+    accounts.slotHashSysvar.value =
+      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
+  }
+  if (!accounts.instructionsSysvar.value) {
+    accounts.instructionsSysvar.value =
+      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
   }
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   const instruction = {
     accounts: [
       getAccountMeta(accounts.settings),
-      getAccountMeta(accounts.authority),
-      getAccountMeta(accounts.rentCollector),
+      getAccountMeta(accounts.payer),
+      getAccountMeta(accounts.slotHashSysvar),
+      getAccountMeta(accounts.domainConfig),
+      getAccountMeta(accounts.instructionsSysvar),
+      ...input.remainingAccounts,
     ],
     programAddress,
     data: getCompressSettingsAccountInstructionDataEncoder().encode(
@@ -211,77 +242,11 @@ export async function getCompressSettingsAccountInstructionAsync<
   } as CompressSettingsAccountInstruction<
     TProgramAddress,
     TAccountSettings,
-    TAccountAuthority,
-    TAccountRentCollector
-  >;
-
-  return instruction;
-}
-
-export type CompressSettingsAccountInput<
-  TAccountSettings extends string = string,
-  TAccountAuthority extends string = string,
-  TAccountRentCollector extends string = string,
-> = {
-  settings: Address<TAccountSettings>;
-  authority: TransactionSigner<TAccountAuthority>;
-  rentCollector: Address<TAccountRentCollector>;
-  proof: CompressSettingsAccountInstructionDataArgs['proof'];
-  addressTreeInfo: CompressSettingsAccountInstructionDataArgs['addressTreeInfo'];
-  outputStateTreeIndex: CompressSettingsAccountInstructionDataArgs['outputStateTreeIndex'];
-};
-
-export function getCompressSettingsAccountInstruction<
-  TAccountSettings extends string,
-  TAccountAuthority extends string,
-  TAccountRentCollector extends string,
-  TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
->(
-  input: CompressSettingsAccountInput<
-    TAccountSettings,
-    TAccountAuthority,
-    TAccountRentCollector
-  >,
-  config?: { programAddress?: TProgramAddress }
-): CompressSettingsAccountInstruction<
-  TProgramAddress,
-  TAccountSettings,
-  TAccountAuthority,
-  TAccountRentCollector
-> {
-  // Program address.
-  const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
-
-  // Original accounts.
-  const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: true },
-    authority: { value: input.authority ?? null, isWritable: true },
-    rentCollector: { value: input.rentCollector ?? null, isWritable: true },
-  };
-  const accounts = originalAccounts as Record<
-    keyof typeof originalAccounts,
-    ResolvedAccount
-  >;
-
-  // Original args.
-  const args = { ...input };
-
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
-  const instruction = {
-    accounts: [
-      getAccountMeta(accounts.settings),
-      getAccountMeta(accounts.authority),
-      getAccountMeta(accounts.rentCollector),
-    ],
-    programAddress,
-    data: getCompressSettingsAccountInstructionDataEncoder().encode(
-      args as CompressSettingsAccountInstructionDataArgs
-    ),
-  } as CompressSettingsAccountInstruction<
-    TProgramAddress,
-    TAccountSettings,
-    TAccountAuthority,
-    TAccountRentCollector
+    TAccountPayer,
+    TAccountSlotHashSysvar,
+    TAccountDomainConfig,
+    TAccountInstructionsSysvar,
+    TRemainingAccounts
   >;
 
   return instruction;
@@ -294,8 +259,10 @@ export type ParsedCompressSettingsAccountInstruction<
   programAddress: Address<TProgram>;
   accounts: {
     settings: TAccountMetas[0];
-    authority: TAccountMetas[1];
-    rentCollector: TAccountMetas[2];
+    payer: TAccountMetas[1];
+    slotHashSysvar?: TAccountMetas[2] | undefined;
+    domainConfig?: TAccountMetas[3] | undefined;
+    instructionsSysvar: TAccountMetas[4];
   };
   data: CompressSettingsAccountInstructionData;
 };
@@ -308,9 +275,9 @@ export function parseCompressSettingsAccountInstruction<
     IInstructionWithAccounts<TAccountMetas> &
     IInstructionWithData<Uint8Array>
 ): ParsedCompressSettingsAccountInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 3) {
+  if (instruction.accounts.length < 5) {
     // TODO: Coded error.
-    throw new Error('Not enough accounts');
+    throw new Error("Not enough accounts");
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -318,12 +285,20 @@ export function parseCompressSettingsAccountInstruction<
     accountIndex += 1;
     return accountMeta;
   };
+  const getNextOptionalAccount = () => {
+    const accountMeta = getNextAccount();
+    return accountMeta.address === MULTI_WALLET_PROGRAM_ADDRESS
+      ? undefined
+      : accountMeta;
+  };
   return {
     programAddress: instruction.programAddress,
     accounts: {
       settings: getNextAccount(),
-      authority: getNextAccount(),
-      rentCollector: getNextAccount(),
+      payer: getNextAccount(),
+      slotHashSysvar: getNextOptionalAccount(),
+      domainConfig: getNextOptionalAccount(),
+      instructionsSysvar: getNextAccount(),
     },
     data: getCompressSettingsAccountInstructionDataDecoder().decode(
       instruction.data

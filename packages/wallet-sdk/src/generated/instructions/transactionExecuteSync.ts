@@ -10,16 +10,12 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
-  getArrayDecoder,
-  getArrayEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getOptionDecoder,
   getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
-  getU8Decoder,
-  getU8Encoder,
   transformEncoder,
   type Address,
   type Codec,
@@ -38,18 +34,14 @@ import {
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
-  getCompiledInstructionDecoder,
-  getCompiledInstructionEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  getTransactionMessageAddressTableLookupDecoder,
-  getTransactionMessageAddressTableLookupEncoder,
-  type CompiledInstruction,
-  type CompiledInstructionArgs,
+  getTransactionMessageDecoder,
+  getTransactionMessageEncoder,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-  type TransactionMessageAddressTableLookup,
-  type TransactionMessageAddressTableLookupArgs,
+  type TransactionMessage,
+  type TransactionMessageArgs,
 } from "../types";
 
 export const TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR = new Uint8Array([
@@ -95,40 +87,12 @@ export type TransactionExecuteSyncInstruction<
 
 export type TransactionExecuteSyncInstructionData = {
   discriminator: ReadonlyUint8Array;
-  /** The number of signer pubkeys in the account_keys vec. */
-  numSigners: number;
-  /** The number of writable signer pubkeys in the account_keys vec. */
-  numWritableSigners: number;
-  /** The number of writable non-signer pubkeys in the account_keys vec. */
-  numWritableNonSigners: number;
-  /** The number of static account keys in the account_keys vec. */
-  numAccountKeys: number;
-  /** List of instructions making up the tx. */
-  instructions: Array<CompiledInstruction>;
-  /**
-   * List of address table lookups used to load additional accounts
-   * for this transaction.
-   */
-  addressTableLookups: Array<TransactionMessageAddressTableLookup>;
+  transactionMessage: TransactionMessage;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
 };
 
 export type TransactionExecuteSyncInstructionDataArgs = {
-  /** The number of signer pubkeys in the account_keys vec. */
-  numSigners: number;
-  /** The number of writable signer pubkeys in the account_keys vec. */
-  numWritableSigners: number;
-  /** The number of writable non-signer pubkeys in the account_keys vec. */
-  numWritableNonSigners: number;
-  /** The number of static account keys in the account_keys vec. */
-  numAccountKeys: number;
-  /** List of instructions making up the tx. */
-  instructions: Array<CompiledInstructionArgs>;
-  /**
-   * List of address table lookups used to load additional accounts
-   * for this transaction.
-   */
-  addressTableLookups: Array<TransactionMessageAddressTableLookupArgs>;
+  transactionMessage: TransactionMessageArgs;
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
 };
 
@@ -136,15 +100,7 @@ export function getTransactionExecuteSyncInstructionDataEncoder(): Encoder<Trans
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["numSigners", getU8Encoder()],
-      ["numWritableSigners", getU8Encoder()],
-      ["numWritableNonSigners", getU8Encoder()],
-      ["numAccountKeys", getU8Encoder()],
-      ["instructions", getArrayEncoder(getCompiledInstructionEncoder())],
-      [
-        "addressTableLookups",
-        getArrayEncoder(getTransactionMessageAddressTableLookupEncoder()),
-      ],
+      ["transactionMessage", getTransactionMessageEncoder()],
       [
         "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
@@ -160,15 +116,7 @@ export function getTransactionExecuteSyncInstructionDataEncoder(): Encoder<Trans
 export function getTransactionExecuteSyncInstructionDataDecoder(): Decoder<TransactionExecuteSyncInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["numSigners", getU8Decoder()],
-    ["numWritableSigners", getU8Decoder()],
-    ["numWritableNonSigners", getU8Decoder()],
-    ["numAccountKeys", getU8Decoder()],
-    ["instructions", getArrayDecoder(getCompiledInstructionDecoder())],
-    [
-      "addressTableLookups",
-      getArrayDecoder(getTransactionMessageAddressTableLookupDecoder()),
-    ],
+    ["transactionMessage", getTransactionMessageDecoder()],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
 }
@@ -194,12 +142,7 @@ export type TransactionExecuteSyncInput<
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   domainConfig?: Address<TAccountDomainConfig>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  numSigners: TransactionExecuteSyncInstructionDataArgs["numSigners"];
-  numWritableSigners: TransactionExecuteSyncInstructionDataArgs["numWritableSigners"];
-  numWritableNonSigners: TransactionExecuteSyncInstructionDataArgs["numWritableNonSigners"];
-  numAccountKeys: TransactionExecuteSyncInstructionDataArgs["numAccountKeys"];
-  instructions: TransactionExecuteSyncInstructionDataArgs["instructions"];
-  addressTableLookups: TransactionExecuteSyncInstructionDataArgs["addressTableLookups"];
+  transactionMessage: TransactionExecuteSyncInstructionDataArgs["transactionMessage"];
   secp256r1VerifyArgs: TransactionExecuteSyncInstructionDataArgs["secp256r1VerifyArgs"];
   remainingAccounts: TRemainingAccounts;
 };

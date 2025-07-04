@@ -22,6 +22,7 @@ import {
   type Decoder,
   type Encoder,
   type IAccountMeta,
+  type IAccountSignerMeta,
   type IInstruction,
   type IInstructionWithAccounts,
   type IInstructionWithData,
@@ -29,23 +30,29 @@ import {
   type OptionOrNullable,
   type ReadonlyAccount,
   type ReadonlyUint8Array,
-} from '@solana/kit';
-import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
-import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
+  type TransactionSigner,
+  type WritableSignerAccount,
+} from "@solana/kit";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
+  getProofArgsDecoder,
+  getProofArgsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  getSettingsArgsDecoder,
-  getSettingsArgsEncoder,
+  getSettingsProofArgsDecoder,
+  getSettingsProofArgsEncoder,
   getTransactionMessageDecoder,
   getTransactionMessageEncoder,
+  type ProofArgs,
+  type ProofArgsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-  type SettingsArgs,
-  type SettingsArgsArgs,
+  type SettingsProofArgs,
+  type SettingsProofArgsArgs,
   type TransactionMessage,
   type TransactionMessageArgs,
-} from '../types';
+} from "../types";
 
 export const TRANSACTION_EXECUTE_SYNC_COMPRESSED_DISCRIMINATOR = new Uint8Array(
   [251, 154, 149, 157, 125, 132, 60, 183]
@@ -59,18 +66,23 @@ export function getTransactionExecuteSyncCompressedDiscriminatorBytes() {
 
 export type TransactionExecuteSyncCompressedInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
+  TAccountPayer extends string | IAccountMeta<string> = string,
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
+    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
   TAccountDomainConfig extends string | IAccountMeta<string> = string,
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
+    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
   TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = IInstruction<TProgram> &
   IInstructionWithData<Uint8Array> &
   IInstructionWithAccounts<
     [
+      TAccountPayer extends string
+        ? WritableSignerAccount<TAccountPayer> &
+            IAccountSignerMeta<TAccountPayer>
+        : TAccountPayer,
       TAccountSlotHashSysvar extends string
         ? ReadonlyAccount<TAccountSlotHashSysvar>
         : TAccountSlotHashSysvar,
@@ -88,25 +100,28 @@ export type TransactionExecuteSyncCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   transactionMessage: TransactionMessage;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
-  settingsArgs: SettingsArgs;
+  settingsArgs: SettingsProofArgs;
+  compressedProofArgs: ProofArgs;
 };
 
 export type TransactionExecuteSyncCompressedInstructionDataArgs = {
   transactionMessage: TransactionMessageArgs;
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  settingsArgs: SettingsArgsArgs;
+  settingsArgs: SettingsProofArgsArgs;
+  compressedProofArgs: ProofArgsArgs;
 };
 
 export function getTransactionExecuteSyncCompressedInstructionDataEncoder(): Encoder<TransactionExecuteSyncCompressedInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
-      ['transactionMessage', getTransactionMessageEncoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["transactionMessage", getTransactionMessageEncoder()],
       [
-        'secp256r1VerifyArgs',
+        "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
-      ['settingsArgs', getSettingsArgsEncoder()],
+      ["settingsArgs", getSettingsProofArgsEncoder()],
+      ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
       ...value,
@@ -117,10 +132,11 @@ export function getTransactionExecuteSyncCompressedInstructionDataEncoder(): Enc
 
 export function getTransactionExecuteSyncCompressedInstructionDataDecoder(): Decoder<TransactionExecuteSyncCompressedInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
-    ['transactionMessage', getTransactionMessageDecoder()],
-    ['secp256r1VerifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ['settingsArgs', getSettingsArgsDecoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["transactionMessage", getTransactionMessageDecoder()],
+    ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
+    ["settingsArgs", getSettingsProofArgsDecoder()],
+    ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }
 
@@ -135,41 +151,53 @@ export function getTransactionExecuteSyncCompressedInstructionDataCodec(): Codec
 }
 
 export type TransactionExecuteSyncCompressedInput<
+  TAccountPayer extends string = string,
   TAccountSlotHashSysvar extends string = string,
   TAccountDomainConfig extends string = string,
   TAccountInstructionsSysvar extends string = string,
+  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = {
+  payer: TransactionSigner<TAccountPayer>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   domainConfig?: Address<TAccountDomainConfig>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  transactionMessage: TransactionExecuteSyncCompressedInstructionDataArgs['transactionMessage'];
-  secp256r1VerifyArgs: TransactionExecuteSyncCompressedInstructionDataArgs['secp256r1VerifyArgs'];
-  settingsArgs: TransactionExecuteSyncCompressedInstructionDataArgs['settingsArgs'];
+  transactionMessage: TransactionExecuteSyncCompressedInstructionDataArgs["transactionMessage"];
+  secp256r1VerifyArgs: TransactionExecuteSyncCompressedInstructionDataArgs["secp256r1VerifyArgs"];
+  settingsArgs: TransactionExecuteSyncCompressedInstructionDataArgs["settingsArgs"];
+  compressedProofArgs: TransactionExecuteSyncCompressedInstructionDataArgs["compressedProofArgs"];
+  remainingAccounts: TRemainingAccounts;
 };
 
 export function getTransactionExecuteSyncCompressedInstruction<
+  TAccountPayer extends string,
   TAccountSlotHashSysvar extends string,
   TAccountDomainConfig extends string,
   TAccountInstructionsSysvar extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
+  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 >(
   input: TransactionExecuteSyncCompressedInput<
+    TAccountPayer,
     TAccountSlotHashSysvar,
     TAccountDomainConfig,
-    TAccountInstructionsSysvar
+    TAccountInstructionsSysvar,
+    TRemainingAccounts
   >,
   config?: { programAddress?: TProgramAddress }
 ): TransactionExecuteSyncCompressedInstruction<
   TProgramAddress,
+  TAccountPayer,
   TAccountSlotHashSysvar,
   TAccountDomainConfig,
-  TAccountInstructionsSysvar
+  TAccountInstructionsSysvar,
+  TRemainingAccounts
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
+    payer: { value: input.payer ?? null, isWritable: true },
     slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
     domainConfig: { value: input.domainConfig ?? null, isWritable: false },
     instructionsSysvar: {
@@ -188,19 +216,21 @@ export function getTransactionExecuteSyncCompressedInstruction<
   // Resolve default values.
   if (!accounts.slotHashSysvar.value) {
     accounts.slotHashSysvar.value =
-      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
+      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
   }
   if (!accounts.instructionsSysvar.value) {
     accounts.instructionsSysvar.value =
-      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
+      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
   }
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   const instruction = {
     accounts: [
+      getAccountMeta(accounts.payer),
       getAccountMeta(accounts.slotHashSysvar),
       getAccountMeta(accounts.domainConfig),
       getAccountMeta(accounts.instructionsSysvar),
+      ...input.remainingAccounts,
     ],
     programAddress,
     data: getTransactionExecuteSyncCompressedInstructionDataEncoder().encode(
@@ -208,9 +238,11 @@ export function getTransactionExecuteSyncCompressedInstruction<
     ),
   } as TransactionExecuteSyncCompressedInstruction<
     TProgramAddress,
+    TAccountPayer,
     TAccountSlotHashSysvar,
     TAccountDomainConfig,
-    TAccountInstructionsSysvar
+    TAccountInstructionsSysvar,
+    TRemainingAccounts
   >;
 
   return instruction;
@@ -222,9 +254,10 @@ export type ParsedTransactionExecuteSyncCompressedInstruction<
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    slotHashSysvar?: TAccountMetas[0] | undefined;
-    domainConfig?: TAccountMetas[1] | undefined;
-    instructionsSysvar: TAccountMetas[2];
+    payer: TAccountMetas[0];
+    slotHashSysvar?: TAccountMetas[1] | undefined;
+    domainConfig?: TAccountMetas[2] | undefined;
+    instructionsSysvar: TAccountMetas[3];
   };
   data: TransactionExecuteSyncCompressedInstructionData;
 };
@@ -237,9 +270,9 @@ export function parseTransactionExecuteSyncCompressedInstruction<
     IInstructionWithAccounts<TAccountMetas> &
     IInstructionWithData<Uint8Array>
 ): ParsedTransactionExecuteSyncCompressedInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 3) {
+  if (instruction.accounts.length < 4) {
     // TODO: Coded error.
-    throw new Error('Not enough accounts');
+    throw new Error("Not enough accounts");
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -256,6 +289,7 @@ export function parseTransactionExecuteSyncCompressedInstruction<
   return {
     programAddress: instruction.programAddress,
     accounts: {
+      payer: getNextAccount(),
       slotHashSysvar: getNextOptionalAccount(),
       domainConfig: getNextOptionalAccount(),
       instructionsSysvar: getNextAccount(),

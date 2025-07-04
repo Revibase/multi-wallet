@@ -1,25 +1,26 @@
 use crate::{
     state::{
-        DomainConfig, KeyType, MemberKey, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings,
-        SettingsArgs, TransactionActionType,
+        verify_compressed_settings, DomainConfig, KeyType, MemberKey, ProofArgs, Secp256r1Pubkey,
+        Secp256r1VerifyArgs, SettingsProofArgs, TransactionActionType,
     },
     MultisigError, TransactionBuffer,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use light_sdk::account::LightAccount;
 
 #[derive(Accounts)]
 pub struct TransactionBufferCloseCompressed<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
     /// CHECK:
     #[account(
-            mut,
-            constraint = payer.key() == transaction_buffer.payer @MultisigError::InvalidAccount
-        )]
-    pub payer: UncheckedAccount<'info>,
+        mut,
+        address = transaction_buffer.payer
+    )]
+    pub rent_collector: UncheckedAccount<'info>,
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
     #[account(
         mut,
-        close = payer,
+        close = rent_collector,
     )]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
     pub closer: Option<Signer<'info>>,
@@ -35,11 +36,13 @@ pub struct TransactionBufferCloseCompressed<'info> {
     pub instructions_sysvar: Option<UncheckedAccount<'info>>,
 }
 
-impl TransactionBufferCloseCompressed<'_> {
+impl<'info> TransactionBufferCloseCompressed<'info> {
     fn validate(
         &self,
+        remaining_accounts: &[AccountInfo<'info>],
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
-        settings_args: &SettingsArgs,
+        settings_args: &SettingsProofArgs,
+        compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         let Self {
             closer,
@@ -47,16 +50,18 @@ impl TransactionBufferCloseCompressed<'_> {
             domain_config,
             slot_hash_sysvar,
             instructions_sysvar,
+            payer,
             ..
         } = self;
-        let settings = LightAccount::<'_, Settings>::new_mut(
-            &crate::ID,
-            &settings_args.account_meta,
-            settings_args.settings.clone(),
-        )
-        .map_err(ProgramError::from)?;
 
-        let settings_key = Pubkey::new_from_array(settings.address().unwrap());
+        let (settings, settings_key) = verify_compressed_settings(
+            &payer.to_account_info(),
+            None,
+            &settings_args,
+            remaining_accounts,
+            compressed_proof_args,
+        )?;
+
         require!(
             settings_key.eq(&transaction_buffer.multi_wallet_settings),
             MultisigError::InvalidAccount
@@ -114,11 +119,12 @@ impl TransactionBufferCloseCompressed<'_> {
         }
     }
 
-    #[access_control(ctx.accounts.validate(&secp256r1_verify_args, &settings_args))]
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, &secp256r1_verify_args, &settings_args, compressed_proof_args))]
     pub fn process(
-        ctx: Context<Self>,
+        ctx: Context<'_, '_, '_, 'info, Self>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_args: SettingsArgs,
+        settings_args: SettingsProofArgs,
+        compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         Ok(())
     }

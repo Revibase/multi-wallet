@@ -19,29 +19,22 @@ import {
 import {
   getPackedAddressTreeInfoDecoder,
   getPackedAddressTreeInfoEncoder,
-  getValidityProofDecoder,
-  getValidityProofEncoder,
   type PackedAddressTreeInfo,
   type PackedAddressTreeInfoArgs,
-  type ValidityProof,
-  type ValidityProofArgs,
 } from '.';
 
 export type DelegateCreationArgs = {
-  proof: ValidityProof;
   addressTreeInfo: PackedAddressTreeInfo;
   outputStateTreeIndex: number;
 };
 
 export type DelegateCreationArgsArgs = {
-  proof: ValidityProofArgs;
   addressTreeInfo: PackedAddressTreeInfoArgs;
   outputStateTreeIndex: number;
 };
 
 export function getDelegateCreationArgsEncoder(): Encoder<DelegateCreationArgsArgs> {
   return getStructEncoder([
-    ['proof', getValidityProofEncoder()],
     ['addressTreeInfo', getPackedAddressTreeInfoEncoder()],
     ['outputStateTreeIndex', getU8Encoder()],
   ]);
@@ -49,7 +42,6 @@ export function getDelegateCreationArgsEncoder(): Encoder<DelegateCreationArgsAr
 
 export function getDelegateCreationArgsDecoder(): Decoder<DelegateCreationArgs> {
   return getStructDecoder([
-    ['proof', getValidityProofDecoder()],
     ['addressTreeInfo', getPackedAddressTreeInfoDecoder()],
     ['outputStateTreeIndex', getU8Decoder()],
   ]);

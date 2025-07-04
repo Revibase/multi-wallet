@@ -73,9 +73,9 @@ export type TransactionBuffer = {
   multiWalletBump: number;
   /** Flag to allow transaction to be executed */
   canExecute: boolean;
-  /** Flag to allow execution without sigverify once sufficient threshold is met */
+  /** Flag to allow execution straight away once sufficient threshold is met */
   permissionlessExecution: boolean;
-  expiry: bigint;
+  validTill: bigint;
   /** Payer for the transaction buffer */
   payer: Address;
   /** transaction bump */
@@ -103,9 +103,9 @@ export type TransactionBufferArgs = {
   multiWalletBump: number;
   /** Flag to allow transaction to be executed */
   canExecute: boolean;
-  /** Flag to allow execution without sigverify once sufficient threshold is met */
+  /** Flag to allow execution straight away once sufficient threshold is met */
   permissionlessExecution: boolean;
-  expiry: number | bigint;
+  validTill: number | bigint;
   /** Payer for the transaction buffer */
   payer: Address;
   /** transaction bump */
@@ -134,7 +134,7 @@ export function getTransactionBufferEncoder(): Encoder<TransactionBufferArgs> {
       ['multiWalletBump', getU8Encoder()],
       ['canExecute', getBooleanEncoder()],
       ['permissionlessExecution', getBooleanEncoder()],
-      ['expiry', getU64Encoder()],
+      ['validTill', getU64Encoder()],
       ['payer', getAddressEncoder()],
       ['bump', getU8Encoder()],
       ['bufferIndex', getU8Encoder()],
@@ -159,7 +159,7 @@ export function getTransactionBufferDecoder(): Decoder<TransactionBuffer> {
     ['multiWalletBump', getU8Decoder()],
     ['canExecute', getBooleanDecoder()],
     ['permissionlessExecution', getBooleanDecoder()],
-    ['expiry', getU64Decoder()],
+    ['validTill', getU64Decoder()],
     ['payer', getAddressDecoder()],
     ['bump', getU8Decoder()],
     ['bufferIndex', getU8Decoder()],

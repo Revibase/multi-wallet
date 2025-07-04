@@ -8,12 +8,12 @@ import { compileToWrappedMessageV0 } from "../utils/transactionMessage/compileTo
 
 export async function prepareTransactionMessage(
   recentBlockhash: string,
-  feePayer: Address,
+  payer: Address,
   instructions: IInstruction[],
   addressesByLookupTableAddress?: AddressesByLookupTableAddress
 ) {
   const compiledMessage = compileToWrappedMessageV0({
-    payerKey: feePayer,
+    payer,
     recentBlockhash,
     instructions,
     addressesByLookupTableAddress,

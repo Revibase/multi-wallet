@@ -7,6 +7,6 @@ pub struct GlobalCounter {
 
 impl GlobalCounter {
     pub fn size() -> usize {
-        16
+        8 + 16
     }
 }

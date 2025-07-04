@@ -32,19 +32,23 @@ import {
   type ReadonlyAccount,
   type ReadonlyUint8Array,
   type WritableAccount,
-} from '@solana/kit';
-import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
-import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
+} from "@solana/kit";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
+  getProofArgsDecoder,
+  getProofArgsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  getSettingsArgsDecoder,
-  getSettingsArgsEncoder,
+  getSettingsProofArgsDecoder,
+  getSettingsProofArgsEncoder,
+  type ProofArgs,
+  type ProofArgsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-  type SettingsArgs,
-  type SettingsArgsArgs,
-} from '../types';
+  type SettingsProofArgs,
+  type SettingsProofArgsArgs,
+} from "../types";
 
 export const NATIVE_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR = new Uint8Array([
   215, 168, 194, 70, 97, 19, 81, 126,
@@ -60,16 +64,16 @@ export type NativeTransferIntentCompressedInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
+    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
+    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
   TAccountDomainConfig extends string | IAccountMeta<string> = string,
   TAccountSource extends string | IAccountMeta<string> = string,
   TAccountDestination extends string | IAccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = '11111111111111111111111111111111',
+    | IAccountMeta<string> = "11111111111111111111111111111111",
   TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = IInstruction<TProgram> &
   IInstructionWithData<Uint8Array> &
@@ -101,25 +105,28 @@ export type NativeTransferIntentCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   amount: bigint;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
-  settingsArgs: SettingsArgs;
+  settingsArgs: SettingsProofArgs;
+  compressedProofArgs: ProofArgs;
 };
 
 export type NativeTransferIntentCompressedInstructionDataArgs = {
   amount: number | bigint;
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  settingsArgs: SettingsArgsArgs;
+  settingsArgs: SettingsProofArgsArgs;
+  compressedProofArgs: ProofArgsArgs;
 };
 
 export function getNativeTransferIntentCompressedInstructionDataEncoder(): Encoder<NativeTransferIntentCompressedInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
-      ['amount', getU64Encoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["amount", getU64Encoder()],
       [
-        'secp256r1VerifyArgs',
+        "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
-      ['settingsArgs', getSettingsArgsEncoder()],
+      ["settingsArgs", getSettingsProofArgsEncoder()],
+      ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
       ...value,
@@ -130,10 +137,11 @@ export function getNativeTransferIntentCompressedInstructionDataEncoder(): Encod
 
 export function getNativeTransferIntentCompressedInstructionDataDecoder(): Decoder<NativeTransferIntentCompressedInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
-    ['amount', getU64Decoder()],
-    ['secp256r1VerifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ['settingsArgs', getSettingsArgsDecoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["amount", getU64Decoder()],
+    ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
+    ["settingsArgs", getSettingsProofArgsDecoder()],
+    ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }
 
@@ -154,6 +162,7 @@ export type NativeTransferIntentCompressedInput<
   TAccountSource extends string = string,
   TAccountDestination extends string = string,
   TAccountSystemProgram extends string = string,
+  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = {
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
@@ -161,9 +170,11 @@ export type NativeTransferIntentCompressedInput<
   source: Address<TAccountSource>;
   destination: Address<TAccountDestination>;
   systemProgram?: Address<TAccountSystemProgram>;
-  amount: NativeTransferIntentCompressedInstructionDataArgs['amount'];
-  secp256r1VerifyArgs: NativeTransferIntentCompressedInstructionDataArgs['secp256r1VerifyArgs'];
-  settingsArgs: NativeTransferIntentCompressedInstructionDataArgs['settingsArgs'];
+  amount: NativeTransferIntentCompressedInstructionDataArgs["amount"];
+  secp256r1VerifyArgs: NativeTransferIntentCompressedInstructionDataArgs["secp256r1VerifyArgs"];
+  settingsArgs: NativeTransferIntentCompressedInstructionDataArgs["settingsArgs"];
+  compressedProofArgs: NativeTransferIntentCompressedInstructionDataArgs["compressedProofArgs"];
+  remainingAccounts: TRemainingAccounts;
 };
 
 export function getNativeTransferIntentCompressedInstruction<
@@ -174,6 +185,7 @@ export function getNativeTransferIntentCompressedInstruction<
   TAccountDestination extends string,
   TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
+  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 >(
   input: NativeTransferIntentCompressedInput<
     TAccountSlotHashSysvar,
@@ -181,7 +193,8 @@ export function getNativeTransferIntentCompressedInstruction<
     TAccountDomainConfig,
     TAccountSource,
     TAccountDestination,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TRemainingAccounts
   >,
   config?: { programAddress?: TProgramAddress }
 ): NativeTransferIntentCompressedInstruction<
@@ -191,7 +204,8 @@ export function getNativeTransferIntentCompressedInstruction<
   TAccountDomainConfig,
   TAccountSource,
   TAccountDestination,
-  TAccountSystemProgram
+  TAccountSystemProgram,
+  TRemainingAccounts
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -219,18 +233,18 @@ export function getNativeTransferIntentCompressedInstruction<
   // Resolve default values.
   if (!accounts.slotHashSysvar.value) {
     accounts.slotHashSysvar.value =
-      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
+      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
   }
   if (!accounts.instructionsSysvar.value) {
     accounts.instructionsSysvar.value =
-      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
+      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
   }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   const instruction = {
     accounts: [
       getAccountMeta(accounts.slotHashSysvar),
@@ -239,6 +253,7 @@ export function getNativeTransferIntentCompressedInstruction<
       getAccountMeta(accounts.source),
       getAccountMeta(accounts.destination),
       getAccountMeta(accounts.systemProgram),
+      ...input.remainingAccounts,
     ],
     programAddress,
     data: getNativeTransferIntentCompressedInstructionDataEncoder().encode(
@@ -251,7 +266,8 @@ export function getNativeTransferIntentCompressedInstruction<
     TAccountDomainConfig,
     TAccountSource,
     TAccountDestination,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TRemainingAccounts
   >;
 
   return instruction;
@@ -283,7 +299,7 @@ export function parseNativeTransferIntentCompressedInstruction<
 ): ParsedNativeTransferIntentCompressedInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 6) {
     // TODO: Coded error.
-    throw new Error('Not enough accounts');
+    throw new Error("Not enough accounts");
   }
   let accountIndex = 0;
   const getNextAccount = () => {

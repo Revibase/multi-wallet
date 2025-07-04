@@ -1,4 +1,6 @@
 import { describe } from "mocha";
+import { runCompressionTests } from "./tests/compression.test";
+import { runDecompressionTests } from "./tests/decompression.test";
 import { runMemberManagementTests } from "./tests/member-management.test";
 import { runSecp256r1Tests } from "./tests/secp256r1.test";
 import { runTransactionTests } from "./tests/transactions.test";
@@ -19,5 +21,13 @@ describe("Multi Wallet Tests", function () {
 
   describe("Transaction Handling", () => {
     runTransactionTests();
+  });
+
+  describe("Decompression Test", () => {
+    runDecompressionTests();
+  });
+
+  describe("Compression Test", () => {
+    runCompressionTests();
   });
 });

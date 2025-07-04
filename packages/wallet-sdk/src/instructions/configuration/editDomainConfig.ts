@@ -16,8 +16,8 @@ export async function editDomainConfig({
   const domainConfig = await getDomainConfig({ rpId });
   return getEditDomainConfigInstruction({
     domainConfig,
-    origin,
+    newOrigin: origin,
     authority: currentAuthority,
-    authorityArg: newAuthority,
+    newAuthority,
   });
 }

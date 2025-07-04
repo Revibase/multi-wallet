@@ -27,7 +27,7 @@ export interface RevibaseEventEmitter {
 export interface Revibase extends RevibaseEventEmitter {
   publicKey: string | null;
   member: { type: "ed25519" | "secp256r1"; value: string } | null;
-  settings: string | null;
+  index: number | null;
   connect(options?: { onlyIfTrusted?: boolean }): Promise<void>;
   disconnect(): void;
   signTransaction(transaction: Uint8Array): Promise<Uint8Array[]>;
@@ -40,23 +40,23 @@ export interface Revibase extends RevibaseEventEmitter {
     {
       publicKey: string;
       member: { type: "ed25519" | "secp256r1"; value: string };
-      settings: string;
+      index: number;
     } & Omit<SolanaSignInOutput, "account">
   >;
 }
 
 export class RevibaseWalletAccount extends ReadonlyWalletAccount {
   readonly member: { type: "ed25519" | "secp256r1"; value: string } | null;
-  readonly settings: string;
+  readonly index: number;
 
   constructor(
     account: WalletAccount,
     member: { type: "ed25519" | "secp256r1"; value: string } | null,
-    settings: string
+    index: number
   ) {
     super(account);
     this.member = member;
-    this.settings = settings;
+    this.index = index;
   }
 }
 

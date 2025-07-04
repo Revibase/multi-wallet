@@ -9,6 +9,6 @@ const anchorIdl = JSON.parse(
 
 const codama = createFromRoot(rootNodeFromAnchor(anchorIdl));
 
-const visitor = renderVisitor("./src/generated2", {});
+const visitor = renderVisitor("./src/generated", {});
 
 codama.accept(visitor);

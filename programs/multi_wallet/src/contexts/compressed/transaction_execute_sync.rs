@@ -1,18 +1,20 @@
 use crate::{
     id,
     state::{
-        DomainConfig, MemberKey, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings, SettingsArgs,
-        TransactionActionType, TransactionMessage, SEED_MULTISIG,
+        verify_compressed_settings, CompressedSettings, DomainConfig, MemberKey, ProofArgs,
+        Secp256r1Pubkey, Secp256r1VerifyArgs, SettingsProofArgs, TransactionActionType,
+        TransactionMessage, SEED_MULTISIG,
     },
     utils::durable_nonce_check,
     ExecutableTransactionMessage, MultisigError, Permission, SEED_VAULT,
 };
 use anchor_lang::solana_program::hash::hash;
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use light_sdk::account::LightAccount;
 
 #[derive(Accounts)]
 pub struct TransactionExecuteSyncCompressed<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
     /// CHECK:
     #[account(
         address = SlotHashes::id()
@@ -28,10 +30,11 @@ pub struct TransactionExecuteSyncCompressed<'info> {
 
 impl<'info> TransactionExecuteSyncCompressed<'info> {
     fn validate(
-        ctx: &Context<'_, '_, '_, 'info, Self>,
+        &self,
+        remaining_accounts: &[AccountInfo<'info>],
         transaction_message: &TransactionMessage,
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
-        settings: &LightAccount<'_, Settings>,
+        settings: &CompressedSettings,
         settings_key: &Pubkey,
     ) -> Result<()> {
         let Self {
@@ -39,7 +42,7 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
             slot_hash_sysvar,
             instructions_sysvar,
             ..
-        } = &ctx.accounts;
+        } = &self;
 
         durable_nonce_check(instructions_sysvar)?;
 
@@ -62,7 +65,7 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
             let is_secp256r1_signer =
                 secp256r1_member_key.is_some() && member.pubkey.eq(&secp256r1_member_key.unwrap());
             let is_signer = is_secp256r1_signer
-                || ctx.remaining_accounts.iter().any(|account| {
+                || remaining_accounts.iter().any(|account| {
                     account.is_signer
                         && MemberKey::convert_ed25519(account.key)
                             .unwrap()
@@ -96,8 +99,8 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
                     MultisigError::MemberDoesNotBelongToDomainConfig
                 );
 
-                let vault_transaction_message = transaction_message
-                    .convert_to_vault_transaction_message(ctx.remaining_accounts)?;
+                let vault_transaction_message =
+                    transaction_message.convert_to_vault_transaction_message(remaining_accounts)?;
 
                 let mut writer = Vec::new();
                 vault_transaction_message.serialize(&mut writer)?;
@@ -139,18 +142,19 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
         ctx: Context<'_, '_, '_, 'info, Self>,
         transaction_message: TransactionMessage,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_args: SettingsArgs,
+        settings_args: SettingsProofArgs,
+        compressed_proof_args: ProofArgs,
     ) -> Result<()> {
-        let settings = LightAccount::<'_, Settings>::new_mut(
-            &crate::ID,
-            &settings_args.account_meta,
-            settings_args.settings.clone(),
-        )
-        .map_err(ProgramError::from)?;
-        let settings_key = Pubkey::new_from_array(settings.address().unwrap());
+        let (settings, settings_key) = verify_compressed_settings(
+            &ctx.accounts.payer.to_account_info(),
+            None,
+            &settings_args,
+            &ctx.remaining_accounts,
+            compressed_proof_args,
+        )?;
 
-        Self::validate(
-            &ctx,
+        ctx.accounts.validate(
+            &ctx.remaining_accounts,
             &transaction_message,
             &secp256r1_verify_args,
             &settings,

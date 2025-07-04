@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 
-#[derive(Debug)]
 #[account(zero_copy)]
 pub struct DomainConfig {
     pub origin_length: u16,

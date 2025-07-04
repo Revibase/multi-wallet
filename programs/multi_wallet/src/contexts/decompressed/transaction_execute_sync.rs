@@ -158,10 +158,10 @@ impl<'info> TransactionExecuteSync<'info> {
             .get(num_lookups..message_end_index)
             .ok_or(MultisigError::InvalidNumberOfAccounts)?;
 
-        let multi_wallet_key = settings.key();
+        let settings_key = settings.key();
         let vault_signer_seed: &[&[u8]] = &[
             SEED_MULTISIG,
-            multi_wallet_key.as_ref(),
+            settings_key.as_ref(),
             SEED_VAULT,
             &[settings.multi_wallet_bump],
         ];

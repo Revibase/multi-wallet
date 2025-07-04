@@ -195,7 +195,7 @@ export type TokenTransferIntentAsyncInput<
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   domainConfig?: Address<TAccountDomainConfig>;
   source?: Address<TAccountSource>;
-  sourceTokenAccount: Address<TAccountSourceTokenAccount>;
+  sourceTokenAccount?: Address<TAccountSourceTokenAccount>;
   destination: Address<TAccountDestination>;
   destinationTokenAccount: Address<TAccountDestinationTokenAccount>;
   tokenProgram?: Address<TAccountTokenProgram>;
@@ -321,6 +321,17 @@ export async function getTokenTransferIntentInstructionAsync<
   if (!accounts.tokenProgram.value) {
     accounts.tokenProgram.value =
       "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address<"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA">;
+  }
+  if (!accounts.sourceTokenAccount.value) {
+    accounts.sourceTokenAccount.value = await getProgramDerivedAddress({
+      programAddress:
+        "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">,
+      seeds: [
+        getAddressEncoder().encode(expectAddress(accounts.source.value)),
+        getAddressEncoder().encode(expectAddress(accounts.tokenProgram.value)),
+        getAddressEncoder().encode(expectAddress(accounts.mint.value)),
+      ],
+    });
   }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =

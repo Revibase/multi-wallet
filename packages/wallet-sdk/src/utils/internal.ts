@@ -5,25 +5,31 @@ import {
   address,
   fetchAddressesForLookupTables,
   getAddressEncoder,
-  GetMultipleAccountsApi,
   getSignersFromInstruction,
   IAccountMeta,
   IAccountSignerMeta,
   IInstruction,
   none,
   OptionOrNullable,
-  Rpc,
   some,
   TransactionSigner,
 } from "@solana/kit";
+import { getSolanaRpc } from ".";
 import {
   ConfigAction,
+  DelegateCloseArgs,
+  DelegateCreationArgs,
   IPermissions,
   MemberKey,
-  MemberWithVerifyArgs,
+  MemberKeyWithCloseArgs,
+  MemberWithCreationArgs,
   Secp256r1VerifyArgs,
 } from "../generated";
-import { ConfigActionWrapper, KeyType, Secp256r1Key } from "../types";
+import {
+  ConfigActionWrapperWithDelegateArgs,
+  KeyType,
+  Secp256r1Key,
+} from "../types";
 import { JITO_TIP_ACCOUNTS } from "./consts";
 import { convertMemberKeyToString } from "./helper";
 import {
@@ -87,12 +93,10 @@ function isSignerIndex(message: CustomTransactionMessage, index: number) {
 /** Populate remaining accounts required for execution of the transaction. */
 
 export async function accountsForTransactionExecute({
-  rpc,
   multiWallet,
   transactionMessageBytes,
   additionalSigners,
 }: {
-  rpc: Rpc<GetMultipleAccountsApi>;
   transactionMessageBytes: Uint8Array;
   multiWallet: Address;
   additionalSigners?: TransactionSigner[];
@@ -103,7 +107,7 @@ export async function accountsForTransactionExecute({
 
   const addressLookupTableAccounts = await fetchAddressesForLookupTables(
     transactionMessage.addressTableLookups.map((x) => x.accountKey),
-    rpc
+    getSolanaRpc()
   );
 
   // Populate account metas required for execution of the transaction.
@@ -234,12 +238,12 @@ export function convertMemberkeyToPubKey(
 }
 export function deduplicateSignersAndFeePayer(
   instructions: IInstruction[],
-  feePayer: TransactionSigner
+  payer: TransactionSigner
 ): Address[] {
   const signers = instructions
     .flatMap((instruction) => getSignersFromInstruction(instruction))
-    .filter((x) => x.address !== feePayer.address)
-    .concat([feePayer]);
+    .filter((x) => x.address !== payer.address)
+    .concat([payer]);
   return signers.map((x) => x.address);
 }
 export function normalizeKey(key: any) {
@@ -316,7 +320,7 @@ export function getDeduplicatedSigners(
   return dedupSigners;
 }
 export function convertConfigActionWrapper(
-  configActionsWrapper: ConfigActionWrapper[]
+  configActionsWrapper: ConfigActionWrapperWithDelegateArgs[]
 ) {
   const configActions: ConfigAction[] = [];
   for (const action of configActionsWrapper) {
@@ -333,9 +337,9 @@ export function convertConfigActionWrapper(
         });
         break;
       case "AddMembers":
-        const addMembers: MemberWithVerifyArgs[] = [];
+        const addMembers: MemberWithCreationArgs[] = [];
         for (const x of action.members) {
-          addMembers.push(convertMember(x));
+          addMembers.push(convertAddMember(x));
         }
         configActions.push({
           __kind: "AddMembers",
@@ -343,9 +347,13 @@ export function convertConfigActionWrapper(
         });
         break;
       case "RemoveMembers":
+        const removeMembers: MemberKeyWithCloseArgs[] = [];
+        for (const x of action.members) {
+          removeMembers.push(convertRemoveMember(x));
+        }
         configActions.push({
           __kind: "RemoveMembers",
-          fields: [action.members.map(convertPubkeyToMemberkey)],
+          fields: [removeMembers],
         });
         break;
       case "SetThreshold":
@@ -360,10 +368,21 @@ export function convertConfigActionWrapper(
   return configActions;
 }
 
-export function convertMember(x: {
+export function convertRemoveMember(x: {
+  pubkey: Address | Secp256r1Key;
+  delegateArgs?: DelegateCloseArgs;
+}): MemberKeyWithCloseArgs {
+  return {
+    data: convertPubkeyToMemberkey(x.pubkey),
+    delegateArgs: x.delegateArgs ? some(x.delegateArgs) : none(),
+  };
+}
+
+export function convertAddMember(x: {
   pubkey: Address | Secp256r1Key;
   permissions: IPermissions;
-}): MemberWithVerifyArgs {
+  delegateArgs?: DelegateCreationArgs;
+}): MemberWithCreationArgs {
   return {
     data: {
       permissions: x.permissions,
@@ -377,6 +396,7 @@ export function convertMember(x: {
       x.pubkey instanceof Secp256r1Key && x.pubkey.verifyArgs
         ? some(x.pubkey.verifyArgs)
         : none(),
+    delegateArgs: x.delegateArgs ? some(x.delegateArgs) : none(),
   };
 }
 export function getPubkeyString(pubkey: TransactionSigner | Secp256r1Key) {
@@ -388,16 +408,16 @@ export function getPubkeyString(pubkey: TransactionSigner | Secp256r1Key) {
 }
 
 export function addJitoTip({
-  feePayer,
+  payer,
   tipAmount,
 }: {
-  feePayer: TransactionSigner;
+  payer: TransactionSigner;
   tipAmount: number;
 }) {
   const tipAccount =
     JITO_TIP_ACCOUNTS[Math.floor(Math.random() * JITO_TIP_ACCOUNTS.length)];
   return getTransferSolInstruction({
-    source: feePayer,
+    source: payer,
     destination: address(tipAccount),
     amount: tipAmount,
   });

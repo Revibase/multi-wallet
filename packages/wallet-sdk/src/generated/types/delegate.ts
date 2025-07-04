@@ -8,26 +8,25 @@
 
 import {
   combineCodec,
-  getAddressDecoder,
-  getAddressEncoder,
   getStructDecoder,
   getStructEncoder,
-  type Address,
+  getU128Decoder,
+  getU128Encoder,
   type Codec,
   type Decoder,
   type Encoder,
 } from '@solana/kit';
 
-export type Delegate = { multiWalletSettings: Address };
+export type Delegate = { index: bigint };
 
-export type DelegateArgs = Delegate;
+export type DelegateArgs = { index: number | bigint };
 
 export function getDelegateEncoder(): Encoder<DelegateArgs> {
-  return getStructEncoder([['multiWalletSettings', getAddressEncoder()]]);
+  return getStructEncoder([['index', getU128Encoder()]]);
 }
 
 export function getDelegateDecoder(): Decoder<Delegate> {
-  return getStructDecoder([['multiWalletSettings', getAddressDecoder()]]);
+  return getStructDecoder([['index', getU128Decoder()]]);
 }
 
 export function getDelegateCodec(): Codec<DelegateArgs, Delegate> {

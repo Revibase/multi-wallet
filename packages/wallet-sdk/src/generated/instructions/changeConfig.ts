@@ -15,6 +15,8 @@ import {
   getArrayEncoder,
   getBytesDecoder,
   getBytesEncoder,
+  getOptionDecoder,
+  getOptionEncoder,
   getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
@@ -28,6 +30,8 @@ import {
   type IInstruction,
   type IInstructionWithAccounts,
   type IInstructionWithData,
+  type Option,
+  type OptionOrNullable,
   type ReadonlyAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
@@ -43,8 +47,12 @@ import {
 import {
   getConfigActionDecoder,
   getConfigActionEncoder,
+  getProofArgsDecoder,
+  getProofArgsEncoder,
   type ConfigAction,
   type ConfigActionArgs,
+  type ProofArgs,
+  type ProofArgsArgs,
 } from "../types";
 
 export const CHANGE_CONFIG_DISCRIMINATOR = new Uint8Array([
@@ -98,10 +106,12 @@ export type ChangeConfigInstruction<
 export type ChangeConfigInstructionData = {
   discriminator: ReadonlyUint8Array;
   configActions: Array<ConfigAction>;
+  compressedProofArgs: Option<ProofArgs>;
 };
 
 export type ChangeConfigInstructionDataArgs = {
   configActions: Array<ConfigActionArgs>;
+  compressedProofArgs: OptionOrNullable<ProofArgsArgs>;
 };
 
 export function getChangeConfigInstructionDataEncoder(): Encoder<ChangeConfigInstructionDataArgs> {
@@ -109,6 +119,7 @@ export function getChangeConfigInstructionDataEncoder(): Encoder<ChangeConfigIns
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
       ["configActions", getArrayEncoder(getConfigActionEncoder())],
+      ["compressedProofArgs", getOptionEncoder(getProofArgsEncoder())],
     ]),
     (value) => ({ ...value, discriminator: CHANGE_CONFIG_DISCRIMINATOR })
   );
@@ -118,6 +129,7 @@ export function getChangeConfigInstructionDataDecoder(): Decoder<ChangeConfigIns
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["configActions", getArrayDecoder(getConfigActionDecoder())],
+    ["compressedProofArgs", getOptionDecoder(getProofArgsDecoder())],
   ]);
 }
 
@@ -144,6 +156,7 @@ export type ChangeConfigAsyncInput<
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   configActions: ChangeConfigInstructionDataArgs["configActions"];
+  compressedProofArgs: ChangeConfigInstructionDataArgs["compressedProofArgs"];
 };
 
 export async function getChangeConfigInstructionAsync<
@@ -261,6 +274,7 @@ export type ChangeConfigInput<
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   configActions: ChangeConfigInstructionDataArgs["configActions"];
+  compressedProofArgs: ChangeConfigInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: TRemainingAccounts;
 };
 
@@ -364,7 +378,7 @@ export type ParsedChangeConfigInstruction<
     payer: TAccountMetas[1];
     systemProgram: TAccountMetas[2];
     slotHashSysvar?: TAccountMetas[3] | undefined;
-    instructionsSysvar: TAccountMetas[4];
+    instructionsSysvar?: TAccountMetas[4] | undefined;
   };
   data: ChangeConfigInstructionData;
 };
@@ -400,7 +414,7 @@ export function parseChangeConfigInstruction<
       payer: getNextAccount(),
       systemProgram: getNextAccount(),
       slotHashSysvar: getNextOptionalAccount(),
-      instructionsSysvar: getNextAccount(),
+      instructionsSysvar: getNextOptionalAccount(),
     },
     data: getChangeConfigInstructionDataDecoder().decode(instruction.data),
   };

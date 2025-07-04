@@ -10,10 +10,10 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
-  getAddressEncoder,
   getBytesDecoder,
   getBytesEncoder,
-  getProgramDerivedAddress,
+  getOptionDecoder,
+  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
@@ -26,32 +26,34 @@ import {
   type IInstruction,
   type IInstructionWithAccounts,
   type IInstructionWithData,
+  type Option,
+  type OptionOrNullable,
   type ReadonlyAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from '@solana/kit';
-import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
-import {
-  expectAddress,
-  getAccountMetaFactory,
-  type ResolvedAccount,
-} from '../shared';
+} from "@solana/kit";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
   getCompressedAccountMetaCloseDecoder,
   getCompressedAccountMetaCloseEncoder,
-  getSettingsDecoder,
-  getSettingsEncoder,
-  getValidityProofDecoder,
-  getValidityProofEncoder,
+  getCompressedSettingsDecoder,
+  getCompressedSettingsEncoder,
+  getProofArgsDecoder,
+  getProofArgsEncoder,
+  getSecp256r1VerifyArgsDecoder,
+  getSecp256r1VerifyArgsEncoder,
   type CompressedAccountMetaClose,
   type CompressedAccountMetaCloseArgs,
-  type Settings,
-  type SettingsArgs,
-  type ValidityProof,
-  type ValidityProofArgs,
-} from '../types';
+  type CompressedSettings,
+  type CompressedSettingsArgs,
+  type ProofArgs,
+  type ProofArgsArgs,
+  type Secp256r1VerifyArgs,
+  type Secp256r1VerifyArgsArgs,
+} from "../types";
 
 export const DECOMPRESS_SETTINGS_ACCOUNT_DISCRIMINATOR = new Uint8Array([
   237, 87, 232, 84, 218, 176, 222, 134,
@@ -65,19 +67,26 @@ export function getDecompressSettingsAccountDiscriminatorBytes() {
 
 export type DecompressSettingsAccountInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountSettingsAccount extends string | IAccountMeta<string> = string,
+  TAccountSettings extends string | IAccountMeta<string> = string,
   TAccountPayer extends string | IAccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = '11111111111111111111111111111111',
+    | IAccountMeta<string> = "11111111111111111111111111111111",
+  TAccountSlotHashSysvar extends
+    | string
+    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+  TAccountDomainConfig extends string | IAccountMeta<string> = string,
+  TAccountInstructionsSysvar extends
+    | string
+    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
   TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = IInstruction<TProgram> &
   IInstructionWithData<Uint8Array> &
   IInstructionWithAccounts<
     [
-      TAccountSettingsAccount extends string
-        ? WritableAccount<TAccountSettingsAccount>
-        : TAccountSettingsAccount,
+      TAccountSettings extends string
+        ? WritableAccount<TAccountSettings>
+        : TAccountSettings,
       TAccountPayer extends string
         ? WritableSignerAccount<TAccountPayer> &
             IAccountSignerMeta<TAccountPayer>
@@ -85,30 +94,45 @@ export type DecompressSettingsAccountInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountSlotHashSysvar extends string
+        ? ReadonlyAccount<TAccountSlotHashSysvar>
+        : TAccountSlotHashSysvar,
+      TAccountDomainConfig extends string
+        ? ReadonlyAccount<TAccountDomainConfig>
+        : TAccountDomainConfig,
+      TAccountInstructionsSysvar extends string
+        ? ReadonlyAccount<TAccountInstructionsSysvar>
+        : TAccountInstructionsSysvar,
       ...TRemainingAccounts,
     ]
   >;
 
 export type DecompressSettingsAccountInstructionData = {
   discriminator: ReadonlyUint8Array;
-  proof: ValidityProof;
   accountMeta: CompressedAccountMetaClose;
-  settings: Settings;
+  data: CompressedSettings;
+  compressedProofArgs: ProofArgs;
+  secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
 };
 
 export type DecompressSettingsAccountInstructionDataArgs = {
-  proof: ValidityProofArgs;
   accountMeta: CompressedAccountMetaCloseArgs;
-  settings: SettingsArgs;
+  data: CompressedSettingsArgs;
+  compressedProofArgs: ProofArgsArgs;
+  secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
 };
 
 export function getDecompressSettingsAccountInstructionDataEncoder(): Encoder<DecompressSettingsAccountInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
-      ['proof', getValidityProofEncoder()],
-      ['accountMeta', getCompressedAccountMetaCloseEncoder()],
-      ['settings', getSettingsEncoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["accountMeta", getCompressedAccountMetaCloseEncoder()],
+      ["data", getCompressedSettingsEncoder()],
+      ["compressedProofArgs", getProofArgsEncoder()],
+      [
+        "secp256r1VerifyArgs",
+        getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
+      ],
     ]),
     (value) => ({
       ...value,
@@ -119,10 +143,11 @@ export function getDecompressSettingsAccountInstructionDataEncoder(): Encoder<De
 
 export function getDecompressSettingsAccountInstructionDataDecoder(): Decoder<DecompressSettingsAccountInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
-    ['proof', getValidityProofDecoder()],
-    ['accountMeta', getCompressedAccountMetaCloseDecoder()],
-    ['settings', getSettingsDecoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["accountMeta", getCompressedAccountMetaCloseDecoder()],
+    ["data", getCompressedSettingsDecoder()],
+    ["compressedProofArgs", getProofArgsDecoder()],
+    ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
 }
 
@@ -136,138 +161,72 @@ export function getDecompressSettingsAccountInstructionDataCodec(): Codec<
   );
 }
 
-export type DecompressSettingsAccountAsyncInput<
-  TAccountSettingsAccount extends string = string,
-  TAccountPayer extends string = string,
-  TAccountSystemProgram extends string = string,
-> = {
-  settingsAccount: Address<TAccountSettingsAccount>;
-  payer?: TransactionSigner<TAccountPayer>;
-  systemProgram?: Address<TAccountSystemProgram>;
-  proof: DecompressSettingsAccountInstructionDataArgs['proof'];
-  accountMeta: DecompressSettingsAccountInstructionDataArgs['accountMeta'];
-  settings: DecompressSettingsAccountInstructionDataArgs['settings'];
-};
-
-export async function getDecompressSettingsAccountInstructionAsync<
-  TAccountSettingsAccount extends string,
-  TAccountPayer extends string,
-  TAccountSystemProgram extends string,
-  TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
->(
-  input: DecompressSettingsAccountAsyncInput<
-    TAccountSettingsAccount,
-    TAccountPayer,
-    TAccountSystemProgram
-  >,
-  config?: { programAddress?: TProgramAddress }
-): Promise<
-  DecompressSettingsAccountInstruction<
-    TProgramAddress,
-    TAccountSettingsAccount,
-    TAccountPayer,
-    TAccountSystemProgram
-  >
-> {
-  // Program address.
-  const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
-
-  // Original accounts.
-  const originalAccounts = {
-    settingsAccount: { value: input.settingsAccount ?? null, isWritable: true },
-    payer: { value: input.payer ?? null, isWritable: true },
-    systemProgram: { value: input.systemProgram ?? null, isWritable: false },
-  };
-  const accounts = originalAccounts as Record<
-    keyof typeof originalAccounts,
-    ResolvedAccount
-  >;
-
-  // Original args.
-  const args = { ...input };
-
-  // Resolve default values.
-  if (!accounts.payer.value) {
-    accounts.payer.value = await getProgramDerivedAddress({
-      programAddress,
-      seeds: [
-        getBytesEncoder().encode(
-          new Uint8Array([
-            109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116,
-          ])
-        ),
-        getAddressEncoder().encode(
-          expectAddress(accounts.settingsAccount.value)
-        ),
-        getBytesEncoder().encode(new Uint8Array([118, 97, 117, 108, 116])),
-      ],
-    });
-  }
-  if (!accounts.systemProgram.value) {
-    accounts.systemProgram.value =
-      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
-  }
-
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
-  const instruction = {
-    accounts: [
-      getAccountMeta(accounts.settingsAccount),
-      getAccountMeta(accounts.payer),
-      getAccountMeta(accounts.systemProgram),
-    ],
-    programAddress,
-    data: getDecompressSettingsAccountInstructionDataEncoder().encode(
-      args as DecompressSettingsAccountInstructionDataArgs
-    ),
-  } as DecompressSettingsAccountInstruction<
-    TProgramAddress,
-    TAccountSettingsAccount,
-    TAccountPayer,
-    TAccountSystemProgram
-  >;
-
-  return instruction;
-}
-
 export type DecompressSettingsAccountInput<
-  TAccountSettingsAccount extends string = string,
+  TAccountSettings extends string = string,
   TAccountPayer extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountSlotHashSysvar extends string = string,
+  TAccountDomainConfig extends string = string,
+  TAccountInstructionsSysvar extends string = string,
+  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 > = {
-  settingsAccount: Address<TAccountSettingsAccount>;
+  settings: Address<TAccountSettings>;
   payer: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
-  proof: DecompressSettingsAccountInstructionDataArgs['proof'];
-  accountMeta: DecompressSettingsAccountInstructionDataArgs['accountMeta'];
-  settings: DecompressSettingsAccountInstructionDataArgs['settings'];
+  slotHashSysvar?: Address<TAccountSlotHashSysvar>;
+  domainConfig?: Address<TAccountDomainConfig>;
+  instructionsSysvar?: Address<TAccountInstructionsSysvar>;
+  accountMeta: DecompressSettingsAccountInstructionDataArgs["accountMeta"];
+  data: DecompressSettingsAccountInstructionDataArgs["data"];
+  compressedProofArgs: DecompressSettingsAccountInstructionDataArgs["compressedProofArgs"];
+  secp256r1VerifyArgs: DecompressSettingsAccountInstructionDataArgs["secp256r1VerifyArgs"];
+  remainingAccounts: TRemainingAccounts;
 };
 
 export function getDecompressSettingsAccountInstruction<
-  TAccountSettingsAccount extends string,
+  TAccountSettings extends string,
   TAccountPayer extends string,
   TAccountSystemProgram extends string,
+  TAccountSlotHashSysvar extends string,
+  TAccountDomainConfig extends string,
+  TAccountInstructionsSysvar extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
+  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
 >(
   input: DecompressSettingsAccountInput<
-    TAccountSettingsAccount,
+    TAccountSettings,
     TAccountPayer,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountSlotHashSysvar,
+    TAccountDomainConfig,
+    TAccountInstructionsSysvar,
+    TRemainingAccounts
   >,
   config?: { programAddress?: TProgramAddress }
 ): DecompressSettingsAccountInstruction<
   TProgramAddress,
-  TAccountSettingsAccount,
+  TAccountSettings,
   TAccountPayer,
-  TAccountSystemProgram
+  TAccountSystemProgram,
+  TAccountSlotHashSysvar,
+  TAccountDomainConfig,
+  TAccountInstructionsSysvar,
+  TRemainingAccounts
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
-    settingsAccount: { value: input.settingsAccount ?? null, isWritable: true },
+    settings: { value: input.settings ?? null, isWritable: true },
     payer: { value: input.payer ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
+    domainConfig: { value: input.domainConfig ?? null, isWritable: false },
+    instructionsSysvar: {
+      value: input.instructionsSysvar ?? null,
+      isWritable: false,
+    },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -280,15 +239,27 @@ export function getDecompressSettingsAccountInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
+  if (!accounts.slotHashSysvar.value) {
+    accounts.slotHashSysvar.value =
+      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
+  }
+  if (!accounts.instructionsSysvar.value) {
+    accounts.instructionsSysvar.value =
+      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
   }
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   const instruction = {
     accounts: [
-      getAccountMeta(accounts.settingsAccount),
+      getAccountMeta(accounts.settings),
       getAccountMeta(accounts.payer),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.slotHashSysvar),
+      getAccountMeta(accounts.domainConfig),
+      getAccountMeta(accounts.instructionsSysvar),
+      ...input.remainingAccounts,
     ],
     programAddress,
     data: getDecompressSettingsAccountInstructionDataEncoder().encode(
@@ -296,9 +267,13 @@ export function getDecompressSettingsAccountInstruction<
     ),
   } as DecompressSettingsAccountInstruction<
     TProgramAddress,
-    TAccountSettingsAccount,
+    TAccountSettings,
     TAccountPayer,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountSlotHashSysvar,
+    TAccountDomainConfig,
+    TAccountInstructionsSysvar,
+    TRemainingAccounts
   >;
 
   return instruction;
@@ -310,9 +285,12 @@ export type ParsedDecompressSettingsAccountInstruction<
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    settingsAccount: TAccountMetas[0];
+    settings: TAccountMetas[0];
     payer: TAccountMetas[1];
     systemProgram: TAccountMetas[2];
+    slotHashSysvar?: TAccountMetas[3] | undefined;
+    domainConfig?: TAccountMetas[4] | undefined;
+    instructionsSysvar: TAccountMetas[5];
   };
   data: DecompressSettingsAccountInstructionData;
 };
@@ -325,9 +303,9 @@ export function parseDecompressSettingsAccountInstruction<
     IInstructionWithAccounts<TAccountMetas> &
     IInstructionWithData<Uint8Array>
 ): ParsedDecompressSettingsAccountInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 3) {
+  if (instruction.accounts.length < 6) {
     // TODO: Coded error.
-    throw new Error('Not enough accounts');
+    throw new Error("Not enough accounts");
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -335,12 +313,21 @@ export function parseDecompressSettingsAccountInstruction<
     accountIndex += 1;
     return accountMeta;
   };
+  const getNextOptionalAccount = () => {
+    const accountMeta = getNextAccount();
+    return accountMeta.address === MULTI_WALLET_PROGRAM_ADDRESS
+      ? undefined
+      : accountMeta;
+  };
   return {
     programAddress: instruction.programAddress,
     accounts: {
-      settingsAccount: getNextAccount(),
+      settings: getNextAccount(),
       payer: getNextAccount(),
       systemProgram: getNextAccount(),
+      slotHashSysvar: getNextOptionalAccount(),
+      domainConfig: getNextOptionalAccount(),
+      instructionsSysvar: getNextAccount(),
     },
     data: getDecompressSettingsAccountInstructionDataDecoder().decode(
       instruction.data

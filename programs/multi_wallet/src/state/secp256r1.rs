@@ -9,39 +9,6 @@ use bytemuck::{Pod, Zeroable};
 use serde_json::Value;
 use std::str::from_utf8;
 
-#[derive(AnchorDeserialize, AnchorSerialize, Clone, Debug)]
-pub struct Secp256r1VerifyArgs {
-    pub public_key: Secp256r1Pubkey,
-    pub client_data_json: Vec<u8>,
-    pub slot_number: u64,
-    pub slot_hash: [u8; 32],
-}
-
-#[derive(Default, Debug, Copy, Clone, Zeroable, Eq, Pod, PartialEq)]
-#[repr(C)]
-pub struct Secp256r1SignatureOffsets {
-    /// Offset to compact secp256r1 signature of 64 bytes
-    pub signature_offset: u16,
-
-    /// Instruction index where the signature can be found
-    pub signature_instruction_index: u16,
-
-    /// Offset to compressed public key of 33 bytes
-    pub public_key_offset: u16,
-
-    /// Instruction index where the public key can be found
-    pub public_key_instruction_index: u16,
-
-    /// Offset to the start of message data
-    pub message_data_offset: u16,
-
-    /// Size of message data in bytes
-    pub message_data_size: u16,
-
-    /// Instruction index where the message data can be found
-    pub message_instruction_index: u16,
-}
-
 pub const COMPRESSED_PUBKEY_SERIALIZED_SIZE: usize = 33;
 pub const SIGNATURE_SERIALIZED_SIZE: usize = 64;
 pub const SIGNATURE_OFFSETS_SERIALIZED_SIZE: usize = 14;
@@ -56,9 +23,60 @@ pub struct Secp256r1Signature(pub(crate) [u8; SIGNATURE_SERIALIZED_SIZE]);
 )]
 pub struct Secp256r1Pubkey(pub(crate) [u8; COMPRESSED_PUBKEY_SERIALIZED_SIZE]);
 
+#[derive(AnchorDeserialize, AnchorSerialize, Clone, PartialEq)]
+pub struct Secp256r1VerifyArgs {
+    pub public_key: Secp256r1Pubkey,
+    pub client_data_json: Vec<u8>,
+    pub slot_number: u64,
+    pub slot_hash: [u8; 32],
+}
+
+#[derive(Default, Debug, Copy, Clone, Zeroable, Eq, Pod, PartialEq)]
+#[repr(C)]
+pub struct Secp256r1SignatureOffsets {
+    pub signature_offset: u16,
+    pub signature_instruction_index: u16,
+    pub public_key_offset: u16,
+    pub public_key_instruction_index: u16,
+    pub message_data_offset: u16,
+    pub message_data_size: u16,
+    pub message_instruction_index: u16,
+}
+
 impl Secp256r1Pubkey {
     pub fn to_bytes(&self) -> [u8; COMPRESSED_PUBKEY_SERIALIZED_SIZE] {
         self.0
+    }
+
+    fn decode_base64url(input: &str) -> Result<Vec<u8>> {
+        Ok(URL_SAFE_NO_PAD
+            .decode(input)
+            .map_err(|_| MultisigError::InvalidJson)?)
+    }
+
+    fn parse_client_data_json(json_str: &str) -> Result<(String, String, String)> {
+        let parsed: Value =
+            serde_json::from_str(json_str).map_err(|_| MultisigError::InvalidJson)?;
+
+        let origin = parsed
+            .get("origin")
+            .and_then(Value::as_str)
+            .ok_or(MultisigError::MissingOrigin)?
+            .to_string();
+
+        let challenge = parsed
+            .get("challenge")
+            .and_then(Value::as_str)
+            .ok_or(MultisigError::MissingChallenge)?
+            .to_string();
+
+        let webauthn_type = parsed
+            .get("type")
+            .and_then(Value::as_str)
+            .ok_or(MultisigError::MissingType)?
+            .to_string();
+
+        Ok((origin, challenge, webauthn_type))
     }
 
     fn extract_webauthn_signed_message_from_instruction(
@@ -79,9 +97,6 @@ impl Secp256r1Pubkey {
                 .saturating_mul(SIGNATURE_OFFSETS_SERIALIZED_SIZE as u8)
                 .saturating_add(SIGNATURE_OFFSETS_START as u8);
 
-            // SAFETY:
-            // - data[start..] is guaranteed to be >= size of Secp256r1SignatureOffsets
-            // - Secp256r1SignatureOffsets is a POD type, so we can safely read it as an unaligned struct
             let offsets = unsafe {
                 core::ptr::read_unaligned(instruction.data.as_ptr().add(start as usize)
                     as *const Secp256r1SignatureOffsets)
@@ -112,37 +127,6 @@ impl Secp256r1Pubkey {
         }
 
         err!(MultisigError::InvalidSignedMessage)
-    }
-
-    fn decode_base64url(input: &str) -> Result<Vec<u8>> {
-        Ok(URL_SAFE_NO_PAD
-            .decode(input)
-            .map_err(|_| MultisigError::InvalidJson)?)
-    }
-
-    fn parse_json_manual(json_str: &str) -> Result<(String, String, String)> {
-        let parsed: Value =
-            serde_json::from_str(json_str).map_err(|_| MultisigError::InvalidJson)?;
-
-        let origin = parsed
-            .get("origin")
-            .and_then(Value::as_str)
-            .ok_or(MultisigError::MissingOrigin)?
-            .to_string();
-
-        let challenge = parsed
-            .get("challenge")
-            .and_then(Value::as_str)
-            .ok_or(MultisigError::MissingChallenge)?
-            .to_string();
-
-        let webauthn_type = parsed
-            .get("type")
-            .and_then(Value::as_str)
-            .ok_or(MultisigError::MissingType)?
-            .to_string();
-
-        Ok((origin, challenge, webauthn_type))
     }
 
     fn verify_slot_hash<'info>(
@@ -191,11 +175,9 @@ impl Secp256r1Pubkey {
         }
 
         let hash = &data[pos + 8..pos + 40];
-        if hash == slot_hash.as_ref() {
-            Ok(())
-        } else {
-            err!(MultisigError::SlotHashMismatch)
-        }
+        require!(hash == slot_hash.as_ref(), MultisigError::SlotHashMismatch);
+
+        Ok(())
     }
 
     pub fn verify_webauthn<'info>(
@@ -226,13 +208,14 @@ impl Secp256r1Pubkey {
         let client_data_json_str = from_utf8(&secp256r1_verify_data.client_data_json)
             .map_err(|_| MultisigError::InvalidJson)?;
 
-        let (origin, challenge, webauthn_type) = Self::parse_json_manual(&client_data_json_str)?;
+        let (origin, challenge, webauthn_type) =
+            Self::parse_client_data_json(&client_data_json_str)?;
 
-        let domain_origin: &str =
+        let expected_origin: &str =
             from_utf8(&domain_data.origin[..domain_data.origin_length as usize])
                 .map_err(|_| MultisigError::InvalidJson)?;
 
-        require!(origin.eq(&domain_origin), MultisigError::InvalidOrigin);
+        require!(origin.eq(&expected_origin), MultisigError::InvalidOrigin);
 
         require!(webauthn_type.eq("webauthn.get"), MultisigError::InvalidType);
 
@@ -241,19 +224,17 @@ impl Secp256r1Pubkey {
         buffer.extend_from_slice(key.as_ref());
         buffer.extend_from_slice(message_hash);
         buffer.extend_from_slice(secp256r1_verify_data.slot_hash.as_ref());
+
         let expected_challenge = hash(&buffer).to_bytes();
 
-        let decoded_challenge = Self::decode_base64url(&challenge)?;
-
         require!(
-            decoded_challenge.eq(&expected_challenge),
+            Self::decode_base64url(&challenge)?.eq(&expected_challenge),
             MultisigError::InvalidChallenge
         );
 
         let instructions_sysvar = instructions_sysvar
             .as_ref()
             .ok_or(MultisigError::MissingAccount)?;
-
         let (rp_id_hash, client_data_hash) =
             Self::extract_webauthn_signed_message_from_instruction(
                 instructions_sysvar,
@@ -265,8 +246,9 @@ impl Secp256r1Pubkey {
             MultisigError::InvalidSignedMessage
         );
 
+        let expected_client_data_hash = hash(&secp256r1_verify_data.client_data_json).to_bytes();
         require!(
-            client_data_hash.eq(&hash(&secp256r1_verify_data.client_data_json).to_bytes()),
+            client_data_hash.eq(&expected_client_data_hash),
             MultisigError::InvalidSignedMessage
         );
 

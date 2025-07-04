@@ -1,7 +1,10 @@
 use anchor_lang::prelude::*;
 use bytemuck::Zeroable;
 
-use crate::error::MultisigError;
+use crate::{
+    error::MultisigError,
+    state::{DelegateCloseArgs, DelegateCreationArgs},
+};
 
 use super::{Secp256r1Pubkey, Secp256r1VerifyArgs, COMPRESSED_PUBKEY_SERIALIZED_SIZE};
 
@@ -14,10 +17,17 @@ pub struct Member {
     pub domain_config: Option<Pubkey>,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Debug)]
-pub struct MemberWithVerifyArgs {
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+pub struct MemberWithCreationArgs {
     pub data: Member,
     pub verify_args: Option<Secp256r1VerifyArgs>,
+    pub delegate_args: Option<DelegateCreationArgs>,
+}
+
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, PartialEq)]
+pub struct MemberKeyWithCloseArgs {
+    pub data: MemberKey,
+    pub delegate_args: Option<DelegateCloseArgs>,
 }
 
 #[derive(

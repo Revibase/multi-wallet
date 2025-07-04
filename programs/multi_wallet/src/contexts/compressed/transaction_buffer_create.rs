@@ -1,16 +1,16 @@
 use crate::{
     state::{
-        DomainConfig, KeyType, MemberKey, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings,
-        SettingsArgs, TransactionActionType, TransactionBufferCreateArgs, SEED_MULTISIG,
+        verify_compressed_settings, CompressedSettings, DomainConfig, KeyType, MemberKey,
+        ProofArgs, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings, SettingsProofArgs,
+        TransactionActionType, TransactionBufferCreateArgs, SEED_MULTISIG,
     },
     utils::durable_nonce_check,
     MultisigError, Permission, TransactionBuffer, MAX_BUFFER_SIZE, SEED_TRANSACTION_BUFFER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use light_sdk::account::LightAccount;
 
 #[derive(Accounts)]
-#[instruction(args: TransactionBufferCreateArgs, secp256r1_verify_args: Option<Secp256r1VerifyArgs>, settings_args:SettingsArgs)]
+#[instruction(args: TransactionBufferCreateArgs, secp256r1_verify_args: Option<Secp256r1VerifyArgs>, settings_args:SettingsProofArgs)]
 pub struct TransactionBufferCreateCompressed<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -18,10 +18,15 @@ pub struct TransactionBufferCreateCompressed<'info> {
     #[account(
         init,
         payer = payer,
-        space = TransactionBuffer::size(settings_args.settings.threshold, args.final_buffer_size, args.buffer_extend_hashes.len())?,
+        space = TransactionBuffer::size(settings_args.account.data.as_ref().unwrap().data[0], args.final_buffer_size, args.buffer_extend_hashes.len())?,
         seeds = [
             SEED_MULTISIG,
-            {Settings::get_settings_key_from_index(settings_args.settings.index, settings_args.settings.bump)?.as_ref()},
+            {
+                let data_slice = settings_args.account.data.as_ref().unwrap().data.as_slice();
+                let index = u128::from_le_bytes(data_slice[2..18].try_into().unwrap());
+                let bump = data_slice[1];
+                Settings::get_settings_key_from_index(index, bump)?.as_ref()
+            },
             SEED_TRANSACTION_BUFFER,
             {&MemberKey::get_signer(&creator, &secp256r1_verify_args)?.get_seed()},
             args.buffer_index.to_le_bytes().as_ref(),
@@ -43,12 +48,12 @@ pub struct TransactionBufferCreateCompressed<'info> {
     pub slot_hash_sysvar: Option<UncheckedAccount<'info>>,
 }
 
-impl TransactionBufferCreateCompressed<'_> {
+impl<'info> TransactionBufferCreateCompressed<'info> {
     fn validate(
-        ctx: &Context<Self>,
+        &self,
         args: &TransactionBufferCreateArgs,
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
-        settings: &LightAccount<'_, Settings>,
+        settings: &CompressedSettings,
     ) -> Result<()> {
         let Self {
             creator,
@@ -57,7 +62,7 @@ impl TransactionBufferCreateCompressed<'_> {
             instructions_sysvar,
             slot_hash_sysvar,
             ..
-        } = &ctx.accounts;
+        } = self;
 
         durable_nonce_check(instructions_sysvar)?;
 
@@ -124,20 +129,21 @@ impl TransactionBufferCreateCompressed<'_> {
     }
 
     pub fn process(
-        ctx: Context<Self>,
+        ctx: Context<'_, '_, '_, 'info, Self>,
         args: TransactionBufferCreateArgs,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_args: SettingsArgs,
+        settings_args: SettingsProofArgs,
+        compressed_proof_args: ProofArgs,
     ) -> Result<()> {
-        let settings = LightAccount::<'_, Settings>::new_mut(
-            &crate::ID,
-            &settings_args.account_meta,
-            settings_args.settings.clone(),
-        )
-        .map_err(ProgramError::from)?;
-
-        let settings_key = Pubkey::new_from_array(settings.address().unwrap());
-        Self::validate(&ctx, &args, &secp256r1_verify_args, &settings)?;
+        let (settings, settings_key) = verify_compressed_settings(
+            &ctx.accounts.payer.to_account_info(),
+            None,
+            &settings_args,
+            &ctx.remaining_accounts,
+            compressed_proof_args,
+        )?;
+        ctx.accounts
+            .validate(&args, &secp256r1_verify_args, &settings)?;
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
 
         let creator = &ctx.accounts.creator;
