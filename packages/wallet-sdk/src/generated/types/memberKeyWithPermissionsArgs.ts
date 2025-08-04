@@ -8,17 +8,29 @@
 
 import {
   combineCodec,
+  getOptionDecoder,
+  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
   type Codec,
   type Decoder,
   type Encoder,
+  type Option,
+  type OptionOrNullable,
 } from "@solana/kit";
 import {
+  getDelegateCreateOrMutateArgsDecoder,
+  getDelegateCreateOrMutateArgsEncoder,
+  getDelegateMutArgsDecoder,
+  getDelegateMutArgsEncoder,
   getMemberKeyDecoder,
   getMemberKeyEncoder,
   getPermissionsDecoder,
   getPermissionsEncoder,
+  type DelegateCreateOrMutateArgs,
+  type DelegateCreateOrMutateArgsArgs,
+  type DelegateMutArgs,
+  type DelegateMutArgsArgs,
   type IPermissions,
   type MemberKey,
   type MemberKeyArgs,
@@ -28,17 +40,26 @@ import {
 export type MemberKeyWithPermissionsArgs = {
   pubkey: MemberKey;
   permissions: IPermissions;
+  delegateCloseArgs: Option<DelegateMutArgs>;
+  delegateCreationArgs: Option<DelegateCreateOrMutateArgs>;
 };
 
 export type MemberKeyWithPermissionsArgsArgs = {
   pubkey: MemberKeyArgs;
   permissions: PermissionsArgs;
+  delegateCloseArgs: OptionOrNullable<DelegateMutArgsArgs>;
+  delegateCreationArgs: OptionOrNullable<DelegateCreateOrMutateArgsArgs>;
 };
 
 export function getMemberKeyWithPermissionsArgsEncoder(): Encoder<MemberKeyWithPermissionsArgsArgs> {
   return getStructEncoder([
     ["pubkey", getMemberKeyEncoder()],
     ["permissions", getPermissionsEncoder()],
+    ["delegateCloseArgs", getOptionEncoder(getDelegateMutArgsEncoder())],
+    [
+      "delegateCreationArgs",
+      getOptionEncoder(getDelegateCreateOrMutateArgsEncoder()),
+    ],
   ]);
 }
 
@@ -46,6 +67,11 @@ export function getMemberKeyWithPermissionsArgsDecoder(): Decoder<MemberKeyWithP
   return getStructDecoder([
     ["pubkey", getMemberKeyDecoder()],
     ["permissions", getPermissionsDecoder()],
+    ["delegateCloseArgs", getOptionDecoder(getDelegateMutArgsDecoder())],
+    [
+      "delegateCreationArgs",
+      getOptionDecoder(getDelegateCreateOrMutateArgsDecoder()),
+    ],
   ]);
 }
 

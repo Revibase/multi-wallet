@@ -17,15 +17,15 @@ import {
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
+  type AccountMeta,
+  type AccountSignerMeta,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IAccountMeta,
-  type IAccountSignerMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type Option,
   type OptionOrNullable,
   type ReadonlyAccount,
@@ -33,7 +33,6 @@ import {
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableAccount,
-  type WritableSignerAccount,
 } from '@solana/kit';
 import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
 import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
@@ -44,44 +43,37 @@ import {
   type Secp256r1VerifyArgsArgs,
 } from '../types';
 
-export const TRANSACTION_BUFFER_VOTE_DISCRIMINATOR = new Uint8Array([
-  203, 50, 79, 187, 94, 53, 82, 122,
-]);
+export const TRANSACTION_BUFFER_VOTE_DISCRIMINATOR = new Uint8Array([8]);
 
 export function getTransactionBufferVoteDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     TRANSACTION_BUFFER_VOTE_DISCRIMINATOR
   );
 }
 
 export type TransactionBufferVoteInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountSettings extends string | IAccountMeta<string> = string,
-  TAccountPayer extends string | IAccountMeta<string> = string,
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
-  TAccountTransactionBuffer extends string | IAccountMeta<string> = string,
-  TAccountVoter extends string | IAccountMeta<string> = string,
+  TAccountSettings extends string | AccountMeta<string> = string,
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
+  TAccountTransactionBuffer extends string | AccountMeta<string> = string,
+  TAccountVoter extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = '11111111111111111111111111111111',
+    | AccountMeta<string> = '11111111111111111111111111111111',
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
+    | AccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountSettings extends string
         ? ReadonlyAccount<TAccountSettings>
         : TAccountSettings,
-      TAccountPayer extends string
-        ? WritableSignerAccount<TAccountPayer> &
-            IAccountSignerMeta<TAccountPayer>
-        : TAccountPayer,
       TAccountDomainConfig extends string
         ? ReadonlyAccount<TAccountDomainConfig>
         : TAccountDomainConfig,
@@ -90,7 +82,7 @@ export type TransactionBufferVoteInstruction<
         : TAccountTransactionBuffer,
       TAccountVoter extends string
         ? ReadonlySignerAccount<TAccountVoter> &
-            IAccountSignerMeta<TAccountVoter>
+            AccountSignerMeta<TAccountVoter>
         : TAccountVoter,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
@@ -117,7 +109,7 @@ export type TransactionBufferVoteInstructionDataArgs = {
 export function getTransactionBufferVoteInstructionDataEncoder(): Encoder<TransactionBufferVoteInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
       [
         'secp256r1VerifyArgs',
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
@@ -132,7 +124,7 @@ export function getTransactionBufferVoteInstructionDataEncoder(): Encoder<Transa
 
 export function getTransactionBufferVoteInstructionDataDecoder(): Decoder<TransactionBufferVoteInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
     ['secp256r1VerifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
 }
@@ -149,7 +141,6 @@ export function getTransactionBufferVoteInstructionDataCodec(): Codec<
 
 export type TransactionBufferVoteInput<
   TAccountSettings extends string = string,
-  TAccountPayer extends string = string,
   TAccountDomainConfig extends string = string,
   TAccountTransactionBuffer extends string = string,
   TAccountVoter extends string = string,
@@ -158,7 +149,6 @@ export type TransactionBufferVoteInput<
   TAccountInstructionsSysvar extends string = string,
 > = {
   settings: Address<TAccountSettings>;
-  payer: TransactionSigner<TAccountPayer>;
   domainConfig?: Address<TAccountDomainConfig>;
   transactionBuffer: Address<TAccountTransactionBuffer>;
   voter?: TransactionSigner<TAccountVoter>;
@@ -170,7 +160,6 @@ export type TransactionBufferVoteInput<
 
 export function getTransactionBufferVoteInstruction<
   TAccountSettings extends string,
-  TAccountPayer extends string,
   TAccountDomainConfig extends string,
   TAccountTransactionBuffer extends string,
   TAccountVoter extends string,
@@ -181,7 +170,6 @@ export function getTransactionBufferVoteInstruction<
 >(
   input: TransactionBufferVoteInput<
     TAccountSettings,
-    TAccountPayer,
     TAccountDomainConfig,
     TAccountTransactionBuffer,
     TAccountVoter,
@@ -193,7 +181,6 @@ export function getTransactionBufferVoteInstruction<
 ): TransactionBufferVoteInstruction<
   TProgramAddress,
   TAccountSettings,
-  TAccountPayer,
   TAccountDomainConfig,
   TAccountTransactionBuffer,
   TAccountVoter,
@@ -207,7 +194,6 @@ export function getTransactionBufferVoteInstruction<
   // Original accounts.
   const originalAccounts = {
     settings: { value: input.settings ?? null, isWritable: false },
-    payer: { value: input.payer ?? null, isWritable: true },
     domainConfig: { value: input.domainConfig ?? null, isWritable: false },
     transactionBuffer: {
       value: input.transactionBuffer ?? null,
@@ -247,7 +233,6 @@ export function getTransactionBufferVoteInstruction<
   const instruction = {
     accounts: [
       getAccountMeta(accounts.settings),
-      getAccountMeta(accounts.payer),
       getAccountMeta(accounts.domainConfig),
       getAccountMeta(accounts.transactionBuffer),
       getAccountMeta(accounts.voter),
@@ -262,7 +247,6 @@ export function getTransactionBufferVoteInstruction<
   } as TransactionBufferVoteInstruction<
     TProgramAddress,
     TAccountSettings,
-    TAccountPayer,
     TAccountDomainConfig,
     TAccountTransactionBuffer,
     TAccountVoter,
@@ -276,31 +260,30 @@ export function getTransactionBufferVoteInstruction<
 
 export type ParsedTransactionBufferVoteInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
     settings: TAccountMetas[0];
-    payer: TAccountMetas[1];
-    domainConfig?: TAccountMetas[2] | undefined;
-    transactionBuffer: TAccountMetas[3];
-    voter?: TAccountMetas[4] | undefined;
-    systemProgram: TAccountMetas[5];
-    slotHashSysvar?: TAccountMetas[6] | undefined;
-    instructionsSysvar?: TAccountMetas[7] | undefined;
+    domainConfig?: TAccountMetas[1] | undefined;
+    transactionBuffer: TAccountMetas[2];
+    voter?: TAccountMetas[3] | undefined;
+    systemProgram: TAccountMetas[4];
+    slotHashSysvar?: TAccountMetas[5] | undefined;
+    instructionsSysvar?: TAccountMetas[6] | undefined;
   };
   data: TransactionBufferVoteInstructionData;
 };
 
 export function parseTransactionBufferVoteInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedTransactionBufferVoteInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 8) {
+  if (instruction.accounts.length < 7) {
     // TODO: Coded error.
     throw new Error('Not enough accounts');
   }
@@ -320,7 +303,6 @@ export function parseTransactionBufferVoteInstruction<
     programAddress: instruction.programAddress,
     accounts: {
       settings: getNextAccount(),
-      payer: getNextAccount(),
       domainConfig: getNextOptionalAccount(),
       transactionBuffer: getNextAccount(),
       voter: getNextOptionalAccount(),

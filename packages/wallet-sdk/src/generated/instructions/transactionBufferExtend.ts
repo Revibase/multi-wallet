@@ -19,14 +19,14 @@ import {
   getU32Decoder,
   getU32Encoder,
   transformEncoder,
+  type AccountMeta,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IAccountMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type ReadonlyAccount,
   type ReadonlyUint8Array,
   type WritableAccount,
@@ -34,24 +34,22 @@ import {
 import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
 import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 
-export const TRANSACTION_BUFFER_EXTEND_DISCRIMINATOR = new Uint8Array([
-  230, 157, 67, 56, 5, 238, 245, 146,
-]);
+export const TRANSACTION_BUFFER_EXTEND_DISCRIMINATOR = new Uint8Array([9]);
 
 export function getTransactionBufferExtendDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     TRANSACTION_BUFFER_EXTEND_DISCRIMINATOR
   );
 }
 
 export type TransactionBufferExtendInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountSettings extends string | IAccountMeta<string> = string,
-  TAccountTransactionBuffer extends string | IAccountMeta<string> = string,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+  TAccountSettings extends string | AccountMeta<string> = string,
+  TAccountTransactionBuffer extends string | AccountMeta<string> = string,
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountSettings extends string
         ? ReadonlyAccount<TAccountSettings>
@@ -75,7 +73,7 @@ export type TransactionBufferExtendInstructionDataArgs = {
 export function getTransactionBufferExtendInstructionDataEncoder(): Encoder<TransactionBufferExtendInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
       ['buffer', addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
     ]),
     (value) => ({
@@ -87,7 +85,7 @@ export function getTransactionBufferExtendInstructionDataEncoder(): Encoder<Tran
 
 export function getTransactionBufferExtendInstructionDataDecoder(): Decoder<TransactionBufferExtendInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
     ['buffer', addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
   ]);
 }
@@ -166,7 +164,7 @@ export function getTransactionBufferExtendInstruction<
 
 export type ParsedTransactionBufferExtendInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -178,11 +176,11 @@ export type ParsedTransactionBufferExtendInstruction<
 
 export function parseTransactionBufferExtendInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedTransactionBufferExtendInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 2) {
     // TODO: Coded error.

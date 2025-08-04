@@ -9,3 +9,6 @@ pub use delete_domain_config::*;
 
 pub mod disable_domain_config;
 pub use disable_domain_config::*;
+
+pub mod create_global_counter;
+pub use create_global_counter::*;

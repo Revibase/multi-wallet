@@ -1,4 +1,4 @@
-import { fetchSettings } from "@revibase/wallet-sdk";
+import { fetchSettingsData } from "@revibase/wallet-sdk";
 import { address } from "@solana/kit";
 import { expect } from "chai";
 import { WALLET_TRANSFER_AMOUNT } from "../constants";
@@ -21,18 +21,14 @@ export function runWalletCreationTests() {
     it("should create a multi-wallet with correct initial state", async () => {
       // Create the multi-wallet
       ctx = await createMultiWallet(ctx);
-
       // Verify wallet settings
-      const accountData = await fetchSettings(
-        ctx.connection,
-        address(ctx.settings)
-      );
+      const accountData = await fetchSettingsData(ctx.index);
 
-      expect(accountData.data.members.length).to.equal(
+      expect(accountData.members.length).to.equal(
         1,
         "Should have only one member initially"
       );
-      expect(accountData.data.threshold).to.equal(
+      expect(accountData.threshold).to.equal(
         1,
         "Should be a single-sig wallet"
       );

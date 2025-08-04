@@ -26,9 +26,7 @@ import {
 
 export type CompiledInstruction = {
   programIdIndex: number;
-  /** Indices into the tx's `account_keys` list indicating which accounts to pass to the instruction. */
   accountIndexes: ReadonlyUint8Array;
-  /** Instruction data. */
   data: ReadonlyUint8Array;
 };
 

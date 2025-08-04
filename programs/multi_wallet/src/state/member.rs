@@ -1,51 +1,55 @@
 use anchor_lang::prelude::*;
-use bytemuck::Zeroable;
+use bytemuck::{Pod, Zeroable};
 
-use crate::error::MultisigError;
+use crate::{
+    error::MultisigError,
+    state::{DelegateCreateOrMutateArgs, DelegateMutArgs, KeyType, Permissions},
+};
 
 use super::{Secp256r1Pubkey, Secp256r1VerifyArgs, COMPRESSED_PUBKEY_SERIALIZED_SIZE};
 
 #[derive(
-    InitSpace, Eq, PartialEq, Clone, Copy, Hash, AnchorSerialize, AnchorDeserialize, Debug,
+    InitSpace,
+    PartialEq,
+    AnchorSerialize,
+    AnchorDeserialize,
+    Copy,
+    Clone,
+    Zeroable,
+    Pod,
+    Default,
+    Debug,
 )]
+#[repr(C)]
 pub struct Member {
     pub pubkey: MemberKey,
     pub permissions: Permissions,
-    pub domain_config: Option<Pubkey>,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Debug)]
-pub struct MemberWithVerifyArgs {
-    pub data: Member,
-    pub verify_args: Option<Secp256r1VerifyArgs>,
+    pub domain_config: Pubkey, // if none, value will be Pubkey::Default
 }
 
 #[derive(
-    InitSpace, Eq, PartialEq, Clone, Copy, Hash, AnchorSerialize, AnchorDeserialize, Debug,
+    InitSpace,
+    Eq,
+    PartialEq,
+    Hash,
+    AnchorSerialize,
+    AnchorDeserialize,
+    Zeroable,
+    Copy,
+    Clone,
+    Pod,
+    Debug,
 )]
+#[repr(C)]
 pub struct MemberKey {
     pub key_type: u8,
     pub key: [u8; COMPRESSED_PUBKEY_SERIALIZED_SIZE],
 }
-
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct MemberKeyWithPermissionsArgs {
-    pub pubkey: MemberKey,
-    pub permissions: Permissions,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum KeyType {
-    Ed25519 = 1 << 0,
-    Secp256r1 = 1 << 1,
-}
-
-impl KeyType {
-    pub fn from(value: u8) -> KeyType {
-        if value == KeyType::Ed25519 as u8 {
-            return KeyType::Ed25519;
-        } else {
-            return KeyType::Secp256r1;
+impl Default for MemberKey {
+    fn default() -> Self {
+        Self {
+            key_type: 0,
+            key: [0u8; COMPRESSED_PUBKEY_SERIALIZED_SIZE],
         }
     }
 }
@@ -62,17 +66,18 @@ impl MemberKey {
     pub fn get_signer(
         key: &Option<Signer>,
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
+        instructions_sysvar: Option<&UncheckedAccount>,
     ) -> Result<MemberKey> {
-        let signer = match key {
-            Some(pubkey) => Some(MemberKey::convert_ed25519(&pubkey.key())?),
-            None => match secp256r1_verify_args {
-                Some(args) => Some(MemberKey::convert_secp256r1(&args.public_key)?),
-                None => None,
-            },
-        };
+        if let Some(pubkey) = key {
+            return MemberKey::convert_ed25519(&pubkey.key());
+        }
 
-        require!(signer.is_some(), MultisigError::NoSignerFound);
-        Ok(signer.unwrap())
+        if let Some(args) = secp256r1_verify_args {
+            let pubkey = args.extract_public_key_from_instruction(instructions_sysvar)?;
+            return MemberKey::convert_secp256r1(&pubkey);
+        }
+
+        Err(error!(MultisigError::NoSignerFound))
     }
 
     pub fn convert_ed25519(pubkey: &Pubkey) -> Result<MemberKey> {
@@ -103,42 +108,31 @@ impl AsRef<[u8]> for MemberKey {
     }
 }
 
-#[derive(Clone, Copy)]
-pub enum Permission {
-    InitiateTransaction = 1 << 0,
-    VoteTransaction = 1 << 1,
-    ExecuteTransaction = 1 << 2,
-    IsDelegate = 1 << 3,
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq)]
+pub struct MemberWithCreationArgs {
+    pub data: Member,
+    pub verify_args: Option<Secp256r1VerifyArgs>,
+    pub delegate_args: Option<DelegateCreateOrMutateArgs>,
 }
 
-/// Bitmask for permissions.
-#[derive(
-    AnchorSerialize,
-    AnchorDeserialize,
-    InitSpace,
-    Eq,
-    PartialEq,
-    Clone,
-    Copy,
-    Default,
-    Debug,
-    Hash,
-    Zeroable,
-)]
-pub struct Permissions {
-    pub mask: u8,
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq)]
+pub struct MemberKeyWithCloseArgs {
+    pub data: MemberKey,
+    pub delegate_args: Option<DelegateMutArgs>,
 }
 
-impl Permissions {
-    pub fn from_vec(permissions: &[Permission]) -> Self {
-        let mut mask = 0;
-        for permission in permissions {
-            mask |= *permission as u8;
-        }
-        Self { mask }
-    }
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct MemberKeyWithPermissionsArgs {
+    pub pubkey: MemberKey,
+    pub permissions: Permissions,
+    pub delegate_close_args: Option<DelegateMutArgs>,
+    pub delegate_creation_args: Option<DelegateCreateOrMutateArgs>,
+}
 
-    pub fn has(&self, permission: Permission) -> bool {
-        self.mask & (permission as u8) != 0
-    }
+#[derive(AnchorDeserialize, AnchorSerialize)]
+pub enum ConfigAction {
+    EditPermissions(Vec<MemberKeyWithPermissionsArgs>),
+    AddMembers(Vec<MemberWithCreationArgs>),
+    RemoveMembers(Vec<MemberKeyWithCloseArgs>),
+    SetThreshold(u8),
 }

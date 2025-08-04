@@ -25,18 +25,18 @@ import {
   type GetDiscriminatedUnionVariantContent,
 } from '@solana/kit';
 import {
-  getMemberKeyDecoder,
-  getMemberKeyEncoder,
+  getMemberKeyWithCloseArgsDecoder,
+  getMemberKeyWithCloseArgsEncoder,
   getMemberKeyWithPermissionsArgsDecoder,
   getMemberKeyWithPermissionsArgsEncoder,
-  getMemberWithVerifyArgsDecoder,
-  getMemberWithVerifyArgsEncoder,
-  type MemberKey,
-  type MemberKeyArgs,
+  getMemberWithCreationArgsDecoder,
+  getMemberWithCreationArgsEncoder,
+  type MemberKeyWithCloseArgs,
+  type MemberKeyWithCloseArgsArgs,
   type MemberKeyWithPermissionsArgs,
   type MemberKeyWithPermissionsArgsArgs,
-  type MemberWithVerifyArgs,
-  type MemberWithVerifyArgsArgs,
+  type MemberWithCreationArgs,
+  type MemberWithCreationArgsArgs,
 } from '.';
 
 export type ConfigAction =
@@ -44,8 +44,11 @@ export type ConfigAction =
       __kind: 'EditPermissions';
       fields: readonly [Array<MemberKeyWithPermissionsArgs>];
     }
-  | { __kind: 'AddMembers'; fields: readonly [Array<MemberWithVerifyArgs>] }
-  | { __kind: 'RemoveMembers'; fields: readonly [Array<MemberKey>] }
+  | { __kind: 'AddMembers'; fields: readonly [Array<MemberWithCreationArgs>] }
+  | {
+      __kind: 'RemoveMembers';
+      fields: readonly [Array<MemberKeyWithCloseArgs>];
+    }
   | { __kind: 'SetThreshold'; fields: readonly [number] };
 
 export type ConfigActionArgs =
@@ -53,8 +56,14 @@ export type ConfigActionArgs =
       __kind: 'EditPermissions';
       fields: readonly [Array<MemberKeyWithPermissionsArgsArgs>];
     }
-  | { __kind: 'AddMembers'; fields: readonly [Array<MemberWithVerifyArgsArgs>] }
-  | { __kind: 'RemoveMembers'; fields: readonly [Array<MemberKeyArgs>] }
+  | {
+      __kind: 'AddMembers';
+      fields: readonly [Array<MemberWithCreationArgsArgs>];
+    }
+  | {
+      __kind: 'RemoveMembers';
+      fields: readonly [Array<MemberKeyWithCloseArgsArgs>];
+    }
   | { __kind: 'SetThreshold'; fields: readonly [number] };
 
 export function getConfigActionEncoder(): Encoder<ConfigActionArgs> {
@@ -75,14 +84,21 @@ export function getConfigActionEncoder(): Encoder<ConfigActionArgs> {
       getStructEncoder([
         [
           'fields',
-          getTupleEncoder([getArrayEncoder(getMemberWithVerifyArgsEncoder())]),
+          getTupleEncoder([
+            getArrayEncoder(getMemberWithCreationArgsEncoder()),
+          ]),
         ],
       ]),
     ],
     [
       'RemoveMembers',
       getStructEncoder([
-        ['fields', getTupleEncoder([getArrayEncoder(getMemberKeyEncoder())])],
+        [
+          'fields',
+          getTupleEncoder([
+            getArrayEncoder(getMemberKeyWithCloseArgsEncoder()),
+          ]),
+        ],
       ]),
     ],
     [
@@ -110,14 +126,21 @@ export function getConfigActionDecoder(): Decoder<ConfigAction> {
       getStructDecoder([
         [
           'fields',
-          getTupleDecoder([getArrayDecoder(getMemberWithVerifyArgsDecoder())]),
+          getTupleDecoder([
+            getArrayDecoder(getMemberWithCreationArgsDecoder()),
+          ]),
         ],
       ]),
     ],
     [
       'RemoveMembers',
       getStructDecoder([
-        ['fields', getTupleDecoder([getArrayDecoder(getMemberKeyDecoder())])],
+        [
+          'fields',
+          getTupleDecoder([
+            getArrayDecoder(getMemberKeyWithCloseArgsDecoder()),
+          ]),
+        ],
       ]),
     ],
     [

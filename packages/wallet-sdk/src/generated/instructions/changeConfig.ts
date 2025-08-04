@@ -15,20 +15,25 @@ import {
   getArrayEncoder,
   getBytesDecoder,
   getBytesEncoder,
+  getOptionDecoder,
+  getOptionEncoder,
   getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
+  type AccountMeta,
+  type AccountSignerMeta,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IAccountMeta,
-  type IAccountSignerMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
+  type Option,
+  type OptionOrNullable,
   type ReadonlyAccount,
+  type ReadonlySignerAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableAccount,
@@ -43,45 +48,52 @@ import {
 import {
   getConfigActionDecoder,
   getConfigActionEncoder,
+  getProofArgsDecoder,
+  getProofArgsEncoder,
   type ConfigAction,
   type ConfigActionArgs,
+  type ProofArgs,
+  type ProofArgsArgs,
 } from "../types";
 
-export const CHANGE_CONFIG_DISCRIMINATOR = new Uint8Array([
-  24, 158, 114, 115, 94, 210, 244, 233,
-]);
+export const CHANGE_CONFIG_DISCRIMINATOR = new Uint8Array([6]);
 
 export function getChangeConfigDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     CHANGE_CONFIG_DISCRIMINATOR
   );
 }
 
 export type ChangeConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountSettings extends string | IAccountMeta<string> = string,
-  TAccountPayer extends string | IAccountMeta<string> = string,
+  TAccountSettings extends string | AccountMeta<string> = string,
+  TAccountPayer extends string | AccountMeta<string> = string,
+  TAccountAuthority extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = "11111111111111111111111111111111",
+    | AccountMeta<string> = "11111111111111111111111111111111",
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountSettings extends string
         ? WritableAccount<TAccountSettings>
         : TAccountSettings,
       TAccountPayer extends string
         ? WritableSignerAccount<TAccountPayer> &
-            IAccountSignerMeta<TAccountPayer>
+            AccountSignerMeta<TAccountPayer>
         : TAccountPayer,
+      TAccountAuthority extends string
+        ? ReadonlySignerAccount<TAccountAuthority> &
+            AccountSignerMeta<TAccountAuthority>
+        : TAccountAuthority,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
@@ -98,17 +110,20 @@ export type ChangeConfigInstruction<
 export type ChangeConfigInstructionData = {
   discriminator: ReadonlyUint8Array;
   configActions: Array<ConfigAction>;
+  compressedProofArgs: Option<ProofArgs>;
 };
 
 export type ChangeConfigInstructionDataArgs = {
   configActions: Array<ConfigActionArgs>;
+  compressedProofArgs: OptionOrNullable<ProofArgsArgs>;
 };
 
 export function getChangeConfigInstructionDataEncoder(): Encoder<ChangeConfigInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["configActions", getArrayEncoder(getConfigActionEncoder())],
+      ["compressedProofArgs", getOptionEncoder(getProofArgsEncoder())],
     ]),
     (value) => ({ ...value, discriminator: CHANGE_CONFIG_DISCRIMINATOR })
   );
@@ -116,8 +131,9 @@ export function getChangeConfigInstructionDataEncoder(): Encoder<ChangeConfigIns
 
 export function getChangeConfigInstructionDataDecoder(): Decoder<ChangeConfigInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["configActions", getArrayDecoder(getConfigActionDecoder())],
+    ["compressedProofArgs", getOptionDecoder(getProofArgsDecoder())],
   ]);
 }
 
@@ -134,21 +150,25 @@ export function getChangeConfigInstructionDataCodec(): Codec<
 export type ChangeConfigAsyncInput<
   TAccountSettings extends string = string,
   TAccountPayer extends string = string,
+  TAccountAuthority extends string = string,
   TAccountSystemProgram extends string = string,
   TAccountSlotHashSysvar extends string = string,
   TAccountInstructionsSysvar extends string = string,
 > = {
   settings: Address<TAccountSettings>;
-  payer?: TransactionSigner<TAccountPayer>;
+  payer: TransactionSigner<TAccountPayer>;
+  authority?: TransactionSigner<TAccountAuthority>;
   systemProgram?: Address<TAccountSystemProgram>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   configActions: ChangeConfigInstructionDataArgs["configActions"];
+  compressedProofArgs: ChangeConfigInstructionDataArgs["compressedProofArgs"];
 };
 
 export async function getChangeConfigInstructionAsync<
   TAccountSettings extends string,
   TAccountPayer extends string,
+  TAccountAuthority extends string,
   TAccountSystemProgram extends string,
   TAccountSlotHashSysvar extends string,
   TAccountInstructionsSysvar extends string,
@@ -157,6 +177,7 @@ export async function getChangeConfigInstructionAsync<
   input: ChangeConfigAsyncInput<
     TAccountSettings,
     TAccountPayer,
+    TAccountAuthority,
     TAccountSystemProgram,
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar
@@ -167,6 +188,7 @@ export async function getChangeConfigInstructionAsync<
     TProgramAddress,
     TAccountSettings,
     TAccountPayer,
+    TAccountAuthority,
     TAccountSystemProgram,
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar
@@ -179,6 +201,7 @@ export async function getChangeConfigInstructionAsync<
   const originalAccounts = {
     settings: { value: input.settings ?? null, isWritable: true },
     payer: { value: input.payer ?? null, isWritable: true },
+    authority: { value: input.authority ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
     slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
     instructionsSysvar: {
@@ -195,8 +218,8 @@ export async function getChangeConfigInstructionAsync<
   const args = { ...input };
 
   // Resolve default values.
-  if (!accounts.payer.value) {
-    accounts.payer.value = await getProgramDerivedAddress({
+  if (!accounts.authority.value) {
+    accounts.authority.value = await getProgramDerivedAddress({
       programAddress,
       seeds: [
         getBytesEncoder().encode(
@@ -227,6 +250,7 @@ export async function getChangeConfigInstructionAsync<
     accounts: [
       getAccountMeta(accounts.settings),
       getAccountMeta(accounts.payer),
+      getAccountMeta(accounts.authority),
       getAccountMeta(accounts.systemProgram),
       getAccountMeta(accounts.slotHashSysvar),
       getAccountMeta(accounts.instructionsSysvar),
@@ -239,6 +263,7 @@ export async function getChangeConfigInstructionAsync<
     TProgramAddress,
     TAccountSettings,
     TAccountPayer,
+    TAccountAuthority,
     TAccountSystemProgram,
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar
@@ -250,32 +275,37 @@ export async function getChangeConfigInstructionAsync<
 export type ChangeConfigInput<
   TAccountSettings extends string = string,
   TAccountPayer extends string = string,
+  TAccountAuthority extends string = string,
   TAccountSystemProgram extends string = string,
   TAccountSlotHashSysvar extends string = string,
   TAccountInstructionsSysvar extends string = string,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = {
   settings: Address<TAccountSettings>;
   payer: TransactionSigner<TAccountPayer>;
+  authority: TransactionSigner<TAccountAuthority>;
   systemProgram?: Address<TAccountSystemProgram>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   configActions: ChangeConfigInstructionDataArgs["configActions"];
+  compressedProofArgs: ChangeConfigInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: TRemainingAccounts;
 };
 
 export function getChangeConfigInstruction<
   TAccountSettings extends string,
   TAccountPayer extends string,
+  TAccountAuthority extends string,
   TAccountSystemProgram extends string,
   TAccountSlotHashSysvar extends string,
   TAccountInstructionsSysvar extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 >(
   input: ChangeConfigInput<
     TAccountSettings,
     TAccountPayer,
+    TAccountAuthority,
     TAccountSystemProgram,
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar,
@@ -286,6 +316,7 @@ export function getChangeConfigInstruction<
   TProgramAddress,
   TAccountSettings,
   TAccountPayer,
+  TAccountAuthority,
   TAccountSystemProgram,
   TAccountSlotHashSysvar,
   TAccountInstructionsSysvar,
@@ -298,6 +329,7 @@ export function getChangeConfigInstruction<
   const originalAccounts = {
     settings: { value: input.settings ?? null, isWritable: true },
     payer: { value: input.payer ?? null, isWritable: true },
+    authority: { value: input.authority ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
     slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
     instructionsSysvar: {
@@ -332,6 +364,7 @@ export function getChangeConfigInstruction<
     accounts: [
       getAccountMeta(accounts.settings),
       getAccountMeta(accounts.payer),
+      getAccountMeta(accounts.authority),
       getAccountMeta(accounts.systemProgram),
       getAccountMeta(accounts.slotHashSysvar),
       getAccountMeta(accounts.instructionsSysvar),
@@ -345,6 +378,7 @@ export function getChangeConfigInstruction<
     TProgramAddress,
     TAccountSettings,
     TAccountPayer,
+    TAccountAuthority,
     TAccountSystemProgram,
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar,
@@ -356,28 +390,29 @@ export function getChangeConfigInstruction<
 
 export type ParsedChangeConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
     settings: TAccountMetas[0];
     payer: TAccountMetas[1];
-    systemProgram: TAccountMetas[2];
-    slotHashSysvar?: TAccountMetas[3] | undefined;
-    instructionsSysvar: TAccountMetas[4];
+    authority: TAccountMetas[2];
+    systemProgram: TAccountMetas[3];
+    slotHashSysvar?: TAccountMetas[4] | undefined;
+    instructionsSysvar?: TAccountMetas[5] | undefined;
   };
   data: ChangeConfigInstructionData;
 };
 
 export function parseChangeConfigInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedChangeConfigInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 5) {
+  if (instruction.accounts.length < 6) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -398,9 +433,10 @@ export function parseChangeConfigInstruction<
     accounts: {
       settings: getNextAccount(),
       payer: getNextAccount(),
+      authority: getNextAccount(),
       systemProgram: getNextAccount(),
       slotHashSysvar: getNextOptionalAccount(),
-      instructionsSysvar: getNextAccount(),
+      instructionsSysvar: getNextOptionalAccount(),
     },
     data: getChangeConfigInstructionDataDecoder().decode(instruction.data),
   };

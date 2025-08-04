@@ -1,6 +1,7 @@
 use crate::{
     error::MultisigError,
     state::{DomainConfig, SEED_DOMAIN_CONFIG},
+    ADMIN,
 };
 use anchor_lang::{prelude::*, solana_program::hash};
 
@@ -8,7 +9,7 @@ use anchor_lang::{prelude::*, solana_program::hash};
 pub struct CreateDomainConfigArgs {
     rp_id: String,
     rp_id_hash: [u8; 32],
-    origin: String,
+    origins: Vec<String>,
     authority: Pubkey,
 }
 
@@ -23,7 +24,10 @@ pub struct CreateDomainConfig<'info> {
         bump,
     )]
     pub domain_config: AccountLoader<'info, DomainConfig>,
-    #[account(mut)]
+    #[account(
+        mut,
+        // address = ADMIN,
+    )]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -39,7 +43,10 @@ impl<'info> CreateDomainConfig<'info> {
         );
 
         let rp_id = args.rp_id.as_bytes();
-        require!(rp_id.len() <= 256, MultisigError::MaxLengthExceeded);
+        require!(
+            rp_id.len() <= u8::MAX.into(),
+            MultisigError::MaxLengthExceeded
+        );
 
         for i in 0..256 {
             if i < rp_id.len() {
@@ -50,17 +57,7 @@ impl<'info> CreateDomainConfig<'info> {
         }
         domain_config.rp_id_length = rp_id.len().try_into().unwrap();
 
-        let origin = args.origin.as_bytes();
-        require!(origin.len() <= 512, MultisigError::MaxLengthExceeded);
-
-        for i in 0..512 {
-            if i < origin.len() {
-                domain_config.origin[i] = *origin.get(i).unwrap();
-            } else {
-                domain_config.origin[i] = 0;
-            }
-        }
-        domain_config.origin_length = origin.len().try_into().unwrap();
+        domain_config.write_origins(args.origins)?;
         domain_config.authority = args.authority;
         domain_config.bump = ctx.bumps.domain_config;
         domain_config.is_disabled = 0;

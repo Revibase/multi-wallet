@@ -21,14 +21,14 @@ import {
   getU64Decoder,
   getU64Encoder,
   transformEncoder,
+  type AccountMeta,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IAccountMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type Option,
   type OptionOrNullable,
   type ReadonlyAccount,
@@ -48,35 +48,33 @@ import {
   type Secp256r1VerifyArgsArgs,
 } from "../types";
 
-export const NATIVE_TRANSFER_INTENT_DISCRIMINATOR = new Uint8Array([
-  57, 156, 213, 157, 88, 202, 2, 151,
-]);
+export const NATIVE_TRANSFER_INTENT_DISCRIMINATOR = new Uint8Array([15]);
 
 export function getNativeTransferIntentDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     NATIVE_TRANSFER_INTENT_DISCRIMINATOR
   );
 }
 
 export type NativeTransferIntentInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountSettings extends string | IAccountMeta<string> = string,
+  TAccountSettings extends string | AccountMeta<string> = string,
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
-  TAccountSource extends string | IAccountMeta<string> = string,
-  TAccountDestination extends string | IAccountMeta<string> = string,
+    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
+  TAccountSource extends string | AccountMeta<string> = string,
+  TAccountDestination extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = "11111111111111111111111111111111",
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = "11111111111111111111111111111111",
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountSettings extends string
         ? ReadonlyAccount<TAccountSettings>
@@ -117,7 +115,7 @@ export type NativeTransferIntentInstructionDataArgs = {
 export function getNativeTransferIntentInstructionDataEncoder(): Encoder<NativeTransferIntentInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["amount", getU64Encoder()],
       [
         "secp256r1VerifyArgs",
@@ -133,7 +131,7 @@ export function getNativeTransferIntentInstructionDataEncoder(): Encoder<NativeT
 
 export function getNativeTransferIntentInstructionDataDecoder(): Decoder<NativeTransferIntentInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["amount", getU64Decoder()],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
@@ -157,7 +155,7 @@ export type NativeTransferIntentAsyncInput<
   TAccountSource extends string = string,
   TAccountDestination extends string = string,
   TAccountSystemProgram extends string = string,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = {
   settings: Address<TAccountSettings>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
@@ -180,7 +178,7 @@ export async function getNativeTransferIntentInstructionAsync<
   TAccountDestination extends string,
   TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 >(
   input: NativeTransferIntentAsyncInput<
     TAccountSettings,
@@ -408,7 +406,7 @@ export function getNativeTransferIntentInstruction<
 
 export type ParsedNativeTransferIntentInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -425,11 +423,11 @@ export type ParsedNativeTransferIntentInstruction<
 
 export function parseNativeTransferIntentInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedNativeTransferIntentInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 7) {
     // TODO: Coded error.

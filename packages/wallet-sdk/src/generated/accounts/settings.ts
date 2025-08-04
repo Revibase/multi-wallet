@@ -15,25 +15,25 @@ import {
   fetchEncodedAccounts,
   fixDecoderSize,
   fixEncoderSize,
-  getAddressDecoder,
-  getAddressEncoder,
   getArrayDecoder,
   getArrayEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getStructDecoder,
   getStructEncoder,
+  getU128Decoder,
+  getU128Encoder,
   getU8Decoder,
   getU8Encoder,
   transformEncoder,
   type Account,
   type Address,
-  type Codec,
-  type Decoder,
   type EncodedAccount,
-  type Encoder,
   type FetchAccountConfig,
   type FetchAccountsConfig,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
   type MaybeAccount,
   type MaybeEncodedAccount,
   type ReadonlyUint8Array,
@@ -55,47 +55,51 @@ export function getSettingsDiscriminatorBytes() {
 
 export type Settings = {
   discriminator: ReadonlyUint8Array;
+  index: bigint;
+  members: Array<Member>;
+  membersLen: number;
   threshold: number;
   multiWalletBump: number;
   bump: number;
-  createKey: Address;
-  members: Array<Member>;
 };
 
 export type SettingsArgs = {
+  index: number | bigint;
+  members: Array<MemberArgs>;
+  membersLen: number;
   threshold: number;
   multiWalletBump: number;
   bump: number;
-  createKey: Address;
-  members: Array<MemberArgs>;
 };
 
-export function getSettingsEncoder(): Encoder<SettingsArgs> {
+export function getSettingsEncoder(): FixedSizeEncoder<SettingsArgs> {
   return transformEncoder(
     getStructEncoder([
       ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['index', getU128Encoder()],
+      ['members', getArrayEncoder(getMemberEncoder(), { size: 4 })],
+      ['membersLen', getU8Encoder()],
       ['threshold', getU8Encoder()],
       ['multiWalletBump', getU8Encoder()],
       ['bump', getU8Encoder()],
-      ['createKey', getAddressEncoder()],
-      ['members', getArrayEncoder(getMemberEncoder())],
     ]),
     (value) => ({ ...value, discriminator: SETTINGS_DISCRIMINATOR })
   );
 }
 
-export function getSettingsDecoder(): Decoder<Settings> {
+export function getSettingsDecoder(): FixedSizeDecoder<Settings> {
   return getStructDecoder([
     ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['index', getU128Decoder()],
+    ['members', getArrayDecoder(getMemberDecoder(), { size: 4 })],
+    ['membersLen', getU8Decoder()],
     ['threshold', getU8Decoder()],
     ['multiWalletBump', getU8Decoder()],
     ['bump', getU8Decoder()],
-    ['createKey', getAddressDecoder()],
-    ['members', getArrayDecoder(getMemberDecoder())],
   ]);
 }
 
-export function getSettingsCodec(): Codec<SettingsArgs, Settings> {
+export function getSettingsCodec(): FixedSizeCodec<SettingsArgs, Settings> {
   return combineCodec(getSettingsEncoder(), getSettingsDecoder());
 }
 
@@ -150,4 +154,8 @@ export async function fetchAllMaybeSettings(
 ): Promise<MaybeAccount<Settings>[]> {
   const maybeAccounts = await fetchEncodedAccounts(rpc, addresses, config);
   return maybeAccounts.map((maybeAccount) => decodeSettings(maybeAccount));
+}
+
+export function getSettingsSize(): number {
+  return 296;
 }

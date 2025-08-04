@@ -3,6 +3,7 @@ import {
   PublicKeyCredentialHint,
   RegistrationResponseJSON,
 } from "@simplewebauthn/server";
+import { Address } from "@solana/kit";
 
 export type AuthenticationResponse = {
   username: string;
@@ -10,6 +11,18 @@ export type AuthenticationResponse = {
   authResponse: AuthenticationResponseJSON | RegistrationResponseJSON;
   slotNumber?: string;
   slotHash?: string;
+};
+
+export type ParsedAuthenticationResponse = {
+  verifyArgs: {
+    publicKey: Uint8Array;
+    clientDataJson: Uint8Array;
+    slotNumber: bigint;
+    slotHash: Uint8Array;
+  };
+  domainConfig: Address;
+  authData: Uint8Array;
+  signature: Uint8Array;
 };
 
 export type TransactionActionType =
@@ -21,7 +34,9 @@ export type TransactionActionType =
   | "close"
   | "add_new_member"
   | "token_transfer_intent"
-  | "native_transfer_intent";
+  | "native_transfer_intent"
+  | "compress"
+  | "decompress";
 
 export type TransactionPayload = {
   transactionActionType: TransactionActionType;

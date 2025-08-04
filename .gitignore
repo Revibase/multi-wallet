@@ -6,3 +6,4 @@ node_modules
 test-ledger
 .yarn
 program_key.json
+program_key_v2.json

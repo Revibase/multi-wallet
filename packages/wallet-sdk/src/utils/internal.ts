@@ -1,29 +1,36 @@
 import { getTransferSolInstruction } from "@solana-program/system";
 import {
+  AccountMeta,
   AccountRole,
+  AccountSignerMeta,
   Address,
   address,
   fetchAddressesForLookupTables,
   getAddressEncoder,
-  GetMultipleAccountsApi,
   getSignersFromInstruction,
-  IAccountMeta,
-  IAccountSignerMeta,
-  IInstruction,
+  Instruction,
   none,
   OptionOrNullable,
-  Rpc,
   some,
   TransactionSigner,
 } from "@solana/kit";
+import { PublicKey } from "@solana/web3.js";
+import { getSolanaRpc } from ".";
 import {
   ConfigAction,
+  DelegateCreateOrMutateArgs,
+  DelegateMutArgs,
   IPermissions,
   MemberKey,
-  MemberWithVerifyArgs,
+  MemberKeyWithCloseArgs,
+  MemberWithCreationArgs,
   Secp256r1VerifyArgs,
 } from "../generated";
-import { ConfigActionWrapper, KeyType, Secp256r1Key } from "../types";
+import {
+  ConfigActionWrapperWithDelegateArgs,
+  KeyType,
+  Secp256r1Key,
+} from "../types";
 import { JITO_TIP_ACCOUNTS } from "./consts";
 import { convertMemberKeyToString } from "./helper";
 import {
@@ -87,12 +94,10 @@ function isSignerIndex(message: CustomTransactionMessage, index: number) {
 /** Populate remaining accounts required for execution of the transaction. */
 
 export async function accountsForTransactionExecute({
-  rpc,
   multiWallet,
   transactionMessageBytes,
   additionalSigners,
 }: {
-  rpc: Rpc<GetMultipleAccountsApi>;
   transactionMessageBytes: Uint8Array;
   multiWallet: Address;
   additionalSigners?: TransactionSigner[];
@@ -103,11 +108,11 @@ export async function accountsForTransactionExecute({
 
   const addressLookupTableAccounts = await fetchAddressesForLookupTables(
     transactionMessage.addressTableLookups.map((x) => x.accountKey),
-    rpc
+    getSolanaRpc()
   );
 
   // Populate account metas required for execution of the transaction.
-  const accountMetas: (IAccountMeta | IAccountSignerMeta)[] = [];
+  const accountMetas: (AccountMeta | AccountSignerMeta)[] = [];
   // First add the lookup table accounts used by the transaction. They are needed for on-chain validation.
   accountMetas.push(
     ...(transactionMessage.addressTableLookups?.map((lookup) => {
@@ -233,13 +238,13 @@ export function convertMemberkeyToPubKey(
   }
 }
 export function deduplicateSignersAndFeePayer(
-  instructions: IInstruction[],
-  feePayer: TransactionSigner
+  instructions: Instruction[],
+  payer: TransactionSigner
 ): Address[] {
   const signers = instructions
     .flatMap((instruction) => getSignersFromInstruction(instruction))
-    .filter((x) => x.address !== feePayer.address)
-    .concat([feePayer]);
+    .filter((x) => x.address !== payer.address)
+    .concat([payer]);
   return signers.map((x) => x.address);
 }
 export function normalizeKey(key: any) {
@@ -250,12 +255,19 @@ export function normalizeKey(key: any) {
   throw new Error("Invalid key format");
 }
 export async function extractSecp256r1VerificationArgs(
-  signer?: Secp256r1Key | TransactionSigner
+  signer?: Secp256r1Key | TransactionSigner,
+  index = 0
 ) {
   const secp256r1PublicKey =
     signer instanceof Secp256r1Key ? signer : undefined;
   const verifyArgs: OptionOrNullable<Secp256r1VerifyArgs> =
-    secp256r1PublicKey?.verifyArgs ? some(secp256r1PublicKey.verifyArgs) : null;
+    secp256r1PublicKey?.verifyArgs && index !== -1
+      ? some({
+          index,
+          clientDataJson: secp256r1PublicKey.verifyArgs.clientDataJson,
+          slotNumber: secp256r1PublicKey.verifyArgs.slotNumber,
+        })
+      : null;
   const instructionsSysvar =
     signer instanceof Secp256r1Key
       ? address("Sysvar1nstructions1111111111111111111111111")
@@ -269,7 +281,6 @@ export async function extractSecp256r1VerificationArgs(
   const signature = secp256r1PublicKey?.verifyArgs
     ? secp256r1PublicKey.signature
     : undefined;
-  const publicKey = secp256r1PublicKey?.verifyArgs?.publicKey;
   const message =
     secp256r1PublicKey?.authData && secp256r1PublicKey.verifyArgs
       ? new Uint8Array([
@@ -282,6 +293,9 @@ export async function extractSecp256r1VerificationArgs(
           ),
         ])
       : undefined;
+  const publicKey = secp256r1PublicKey?.verifyArgs
+    ? secp256r1PublicKey.verifyArgs.publicKey
+    : undefined;
 
   return {
     slotHashSysvar,
@@ -316,7 +330,7 @@ export function getDeduplicatedSigners(
   return dedupSigners;
 }
 export function convertConfigActionWrapper(
-  configActionsWrapper: ConfigActionWrapper[]
+  configActionsWrapper: ConfigActionWrapperWithDelegateArgs[]
 ) {
   const configActions: ConfigAction[] = [];
   for (const action of configActionsWrapper) {
@@ -328,14 +342,20 @@ export function convertConfigActionWrapper(
             action.members.map((x) => ({
               pubkey: convertPubkeyToMemberkey(x.pubkey),
               permissions: x.permissions,
+              delegateCloseArgs: x.delegateCloseArgs
+                ? some(x.delegateCloseArgs)
+                : none(),
+              delegateCreationArgs: x.delegateCreateArgs
+                ? some(x.delegateCreateArgs)
+                : none(),
             })),
           ],
         });
         break;
       case "AddMembers":
-        const addMembers: MemberWithVerifyArgs[] = [];
+        const addMembers: MemberWithCreationArgs[] = [];
         for (const x of action.members) {
-          addMembers.push(convertMember(x));
+          addMembers.push(convertAddMember(x));
         }
         configActions.push({
           __kind: "AddMembers",
@@ -343,9 +363,13 @@ export function convertConfigActionWrapper(
         });
         break;
       case "RemoveMembers":
+        const removeMembers: MemberKeyWithCloseArgs[] = [];
+        for (const x of action.members) {
+          removeMembers.push(convertRemoveMember(x));
+        }
         configActions.push({
           __kind: "RemoveMembers",
-          fields: [action.members.map(convertPubkeyToMemberkey)],
+          fields: [removeMembers],
         });
         break;
       case "SetThreshold":
@@ -360,23 +384,42 @@ export function convertConfigActionWrapper(
   return configActions;
 }
 
-export function convertMember(x: {
+export function convertRemoveMember(x: {
+  pubkey: Address | Secp256r1Key;
+  delegateArgs?: DelegateMutArgs;
+}): MemberKeyWithCloseArgs {
+  return {
+    data: convertPubkeyToMemberkey(x.pubkey),
+    delegateArgs: x.delegateArgs ? some(x.delegateArgs) : none(),
+  };
+}
+
+export function convertAddMember(member: {
   pubkey: Address | Secp256r1Key;
   permissions: IPermissions;
-}): MemberWithVerifyArgs {
+  index: number;
+  delegateArgs?: DelegateCreateOrMutateArgs;
+}): MemberWithCreationArgs {
   return {
     data: {
-      permissions: x.permissions,
+      permissions: member.permissions,
       domainConfig:
-        x.pubkey instanceof Secp256r1Key && x.pubkey.domainConfig
-          ? some(x.pubkey.domainConfig)
-          : none(),
-      pubkey: convertPubkeyToMemberkey(x.pubkey),
+        member.pubkey instanceof Secp256r1Key && member.pubkey.domainConfig
+          ? member.pubkey.domainConfig
+          : address(PublicKey.default.toString()),
+      pubkey: convertPubkeyToMemberkey(member.pubkey),
     },
     verifyArgs:
-      x.pubkey instanceof Secp256r1Key && x.pubkey.verifyArgs
-        ? some(x.pubkey.verifyArgs)
+      member.pubkey instanceof Secp256r1Key &&
+      member.pubkey.verifyArgs &&
+      member.index !== -1
+        ? some({
+            clientDataJson: member.pubkey.verifyArgs.clientDataJson,
+            slotNumber: member.pubkey.verifyArgs.slotNumber,
+            index: member.index,
+          })
         : none(),
+    delegateArgs: member.delegateArgs ? some(member.delegateArgs) : none(),
   };
 }
 export function getPubkeyString(pubkey: TransactionSigner | Secp256r1Key) {
@@ -388,16 +431,16 @@ export function getPubkeyString(pubkey: TransactionSigner | Secp256r1Key) {
 }
 
 export function addJitoTip({
-  feePayer,
+  payer,
   tipAmount,
 }: {
-  feePayer: TransactionSigner;
+  payer: TransactionSigner;
   tipAmount: number;
 }) {
   const tipAccount =
     JITO_TIP_ACCOUNTS[Math.floor(Math.random() * JITO_TIP_ACCOUNTS.length)];
   return getTransferSolInstruction({
-    source: feePayer,
+    source: payer,
     destination: address(tipAccount),
     amount: tipAmount,
   });

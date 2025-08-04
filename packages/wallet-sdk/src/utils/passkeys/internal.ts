@@ -5,13 +5,13 @@ import {
 } from "@simplewebauthn/server";
 import { getProgramDerivedAddress } from "@solana/addresses";
 import { getBase58Encoder } from "@solana/codecs";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
 import {
-  getSecp256r1PubkeyDecoder,
-  MULTI_WALLET_PROGRAM_ADDRESS,
-} from "../../generated";
-import { AuthenticationResponse, TransactionPayload } from "../../types";
+  AuthenticationResponse,
+  ParsedAuthenticationResponse,
+  TransactionPayload,
+} from "../../types";
 import { convertSignatureDERtoRS, createPopUp } from "./helper";
-import { closeAuthModal, createAuthIframe } from "./iframe";
 
 let activeMessageHandler: ((event: MessageEvent) => void) | null = null;
 const HEARTBEAT_INTERVAL = 2000;
@@ -42,17 +42,13 @@ export async function openAuthUrl({
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }
-
   return new Promise((resolve, reject) => {
     const origin = new URL(authUrl).origin;
-    const isIframeAllowed =
-      data?.type === "transaction" &&
-      getBaseDomain(authUrl) === getBaseDomain(window.location.href);
-    let source: Window | null = null;
+
     let heartbeatTimeout: NodeJS.Timeout | null = null;
 
     const closeCheckInterval = setInterval(() => {
-      if (source && source.closed) {
+      if (popUp && popUp.closed) {
         cleanUp();
         reject(new Error("User closed the authentication window"));
       }
@@ -70,35 +66,18 @@ export async function openAuthUrl({
       if (heartbeatTimeout) clearTimeout(heartbeatTimeout);
       if (activeMessageHandler)
         window.removeEventListener("message", activeMessageHandler);
-      if (source) source.close();
-      if (isIframeAllowed) closeAuthModal();
+      if (popUp) popUp.close();
     }
 
-    if (isIframeAllowed) {
-      if (popUp) popUp.close();
-      source = createAuthIframe({
-        authUrl,
-        onClose: () => {
-          cleanUp();
-          reject(new Error("User closed the authentication window"));
-        },
-      });
-      if (!source) {
-        reject(new Error("An error occured while populating the iframe."));
-        return;
-      }
+    if (popUp) {
+      popUp.location.replace(authUrl);
     } else {
-      source = popUp;
-      if (source) {
-        source.location.replace(authUrl);
-      } else {
-        source = createPopUp(authUrl);
-      }
+      popUp = createPopUp(authUrl);
+    }
 
-      if (!source) {
-        reject(new Error("Disable your popup blocker to continue."));
-        return;
-      }
+    if (!popUp) {
+      reject(new Error("Disable your popup blocker to continue."));
+      return;
     }
 
     function log(...args: any[]) {
@@ -107,9 +86,9 @@ export async function openAuthUrl({
 
     const messageReceivedHandler = (event: MessageEvent) => {
       const isSameOrigin = event.origin === origin;
-      const isSameWindow = event.source === source;
+      const isSameWindow = event.source === popUp;
 
-      if (!isSameOrigin || !isSameWindow || !event.isTrusted) {
+      if (!isSameOrigin || !isSameWindow || !event.isTrusted || !popUp) {
         log("Ignored message from unknown source", event);
         return;
       }
@@ -117,7 +96,7 @@ export async function openAuthUrl({
       switch (event.data.type) {
         case "popup-ready":
           log("Popup is ready, sending auth data");
-          source.postMessage(
+          popUp.postMessage(
             {
               type: "popup-init",
               payload: {
@@ -172,16 +151,6 @@ export async function openAuthUrl({
     activeMessageHandler = messageReceivedHandler;
     window.addEventListener("message", activeMessageHandler);
   });
-}
-
-function getBaseDomain(url: string): string {
-  const { hostname } = new URL(url);
-  const parts = hostname.split(".");
-
-  if (parts.length > 2) {
-    return parts.slice(parts.length - 2).join(".");
-  }
-  return hostname;
 }
 
 export function convertTransactionPayload(payload: TransactionPayload) {
@@ -248,7 +217,7 @@ export function isAuthenticationResponseJSON(
 
 export async function parseAuthenticationResponse(
   payload: AuthenticationResponse
-) {
+): Promise<ParsedAuthenticationResponse> {
   if (!payload.slotNumber || !payload.slotHash) {
     throw new Error("Missing slot hash.");
   }
@@ -277,9 +246,7 @@ export async function parseAuthenticationResponse(
 
   return {
     verifyArgs: {
-      publicKey: getSecp256r1PubkeyDecoder().decode(
-        getBase58Encoder().encode(payload.publicKey)
-      ),
+      publicKey: new Uint8Array(getBase58Encoder().encode(payload.publicKey)),
       clientDataJson: clientDataJson,
       slotNumber: BigInt(payload.slotNumber),
       slotHash: new Uint8Array(getBase58Encoder().encode(payload.slotHash)),

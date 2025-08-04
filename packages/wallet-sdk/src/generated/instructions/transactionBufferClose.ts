@@ -17,15 +17,15 @@ import {
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
+  type AccountMeta,
+  type AccountSignerMeta,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IAccountMeta,
-  type IAccountSignerMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type Option,
   type OptionOrNullable,
   type ReadonlyAccount,
@@ -43,33 +43,31 @@ import {
   type Secp256r1VerifyArgsArgs,
 } from '../types';
 
-export const TRANSACTION_BUFFER_CLOSE_DISCRIMINATOR = new Uint8Array([
-  17, 182, 208, 228, 136, 24, 178, 102,
-]);
+export const TRANSACTION_BUFFER_CLOSE_DISCRIMINATOR = new Uint8Array([10]);
 
 export function getTransactionBufferCloseDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     TRANSACTION_BUFFER_CLOSE_DISCRIMINATOR
   );
 }
 
 export type TransactionBufferCloseInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountSettings extends string | IAccountMeta<string> = string,
-  TAccountPayer extends string | IAccountMeta<string> = string,
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
-  TAccountTransactionBuffer extends string | IAccountMeta<string> = string,
-  TAccountCloser extends string | IAccountMeta<string> = string,
+  TAccountSettings extends string | AccountMeta<string> = string,
+  TAccountPayer extends string | AccountMeta<string> = string,
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
+  TAccountTransactionBuffer extends string | AccountMeta<string> = string,
+  TAccountCloser extends string | AccountMeta<string> = string,
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
+    | AccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountSettings extends string
         ? ReadonlyAccount<TAccountSettings>
@@ -85,7 +83,7 @@ export type TransactionBufferCloseInstruction<
         : TAccountTransactionBuffer,
       TAccountCloser extends string
         ? ReadonlySignerAccount<TAccountCloser> &
-            IAccountSignerMeta<TAccountCloser>
+            AccountSignerMeta<TAccountCloser>
         : TAccountCloser,
       TAccountSlotHashSysvar extends string
         ? ReadonlyAccount<TAccountSlotHashSysvar>
@@ -109,7 +107,7 @@ export type TransactionBufferCloseInstructionDataArgs = {
 export function getTransactionBufferCloseInstructionDataEncoder(): Encoder<TransactionBufferCloseInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
       [
         'secp256r1VerifyArgs',
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
@@ -124,7 +122,7 @@ export function getTransactionBufferCloseInstructionDataEncoder(): Encoder<Trans
 
 export function getTransactionBufferCloseInstructionDataDecoder(): Decoder<TransactionBufferCloseInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
     ['secp256r1VerifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
 }
@@ -256,7 +254,7 @@ export function getTransactionBufferCloseInstruction<
 
 export type ParsedTransactionBufferCloseInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -273,11 +271,11 @@ export type ParsedTransactionBufferCloseInstruction<
 
 export function parseTransactionBufferCloseInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedTransactionBufferCloseInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 7) {
     // TODO: Coded error.

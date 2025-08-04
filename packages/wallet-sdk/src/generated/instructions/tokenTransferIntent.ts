@@ -21,14 +21,14 @@ import {
   getU64Decoder,
   getU64Encoder,
   transformEncoder,
+  type AccountMeta,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IAccountMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type Option,
   type OptionOrNullable,
   type ReadonlyAccount,
@@ -48,46 +48,42 @@ import {
   type Secp256r1VerifyArgsArgs,
 } from "../types";
 
-export const TOKEN_TRANSFER_INTENT_DISCRIMINATOR = new Uint8Array([
-  51, 91, 96, 155, 132, 232, 179, 48,
-]);
+export const TOKEN_TRANSFER_INTENT_DISCRIMINATOR = new Uint8Array([14]);
 
 export function getTokenTransferIntentDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     TOKEN_TRANSFER_INTENT_DISCRIMINATOR
   );
 }
 
 export type TokenTransferIntentInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountSettings extends string | IAccountMeta<string> = string,
+  TAccountSettings extends string | AccountMeta<string> = string,
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
-  TAccountSource extends string | IAccountMeta<string> = string,
-  TAccountSourceTokenAccount extends string | IAccountMeta<string> = string,
-  TAccountDestination extends string | IAccountMeta<string> = string,
-  TAccountDestinationTokenAccount extends
-    | string
-    | IAccountMeta<string> = string,
+    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
+  TAccountSource extends string | AccountMeta<string> = string,
+  TAccountSourceTokenAccount extends string | AccountMeta<string> = string,
+  TAccountDestination extends string | AccountMeta<string> = string,
+  TAccountDestinationTokenAccount extends string | AccountMeta<string> = string,
   TAccountTokenProgram extends
     | string
-    | IAccountMeta<string> = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-  TAccountMint extends string | IAccountMeta<string> = string,
+    | AccountMeta<string> = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  TAccountMint extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = "11111111111111111111111111111111",
+    | AccountMeta<string> = "11111111111111111111111111111111",
   TAccountAssociatedTokenProgram extends
     | string
-    | IAccountMeta<string> = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountSettings extends string
         ? ReadonlyAccount<TAccountSettings>
@@ -143,7 +139,7 @@ export type TokenTransferIntentInstructionDataArgs = {
 export function getTokenTransferIntentInstructionDataEncoder(): Encoder<TokenTransferIntentInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["amount", getU64Encoder()],
       [
         "secp256r1VerifyArgs",
@@ -159,7 +155,7 @@ export function getTokenTransferIntentInstructionDataEncoder(): Encoder<TokenTra
 
 export function getTokenTransferIntentInstructionDataDecoder(): Decoder<TokenTransferIntentInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["amount", getU64Decoder()],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
@@ -188,14 +184,14 @@ export type TokenTransferIntentAsyncInput<
   TAccountMint extends string = string,
   TAccountSystemProgram extends string = string,
   TAccountAssociatedTokenProgram extends string = string,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = {
   settings: Address<TAccountSettings>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   domainConfig?: Address<TAccountDomainConfig>;
   source?: Address<TAccountSource>;
-  sourceTokenAccount: Address<TAccountSourceTokenAccount>;
+  sourceTokenAccount?: Address<TAccountSourceTokenAccount>;
   destination: Address<TAccountDestination>;
   destinationTokenAccount: Address<TAccountDestinationTokenAccount>;
   tokenProgram?: Address<TAccountTokenProgram>;
@@ -221,7 +217,7 @@ export async function getTokenTransferIntentInstructionAsync<
   TAccountSystemProgram extends string,
   TAccountAssociatedTokenProgram extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 >(
   input: TokenTransferIntentAsyncInput<
     TAccountSettings,
@@ -321,6 +317,17 @@ export async function getTokenTransferIntentInstructionAsync<
   if (!accounts.tokenProgram.value) {
     accounts.tokenProgram.value =
       "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address<"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA">;
+  }
+  if (!accounts.sourceTokenAccount.value) {
+    accounts.sourceTokenAccount.value = await getProgramDerivedAddress({
+      programAddress:
+        "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">,
+      seeds: [
+        getAddressEncoder().encode(expectAddress(accounts.source.value)),
+        getAddressEncoder().encode(expectAddress(accounts.tokenProgram.value)),
+        getAddressEncoder().encode(expectAddress(accounts.mint.value)),
+      ],
+    });
   }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
@@ -548,7 +555,7 @@ export function getTokenTransferIntentInstruction<
 
 export type ParsedTokenTransferIntentInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -570,11 +577,11 @@ export type ParsedTokenTransferIntentInstruction<
 
 export function parseTokenTransferIntentInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedTokenTransferIntentInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 12) {
     // TODO: Coded error.

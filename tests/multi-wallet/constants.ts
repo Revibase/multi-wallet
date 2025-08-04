@@ -2,6 +2,8 @@ import { lamports } from "@solana/kit";
 
 // Network constants
 export const LOCAL_RPC_URL = "http://localhost:8899";
+export const LOCAL_INDEXER_URL = "http://localhost:8784";
+export const LOCAL_PROVER_URL = "http://localhost:3001";
 export const LOCAL_WS_URL = "ws://localhost:8900";
 
 // Amount constants

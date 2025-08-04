@@ -180,8 +180,8 @@ export class RevibaseWallet implements Wallet {
   #connected = () => {
     const pubKey = this.#revibase.publicKey;
     const member = this.#revibase.member;
-    const settings = this.#revibase.settings;
-    if (pubKey && member && settings) {
+    const index = this.#revibase.index;
+    if (pubKey && member && index) {
       const publicKey = new Uint8Array(
         getAddressEncoder().encode(address(pubKey))
       );
@@ -201,7 +201,7 @@ export class RevibaseWallet implements Wallet {
             ) as readonly `${string}:${string}`[],
           },
           member,
-          settings
+          index
         );
         this.#emit("change", { accounts: this.accounts });
       }
@@ -303,7 +303,7 @@ export class RevibaseWallet implements Wallet {
             ) as readonly `${string}:${string}`[],
           },
           result.member,
-          result.settings
+          result.index
         ),
       });
     }

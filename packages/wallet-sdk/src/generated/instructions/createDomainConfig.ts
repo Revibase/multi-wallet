@@ -14,6 +14,8 @@ import {
   fixEncoderSize,
   getAddressDecoder,
   getAddressEncoder,
+  getArrayDecoder,
+  getArrayEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getStructDecoder,
@@ -23,15 +25,15 @@ import {
   getUtf8Decoder,
   getUtf8Encoder,
   transformEncoder,
+  type AccountMeta,
+  type AccountSignerMeta,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IAccountMeta,
-  type IAccountSignerMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type ReadonlyAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
@@ -41,34 +43,32 @@ import {
 import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
 import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 
-export const CREATE_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([
-  197, 81, 191, 2, 164, 140, 184, 90,
-]);
+export const CREATE_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([0]);
 
 export function getCreateDomainConfigDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     CREATE_DOMAIN_CONFIG_DISCRIMINATOR
   );
 }
 
 export type CreateDomainConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
-  TAccountPayer extends string | IAccountMeta<string> = string,
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
+  TAccountPayer extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = '11111111111111111111111111111111',
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = '11111111111111111111111111111111',
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountDomainConfig extends string
         ? WritableAccount<TAccountDomainConfig>
         : TAccountDomainConfig,
       TAccountPayer extends string
         ? WritableSignerAccount<TAccountPayer> &
-            IAccountSignerMeta<TAccountPayer>
+            AccountSignerMeta<TAccountPayer>
         : TAccountPayer,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
@@ -81,24 +81,29 @@ export type CreateDomainConfigInstructionData = {
   discriminator: ReadonlyUint8Array;
   rpId: string;
   rpIdHash: ReadonlyUint8Array;
-  origin: string;
+  origins: Array<string>;
   authority: Address;
 };
 
 export type CreateDomainConfigInstructionDataArgs = {
   rpId: string;
   rpIdHash: ReadonlyUint8Array;
-  origin: string;
+  origins: Array<string>;
   authority: Address;
 };
 
 export function getCreateDomainConfigInstructionDataEncoder(): Encoder<CreateDomainConfigInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
       ['rpId', addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
       ['rpIdHash', fixEncoderSize(getBytesEncoder(), 32)],
-      ['origin', addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
+      [
+        'origins',
+        getArrayEncoder(
+          addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())
+        ),
+      ],
       ['authority', getAddressEncoder()],
     ]),
     (value) => ({ ...value, discriminator: CREATE_DOMAIN_CONFIG_DISCRIMINATOR })
@@ -107,10 +112,13 @@ export function getCreateDomainConfigInstructionDataEncoder(): Encoder<CreateDom
 
 export function getCreateDomainConfigInstructionDataDecoder(): Decoder<CreateDomainConfigInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
     ['rpId', addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
     ['rpIdHash', fixDecoderSize(getBytesDecoder(), 32)],
-    ['origin', addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
+    [
+      'origins',
+      getArrayDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
+    ],
     ['authority', getAddressDecoder()],
   ]);
 }
@@ -135,7 +143,7 @@ export type CreateDomainConfigInput<
   systemProgram?: Address<TAccountSystemProgram>;
   rpId: CreateDomainConfigInstructionDataArgs['rpId'];
   rpIdHash: CreateDomainConfigInstructionDataArgs['rpIdHash'];
-  origin: CreateDomainConfigInstructionDataArgs['origin'];
+  origins: CreateDomainConfigInstructionDataArgs['origins'];
   authority: CreateDomainConfigInstructionDataArgs['authority'];
 };
 
@@ -203,7 +211,7 @@ export function getCreateDomainConfigInstruction<
 
 export type ParsedCreateDomainConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -216,11 +224,11 @@ export type ParsedCreateDomainConfigInstruction<
 
 export function parseCreateDomainConfigInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedCreateDomainConfigInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 3) {
     // TODO: Coded error.

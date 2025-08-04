@@ -19,7 +19,7 @@ pub enum MultisigError {
     #[msg("No members were provided. A multisig must have at least one member.")]
     EmptyMembers,
 
-    #[msg("The number of members exceeds the supported maximum (65,535).")]
+    #[msg("The number of members exceeds the supported maximum 4.")]
     TooManyMembers,
 
     #[msg("Invalid threshold value. It must be at least 1 and not exceed the number of voting-eligible members.")]
@@ -38,17 +38,14 @@ pub enum MultisigError {
     #[msg("One or more accounts provided failed validation. Ensure all required accounts are included and correct.")]
     InvalidAccount,
 
+    #[msg("One or more arguments provided failed validation. Ensure all required arguments are included and correct.")]
+    InvalidArguments,
+
     #[msg("A required account is missing from the transaction context.")]
     MissingAccount,
 
-    #[msg("The account you're trying to initialize already exists.")]
-    AccountAlreadyExist,
-
-    #[msg("The account is not owned by the multisig program. Ensure the correct program owns this account.")]
-    IllegalAccountOwner,
-
-    #[msg("A delegate account is required when the initial member has requested delegate permissions.")]
-    InsuffientSignerWithDelegatePermission,
+    #[msg("A delegate creation args is required when the initial member has requested delegate permissions.")]
+    MissingDelegateArgs,
 
     #[msg("At least one signer must have execute permissions to proceed.")]
     InsufficientSignerWithExecutePermission,
@@ -99,9 +96,6 @@ pub enum MultisigError {
 
     #[msg("The specified slot number is not present in the provided slot history.")]
     SlotNumberNotFound,
-
-    #[msg("The slot hash doesn't match the expected value from slot history.")]
-    SlotHashMismatch,
 
     #[msg("The domain configuration account is currently disabled. Contact support or try again later.")]
     DomainConfigIsDisabled,

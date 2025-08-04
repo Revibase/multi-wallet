@@ -1,4 +1,4 @@
-import { Address, IInstruction } from "@solana/kit";
+import { Address, Instruction } from "@solana/kit";
 
 export class MessageAccountKeys {
   private staticAccountKeys: Address[];
@@ -37,7 +37,7 @@ export class MessageAccountKeys {
   get length() {
     return this.keySegments().flat().length;
   }
-  compileInstructions(instructions: IInstruction[]) {
+  compileInstructions(instructions: Instruction[]) {
     // Bail early if any account indexes would overflow a u8
     const U8_MAX = 255;
     if (this.length > U8_MAX + 1) {

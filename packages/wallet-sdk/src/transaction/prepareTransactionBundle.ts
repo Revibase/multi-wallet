@@ -2,32 +2,22 @@ import {
   Address,
   address,
   AddressesByLookupTableAddress,
-  assertIsTransactionMessageWithBlockhashLifetime,
-  CompiledTransactionMessage,
-  compileTransaction,
-  decompileTransactionMessageFetchingLookupTables,
-  GetAccountInfoApi,
-  getBase64EncodedWireTransaction,
-  GetMultipleAccountsApi,
-  IInstruction,
-  Rpc,
-  SimulateTransactionApi,
+  Instruction,
   TransactionSigner,
 } from "@solana/kit";
-import { fetchMaybeSettings, MULTI_WALLET_PROGRAM_ADDRESS } from "../generated";
+import { fetchSettingsData } from "../compressed";
 import {
   createTransactionBuffer,
   executeTransaction,
   executeTransactionBuffer,
   extendTransactionBuffer,
-  getSecp256r1VerifyInstruction,
   Secp256r1VerifyInput,
   voteTransactionBuffer,
 } from "../instructions";
 import { Permission, Permissions, Secp256r1Key } from "../types";
 import {
   convertMemberKeyToString,
-  customTransactionMessageDeserialize,
+  getSettingsFromIndex,
   getTransactionBufferAddress,
 } from "../utils";
 import {
@@ -36,57 +26,41 @@ import {
 } from "../utils/internal";
 
 interface CreateTransactionBundleArgs {
-  rpc: Rpc<GetAccountInfoApi & GetMultipleAccountsApi & SimulateTransactionApi>;
-  feePayer: TransactionSigner;
-  settings: Address;
-  bufferIndex: number;
+  payer: TransactionSigner;
+  index: bigint | number;
   transactionMessageBytes: Uint8Array;
   creator: TransactionSigner | Secp256r1Key;
+  bufferIndex?: number;
   executor?: TransactionSigner | Secp256r1Key;
   additionalVoters?: (TransactionSigner | Secp256r1Key)[];
   additionalSigners?: TransactionSigner[];
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   jitoBundlesTipAmount?: number;
   skipChecks?: boolean;
-  createChunkSize?: number;
-  extendChunkSize?: number;
+  chunkSize?: number;
+  compressed?: boolean;
 }
 
 export async function prepareTransactionBundle({
-  rpc,
-  feePayer,
-  settings,
-  bufferIndex,
+  payer,
+  index,
   transactionMessageBytes,
   creator,
   executor,
   secp256r1VerifyInput,
+  jitoBundlesTipAmount,
+  bufferIndex = Math.floor(Math.random() * 255),
   additionalVoters = [],
   additionalSigners = [],
-  jitoBundlesTipAmount,
   skipChecks = false,
-  createChunkSize = 100,
-  extendChunkSize = 900,
-}: CreateTransactionBundleArgs): Promise<
-  {
-    id: string;
-    signers: string[];
-    feePayer: TransactionSigner;
-    ixs: IInstruction[];
-    addressLookupTableAccounts?: AddressesByLookupTableAddress;
-  }[]
-> {
+  compressed = false,
+  chunkSize = Math.ceil(transactionMessageBytes.length / 2),
+}: CreateTransactionBundleArgs) {
   if (!skipChecks) {
-    await Promise.all([
-      preTransactionChecks(rpc, settings, creator, additionalVoters, executor),
-      simulateTransactionCheck(
-        rpc,
-        transactionMessageBytes,
-        secp256r1VerifyInput
-      ),
-    ]);
+    await preTransactionChecks(index, creator, additionalVoters, executor);
   }
 
+  const settings = await getSettingsFromIndex(index);
   const transactionBufferAddress = await getTransactionBufferAddress(
     settings,
     creator instanceof Secp256r1Key ? creator : creator.address,
@@ -97,85 +71,86 @@ export async function prepareTransactionBundle({
     await crypto.subtle.digest("SHA-256", transactionMessageBytes)
   );
 
-  const finalBufferSize = transactionMessageBytes.length;
-
-  const createChunk = transactionMessageBytes.subarray(0, createChunkSize);
-  const extendChunks: Uint8Array[] = [];
-  const extendChunksHash: Uint8Array[] = [];
-  for (
-    let i = createChunkSize;
-    i < transactionMessageBytes.length;
-    i += extendChunkSize
-  ) {
-    const extendChunk = transactionMessageBytes.subarray(
-      i,
-      i + extendChunkSize
-    );
-    extendChunks.push(extendChunk);
-    extendChunksHash.push(
-      new Uint8Array(await crypto.subtle.digest("SHA-256", extendChunk))
+  const chunks: Uint8Array[] = [];
+  const chunksHash: Uint8Array[] = [];
+  for (let i = 0; i < transactionMessageBytes.length; i += chunkSize) {
+    const chunk = transactionMessageBytes.subarray(i, i + chunkSize);
+    chunks.push(chunk);
+    chunksHash.push(
+      new Uint8Array(await crypto.subtle.digest("SHA-256", chunk))
     );
   }
 
   const transactionBufferCreateIxs = await createTransactionBuffer({
     finalBufferHash,
-    finalBufferSize,
-    transactionMessageBytes: createChunk,
+    finalBufferSize: transactionMessageBytes.length,
     bufferIndex,
-    feePayer,
+    payer,
     transactionBufferAddress,
-    settings,
+    index,
     creator,
     permissionlessExecution: !executor,
-    bufferExtendHashes: extendChunksHash,
+    bufferExtendHashes: chunksHash,
+    compressed,
   });
 
-  const transactionBufferExtendIxs = extendChunks.map((chunk) =>
-    extendTransactionBuffer({
-      transactionMessageBytes: chunk,
-      transactionBufferAddress,
-      settings,
-    })
+  const transactionBufferExtendIxs = await Promise.all(
+    chunks.map(
+      async (transactionMessageBytes) =>
+        await extendTransactionBuffer({
+          transactionMessageBytes,
+          transactionBufferAddress,
+          index,
+          compressed,
+        })
+    )
   );
 
   const transactionVoteIxs = await Promise.all(
     additionalVoters.map((voter) =>
       voteTransactionBuffer({
-        feePayer,
         voter,
         transactionBufferAddress,
-        settings,
+        index,
+        compressed,
+        payer,
       })
     )
   );
 
   const transactionBufferExecuteIxs = await executeTransactionBuffer({
-    settings,
+    compressed,
+    payer,
+    index,
     executor,
     transactionBufferAddress,
   });
 
   const { instructions: transactionExecuteIx, addressLookupTableAccounts } =
     await executeTransaction({
-      rpc,
-      settings,
+      compressed,
+      index,
       transactionMessageBytes,
       transactionBufferAddress,
-      feePayer,
+      payer,
       additionalSigners,
       secp256r1VerifyInput,
       jitoBundlesTipAmount,
     });
 
-  const txs = [];
+  const txs: {
+    id: string;
+    signers: Address[];
+    payer: TransactionSigner;
+    ixs: Instruction[];
+    addressLookupTableAccounts?: AddressesByLookupTableAddress;
+  }[] = [];
   txs.push({
     id: "Create Transaction Buffer",
-    signers: deduplicateSignersAndFeePayer(
-      transactionBufferCreateIxs,
-      feePayer
-    ),
-    feePayer,
+    signers: deduplicateSignersAndFeePayer(transactionBufferCreateIxs, payer),
+    payer,
     ixs: transactionBufferCreateIxs,
+    addressLookupTableAccounts,
   });
 
   txs.push(
@@ -183,10 +158,11 @@ export async function prepareTransactionBundle({
       id: "Extend Transaction Buffer",
       signers: deduplicateSignersAndFeePayer(
         [transactionBufferExtendIx],
-        feePayer
+        payer
       ),
-      feePayer,
+      payer,
       ixs: [transactionBufferExtendIx],
+      addressLookupTableAccounts,
     }))
   );
 
@@ -197,29 +173,28 @@ export async function prepareTransactionBundle({
         .filter(
           (x) =>
             !(x instanceof Secp256r1Key) &&
-            getPubkeyString(x) !== feePayer.address.toString()
+            getPubkeyString(x) !== payer.address.toString()
         )
         .map((x) => address(getPubkeyString(x)))
-        .concat([feePayer.address]),
-      feePayer,
+        .concat([payer.address]),
+      payer,
       ixs: transactionVoteIxs.flatMap((x) => ({ ...x })),
+      addressLookupTableAccounts,
     });
   }
 
   txs.push({
     id: "Execute Transaction Approval",
-    signers: deduplicateSignersAndFeePayer(
-      transactionBufferExecuteIxs,
-      feePayer
-    ),
-    feePayer,
+    signers: deduplicateSignersAndFeePayer(transactionBufferExecuteIxs, payer),
+    payer,
     ixs: transactionBufferExecuteIxs,
+    addressLookupTableAccounts,
   });
 
   txs.push({
     id: "Execute Transaction",
-    signers: deduplicateSignersAndFeePayer(transactionExecuteIx, feePayer),
-    feePayer,
+    signers: deduplicateSignersAndFeePayer(transactionExecuteIx, payer),
+    payer,
     ixs: transactionExecuteIx,
     addressLookupTableAccounts,
   });
@@ -228,21 +203,16 @@ export async function prepareTransactionBundle({
 }
 
 async function preTransactionChecks(
-  rpc: Rpc<GetAccountInfoApi>,
-  settings: Address,
+  index: bigint | number,
   creator: TransactionSigner | Secp256r1Key,
   additionalVoters: (TransactionSigner | Secp256r1Key)[],
   executor?: TransactionSigner | Secp256r1Key
 ) {
-  const settingsData = await fetchMaybeSettings(rpc, settings);
-
-  if (!settingsData.exists) {
-    throw new Error("Unable to fetch settings data");
-  }
+  const settingsData = await fetchSettingsData(index);
 
   let votes = 0;
 
-  const creatorMember = settingsData.data.members.find(
+  const creatorMember = settingsData.members.find(
     (x) =>
       getPubkeyString(creator) === convertMemberKeyToString(x.pubkey) &&
       Permissions.has(x.permissions, Permission.InitiateTransaction)
@@ -256,7 +226,7 @@ async function preTransactionChecks(
     votes += 1;
   }
 
-  const executorMember = settingsData.data.members.find(
+  const executorMember = settingsData.members.find(
     (x) =>
       getPubkeyString(executor ?? creator) ===
         convertMemberKeyToString(x.pubkey) &&
@@ -288,87 +258,14 @@ async function preTransactionChecks(
         getPubkeyString(x) !== getPubkeyString(executor ?? creator)
     )
     .filter((x) =>
-      settingsData.data.members.some(
+      settingsData.members.some(
         (y) =>
           getPubkeyString(x) === convertMemberKeyToString(y.pubkey) &&
           Permissions.has(y.permissions, Permission.VoteTransaction)
       )
     ).length;
 
-  if (votes < settingsData.data.threshold) {
+  if (votes < settingsData.threshold) {
     throw new Error("Insufficient voters with vote transaction permission.");
-  }
-}
-
-export async function simulateTransactionCheck(
-  rpc: Rpc<SimulateTransactionApi & GetMultipleAccountsApi>,
-  transactionMessageBytes: Uint8Array,
-  secp256r1VerifyInput?: Secp256r1VerifyInput
-) {
-  const customCompiledMessage = customTransactionMessageDeserialize(
-    transactionMessageBytes
-  );
-  const compiledTransactionMessage: CompiledTransactionMessage = {
-    header: {
-      numSignerAccounts: customCompiledMessage.numSigners,
-      numReadonlySignerAccounts:
-        customCompiledMessage.numSigners -
-        customCompiledMessage.numWritableSigners,
-      numReadonlyNonSignerAccounts:
-        customCompiledMessage.accountKeys.length -
-        customCompiledMessage.numSigners -
-        customCompiledMessage.numWritableNonSigners,
-    },
-    instructions: customCompiledMessage.instructions.map((x) => ({
-      accountIndices: x.accountIndexes,
-      programAddressIndex: x.programIdIndex,
-      data: new Uint8Array(x.data),
-    })),
-    lifetimeToken: MULTI_WALLET_PROGRAM_ADDRESS.toString(),
-    staticAccounts: customCompiledMessage.accountKeys,
-    version: 0,
-    addressTableLookups: customCompiledMessage.addressTableLookups.map((x) => ({
-      ...x,
-      lookupTableAddress: x.accountKey,
-      writableIndices: x.writableIndexes,
-      readableIndices: x.readonlyIndexes,
-    })),
-  };
-
-  const decompiledTransactionMessage =
-    await decompileTransactionMessageFetchingLookupTables(
-      compiledTransactionMessage,
-      rpc
-    );
-
-  assertIsTransactionMessageWithBlockhashLifetime(decompiledTransactionMessage);
-  let instructions: IInstruction[] = [];
-  if (secp256r1VerifyInput && secp256r1VerifyInput.length > 0) {
-    instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
-  }
-  instructions.push(...decompiledTransactionMessage.instructions);
-
-  const transaction = compileTransaction({
-    instructions,
-    feePayer: decompiledTransactionMessage.feePayer,
-    lifetimeConstraint: decompiledTransactionMessage.lifetimeConstraint,
-    version: decompiledTransactionMessage.version,
-  });
-
-  const {
-    value: { err: transactionError, logs },
-  } = await rpc
-    .simulateTransaction(getBase64EncodedWireTransaction(transaction), {
-      encoding: "base64",
-      replaceRecentBlockhash: true,
-      sigVerify: false,
-    })
-    .send();
-  if (transactionError) {
-    throw new Error(
-      JSON.stringify({ error: transactionError, logs }, (_, value) =>
-        typeof value === "bigint" ? value.toString() : value
-      )
-    );
   }
 }

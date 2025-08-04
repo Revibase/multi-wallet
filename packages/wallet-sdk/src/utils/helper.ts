@@ -4,6 +4,7 @@ import {
   getAddressEncoder,
   getBase58Decoder,
   getProgramDerivedAddress,
+  getU128Encoder,
   getU16Decoder,
   getU16Encoder,
   getU8Encoder,
@@ -17,7 +18,11 @@ import {
   MemberKey,
   MULTI_WALLET_PROGRAM_ADDRESS,
 } from "../generated";
-import { ConfigActionWrapper, KeyType, Secp256r1Key } from "../types";
+import {
+  ConfigActionWrapperWithDelegateArgs,
+  KeyType,
+  Secp256r1Key,
+} from "../types";
 import { convertConfigActionWrapper, getHash, normalizeKey } from "./internal";
 
 export async function getDomainConfig({
@@ -45,37 +50,22 @@ export async function getDomainConfig({
   return domainConfig;
 }
 
-export async function getDelegateAddress(
-  walletAddress: Address | Secp256r1Key
-) {
-  if (walletAddress instanceof Secp256r1Key) {
-    const [delegatePda] = await getProgramDerivedAddress({
-      programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-      seeds: [
-        getUtf8Encoder().encode("delegate"),
-        walletAddress.toTruncatedBuffer(),
-      ],
-    });
-    return delegatePda;
-  } else if (isAddress(walletAddress.toString())) {
-    const [delegatePda] = await getProgramDerivedAddress({
-      programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-      seeds: [
-        getUtf8Encoder().encode("delegate"),
-        getAddressEncoder().encode(address(walletAddress.toString())),
-      ],
-    });
+export async function getGlobalCounterAddress() {
+  const [globalCounter] = await getProgramDerivedAddress({
+    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
+    seeds: [getUtf8Encoder().encode("global_counter")],
+  });
 
-    return delegatePda;
-  } else {
-    throw new Error("Unable to parse Public Key");
-  }
+  return globalCounter;
 }
 
-export async function getSettingsFromCreateKey(createKey: Uint8Array) {
+export async function getSettingsFromIndex(index: number | bigint) {
   const [settings] = await getProgramDerivedAddress({
     programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-    seeds: [getUtf8Encoder().encode("multi_wallet"), createKey],
+    seeds: [
+      getUtf8Encoder().encode("multi_wallet"),
+      getU128Encoder().encode(index),
+    ],
   });
 
   return settings;
@@ -143,7 +133,9 @@ export function convertMemberKeyToString(memberKey: MemberKey) {
   }
 }
 
-export function serializeConfigActions(configActions: ConfigActionWrapper[]) {
+export function serializeConfigActions(
+  configActions: ConfigActionWrapperWithDelegateArgs[]
+) {
   const converted = convertConfigActionWrapper(configActions);
   const serializedActions = converted.map((x) =>
     getConfigActionEncoder().encode(x)
@@ -197,4 +189,13 @@ export function deserializeConfigActions(
   }
 
   return result;
+}
+export async function estimateJitoTips(estimateJitoTipEndpoint: string) {
+  const response = await fetch(estimateJitoTipEndpoint);
+  const result = await response.json();
+  const tipAmount = Math.round(
+    result[0]["ema_landed_tips_50th_percentile"] * 10 ** 9
+  ) as number;
+
+  return tipAmount;
 }

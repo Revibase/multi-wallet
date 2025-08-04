@@ -1,5 +1,5 @@
 import { CBORType, decodeCBOR, encodeCBOR } from "@levischuck/tiny-cbor";
-import { p256 } from "@noble/curves/p256";
+import { p256 } from "@noble/curves/nist.js";
 import { getBase58Decoder, getBase58Encoder } from "@solana/kit";
 import { hexToUint8Array, uint8ArrayToHex } from "./internal";
 
@@ -63,21 +63,21 @@ export function convertPubkeyCoseToCompressed(
   publicKey: Uint8Array<ArrayBufferLike>
 ) {
   const decodedPublicKey = decodeCBOR(publicKey) as Map<number, CBORType>;
-  const uncompressedPublicKey = p256.ProjectivePoint.fromAffine({
+  const uncompressedPublicKey = p256.Point.fromAffine({
     x: BigInt("0x" + uint8ArrayToHex(decodedPublicKey.get(-2) as Uint8Array)),
     y: BigInt("0x" + uint8ArrayToHex(decodedPublicKey.get(-3) as Uint8Array)),
   });
   const compressedPubKey = getBase58Decoder().decode(
-    uncompressedPublicKey.toRawBytes(true)
+    uncompressedPublicKey.toBytes(true)
   );
   return compressedPubKey;
 }
 
 export function convertPubkeyCompressedToCose(publicKey: string) {
-  const compressedPublicKey = p256.ProjectivePoint.fromHex(
+  const compressedPublicKey = p256.Point.fromHex(
     new Uint8Array(getBase58Encoder().encode(publicKey))
   );
-  const uncompressedPublicKey = compressedPublicKey.toRawBytes(false);
+  const uncompressedPublicKey = compressedPublicKey.toBytes(false);
 
   const coseDecodedPublicKey = new Map<string | number, CBORType>();
   coseDecodedPublicKey.set(1, 2);

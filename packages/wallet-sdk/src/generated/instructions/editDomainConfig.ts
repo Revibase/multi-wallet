@@ -14,6 +14,8 @@ import {
   fixEncoderSize,
   getAddressDecoder,
   getAddressEncoder,
+  getArrayDecoder,
+  getArrayEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getStructDecoder,
@@ -23,15 +25,15 @@ import {
   getUtf8Decoder,
   getUtf8Encoder,
   transformEncoder,
+  type AccountMeta,
+  type AccountSignerMeta,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IAccountMeta,
-  type IAccountSignerMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type ReadonlyAccount,
   type ReadonlySignerAccount,
   type ReadonlyUint8Array,
@@ -41,34 +43,32 @@ import {
 import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
 import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 
-export const EDIT_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([
-  110, 212, 99, 229, 72, 93, 185, 231,
-]);
+export const EDIT_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([1]);
 
 export function getEditDomainConfigDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     EDIT_DOMAIN_CONFIG_DISCRIMINATOR
   );
 }
 
 export type EditDomainConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
-  TAccountAuthority extends string | IAccountMeta<string> = string,
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
+  TAccountAuthority extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = '11111111111111111111111111111111',
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = '11111111111111111111111111111111',
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountDomainConfig extends string
         ? WritableAccount<TAccountDomainConfig>
         : TAccountDomainConfig,
       TAccountAuthority extends string
         ? ReadonlySignerAccount<TAccountAuthority> &
-            IAccountSignerMeta<TAccountAuthority>
+            AccountSignerMeta<TAccountAuthority>
         : TAccountAuthority,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
@@ -79,21 +79,26 @@ export type EditDomainConfigInstruction<
 
 export type EditDomainConfigInstructionData = {
   discriminator: ReadonlyUint8Array;
-  origin: string;
-  authority: Address;
+  newOrigins: Array<string>;
+  newAuthority: Address;
 };
 
 export type EditDomainConfigInstructionDataArgs = {
-  origin: string;
-  authority: Address;
+  newOrigins: Array<string>;
+  newAuthority: Address;
 };
 
 export function getEditDomainConfigInstructionDataEncoder(): Encoder<EditDomainConfigInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
-      ['origin', addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
-      ['authority', getAddressEncoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      [
+        'newOrigins',
+        getArrayEncoder(
+          addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())
+        ),
+      ],
+      ['newAuthority', getAddressEncoder()],
     ]),
     (value) => ({ ...value, discriminator: EDIT_DOMAIN_CONFIG_DISCRIMINATOR })
   );
@@ -101,9 +106,12 @@ export function getEditDomainConfigInstructionDataEncoder(): Encoder<EditDomainC
 
 export function getEditDomainConfigInstructionDataDecoder(): Decoder<EditDomainConfigInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
-    ['origin', addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
-    ['authority', getAddressDecoder()],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    [
+      'newOrigins',
+      getArrayDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
+    ],
+    ['newAuthority', getAddressDecoder()],
   ]);
 }
 
@@ -125,8 +133,8 @@ export type EditDomainConfigInput<
   domainConfig: Address<TAccountDomainConfig>;
   authority: TransactionSigner<TAccountAuthority>;
   systemProgram?: Address<TAccountSystemProgram>;
-  origin: EditDomainConfigInstructionDataArgs['origin'];
-  authorityArg: EditDomainConfigInstructionDataArgs['authority'];
+  newOrigins: EditDomainConfigInstructionDataArgs['newOrigins'];
+  newAuthority: EditDomainConfigInstructionDataArgs['newAuthority'];
 };
 
 export function getEditDomainConfigInstruction<
@@ -162,7 +170,7 @@ export function getEditDomainConfigInstruction<
   >;
 
   // Original args.
-  const args = { ...input, authority: input.authorityArg };
+  const args = { ...input };
 
   // Resolve default values.
   if (!accounts.systemProgram.value) {
@@ -193,7 +201,7 @@ export function getEditDomainConfigInstruction<
 
 export type ParsedEditDomainConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -206,11 +214,11 @@ export type ParsedEditDomainConfigInstruction<
 
 export function parseEditDomainConfigInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedEditDomainConfigInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 3) {
     // TODO: Coded error.

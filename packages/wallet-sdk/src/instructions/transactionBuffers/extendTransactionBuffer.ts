@@ -1,18 +1,39 @@
 import { Address } from "@solana/kit";
-import { getTransactionBufferExtendInstruction } from "../../generated";
+import { PackedAccounts } from "../../compressed/packedAccounts";
+import {
+  getTransactionBufferExtendCompressedInstruction,
+  getTransactionBufferExtendInstruction,
+} from "../../generated";
+import { getSettingsFromIndex } from "../../utils";
 
-export function extendTransactionBuffer({
+export async function extendTransactionBuffer({
   transactionMessageBytes,
   transactionBufferAddress,
-  settings,
+  index,
+  compressed = false,
 }: {
   transactionMessageBytes: Uint8Array;
   transactionBufferAddress: Address;
-  settings: Address;
+  index: bigint | number;
+  compressed?: boolean;
 }) {
-  return getTransactionBufferExtendInstruction({
-    transactionBuffer: transactionBufferAddress,
-    buffer: transactionMessageBytes,
-    settings,
-  });
+  const settings = await getSettingsFromIndex(index);
+  const packedAccounts = new PackedAccounts();
+
+  const { remainingAccounts } = packedAccounts.toAccountMetas();
+
+  if (compressed) {
+    return getTransactionBufferExtendCompressedInstruction({
+      transactionBuffer: transactionBufferAddress,
+      buffer: transactionMessageBytes,
+      settingsKey: settings,
+      remainingAccounts,
+    });
+  } else {
+    return getTransactionBufferExtendInstruction({
+      transactionBuffer: transactionBufferAddress,
+      buffer: transactionMessageBytes,
+      settings,
+    });
+  }
 }

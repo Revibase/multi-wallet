@@ -17,15 +17,15 @@ import {
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
+  type AccountMeta,
+  type AccountSignerMeta,
   type Address,
-  type Codec,
-  type Decoder,
-  type Encoder,
-  type IAccountMeta,
-  type IAccountSignerMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type ReadonlySignerAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
@@ -34,33 +34,31 @@ import {
 import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
 import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 
-export const DISABLE_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([
-  169, 163, 147, 131, 58, 46, 131, 51,
-]);
+export const DISABLE_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([3]);
 
 export function getDisableDomainConfigDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     DISABLE_DOMAIN_CONFIG_DISCRIMINATOR
   );
 }
 
 export type DisableDomainConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
   TAccountAdmin extends
     | string
-    | IAccountMeta<string> = 'G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF',
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = 'G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF',
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountDomainConfig extends string
         ? WritableAccount<TAccountDomainConfig>
         : TAccountDomainConfig,
       TAccountAdmin extends string
         ? ReadonlySignerAccount<TAccountAdmin> &
-            IAccountSignerMeta<TAccountAdmin>
+            AccountSignerMeta<TAccountAdmin>
         : TAccountAdmin,
       ...TRemainingAccounts,
     ]
@@ -73,10 +71,10 @@ export type DisableDomainConfigInstructionData = {
 
 export type DisableDomainConfigInstructionDataArgs = { disable: boolean };
 
-export function getDisableDomainConfigInstructionDataEncoder(): Encoder<DisableDomainConfigInstructionDataArgs> {
+export function getDisableDomainConfigInstructionDataEncoder(): FixedSizeEncoder<DisableDomainConfigInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
       ['disable', getBooleanEncoder()],
     ]),
     (value) => ({
@@ -86,14 +84,14 @@ export function getDisableDomainConfigInstructionDataEncoder(): Encoder<DisableD
   );
 }
 
-export function getDisableDomainConfigInstructionDataDecoder(): Decoder<DisableDomainConfigInstructionData> {
+export function getDisableDomainConfigInstructionDataDecoder(): FixedSizeDecoder<DisableDomainConfigInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
     ['disable', getBooleanDecoder()],
   ]);
 }
 
-export function getDisableDomainConfigInstructionDataCodec(): Codec<
+export function getDisableDomainConfigInstructionDataCodec(): FixedSizeCodec<
   DisableDomainConfigInstructionDataArgs,
   DisableDomainConfigInstructionData
 > {
@@ -167,7 +165,7 @@ export function getDisableDomainConfigInstruction<
 
 export type ParsedDisableDomainConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -179,11 +177,11 @@ export type ParsedDisableDomainConfigInstruction<
 
 export function parseDisableDomainConfigInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedDisableDomainConfigInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 2) {
     // TODO: Coded error.

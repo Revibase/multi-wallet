@@ -5,7 +5,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-multi_wallet = "pkeyt2Txg77e2JSS2K44hDnC2p6uE4jXnd2UQZxZ2oE"
+multi_wallet = "revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb"
 
 [registry]
 url = "https://api.apr.dev"

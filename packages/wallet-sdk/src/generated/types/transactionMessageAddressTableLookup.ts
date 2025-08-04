@@ -24,17 +24,9 @@ import {
   type ReadonlyUint8Array,
 } from '@solana/kit';
 
-/**
- * Address table lookups describe an on-chain address lookup table to use
- * for loading more readonly and writable accounts in a single tx.
- */
-
 export type TransactionMessageAddressTableLookup = {
-  /** Address lookup table account key */
   accountKeyIndex: number;
-  /** List of indexes used to load writable account addresses */
   writableIndexes: ReadonlyUint8Array;
-  /** List of indexes used to load readonly account addresses */
   readonlyIndexes: ReadonlyUint8Array;
 };
 

@@ -15,15 +15,15 @@ import {
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
+  type AccountMeta,
+  type AccountSignerMeta,
   type Address,
-  type Codec,
-  type Decoder,
-  type Encoder,
-  type IAccountMeta,
-  type IAccountSignerMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type ReadonlyAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
@@ -33,40 +33,32 @@ import {
 import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
 import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 
-export const DELETE_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([
-  225, 169, 39, 18, 125, 147, 36, 29,
-]);
+export const DELETE_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([2]);
 
 export function getDeleteDomainConfigDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     DELETE_DOMAIN_CONFIG_DISCRIMINATOR
   );
 }
 
 export type DeleteDomainConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
-  TAccountAdmin extends
-    | string
-    | IAccountMeta<string> = 'G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF',
-  TAccountAuthority extends string | IAccountMeta<string> = string,
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
+  TAccountAuthority extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = '11111111111111111111111111111111',
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = '11111111111111111111111111111111',
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountDomainConfig extends string
         ? WritableAccount<TAccountDomainConfig>
         : TAccountDomainConfig,
-      TAccountAdmin extends string
-        ? WritableAccount<TAccountAdmin>
-        : TAccountAdmin,
       TAccountAuthority extends string
         ? WritableSignerAccount<TAccountAuthority> &
-            IAccountSignerMeta<TAccountAuthority>
+            AccountSignerMeta<TAccountAuthority>
         : TAccountAuthority,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
@@ -81,20 +73,20 @@ export type DeleteDomainConfigInstructionData = {
 
 export type DeleteDomainConfigInstructionDataArgs = {};
 
-export function getDeleteDomainConfigInstructionDataEncoder(): Encoder<DeleteDomainConfigInstructionDataArgs> {
+export function getDeleteDomainConfigInstructionDataEncoder(): FixedSizeEncoder<DeleteDomainConfigInstructionDataArgs> {
   return transformEncoder(
-    getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 8)]]),
+    getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 1)]]),
     (value) => ({ ...value, discriminator: DELETE_DOMAIN_CONFIG_DISCRIMINATOR })
   );
 }
 
-export function getDeleteDomainConfigInstructionDataDecoder(): Decoder<DeleteDomainConfigInstructionData> {
+export function getDeleteDomainConfigInstructionDataDecoder(): FixedSizeDecoder<DeleteDomainConfigInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
   ]);
 }
 
-export function getDeleteDomainConfigInstructionDataCodec(): Codec<
+export function getDeleteDomainConfigInstructionDataCodec(): FixedSizeCodec<
   DeleteDomainConfigInstructionDataArgs,
   DeleteDomainConfigInstructionData
 > {
@@ -106,26 +98,22 @@ export function getDeleteDomainConfigInstructionDataCodec(): Codec<
 
 export type DeleteDomainConfigInput<
   TAccountDomainConfig extends string = string,
-  TAccountAdmin extends string = string,
   TAccountAuthority extends string = string,
   TAccountSystemProgram extends string = string,
 > = {
   domainConfig: Address<TAccountDomainConfig>;
-  admin?: Address<TAccountAdmin>;
   authority: TransactionSigner<TAccountAuthority>;
   systemProgram?: Address<TAccountSystemProgram>;
 };
 
 export function getDeleteDomainConfigInstruction<
   TAccountDomainConfig extends string,
-  TAccountAdmin extends string,
   TAccountAuthority extends string,
   TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
   input: DeleteDomainConfigInput<
     TAccountDomainConfig,
-    TAccountAdmin,
     TAccountAuthority,
     TAccountSystemProgram
   >,
@@ -133,7 +121,6 @@ export function getDeleteDomainConfigInstruction<
 ): DeleteDomainConfigInstruction<
   TProgramAddress,
   TAccountDomainConfig,
-  TAccountAdmin,
   TAccountAuthority,
   TAccountSystemProgram
 > {
@@ -143,7 +130,6 @@ export function getDeleteDomainConfigInstruction<
   // Original accounts.
   const originalAccounts = {
     domainConfig: { value: input.domainConfig ?? null, isWritable: true },
-    admin: { value: input.admin ?? null, isWritable: true },
     authority: { value: input.authority ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
   };
@@ -153,10 +139,6 @@ export function getDeleteDomainConfigInstruction<
   >;
 
   // Resolve default values.
-  if (!accounts.admin.value) {
-    accounts.admin.value =
-      'G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF' as Address<'G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF'>;
-  }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
@@ -166,7 +148,6 @@ export function getDeleteDomainConfigInstruction<
   const instruction = {
     accounts: [
       getAccountMeta(accounts.domainConfig),
-      getAccountMeta(accounts.admin),
       getAccountMeta(accounts.authority),
       getAccountMeta(accounts.systemProgram),
     ],
@@ -175,7 +156,6 @@ export function getDeleteDomainConfigInstruction<
   } as DeleteDomainConfigInstruction<
     TProgramAddress,
     TAccountDomainConfig,
-    TAccountAdmin,
     TAccountAuthority,
     TAccountSystemProgram
   >;
@@ -185,27 +165,26 @@ export function getDeleteDomainConfigInstruction<
 
 export type ParsedDeleteDomainConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
     domainConfig: TAccountMetas[0];
-    admin: TAccountMetas[1];
-    authority: TAccountMetas[2];
-    systemProgram: TAccountMetas[3];
+    authority: TAccountMetas[1];
+    systemProgram: TAccountMetas[2];
   };
   data: DeleteDomainConfigInstructionData;
 };
 
 export function parseDeleteDomainConfigInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedDeleteDomainConfigInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 4) {
+  if (instruction.accounts.length < 3) {
     // TODO: Coded error.
     throw new Error('Not enough accounts');
   }
@@ -219,7 +198,6 @@ export function parseDeleteDomainConfigInstruction<
     programAddress: instruction.programAddress,
     accounts: {
       domainConfig: getNextAccount(),
-      admin: getNextAccount(),
       authority: getNextAccount(),
       systemProgram: getNextAccount(),
     },

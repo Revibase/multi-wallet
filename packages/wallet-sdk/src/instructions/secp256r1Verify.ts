@@ -13,20 +13,15 @@ import {
   getU16Encoder,
   getU8Decoder,
   getU8Encoder,
+  InstructionWithAccounts,
+  InstructionWithData,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
   type ReadonlyUint8Array,
 } from "@solana/kit";
-import {
-  getSecp256r1PubkeyDecoder,
-  getSecp256r1PubkeyEncoder,
-  Secp256r1Pubkey,
-} from "../generated";
 
 export const COMPRESSED_PUBKEY_SERIALIZED_SIZE = 33;
 export const SIGNATURE_SERIALIZED_SIZE = 64;
@@ -37,21 +32,23 @@ export const SECP256R1_PROGRAM_ADDRESS = address(
   "Secp256r1SigVerify1111111111111111111111111"
 );
 
+export type Secp256r1VerifyInput = {
+  publicKey: ReadonlyUint8Array;
+  signature: ReadonlyUint8Array;
+  message: ReadonlyUint8Array;
+}[];
+
 export type Secp256r1VerifyInstruction<
-  TProgram extends string = typeof SECP256R1_PROGRAM_ADDRESS
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<[]>;
+  TProgram extends string = typeof SECP256R1_PROGRAM_ADDRESS,
+> = Instruction<TProgram> &
+  InstructionWithData<Uint8Array> &
+  InstructionWithAccounts<[]>;
 
 export type Secp256r1VerifyInstructionData = {
   numSignatures: number;
   padding: number;
   offsets: Secp256r1SignatureOffsetsDataArgs[];
-  payload: {
-    publicKey: Secp256r1Pubkey;
-    signature: ReadonlyUint8Array;
-    message: ReadonlyUint8Array;
-  }[];
+  payload: Secp256r1VerifyInput;
 };
 
 export type Secp256r1SignatureOffsetsDataArgs = {
@@ -103,14 +100,13 @@ export function getSecp256r1VerifyInstructionDataDecoder(): Decoder<Secp256r1Ver
         offsets.push(offsetDecoder.decode(bytes, offset));
         offset += SIGNATURE_OFFSETS_SERIALIZED_SIZE;
       }
-      const payload: {
-        publicKey: Secp256r1Pubkey;
-        signature: ReadonlyUint8Array;
-        message: ReadonlyUint8Array;
-      }[] = [];
+      const payload: Secp256r1VerifyInput = [];
 
       for (let i = 0; i < numSignatures; i++) {
-        const publicKey = getSecp256r1PubkeyDecoder().decode(bytes, offset);
+        const publicKey = fixDecoderSize(
+          getBytesDecoder(),
+          COMPRESSED_PUBKEY_SERIALIZED_SIZE
+        ).decode(bytes, offset);
         offset += COMPRESSED_PUBKEY_SERIALIZED_SIZE;
 
         const signature = fixDecoderSize(
@@ -166,11 +162,10 @@ export function getSecp256r1VerifyInstructionDataEncoder(): Encoder<Secp256r1Ver
       }
 
       for (const entry of value.payload) {
-        offset = getSecp256r1PubkeyEncoder().write(
-          entry.publicKey,
-          bytes,
-          offset
-        );
+        offset = fixEncoderSize(
+          getBytesEncoder(),
+          COMPRESSED_PUBKEY_SERIALIZED_SIZE
+        ).write(entry.publicKey, bytes, offset);
 
         offset = fixEncoderSize(
           getBytesEncoder(),
@@ -189,11 +184,7 @@ export type Secp256r1VerifyInstructionDataArgs = {
   numSignatures: number;
   padding: number;
   offsets: Secp256r1SignatureOffsetsDataArgs[];
-  payload: {
-    publicKey: Secp256r1Pubkey;
-    signature: ReadonlyUint8Array;
-    message: ReadonlyUint8Array;
-  }[];
+  payload: Secp256r1VerifyInput;
 };
 
 export function getSecp256r1VerifyInstructionDataCodec(): Codec<
@@ -206,14 +197,8 @@ export function getSecp256r1VerifyInstructionDataCodec(): Codec<
   );
 }
 
-export type Secp256r1VerifyInput = {
-  publicKey: Secp256r1Pubkey;
-  signature: ReadonlyUint8Array;
-  message: ReadonlyUint8Array;
-}[];
-
 export function getSecp256r1VerifyInstruction<
-  TProgramAddress extends Address = typeof SECP256R1_PROGRAM_ADDRESS
+  TProgramAddress extends Address = typeof SECP256R1_PROGRAM_ADDRESS,
 >(
   input: Secp256r1VerifyInput,
   config?: { programAddress?: TProgramAddress }
@@ -266,7 +251,7 @@ export function getSecp256r1VerifyInstruction<
 }
 
 export type ParsedSecp256r1VerifyInstruction<
-  TProgram extends string = typeof SECP256R1_PROGRAM_ADDRESS
+  TProgram extends string = typeof SECP256R1_PROGRAM_ADDRESS,
 > = {
   programAddress: Address<TProgram>;
   accounts: {};
@@ -274,7 +259,7 @@ export type ParsedSecp256r1VerifyInstruction<
 };
 
 export function parseSecp256r1VerifyInstruction<TProgram extends string>(
-  instruction: IInstruction<TProgram> & IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> & InstructionWithData<Uint8Array>
 ): ParsedSecp256r1VerifyInstruction<TProgram> {
   return {
     programAddress: instruction.programAddress,

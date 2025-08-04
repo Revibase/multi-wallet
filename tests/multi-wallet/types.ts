@@ -1,5 +1,6 @@
 import {
   Address,
+  AddressesByLookupTableAddress,
   type KeyPairSigner,
   type Rpc,
   type SolanaRpcApi,
@@ -14,9 +15,10 @@ export interface TestContext {
   sendAndConfirm: any;
   payer: KeyPairSigner;
   wallet: KeyPairSigner;
-  settings: Address | undefined;
+  index: number | bigint | undefined;
   multiWalletVault: Address | undefined;
   rpId: string;
   origin: string;
-  createKey: Uint8Array | undefined;
+  compressed: boolean;
+  addressLookUpTable: AddressesByLookupTableAddress;
 }

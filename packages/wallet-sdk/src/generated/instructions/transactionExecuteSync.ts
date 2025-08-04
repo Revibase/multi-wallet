@@ -10,25 +10,21 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
-  getArrayDecoder,
-  getArrayEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getOptionDecoder,
   getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
-  getU8Decoder,
-  getU8Encoder,
   transformEncoder,
+  type AccountMeta,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IAccountMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type Option,
   type OptionOrNullable,
   type ReadonlyAccount,
@@ -38,44 +34,38 @@ import {
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
-  getCompiledInstructionDecoder,
-  getCompiledInstructionEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  getTransactionMessageAddressTableLookupDecoder,
-  getTransactionMessageAddressTableLookupEncoder,
-  type CompiledInstruction,
-  type CompiledInstructionArgs,
+  getTransactionMessageDecoder,
+  getTransactionMessageEncoder,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-  type TransactionMessageAddressTableLookup,
-  type TransactionMessageAddressTableLookupArgs,
+  type TransactionMessage,
+  type TransactionMessageArgs,
 } from "../types";
 
-export const TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR = new Uint8Array([
-  149, 138, 204, 32, 181, 61, 153, 227,
-]);
+export const TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR = new Uint8Array([13]);
 
 export function getTransactionExecuteSyncDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR
   );
 }
 
 export type TransactionExecuteSyncInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountSettings extends string | IAccountMeta<string> = string,
+  TAccountSettings extends string | AccountMeta<string> = string,
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
+    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountSettings extends string
         ? WritableAccount<TAccountSettings>
@@ -95,56 +85,20 @@ export type TransactionExecuteSyncInstruction<
 
 export type TransactionExecuteSyncInstructionData = {
   discriminator: ReadonlyUint8Array;
-  /** The number of signer pubkeys in the account_keys vec. */
-  numSigners: number;
-  /** The number of writable signer pubkeys in the account_keys vec. */
-  numWritableSigners: number;
-  /** The number of writable non-signer pubkeys in the account_keys vec. */
-  numWritableNonSigners: number;
-  /** The number of static account keys in the account_keys vec. */
-  numAccountKeys: number;
-  /** List of instructions making up the tx. */
-  instructions: Array<CompiledInstruction>;
-  /**
-   * List of address table lookups used to load additional accounts
-   * for this transaction.
-   */
-  addressTableLookups: Array<TransactionMessageAddressTableLookup>;
+  transactionMessage: TransactionMessage;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
 };
 
 export type TransactionExecuteSyncInstructionDataArgs = {
-  /** The number of signer pubkeys in the account_keys vec. */
-  numSigners: number;
-  /** The number of writable signer pubkeys in the account_keys vec. */
-  numWritableSigners: number;
-  /** The number of writable non-signer pubkeys in the account_keys vec. */
-  numWritableNonSigners: number;
-  /** The number of static account keys in the account_keys vec. */
-  numAccountKeys: number;
-  /** List of instructions making up the tx. */
-  instructions: Array<CompiledInstructionArgs>;
-  /**
-   * List of address table lookups used to load additional accounts
-   * for this transaction.
-   */
-  addressTableLookups: Array<TransactionMessageAddressTableLookupArgs>;
+  transactionMessage: TransactionMessageArgs;
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
 };
 
 export function getTransactionExecuteSyncInstructionDataEncoder(): Encoder<TransactionExecuteSyncInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["numSigners", getU8Encoder()],
-      ["numWritableSigners", getU8Encoder()],
-      ["numWritableNonSigners", getU8Encoder()],
-      ["numAccountKeys", getU8Encoder()],
-      ["instructions", getArrayEncoder(getCompiledInstructionEncoder())],
-      [
-        "addressTableLookups",
-        getArrayEncoder(getTransactionMessageAddressTableLookupEncoder()),
-      ],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
+      ["transactionMessage", getTransactionMessageEncoder()],
       [
         "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
@@ -159,16 +113,8 @@ export function getTransactionExecuteSyncInstructionDataEncoder(): Encoder<Trans
 
 export function getTransactionExecuteSyncInstructionDataDecoder(): Decoder<TransactionExecuteSyncInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["numSigners", getU8Decoder()],
-    ["numWritableSigners", getU8Decoder()],
-    ["numWritableNonSigners", getU8Decoder()],
-    ["numAccountKeys", getU8Decoder()],
-    ["instructions", getArrayDecoder(getCompiledInstructionDecoder())],
-    [
-      "addressTableLookups",
-      getArrayDecoder(getTransactionMessageAddressTableLookupDecoder()),
-    ],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ["transactionMessage", getTransactionMessageDecoder()],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
 }
@@ -188,18 +134,13 @@ export type TransactionExecuteSyncInput<
   TAccountSlotHashSysvar extends string = string,
   TAccountDomainConfig extends string = string,
   TAccountInstructionsSysvar extends string = string,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = {
   settings: Address<TAccountSettings>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   domainConfig?: Address<TAccountDomainConfig>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  numSigners: TransactionExecuteSyncInstructionDataArgs["numSigners"];
-  numWritableSigners: TransactionExecuteSyncInstructionDataArgs["numWritableSigners"];
-  numWritableNonSigners: TransactionExecuteSyncInstructionDataArgs["numWritableNonSigners"];
-  numAccountKeys: TransactionExecuteSyncInstructionDataArgs["numAccountKeys"];
-  instructions: TransactionExecuteSyncInstructionDataArgs["instructions"];
-  addressTableLookups: TransactionExecuteSyncInstructionDataArgs["addressTableLookups"];
+  transactionMessage: TransactionExecuteSyncInstructionDataArgs["transactionMessage"];
   secp256r1VerifyArgs: TransactionExecuteSyncInstructionDataArgs["secp256r1VerifyArgs"];
   remainingAccounts: TRemainingAccounts;
 };
@@ -210,7 +151,7 @@ export function getTransactionExecuteSyncInstruction<
   TAccountDomainConfig extends string,
   TAccountInstructionsSysvar extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 >(
   input: TransactionExecuteSyncInput<
     TAccountSettings,
@@ -286,7 +227,7 @@ export function getTransactionExecuteSyncInstruction<
 
 export type ParsedTransactionExecuteSyncInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -300,11 +241,11 @@ export type ParsedTransactionExecuteSyncInstruction<
 
 export function parseTransactionExecuteSyncInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedTransactionExecuteSyncInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 4) {
     // TODO: Coded error.

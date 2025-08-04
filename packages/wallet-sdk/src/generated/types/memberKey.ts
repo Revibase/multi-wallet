@@ -16,9 +16,9 @@ import {
   getStructEncoder,
   getU8Decoder,
   getU8Encoder,
-  type Codec,
-  type Decoder,
-  type Encoder,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
   type ReadonlyUint8Array,
 } from '@solana/kit';
 
@@ -26,20 +26,20 @@ export type MemberKey = { keyType: number; key: ReadonlyUint8Array };
 
 export type MemberKeyArgs = MemberKey;
 
-export function getMemberKeyEncoder(): Encoder<MemberKeyArgs> {
+export function getMemberKeyEncoder(): FixedSizeEncoder<MemberKeyArgs> {
   return getStructEncoder([
     ['keyType', getU8Encoder()],
     ['key', fixEncoderSize(getBytesEncoder(), 33)],
   ]);
 }
 
-export function getMemberKeyDecoder(): Decoder<MemberKey> {
+export function getMemberKeyDecoder(): FixedSizeDecoder<MemberKey> {
   return getStructDecoder([
     ['keyType', getU8Decoder()],
     ['key', fixDecoderSize(getBytesDecoder(), 33)],
   ]);
 }
 
-export function getMemberKeyCodec(): Codec<MemberKeyArgs, MemberKey> {
+export function getMemberKeyCodec(): FixedSizeCodec<MemberKeyArgs, MemberKey> {
   return combineCodec(getMemberKeyEncoder(), getMemberKeyDecoder());
 }

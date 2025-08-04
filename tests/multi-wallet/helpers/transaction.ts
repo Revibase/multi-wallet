@@ -1,13 +1,18 @@
+import { getSetComputeUnitLimitInstruction } from "@solana-program/compute-budget";
 import { getTransferSolInstruction } from "@solana-program/system";
 import {
   address,
+  AddressesByLookupTableAddress,
   appendTransactionMessageInstructions,
+  compressTransactionMessageUsingAddressLookupTables,
   createTransactionMessage,
+  getBase64EncodedWireTransaction,
   getSignatureFromTransaction,
-  type IInstruction,
+  type Instruction,
   isSolanaError,
   lamports,
   pipe,
+  prependTransactionMessageInstruction,
   type Rpc,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
@@ -17,33 +22,57 @@ import {
 } from "@solana/kit";
 import type { TestContext } from "../types";
 
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Sends a transaction with the given instructions
  */
 export async function sendTransaction(
   connection: Rpc<SolanaRpcApi>,
-  instructions: IInstruction[],
+  instructions: Instruction[],
   payer: TransactionSigner,
-  sendAndConfirm: any
+  sendAndConfirm: any,
+  addressLookupTableAccounts?: AddressesByLookupTableAddress
 ): Promise<string | undefined> {
   // Get latest blockhash before starting transaction
   const latestBlockHash = await connection.getLatestBlockhash().send();
 
+  let signature;
+  let tx;
   try {
-    const tx = await pipe(
+    tx = await pipe(
       createTransactionMessage({ version: 0 }),
       (tx) => appendTransactionMessageInstructions(instructions, tx),
       (tx) => setTransactionMessageFeePayerSigner(payer, tx),
       (tx) =>
         setTransactionMessageLifetimeUsingBlockhash(latestBlockHash.value, tx),
+      (tx) => {
+        return prependTransactionMessageInstruction(
+          getSetComputeUnitLimitInstruction({
+            units: 800_000,
+          }),
+          tx
+        );
+      },
+      (tx) =>
+        addressLookupTableAccounts
+          ? compressTransactionMessageUsingAddressLookupTables(
+              tx,
+              addressLookupTableAccounts
+            )
+          : tx,
       async (tx) => await signTransactionMessageWithSigners(tx)
     );
 
-    const signature = getSignatureFromTransaction(tx);
-    console.log(signature);
+    console.log(getBase64EncodedWireTransaction(tx).length);
+    signature = getSignatureFromTransaction(tx);
     await sendAndConfirm(tx, { commitment: "confirmed", skipPreflight: true });
+    await delay(2000);
     return signature;
   } catch (error) {
+    console.log(signature);
     if (isSolanaError(error) && error.cause) {
       const formattedError = JSON.stringify(error.cause, (key, value) =>
         typeof value === "bigint" ? value.toString() : value

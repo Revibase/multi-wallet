@@ -4,20 +4,20 @@ import { getDomainConfig } from "../../utils";
 
 export async function editDomainConfig({
   newAuthority,
-  origin,
+  newOrigins,
   currentAuthority,
   rpId,
 }: {
   rpId: string;
   newAuthority: Address;
-  origin: string;
+  newOrigins: string[];
   currentAuthority: TransactionSigner;
 }) {
   const domainConfig = await getDomainConfig({ rpId });
   return getEditDomainConfigInstruction({
     domainConfig,
-    origin,
+    newOrigins,
     authority: currentAuthority,
-    authorityArg: newAuthority,
+    newAuthority,
   });
 }

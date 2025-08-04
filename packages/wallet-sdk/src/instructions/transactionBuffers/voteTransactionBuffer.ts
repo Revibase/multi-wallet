@@ -1,19 +1,30 @@
-import { Address, IInstruction, TransactionSigner } from "@solana/kit";
-import { getTransactionBufferVoteInstruction } from "../../generated";
+import { Address, Instruction, TransactionSigner } from "@solana/kit";
+import {
+  constructSettingsProofArgs,
+  convertToCompressedProofArgs,
+} from "../../compressed/internal";
+import { PackedAccounts } from "../../compressed/packedAccounts";
+import {
+  getTransactionBufferVoteCompressedInstruction,
+  getTransactionBufferVoteInstruction,
+} from "../../generated";
 import { Secp256r1Key } from "../../types";
+import { getSettingsFromIndex } from "../../utils";
 import { extractSecp256r1VerificationArgs } from "../../utils/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
 export async function voteTransactionBuffer({
-  feePayer,
-  settings,
+  index,
   voter,
   transactionBufferAddress,
+  compressed = false,
+  payer,
 }: {
-  feePayer: TransactionSigner;
-  settings: Address;
+  index: bigint | number;
   voter: TransactionSigner | Secp256r1Key;
   transactionBufferAddress: Address;
+  compressed?: boolean;
+  payer?: TransactionSigner;
 }) {
   const {
     instructionsSysvar,
@@ -24,8 +35,15 @@ export async function voteTransactionBuffer({
     publicKey,
     message,
   } = await extractSecp256r1VerificationArgs(voter);
-
-  const instructions: IInstruction[] = [];
+  const settings = await getSettingsFromIndex(index);
+  const packedAccounts = new PackedAccounts();
+  const { settingsReadonlyArgs, proof } = await constructSettingsProofArgs(
+    packedAccounts,
+    compressed,
+    index
+  );
+  const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
+  const instructions: Instruction[] = [];
   if (message && signature && publicKey) {
     instructions.push(
       getSecp256r1VerifyInstruction([
@@ -38,17 +56,42 @@ export async function voteTransactionBuffer({
     );
   }
 
-  instructions.push(
-    getTransactionBufferVoteInstruction({
-      instructionsSysvar,
-      slotHashSysvar,
-      settings,
-      transactionBuffer: transactionBufferAddress,
-      payer: feePayer,
-      secp256r1VerifyArgs: verifyArgs,
-      domainConfig,
-      voter: voter instanceof Secp256r1Key ? undefined : voter,
-    })
-  );
+  if (compressed) {
+    if (!payer || !settingsReadonlyArgs) {
+      throw new Error("Payer not found or proof args is missing.");
+    }
+    const compressedProofArgs = convertToCompressedProofArgs(
+      proof,
+      systemOffset
+    );
+
+    instructions.push(
+      getTransactionBufferVoteCompressedInstruction({
+        instructionsSysvar,
+        slotHashSysvar,
+        transactionBuffer: transactionBufferAddress,
+        secp256r1VerifyArgs: verifyArgs,
+        domainConfig,
+        voter: voter instanceof Secp256r1Key ? undefined : voter,
+        settingsReadonly: settingsReadonlyArgs,
+        payer,
+        compressedProofArgs,
+        remainingAccounts,
+      })
+    );
+  } else {
+    instructions.push(
+      getTransactionBufferVoteInstruction({
+        instructionsSysvar,
+        slotHashSysvar,
+        settings,
+        transactionBuffer: transactionBufferAddress,
+        secp256r1VerifyArgs: verifyArgs,
+        domainConfig,
+        voter: voter instanceof Secp256r1Key ? undefined : voter,
+      })
+    );
+  }
+
   return instructions;
 }
