@@ -19,14 +19,14 @@ import {
   type OptionOrNullable,
 } from '@solana/kit';
 import {
-  getDelegateCreationArgsDecoder,
-  getDelegateCreationArgsEncoder,
+  getDelegateCreateOrMutateArgsDecoder,
+  getDelegateCreateOrMutateArgsEncoder,
   getMemberDecoder,
   getMemberEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  type DelegateCreationArgs,
-  type DelegateCreationArgsArgs,
+  type DelegateCreateOrMutateArgs,
+  type DelegateCreateOrMutateArgsArgs,
   type Member,
   type MemberArgs,
   type Secp256r1VerifyArgs,
@@ -36,20 +36,20 @@ import {
 export type MemberWithCreationArgs = {
   data: Member;
   verifyArgs: Option<Secp256r1VerifyArgs>;
-  delegateArgs: Option<DelegateCreationArgs>;
+  delegateArgs: Option<DelegateCreateOrMutateArgs>;
 };
 
 export type MemberWithCreationArgsArgs = {
   data: MemberArgs;
   verifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  delegateArgs: OptionOrNullable<DelegateCreationArgsArgs>;
+  delegateArgs: OptionOrNullable<DelegateCreateOrMutateArgsArgs>;
 };
 
 export function getMemberWithCreationArgsEncoder(): Encoder<MemberWithCreationArgsArgs> {
   return getStructEncoder([
     ['data', getMemberEncoder()],
     ['verifyArgs', getOptionEncoder(getSecp256r1VerifyArgsEncoder())],
-    ['delegateArgs', getOptionEncoder(getDelegateCreationArgsEncoder())],
+    ['delegateArgs', getOptionEncoder(getDelegateCreateOrMutateArgsEncoder())],
   ]);
 }
 
@@ -57,7 +57,7 @@ export function getMemberWithCreationArgsDecoder(): Decoder<MemberWithCreationAr
   return getStructDecoder([
     ['data', getMemberDecoder()],
     ['verifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ['delegateArgs', getOptionDecoder(getDelegateCreationArgsDecoder())],
+    ['delegateArgs', getOptionDecoder(getDelegateCreateOrMutateArgsDecoder())],
   ]);
 }
 

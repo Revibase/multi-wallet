@@ -14,9 +14,9 @@ import {
   getU16Encoder,
   getU8Decoder,
   getU8Encoder,
-  type Codec,
-  type Decoder,
-  type Encoder,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
 } from '@solana/kit';
 
 export type PackedAddressTreeInfo = {
@@ -27,7 +27,7 @@ export type PackedAddressTreeInfo = {
 
 export type PackedAddressTreeInfoArgs = PackedAddressTreeInfo;
 
-export function getPackedAddressTreeInfoEncoder(): Encoder<PackedAddressTreeInfoArgs> {
+export function getPackedAddressTreeInfoEncoder(): FixedSizeEncoder<PackedAddressTreeInfoArgs> {
   return getStructEncoder([
     ['addressMerkleTreePubkeyIndex', getU8Encoder()],
     ['addressQueuePubkeyIndex', getU8Encoder()],
@@ -35,7 +35,7 @@ export function getPackedAddressTreeInfoEncoder(): Encoder<PackedAddressTreeInfo
   ]);
 }
 
-export function getPackedAddressTreeInfoDecoder(): Decoder<PackedAddressTreeInfo> {
+export function getPackedAddressTreeInfoDecoder(): FixedSizeDecoder<PackedAddressTreeInfo> {
   return getStructDecoder([
     ['addressMerkleTreePubkeyIndex', getU8Decoder()],
     ['addressQueuePubkeyIndex', getU8Decoder()],
@@ -43,7 +43,7 @@ export function getPackedAddressTreeInfoDecoder(): Decoder<PackedAddressTreeInfo
   ]);
 }
 
-export function getPackedAddressTreeInfoCodec(): Codec<
+export function getPackedAddressTreeInfoCodec(): FixedSizeCodec<
   PackedAddressTreeInfoArgs,
   PackedAddressTreeInfo
 > {

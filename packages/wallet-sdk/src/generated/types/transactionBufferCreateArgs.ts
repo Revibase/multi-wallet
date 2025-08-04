@@ -7,8 +7,6 @@
  */
 
 import {
-  addDecoderSizePrefix,
-  addEncoderSizePrefix,
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
@@ -22,8 +20,6 @@ import {
   getStructEncoder,
   getU16Decoder,
   getU16Encoder,
-  getU32Decoder,
-  getU32Encoder,
   getU8Decoder,
   getU8Encoder,
   type Codec,
@@ -33,41 +29,38 @@ import {
 } from '@solana/kit';
 
 export type TransactionBufferCreateArgs = {
+  bufferIndex: number;
   permissionlessExecution: boolean;
   bufferExtendHashes: Array<ReadonlyUint8Array>;
-  bufferIndex: number;
   finalBufferHash: ReadonlyUint8Array;
   finalBufferSize: number;
-  buffer: ReadonlyUint8Array;
 };
 
 export type TransactionBufferCreateArgsArgs = TransactionBufferCreateArgs;
 
 export function getTransactionBufferCreateArgsEncoder(): Encoder<TransactionBufferCreateArgsArgs> {
   return getStructEncoder([
+    ['bufferIndex', getU8Encoder()],
     ['permissionlessExecution', getBooleanEncoder()],
     [
       'bufferExtendHashes',
       getArrayEncoder(fixEncoderSize(getBytesEncoder(), 32)),
     ],
-    ['bufferIndex', getU8Encoder()],
     ['finalBufferHash', fixEncoderSize(getBytesEncoder(), 32)],
     ['finalBufferSize', getU16Encoder()],
-    ['buffer', addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
   ]);
 }
 
 export function getTransactionBufferCreateArgsDecoder(): Decoder<TransactionBufferCreateArgs> {
   return getStructDecoder([
+    ['bufferIndex', getU8Decoder()],
     ['permissionlessExecution', getBooleanDecoder()],
     [
       'bufferExtendHashes',
       getArrayDecoder(fixDecoderSize(getBytesDecoder(), 32)),
     ],
-    ['bufferIndex', getU8Decoder()],
     ['finalBufferHash', fixDecoderSize(getBytesDecoder(), 32)],
     ['finalBufferSize', getU16Decoder()],
-    ['buffer', addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
   ]);
 }
 

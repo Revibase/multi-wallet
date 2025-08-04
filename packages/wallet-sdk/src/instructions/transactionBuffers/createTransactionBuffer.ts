@@ -16,7 +16,6 @@ import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 export async function createTransactionBuffer({
   index,
   payer,
-  transactionMessageBytes,
   creator,
   bufferIndex,
   transactionBufferAddress,
@@ -29,7 +28,6 @@ export async function createTransactionBuffer({
   finalBufferHash: Uint8Array;
   finalBufferSize: number;
   payer: TransactionSigner;
-  transactionMessageBytes: Uint8Array;
   index: bigint | number;
   creator: TransactionSigner | Secp256r1Key;
   bufferIndex: number;
@@ -40,7 +38,7 @@ export async function createTransactionBuffer({
 }) {
   const settings = await getSettingsFromIndex(index);
   const packedAccounts = new PackedAccounts();
-  const { settingsProofArgs, proof } = await constructSettingsProofArgs(
+  const { settingsReadonlyArgs, proof } = await constructSettingsProofArgs(
     packedAccounts,
     compressed,
     index
@@ -69,7 +67,7 @@ export async function createTransactionBuffer({
   }
 
   if (compressed) {
-    if (!payer || !settingsProofArgs) {
+    if (!payer || !settingsReadonlyArgs) {
       throw new Error("Payer not found or proof args is missing.");
     }
     const compressedProofArgs = convertToCompressedProofArgs(
@@ -92,9 +90,8 @@ export async function createTransactionBuffer({
           finalBufferSize,
           bufferExtendHashes,
           permissionlessExecution,
-          buffer: transactionMessageBytes,
         },
-        settingsArgs: settingsProofArgs,
+        settingsReadonly: settingsReadonlyArgs,
         compressedProofArgs,
         remainingAccounts,
       })
@@ -106,7 +103,7 @@ export async function createTransactionBuffer({
         slotHashSysvar,
         settings,
         transactionBuffer: transactionBufferAddress,
-        payer: payer,
+        payer,
         secp256r1VerifyArgs: verifyArgs,
         creator: creator instanceof Secp256r1Key ? undefined : creator,
         domainConfig,
@@ -116,7 +113,6 @@ export async function createTransactionBuffer({
           finalBufferSize,
           bufferExtendHashes,
           permissionlessExecution,
-          buffer: transactionMessageBytes,
         },
       })
     );

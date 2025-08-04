@@ -17,15 +17,15 @@ import {
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
+  type AccountMeta,
+  type AccountSignerMeta,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IAccountMeta,
-  type IAccountSignerMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type Option,
   type OptionOrNullable,
   type ReadonlyAccount,
@@ -37,59 +37,53 @@ import {
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
-  getCompressedAccountMetaCloseDecoder,
-  getCompressedAccountMetaCloseEncoder,
-  getCompressedSettingsDecoder,
-  getCompressedSettingsEncoder,
   getProofArgsDecoder,
   getProofArgsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  type CompressedAccountMetaClose,
-  type CompressedAccountMetaCloseArgs,
-  type CompressedSettings,
-  type CompressedSettingsArgs,
+  getSettingsMutArgsDecoder,
+  getSettingsMutArgsEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
+  type SettingsMutArgs,
+  type SettingsMutArgsArgs,
 } from "../types";
 
-export const DECOMPRESS_SETTINGS_ACCOUNT_DISCRIMINATOR = new Uint8Array([
-  237, 87, 232, 84, 218, 176, 222, 134,
-]);
+export const DECOMPRESS_SETTINGS_ACCOUNT_DISCRIMINATOR = new Uint8Array([17]);
 
 export function getDecompressSettingsAccountDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     DECOMPRESS_SETTINGS_ACCOUNT_DISCRIMINATOR
   );
 }
 
 export type DecompressSettingsAccountInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountSettings extends string | IAccountMeta<string> = string,
-  TAccountPayer extends string | IAccountMeta<string> = string,
+  TAccountSettings extends string | AccountMeta<string> = string,
+  TAccountPayer extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = "11111111111111111111111111111111",
+    | AccountMeta<string> = "11111111111111111111111111111111",
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
+    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountSettings extends string
         ? WritableAccount<TAccountSettings>
         : TAccountSettings,
       TAccountPayer extends string
         ? WritableSignerAccount<TAccountPayer> &
-            IAccountSignerMeta<TAccountPayer>
+            AccountSignerMeta<TAccountPayer>
         : TAccountPayer,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
@@ -109,15 +103,13 @@ export type DecompressSettingsAccountInstruction<
 
 export type DecompressSettingsAccountInstructionData = {
   discriminator: ReadonlyUint8Array;
-  accountMeta: CompressedAccountMetaClose;
-  data: CompressedSettings;
+  settingsMut: SettingsMutArgs;
   compressedProofArgs: ProofArgs;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
 };
 
 export type DecompressSettingsAccountInstructionDataArgs = {
-  accountMeta: CompressedAccountMetaCloseArgs;
-  data: CompressedSettingsArgs;
+  settingsMut: SettingsMutArgsArgs;
   compressedProofArgs: ProofArgsArgs;
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
 };
@@ -125,9 +117,8 @@ export type DecompressSettingsAccountInstructionDataArgs = {
 export function getDecompressSettingsAccountInstructionDataEncoder(): Encoder<DecompressSettingsAccountInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["accountMeta", getCompressedAccountMetaCloseEncoder()],
-      ["data", getCompressedSettingsEncoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
+      ["settingsMut", getSettingsMutArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
       [
         "secp256r1VerifyArgs",
@@ -143,9 +134,8 @@ export function getDecompressSettingsAccountInstructionDataEncoder(): Encoder<De
 
 export function getDecompressSettingsAccountInstructionDataDecoder(): Decoder<DecompressSettingsAccountInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["accountMeta", getCompressedAccountMetaCloseDecoder()],
-    ["data", getCompressedSettingsDecoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ["settingsMut", getSettingsMutArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
@@ -168,7 +158,7 @@ export type DecompressSettingsAccountInput<
   TAccountSlotHashSysvar extends string = string,
   TAccountDomainConfig extends string = string,
   TAccountInstructionsSysvar extends string = string,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = {
   settings: Address<TAccountSettings>;
   payer: TransactionSigner<TAccountPayer>;
@@ -176,8 +166,7 @@ export type DecompressSettingsAccountInput<
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   domainConfig?: Address<TAccountDomainConfig>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  accountMeta: DecompressSettingsAccountInstructionDataArgs["accountMeta"];
-  data: DecompressSettingsAccountInstructionDataArgs["data"];
+  settingsMut: DecompressSettingsAccountInstructionDataArgs["settingsMut"];
   compressedProofArgs: DecompressSettingsAccountInstructionDataArgs["compressedProofArgs"];
   secp256r1VerifyArgs: DecompressSettingsAccountInstructionDataArgs["secp256r1VerifyArgs"];
   remainingAccounts: TRemainingAccounts;
@@ -191,7 +180,7 @@ export function getDecompressSettingsAccountInstruction<
   TAccountDomainConfig extends string,
   TAccountInstructionsSysvar extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 >(
   input: DecompressSettingsAccountInput<
     TAccountSettings,
@@ -281,7 +270,7 @@ export function getDecompressSettingsAccountInstruction<
 
 export type ParsedDecompressSettingsAccountInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -297,11 +286,11 @@ export type ParsedDecompressSettingsAccountInstruction<
 
 export function parseDecompressSettingsAccountInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedDecompressSettingsAccountInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 6) {
     // TODO: Coded error.

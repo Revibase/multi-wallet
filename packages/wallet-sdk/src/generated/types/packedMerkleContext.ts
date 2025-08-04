@@ -16,9 +16,9 @@ import {
   getU32Encoder,
   getU8Decoder,
   getU8Encoder,
-  type Codec,
-  type Decoder,
-  type Encoder,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
 } from '@solana/kit';
 
 export type PackedMerkleContext = {
@@ -30,7 +30,7 @@ export type PackedMerkleContext = {
 
 export type PackedMerkleContextArgs = PackedMerkleContext;
 
-export function getPackedMerkleContextEncoder(): Encoder<PackedMerkleContextArgs> {
+export function getPackedMerkleContextEncoder(): FixedSizeEncoder<PackedMerkleContextArgs> {
   return getStructEncoder([
     ['merkleTreePubkeyIndex', getU8Encoder()],
     ['queuePubkeyIndex', getU8Encoder()],
@@ -39,7 +39,7 @@ export function getPackedMerkleContextEncoder(): Encoder<PackedMerkleContextArgs
   ]);
 }
 
-export function getPackedMerkleContextDecoder(): Decoder<PackedMerkleContext> {
+export function getPackedMerkleContextDecoder(): FixedSizeDecoder<PackedMerkleContext> {
   return getStructDecoder([
     ['merkleTreePubkeyIndex', getU8Decoder()],
     ['queuePubkeyIndex', getU8Decoder()],
@@ -48,7 +48,7 @@ export function getPackedMerkleContextDecoder(): Decoder<PackedMerkleContext> {
   ]);
 }
 
-export function getPackedMerkleContextCodec(): Codec<
+export function getPackedMerkleContextCodec(): FixedSizeCodec<
   PackedMerkleContextArgs,
   PackedMerkleContext
 > {

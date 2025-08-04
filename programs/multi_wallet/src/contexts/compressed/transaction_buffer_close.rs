@@ -1,7 +1,7 @@
 use crate::{
     state::{
-        verify_compressed_settings, DomainConfig, KeyType, MemberKey, ProofArgs, Secp256r1Pubkey,
-        Secp256r1VerifyArgs, SettingsProofArgs, TransactionActionType,
+        ChallengeArgs, CompressedSettings, DomainConfig, KeyType, MemberKey, ProofArgs,
+        Secp256r1VerifyArgs, SettingsReadonlyArgs, TransactionActionType,
     },
     MultisigError, TransactionBuffer,
 };
@@ -41,8 +41,8 @@ impl<'info> TransactionBufferCloseCompressed<'info> {
         &self,
         remaining_accounts: &[AccountInfo<'info>],
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
-        settings_args: &SettingsProofArgs,
-        compressed_proof_args: ProofArgs,
+        settings_readonly: &SettingsReadonlyArgs,
+        compressed_proof_args: &ProofArgs,
     ) -> Result<()> {
         let Self {
             closer,
@@ -54,10 +54,10 @@ impl<'info> TransactionBufferCloseCompressed<'info> {
             ..
         } = self;
 
-        let (settings, settings_key) = verify_compressed_settings(
+        let (settings, settings_key) = CompressedSettings::verify_compressed_settings(
             &payer.to_account_info(),
-            None,
-            &settings_args,
+            false,
+            settings_readonly,
             remaining_accounts,
             compressed_proof_args,
         )?;
@@ -66,7 +66,8 @@ impl<'info> TransactionBufferCloseCompressed<'info> {
             settings_key.eq(&transaction_buffer.multi_wallet_settings),
             MultisigError::InvalidAccount
         );
-        let signer = MemberKey::get_signer(closer, secp256r1_verify_args)?;
+        let signer =
+            MemberKey::get_signer(closer, secp256r1_verify_args, instructions_sysvar.as_ref())?;
 
         // allow rent payer to become the closer after transaction has expired
         if Clock::get().unwrap().unix_timestamp as u64 > transaction_buffer.valid_till
@@ -86,9 +87,10 @@ impl<'info> TransactionBufferCloseCompressed<'info> {
                     .find(|x| x.pubkey.eq(&signer))
                     .ok_or(MultisigError::MissingAccount)?;
 
-                let expected_domain_config = member
-                    .domain_config
-                    .ok_or(MultisigError::DomainConfigIsMissing)?;
+                require!(
+                    member.domain_config.is_some(),
+                    MultisigError::DomainConfigIsMissing
+                );
 
                 require!(
                     domain_config.is_some()
@@ -96,7 +98,7 @@ impl<'info> TransactionBufferCloseCompressed<'info> {
                             .as_ref()
                             .unwrap()
                             .key()
-                            .eq(&expected_domain_config),
+                            .eq(&member.domain_config.unwrap()),
                     MultisigError::MemberDoesNotBelongToDomainConfig
                 );
 
@@ -104,14 +106,19 @@ impl<'info> TransactionBufferCloseCompressed<'info> {
                     .as_ref()
                     .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
 
-                Secp256r1Pubkey::verify_webauthn(
-                    secp256r1_verify_data,
+                let instructions_sysvar = instructions_sysvar
+                    .as_ref()
+                    .ok_or(MultisigError::MissingAccount)?;
+
+                secp256r1_verify_data.verify_webauthn(
                     slot_hash_sysvar,
                     domain_config,
-                    &transaction_buffer.key(),
-                    &transaction_buffer.final_buffer_hash,
-                    TransactionActionType::Close,
                     instructions_sysvar,
+                    ChallengeArgs {
+                        account: transaction_buffer.key(),
+                        message_hash: transaction_buffer.final_buffer_hash,
+                        action_type: TransactionActionType::Close,
+                    },
                 )?;
             }
 
@@ -119,13 +126,18 @@ impl<'info> TransactionBufferCloseCompressed<'info> {
         }
     }
 
-    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, &secp256r1_verify_args, &settings_args, compressed_proof_args))]
     pub fn process(
         ctx: Context<'_, '_, '_, 'info, Self>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_args: SettingsProofArgs,
+        settings_readonly: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
+        ctx.accounts.validate(
+            ctx.remaining_accounts,
+            &secp256r1_verify_args,
+            &settings_readonly,
+            &compressed_proof_args,
+        )?;
         Ok(())
     }
 }

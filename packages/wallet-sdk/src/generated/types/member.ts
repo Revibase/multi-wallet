@@ -10,16 +10,12 @@ import {
   combineCodec,
   getAddressDecoder,
   getAddressEncoder,
-  getOptionDecoder,
-  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
   type Address,
-  type Codec,
-  type Decoder,
-  type Encoder,
-  type Option,
-  type OptionOrNullable,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
 } from "@solana/kit";
 import {
   getMemberKeyDecoder,
@@ -35,31 +31,31 @@ import {
 export type Member = {
   pubkey: MemberKey;
   permissions: IPermissions;
-  domainConfig: Option<Address>;
+  domainConfig: Address;
 };
 
 export type MemberArgs = {
   pubkey: MemberKeyArgs;
   permissions: PermissionsArgs;
-  domainConfig: OptionOrNullable<Address>;
+  domainConfig: Address;
 };
 
-export function getMemberEncoder(): Encoder<MemberArgs> {
+export function getMemberEncoder(): FixedSizeEncoder<MemberArgs> {
   return getStructEncoder([
     ["pubkey", getMemberKeyEncoder()],
     ["permissions", getPermissionsEncoder()],
-    ["domainConfig", getOptionEncoder(getAddressEncoder())],
+    ["domainConfig", getAddressEncoder()],
   ]);
 }
 
-export function getMemberDecoder(): Decoder<Member> {
+export function getMemberDecoder(): FixedSizeDecoder<Member> {
   return getStructDecoder([
     ["pubkey", getMemberKeyDecoder()],
     ["permissions", getPermissionsDecoder()],
-    ["domainConfig", getOptionDecoder(getAddressDecoder())],
+    ["domainConfig", getAddressDecoder()],
   ]);
 }
 
-export function getMemberCodec(): Codec<MemberArgs, Member> {
+export function getMemberCodec(): FixedSizeCodec<MemberArgs, Member> {
   return combineCodec(getMemberEncoder(), getMemberDecoder());
 }

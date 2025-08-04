@@ -1,10 +1,10 @@
 import {
   AccountRole,
+  AccountSignerMeta,
   Address,
-  IAccountSignerMeta,
   TransactionSigner,
 } from "@solana/kit";
-import { fetchDelegate } from "../../compressed";
+import { fetchDelegateIndex } from "../../compressed";
 import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
@@ -41,8 +41,8 @@ export async function nativeTransferIntent({
 }) {
   const creatorAddress =
     creator instanceof Secp256r1Key ? creator : creator.address;
-  const delegateData = await fetchDelegate(creatorAddress);
-  const settings = await getSettingsFromIndex(delegateData.index);
+  const delegateIndex = await fetchDelegateIndex(creatorAddress);
+  const settings = await getSettingsFromIndex(delegateIndex);
   const multiWallet = await getMultiWalletFromSettings(settings);
 
   const lamports =
@@ -56,7 +56,7 @@ export async function nativeTransferIntent({
     [creator].concat(additionalVoters ?? [])
   );
   const packedAccounts = new PackedAccounts();
-  const signerMetas: IAccountSignerMeta[] = signers
+  const signerMetas: AccountSignerMeta[] = signers
     .filter((x): x is TransactionSigner => !(x instanceof Secp256r1Key))
     .map((x) => ({
       address: x.address,
@@ -64,14 +64,14 @@ export async function nativeTransferIntent({
       role: AccountRole.READONLY_SIGNER,
     }));
   packedAccounts.addPreAccounts(signerMetas);
-  const { settingsProofArgs, proof } = await constructSettingsProofArgs(
+  const { settingsReadonlyArgs, proof } = await constructSettingsProofArgs(
     packedAccounts,
     compressed,
-    delegateData.index
+    delegateIndex
   );
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
 
-  const secpSigner = signers.find((x) => x instanceof Secp256r1Key);
+  const secp256r1Key = signers.find((x) => x instanceof Secp256r1Key);
   const {
     slotHashSysvar,
     instructionsSysvar,
@@ -80,7 +80,7 @@ export async function nativeTransferIntent({
     message,
     signature,
     publicKey,
-  } = await extractSecp256r1VerificationArgs(secpSigner);
+  } = await extractSecp256r1VerificationArgs(secp256r1Key);
 
   const instructions = [];
   if (message && signature && publicKey) {
@@ -90,7 +90,7 @@ export async function nativeTransferIntent({
   }
 
   if (compressed) {
-    if (!settingsProofArgs) {
+    if (!settingsReadonlyArgs) {
       throw new Error("Missing proof args.");
     }
     const compressedProofArgs = convertToCompressedProofArgs(
@@ -105,7 +105,7 @@ export async function nativeTransferIntent({
         secp256r1VerifyArgs: verifyArgs,
         slotHashSysvar,
         instructionsSysvar,
-        settingsArgs: settingsProofArgs,
+        settingsReadonly: settingsReadonlyArgs,
         source: multiWallet,
         compressedProofArgs,
         remainingAccounts,

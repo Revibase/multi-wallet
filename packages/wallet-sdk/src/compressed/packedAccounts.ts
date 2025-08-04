@@ -8,7 +8,7 @@ import {
   TreeType,
 } from "@lightprotocol/stateless.js";
 import { SYSTEM_PROGRAM_ADDRESS } from "@solana-program/system";
-import { AccountRole, address, IAccountMeta } from "@solana/kit";
+import { AccountMeta, AccountRole, address } from "@solana/kit";
 import { PublicKey } from "@solana/web3.js";
 import {
   MULTI_WALLET_PROGRAM_ADDRESS,
@@ -19,12 +19,12 @@ import { getLightCpiSigner } from "./internal";
 
 interface MapData {
   index: number;
-  accountMeta: IAccountMeta;
+  accountMeta: AccountMeta;
 }
 
 export class PackedAccounts {
-  preAccounts: IAccountMeta[];
-  systemAccounts: IAccountMeta[];
+  preAccounts: AccountMeta[];
+  systemAccounts: AccountMeta[];
   nextIndex: number;
   map: Map<PublicKey, MapData>;
 
@@ -35,7 +35,7 @@ export class PackedAccounts {
     this.map = new Map();
   }
 
-  addPreAccounts(accounts: IAccountMeta[]) {
+  addPreAccounts(accounts: AccountMeta[]) {
     this.preAccounts.push(...accounts);
   }
 

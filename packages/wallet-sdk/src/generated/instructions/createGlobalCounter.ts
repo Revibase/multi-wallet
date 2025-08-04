@@ -16,15 +16,15 @@ import {
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
+  type AccountMeta,
+  type AccountSignerMeta,
   type Address,
-  type Codec,
-  type Decoder,
-  type Encoder,
-  type IAccountMeta,
-  type IAccountSignerMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type ReadonlyAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
@@ -34,34 +34,32 @@ import {
 import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
 import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 
-export const CREATE_GLOBAL_COUNTER_DISCRIMINATOR = new Uint8Array([
-  247, 232, 107, 198, 31, 73, 3, 236,
-]);
+export const CREATE_GLOBAL_COUNTER_DISCRIMINATOR = new Uint8Array([4]);
 
 export function getCreateGlobalCounterDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     CREATE_GLOBAL_COUNTER_DISCRIMINATOR
   );
 }
 
 export type CreateGlobalCounterInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountGlobalCounter extends string | IAccountMeta<string> = string,
-  TAccountPayer extends string | IAccountMeta<string> = string,
+  TAccountGlobalCounter extends string | AccountMeta<string> = string,
+  TAccountPayer extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = '11111111111111111111111111111111',
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = '11111111111111111111111111111111',
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountGlobalCounter extends string
         ? WritableAccount<TAccountGlobalCounter>
         : TAccountGlobalCounter,
       TAccountPayer extends string
         ? WritableSignerAccount<TAccountPayer> &
-            IAccountSignerMeta<TAccountPayer>
+            AccountSignerMeta<TAccountPayer>
         : TAccountPayer,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
@@ -76,9 +74,9 @@ export type CreateGlobalCounterInstructionData = {
 
 export type CreateGlobalCounterInstructionDataArgs = {};
 
-export function getCreateGlobalCounterInstructionDataEncoder(): Encoder<CreateGlobalCounterInstructionDataArgs> {
+export function getCreateGlobalCounterInstructionDataEncoder(): FixedSizeEncoder<CreateGlobalCounterInstructionDataArgs> {
   return transformEncoder(
-    getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 8)]]),
+    getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 1)]]),
     (value) => ({
       ...value,
       discriminator: CREATE_GLOBAL_COUNTER_DISCRIMINATOR,
@@ -86,13 +84,13 @@ export function getCreateGlobalCounterInstructionDataEncoder(): Encoder<CreateGl
   );
 }
 
-export function getCreateGlobalCounterInstructionDataDecoder(): Decoder<CreateGlobalCounterInstructionData> {
+export function getCreateGlobalCounterInstructionDataDecoder(): FixedSizeDecoder<CreateGlobalCounterInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
   ]);
 }
 
-export function getCreateGlobalCounterInstructionDataCodec(): Codec<
+export function getCreateGlobalCounterInstructionDataCodec(): FixedSizeCodec<
   CreateGlobalCounterInstructionDataArgs,
   CreateGlobalCounterInstructionData
 > {
@@ -252,7 +250,7 @@ export function getCreateGlobalCounterInstruction<
 
 export type ParsedCreateGlobalCounterInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -265,11 +263,11 @@ export type ParsedCreateGlobalCounterInstruction<
 
 export function parseCreateGlobalCounterInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedCreateGlobalCounterInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 3) {
     // TODO: Coded error.

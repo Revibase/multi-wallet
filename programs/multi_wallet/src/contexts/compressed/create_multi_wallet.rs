@@ -2,10 +2,10 @@ use crate::{
     error::MultisigError,
     id,
     state::{
-        CompressedSettings, Delegate, DelegateCreationArgs, DomainConfig, GlobalCounter, KeyType,
-        Member, MemberKey, Permission, Permissions, ProofArgs, Secp256r1Pubkey,
-        Secp256r1VerifyArgs, Settings, SettingsCreationArgs, TransactionActionType, SEED_MULTISIG,
-        SEED_VAULT,
+        ChallengeArgs, CompressedMember, CompressedSettings, CompressedSettingsData, Delegate,
+        DelegateCreateOrMutateArgs, DomainConfig, GlobalCounter, KeyType, MemberKey, Permission,
+        Permissions, ProofArgs, Secp256r1VerifyArgs, SettingsCreationArgs, TransactionActionType,
+        SEED_MULTISIG, SEED_VAULT,
     },
     LIGHT_CPI_SIGNER,
 };
@@ -13,7 +13,6 @@ use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::cpi::{CpiAccounts, CpiInputs};
 
 #[derive(Accounts)]
-#[instruction(secp256r1_verify_args: Option<Secp256r1VerifyArgs>)]
 pub struct CreateMultiWalletCompressed<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -40,16 +39,25 @@ impl<'info> CreateMultiWalletCompressed<'info> {
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         permissions: Permissions,
         compressed_proof_args: ProofArgs,
-        settings_creation_args: SettingsCreationArgs,
-        delegate_creation_args: Option<DelegateCreationArgs>,
+        settings_creation: SettingsCreationArgs,
+        delegate_creation_args: Option<DelegateCreateOrMutateArgs>,
+        settings_index: u128,
     ) -> Result<()> {
         let global_counter = &mut ctx.accounts.global_counter.load_mut()?;
+
         let (settings_key, bump) = Pubkey::find_program_address(
             &[SEED_MULTISIG, global_counter.index.to_le_bytes().as_ref()],
             &crate::ID,
         );
-        let signer: MemberKey =
-            MemberKey::get_signer(&ctx.accounts.initial_member, &secp256r1_verify_args)?;
+        require!(
+            settings_index.eq(&global_counter.index),
+            MultisigError::InvalidArguments
+        );
+        let signer: MemberKey = MemberKey::get_signer(
+            &ctx.accounts.initial_member,
+            &secp256r1_verify_args,
+            ctx.accounts.instructions_sysvar.as_ref(),
+        )?;
         let domain_config = ctx.accounts.domain_config.as_ref().map(|f| f.key());
 
         if signer.get_type().eq(&KeyType::Secp256r1) {
@@ -65,14 +73,21 @@ impl<'info> CreateMultiWalletCompressed<'info> {
                 .load()?
                 .rp_id_hash;
 
-            Secp256r1Pubkey::verify_webauthn(
-                secp256r1_verify_data,
+            let instructions_sysvar = ctx
+                .accounts
+                .instructions_sysvar
+                .as_ref()
+                .ok_or(MultisigError::MissingAccount)?;
+
+            secp256r1_verify_data.verify_webauthn(
                 &ctx.accounts.slot_hash_sysvar,
                 &ctx.accounts.domain_config,
-                &settings_key,
-                &rp_id_hash,
-                TransactionActionType::AddNewMember,
-                &ctx.accounts.instructions_sysvar,
+                instructions_sysvar,
+                ChallengeArgs {
+                    account: settings_key,
+                    message_hash: rp_id_hash,
+                    action_type: TransactionActionType::AddNewMember,
+                },
             )?;
         }
 
@@ -80,53 +95,54 @@ impl<'info> CreateMultiWalletCompressed<'info> {
             &[SEED_MULTISIG, settings_key.as_ref(), SEED_VAULT],
             &id(),
         );
-        let settings = Settings {
-            threshold: 1,
-            multi_wallet_bump,
-            bump,
-            index: global_counter.index,
-            members: [Member {
-                pubkey: signer,
-                permissions,
-                domain_config,
-            }]
-            .to_vec(),
-        };
+
         let light_cpi_accounts = CpiAccounts::new(
             &ctx.accounts.payer,
             &ctx.remaining_accounts
                 [compressed_proof_args.light_cpi_accounts_start_index as usize..],
             LIGHT_CPI_SIGNER,
         );
+
+        let data = CompressedSettingsData {
+            threshold: 1,
+            bump,
+            index: global_counter.index,
+            multi_wallet_bump: multi_wallet_bump,
+            members: vec![CompressedMember {
+                pubkey: signer,
+                permissions,
+                domain_config,
+            }],
+        };
         let (settings_info, settings_new_address) = CompressedSettings::create_settings_account(
-            settings_creation_args,
-            settings,
+            settings_creation,
+            data,
             &light_cpi_accounts,
         )?;
 
-        let mut account_infos = vec![settings_info];
-        let mut new_addresses = vec![settings_new_address];
+        let mut final_account_infos = vec![];
+        let mut final_new_addresses = vec![];
         if permissions.has(Permission::IsDelegate) {
-            let (account_info, new_address_params) = Delegate::create_delegate_account(
+            let (account_infos, new_addresses) = Delegate::handle_create_or_recreate_delegate(
                 delegate_creation_args,
-                &signer,
-                global_counter.index,
+                settings_index,
+                signer,
                 &light_cpi_accounts,
             )?;
-            account_infos.push(account_info);
-            new_addresses.push(new_address_params);
+            final_account_infos.extend(account_infos);
+            final_new_addresses.extend(new_addresses);
         }
+        final_account_infos.push(settings_info);
+        final_new_addresses.push(settings_new_address);
 
-        if account_infos.len() > 0 || new_addresses.len() > 0 {
-            let cpi_inputs = CpiInputs::new_with_address(
-                compressed_proof_args.proof,
-                account_infos,
-                new_addresses,
-            );
-            cpi_inputs
-                .invoke_light_system_program(light_cpi_accounts)
-                .map_err(ProgramError::from)?;
-        }
+        let cpi_inputs = CpiInputs::new_with_address(
+            compressed_proof_args.proof,
+            final_account_infos,
+            final_new_addresses,
+        );
+        cpi_inputs
+            .invoke_light_system_program(light_cpi_accounts)
+            .map_err(ProgramError::from)?;
 
         global_counter.index += 1;
         Ok(())

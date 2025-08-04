@@ -1,6 +1,6 @@
 use crate::{
     state::{
-        DomainConfig, KeyType, MemberKey, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings,
+        ChallengeArgs, DomainConfig, KeyType, MemberKey, Secp256r1VerifyArgs, Settings,
         TransactionActionType,
     },
     MultisigError, Permission, TransactionBuffer,
@@ -12,7 +12,7 @@ pub struct TransactionBufferExecute<'info> {
     #[account(
         address = transaction_buffer.multi_wallet_settings,
     )]
-    pub settings: Account<'info, Settings>,
+    pub settings: AccountLoader<'info, Settings>,
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
     pub executor: Option<Signer<'info>>,
     #[account(mut)]
@@ -43,7 +43,7 @@ impl<'info> TransactionBufferExecute<'info> {
 
         transaction_buffer.validate_hash()?;
         transaction_buffer.validate_size()?;
-
+        let settings = settings.load()?;
         if transaction_buffer.permissionless_execution {
             let vote_count = settings
                 .members
@@ -61,7 +61,11 @@ impl<'info> TransactionBufferExecute<'info> {
             return Ok(());
         }
 
-        let signer = MemberKey::get_signer(executor, secp256r1_verify_args)?;
+        let signer = MemberKey::get_signer(
+            executor,
+            secp256r1_verify_args,
+            instructions_sysvar.as_ref(),
+        )?;
 
         let member = settings
             .members
@@ -89,9 +93,10 @@ impl<'info> TransactionBufferExecute<'info> {
         );
 
         if signer.get_type().eq(&KeyType::Secp256r1) {
-            let expected_domain_config = member
-                .domain_config
-                .ok_or(MultisigError::DomainConfigIsMissing)?;
+            require!(
+                member.domain_config.ne(&Pubkey::default()),
+                MultisigError::DomainConfigIsMissing
+            );
 
             require!(
                 domain_config.is_some()
@@ -99,7 +104,7 @@ impl<'info> TransactionBufferExecute<'info> {
                         .as_ref()
                         .unwrap()
                         .key()
-                        .eq(&expected_domain_config),
+                        .eq(&member.domain_config),
                 MultisigError::MemberDoesNotBelongToDomainConfig
             );
 
@@ -107,14 +112,19 @@ impl<'info> TransactionBufferExecute<'info> {
                 .as_ref()
                 .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
 
-            Secp256r1Pubkey::verify_webauthn(
-                secp256r1_verify_data,
+            let instructions_sysvar = instructions_sysvar
+                .as_ref()
+                .ok_or(MultisigError::MissingAccount)?;
+
+            secp256r1_verify_data.verify_webauthn(
                 slot_hash_sysvar,
                 domain_config,
-                &transaction_buffer.key(),
-                &transaction_buffer.final_buffer_hash,
-                TransactionActionType::Execute,
                 instructions_sysvar,
+                ChallengeArgs {
+                    account: transaction_buffer.key(),
+                    message_hash: transaction_buffer.final_buffer_hash,
+                    action_type: TransactionActionType::Execute,
+                },
             )?;
         }
 

@@ -17,14 +17,14 @@ import {
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
+  type AccountMeta,
   type Address,
-  type Codec,
-  type Decoder,
-  type Encoder,
-  type IAccountMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type ReadonlyUint8Array,
   type WritableAccount,
 } from "@solana/kit";
@@ -32,23 +32,23 @@ import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 
 export const TRANSACTION_EXECUTE_COMPRESSED_DISCRIMINATOR = new Uint8Array([
-  60, 99, 11, 42, 178, 216, 28, 158,
+  25,
 ]);
 
 export function getTransactionExecuteCompressedDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     TRANSACTION_EXECUTE_COMPRESSED_DISCRIMINATOR
   );
 }
 
 export type TransactionExecuteCompressedInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountPayer extends string | IAccountMeta<string> = string,
-  TAccountTransactionBuffer extends string | IAccountMeta<string> = string,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+  TAccountPayer extends string | AccountMeta<string> = string,
+  TAccountTransactionBuffer extends string | AccountMeta<string> = string,
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountPayer extends string
         ? WritableAccount<TAccountPayer>
@@ -69,10 +69,10 @@ export type TransactionExecuteCompressedInstructionDataArgs = {
   settingsKey: Address;
 };
 
-export function getTransactionExecuteCompressedInstructionDataEncoder(): Encoder<TransactionExecuteCompressedInstructionDataArgs> {
+export function getTransactionExecuteCompressedInstructionDataEncoder(): FixedSizeEncoder<TransactionExecuteCompressedInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["settingsKey", getAddressEncoder()],
     ]),
     (value) => ({
@@ -82,14 +82,14 @@ export function getTransactionExecuteCompressedInstructionDataEncoder(): Encoder
   );
 }
 
-export function getTransactionExecuteCompressedInstructionDataDecoder(): Decoder<TransactionExecuteCompressedInstructionData> {
+export function getTransactionExecuteCompressedInstructionDataDecoder(): FixedSizeDecoder<TransactionExecuteCompressedInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["settingsKey", getAddressDecoder()],
   ]);
 }
 
-export function getTransactionExecuteCompressedInstructionDataCodec(): Codec<
+export function getTransactionExecuteCompressedInstructionDataCodec(): FixedSizeCodec<
   TransactionExecuteCompressedInstructionDataArgs,
   TransactionExecuteCompressedInstructionData
 > {
@@ -102,7 +102,7 @@ export function getTransactionExecuteCompressedInstructionDataCodec(): Codec<
 export type TransactionExecuteCompressedInput<
   TAccountPayer extends string = string,
   TAccountTransactionBuffer extends string = string,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = {
   payer: Address<TAccountPayer>;
   transactionBuffer: Address<TAccountTransactionBuffer>;
@@ -114,7 +114,7 @@ export function getTransactionExecuteCompressedInstruction<
   TAccountPayer extends string,
   TAccountTransactionBuffer extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 >(
   input: TransactionExecuteCompressedInput<
     TAccountPayer,
@@ -170,7 +170,7 @@ export function getTransactionExecuteCompressedInstruction<
 
 export type ParsedTransactionExecuteCompressedInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -182,11 +182,11 @@ export type ParsedTransactionExecuteCompressedInstruction<
 
 export function parseTransactionExecuteCompressedInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedTransactionExecuteCompressedInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 2) {
     // TODO: Coded error.

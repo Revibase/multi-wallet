@@ -37,7 +37,7 @@ export async function executeTransactionBuffer({
     instructionsSysvar,
   } = await extractSecp256r1VerificationArgs(executor);
   const packedAccounts = new PackedAccounts();
-  const { settingsProofArgs, proof } = await constructSettingsProofArgs(
+  const { settingsReadonlyArgs, proof } = await constructSettingsProofArgs(
     packedAccounts,
     compressed,
     index
@@ -57,7 +57,7 @@ export async function executeTransactionBuffer({
   }
 
   if (compressed) {
-    if (!payer || !settingsProofArgs) {
+    if (!payer || !settingsReadonlyArgs) {
       throw new Error("Payer not found or proof args is missing.");
     }
     const compressedProofArgs = convertToCompressedProofArgs(
@@ -73,7 +73,7 @@ export async function executeTransactionBuffer({
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
         executor: executor instanceof Secp256r1Key ? undefined : executor,
-        settingsArgs: settingsProofArgs,
+        settingsReadonly: settingsReadonlyArgs,
         payer,
         compressedProofArgs,
         remainingAccounts,

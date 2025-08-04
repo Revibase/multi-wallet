@@ -21,14 +21,14 @@ import {
   getU64Decoder,
   getU64Encoder,
   transformEncoder,
+  type AccountMeta,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IAccountMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type Option,
   type OptionOrNullable,
   type ReadonlyAccount,
@@ -46,22 +46,22 @@ import {
   getProofArgsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  getSettingsProofArgsDecoder,
-  getSettingsProofArgsEncoder,
+  getSettingsReadonlyArgsDecoder,
+  getSettingsReadonlyArgsEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-  type SettingsProofArgs,
-  type SettingsProofArgsArgs,
+  type SettingsReadonlyArgs,
+  type SettingsReadonlyArgsArgs,
 } from "../types";
 
 export const TOKEN_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR = new Uint8Array([
-  42, 48, 107, 147, 228, 201, 67, 173,
+  27,
 ]);
 
 export function getTokenTransferIntentCompressedDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     TOKEN_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR
   );
 }
@@ -70,31 +70,29 @@ export type TokenTransferIntentCompressedInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
-  TAccountSource extends string | IAccountMeta<string> = string,
-  TAccountSourceTokenAccount extends string | IAccountMeta<string> = string,
-  TAccountDestination extends string | IAccountMeta<string> = string,
-  TAccountDestinationTokenAccount extends
-    | string
-    | IAccountMeta<string> = string,
+    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
+  TAccountSource extends string | AccountMeta<string> = string,
+  TAccountSourceTokenAccount extends string | AccountMeta<string> = string,
+  TAccountDestination extends string | AccountMeta<string> = string,
+  TAccountDestinationTokenAccount extends string | AccountMeta<string> = string,
   TAccountTokenProgram extends
     | string
-    | IAccountMeta<string> = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-  TAccountMint extends string | IAccountMeta<string> = string,
+    | AccountMeta<string> = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+  TAccountMint extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = "11111111111111111111111111111111",
+    | AccountMeta<string> = "11111111111111111111111111111111",
   TAccountAssociatedTokenProgram extends
     | string
-    | IAccountMeta<string> = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountSlotHashSysvar extends string
         ? ReadonlyAccount<TAccountSlotHashSysvar>
@@ -137,27 +135,27 @@ export type TokenTransferIntentCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   amount: bigint;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
-  settingsArgs: SettingsProofArgs;
+  settingsReadonly: SettingsReadonlyArgs;
   compressedProofArgs: ProofArgs;
 };
 
 export type TokenTransferIntentCompressedInstructionDataArgs = {
   amount: number | bigint;
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  settingsArgs: SettingsProofArgsArgs;
+  settingsReadonly: SettingsReadonlyArgsArgs;
   compressedProofArgs: ProofArgsArgs;
 };
 
 export function getTokenTransferIntentCompressedInstructionDataEncoder(): Encoder<TokenTransferIntentCompressedInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["amount", getU64Encoder()],
       [
         "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
-      ["settingsArgs", getSettingsProofArgsEncoder()],
+      ["settingsReadonly", getSettingsReadonlyArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
@@ -169,10 +167,10 @@ export function getTokenTransferIntentCompressedInstructionDataEncoder(): Encode
 
 export function getTokenTransferIntentCompressedInstructionDataDecoder(): Decoder<TokenTransferIntentCompressedInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["amount", getU64Decoder()],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ["settingsArgs", getSettingsProofArgsDecoder()],
+    ["settingsReadonly", getSettingsReadonlyArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }
@@ -199,7 +197,7 @@ export type TokenTransferIntentCompressedAsyncInput<
   TAccountMint extends string = string,
   TAccountSystemProgram extends string = string,
   TAccountAssociatedTokenProgram extends string = string,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = {
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
@@ -214,7 +212,7 @@ export type TokenTransferIntentCompressedAsyncInput<
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   amount: TokenTransferIntentCompressedInstructionDataArgs["amount"];
   secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs["secp256r1VerifyArgs"];
-  settingsArgs: TokenTransferIntentCompressedInstructionDataArgs["settingsArgs"];
+  settingsReadonly: TokenTransferIntentCompressedInstructionDataArgs["settingsReadonly"];
   compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: TRemainingAccounts;
 };
@@ -232,7 +230,7 @@ export async function getTokenTransferIntentCompressedInstructionAsync<
   TAccountSystemProgram extends string,
   TAccountAssociatedTokenProgram extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 >(
   input: TokenTransferIntentCompressedAsyncInput<
     TAccountSlotHashSysvar,
@@ -401,7 +399,7 @@ export type TokenTransferIntentCompressedInput<
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   amount: TokenTransferIntentCompressedInstructionDataArgs["amount"];
   secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs["secp256r1VerifyArgs"];
-  settingsArgs: TokenTransferIntentCompressedInstructionDataArgs["settingsArgs"];
+  settingsReadonly: TokenTransferIntentCompressedInstructionDataArgs["settingsReadonly"];
   compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs["compressedProofArgs"];
 };
 
@@ -545,7 +543,7 @@ export function getTokenTransferIntentCompressedInstruction<
 
 export type ParsedTokenTransferIntentCompressedInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -566,11 +564,11 @@ export type ParsedTokenTransferIntentCompressedInstruction<
 
 export function parseTokenTransferIntentCompressedInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedTokenTransferIntentCompressedInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 11) {
     // TODO: Coded error.

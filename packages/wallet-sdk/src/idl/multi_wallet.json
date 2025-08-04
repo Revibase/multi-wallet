@@ -1,5 +1,5 @@
 {
-  "address": "pkeyt2Txg77e2JSS2K44hDnC2p6uE4jXnd2UQZxZ2oE",
+  "address": "revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb",
   "metadata": {
     "name": "multi_wallet",
     "version": "0.1.0",
@@ -12,7 +12,7 @@
       "docs": [
         "Applies one or more configuration changes to an existing multi-wallet."
       ],
-      "discriminator": [24, 158, 114, 115, 94, 210, 244, 233],
+      "discriminator": [6],
       "accounts": [
         {
           "name": "settings",
@@ -21,6 +21,10 @@
         {
           "name": "payer",
           "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
           "signer": true,
           "pda": {
             "seeds": [
@@ -84,11 +88,15 @@
       "docs": [
         "Applies one or more configuration changes to an existing multi-wallet."
       ],
-      "discriminator": [33, 185, 159, 154, 181, 251, 157, 58],
+      "discriminator": [19],
       "accounts": [
         {
           "name": "payer",
           "writable": true,
+          "signer": true
+        },
+        {
+          "name": "authority",
           "signer": true
         },
         {
@@ -114,7 +122,7 @@
           }
         },
         {
-          "name": "settings_args",
+          "name": "settings_mut",
           "type": {
             "defined": {
               "name": "SettingsMutArgs"
@@ -137,7 +145,7 @@
         "* Compressed Versions",
         "Compress an existing settings account."
       ],
-      "discriminator": [107, 157, 58, 253, 4, 163, 46, 145],
+      "discriminator": [16],
       "accounts": [
         {
           "name": "settings",
@@ -172,10 +180,10 @@
           }
         },
         {
-          "name": "settings_creation_args",
+          "name": "settings_arg",
           "type": {
             "defined": {
-              "name": "SettingsCreationArgs"
+              "name": "SettingsCreateOrMutateArgs"
             }
           }
         },
@@ -196,7 +204,7 @@
       "docs": [
         "Initializes a new domain configuration used for WebAuthn (secp256r1) verification."
       ],
-      "discriminator": [197, 81, 191, 2, 164, 140, 184, 90],
+      "discriminator": [0],
       "accounts": [
         {
           "name": "domain_config",
@@ -240,7 +248,7 @@
     {
       "name": "create_global_counter",
       "docs": ["Create a global counter to index all multi wallets"],
-      "discriminator": [247, 232, 107, 198, 31, 73, 3, 236],
+      "discriminator": [4],
       "accounts": [
         {
           "name": "global_counter",
@@ -274,7 +282,7 @@
       "docs": [
         "Creates a new multi-wallet with the specified permissions and ownership."
       ],
-      "discriminator": [37, 45, 100, 255, 58, 228, 239, 164],
+      "discriminator": [5],
       "accounts": [
         {
           "name": "settings",
@@ -351,7 +359,7 @@
           "type": {
             "option": {
               "defined": {
-                "name": "DelegateCreationArgs"
+                "name": "DelegateCreateOrMutateArgs"
               }
             }
           }
@@ -373,7 +381,7 @@
       "docs": [
         "Creates a new multi-wallet with the specified permissions and ownership."
       ],
-      "discriminator": [79, 254, 201, 17, 187, 210, 128, 233],
+      "discriminator": [18],
       "accounts": [
         {
           "name": "payer",
@@ -436,7 +444,7 @@
           }
         },
         {
-          "name": "settings_creation_args",
+          "name": "settings_creation",
           "type": {
             "defined": {
               "name": "SettingsCreationArgs"
@@ -448,17 +456,21 @@
           "type": {
             "option": {
               "defined": {
-                "name": "DelegateCreationArgs"
+                "name": "DelegateCreateOrMutateArgs"
               }
             }
           }
+        },
+        {
+          "name": "settings_index",
+          "type": "u128"
         }
       ]
     },
     {
       "name": "decompress_settings_account",
       "docs": ["Decompress an existing settings account."],
-      "discriminator": [237, 87, 232, 84, 218, 176, 222, 134],
+      "discriminator": [17],
       "accounts": [
         {
           "name": "settings",
@@ -473,7 +485,7 @@
               },
               {
                 "kind": "arg",
-                "path": "settings_close_args.data.index"
+                "path": "settings_mut.data.data"
               }
             ]
           }
@@ -503,10 +515,10 @@
       ],
       "args": [
         {
-          "name": "settings_close_args",
+          "name": "settings_mut",
           "type": {
             "defined": {
-              "name": "SettingsCloseArgs"
+              "name": "SettingsMutArgs"
             }
           }
         },
@@ -535,7 +547,7 @@
       "docs": [
         "Deletes an existing domain configuration used for WebAuthn (secp256r1) verification."
       ],
-      "discriminator": [225, 169, 39, 18, 125, 147, 36, 29],
+      "discriminator": [2],
       "accounts": [
         {
           "name": "domain_config",
@@ -558,7 +570,7 @@
       "docs": [
         "Enables or disables a domain configuration. Useful for temporary suspension."
       ],
-      "discriminator": [169, 163, 147, 131, 58, 46, 131, 51],
+      "discriminator": [3],
       "accounts": [
         {
           "name": "domain_config",
@@ -582,7 +594,7 @@
       "docs": [
         "Updates an existing domain configuration used for WebAuthn (secp256r1) verification."
       ],
-      "discriminator": [110, 212, 99, 229, 72, 93, 185, 231],
+      "discriminator": [1],
       "accounts": [
         {
           "name": "domain_config",
@@ -611,7 +623,7 @@
     {
       "name": "native_transfer_intent",
       "docs": ["Transfers SOL using a signed transfer intent."],
-      "discriminator": [57, 156, 213, 157, 88, 202, 2, 151],
+      "discriminator": [15],
       "accounts": [
         {
           "name": "settings"
@@ -680,7 +692,7 @@
     {
       "name": "native_transfer_intent_compressed",
       "docs": ["Transfers SOL using a signed transfer intent."],
-      "discriminator": [215, 168, 194, 70, 97, 19, 81, 126],
+      "discriminator": [28],
       "accounts": [
         {
           "name": "slot_hash_sysvar",
@@ -724,10 +736,10 @@
           }
         },
         {
-          "name": "settings_args",
+          "name": "settings_readonly",
           "type": {
             "defined": {
-              "name": "SettingsProofArgs"
+              "name": "SettingsReadonlyArgs"
             }
           }
         },
@@ -744,7 +756,7 @@
     {
       "name": "token_transfer_intent",
       "docs": ["Transfers SPL tokens using a signed transfer intent."],
-      "discriminator": [51, 91, 96, 155, 132, 232, 179, 48],
+      "discriminator": [14],
       "accounts": [
         {
           "name": "settings"
@@ -854,7 +866,7 @@
     {
       "name": "token_transfer_intent_compressed",
       "docs": ["Transfers SPL tokens using a signed transfer intent."],
-      "discriminator": [42, 48, 107, 147, 228, 201, 67, 173],
+      "discriminator": [27],
       "accounts": [
         {
           "name": "slot_hash_sysvar",
@@ -939,10 +951,10 @@
           }
         },
         {
-          "name": "settings_args",
+          "name": "settings_readonly",
           "type": {
             "defined": {
-              "name": "SettingsProofArgs"
+              "name": "SettingsReadonlyArgs"
             }
           }
         },
@@ -959,7 +971,7 @@
     {
       "name": "transaction_buffer_close",
       "docs": ["Closes and cleans up a transaction buffer."],
-      "discriminator": [17, 182, 208, 228, 136, 24, 178, 102],
+      "discriminator": [10],
       "accounts": [
         {
           "name": "settings"
@@ -1008,7 +1020,7 @@
     {
       "name": "transaction_buffer_close_compressed",
       "docs": ["Closes and cleans up a transaction buffer."],
-      "discriminator": [82, 65, 25, 49, 208, 28, 191, 84],
+      "discriminator": [23],
       "accounts": [
         {
           "name": "payer",
@@ -1055,10 +1067,10 @@
           }
         },
         {
-          "name": "settings_args",
+          "name": "settings_readonly",
           "type": {
             "defined": {
-              "name": "SettingsProofArgs"
+              "name": "SettingsReadonlyArgs"
             }
           }
         },
@@ -1077,7 +1089,7 @@
       "docs": [
         "Creates a new transaction buffer to stage a transaction before execution."
       ],
-      "discriminator": [245, 201, 113, 108, 37, 63, 29, 89],
+      "discriminator": [7],
       "accounts": [
         {
           "name": "settings"
@@ -1140,7 +1152,7 @@
       "docs": [
         "Creates a new transaction buffer to stage a transaction before execution."
       ],
-      "discriminator": [96, 163, 111, 240, 71, 192, 125, 64],
+      "discriminator": [20],
       "accounts": [
         {
           "name": "payer",
@@ -1194,10 +1206,10 @@
           }
         },
         {
-          "name": "settings_args",
+          "name": "settings_readonly",
           "type": {
             "defined": {
-              "name": "SettingsProofArgs"
+              "name": "SettingsReadonlyArgs"
             }
           }
         },
@@ -1214,7 +1226,7 @@
     {
       "name": "transaction_buffer_execute",
       "docs": ["Executes a previously approved transaction buffer."],
-      "discriminator": [48, 73, 34, 19, 129, 99, 128, 73],
+      "discriminator": [11],
       "accounts": [
         {
           "name": "settings"
@@ -1259,7 +1271,7 @@
     {
       "name": "transaction_buffer_execute_compressed",
       "docs": ["Executes a previously approved transaction buffer."],
-      "discriminator": [217, 17, 124, 197, 3, 110, 139, 7],
+      "discriminator": [24],
       "accounts": [
         {
           "name": "payer",
@@ -1302,10 +1314,10 @@
           }
         },
         {
-          "name": "settings_args",
+          "name": "settings_readonly",
           "type": {
             "defined": {
-              "name": "SettingsProofArgs"
+              "name": "SettingsReadonlyArgs"
             }
           }
         },
@@ -1324,7 +1336,7 @@
       "docs": [
         "Extends an existing transaction buffer to allow for updated data or additional time."
       ],
-      "discriminator": [230, 157, 67, 56, 5, 238, 245, 146],
+      "discriminator": [9],
       "accounts": [
         {
           "name": "settings"
@@ -1346,13 +1358,8 @@
       "docs": [
         "Extends an existing transaction buffer to allow for updated data or additional time."
       ],
-      "discriminator": [21, 112, 96, 97, 196, 102, 207, 203],
+      "discriminator": [22],
       "accounts": [
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
         {
           "name": "transaction_buffer",
           "writable": true
@@ -1364,27 +1371,15 @@
           "type": "bytes"
         },
         {
-          "name": "settings_args",
-          "type": {
-            "defined": {
-              "name": "SettingsProofArgs"
-            }
-          }
-        },
-        {
-          "name": "compressed_proof_args",
-          "type": {
-            "defined": {
-              "name": "ProofArgs"
-            }
-          }
+          "name": "settings_key",
+          "type": "pubkey"
         }
       ]
     },
     {
       "name": "transaction_buffer_vote",
       "docs": ["Signs a transaction buffer to register approval."],
-      "discriminator": [203, 50, 79, 187, 94, 53, 82, 122],
+      "discriminator": [8],
       "accounts": [
         {
           "name": "settings"
@@ -1433,7 +1428,7 @@
     {
       "name": "transaction_buffer_vote_compressed",
       "docs": ["Signs a transaction buffer to register approval."],
-      "discriminator": [86, 82, 187, 102, 103, 52, 135, 183],
+      "discriminator": [21],
       "accounts": [
         {
           "name": "payer",
@@ -1480,10 +1475,10 @@
           }
         },
         {
-          "name": "settings_args",
+          "name": "settings_readonly",
           "type": {
             "defined": {
-              "name": "SettingsProofArgs"
+              "name": "SettingsReadonlyArgs"
             }
           }
         },
@@ -1500,7 +1495,7 @@
     {
       "name": "transaction_execute",
       "docs": ["Executes a staged transaction from a buffer."],
-      "discriminator": [93, 171, 78, 134, 252, 84, 186, 189],
+      "discriminator": [12],
       "accounts": [
         {
           "name": "settings",
@@ -1520,7 +1515,7 @@
     {
       "name": "transaction_execute_compressed",
       "docs": ["Executes a staged transaction from a buffer."],
-      "discriminator": [60, 99, 11, 42, 178, 216, 28, 158],
+      "discriminator": [25],
       "accounts": [
         {
           "name": "payer",
@@ -1543,7 +1538,7 @@
       "docs": [
         "Executes a transaction synchronously by directly submitting the message and verifying it."
       ],
-      "discriminator": [149, 138, 204, 32, 181, 61, 153, 227],
+      "discriminator": [13],
       "accounts": [
         {
           "name": "settings",
@@ -1589,7 +1584,7 @@
       "docs": [
         "Executes a transaction synchronously by directly submitting the message and verifying it."
       ],
-      "discriminator": [251, 154, 149, 157, 125, 132, 60, 183],
+      "discriminator": [26],
       "accounts": [
         {
           "name": "payer",
@@ -1630,10 +1625,10 @@
           }
         },
         {
-          "name": "settings_args",
+          "name": "settings_readonly",
           "type": {
             "defined": {
-              "name": "SettingsProofArgs"
+              "name": "SettingsReadonlyArgs"
             }
           }
         },
@@ -1695,7 +1690,7 @@
     {
       "code": 6005,
       "name": "TooManyMembers",
-      "msg": "The number of members exceeds the supported maximum (65,535)."
+      "msg": "The number of members exceeds the supported maximum 4."
     },
     {
       "code": 6006,
@@ -1719,161 +1714,151 @@
     },
     {
       "code": 6010,
+      "name": "InvalidArguments",
+      "msg": "One or more arguments provided failed validation. Ensure all required arguments are included and correct."
+    },
+    {
+      "code": 6011,
       "name": "MissingAccount",
       "msg": "A required account is missing from the transaction context."
     },
     {
-      "code": 6011,
-      "name": "AccountAlreadyExist",
-      "msg": "The account you're trying to initialize already exists."
-    },
-    {
       "code": 6012,
-      "name": "IllegalAccountOwner",
-      "msg": "The account is not owned by the multisig program. Ensure the correct program owns this account."
-    },
-    {
-      "code": 6013,
       "name": "MissingDelegateArgs",
       "msg": "A delegate creation args is required when the initial member has requested delegate permissions."
     },
     {
-      "code": 6014,
+      "code": 6013,
       "name": "InsufficientSignerWithExecutePermission",
       "msg": "At least one signer must have execute permissions to proceed."
     },
     {
-      "code": 6015,
+      "code": 6014,
       "name": "InsufficientSignerWithInitiatePermission",
       "msg": "At least one signer must have initiate permissions to perform this action."
     },
     {
-      "code": 6016,
+      "code": 6015,
       "name": "InsufficientSignersWithVotePermission",
       "msg": "The approval threshold cannot be met because there aren't enough voters with the vote permission."
     },
     {
-      "code": 6017,
+      "code": 6016,
       "name": "NoSignerFound",
       "msg": "No valid signer was found in this transaction. Ensure at least one authorized signer is present."
     },
     {
-      "code": 6018,
+      "code": 6017,
       "name": "UnauthorisedToCloseTransactionBuffer",
       "msg": "Only the transaction's creator or rent payer is allowed to close the transaction buffer."
     },
     {
-      "code": 6019,
+      "code": 6018,
       "name": "InvalidBuffer",
       "msg": "The contents of the buffer do not match the expected hash. It may have been tampered with."
     },
     {
-      "code": 6020,
+      "code": 6019,
       "name": "FinalBufferHashMismatch",
       "msg": "The final hash of the buffer doesn't match what was expected. The buffer might be corrupted or altered."
     },
     {
-      "code": 6021,
+      "code": 6020,
       "name": "FinalBufferSizeExceeded",
       "msg": "The serialized transaction buffer exceeds the maximum allowed size of 10,128 bytes."
     },
     {
-      "code": 6022,
+      "code": 6021,
       "name": "FinalBufferSizeMismatch",
       "msg": "The declared size of the buffer does not match its actual size."
     },
     {
-      "code": 6023,
+      "code": 6022,
       "name": "TransactionHasExpired",
       "msg": "The transaction has expired. It must be executed within 3 minutes of approval."
     },
     {
-      "code": 6024,
+      "code": 6023,
       "name": "TransactionNotApproved",
       "msg": "The transaction hasn't received enough approvals yet to be executed."
     },
     {
-      "code": 6025,
+      "code": 6024,
       "name": "ProtectedAccount",
       "msg": "Writable CPI calls to protected accounts are not permitted."
     },
     {
-      "code": 6026,
+      "code": 6025,
       "name": "MaxLengthExceeded",
       "msg": "One of the input strings exceeds the maximum allowed character limit."
     },
     {
-      "code": 6027,
+      "code": 6026,
       "name": "MissingSysvarSlotHistory",
       "msg": "The Slot History sysvar account is missing. It must be included as an account in this instruction."
     },
     {
-      "code": 6028,
+      "code": 6027,
       "name": "InvalidSysvarDataFormat",
       "msg": "Failed to parse sysvar: slot history format is invalid or corrupted."
     },
     {
-      "code": 6029,
+      "code": 6028,
       "name": "SlotNumberNotFound",
       "msg": "The specified slot number is not present in the provided slot history."
     },
     {
-      "code": 6030,
-      "name": "SlotHashMismatch",
-      "msg": "The slot hash doesn't match the expected value from slot history."
-    },
-    {
-      "code": 6031,
+      "code": 6029,
       "name": "DomainConfigIsDisabled",
       "msg": "The domain configuration account is currently disabled. Contact support or try again later."
     },
     {
-      "code": 6032,
+      "code": 6030,
       "name": "DomainConfigIsMissing",
       "msg": "Missing domain configuration account. Ensure it's passed in the instruction."
     },
     {
-      "code": 6033,
+      "code": 6031,
       "name": "MemberDoesNotBelongToDomainConfig",
       "msg": "This member is not registered in the provided domain configuration."
     },
     {
-      "code": 6034,
+      "code": 6032,
       "name": "RpIdHashMismatch",
       "msg": "The relying party ID hash does not match the one specified in the domain configuration."
     },
     {
-      "code": 6035,
+      "code": 6033,
       "name": "InvalidJson",
       "msg": "Failed to parse the client data JSON. The format may be invalid."
     },
     {
-      "code": 6036,
+      "code": 6034,
       "name": "MissingOrigin",
       "msg": "Missing origin field in clientDataJSON. This field is required for WebAuthn validation."
     },
     {
-      "code": 6037,
+      "code": 6035,
       "name": "InvalidOrigin",
       "msg": "The origin value in clientDataJSON does not match the expected domain."
     },
     {
-      "code": 6038,
+      "code": 6036,
       "name": "MissingType",
       "msg": "Missing type field in clientDataJSON. This field is required for WebAuthn validation."
     },
     {
-      "code": 6039,
+      "code": 6037,
       "name": "InvalidType",
       "msg": "The type field in clientDataJSON is invalid. Expected value: webauthn.get."
     },
     {
-      "code": 6040,
+      "code": 6038,
       "name": "MissingChallenge",
       "msg": "Missing challenge field in clientDataJSON. This is required for validating the authentication request."
     },
     {
-      "code": 6041,
+      "code": 6039,
       "name": "InvalidChallenge",
       "msg": "The challenge value in clientDataJSON is missing or doesn't match the expected challenge."
     }
@@ -1895,64 +1880,6 @@
           {
             "name": "data",
             "type": "bytes"
-          }
-        ]
-      }
-    },
-    {
-      "name": "CompressedAccount",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "owner",
-            "type": "pubkey"
-          },
-          {
-            "name": "lamports",
-            "type": "u64"
-          },
-          {
-            "name": "address",
-            "type": {
-              "option": {
-                "array": ["u8", 32]
-              }
-            }
-          },
-          {
-            "name": "data",
-            "type": {
-              "option": {
-                "defined": {
-                  "name": "CompressedAccountData"
-                }
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "CompressedAccountData",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "discriminator",
-            "type": {
-              "array": ["u8", 8]
-            }
-          },
-          {
-            "name": "data",
-            "type": "bytes"
-          },
-          {
-            "name": "data_hash",
-            "type": {
-              "array": ["u8", 32]
-            }
           }
         ]
       }
@@ -1987,24 +1914,30 @@
       }
     },
     {
-      "name": "CompressedAccountMetaClose",
+      "name": "CompressedMember",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "tree_info",
-            "docs": ["State Merkle tree context."],
+            "name": "pubkey",
             "type": {
               "defined": {
-                "name": "PackedStateTreeInfo"
+                "name": "MemberKey"
               }
             }
           },
           {
-            "name": "address",
-            "docs": ["Address."],
+            "name": "permissions",
             "type": {
-              "array": ["u8", 32]
+              "defined": {
+                "name": "Permissions"
+              }
+            }
+          },
+          {
+            "name": "domain_config",
+            "type": {
+              "option": "pubkey"
             }
           }
         ]
@@ -2045,6 +1978,24 @@
         "kind": "struct",
         "fields": [
           {
+            "name": "data",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "CompressedSettingsData"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompressedSettingsData",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
             "name": "threshold",
             "type": "u8"
           },
@@ -2065,7 +2016,7 @@
             "type": {
               "vec": {
                 "defined": {
-                  "name": "Member"
+                  "name": "CompressedMember"
                 }
               }
             }
@@ -2137,8 +2088,10 @@
             }
           },
           {
-            "name": "origin",
-            "type": "string"
+            "name": "origins",
+            "type": {
+              "vec": "string"
+            }
           },
           {
             "name": "authority",
@@ -2154,31 +2107,37 @@
         "fields": [
           {
             "name": "index",
-            "type": "u128"
+            "type": {
+              "option": "u128"
+            }
           }
         ]
       }
     },
     {
-      "name": "DelegateCloseArgs",
+      "name": "DelegateCreateOrMutateArgs",
       "type": {
-        "kind": "struct",
-        "fields": [
+        "kind": "enum",
+        "variants": [
           {
-            "name": "account_meta",
-            "type": {
-              "defined": {
-                "name": "CompressedAccountMetaClose"
+            "name": "Create",
+            "fields": [
+              {
+                "defined": {
+                  "name": "DelegateCreationArgs"
+                }
               }
-            }
+            ]
           },
           {
-            "name": "data",
-            "type": {
-              "defined": {
-                "name": "Delegate"
+            "name": "Mutate",
+            "fields": [
+              {
+                "defined": {
+                  "name": "DelegateMutArgs"
+                }
               }
-            }
+            ]
           }
         ]
       }
@@ -2204,6 +2163,30 @@
       }
     },
     {
+      "name": "DelegateMutArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account_meta",
+            "type": {
+              "defined": {
+                "name": "CompressedAccountMeta"
+              }
+            }
+          },
+          {
+            "name": "data",
+            "type": {
+              "defined": {
+                "name": "Delegate"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "DomainConfig",
       "serialization": "bytemuck",
       "repr": {
@@ -2213,7 +2196,7 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "origin_length",
+            "name": "num_origins",
             "type": "u16"
           },
           {
@@ -2245,7 +2228,7 @@
             }
           },
           {
-            "name": "origin",
+            "name": "origins",
             "type": {
               "array": ["u8", 512]
             }
@@ -2265,8 +2248,10 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "new_origin",
-            "type": "string"
+            "name": "new_origins",
+            "type": {
+              "vec": "string"
+            }
           },
           {
             "name": "new_authority",
@@ -2293,6 +2278,9 @@
     },
     {
       "name": "Member",
+      "repr": {
+        "kind": "c"
+      },
       "type": {
         "kind": "struct",
         "fields": [
@@ -2314,15 +2302,16 @@
           },
           {
             "name": "domain_config",
-            "type": {
-              "option": "pubkey"
-            }
+            "type": "pubkey"
           }
         ]
       }
     },
     {
       "name": "MemberKey",
+      "repr": {
+        "kind": "c"
+      },
       "type": {
         "kind": "struct",
         "fields": [
@@ -2357,7 +2346,7 @@
             "type": {
               "option": {
                 "defined": {
-                  "name": "DelegateCloseArgs"
+                  "name": "DelegateMutArgs"
                 }
               }
             }
@@ -2383,6 +2372,26 @@
             "type": {
               "defined": {
                 "name": "Permissions"
+              }
+            }
+          },
+          {
+            "name": "delegate_close_args",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "DelegateMutArgs"
+                }
+              }
+            }
+          },
+          {
+            "name": "delegate_creation_args",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "DelegateCreateOrMutateArgs"
+                }
               }
             }
           }
@@ -2417,7 +2426,7 @@
             "type": {
               "option": {
                 "defined": {
-                  "name": "DelegateCreationArgs"
+                  "name": "DelegateCreateOrMutateArgs"
                 }
               }
             }
@@ -2500,6 +2509,9 @@
     {
       "name": "Permissions",
       "docs": ["Bitmask for permissions."],
+      "repr": {
+        "kind": "c"
+      },
       "type": {
         "kind": "struct",
         "fields": [
@@ -2531,51 +2543,55 @@
       }
     },
     {
-      "name": "Secp256r1Pubkey",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "array": ["u8", 33]
-          }
-        ]
-      }
-    },
-    {
       "name": "Secp256r1VerifyArgs",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "public_key",
-            "type": {
-              "defined": {
-                "name": "Secp256r1Pubkey"
-              }
-            }
-          },
-          {
-            "name": "client_data_json",
-            "type": "bytes"
+            "name": "index",
+            "type": "u8"
           },
           {
             "name": "slot_number",
             "type": "u64"
           },
           {
-            "name": "slot_hash",
-            "type": {
-              "array": ["u8", 32]
-            }
+            "name": "client_data_json",
+            "type": "bytes"
           }
         ]
       }
     },
     {
       "name": "Settings",
+      "serialization": "bytemuck",
+      "repr": {
+        "kind": "c"
+      },
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "index",
+            "type": "u128"
+          },
+          {
+            "name": "members",
+            "type": {
+              "array": [
+                {
+                  "defined": {
+                    "name": "Member"
+                  }
+                },
+                4
+              ]
+            }
+          },
+          {
+            "name": "members_len",
+            "type": "u8"
+          },
           {
             "name": "threshold",
             "type": "u8"
@@ -2587,44 +2603,34 @@
           {
             "name": "bump",
             "type": "u8"
-          },
-          {
-            "name": "index",
-            "type": "u128"
-          },
-          {
-            "name": "members",
-            "type": {
-              "vec": {
-                "defined": {
-                  "name": "Member"
-                }
-              }
-            }
           }
         ]
       }
     },
     {
-      "name": "SettingsCloseArgs",
+      "name": "SettingsCreateOrMutateArgs",
       "type": {
-        "kind": "struct",
-        "fields": [
+        "kind": "enum",
+        "variants": [
           {
-            "name": "account_meta",
-            "type": {
-              "defined": {
-                "name": "CompressedAccountMetaClose"
+            "name": "Create",
+            "fields": [
+              {
+                "defined": {
+                  "name": "SettingsCreationArgs"
+                }
               }
-            }
+            ]
           },
           {
-            "name": "data",
-            "type": {
-              "defined": {
-                "name": "CompressedSettings"
+            "name": "Mutate",
+            "fields": [
+              {
+                "defined": {
+                  "name": "SettingsMutArgs"
+                }
               }
-            }
+            ]
           }
         ]
       }
@@ -2674,7 +2680,7 @@
       }
     },
     {
-      "name": "SettingsProofArgs",
+      "name": "SettingsReadonlyArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2687,16 +2693,24 @@
             }
           },
           {
-            "name": "root_index",
-            "type": "u16"
-          },
-          {
-            "name": "account",
+            "name": "address_tree_info",
             "type": {
               "defined": {
-                "name": "CompressedAccount"
+                "name": "PackedAddressTreeInfo"
               }
             }
+          },
+          {
+            "name": "data",
+            "type": {
+              "defined": {
+                "name": "CompressedSettings"
+              }
+            }
+          },
+          {
+            "name": "lamports",
+            "type": "u64"
           }
         ]
       }
@@ -2804,6 +2818,10 @@
         "kind": "struct",
         "fields": [
           {
+            "name": "buffer_index",
+            "type": "u8"
+          },
+          {
             "name": "permissionless_execution",
             "type": "bool"
           },
@@ -2816,10 +2834,6 @@
             }
           },
           {
-            "name": "buffer_index",
-            "type": "u8"
-          },
-          {
             "name": "final_buffer_hash",
             "type": {
               "array": ["u8", 32]
@@ -2828,10 +2842,6 @@
           {
             "name": "final_buffer_size",
             "type": "u16"
-          },
-          {
-            "name": "buffer",
-            "type": "bytes"
           }
         ]
       }

@@ -8,58 +8,38 @@
 
 import {
   combineCodec,
-  getArrayDecoder,
-  getArrayEncoder,
+  getOptionDecoder,
+  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
-  getU128Decoder,
-  getU128Encoder,
-  getU8Decoder,
-  getU8Encoder,
   type Codec,
   type Decoder,
   type Encoder,
+  type Option,
+  type OptionOrNullable,
 } from '@solana/kit';
 import {
-  getMemberDecoder,
-  getMemberEncoder,
-  type Member,
-  type MemberArgs,
+  getCompressedSettingsDataDecoder,
+  getCompressedSettingsDataEncoder,
+  type CompressedSettingsData,
+  type CompressedSettingsDataArgs,
 } from '.';
 
-export type CompressedSettings = {
-  threshold: number;
-  bump: number;
-  index: bigint;
-  multiWalletBump: number;
-  members: Array<Member>;
-};
+export type CompressedSettings = { data: Option<CompressedSettingsData> };
 
 export type CompressedSettingsArgs = {
-  threshold: number;
-  bump: number;
-  index: number | bigint;
-  multiWalletBump: number;
-  members: Array<MemberArgs>;
+  data: OptionOrNullable<CompressedSettingsDataArgs>;
 };
 
 export function getCompressedSettingsEncoder(): Encoder<CompressedSettingsArgs> {
   return getStructEncoder([
-    ['threshold', getU8Encoder()],
-    ['bump', getU8Encoder()],
-    ['index', getU128Encoder()],
-    ['multiWalletBump', getU8Encoder()],
-    ['members', getArrayEncoder(getMemberEncoder())],
+    ['data', getOptionEncoder(getCompressedSettingsDataEncoder())],
   ]);
 }
 
 export function getCompressedSettingsDecoder(): Decoder<CompressedSettings> {
   return getStructDecoder([
-    ['threshold', getU8Decoder()],
-    ['bump', getU8Decoder()],
-    ['index', getU128Decoder()],
-    ['multiWalletBump', getU8Decoder()],
-    ['members', getArrayDecoder(getMemberDecoder())],
+    ['data', getOptionDecoder(getCompressedSettingsDataDecoder())],
   ]);
 }
 

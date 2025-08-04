@@ -1,6 +1,6 @@
 import {
   changeConfig,
-  fetchMaybeDelegate,
+  fetchDelegateIndex,
   fetchSettingsData,
   getMultiWalletFromSettings,
   getSettingsFromIndex,
@@ -13,7 +13,6 @@ import {
 import { expect } from "chai";
 import {
   createMultiWallet,
-  fundMultiWalletVault,
   generateSecp256r1KeyPair,
   mockAuthenticationResponse,
   sendTransaction,
@@ -34,8 +33,6 @@ export function runSecp256r1Tests() {
     });
 
     it("should add a Secp256r1 key as a member", async () => {
-      // Fund the wallet
-      await fundMultiWalletVault(ctx, BigInt(10 ** 9 * 0.01));
       const settings = await getSettingsFromIndex(ctx.index);
       // Mock authentication response
       const mockResult = await mockAuthenticationResponse(
@@ -57,6 +54,7 @@ export function runSecp256r1Tests() {
 
       // Add Secp256r1Key as member
       const { instructions, secp256r1VerifyInput } = await changeConfig({
+        payer: ctx.payer,
         compressed: ctx.compressed,
         index: ctx.index,
         configActions: [
@@ -74,7 +72,7 @@ export function runSecp256r1Tests() {
 
       const transactionMessageBytes = await prepareTransactionMessage(
         MULTI_WALLET_PROGRAM_ADDRESS.toString(),
-        ctx.multiWalletVault,
+        ctx.payer.address,
         instructions,
         ctx.addressLookUpTable
       );
@@ -88,7 +86,6 @@ export function runSecp256r1Tests() {
         secp256r1VerifyInput,
       });
       for (const x of result) {
-        console.log(x.id);
         await sendTransaction(
           ctx.connection,
           x.ixs,
@@ -100,9 +97,9 @@ export function runSecp256r1Tests() {
       // Verify Secp256r1Key was added as member
       const accountData = await fetchSettingsData(ctx.index);
 
-      const delegateData = await fetchMaybeDelegate(secp256r1Key);
+      const delegateIndex = await fetchDelegateIndex(secp256r1Key);
 
-      expect(Number(delegateData.index)).to.equal(
+      expect(Number(delegateIndex)).to.equal(
         Number(ctx.index),
         "Delegate should be associated with the correct settings"
       );

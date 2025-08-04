@@ -1,13 +1,9 @@
-import {
-  AccountRole,
-  IAccountSignerMeta,
-  TransactionSigner,
-} from "@solana/kit";
+import { AccountRole, AccountSignerMeta, TransactionSigner } from "@solana/kit";
 import { getCompressedSettingsAddressFromIndex } from "../compressed";
 import {
   convertToCompressedProofArgs,
-  getCompressedAccountCloseArgs,
   getCompressedAccountHashes,
+  getCompressedAccountMutArgs,
 } from "../compressed/internal";
 import { PackedAccounts } from "../compressed/packedAccounts";
 import {
@@ -46,8 +42,8 @@ export async function decompressSettingsAccount({
     hashesWithTree,
     []
   );
-  const settingsCloseArgs =
-    await getCompressedAccountCloseArgs<CompressedSettings>(
+  const settingsMutArgs = (
+    await getCompressedAccountMutArgs<CompressedSettings>(
       packedAccounts,
       proof.treeInfos,
       proof.leafIndices,
@@ -55,7 +51,8 @@ export async function decompressSettingsAccount({
       proof.proveByIndices,
       hashesWithTree.filter((x) => x.type === "Settings"),
       getCompressedSettingsDecoder()
-    );
+    )
+  )[0];
 
   const dedupSigners = getDeduplicatedSigners(signers);
   const {
@@ -78,7 +75,7 @@ export async function decompressSettingsAccount({
             address: x.address,
             role: AccountRole.READONLY_SIGNER,
             signer: x,
-          } as IAccountSignerMeta)
+          }) as AccountSignerMeta
       )
   );
 
@@ -94,8 +91,7 @@ export async function decompressSettingsAccount({
     getDecompressSettingsAccountInstruction({
       settings,
       payer,
-      data: settingsCloseArgs[0].data,
-      accountMeta: settingsCloseArgs[0].accountMeta,
+      settingsMut: settingsMutArgs,
       compressedProofArgs,
       instructionsSysvar,
       domainConfig,

@@ -1,26 +1,26 @@
 use crate::{
-    error::MultisigError, state::{invoke_light_system_program_with_payer_seeds, CompressedSettings, DomainConfig, MemberKey, Permission, ProofArgs, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings, SettingsCloseArgs, TransactionActionType, SEED_MULTISIG, SEED_VAULT}, utils::durable_nonce_check, LIGHT_CPI_SIGNER
+    error::MultisigError, state::{ChallengeArgs, CompressedSettings, DomainConfig, MemberKey, Permission, ProofArgs, Secp256r1VerifyArgs, Settings, SettingsMutArgs, TransactionActionType, SEED_MULTISIG}, utils::durable_nonce_check, LIGHT_CPI_SIGNER
 };
-use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
+use anchor_lang::{prelude::*, solana_program::{hash, sysvar::SysvarId}};
 use light_sdk::{
-    cpi::{CpiAccounts, CpiInputs}
+    account::LightAccount, cpi::{CpiAccounts, CpiInputs}
 };
 use std::vec;
 
 #[derive(Accounts)]
-#[instruction(settings_close_args: SettingsCloseArgs)]
+#[instruction(settings_mut: SettingsMutArgs)]
 pub struct DecompressSettingsAccount<'info> {
     #[account(
         init, 
         payer = payer, 
-        space = Settings::size(settings_close_args.data.members.len()), 
+        space = Settings::size(), 
         seeds = [
             SEED_MULTISIG,  
-            settings_close_args.data.index.to_le_bytes().as_ref()
+            settings_mut.data.data.as_ref().unwrap().index.to_le_bytes().as_ref()
         ],
         bump
     )]
-    pub settings: Account<'info, Settings>,
+    pub settings: AccountLoader<'info, Settings>,
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
@@ -41,10 +41,10 @@ impl<'info> DecompressSettingsAccount<'info> {
         &self,
         remaining_accounts: &[AccountInfo<'info>],
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
-        settings: &CompressedSettings,
-        settings_key: &Pubkey,
+        settings_mut: &SettingsMutArgs,
     ) -> Result<()> {
         let Self {
+            settings,
             domain_config,
             slot_hash_sysvar,
             instructions_sysvar,
@@ -58,16 +58,13 @@ impl<'info> DecompressSettingsAccount<'info> {
         let mut execute = false;
         let mut vote_count = 0;
 
-        let threshold = settings.threshold as usize;
-        let secp256r1_member_key = if secp256r1_verify_args.is_some() {
-            Some(MemberKey::convert_secp256r1(
-                &secp256r1_verify_args.as_ref().unwrap().public_key,
-            )?)
-        } else {
-            None
-        };
+        let settings_data = settings_mut.data.data.as_ref().unwrap();
+        let threshold = settings_data.threshold as usize;
+        let secp256r1_member_key =
+            MemberKey::get_signer(&None, secp256r1_verify_args, Some(instructions_sysvar))
+                .map_or(None, |f| Some(f));
 
-        for member in &settings.members {
+        for member in &settings_data.members {
             let has_permission = |perm| member.permissions.has(perm);
 
             let is_secp256r1_signer =
@@ -93,33 +90,33 @@ impl<'info> DecompressSettingsAccount<'info> {
             }
 
             if is_secp256r1_signer {
-                let expected_domain_config = member
-                    .domain_config
-                    .ok_or(MultisigError::DomainConfigIsMissing)?;
-
+                require!(
+                    member.domain_config.is_some(),
+                    MultisigError::DomainConfigIsMissing
+                );
                 require!(
                     domain_config.is_some()
                         && domain_config
                             .as_ref()
                             .unwrap()
                             .key()
-                            .eq(&expected_domain_config),
+                            .eq(&member.domain_config.unwrap()),
                     MultisigError::MemberDoesNotBelongToDomainConfig
                 );
 
-            
                 let secp256r1_verify_data = secp256r1_verify_args
                     .as_ref()
                     .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
 
-                Secp256r1Pubkey::verify_webauthn(
-                    secp256r1_verify_data,
+                secp256r1_verify_data.verify_webauthn(
                     slot_hash_sysvar,
                     domain_config,
-                    &settings_key,
-                    &payer.key().to_bytes(),
-                    TransactionActionType::Decompress,
-                    &Some(instructions_sysvar.clone()),
+                    instructions_sysvar,
+                    ChallengeArgs {
+                        account: settings.key(),
+                        message_hash: hash::hash(&payer.key().to_bytes()).to_bytes(),
+                        action_type: TransactionActionType::Compress,
+                    },
                 )?;
             }
         }
@@ -140,27 +137,14 @@ impl<'info> DecompressSettingsAccount<'info> {
         Ok(())
     }
 
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, &secp256r1_verify_args, &settings_mut))]
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
-        settings_close_args: SettingsCloseArgs,
+        settings_mut: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
-        let settings_key =&ctx.accounts.settings.key();
-        ctx.accounts.validate(
-            ctx.remaining_accounts,
-            &secp256r1_verify_args,
-            &settings_close_args.data,
-            settings_key,
-        )?;
-
-        let settings = &mut ctx.accounts.settings;
-        settings.set_threshold(settings_close_args.data.threshold);
-        settings.multi_wallet_bump =  settings_close_args.data.multi_wallet_bump;
-        settings.bump = ctx.bumps.settings;
-        settings.index =  settings_close_args.data.index;
-        settings.members = settings_close_args.data.members.clone();
-        settings.invariant()?;
+        let settings = &mut ctx.accounts.settings.load_init()?;
 
         let light_cpi_accounts = CpiAccounts::new(
             ctx.accounts.payer.as_ref(),
@@ -168,19 +152,35 @@ impl<'info> DecompressSettingsAccount<'info> {
             LIGHT_CPI_SIGNER,
         );
 
-        let settings_info = CompressedSettings::close_settings_account(settings_close_args)?;
+         let mut settings_account = LightAccount::<'_, CompressedSettings>::new_mut(
+            &crate::ID,
+            &settings_mut.account_meta,
+            settings_mut.data,
+        )
+        .map_err(ProgramError::from)?;
 
+        let settings_data = settings_account.data.as_ref().unwrap();
+        settings.set_threshold(settings_data.threshold)?;
+        settings.multi_wallet_bump = settings_data.multi_wallet_bump;
+        settings.bump = ctx.bumps.settings;
+        settings.index = settings_data.index;
+        settings.set_members(CompressedSettings::convert_compressed_member_to_member(
+            settings_data.members.clone(),
+        )?)?;
+        settings.invariant()?;
+
+        settings_account.data = None;
+
+        let settings_info = settings_account
+            .to_account_info()
+            .map_err(ProgramError::from)?;
+        
         let cpi_inputs = CpiInputs::new(
             compressed_proof_args.proof,
             vec![settings_info],
         );
-        let vault_signer_seed: &[&[u8]] = &[
-            SEED_MULTISIG,
-            settings_key.as_ref(),
-            SEED_VAULT,
-            &[settings.multi_wallet_bump],
-        ];
-        invoke_light_system_program_with_payer_seeds(cpi_inputs, light_cpi_accounts, vault_signer_seed)?;
+
+        cpi_inputs.invoke_light_system_program(light_cpi_accounts).unwrap();
         Ok(())
     }
 }

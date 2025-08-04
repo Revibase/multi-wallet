@@ -33,7 +33,7 @@ export async function closeTransactionBuffer({
   );
   const settings = await getSettingsFromIndex(index);
   const packedAccounts = new PackedAccounts();
-  const { settingsProofArgs, proof } = await constructSettingsProofArgs(
+  const { settingsReadonlyArgs, proof } = await constructSettingsProofArgs(
     packedAccounts,
     compressed,
     index
@@ -63,7 +63,7 @@ export async function closeTransactionBuffer({
   }
 
   if (compressed) {
-    if (!payer || !settingsProofArgs) {
+    if (!payer || !settingsReadonlyArgs) {
       throw new Error("Payer not found or proof args is missing.");
     }
     const compressedProofArgs = convertToCompressedProofArgs(
@@ -80,7 +80,7 @@ export async function closeTransactionBuffer({
         closer: closer instanceof Secp256r1Key ? undefined : closer,
         rentCollector: transactionBuffer.data.payer,
         secp256r1VerifyArgs: verifyArgs,
-        settingsArgs: settingsProofArgs,
+        settingsReadonly: settingsReadonlyArgs,
         payer,
         compressedProofArgs,
         remainingAccounts,

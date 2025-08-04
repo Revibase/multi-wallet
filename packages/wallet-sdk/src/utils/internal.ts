@@ -1,24 +1,25 @@
 import { getTransferSolInstruction } from "@solana-program/system";
 import {
+  AccountMeta,
   AccountRole,
+  AccountSignerMeta,
   Address,
   address,
   fetchAddressesForLookupTables,
   getAddressEncoder,
   getSignersFromInstruction,
-  IAccountMeta,
-  IAccountSignerMeta,
-  IInstruction,
+  Instruction,
   none,
   OptionOrNullable,
   some,
   TransactionSigner,
 } from "@solana/kit";
+import { PublicKey } from "@solana/web3.js";
 import { getSolanaRpc } from ".";
 import {
   ConfigAction,
-  DelegateCloseArgs,
-  DelegateCreationArgs,
+  DelegateCreateOrMutateArgs,
+  DelegateMutArgs,
   IPermissions,
   MemberKey,
   MemberKeyWithCloseArgs,
@@ -111,7 +112,7 @@ export async function accountsForTransactionExecute({
   );
 
   // Populate account metas required for execution of the transaction.
-  const accountMetas: (IAccountMeta | IAccountSignerMeta)[] = [];
+  const accountMetas: (AccountMeta | AccountSignerMeta)[] = [];
   // First add the lookup table accounts used by the transaction. They are needed for on-chain validation.
   accountMetas.push(
     ...(transactionMessage.addressTableLookups?.map((lookup) => {
@@ -237,7 +238,7 @@ export function convertMemberkeyToPubKey(
   }
 }
 export function deduplicateSignersAndFeePayer(
-  instructions: IInstruction[],
+  instructions: Instruction[],
   payer: TransactionSigner
 ): Address[] {
   const signers = instructions
@@ -254,12 +255,19 @@ export function normalizeKey(key: any) {
   throw new Error("Invalid key format");
 }
 export async function extractSecp256r1VerificationArgs(
-  signer?: Secp256r1Key | TransactionSigner
+  signer?: Secp256r1Key | TransactionSigner,
+  index = 0
 ) {
   const secp256r1PublicKey =
     signer instanceof Secp256r1Key ? signer : undefined;
   const verifyArgs: OptionOrNullable<Secp256r1VerifyArgs> =
-    secp256r1PublicKey?.verifyArgs ? some(secp256r1PublicKey.verifyArgs) : null;
+    secp256r1PublicKey?.verifyArgs && index !== -1
+      ? some({
+          index,
+          clientDataJson: secp256r1PublicKey.verifyArgs.clientDataJson,
+          slotNumber: secp256r1PublicKey.verifyArgs.slotNumber,
+        })
+      : null;
   const instructionsSysvar =
     signer instanceof Secp256r1Key
       ? address("Sysvar1nstructions1111111111111111111111111")
@@ -273,7 +281,6 @@ export async function extractSecp256r1VerificationArgs(
   const signature = secp256r1PublicKey?.verifyArgs
     ? secp256r1PublicKey.signature
     : undefined;
-  const publicKey = secp256r1PublicKey?.verifyArgs?.publicKey;
   const message =
     secp256r1PublicKey?.authData && secp256r1PublicKey.verifyArgs
       ? new Uint8Array([
@@ -286,6 +293,9 @@ export async function extractSecp256r1VerificationArgs(
           ),
         ])
       : undefined;
+  const publicKey = secp256r1PublicKey?.verifyArgs
+    ? secp256r1PublicKey.verifyArgs.publicKey
+    : undefined;
 
   return {
     slotHashSysvar,
@@ -332,6 +342,12 @@ export function convertConfigActionWrapper(
             action.members.map((x) => ({
               pubkey: convertPubkeyToMemberkey(x.pubkey),
               permissions: x.permissions,
+              delegateCloseArgs: x.delegateCloseArgs
+                ? some(x.delegateCloseArgs)
+                : none(),
+              delegateCreationArgs: x.delegateCreateArgs
+                ? some(x.delegateCreateArgs)
+                : none(),
             })),
           ],
         });
@@ -370,7 +386,7 @@ export function convertConfigActionWrapper(
 
 export function convertRemoveMember(x: {
   pubkey: Address | Secp256r1Key;
-  delegateArgs?: DelegateCloseArgs;
+  delegateArgs?: DelegateMutArgs;
 }): MemberKeyWithCloseArgs {
   return {
     data: convertPubkeyToMemberkey(x.pubkey),
@@ -378,25 +394,32 @@ export function convertRemoveMember(x: {
   };
 }
 
-export function convertAddMember(x: {
+export function convertAddMember(member: {
   pubkey: Address | Secp256r1Key;
   permissions: IPermissions;
-  delegateArgs?: DelegateCreationArgs;
+  index: number;
+  delegateArgs?: DelegateCreateOrMutateArgs;
 }): MemberWithCreationArgs {
   return {
     data: {
-      permissions: x.permissions,
+      permissions: member.permissions,
       domainConfig:
-        x.pubkey instanceof Secp256r1Key && x.pubkey.domainConfig
-          ? some(x.pubkey.domainConfig)
-          : none(),
-      pubkey: convertPubkeyToMemberkey(x.pubkey),
+        member.pubkey instanceof Secp256r1Key && member.pubkey.domainConfig
+          ? member.pubkey.domainConfig
+          : address(PublicKey.default.toString()),
+      pubkey: convertPubkeyToMemberkey(member.pubkey),
     },
     verifyArgs:
-      x.pubkey instanceof Secp256r1Key && x.pubkey.verifyArgs
-        ? some(x.pubkey.verifyArgs)
+      member.pubkey instanceof Secp256r1Key &&
+      member.pubkey.verifyArgs &&
+      member.index !== -1
+        ? some({
+            clientDataJson: member.pubkey.verifyArgs.clientDataJson,
+            slotNumber: member.pubkey.verifyArgs.slotNumber,
+            index: member.index,
+          })
         : none(),
-    delegateArgs: x.delegateArgs ? some(x.delegateArgs) : none(),
+    delegateArgs: member.delegateArgs ? some(member.delegateArgs) : none(),
   };
 }
 export function getPubkeyString(pubkey: TransactionSigner | Secp256r1Key) {

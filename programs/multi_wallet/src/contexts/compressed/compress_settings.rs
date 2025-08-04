@@ -1,15 +1,21 @@
 use crate::{
     error::MultisigError,
     state::{
-        invoke_light_system_program_with_payer_seeds, CompressedSettings, DomainConfig, MemberKey,
-        Permission, ProofArgs, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings,
-        SettingsCreationArgs, TransactionActionType, SEED_MULTISIG, SEED_VAULT,
+        ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig, MemberKey,
+        MultisigSettings, Permission, ProofArgs, Secp256r1VerifyArgs, Settings,
+        SettingsCreateOrMutateArgs, TransactionActionType,
     },
     utils::durable_nonce_check,
     LIGHT_CPI_SIGNER,
 };
-use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use light_sdk::cpi::{CpiAccounts, CpiInputs};
+use anchor_lang::{
+    prelude::*,
+    solana_program::{hash, sysvar::SysvarId},
+};
+use light_sdk::{
+    account::LightAccount,
+    cpi::{CpiAccounts, CpiInputs},
+};
 use std::vec;
 
 #[derive(Accounts)]
@@ -18,7 +24,7 @@ pub struct CompressSettingsAccount<'info> {
         mut,
         close = payer,
     )]
-    pub settings: Account<'info, Settings>,
+    pub settings: AccountLoader<'info, Settings>,
     #[account(mut)]
     pub payer: Signer<'info>,
     #[account(
@@ -38,10 +44,9 @@ impl<'info> CompressSettingsAccount<'info> {
         &self,
         remaining_accounts: &[AccountInfo<'info>],
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
-        settings: &Settings,
-        settings_key: &Pubkey,
     ) -> Result<()> {
         let Self {
+            settings,
             domain_config,
             slot_hash_sysvar,
             instructions_sysvar,
@@ -55,16 +60,13 @@ impl<'info> CompressSettingsAccount<'info> {
         let mut execute = false;
         let mut vote_count = 0;
 
-        let threshold = settings.threshold as usize;
-        let secp256r1_member_key = if secp256r1_verify_args.is_some() {
-            Some(MemberKey::convert_secp256r1(
-                &secp256r1_verify_args.as_ref().unwrap().public_key,
-            )?)
-        } else {
-            None
-        };
+        let settings_data = settings.load()?;
+        let threshold = settings_data.threshold as usize;
+        let secp256r1_member_key =
+            MemberKey::get_signer(&None, secp256r1_verify_args, Some(instructions_sysvar))
+                .map_or(None, |f| Some(f));
 
-        for member in &settings.members {
+        for member in &settings_data.members {
             let has_permission = |perm| member.permissions.has(perm);
 
             let is_secp256r1_signer =
@@ -90,9 +92,10 @@ impl<'info> CompressSettingsAccount<'info> {
             }
 
             if is_secp256r1_signer {
-                let expected_domain_config = member
-                    .domain_config
-                    .ok_or(MultisigError::DomainConfigIsMissing)?;
+                require!(
+                    member.domain_config.ne(&Pubkey::default()),
+                    MultisigError::DomainConfigIsMissing
+                );
 
                 require!(
                     domain_config.is_some()
@@ -100,7 +103,7 @@ impl<'info> CompressSettingsAccount<'info> {
                             .as_ref()
                             .unwrap()
                             .key()
-                            .eq(&expected_domain_config),
+                            .eq(&member.domain_config),
                     MultisigError::MemberDoesNotBelongToDomainConfig
                 );
 
@@ -108,14 +111,15 @@ impl<'info> CompressSettingsAccount<'info> {
                     .as_ref()
                     .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
 
-                Secp256r1Pubkey::verify_webauthn(
-                    secp256r1_verify_data,
+                secp256r1_verify_data.verify_webauthn(
                     slot_hash_sysvar,
                     domain_config,
-                    &settings_key,
-                    &payer.key().to_bytes(),
-                    TransactionActionType::Compress,
-                    &Some(instructions_sysvar.clone()),
+                    instructions_sysvar,
+                    ChallengeArgs {
+                        account: settings.key(),
+                        message_hash: hash::hash(&payer.key().to_bytes()).to_bytes(),
+                        action_type: TransactionActionType::Compress,
+                    },
                 )?;
             }
         }
@@ -136,47 +140,79 @@ impl<'info> CompressSettingsAccount<'info> {
         Ok(())
     }
 
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, &secp256r1_verify_args))]
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
         compressed_proof_args: ProofArgs,
-        settings_creation_args: SettingsCreationArgs,
+        settings_args: SettingsCreateOrMutateArgs,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
-        let settings = &ctx.accounts.settings;
-        let settings_data = settings.clone().into_inner();
-        let settings_key = &ctx.accounts.settings.key();
-        ctx.accounts.validate(
-            ctx.remaining_accounts,
-            &secp256r1_verify_args,
-            &settings_data,
-            settings_key,
-        )?;
+        let settings_data = ctx.accounts.settings.load()?;
         let light_cpi_accounts = CpiAccounts::new(
             &ctx.accounts.payer,
             &ctx.remaining_accounts
                 [compressed_proof_args.light_cpi_accounts_start_index as usize..],
             LIGHT_CPI_SIGNER,
         );
-        let (settings_info, settings_new_address) = CompressedSettings::create_settings_account(
-            settings_creation_args,
-            settings_data,
-            &light_cpi_accounts,
-        )?;
 
-        let cpi = CpiInputs::new_with_address(
-            compressed_proof_args.proof,
-            vec![settings_info],
-            vec![settings_new_address],
-        );
+        match settings_args {
+            SettingsCreateOrMutateArgs::Create(settings_creation_args) => {
+                let data = CompressedSettingsData {
+                    threshold: settings_data.get_threshold()?,
+                    bump: settings_data.bump,
+                    index: settings_data.index,
+                    multi_wallet_bump: settings_data.multi_wallet_bump,
+                    members: CompressedSettings::convert_member_to_compressed_member(
+                        settings_data.get_members()?,
+                    )?,
+                };
+                let (settings_info, settings_new_address) =
+                    CompressedSettings::create_settings_account(
+                        settings_creation_args,
+                        data,
+                        &light_cpi_accounts,
+                    )?;
 
-        let settings_key = settings.key();
-        let vault_signer_seed: &[&[u8]] = &[
-            SEED_MULTISIG,
-            settings_key.as_ref(),
-            SEED_VAULT,
-            &[settings.multi_wallet_bump],
-        ];
-        invoke_light_system_program_with_payer_seeds(cpi, light_cpi_accounts, vault_signer_seed)?;
+                let cpi_inputs = CpiInputs::new_with_address(
+                    compressed_proof_args.proof,
+                    vec![settings_info],
+                    vec![settings_new_address],
+                );
+
+                cpi_inputs
+                    .invoke_light_system_program(light_cpi_accounts)
+                    .unwrap();
+            }
+            SettingsCreateOrMutateArgs::Mutate(settings_mut_args) => {
+                let mut settings_account = LightAccount::<'_, CompressedSettings>::new_mut(
+                    &crate::ID,
+                    &settings_mut_args.account_meta,
+                    settings_mut_args.data,
+                )
+                .map_err(ProgramError::from)?;
+
+                settings_account.data = Some(CompressedSettingsData {
+                    threshold: settings_data.get_threshold()?,
+                    bump: settings_data.bump,
+                    index: settings_data.index,
+                    multi_wallet_bump: settings_data.multi_wallet_bump,
+                    members: CompressedSettings::convert_member_to_compressed_member(
+                        settings_data.get_members()?,
+                    )?,
+                });
+
+                let settings_info = settings_account
+                    .to_account_info()
+                    .map_err(ProgramError::from)?;
+
+                let cpi_inputs = CpiInputs::new(compressed_proof_args.proof, vec![settings_info]);
+
+                cpi_inputs
+                    .invoke_light_system_program(light_cpi_accounts)
+                    .unwrap();
+            }
+        };
+
         Ok(())
     }
 }

@@ -6,7 +6,7 @@ pub struct TransactionBufferExtend<'info> {
     #[account(
         address = transaction_buffer.multi_wallet_settings
     )]
-    pub settings: Account<'info, Settings>,
+    pub settings: AccountLoader<'info, Settings>,
     #[account(mut)]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 }

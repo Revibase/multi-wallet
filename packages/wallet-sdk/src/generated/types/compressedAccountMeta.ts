@@ -16,9 +16,9 @@ import {
   getStructEncoder,
   getU8Decoder,
   getU8Encoder,
-  type Codec,
-  type Decoder,
-  type Encoder,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
   type ReadonlyUint8Array,
 } from '@solana/kit';
 import {
@@ -46,7 +46,7 @@ export type CompressedAccountMetaArgs = {
   outputStateTreeIndex: number;
 };
 
-export function getCompressedAccountMetaEncoder(): Encoder<CompressedAccountMetaArgs> {
+export function getCompressedAccountMetaEncoder(): FixedSizeEncoder<CompressedAccountMetaArgs> {
   return getStructEncoder([
     ['treeInfo', getPackedStateTreeInfoEncoder()],
     ['address', fixEncoderSize(getBytesEncoder(), 32)],
@@ -54,7 +54,7 @@ export function getCompressedAccountMetaEncoder(): Encoder<CompressedAccountMeta
   ]);
 }
 
-export function getCompressedAccountMetaDecoder(): Decoder<CompressedAccountMeta> {
+export function getCompressedAccountMetaDecoder(): FixedSizeDecoder<CompressedAccountMeta> {
   return getStructDecoder([
     ['treeInfo', getPackedStateTreeInfoDecoder()],
     ['address', fixDecoderSize(getBytesDecoder(), 32)],
@@ -62,7 +62,7 @@ export function getCompressedAccountMetaDecoder(): Decoder<CompressedAccountMeta
   ]);
 }
 
-export function getCompressedAccountMetaCodec(): Codec<
+export function getCompressedAccountMetaCodec(): FixedSizeCodec<
   CompressedAccountMetaArgs,
   CompressedAccountMeta
 > {

@@ -28,12 +28,12 @@ import {
   transformEncoder,
   type Account,
   type Address,
-  type Codec,
-  type Decoder,
   type EncodedAccount,
-  type Encoder,
   type FetchAccountConfig,
   type FetchAccountsConfig,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
   type MaybeAccount,
   type MaybeEncodedAccount,
   type ReadonlyUint8Array,
@@ -51,63 +51,66 @@ export function getDomainConfigDiscriminatorBytes() {
 
 export type DomainConfig = {
   discriminator: ReadonlyUint8Array;
-  originLength: number;
+  numOrigins: number;
   authority: Address;
   rpIdHash: ReadonlyUint8Array;
   bump: number;
   isDisabled: number;
   rpIdLength: number;
   rpId: ReadonlyUint8Array;
-  origin: ReadonlyUint8Array;
+  origins: ReadonlyUint8Array;
   padding: ReadonlyUint8Array;
 };
 
 export type DomainConfigArgs = {
-  originLength: number;
+  numOrigins: number;
   authority: Address;
   rpIdHash: ReadonlyUint8Array;
   bump: number;
   isDisabled: number;
   rpIdLength: number;
   rpId: ReadonlyUint8Array;
-  origin: ReadonlyUint8Array;
+  origins: ReadonlyUint8Array;
   padding: ReadonlyUint8Array;
 };
 
-export function getDomainConfigEncoder(): Encoder<DomainConfigArgs> {
+export function getDomainConfigEncoder(): FixedSizeEncoder<DomainConfigArgs> {
   return transformEncoder(
     getStructEncoder([
       ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
-      ['originLength', getU16Encoder()],
+      ['numOrigins', getU16Encoder()],
       ['authority', getAddressEncoder()],
       ['rpIdHash', fixEncoderSize(getBytesEncoder(), 32)],
       ['bump', getU8Encoder()],
       ['isDisabled', getU8Encoder()],
       ['rpIdLength', getU8Encoder()],
       ['rpId', fixEncoderSize(getBytesEncoder(), 256)],
-      ['origin', fixEncoderSize(getBytesEncoder(), 512)],
+      ['origins', fixEncoderSize(getBytesEncoder(), 512)],
       ['padding', fixEncoderSize(getBytesEncoder(), 1)],
     ]),
     (value) => ({ ...value, discriminator: DOMAIN_CONFIG_DISCRIMINATOR })
   );
 }
 
-export function getDomainConfigDecoder(): Decoder<DomainConfig> {
+export function getDomainConfigDecoder(): FixedSizeDecoder<DomainConfig> {
   return getStructDecoder([
     ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
-    ['originLength', getU16Decoder()],
+    ['numOrigins', getU16Decoder()],
     ['authority', getAddressDecoder()],
     ['rpIdHash', fixDecoderSize(getBytesDecoder(), 32)],
     ['bump', getU8Decoder()],
     ['isDisabled', getU8Decoder()],
     ['rpIdLength', getU8Decoder()],
     ['rpId', fixDecoderSize(getBytesDecoder(), 256)],
-    ['origin', fixDecoderSize(getBytesDecoder(), 512)],
+    ['origins', fixDecoderSize(getBytesDecoder(), 512)],
     ['padding', fixDecoderSize(getBytesDecoder(), 1)],
   ]);
 }
 
-export function getDomainConfigCodec(): Codec<DomainConfigArgs, DomainConfig> {
+export function getDomainConfigCodec(): FixedSizeCodec<
+  DomainConfigArgs,
+  DomainConfig
+> {
   return combineCodec(getDomainConfigEncoder(), getDomainConfigDecoder());
 }
 

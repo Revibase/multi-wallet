@@ -15,15 +15,15 @@ import {
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
+  type AccountMeta,
+  type AccountSignerMeta,
   type Address,
-  type Codec,
-  type Decoder,
-  type Encoder,
-  type IAccountMeta,
-  type IAccountSignerMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type ReadonlyAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
@@ -33,34 +33,32 @@ import {
 import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
 import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 
-export const DELETE_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([
-  225, 169, 39, 18, 125, 147, 36, 29,
-]);
+export const DELETE_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([2]);
 
 export function getDeleteDomainConfigDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     DELETE_DOMAIN_CONFIG_DISCRIMINATOR
   );
 }
 
 export type DeleteDomainConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
-  TAccountAuthority extends string | IAccountMeta<string> = string,
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
+  TAccountAuthority extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = '11111111111111111111111111111111',
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = '11111111111111111111111111111111',
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountDomainConfig extends string
         ? WritableAccount<TAccountDomainConfig>
         : TAccountDomainConfig,
       TAccountAuthority extends string
         ? WritableSignerAccount<TAccountAuthority> &
-            IAccountSignerMeta<TAccountAuthority>
+            AccountSignerMeta<TAccountAuthority>
         : TAccountAuthority,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
@@ -75,20 +73,20 @@ export type DeleteDomainConfigInstructionData = {
 
 export type DeleteDomainConfigInstructionDataArgs = {};
 
-export function getDeleteDomainConfigInstructionDataEncoder(): Encoder<DeleteDomainConfigInstructionDataArgs> {
+export function getDeleteDomainConfigInstructionDataEncoder(): FixedSizeEncoder<DeleteDomainConfigInstructionDataArgs> {
   return transformEncoder(
-    getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 8)]]),
+    getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 1)]]),
     (value) => ({ ...value, discriminator: DELETE_DOMAIN_CONFIG_DISCRIMINATOR })
   );
 }
 
-export function getDeleteDomainConfigInstructionDataDecoder(): Decoder<DeleteDomainConfigInstructionData> {
+export function getDeleteDomainConfigInstructionDataDecoder(): FixedSizeDecoder<DeleteDomainConfigInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
   ]);
 }
 
-export function getDeleteDomainConfigInstructionDataCodec(): Codec<
+export function getDeleteDomainConfigInstructionDataCodec(): FixedSizeCodec<
   DeleteDomainConfigInstructionDataArgs,
   DeleteDomainConfigInstructionData
 > {
@@ -167,7 +165,7 @@ export function getDeleteDomainConfigInstruction<
 
 export type ParsedDeleteDomainConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -180,11 +178,11 @@ export type ParsedDeleteDomainConfigInstruction<
 
 export function parseDeleteDomainConfigInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedDeleteDomainConfigInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 3) {
     // TODO: Coded error.

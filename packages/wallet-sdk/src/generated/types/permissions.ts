@@ -12,9 +12,9 @@ import {
   getStructEncoder,
   getU8Decoder,
   getU8Encoder,
-  type Codec,
-  type Decoder,
-  type Encoder,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
 } from "@solana/kit";
 
 /** Bitmask for permissions. */
@@ -22,14 +22,17 @@ export type IPermissions = { mask: number };
 
 export type PermissionsArgs = IPermissions;
 
-export function getPermissionsEncoder(): Encoder<PermissionsArgs> {
+export function getPermissionsEncoder(): FixedSizeEncoder<PermissionsArgs> {
   return getStructEncoder([["mask", getU8Encoder()]]);
 }
 
-export function getPermissionsDecoder(): Decoder<IPermissions> {
+export function getPermissionsDecoder(): FixedSizeDecoder<IPermissions> {
   return getStructDecoder([["mask", getU8Decoder()]]);
 }
 
-export function getPermissionsCodec(): Codec<PermissionsArgs, IPermissions> {
+export function getPermissionsCodec(): FixedSizeCodec<
+  PermissionsArgs,
+  IPermissions
+> {
   return combineCodec(getPermissionsEncoder(), getPermissionsDecoder());
 }

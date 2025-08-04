@@ -11,7 +11,7 @@ multi_wallet = "revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

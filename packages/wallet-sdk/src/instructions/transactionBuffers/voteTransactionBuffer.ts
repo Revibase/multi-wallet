@@ -1,4 +1,4 @@
-import { Address, IInstruction, TransactionSigner } from "@solana/kit";
+import { Address, Instruction, TransactionSigner } from "@solana/kit";
 import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
@@ -37,13 +37,13 @@ export async function voteTransactionBuffer({
   } = await extractSecp256r1VerificationArgs(voter);
   const settings = await getSettingsFromIndex(index);
   const packedAccounts = new PackedAccounts();
-  const { settingsProofArgs, proof } = await constructSettingsProofArgs(
+  const { settingsReadonlyArgs, proof } = await constructSettingsProofArgs(
     packedAccounts,
     compressed,
     index
   );
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
-  const instructions: IInstruction[] = [];
+  const instructions: Instruction[] = [];
   if (message && signature && publicKey) {
     instructions.push(
       getSecp256r1VerifyInstruction([
@@ -57,7 +57,7 @@ export async function voteTransactionBuffer({
   }
 
   if (compressed) {
-    if (!payer || !settingsProofArgs) {
+    if (!payer || !settingsReadonlyArgs) {
       throw new Error("Payer not found or proof args is missing.");
     }
     const compressedProofArgs = convertToCompressedProofArgs(
@@ -73,7 +73,7 @@ export async function voteTransactionBuffer({
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
         voter: voter instanceof Secp256r1Key ? undefined : voter,
-        settingsArgs: settingsProofArgs,
+        settingsReadonly: settingsReadonlyArgs,
         payer,
         compressedProofArgs,
         remainingAccounts,

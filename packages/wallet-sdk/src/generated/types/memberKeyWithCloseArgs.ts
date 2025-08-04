@@ -19,37 +19,37 @@ import {
   type OptionOrNullable,
 } from '@solana/kit';
 import {
-  getDelegateCloseArgsDecoder,
-  getDelegateCloseArgsEncoder,
+  getDelegateMutArgsDecoder,
+  getDelegateMutArgsEncoder,
   getMemberKeyDecoder,
   getMemberKeyEncoder,
-  type DelegateCloseArgs,
-  type DelegateCloseArgsArgs,
+  type DelegateMutArgs,
+  type DelegateMutArgsArgs,
   type MemberKey,
   type MemberKeyArgs,
 } from '.';
 
 export type MemberKeyWithCloseArgs = {
   data: MemberKey;
-  delegateArgs: Option<DelegateCloseArgs>;
+  delegateArgs: Option<DelegateMutArgs>;
 };
 
 export type MemberKeyWithCloseArgsArgs = {
   data: MemberKeyArgs;
-  delegateArgs: OptionOrNullable<DelegateCloseArgsArgs>;
+  delegateArgs: OptionOrNullable<DelegateMutArgsArgs>;
 };
 
 export function getMemberKeyWithCloseArgsEncoder(): Encoder<MemberKeyWithCloseArgsArgs> {
   return getStructEncoder([
     ['data', getMemberKeyEncoder()],
-    ['delegateArgs', getOptionEncoder(getDelegateCloseArgsEncoder())],
+    ['delegateArgs', getOptionEncoder(getDelegateMutArgsEncoder())],
   ]);
 }
 
 export function getMemberKeyWithCloseArgsDecoder(): Decoder<MemberKeyWithCloseArgs> {
   return getStructDecoder([
     ['data', getMemberKeyDecoder()],
-    ['delegateArgs', getOptionDecoder(getDelegateCloseArgsDecoder())],
+    ['delegateArgs', getOptionDecoder(getDelegateMutArgsDecoder())],
   ]);
 }
 

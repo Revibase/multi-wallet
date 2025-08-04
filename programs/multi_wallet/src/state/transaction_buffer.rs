@@ -1,4 +1,5 @@
 use super::MemberKey;
+use crate::state::MAXIMUM_AMOUNT_OF_MEMBERS;
 use crate::MultisigError;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
@@ -13,12 +14,11 @@ pub const TRANSACTION_TIME_LIMIT: u64 = 3 * 60;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct TransactionBufferCreateArgs {
+    pub buffer_index: u8,
     pub permissionless_execution: bool,
     pub buffer_extend_hashes: Vec<[u8; 32]>,
-    pub buffer_index: u8,
     pub final_buffer_hash: [u8; 32],
     pub final_buffer_size: u16,
-    pub buffer: Vec<u8>,
 }
 
 #[account]
@@ -53,7 +53,7 @@ pub struct TransactionBuffer {
     pub buffer: Vec<u8>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(PartialEq)]
 pub enum TransactionActionType {
     Create,
     CreateWithPermissionlessExecution,
@@ -109,18 +109,14 @@ impl TransactionBuffer {
         self.buffer_index = buffer_index;
         self.final_buffer_hash = args.final_buffer_hash;
         self.final_buffer_size = args.final_buffer_size;
-        self.buffer = args.buffer.to_vec();
+        self.buffer = Vec::new();
         self.bump = bump;
         self.valid_till = Clock::get().unwrap().unix_timestamp as u64 + TRANSACTION_TIME_LIMIT;
         self.voters = Vec::new();
         Ok(())
     }
 
-    pub fn size(
-        number_of_voters: u8,
-        final_message_buffer_size: u16,
-        number_of_extend_buffers: usize,
-    ) -> Result<usize> {
+    pub fn size(final_message_buffer_size: u16, number_of_extend_buffers: usize) -> Result<usize> {
         // Make sure final size is not greater than MAX_BUFFER_SIZE bytes.
         if (final_message_buffer_size as usize) > MAX_BUFFER_SIZE {
             return err!(MultisigError::FinalBufferSizeExceeded);
@@ -139,7 +135,7 @@ impl TransactionBuffer {
             2  +  // final_buffer_size
             MemberKey::INIT_SPACE +  // creator
             (4 + number_of_extend_buffers * 32 ) + // extend buffer hash
-            (4 + usize::from(number_of_voters) * MemberKey::INIT_SPACE)  +  // number of signers 
+            (4 + MAXIMUM_AMOUNT_OF_MEMBERS * MemberKey::INIT_SPACE)  +  // number of signers 
             (4 + usize::from(final_message_buffer_size)), // buffer
         )
     }

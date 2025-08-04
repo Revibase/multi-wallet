@@ -1,7 +1,7 @@
 use crate::{
     state::{
-        verify_compressed_settings, DomainConfig, KeyType, MemberKey, ProofArgs, Secp256r1Pubkey,
-        Secp256r1VerifyArgs, SettingsProofArgs, TransactionActionType,
+        ChallengeArgs, CompressedSettings, DomainConfig, KeyType, MemberKey, ProofArgs,
+        Secp256r1VerifyArgs, SettingsReadonlyArgs, TransactionActionType,
     },
     MultisigError, Permission, TransactionBuffer,
 };
@@ -36,8 +36,8 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
         &self,
         remaining_accounts: &[AccountInfo<'info>],
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
-        settings_args: &SettingsProofArgs,
-        compressed_proof_args: ProofArgs,
+        settings_readonly: &SettingsReadonlyArgs,
+        compressed_proof_args: &ProofArgs,
     ) -> Result<()> {
         let Self {
             voter,
@@ -52,11 +52,12 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
         transaction_buffer.validate_hash()?;
         transaction_buffer.validate_size()?;
 
-        let signer = MemberKey::get_signer(voter, secp256r1_verify_args)?;
-        let (settings, settings_key) = verify_compressed_settings(
+        let signer =
+            MemberKey::get_signer(voter, secp256r1_verify_args, instructions_sysvar.as_ref())?;
+        let (settings, settings_key) = CompressedSettings::verify_compressed_settings(
             &payer.to_account_info(),
-            None,
-            &settings_args,
+            false,
+            settings_readonly,
             &remaining_accounts,
             compressed_proof_args,
         )?;
@@ -77,9 +78,10 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
         );
 
         if signer.get_type().eq(&KeyType::Secp256r1) {
-            let expected_domain_config = member
-                .domain_config
-                .ok_or(MultisigError::DomainConfigIsMissing)?;
+            require!(
+                member.domain_config.is_some(),
+                MultisigError::DomainConfigIsMissing
+            );
 
             require!(
                 domain_config.is_some()
@@ -87,7 +89,7 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
                         .as_ref()
                         .unwrap()
                         .key()
-                        .eq(&expected_domain_config),
+                        .eq(&member.domain_config.unwrap()),
                 MultisigError::MemberDoesNotBelongToDomainConfig
             );
 
@@ -95,30 +97,44 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
                 .as_ref()
                 .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
 
-            Secp256r1Pubkey::verify_webauthn(
-                secp256r1_verify_data,
+            let instructions_sysvar = instructions_sysvar
+                .as_ref()
+                .ok_or(MultisigError::MissingAccount)?;
+
+            secp256r1_verify_data.verify_webauthn(
                 slot_hash_sysvar,
                 domain_config,
-                &transaction_buffer.key(),
-                &transaction_buffer.final_buffer_hash,
-                TransactionActionType::Vote,
                 instructions_sysvar,
+                ChallengeArgs {
+                    account: transaction_buffer.key(),
+                    message_hash: transaction_buffer.final_buffer_hash,
+                    action_type: TransactionActionType::Vote,
+                },
             )?;
         }
 
         Ok(())
     }
 
-    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, &secp256r1_verify_args, &settings_args, compressed_proof_args))]
     pub fn process(
         ctx: Context<'_, '_, '_, 'info, Self>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_args: SettingsProofArgs,
+        settings_readonly: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
+        ctx.accounts.validate(
+            ctx.remaining_accounts,
+            &secp256r1_verify_args,
+            &settings_readonly,
+            &compressed_proof_args,
+        )?;
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
         let voter = &ctx.accounts.voter;
-        let signer = MemberKey::get_signer(voter, &secp256r1_verify_args)?;
+        let signer = MemberKey::get_signer(
+            voter,
+            &secp256r1_verify_args,
+            ctx.accounts.instructions_sysvar.as_ref(),
+        )?;
 
         transaction_buffer.add_voter(&signer);
 

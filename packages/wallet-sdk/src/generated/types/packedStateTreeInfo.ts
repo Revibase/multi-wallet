@@ -18,9 +18,9 @@ import {
   getU32Encoder,
   getU8Decoder,
   getU8Encoder,
-  type Codec,
-  type Decoder,
-  type Encoder,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
 } from '@solana/kit';
 
 export type PackedStateTreeInfo = {
@@ -33,7 +33,7 @@ export type PackedStateTreeInfo = {
 
 export type PackedStateTreeInfoArgs = PackedStateTreeInfo;
 
-export function getPackedStateTreeInfoEncoder(): Encoder<PackedStateTreeInfoArgs> {
+export function getPackedStateTreeInfoEncoder(): FixedSizeEncoder<PackedStateTreeInfoArgs> {
   return getStructEncoder([
     ['rootIndex', getU16Encoder()],
     ['proveByIndex', getBooleanEncoder()],
@@ -43,7 +43,7 @@ export function getPackedStateTreeInfoEncoder(): Encoder<PackedStateTreeInfoArgs
   ]);
 }
 
-export function getPackedStateTreeInfoDecoder(): Decoder<PackedStateTreeInfo> {
+export function getPackedStateTreeInfoDecoder(): FixedSizeDecoder<PackedStateTreeInfo> {
   return getStructDecoder([
     ['rootIndex', getU16Decoder()],
     ['proveByIndex', getBooleanDecoder()],
@@ -53,7 +53,7 @@ export function getPackedStateTreeInfoDecoder(): Decoder<PackedStateTreeInfo> {
   ]);
 }
 
-export function getPackedStateTreeInfoCodec(): Codec<
+export function getPackedStateTreeInfoCodec(): FixedSizeCodec<
   PackedStateTreeInfoArgs,
   PackedStateTreeInfo
 > {

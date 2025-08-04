@@ -3,7 +3,7 @@ import {
   Address,
   AddressesByLookupTableAddress,
   CompiledTransactionMessage,
-  IInstruction,
+  Instruction,
 } from "@solana/kit";
 import { CompiledKeys } from "./compiled-keys";
 import { MessageAccountKeys } from "./message-account-keys";
@@ -16,7 +16,7 @@ export function compileToWrappedMessageV0({
 }: {
   payer: Address;
   recentBlockhash: string;
-  instructions: IInstruction[];
+  instructions: Instruction[];
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
 }) {
   const compiledKeys = CompiledKeys.compile(instructions, payer);

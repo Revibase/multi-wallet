@@ -1,4 +1,7 @@
-use crate::state::{GlobalCounter, SEED_GLOBAL_COUNTER};
+use crate::{
+    state::{GlobalCounter, SEED_GLOBAL_COUNTER},
+    ADMIN,
+};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -11,7 +14,10 @@ pub struct CreateGlobalCounter<'info> {
         bump,
     )]
     pub global_counter: AccountLoader<'info, GlobalCounter>,
-    #[account(mut)]
+    #[account(
+        mut,
+        // address = ADMIN,
+    )]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }

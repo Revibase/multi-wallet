@@ -1,6 +1,6 @@
 use crate::{
     state::{
-        DomainConfig, MemberKey, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings,
+        ChallengeArgs, DomainConfig, MemberKey, Secp256r1VerifyArgs, Settings,
         TransactionActionType, SEED_MULTISIG,
     },
     utils::durable_nonce_check,
@@ -14,7 +14,7 @@ use anchor_lang::{
 
 #[derive(Accounts)]
 pub struct NativeTransferIntent<'info> {
-    pub settings: Account<'info, Settings>,
+    pub settings: AccountLoader<'info, Settings>,
     /// CHECK:
     #[account(
         address = SlotHashes::id()
@@ -37,7 +37,7 @@ pub struct NativeTransferIntent<'info> {
             settings.key().as_ref(),
             SEED_VAULT,
         ],
-        bump = settings.multi_wallet_bump,
+        bump = settings.load()?.multi_wallet_bump,
     )]
     pub source: UncheckedAccount<'info>,
 
@@ -70,14 +70,11 @@ impl<'info> NativeTransferIntent<'info> {
         let mut initiate = false;
         let mut execute = false;
         let mut vote_count = 0;
+        let settings = settings.load()?;
         let threshold = settings.threshold as usize;
-        let secp256r1_member_key = if secp256r1_verify_args.is_some() {
-            Some(MemberKey::convert_secp256r1(
-                &secp256r1_verify_args.as_ref().unwrap().public_key,
-            )?)
-        } else {
-            None
-        };
+        let secp256r1_member_key =
+            MemberKey::get_signer(&None, secp256r1_verify_args, Some(instructions_sysvar))
+                .map_or(None, |f| Some(f));
 
         for member in &settings.members {
             let has_permission = |perm| member.permissions.has(perm);
@@ -104,9 +101,10 @@ impl<'info> NativeTransferIntent<'info> {
             }
 
             if is_secp256r1_signer {
-                let expected_domain_config = member
-                    .domain_config
-                    .ok_or(MultisigError::DomainConfigIsMissing)?;
+                require!(
+                    member.domain_config.ne(&Pubkey::default()),
+                    MultisigError::DomainConfigIsMissing
+                );
 
                 require!(
                     domain_config.is_some()
@@ -114,7 +112,7 @@ impl<'info> NativeTransferIntent<'info> {
                             .as_ref()
                             .unwrap()
                             .key()
-                            .eq(&expected_domain_config),
+                            .eq(&member.domain_config),
                     MultisigError::MemberDoesNotBelongToDomainConfig
                 );
 
@@ -128,14 +126,15 @@ impl<'info> NativeTransferIntent<'info> {
                     .as_ref()
                     .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
 
-                Secp256r1Pubkey::verify_webauthn(
-                    secp256r1_verify_data,
-                    &slot_hash_sysvar,
-                    &domain_config,
-                    &system_program.key(),
-                    &message_hash,
-                    TransactionActionType::NativeTransferIntent,
-                    &Some(instructions_sysvar.clone()),
+                secp256r1_verify_data.verify_webauthn(
+                    slot_hash_sysvar,
+                    domain_config,
+                    instructions_sysvar,
+                    ChallengeArgs {
+                        account: system_program.key(),
+                        message_hash,
+                        action_type: TransactionActionType::NativeTransferIntent,
+                    },
                 )?;
             }
         }
@@ -168,7 +167,7 @@ impl<'info> NativeTransferIntent<'info> {
             SEED_MULTISIG,
             settings_key.as_ref(),
             SEED_VAULT,
-            &[settings.multi_wallet_bump],
+            &[settings.load()?.multi_wallet_bump],
         ]];
 
         transfer(

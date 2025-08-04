@@ -154,8 +154,10 @@ export async function createMultiWallet(
     ctx.connection,
     await getGlobalCounterAddress()
   );
+
   if (!globalCounter.exists) {
     const globalCounterIx = await createGlobalCounter({ payer: ctx.payer });
+
     await sendTransaction(
       ctx.connection,
       [globalCounterIx],
@@ -172,7 +174,7 @@ export async function createMultiWallet(
   const setDomainIx = await createDomainConfig({
     payer: ctx.payer,
     rpId: ctx.rpId,
-    origin: ctx.origin,
+    origins: [ctx.origin, "happy_1"],
     authority: ctx.wallet.address,
   });
 

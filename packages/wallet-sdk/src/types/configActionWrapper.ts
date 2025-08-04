@@ -1,8 +1,8 @@
 import { Address } from "@solana/kit";
 import { Secp256r1Key } from ".";
 import {
-  DelegateCloseArgs,
-  DelegateCreationArgs,
+  DelegateCreateOrMutateArgs,
+  DelegateMutArgs,
   IPermissions,
 } from "../generated";
 
@@ -23,7 +23,7 @@ export type ConfigActionWrapper =
     }
   | {
       type: "RemoveMembers";
-      members: { pubkey: Address | Secp256r1Key; permissions: IPermissions }[];
+      members: { pubkey: Address | Secp256r1Key }[];
     }
   | { type: "SetThreshold"; threshold: number };
 
@@ -33,6 +33,8 @@ export type ConfigActionWrapperWithDelegateArgs =
       members: {
         pubkey: Address | Secp256r1Key;
         permissions: IPermissions;
+        delegateCloseArgs?: DelegateMutArgs;
+        delegateCreateArgs?: DelegateCreateOrMutateArgs;
       }[];
     }
   | {
@@ -40,14 +42,15 @@ export type ConfigActionWrapperWithDelegateArgs =
       members: {
         pubkey: Address | Secp256r1Key;
         permissions: IPermissions;
-        delegateArgs?: DelegateCreationArgs;
+        index: number;
+        delegateArgs?: DelegateCreateOrMutateArgs;
       }[];
     }
   | {
       type: "RemoveMembers";
       members: {
         pubkey: Address | Secp256r1Key;
-        delegateArgs?: DelegateCloseArgs;
+        delegateArgs?: DelegateMutArgs;
       }[];
     }
   | { type: "SetThreshold"; threshold: number };

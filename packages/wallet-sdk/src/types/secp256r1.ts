@@ -1,5 +1,5 @@
-import { Address, getBase58Decoder, getBase58Encoder } from "@solana/kit";
-import { Secp256r1VerifyArgs } from "../generated";
+import { getBase58Decoder, getBase58Encoder } from "@solana/kit";
+import { ParsedAuthenticationResponse } from "./passkeys";
 
 const SECP256R1_PUBLIC_KEY_LENGTH = 33;
 
@@ -7,18 +7,13 @@ type Secp256r1KeyInitData = string | Uint8Array | Array<number>;
 
 export class Secp256r1Key {
   _bn: Uint8Array | undefined;
-  verifyArgs: Secp256r1VerifyArgs | undefined;
-  domainConfig: Address | undefined;
-  authData: Uint8Array | undefined;
-  signature: Uint8Array | undefined;
+  verifyArgs: ParsedAuthenticationResponse["verifyArgs"] | undefined;
+  domainConfig: ParsedAuthenticationResponse["domainConfig"] | undefined;
+  authData: ParsedAuthenticationResponse["authData"] | undefined;
+  signature: ParsedAuthenticationResponse["signature"] | undefined;
   constructor(
     value: Secp256r1KeyInitData,
-    additionalInfo?: {
-      verifyArgs: Secp256r1VerifyArgs;
-      domainConfig: Address;
-      authData: Uint8Array;
-      signature: Uint8Array;
-    }
+    additionalInfo?: ParsedAuthenticationResponse
   ) {
     if (typeof value === "string") {
       // Assume base-58 encoding by default

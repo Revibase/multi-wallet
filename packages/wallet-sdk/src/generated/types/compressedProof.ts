@@ -14,9 +14,9 @@ import {
   getBytesEncoder,
   getStructDecoder,
   getStructEncoder,
-  type Codec,
-  type Decoder,
-  type Encoder,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
   type ReadonlyUint8Array,
 } from '@solana/kit';
 
@@ -28,7 +28,7 @@ export type CompressedProof = {
 
 export type CompressedProofArgs = CompressedProof;
 
-export function getCompressedProofEncoder(): Encoder<CompressedProofArgs> {
+export function getCompressedProofEncoder(): FixedSizeEncoder<CompressedProofArgs> {
   return getStructEncoder([
     ['a', fixEncoderSize(getBytesEncoder(), 32)],
     ['b', fixEncoderSize(getBytesEncoder(), 64)],
@@ -36,7 +36,7 @@ export function getCompressedProofEncoder(): Encoder<CompressedProofArgs> {
   ]);
 }
 
-export function getCompressedProofDecoder(): Decoder<CompressedProof> {
+export function getCompressedProofDecoder(): FixedSizeDecoder<CompressedProof> {
   return getStructDecoder([
     ['a', fixDecoderSize(getBytesDecoder(), 32)],
     ['b', fixDecoderSize(getBytesDecoder(), 64)],
@@ -44,7 +44,7 @@ export function getCompressedProofDecoder(): Decoder<CompressedProof> {
   ]);
 }
 
-export function getCompressedProofCodec(): Codec<
+export function getCompressedProofCodec(): FixedSizeCodec<
   CompressedProofArgs,
   CompressedProof
 > {

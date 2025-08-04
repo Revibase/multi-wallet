@@ -1,7 +1,7 @@
 use crate::{
     state::{
-        verify_compressed_settings, CompressedSettings, DomainConfig, KeyType, MemberKey,
-        ProofArgs, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings, SettingsProofArgs,
+        ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig, KeyType,
+        MemberKey, ProofArgs, Secp256r1VerifyArgs, Settings, SettingsReadonlyArgs,
         TransactionActionType, TransactionBufferCreateArgs, SEED_MULTISIG,
     },
     utils::durable_nonce_check,
@@ -10,7 +10,7 @@ use crate::{
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
 #[derive(Accounts)]
-#[instruction(args: TransactionBufferCreateArgs, secp256r1_verify_args: Option<Secp256r1VerifyArgs>, settings_args:SettingsProofArgs)]
+#[instruction(args: TransactionBufferCreateArgs, secp256r1_verify_args: Option<Secp256r1VerifyArgs>, settings_readonly: SettingsReadonlyArgs)]
 pub struct TransactionBufferCreateCompressed<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -18,17 +18,15 @@ pub struct TransactionBufferCreateCompressed<'info> {
     #[account(
         init,
         payer = payer,
-        space = TransactionBuffer::size(settings_args.account.data.as_ref().unwrap().data[0], args.final_buffer_size, args.buffer_extend_hashes.len())?,
+        space = TransactionBuffer::size(args.final_buffer_size, args.buffer_extend_hashes.len())?,
         seeds = [
             SEED_MULTISIG,
             {
-                let data_slice = settings_args.account.data.as_ref().unwrap().data.as_slice();
-                let index = u128::from_le_bytes(data_slice[2..18].try_into().unwrap());
-                let bump = data_slice[1];
-                Settings::get_settings_key_from_index(index, bump)?.as_ref()
+                let settings = settings_readonly.data.data.as_ref().ok_or(MultisigError::InvalidArguments)?;
+                Settings::get_settings_key_from_index(settings.index, settings.bump)?.as_ref()
             },
             SEED_TRANSACTION_BUFFER,
-            {&MemberKey::get_signer(&creator, &secp256r1_verify_args)?.get_seed()},
+            {&MemberKey::get_signer(&creator, &secp256r1_verify_args, Some(&instructions_sysvar))?.get_seed()},
             args.buffer_index.to_le_bytes().as_ref(),
         ],
         bump
@@ -53,7 +51,7 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
         &self,
         args: &TransactionBufferCreateArgs,
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
-        settings: &CompressedSettings,
+        settings: &CompressedSettingsData,
     ) -> Result<()> {
         let Self {
             creator,
@@ -71,7 +69,8 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
             MultisigError::FinalBufferSizeExceeded
         );
 
-        let signer: MemberKey = MemberKey::get_signer(creator, &secp256r1_verify_args)?;
+        let signer: MemberKey =
+            MemberKey::get_signer(creator, &secp256r1_verify_args, Some(instructions_sysvar))?;
 
         let member = settings
             .members
@@ -92,9 +91,10 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
         }
 
         if signer.get_type().eq(&KeyType::Secp256r1) {
-            let expected_domain_config = member
-                .domain_config
-                .ok_or(MultisigError::DomainConfigIsMissing)?;
+            require!(
+                member.domain_config.is_some(),
+                MultisigError::DomainConfigIsMissing
+            );
 
             require!(
                 domain_config.is_some()
@@ -102,7 +102,7 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
                         .as_ref()
                         .unwrap()
                         .key()
-                        .eq(&expected_domain_config),
+                        .eq(&member.domain_config.unwrap()),
                 MultisigError::MemberDoesNotBelongToDomainConfig
             );
 
@@ -110,18 +110,19 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
                 .as_ref()
                 .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
 
-            Secp256r1Pubkey::verify_webauthn(
-                secp256r1_verify_data,
+            secp256r1_verify_data.verify_webauthn(
                 slot_hash_sysvar,
                 domain_config,
-                &transaction_buffer.key(),
-                &args.final_buffer_hash,
-                if args.permissionless_execution {
-                    TransactionActionType::CreateWithPermissionlessExecution
-                } else {
-                    TransactionActionType::Create
+                instructions_sysvar,
+                ChallengeArgs {
+                    account: transaction_buffer.key(),
+                    message_hash: args.final_buffer_hash,
+                    action_type: if args.permissionless_execution {
+                        TransactionActionType::CreateWithPermissionlessExecution
+                    } else {
+                        TransactionActionType::Create
+                    },
                 },
-                &Some(instructions_sysvar.clone()),
             )?;
         }
 
@@ -132,24 +133,28 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
         ctx: Context<'_, '_, '_, 'info, Self>,
         args: TransactionBufferCreateArgs,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_args: SettingsProofArgs,
+        settings_readonly: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
-        let (settings, settings_key) = verify_compressed_settings(
-            &ctx.accounts.payer.to_account_info(),
-            None,
-            &settings_args,
-            &ctx.remaining_accounts,
-            compressed_proof_args,
-        )?;
-        ctx.accounts
-            .validate(&args, &secp256r1_verify_args, &settings)?;
-        let transaction_buffer = &mut ctx.accounts.transaction_buffer;
-
         let creator = &ctx.accounts.creator;
         let payer = &ctx.accounts.payer;
         let buffer_index = args.buffer_index;
-        let signer: MemberKey = MemberKey::get_signer(creator, &secp256r1_verify_args)?;
+        let signer = MemberKey::get_signer(
+            creator,
+            &secp256r1_verify_args,
+            Some(&ctx.accounts.instructions_sysvar),
+        )?;
+
+        let (settings, settings_key) = CompressedSettings::verify_compressed_settings(
+            &payer.to_account_info(),
+            false,
+            &settings_readonly,
+            ctx.remaining_accounts,
+            &compressed_proof_args,
+        )?;
+
+        ctx.accounts
+            .validate(&args, &secp256r1_verify_args, &settings)?;
 
         let member = settings
             .members
@@ -157,6 +162,7 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
             .find(|x| x.pubkey.eq(&signer))
             .ok_or(MultisigError::MissingAccount)?;
 
+        let transaction_buffer = &mut ctx.accounts.transaction_buffer;
         transaction_buffer.init(
             settings_key,
             settings.multi_wallet_bump,

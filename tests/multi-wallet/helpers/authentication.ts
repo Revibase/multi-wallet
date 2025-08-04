@@ -1,7 +1,7 @@
-import { p256 } from "@noble/curves/p256";
+import { p256 } from "@noble/curves/nist.js";
 import {
-  getSecp256r1PubkeyDecoder,
   MULTI_WALLET_PROGRAM_ADDRESS,
+  ParsedAuthenticationResponse,
   type TransactionPayload,
 } from "@revibase/wallet-sdk";
 import {
@@ -77,7 +77,7 @@ export async function mockAuthenticationResponse(
   privateKey: Uint8Array,
   publicKey: Uint8Array,
   ctx: TestContext
-) {
+): Promise<ParsedAuthenticationResponse> {
   const flags = new Uint8Array([0x01]); // User present
   const signCount = new Uint8Array([0, 0, 0, 1]); // Sign counter
   const mockAuthenticatorData = new Uint8Array([
@@ -96,7 +96,7 @@ export async function mockAuthenticationResponse(
   const clientDataJSON = JSON.stringify({
     type: "webauthn.get",
     challenge: bufferToBase64URLString(challenge),
-    origin: ctx.origin,
+    origin: "happy",
   });
 
   const clientDataJSONBytes = new TextEncoder().encode(clientDataJSON);
@@ -119,7 +119,7 @@ export async function mockAuthenticationResponse(
 
   const signatureRS = p256
     .sign(new Uint8Array(webauthnMessageHash), privateKey)
-    .toCompactRawBytes();
+    .toBytes("compact");
 
   const [domainConfig] = await getProgramDerivedAddress({
     programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
@@ -131,7 +131,7 @@ export async function mockAuthenticationResponse(
 
   return {
     verifyArgs: {
-      publicKey: getSecp256r1PubkeyDecoder().decode(publicKey),
+      publicKey,
       clientDataJson: clientDataJSONBytes,
       slotNumber: BigInt(slotNumber),
       slotHash: new Uint8Array(getBase58Encoder().encode(slotHash)),

@@ -16,16 +16,18 @@ import {
   getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
+  getU128Decoder,
+  getU128Encoder,
   transformEncoder,
+  type AccountMeta,
+  type AccountSignerMeta,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IAccountMeta,
-  type IAccountSignerMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type Option,
   type OptionOrNullable,
   type ReadonlyAccount,
@@ -38,8 +40,8 @@ import {
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
-  getDelegateCreationArgsDecoder,
-  getDelegateCreationArgsEncoder,
+  getDelegateCreateOrMutateArgsDecoder,
+  getDelegateCreateOrMutateArgsEncoder,
   getPermissionsDecoder,
   getPermissionsEncoder,
   getProofArgsDecoder,
@@ -48,8 +50,8 @@ import {
   getSecp256r1VerifyArgsEncoder,
   getSettingsCreationArgsDecoder,
   getSettingsCreationArgsEncoder,
-  type DelegateCreationArgs,
-  type DelegateCreationArgsArgs,
+  type DelegateCreateOrMutateArgs,
+  type DelegateCreateOrMutateArgsArgs,
   type IPermissions,
   type PermissionsArgs,
   type ProofArgs,
@@ -61,42 +63,42 @@ import {
 } from "../types";
 
 export const CREATE_MULTI_WALLET_COMPRESSED_DISCRIMINATOR = new Uint8Array([
-  79, 254, 201, 17, 187, 210, 128, 233,
+  18,
 ]);
 
 export function getCreateMultiWalletCompressedDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     CREATE_MULTI_WALLET_COMPRESSED_DISCRIMINATOR
   );
 }
 
 export type CreateMultiWalletCompressedInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountPayer extends string | IAccountMeta<string> = string,
-  TAccountInitialMember extends string | IAccountMeta<string> = string,
+  TAccountPayer extends string | AccountMeta<string> = string,
+  TAccountInitialMember extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = "11111111111111111111111111111111",
+    | AccountMeta<string> = "11111111111111111111111111111111",
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
-  TAccountGlobalCounter extends string | IAccountMeta<string> = string,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
+  TAccountGlobalCounter extends string | AccountMeta<string> = string,
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountPayer extends string
         ? WritableSignerAccount<TAccountPayer> &
-            IAccountSignerMeta<TAccountPayer>
+            AccountSignerMeta<TAccountPayer>
         : TAccountPayer,
       TAccountInitialMember extends string
         ? ReadonlySignerAccount<TAccountInitialMember> &
-            IAccountSignerMeta<TAccountInitialMember>
+            AccountSignerMeta<TAccountInitialMember>
         : TAccountInitialMember,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
@@ -122,33 +124,36 @@ export type CreateMultiWalletCompressedInstructionData = {
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
   permissions: IPermissions;
   compressedProofArgs: ProofArgs;
-  settingsCreationArgs: SettingsCreationArgs;
-  delegateCreationArgs: Option<DelegateCreationArgs>;
+  settingsCreation: SettingsCreationArgs;
+  delegateCreationArgs: Option<DelegateCreateOrMutateArgs>;
+  settingsIndex: bigint;
 };
 
 export type CreateMultiWalletCompressedInstructionDataArgs = {
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
   permissions: PermissionsArgs;
   compressedProofArgs: ProofArgsArgs;
-  settingsCreationArgs: SettingsCreationArgsArgs;
-  delegateCreationArgs: OptionOrNullable<DelegateCreationArgsArgs>;
+  settingsCreation: SettingsCreationArgsArgs;
+  delegateCreationArgs: OptionOrNullable<DelegateCreateOrMutateArgsArgs>;
+  settingsIndex: number | bigint;
 };
 
 export function getCreateMultiWalletCompressedInstructionDataEncoder(): Encoder<CreateMultiWalletCompressedInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       [
         "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
       ["permissions", getPermissionsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
-      ["settingsCreationArgs", getSettingsCreationArgsEncoder()],
+      ["settingsCreation", getSettingsCreationArgsEncoder()],
       [
         "delegateCreationArgs",
-        getOptionEncoder(getDelegateCreationArgsEncoder()),
+        getOptionEncoder(getDelegateCreateOrMutateArgsEncoder()),
       ],
+      ["settingsIndex", getU128Encoder()],
     ]),
     (value) => ({
       ...value,
@@ -159,15 +164,16 @@ export function getCreateMultiWalletCompressedInstructionDataEncoder(): Encoder<
 
 export function getCreateMultiWalletCompressedInstructionDataDecoder(): Decoder<CreateMultiWalletCompressedInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
     ["permissions", getPermissionsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
-    ["settingsCreationArgs", getSettingsCreationArgsDecoder()],
+    ["settingsCreation", getSettingsCreationArgsDecoder()],
     [
       "delegateCreationArgs",
-      getOptionDecoder(getDelegateCreationArgsDecoder()),
+      getOptionDecoder(getDelegateCreateOrMutateArgsDecoder()),
     ],
+    ["settingsIndex", getU128Decoder()],
   ]);
 }
 
@@ -189,7 +195,7 @@ export type CreateMultiWalletCompressedInput<
   TAccountInstructionsSysvar extends string = string,
   TAccountDomainConfig extends string = string,
   TAccountGlobalCounter extends string = string,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = {
   payer: TransactionSigner<TAccountPayer>;
   initialMember?: TransactionSigner<TAccountInitialMember>;
@@ -201,8 +207,9 @@ export type CreateMultiWalletCompressedInput<
   secp256r1VerifyArgs: CreateMultiWalletCompressedInstructionDataArgs["secp256r1VerifyArgs"];
   permissions: CreateMultiWalletCompressedInstructionDataArgs["permissions"];
   compressedProofArgs: CreateMultiWalletCompressedInstructionDataArgs["compressedProofArgs"];
-  settingsCreationArgs: CreateMultiWalletCompressedInstructionDataArgs["settingsCreationArgs"];
+  settingsCreation: CreateMultiWalletCompressedInstructionDataArgs["settingsCreation"];
   delegateCreationArgs: CreateMultiWalletCompressedInstructionDataArgs["delegateCreationArgs"];
+  settingsIndex: CreateMultiWalletCompressedInstructionDataArgs["settingsIndex"];
   remainingAccounts: TRemainingAccounts;
 };
 
@@ -215,7 +222,7 @@ export function getCreateMultiWalletCompressedInstruction<
   TAccountDomainConfig extends string,
   TAccountGlobalCounter extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 >(
   input: CreateMultiWalletCompressedInput<
     TAccountPayer,
@@ -310,7 +317,7 @@ export function getCreateMultiWalletCompressedInstruction<
 
 export type ParsedCreateMultiWalletCompressedInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -327,11 +334,11 @@ export type ParsedCreateMultiWalletCompressedInstruction<
 
 export function parseCreateMultiWalletCompressedInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedCreateMultiWalletCompressedInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 7) {
     // TODO: Coded error.

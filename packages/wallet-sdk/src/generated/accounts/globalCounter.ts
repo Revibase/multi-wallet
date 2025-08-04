@@ -24,12 +24,12 @@ import {
   transformEncoder,
   type Account,
   type Address,
-  type Codec,
-  type Decoder,
   type EncodedAccount,
-  type Encoder,
   type FetchAccountConfig,
   type FetchAccountsConfig,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
   type MaybeAccount,
   type MaybeEncodedAccount,
   type ReadonlyUint8Array,
@@ -52,7 +52,7 @@ export type GlobalCounter = {
 
 export type GlobalCounterArgs = { index: number | bigint };
 
-export function getGlobalCounterEncoder(): Encoder<GlobalCounterArgs> {
+export function getGlobalCounterEncoder(): FixedSizeEncoder<GlobalCounterArgs> {
   return transformEncoder(
     getStructEncoder([
       ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
@@ -62,14 +62,14 @@ export function getGlobalCounterEncoder(): Encoder<GlobalCounterArgs> {
   );
 }
 
-export function getGlobalCounterDecoder(): Decoder<GlobalCounter> {
+export function getGlobalCounterDecoder(): FixedSizeDecoder<GlobalCounter> {
   return getStructDecoder([
     ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
     ['index', getU128Decoder()],
   ]);
 }
 
-export function getGlobalCounterCodec(): Codec<
+export function getGlobalCounterCodec(): FixedSizeCodec<
   GlobalCounterArgs,
   GlobalCounter
 > {

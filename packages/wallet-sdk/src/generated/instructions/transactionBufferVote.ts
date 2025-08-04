@@ -17,15 +17,15 @@ import {
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
+  type AccountMeta,
+  type AccountSignerMeta,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IAccountMeta,
-  type IAccountSignerMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type Option,
   type OptionOrNullable,
   type ReadonlyAccount,
@@ -43,35 +43,33 @@ import {
   type Secp256r1VerifyArgsArgs,
 } from '../types';
 
-export const TRANSACTION_BUFFER_VOTE_DISCRIMINATOR = new Uint8Array([
-  203, 50, 79, 187, 94, 53, 82, 122,
-]);
+export const TRANSACTION_BUFFER_VOTE_DISCRIMINATOR = new Uint8Array([8]);
 
 export function getTransactionBufferVoteDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     TRANSACTION_BUFFER_VOTE_DISCRIMINATOR
   );
 }
 
 export type TransactionBufferVoteInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountSettings extends string | IAccountMeta<string> = string,
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
-  TAccountTransactionBuffer extends string | IAccountMeta<string> = string,
-  TAccountVoter extends string | IAccountMeta<string> = string,
+  TAccountSettings extends string | AccountMeta<string> = string,
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
+  TAccountTransactionBuffer extends string | AccountMeta<string> = string,
+  TAccountVoter extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = '11111111111111111111111111111111',
+    | AccountMeta<string> = '11111111111111111111111111111111',
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
+    | AccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountSettings extends string
         ? ReadonlyAccount<TAccountSettings>
@@ -84,7 +82,7 @@ export type TransactionBufferVoteInstruction<
         : TAccountTransactionBuffer,
       TAccountVoter extends string
         ? ReadonlySignerAccount<TAccountVoter> &
-            IAccountSignerMeta<TAccountVoter>
+            AccountSignerMeta<TAccountVoter>
         : TAccountVoter,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
@@ -111,7 +109,7 @@ export type TransactionBufferVoteInstructionDataArgs = {
 export function getTransactionBufferVoteInstructionDataEncoder(): Encoder<TransactionBufferVoteInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
       [
         'secp256r1VerifyArgs',
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
@@ -126,7 +124,7 @@ export function getTransactionBufferVoteInstructionDataEncoder(): Encoder<Transa
 
 export function getTransactionBufferVoteInstructionDataDecoder(): Decoder<TransactionBufferVoteInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
     ['secp256r1VerifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
 }
@@ -262,7 +260,7 @@ export function getTransactionBufferVoteInstruction<
 
 export type ParsedTransactionBufferVoteInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -279,11 +277,11 @@ export type ParsedTransactionBufferVoteInstruction<
 
 export function parseTransactionBufferVoteInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedTransactionBufferVoteInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 7) {
     // TODO: Coded error.

@@ -1,11 +1,11 @@
 import { fetchToken, findAssociatedTokenPda } from "@solana-program/token-2022";
 import {
   AccountRole,
+  AccountSignerMeta,
   Address,
-  IAccountSignerMeta,
   TransactionSigner,
 } from "@solana/kit";
-import { fetchDelegate } from "../../compressed";
+import { fetchDelegateIndex } from "../../compressed";
 import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
@@ -48,8 +48,8 @@ export async function tokenTransferIntent({
 }) {
   const creatorAddress =
     creator instanceof Secp256r1Key ? creator : creator.address;
-  const delegateData = await fetchDelegate(creatorAddress);
-  const settings = await getSettingsFromIndex(delegateData.index);
+  const delegateIndex = await fetchDelegateIndex(creatorAddress);
+  const settings = await getSettingsFromIndex(delegateIndex);
   const multiWallet = await getMultiWalletFromSettings(settings);
 
   const [sourceTokenAccount] = await findAssociatedTokenPda({
@@ -79,7 +79,7 @@ export async function tokenTransferIntent({
 
   const packedAccounts = new PackedAccounts();
 
-  const signerMetas: IAccountSignerMeta[] = signers
+  const signerMetas: AccountSignerMeta[] = signers
     .filter((x): x is TransactionSigner => !(x instanceof Secp256r1Key))
     .map((x) => ({
       address: x.address,
@@ -88,14 +88,14 @@ export async function tokenTransferIntent({
     }));
 
   packedAccounts.addPreAccounts(signerMetas);
-  const { settingsProofArgs, proof } = await constructSettingsProofArgs(
+  const { settingsReadonlyArgs, proof } = await constructSettingsProofArgs(
     packedAccounts,
     compressed,
-    delegateData.index
+    delegateIndex
   );
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
 
-  const secpSigner = signers.find((x) => x instanceof Secp256r1Key);
+  const secp256r1Signer = signers.find((x) => x instanceof Secp256r1Key);
   const {
     slotHashSysvar,
     instructionsSysvar,
@@ -104,7 +104,7 @@ export async function tokenTransferIntent({
     message,
     signature,
     publicKey,
-  } = await extractSecp256r1VerificationArgs(secpSigner);
+  } = await extractSecp256r1VerificationArgs(secp256r1Signer);
 
   const instructions = [];
   if (message && signature && publicKey) {
@@ -113,7 +113,7 @@ export async function tokenTransferIntent({
     );
   }
   if (compressed) {
-    if (!settingsProofArgs) {
+    if (!settingsReadonlyArgs) {
       throw new Error("Missing proof args.");
     }
     const compressedProofArgs = convertToCompressedProofArgs(
@@ -122,7 +122,7 @@ export async function tokenTransferIntent({
     );
     instructions.push(
       await getTokenTransferIntentCompressedInstructionAsync({
-        settingsArgs: settingsProofArgs,
+        settingsReadonly: settingsReadonlyArgs,
         source: multiWallet,
         domainConfig,
         sourceTokenAccount,

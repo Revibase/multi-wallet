@@ -7,9 +7,8 @@ import {
   compressTransactionMessageUsingAddressLookupTables,
   createTransactionMessage,
   getBase64EncodedWireTransaction,
-  getComputeUnitEstimateForTransactionMessageFactory,
   getSignatureFromTransaction,
-  type IInstruction,
+  type Instruction,
   isSolanaError,
   lamports,
   pipe,
@@ -32,17 +31,14 @@ function delay(ms: number) {
  */
 export async function sendTransaction(
   connection: Rpc<SolanaRpcApi>,
-  instructions: IInstruction[],
+  instructions: Instruction[],
   payer: TransactionSigner,
   sendAndConfirm: any,
   addressLookupTableAccounts?: AddressesByLookupTableAddress
 ): Promise<string | undefined> {
   // Get latest blockhash before starting transaction
   const latestBlockHash = await connection.getLatestBlockhash().send();
-  const computeUnitTransactionFactory =
-    getComputeUnitEstimateForTransactionMessageFactory({
-      rpc: connection,
-    });
+
   let signature;
   let tx;
   try {
@@ -70,13 +66,12 @@ export async function sendTransaction(
       async (tx) => await signTransactionMessageWithSigners(tx)
     );
 
+    console.log(getBase64EncodedWireTransaction(tx).length);
     signature = getSignatureFromTransaction(tx);
     await sendAndConfirm(tx, { commitment: "confirmed", skipPreflight: true });
-
-    await delay(1000);
+    await delay(2000);
     return signature;
   } catch (error) {
-    console.log(getBase64EncodedWireTransaction(tx).length);
     console.log(signature);
     if (isSolanaError(error) && error.cause) {
       const formattedError = JSON.stringify(error.cause, (key, value) =>

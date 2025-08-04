@@ -1,4 +1,4 @@
-import { AccountRole, Address, IInstruction } from "@solana/kit";
+import { AccountRole, Address, Instruction } from "@solana/kit";
 
 export type CompiledKeyMeta = {
   isSigner: boolean;
@@ -27,7 +27,7 @@ export class CompiledKeys {
    * This allows to compress the message size and avoid hitting the tx size limit during vault_transaction_create instruction calls.
    */
   static compile(
-    instructions: Array<IInstruction>,
+    instructions: Array<Instruction>,
     payer: Address
   ): CompiledKeys {
     const keyMetaMap: KeyMetaMap = new Map();

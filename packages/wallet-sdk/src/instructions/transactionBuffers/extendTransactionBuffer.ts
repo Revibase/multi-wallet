@@ -1,8 +1,4 @@
-import { Address, TransactionSigner } from "@solana/kit";
-import {
-  constructSettingsProofArgs,
-  convertToCompressedProofArgs,
-} from "../../compressed/internal";
+import { Address } from "@solana/kit";
 import { PackedAccounts } from "../../compressed/packedAccounts";
 import {
   getTransactionBufferExtendCompressedInstruction,
@@ -15,38 +11,22 @@ export async function extendTransactionBuffer({
   transactionBufferAddress,
   index,
   compressed = false,
-  payer,
 }: {
   transactionMessageBytes: Uint8Array;
   transactionBufferAddress: Address;
   index: bigint | number;
   compressed?: boolean;
-  payer?: TransactionSigner;
 }) {
   const settings = await getSettingsFromIndex(index);
   const packedAccounts = new PackedAccounts();
-  const { settingsProofArgs, proof } = await constructSettingsProofArgs(
-    packedAccounts,
-    compressed,
-    index
-  );
-  const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
+
+  const { remainingAccounts } = packedAccounts.toAccountMetas();
 
   if (compressed) {
-    if (!payer || !settingsProofArgs) {
-      throw new Error("Payer not found or proof args is missing.");
-    }
-    const compressedProofArgs = convertToCompressedProofArgs(
-      proof,
-      systemOffset
-    );
-
     return getTransactionBufferExtendCompressedInstruction({
       transactionBuffer: transactionBufferAddress,
       buffer: transactionMessageBytes,
-      settingsArgs: settingsProofArgs,
-      payer,
-      compressedProofArgs,
+      settingsKey: settings,
       remainingAccounts,
     });
   } else {

@@ -1,4 +1,4 @@
-import { Address, IInstruction, TransactionSigner } from "@solana/kit";
+import { Address, Instruction, TransactionSigner } from "@solana/kit";
 import {
   getTransactionExecuteCompressedInstruction,
   getTransactionExecuteInstruction,
@@ -39,7 +39,7 @@ export async function executeTransaction({
       additionalSigners,
     });
 
-  const instructions: IInstruction[] = [];
+  const instructions: Instruction[] = [];
   if (secp256r1VerifyInput.length > 0) {
     instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
   }

@@ -1,43 +1,20 @@
-use crate::{
-    state::{verify_compressed_settings, ProofArgs, SettingsProofArgs},
-    MultisigError, TransactionBuffer,
-};
+use crate::{MultisigError, TransactionBuffer};
 use anchor_lang::{prelude::*, solana_program::hash::hash};
 
 #[derive(Accounts)]
 pub struct TransactionBufferExtendCompressed<'info> {
-    #[account(
-        mut,
-        address = transaction_buffer.payer
-    )]
-    pub payer: Signer<'info>,
     #[account(mut)]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
 }
 
 impl<'info> TransactionBufferExtendCompressed<'info> {
-    fn validate(
-        &self,
-        remaining_accounts: &[AccountInfo<'info>],
-        buffer: &Vec<u8>,
-        settings_args: &SettingsProofArgs,
-        compressed_proof_args: ProofArgs,
-    ) -> Result<()> {
+    fn validate(&self, buffer: &Vec<u8>, settings_key: &Pubkey) -> Result<()> {
         let Self {
-            transaction_buffer,
-            payer,
-            ..
+            transaction_buffer, ..
         } = self;
-        let (_, settings_key) = verify_compressed_settings(
-            &payer.to_account_info(),
-            None,
-            &settings_args,
-            &remaining_accounts,
-            compressed_proof_args,
-        )?;
         require!(
             settings_key.eq(&transaction_buffer.multi_wallet_settings),
-            MultisigError::InvalidAccount
+            MultisigError::InvalidArguments
         );
         let current_buffer_size = transaction_buffer.buffer.len() as u16;
         let remaining_space = transaction_buffer
@@ -66,12 +43,11 @@ impl<'info> TransactionBufferExtendCompressed<'info> {
         Ok(())
     }
 
-    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, &buffer, &settings_args, compressed_proof_args))]
+    #[access_control(ctx.accounts.validate(&buffer, &settings_key))]
     pub fn process(
         ctx: Context<'_, '_, '_, 'info, Self>,
         buffer: Vec<u8>,
-        settings_args: SettingsProofArgs,
-        compressed_proof_args: ProofArgs,
+        settings_key: Pubkey,
     ) -> Result<()> {
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
 

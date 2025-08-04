@@ -11,11 +11,13 @@ import {
   getU128Encoder,
   getUtf8Encoder,
   isAddress,
+  none,
+  some,
 } from "@solana/kit";
 import { PublicKey } from "@solana/web3.js";
 import {
-  Delegate,
-  fetchSettings,
+  CompressedSettingsData,
+  fetchMaybeSettings,
   getCompressedSettingsDecoder,
   getDelegateDecoder,
   MULTI_WALLET_PROGRAM_ADDRESS,
@@ -58,26 +60,34 @@ export async function getDelegateAddress(member: Address | Secp256r1Key) {
   }
 }
 
-export async function fetchDelegate(
+export async function fetchDelegateIndex(
   member: Address | Secp256r1Key
-): Promise<Delegate> {
+): Promise<bigint> {
   const address = await getDelegateAddress(member);
   const delegate = await getLightProtocolRpc().getCompressedAccount(address);
   if (!delegate?.data?.data) {
     throw Error("Unable to fetch delegate account.");
   }
-  return getDelegateDecoder().decode(delegate.data.data);
+  const data = getDelegateDecoder().decode(delegate.data.data);
+  if (data.index.__option === "None") {
+    throw Error("Unable to fetch delegate account.");
+  }
+  return data.index.value;
 }
 
-export async function fetchMaybeDelegate(
+export async function fetchMaybeDelegateIndex(
   member: Address | Secp256r1Key
-): Promise<Delegate | null> {
+): Promise<bigint | null> {
   const address = await getDelegateAddress(member);
   const delegate = await getLightProtocolRpc().getCompressedAccount(address);
   if (!delegate?.data?.data) {
     return null;
   }
-  return getDelegateDecoder().decode(delegate.data.data);
+  const data = getDelegateDecoder().decode(delegate.data.data);
+  if (data.index.__option === "None") {
+    return null;
+  }
+  return data.index.value;
 }
 
 export async function getCompressedSettingsAddressFromIndex(
@@ -100,23 +110,47 @@ export async function getCompressedSettingsAddressFromIndex(
 
 export async function checkIfSettingsAccountIsCompressed(
   index: bigint | number
-) {
+): Promise<boolean> {
   const address = await getCompressedSettingsAddressFromIndex(index);
   const result = await getLightProtocolRpc().getCompressedAccount(address);
-  return !!result?.data;
+  if (!result?.data?.data) {
+    return false;
+  }
+  const decoded = getCompressedSettingsDecoder().decode(result?.data?.data);
+  return decoded.data.__option === "Some";
 }
 
-export async function fetchSettingsData(index: number | bigint) {
-  const address = await getCompressedSettingsAddressFromIndex(index);
-  const result = await getLightProtocolRpc().getCompressedAccount(address);
-
-  if (result?.data?.data) {
-    return getCompressedSettingsDecoder().decode(result.data.data);
+type SettingsData = CompressedSettingsData;
+export async function fetchSettingsData(
+  index: number | bigint
+): Promise<SettingsData> {
+  const result = await fetchMaybeSettings(
+    getSolanaRpc(),
+    await getSettingsFromIndex(index)
+  );
+  if (result.exists) {
+    return {
+      ...result.data,
+      members: result.data.members
+        .slice(0, result.data.membersLen)
+        .map((x) => ({
+          ...x,
+          domainConfig:
+            x.domainConfig.toString() === PublicKey.default.toString()
+              ? none()
+              : some(x.domainConfig),
+        })),
+    };
   } else {
-    const result = await fetchSettings(
-      getSolanaRpc(),
-      await getSettingsFromIndex(index)
-    );
-    return result.data;
+    const address = await getCompressedSettingsAddressFromIndex(index);
+    const result = await getLightProtocolRpc().getCompressedAccount(address);
+    if (!result?.data?.data) {
+      throw new Error("Settings account does not exist.");
+    }
+    const data = getCompressedSettingsDecoder().decode(result.data.data);
+    if (data.data.__option === "None") {
+      throw new Error("Settings account does not exist.");
+    }
+    return data.data.value;
   }
 }

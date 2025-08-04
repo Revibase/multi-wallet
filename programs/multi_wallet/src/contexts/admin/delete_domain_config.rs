@@ -10,7 +10,7 @@ pub struct DeleteDomainConfig<'info> {
     pub domain_config: AccountLoader<'info, DomainConfig>,
     #[account(
         mut,
-        constraint = authority.key() == domain_config.load()?.authority,
+        address = domain_config.load()?.authority,
     )]
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,

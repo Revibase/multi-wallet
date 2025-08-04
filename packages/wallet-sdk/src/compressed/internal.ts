@@ -3,28 +3,23 @@ import {
   AddressWithTree,
   BN254,
   CompressedAccount,
+  featureFlags,
   getDefaultAddressTreeInfo,
   HashWithTree,
-  selectStateTreeInfo,
   TreeInfo,
   TreeType,
   ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
-import {
-  address,
-  Decoder,
-  getProgramDerivedAddress,
-  getUtf8Encoder,
-  none,
-  some,
-} from "@solana/kit";
+import { Decoder, getProgramDerivedAddress, getUtf8Encoder } from "@solana/kit";
 import BN from "bn.js";
 import {
+  getCompressedSettingsDecoder,
   MULTI_WALLET_PROGRAM_ADDRESS,
-  SettingsProofArgs,
+  SettingsReadonlyArgs,
   ValidityProofArgs,
 } from "../generated";
 import { getLightProtocolRpc } from "../utils";
+import { MAX_HOTSPOTS } from "../utils/consts";
 import { getCompressedSettingsAddressFromIndex } from "./helper";
 import { PackedAccounts } from "./packedAccounts";
 
@@ -97,55 +92,59 @@ export async function getCompressedAccountInitArgs(
     rootIndex: rootIndices[index],
     address: x.address.toArray(),
   }));
-
   const { addressTrees } = packedAccounts.packTreeInfos(
     [],
     newAddressProofInputs
   );
 
-  const existingTreeInfos = new Set<string>(
-    excludedTreeInfo?.map((x) =>
-      x.treeType === TreeType.StateV1 ? x.tree.toString() : x.queue.toString()
+  const excludedKeys = new Set<string>(
+    (excludedTreeInfo ?? []).map((info) =>
+      info.treeType === TreeType.StateV1
+        ? info.tree.toString()
+        : info.queue.toString()
     )
   );
+
   const stateTreeInfos = await getLightProtocolRpc().getStateTreeInfos();
+  const activeInfos = stateTreeInfos.filter((t) => !t.nextTreeInfo);
+  const desiredTreeType = featureFlags.isV2()
+    ? TreeType.StateV2
+    : TreeType.StateV1;
+  const filteredInfos = activeInfos.filter(
+    (t) => t.treeType === desiredTreeType && t.queue
+  );
 
-  const creationArgs = [];
-  for (let i = 0; i < newAddresses.length; i++) {
-    const tried = new Set<string>();
-    let outputStateTreeIndex: number | undefined = undefined;
-    while (tried.size < stateTreeInfos.length) {
-      const candidate = selectStateTreeInfo(stateTreeInfos);
-      const candidateString =
-        candidate.treeType === TreeType.StateV1
-          ? candidate.tree.toString()
-          : candidate.queue.toString();
-      if (
-        existingTreeInfos.has(candidateString) ||
-        tried.has(candidateString)
-      ) {
-        tried.add(candidateString);
-        continue;
-      }
+  const maxCandidates = Math.min(MAX_HOTSPOTS, filteredInfos.length);
+  const uniqueCandidates: TreeInfo[] = [];
 
-      outputStateTreeIndex = packedAccounts.packOutputTreeIndex(candidate);
-      existingTreeInfos.add(candidateString);
-      break;
+  for (const info of filteredInfos.slice(0, maxCandidates)) {
+    const key =
+      info.treeType === TreeType.StateV1
+        ? info.tree.toString()
+        : info.queue.toString();
+
+    if (!excludedKeys.has(key)) {
+      excludedKeys.add(key);
+      uniqueCandidates.push(info);
     }
 
-    if (!outputStateTreeIndex) {
-      throw new Error(
-        `Unable to find unique state tree info for new address at index ${i}`
-      );
-    }
-
-    creationArgs.push({
-      addressTreeInfo: addressTrees[i],
-      outputStateTreeIndex,
-      address: newAddresses[i].address,
-      type: newAddresses[i].type,
-    });
+    if (uniqueCandidates.length === newAddresses.length) break;
   }
+
+  if (uniqueCandidates.length < newAddresses.length) {
+    throw new Error(
+      `Not enough unique state tree infos available: required ${newAddresses.length}, found ${uniqueCandidates.length}`
+    );
+  }
+
+  const creationArgs = newAddresses.map((addressWithTree, i) => ({
+    addressTreeInfo: addressTrees[i],
+    outputStateTreeIndex: packedAccounts.packOutputTreeIndex(
+      uniqueCandidates[i]
+    )!,
+    address: addressWithTree.address,
+    type: addressWithTree.type,
+  }));
 
   return creationArgs;
 }
@@ -191,46 +190,6 @@ export async function getCompressedAccountMutArgs<T>(
   return mutArgs;
 }
 
-export async function getCompressedAccountCloseArgs<T>(
-  packedAccounts: PackedAccounts,
-  treeInfos: TreeInfo[],
-  leafIndices: number[],
-  rootIndices: number[],
-  proveByIndices: boolean[],
-  hashes: (HashWithTree & CompressedAccount)[],
-  decoder: Decoder<T>
-) {
-  const accountProofInputs: AccountProofInput[] = [];
-  for (let index = 0; index < treeInfos.length; index++) {
-    accountProofInputs.push({
-      treeInfo: treeInfos[index],
-      rootIndex: rootIndices[index],
-      leafIndex: leafIndices[index],
-      proveByIndex: proveByIndices[index],
-      hash: hashes[index].hash,
-    });
-  }
-
-  const addressTreeInfo = packedAccounts.packTreeInfos(
-    accountProofInputs,
-    []
-  ).stateTrees;
-
-  if (!addressTreeInfo) {
-    throw new Error("Unable to parsed data.");
-  }
-
-  const closeArgs = hashes.map((x, index) => ({
-    data: decoder.decode(x.data!.data),
-    accountMeta: {
-      treeInfo: addressTreeInfo.packedTreeInfos[index],
-      address: new Uint8Array(x.address!),
-    },
-  }));
-
-  return closeArgs;
-}
-
 export async function getLightCpiSigner() {
   const [lightCpiSigner] = await getProgramDerivedAddress({
     programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
@@ -243,45 +202,34 @@ export async function constructSettingsProofArgs(
   compressed: boolean,
   index: bigint | number
 ) {
-  let settingsProofArgs: SettingsProofArgs | null = null;
+  let settingsReadonlyArgs: SettingsReadonlyArgs | null = null;
   let proof: ValidityProofWithContext | null = null;
   if (compressed) {
     await packedAccounts.addSystemAccounts();
-
     const settingsAddress = await getCompressedSettingsAddressFromIndex(index);
     const settings = (
       await getCompressedAccountHashes([
         { pubkey: settingsAddress, type: "Settings" },
       ])
     )[0];
-
     proof = await getLightProtocolRpc().getValidityProofV0([settings], []);
+    const { tree, queue } = getDefaultAddressTreeInfo();
 
-    settingsProofArgs = {
-      rootIndex: proof.rootIndices[0],
-      account: {
-        address: settings.address
-          ? some(new Uint8Array(settings.address))
-          : none(),
-        data: settings.data
-          ? some({
-              data: new Uint8Array(settings.data.data),
-              discriminator: new Uint8Array(settings.data.discriminator),
-              dataHash: new Uint8Array(settings.data.dataHash),
-            })
-          : none(),
-        lamports: BigInt(settings.lamports.toNumber()),
-        owner: address(settings.owner.toString()),
+    settingsReadonlyArgs = {
+      lamports: BigInt(settings.lamports.toNumber()),
+      data: getCompressedSettingsDecoder().decode(settings.data?.data!),
+      addressTreeInfo: {
+        rootIndex: proof.rootIndices[0],
+        addressMerkleTreePubkeyIndex: packedAccounts.insertOrGet(tree),
+        addressQueuePubkeyIndex: packedAccounts.insertOrGet(queue),
       },
       merkleContext: {
-        leafIndex: proof.leafIndices[0],
-        merkleTreePubkeyIndex: packedAccounts.insertOrGet(
-          proof.treeInfos[0].tree
-        ),
-        queuePubkeyIndex: packedAccounts.insertOrGet(proof.treeInfos[0].queue),
-        proveByIndex: proof.proveByIndices[0],
+        leafIndex: settings.leafIndex,
+        merkleTreePubkeyIndex: packedAccounts.insertOrGet(settings.tree),
+        queuePubkeyIndex: packedAccounts.insertOrGet(settings.queue),
+        proveByIndex: settings.proveByIndex,
       },
     };
   }
-  return { settingsProofArgs, proof };
+  return { settingsReadonlyArgs, proof };
 }

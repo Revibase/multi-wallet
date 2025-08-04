@@ -1,8 +1,7 @@
 use crate::{
     state::{
-        verify_compressed_settings, CompressedSettings, DomainConfig, MemberKey, ProofArgs,
-        Secp256r1Pubkey, Secp256r1VerifyArgs, Settings, SettingsProofArgs, TransactionActionType,
-        SEED_MULTISIG,
+        ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig, MemberKey,
+        ProofArgs, Secp256r1VerifyArgs, SettingsReadonlyArgs, TransactionActionType, SEED_MULTISIG,
     },
     utils::durable_nonce_check,
     MultisigError, Permission, SEED_VAULT,
@@ -22,7 +21,7 @@ use anchor_spl::{
 };
 
 #[derive(Accounts)]
-#[instruction(amount: u64, secp256r1_verify_args: Option<Secp256r1VerifyArgs>, settings_args: SettingsProofArgs,)]
+#[instruction(amount: u64, secp256r1_verify_args: Option<Secp256r1VerifyArgs>, settings_readonly: SettingsReadonlyArgs,)]
 pub struct TokenTransferIntentCompressed<'info> {
     /// CHECK:
     #[account(
@@ -36,21 +35,8 @@ pub struct TokenTransferIntentCompressed<'info> {
     pub instructions_sysvar: UncheckedAccount<'info>,
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
 
-    /// CHECK:
-    #[account(
-        mut,
-        seeds = [
-            SEED_MULTISIG,
-            {
-                let data_slice = settings_args.account.data.as_ref().unwrap().data.as_slice();
-                let index = u128::from_le_bytes(data_slice[2..18].try_into().unwrap());
-                let bump = data_slice[1];
-                Settings::get_settings_key_from_index(index, bump)?.as_ref()
-            },
-            SEED_VAULT,
-        ],
-        bump
-    )]
+    /// CHECK: checked in instructions
+    #[account(mut)]
     pub source: UncheckedAccount<'info>,
     /// CHECK:
     #[account(
@@ -86,7 +72,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
         amount: u64,
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
         remaining_accounts: &[AccountInfo<'info>],
-        settings: CompressedSettings,
+        settings: &CompressedSettingsData,
     ) -> Result<()> {
         let Self {
             domain_config,
@@ -105,13 +91,9 @@ impl<'info> TokenTransferIntentCompressed<'info> {
         let mut vote_count = 0;
 
         let threshold = settings.threshold as usize;
-        let secp256r1_member_key = if secp256r1_verify_args.is_some() {
-            Some(MemberKey::convert_secp256r1(
-                &secp256r1_verify_args.as_ref().unwrap().public_key,
-            )?)
-        } else {
-            None
-        };
+        let secp256r1_member_key =
+            MemberKey::get_signer(&None, secp256r1_verify_args, Some(instructions_sysvar))
+                .map_or(None, |f| Some(f));
 
         for member in &settings.members {
             let has_permission = |perm| member.permissions.has(perm);
@@ -137,9 +119,10 @@ impl<'info> TokenTransferIntentCompressed<'info> {
             }
 
             if is_secp256r1_signer {
-                let expected_domain_config = member
-                    .domain_config
-                    .ok_or(MultisigError::DomainConfigIsMissing)?;
+                require!(
+                    member.domain_config.is_some(),
+                    MultisigError::DomainConfigIsMissing
+                );
 
                 require!(
                     domain_config.is_some()
@@ -147,7 +130,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
                             .as_ref()
                             .unwrap()
                             .key()
-                            .eq(&expected_domain_config),
+                            .eq(&member.domain_config.unwrap()),
                     MultisigError::MemberDoesNotBelongToDomainConfig
                 );
 
@@ -161,14 +144,15 @@ impl<'info> TokenTransferIntentCompressed<'info> {
                     .as_ref()
                     .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
 
-                Secp256r1Pubkey::verify_webauthn(
-                    secp256r1_verify_data,
-                    &slot_hash_sysvar,
-                    &domain_config,
-                    &token_program.key(),
-                    &message_hash,
-                    TransactionActionType::TokenTransferIntent,
-                    &Some(instructions_sysvar.clone()),
+                secp256r1_verify_data.verify_webauthn(
+                    slot_hash_sysvar,
+                    domain_config,
+                    instructions_sysvar,
+                    ChallengeArgs {
+                        account: token_program.key(),
+                        message_hash,
+                        action_type: TransactionActionType::TokenTransferIntent,
+                    },
                 )?;
             }
         }
@@ -193,35 +177,30 @@ impl<'info> TokenTransferIntentCompressed<'info> {
         ctx: Context<'_, '_, '_, 'info, Self>,
         amount: u64,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_args: SettingsProofArgs,
+        settings_readonly: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
-        let data_slice = settings_args.account.data.as_ref().unwrap().data.as_slice();
-        let index = u128::from_le_bytes(data_slice[2..18].try_into().unwrap());
-        let bump = data_slice[1];
-        let multi_wallet_bump = data_slice[18];
-        let settings_key = Settings::get_settings_key_from_index(index, bump)?;
-        let signer_seeds: &[&[u8]] = &[
-            SEED_MULTISIG,
-            settings_key.as_ref(),
-            SEED_VAULT,
-            &[multi_wallet_bump],
-        ];
-
-        let (settings, _) = verify_compressed_settings(
+        let (settings, settings_key) = CompressedSettings::verify_compressed_settings(
             &ctx.accounts.source.to_account_info(),
-            Some(signer_seeds),
-            &settings_args,
-            &ctx.remaining_accounts,
-            compressed_proof_args,
+            true,
+            &settings_readonly,
+            ctx.remaining_accounts,
+            &compressed_proof_args,
         )?;
 
         ctx.accounts.validate(
             amount,
             &secp256r1_verify_args,
             ctx.remaining_accounts,
-            settings,
+            &settings,
         )?;
+
+        let signer_seeds: &[&[u8]] = &[
+            SEED_MULTISIG,
+            settings_key.as_ref(),
+            SEED_VAULT,
+            &[settings.multi_wallet_bump],
+        ];
 
         let ata_ix = create_associated_token_account_idempotent(
             ctx.accounts.source.key,

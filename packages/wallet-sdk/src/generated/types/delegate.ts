@@ -8,6 +8,8 @@
 
 import {
   combineCodec,
+  getOptionDecoder,
+  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
   getU128Decoder,
@@ -15,18 +17,20 @@ import {
   type Codec,
   type Decoder,
   type Encoder,
+  type Option,
+  type OptionOrNullable,
 } from '@solana/kit';
 
-export type Delegate = { index: bigint };
+export type Delegate = { index: Option<bigint> };
 
-export type DelegateArgs = { index: number | bigint };
+export type DelegateArgs = { index: OptionOrNullable<number | bigint> };
 
 export function getDelegateEncoder(): Encoder<DelegateArgs> {
-  return getStructEncoder([['index', getU128Encoder()]]);
+  return getStructEncoder([['index', getOptionEncoder(getU128Encoder())]]);
 }
 
 export function getDelegateDecoder(): Decoder<Delegate> {
-  return getStructDecoder([['index', getU128Decoder()]]);
+  return getStructDecoder([['index', getOptionDecoder(getU128Decoder())]]);
 }
 
 export function getDelegateCodec(): Codec<DelegateArgs, Delegate> {

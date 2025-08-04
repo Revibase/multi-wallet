@@ -6,19 +6,19 @@ import { getHash } from "../../utils/internal";
 export async function createDomainConfig({
   payer,
   rpId,
-  origin,
+  origins,
   authority,
 }: {
   payer: TransactionSigner;
   rpId: string;
-  origin: string;
+  origins: string[];
   authority: Address;
 }) {
   const rpIdHash = await getHash(rpId);
   const domainConfig = await getDomainConfig({ rpIdHash });
   return getCreateDomainConfigInstruction({
     rpIdHash,
-    origin,
+    origins,
     authority,
     payer,
     domainConfig,

@@ -17,14 +17,14 @@ import {
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
+  type AccountMeta,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IAccountMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type Option,
   type OptionOrNullable,
   type ReadonlyAccount,
@@ -44,30 +44,28 @@ import {
   type TransactionMessageArgs,
 } from "../types";
 
-export const TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR = new Uint8Array([
-  149, 138, 204, 32, 181, 61, 153, 227,
-]);
+export const TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR = new Uint8Array([13]);
 
 export function getTransactionExecuteSyncDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR
   );
 }
 
 export type TransactionExecuteSyncInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountSettings extends string | IAccountMeta<string> = string,
+  TAccountSettings extends string | AccountMeta<string> = string,
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
+    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountSettings extends string
         ? WritableAccount<TAccountSettings>
@@ -99,7 +97,7 @@ export type TransactionExecuteSyncInstructionDataArgs = {
 export function getTransactionExecuteSyncInstructionDataEncoder(): Encoder<TransactionExecuteSyncInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["transactionMessage", getTransactionMessageEncoder()],
       [
         "secp256r1VerifyArgs",
@@ -115,7 +113,7 @@ export function getTransactionExecuteSyncInstructionDataEncoder(): Encoder<Trans
 
 export function getTransactionExecuteSyncInstructionDataDecoder(): Decoder<TransactionExecuteSyncInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["transactionMessage", getTransactionMessageDecoder()],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
@@ -136,7 +134,7 @@ export type TransactionExecuteSyncInput<
   TAccountSlotHashSysvar extends string = string,
   TAccountDomainConfig extends string = string,
   TAccountInstructionsSysvar extends string = string,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = {
   settings: Address<TAccountSettings>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
@@ -153,7 +151,7 @@ export function getTransactionExecuteSyncInstruction<
   TAccountDomainConfig extends string,
   TAccountInstructionsSysvar extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 >(
   input: TransactionExecuteSyncInput<
     TAccountSettings,
@@ -229,7 +227,7 @@ export function getTransactionExecuteSyncInstruction<
 
 export type ParsedTransactionExecuteSyncInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -243,11 +241,11 @@ export type ParsedTransactionExecuteSyncInstruction<
 
 export function parseTransactionExecuteSyncInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedTransactionExecuteSyncInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 4) {
     // TODO: Coded error.

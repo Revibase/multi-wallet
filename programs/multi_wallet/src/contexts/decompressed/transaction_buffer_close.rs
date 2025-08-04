@@ -1,6 +1,6 @@
 use crate::{
     state::{
-        DomainConfig, KeyType, MemberKey, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings,
+        ChallengeArgs, DomainConfig, KeyType, MemberKey, Secp256r1VerifyArgs, Settings,
         TransactionActionType,
     },
     MultisigError, TransactionBuffer,
@@ -12,7 +12,7 @@ pub struct TransactionBufferClose<'info> {
     #[account(
         address = transaction_buffer.multi_wallet_settings,
     )]
-    pub settings: Account<'info, Settings>,
+    pub settings: AccountLoader<'info, Settings>,
     /// CHECK:
     #[account(
             mut,
@@ -49,8 +49,9 @@ impl TransactionBufferClose<'_> {
             instructions_sysvar,
             ..
         } = self;
-
-        let signer = MemberKey::get_signer(closer, secp256r1_verify_args)?;
+        let settings = settings.load()?;
+        let signer =
+            MemberKey::get_signer(closer, secp256r1_verify_args, instructions_sysvar.as_ref())?;
 
         // allow rent payer to become the closer after transaction has expired
         if Clock::get().unwrap().unix_timestamp as u64 > transaction_buffer.valid_till
@@ -70,9 +71,10 @@ impl TransactionBufferClose<'_> {
                     .find(|x| x.pubkey.eq(&signer))
                     .ok_or(MultisigError::MissingAccount)?;
 
-                let expected_domain_config = member
-                    .domain_config
-                    .ok_or(MultisigError::DomainConfigIsMissing)?;
+                require!(
+                    member.domain_config.ne(&Pubkey::default()),
+                    MultisigError::DomainConfigIsMissing
+                );
 
                 require!(
                     domain_config.is_some()
@@ -80,7 +82,7 @@ impl TransactionBufferClose<'_> {
                             .as_ref()
                             .unwrap()
                             .key()
-                            .eq(&expected_domain_config),
+                            .eq(&member.domain_config),
                     MultisigError::MemberDoesNotBelongToDomainConfig
                 );
 
@@ -88,14 +90,19 @@ impl TransactionBufferClose<'_> {
                     .as_ref()
                     .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
 
-                Secp256r1Pubkey::verify_webauthn(
-                    secp256r1_verify_data,
+                let instructions_sysvar = instructions_sysvar
+                    .as_ref()
+                    .ok_or(MultisigError::MissingAccount)?;
+
+                secp256r1_verify_data.verify_webauthn(
                     slot_hash_sysvar,
                     domain_config,
-                    &transaction_buffer.key(),
-                    &transaction_buffer.final_buffer_hash,
-                    TransactionActionType::Close,
                     instructions_sysvar,
+                    ChallengeArgs {
+                        account: transaction_buffer.key(),
+                        message_hash: transaction_buffer.final_buffer_hash,
+                        action_type: TransactionActionType::Close,
+                    },
                 )?;
             }
 

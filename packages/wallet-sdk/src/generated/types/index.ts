@@ -7,16 +7,16 @@
  */
 
 export * from './compiledInstruction';
-export * from './compressedAccount';
-export * from './compressedAccountData';
 export * from './compressedAccountMeta';
-export * from './compressedAccountMetaClose';
+export * from './compressedMember';
 export * from './compressedProof';
 export * from './compressedSettings';
+export * from './compressedSettingsData';
 export * from './configAction';
 export * from './delegate';
-export * from './delegateCloseArgs';
+export * from './delegateCreateOrMutateArgs';
 export * from './delegateCreationArgs';
+export * from './delegateMutArgs';
 export * from './member';
 export * from './memberKey';
 export * from './memberKeyWithCloseArgs';
@@ -27,10 +27,11 @@ export * from './packedMerkleContext';
 export * from './packedStateTreeInfo';
 export * from './permissions';
 export * from './proofArgs';
-export * from './secp256r1Pubkey';
 export * from './secp256r1VerifyArgs';
+export * from './settingsCreateOrMutateArgs';
 export * from './settingsCreationArgs';
-export * from './settingsProofArgs';
+export * from './settingsMutArgs';
+export * from './settingsReadonlyArgs';
 export * from './transactionBufferCreateArgs';
 export * from './transactionMessage';
 export * from './transactionMessageAddressTableLookup';

@@ -17,15 +17,15 @@ import {
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
+  type AccountMeta,
+  type AccountSignerMeta,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IAccountMeta,
-  type IAccountSignerMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type Option,
   type OptionOrNullable,
   type ReadonlyAccount,
@@ -42,47 +42,47 @@ import {
   getProofArgsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  getSettingsProofArgsDecoder,
-  getSettingsProofArgsEncoder,
+  getSettingsReadonlyArgsDecoder,
+  getSettingsReadonlyArgsEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-  type SettingsProofArgs,
-  type SettingsProofArgsArgs,
+  type SettingsReadonlyArgs,
+  type SettingsReadonlyArgsArgs,
 } from "../types";
 
 export const TRANSACTION_BUFFER_CLOSE_COMPRESSED_DISCRIMINATOR = new Uint8Array(
-  [82, 65, 25, 49, 208, 28, 191, 84]
+  [23]
 );
 
 export function getTransactionBufferCloseCompressedDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     TRANSACTION_BUFFER_CLOSE_COMPRESSED_DISCRIMINATOR
   );
 }
 
 export type TransactionBufferCloseCompressedInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountPayer extends string | IAccountMeta<string> = string,
-  TAccountRentCollector extends string | IAccountMeta<string> = string,
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
-  TAccountTransactionBuffer extends string | IAccountMeta<string> = string,
-  TAccountCloser extends string | IAccountMeta<string> = string,
+  TAccountPayer extends string | AccountMeta<string> = string,
+  TAccountRentCollector extends string | AccountMeta<string> = string,
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
+  TAccountTransactionBuffer extends string | AccountMeta<string> = string,
+  TAccountCloser extends string | AccountMeta<string> = string,
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountPayer extends string
         ? WritableSignerAccount<TAccountPayer> &
-            IAccountSignerMeta<TAccountPayer>
+            AccountSignerMeta<TAccountPayer>
         : TAccountPayer,
       TAccountRentCollector extends string
         ? WritableAccount<TAccountRentCollector>
@@ -95,7 +95,7 @@ export type TransactionBufferCloseCompressedInstruction<
         : TAccountTransactionBuffer,
       TAccountCloser extends string
         ? ReadonlySignerAccount<TAccountCloser> &
-            IAccountSignerMeta<TAccountCloser>
+            AccountSignerMeta<TAccountCloser>
         : TAccountCloser,
       TAccountSlotHashSysvar extends string
         ? ReadonlyAccount<TAccountSlotHashSysvar>
@@ -110,25 +110,25 @@ export type TransactionBufferCloseCompressedInstruction<
 export type TransactionBufferCloseCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
-  settingsArgs: SettingsProofArgs;
+  settingsReadonly: SettingsReadonlyArgs;
   compressedProofArgs: ProofArgs;
 };
 
 export type TransactionBufferCloseCompressedInstructionDataArgs = {
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  settingsArgs: SettingsProofArgsArgs;
+  settingsReadonly: SettingsReadonlyArgsArgs;
   compressedProofArgs: ProofArgsArgs;
 };
 
 export function getTransactionBufferCloseCompressedInstructionDataEncoder(): Encoder<TransactionBufferCloseCompressedInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       [
         "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
-      ["settingsArgs", getSettingsProofArgsEncoder()],
+      ["settingsReadonly", getSettingsReadonlyArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
@@ -140,9 +140,9 @@ export function getTransactionBufferCloseCompressedInstructionDataEncoder(): Enc
 
 export function getTransactionBufferCloseCompressedInstructionDataDecoder(): Decoder<TransactionBufferCloseCompressedInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ["settingsArgs", getSettingsProofArgsDecoder()],
+    ["settingsReadonly", getSettingsReadonlyArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }
@@ -165,7 +165,7 @@ export type TransactionBufferCloseCompressedInput<
   TAccountCloser extends string = string,
   TAccountSlotHashSysvar extends string = string,
   TAccountInstructionsSysvar extends string = string,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = {
   payer: TransactionSigner<TAccountPayer>;
   rentCollector: Address<TAccountRentCollector>;
@@ -175,7 +175,7 @@ export type TransactionBufferCloseCompressedInput<
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   secp256r1VerifyArgs: TransactionBufferCloseCompressedInstructionDataArgs["secp256r1VerifyArgs"];
-  settingsArgs: TransactionBufferCloseCompressedInstructionDataArgs["settingsArgs"];
+  settingsReadonly: TransactionBufferCloseCompressedInstructionDataArgs["settingsReadonly"];
   compressedProofArgs: TransactionBufferCloseCompressedInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: TRemainingAccounts;
 };
@@ -189,7 +189,7 @@ export function getTransactionBufferCloseCompressedInstruction<
   TAccountSlotHashSysvar extends string,
   TAccountInstructionsSysvar extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 >(
   input: TransactionBufferCloseCompressedInput<
     TAccountPayer,
@@ -283,7 +283,7 @@ export function getTransactionBufferCloseCompressedInstruction<
 
 export type ParsedTransactionBufferCloseCompressedInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -300,11 +300,11 @@ export type ParsedTransactionBufferCloseCompressedInstruction<
 
 export function parseTransactionBufferCloseCompressedInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedTransactionBufferCloseCompressedInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 7) {
     // TODO: Coded error.

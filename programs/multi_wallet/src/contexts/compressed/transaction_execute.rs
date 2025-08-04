@@ -77,9 +77,13 @@ impl<'info> TransactionExecuteCompressed<'info> {
             &vault_pubkey,
         )?;
 
-        let protected_accounts = &[transaction_buffer.payer, transaction_buffer.key()];
+        let protected_accounts = &[transaction_buffer.key()];
 
-        executable_message.execute_message(vault_signer_seed, protected_accounts)?;
+        executable_message.execute_message(
+            vault_signer_seed,
+            protected_accounts,
+            Some(transaction_buffer.payer),
+        )?;
 
         Ok(())
     }

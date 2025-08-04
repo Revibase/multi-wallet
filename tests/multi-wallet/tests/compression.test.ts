@@ -1,5 +1,6 @@
 import {
   compressSettingsAccount,
+  decompressSettingsAccount,
   fetchMaybeSettings,
   fetchSettingsData,
   getSettingsFromIndex,
@@ -7,7 +8,6 @@ import {
 import { expect } from "chai";
 import {
   createMultiWallet,
-  fundMultiWalletVault,
   sendTransaction,
   setupTestEnvironment,
 } from "../helpers";
@@ -24,9 +24,6 @@ export function runCompressionTests() {
     });
 
     it("should handle compress settings account", async () => {
-      // Fund the wallet for transaction
-      await fundMultiWalletVault(ctx, BigInt(10 ** 9 * 0.3));
-
       const compressIxs = await compressSettingsAccount({
         index: ctx.index,
         payer: ctx.payer,
@@ -51,6 +48,31 @@ export function runCompressionTests() {
         expect(Number(settingsDataCompressed.index)).equal(
           Number(ctx.index),
           "Settings compressed account should not be null"
+        );
+      } catch (error) {
+        console.error("Test failed:", error);
+        throw error;
+      }
+
+      const decompressIxs = await decompressSettingsAccount({
+        index: ctx.index,
+        payer: ctx.payer,
+        signers: [ctx.wallet],
+      });
+
+      try {
+        await sendTransaction(
+          ctx.connection,
+          [...decompressIxs],
+          ctx.payer,
+          ctx.sendAndConfirm,
+          ctx.addressLookUpTable
+        );
+        const settings = await getSettingsFromIndex(ctx.index);
+        const settingsData = await fetchMaybeSettings(ctx.connection, settings);
+        expect(settingsData.exists).equal(
+          true,
+          "Settings account should exist"
         );
       } catch (error) {
         console.error("Test failed:", error);

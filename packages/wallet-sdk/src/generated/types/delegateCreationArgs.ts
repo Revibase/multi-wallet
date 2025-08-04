@@ -12,9 +12,9 @@ import {
   getStructEncoder,
   getU8Decoder,
   getU8Encoder,
-  type Codec,
-  type Decoder,
-  type Encoder,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
 } from '@solana/kit';
 import {
   getPackedAddressTreeInfoDecoder,
@@ -33,21 +33,21 @@ export type DelegateCreationArgsArgs = {
   outputStateTreeIndex: number;
 };
 
-export function getDelegateCreationArgsEncoder(): Encoder<DelegateCreationArgsArgs> {
+export function getDelegateCreationArgsEncoder(): FixedSizeEncoder<DelegateCreationArgsArgs> {
   return getStructEncoder([
     ['addressTreeInfo', getPackedAddressTreeInfoEncoder()],
     ['outputStateTreeIndex', getU8Encoder()],
   ]);
 }
 
-export function getDelegateCreationArgsDecoder(): Decoder<DelegateCreationArgs> {
+export function getDelegateCreationArgsDecoder(): FixedSizeDecoder<DelegateCreationArgs> {
   return getStructDecoder([
     ['addressTreeInfo', getPackedAddressTreeInfoDecoder()],
     ['outputStateTreeIndex', getU8Decoder()],
   ]);
 }
 
-export function getDelegateCreationArgsCodec(): Codec<
+export function getDelegateCreationArgsCodec(): FixedSizeCodec<
   DelegateCreationArgsArgs,
   DelegateCreationArgs
 > {

@@ -19,14 +19,14 @@ import {
   getU64Decoder,
   getU64Encoder,
   transformEncoder,
+  type AccountMeta,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
-  type IAccountMeta,
-  type IInstruction,
-  type IInstructionWithAccounts,
-  type IInstructionWithData,
+  type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type Option,
   type OptionOrNullable,
   type ReadonlyAccount,
@@ -40,22 +40,22 @@ import {
   getProofArgsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  getSettingsProofArgsDecoder,
-  getSettingsProofArgsEncoder,
+  getSettingsReadonlyArgsDecoder,
+  getSettingsReadonlyArgsEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-  type SettingsProofArgs,
-  type SettingsProofArgsArgs,
+  type SettingsReadonlyArgs,
+  type SettingsReadonlyArgsArgs,
 } from "../types";
 
 export const NATIVE_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR = new Uint8Array([
-  215, 168, 194, 70, 97, 19, 81, 126,
+  28,
 ]);
 
 export function getNativeTransferIntentCompressedDiscriminatorBytes() {
-  return fixEncoderSize(getBytesEncoder(), 8).encode(
+  return fixEncoderSize(getBytesEncoder(), 1).encode(
     NATIVE_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR
   );
 }
@@ -64,20 +64,20 @@ export type NativeTransferIntentCompressedInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountSlotHashSysvar extends
     | string
-    | IAccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
   TAccountInstructionsSysvar extends
     | string
-    | IAccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
-  TAccountDomainConfig extends string | IAccountMeta<string> = string,
-  TAccountSource extends string | IAccountMeta<string> = string,
-  TAccountDestination extends string | IAccountMeta<string> = string,
+    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+  TAccountDomainConfig extends string | AccountMeta<string> = string,
+  TAccountSource extends string | AccountMeta<string> = string,
+  TAccountDestination extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | IAccountMeta<string> = "11111111111111111111111111111111",
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
-> = IInstruction<TProgram> &
-  IInstructionWithData<Uint8Array> &
-  IInstructionWithAccounts<
+    | AccountMeta<string> = "11111111111111111111111111111111",
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
+> = Instruction<TProgram> &
+  InstructionWithData<ReadonlyUint8Array> &
+  InstructionWithAccounts<
     [
       TAccountSlotHashSysvar extends string
         ? ReadonlyAccount<TAccountSlotHashSysvar>
@@ -105,27 +105,27 @@ export type NativeTransferIntentCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   amount: bigint;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
-  settingsArgs: SettingsProofArgs;
+  settingsReadonly: SettingsReadonlyArgs;
   compressedProofArgs: ProofArgs;
 };
 
 export type NativeTransferIntentCompressedInstructionDataArgs = {
   amount: number | bigint;
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  settingsArgs: SettingsProofArgsArgs;
+  settingsReadonly: SettingsReadonlyArgsArgs;
   compressedProofArgs: ProofArgsArgs;
 };
 
 export function getNativeTransferIntentCompressedInstructionDataEncoder(): Encoder<NativeTransferIntentCompressedInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["amount", getU64Encoder()],
       [
         "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
-      ["settingsArgs", getSettingsProofArgsEncoder()],
+      ["settingsReadonly", getSettingsReadonlyArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
@@ -137,10 +137,10 @@ export function getNativeTransferIntentCompressedInstructionDataEncoder(): Encod
 
 export function getNativeTransferIntentCompressedInstructionDataDecoder(): Decoder<NativeTransferIntentCompressedInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["amount", getU64Decoder()],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ["settingsArgs", getSettingsProofArgsDecoder()],
+    ["settingsReadonly", getSettingsReadonlyArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }
@@ -162,7 +162,7 @@ export type NativeTransferIntentCompressedInput<
   TAccountSource extends string = string,
   TAccountDestination extends string = string,
   TAccountSystemProgram extends string = string,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = {
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
@@ -172,7 +172,7 @@ export type NativeTransferIntentCompressedInput<
   systemProgram?: Address<TAccountSystemProgram>;
   amount: NativeTransferIntentCompressedInstructionDataArgs["amount"];
   secp256r1VerifyArgs: NativeTransferIntentCompressedInstructionDataArgs["secp256r1VerifyArgs"];
-  settingsArgs: NativeTransferIntentCompressedInstructionDataArgs["settingsArgs"];
+  settingsReadonly: NativeTransferIntentCompressedInstructionDataArgs["settingsReadonly"];
   compressedProofArgs: NativeTransferIntentCompressedInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: TRemainingAccounts;
 };
@@ -185,7 +185,7 @@ export function getNativeTransferIntentCompressedInstruction<
   TAccountDestination extends string,
   TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TRemainingAccounts extends readonly IAccountMeta<string>[] = [],
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 >(
   input: NativeTransferIntentCompressedInput<
     TAccountSlotHashSysvar,
@@ -275,7 +275,7 @@ export function getNativeTransferIntentCompressedInstruction<
 
 export type ParsedNativeTransferIntentCompressedInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountMetas extends readonly IAccountMeta[] = readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
@@ -291,11 +291,11 @@ export type ParsedNativeTransferIntentCompressedInstruction<
 
 export function parseNativeTransferIntentCompressedInstruction<
   TProgram extends string,
-  TAccountMetas extends readonly IAccountMeta[],
+  TAccountMetas extends readonly AccountMeta[],
 >(
-  instruction: IInstruction<TProgram> &
-    IInstructionWithAccounts<TAccountMetas> &
-    IInstructionWithData<Uint8Array>
+  instruction: Instruction<TProgram> &
+    InstructionWithAccounts<TAccountMetas> &
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedNativeTransferIntentCompressedInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 6) {
     // TODO: Coded error.

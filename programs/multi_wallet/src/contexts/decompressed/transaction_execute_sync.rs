@@ -1,7 +1,7 @@
 use crate::{
     id,
     state::{
-        DomainConfig, MemberKey, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings,
+        ChallengeArgs, DomainConfig, MemberKey, Secp256r1VerifyArgs, Settings,
         TransactionActionType, TransactionMessage, SEED_MULTISIG,
     },
     utils::durable_nonce_check,
@@ -13,7 +13,7 @@ use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 #[derive(Accounts)]
 pub struct TransactionExecuteSync<'info> {
     #[account(mut)]
-    pub settings: Account<'info, Settings>,
+    pub settings: AccountLoader<'info, Settings>,
     /// CHECK:
     #[account(
         address = SlotHashes::id()
@@ -47,14 +47,12 @@ impl<'info> TransactionExecuteSync<'info> {
         let mut initiate = false;
         let mut execute = false;
         let mut vote_count = 0;
+
+        let settings = settings.load()?;
         let threshold = settings.threshold as usize;
-        let secp256r1_member_key = if secp256r1_verify_args.is_some() {
-            Some(MemberKey::convert_secp256r1(
-                &secp256r1_verify_args.as_ref().unwrap().public_key,
-            )?)
-        } else {
-            None
-        };
+        let secp256r1_member_key =
+            MemberKey::get_signer(&None, secp256r1_verify_args, Some(instructions_sysvar))
+                .map_or(None, |f| Some(f));
 
         for member in &settings.members {
             let has_permission = |perm| member.permissions.has(perm);
@@ -82,9 +80,10 @@ impl<'info> TransactionExecuteSync<'info> {
             }
 
             if is_secp256r1_signer {
-                let expected_domain_config = member
-                    .domain_config
-                    .ok_or(MultisigError::DomainConfigIsMissing)?;
+                require!(
+                    member.domain_config.ne(&Pubkey::default()),
+                    MultisigError::DomainConfigIsMissing
+                );
 
                 require!(
                     domain_config.is_some()
@@ -92,7 +91,7 @@ impl<'info> TransactionExecuteSync<'info> {
                             .as_ref()
                             .unwrap()
                             .key()
-                            .eq(&expected_domain_config),
+                            .eq(&member.domain_config),
                     MultisigError::MemberDoesNotBelongToDomainConfig
                 );
 
@@ -107,14 +106,15 @@ impl<'info> TransactionExecuteSync<'info> {
                     .as_ref()
                     .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
 
-                Secp256r1Pubkey::verify_webauthn(
-                    secp256r1_verify_data,
+                secp256r1_verify_data.verify_webauthn(
                     slot_hash_sysvar,
                     domain_config,
-                    &settings.key(),
-                    &transaction_message_hash.to_bytes(),
-                    TransactionActionType::Sync,
-                    &Some(instructions_sysvar.clone()),
+                    instructions_sysvar,
+                    ChallengeArgs {
+                        account: ctx.accounts.settings.key(),
+                        message_hash: transaction_message_hash.to_bytes(),
+                        action_type: TransactionActionType::Sync,
+                    },
                 )?;
             }
         }
@@ -141,7 +141,7 @@ impl<'info> TransactionExecuteSync<'info> {
         transaction_message: TransactionMessage,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
-        let settings = &mut ctx.accounts.settings;
+        let settings = ctx.accounts.settings.load()?;
         let vault_transaction_message =
             transaction_message.convert_to_vault_transaction_message(ctx.remaining_accounts)?;
         vault_transaction_message.validate()?;
@@ -158,13 +158,15 @@ impl<'info> TransactionExecuteSync<'info> {
             .get(num_lookups..message_end_index)
             .ok_or(MultisigError::InvalidNumberOfAccounts)?;
 
-        let settings_key = settings.key();
+        let settings_key = ctx.accounts.settings.key();
         let vault_signer_seed: &[&[u8]] = &[
             SEED_MULTISIG,
             settings_key.as_ref(),
             SEED_VAULT,
             &[settings.multi_wallet_bump],
         ];
+
+        drop(settings);
 
         let vault_pubkey = Pubkey::create_program_address(vault_signer_seed, &id()).unwrap();
 
@@ -177,9 +179,7 @@ impl<'info> TransactionExecuteSync<'info> {
 
         let protected_accounts = &[];
 
-        executable_message.execute_message(vault_signer_seed, protected_accounts)?;
-
-        settings.reload()?;
+        executable_message.execute_message(vault_signer_seed, protected_accounts, None)?;
 
         Ok(())
     }

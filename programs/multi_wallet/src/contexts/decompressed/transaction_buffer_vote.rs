@@ -1,6 +1,6 @@
 use crate::{
     state::{
-        DomainConfig, KeyType, MemberKey, Secp256r1Pubkey, Secp256r1VerifyArgs, Settings,
+        ChallengeArgs, DomainConfig, KeyType, MemberKey, Secp256r1VerifyArgs, Settings,
         TransactionActionType,
     },
     MultisigError, Permission, TransactionBuffer,
@@ -12,7 +12,7 @@ pub struct TransactionBufferVote<'info> {
     #[account(
         address = transaction_buffer.multi_wallet_settings,
     )]
-    pub settings: Account<'info, Settings>,
+    pub settings: AccountLoader<'info, Settings>,
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
     #[account(mut)]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
@@ -45,8 +45,9 @@ impl TransactionBufferVote<'_> {
         transaction_buffer.validate_hash()?;
         transaction_buffer.validate_size()?;
 
-        let signer = MemberKey::get_signer(voter, secp256r1_verify_args)?;
-
+        let signer =
+            MemberKey::get_signer(voter, secp256r1_verify_args, instructions_sysvar.as_ref())?;
+        let settings = settings.load()?;
         let member = settings
             .members
             .iter()
@@ -59,9 +60,10 @@ impl TransactionBufferVote<'_> {
         );
 
         if signer.get_type().eq(&KeyType::Secp256r1) {
-            let expected_domain_config = member
-                .domain_config
-                .ok_or(MultisigError::DomainConfigIsMissing)?;
+            require!(
+                member.domain_config.ne(&Pubkey::default()),
+                MultisigError::DomainConfigIsMissing
+            );
 
             require!(
                 domain_config.is_some()
@@ -69,7 +71,7 @@ impl TransactionBufferVote<'_> {
                         .as_ref()
                         .unwrap()
                         .key()
-                        .eq(&expected_domain_config),
+                        .eq(&member.domain_config),
                 MultisigError::MemberDoesNotBelongToDomainConfig
             );
 
@@ -77,14 +79,19 @@ impl TransactionBufferVote<'_> {
                 .as_ref()
                 .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
 
-            Secp256r1Pubkey::verify_webauthn(
-                secp256r1_verify_data,
+            let instructions_sysvar = instructions_sysvar
+                .as_ref()
+                .ok_or(MultisigError::MissingAccount)?;
+
+            secp256r1_verify_data.verify_webauthn(
                 slot_hash_sysvar,
                 domain_config,
-                &transaction_buffer.key(),
-                &transaction_buffer.final_buffer_hash,
-                TransactionActionType::Vote,
                 instructions_sysvar,
+                ChallengeArgs {
+                    account: transaction_buffer.key(),
+                    message_hash: transaction_buffer.final_buffer_hash,
+                    action_type: TransactionActionType::Vote,
+                },
             )?;
         }
 
@@ -98,7 +105,11 @@ impl TransactionBufferVote<'_> {
     ) -> Result<()> {
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
         let voter = &ctx.accounts.voter;
-        let signer = MemberKey::get_signer(voter, &secp256r1_verify_args)?;
+        let signer = MemberKey::get_signer(
+            voter,
+            &secp256r1_verify_args,
+            ctx.accounts.instructions_sysvar.as_ref(),
+        )?;
 
         transaction_buffer.add_voter(&signer);
 

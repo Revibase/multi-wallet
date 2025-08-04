@@ -1,17 +1,22 @@
-import { IInstruction, TransactionSigner } from "@solana/kit";
+import { Instruction, OptionOrNullable, TransactionSigner } from "@solana/kit";
 import {
   getCompressedSettingsAddressFromIndex,
   getDelegateAddress,
 } from "../compressed";
 import {
   convertToCompressedProofArgs,
+  getCompressedAccountHashes,
   getCompressedAccountInitArgs,
+  getCompressedAccountMutArgs,
   getNewAddressesParams,
 } from "../compressed/internal";
 import { PackedAccounts } from "../compressed/packedAccounts";
 import {
+  Delegate,
+  DelegateCreateOrMutateArgsArgs,
   getCreateMultiWalletCompressedInstruction,
   getCreateMultiWalletInstructionAsync,
+  getDelegateDecoder,
 } from "../generated";
 import { Permission, Permissions, Secp256r1Key } from "../types";
 import {
@@ -61,53 +66,114 @@ export async function createWallet({
     await packedAccounts.addSystemAccounts();
   }
   const newAddressParams = [];
+  const hashesWithTree = [];
+
+  if (Permissions.has(permissions, Permission.IsDelegate)) {
+    const member =
+      "address" in initialMember ? initialMember.address : initialMember;
+
+    const delegateAddress = await getDelegateAddress(member);
+    const result =
+      await getLightProtocolRpc().getCompressedAccount(delegateAddress);
+    if (!result?.data?.data) {
+      newAddressParams.push(
+        ...getNewAddressesParams([
+          {
+            pubkey: delegateAddress,
+            type: "Delegate" as const,
+          },
+        ])
+      );
+    } else {
+      const data = getDelegateDecoder().decode(result.data.data);
+      if (data.index.__option === "None") {
+        hashesWithTree.push(
+          ...(await getCompressedAccountHashes([
+            {
+              pubkey: delegateAddress,
+              type: "Delegate" as const,
+            },
+          ]))
+        );
+      } else {
+        throw new Error("Delegate already exist.");
+      }
+    }
+  }
+
   if (compressed) {
     const settingsAddress = await getCompressedSettingsAddressFromIndex(index);
-    newAddressParams.push({
-      pubkey: settingsAddress,
-      type: "Settings" as const,
-    });
-  }
-  if (Permissions.has(permissions, Permission.IsDelegate)) {
-    const delegateAddress = await getDelegateAddress(
-      "address" in initialMember ? initialMember.address : initialMember
+    newAddressParams.push(
+      ...getNewAddressesParams([
+        {
+          pubkey: settingsAddress,
+          type: "Settings" as const,
+        },
+      ])
     );
-    newAddressParams.push({
-      pubkey: delegateAddress,
-      type: "Delegate" as const,
-    });
   }
-  const newAddressesParams = getNewAddressesParams(newAddressParams);
+  const hashesWithTreeEndIndex = hashesWithTree.length;
+
   const proof = await getLightProtocolRpc().getValidityProofV0(
-    [],
-    newAddressesParams
+    hashesWithTree,
+    newAddressParams
   );
+
+  let delegateCreationArgs: OptionOrNullable<DelegateCreateOrMutateArgsArgs>;
+  if (hashesWithTreeEndIndex > 0) {
+    const mutArgs = (
+      await getCompressedAccountMutArgs<Delegate>(
+        packedAccounts,
+        proof.treeInfos.slice(0, hashesWithTreeEndIndex),
+        proof.leafIndices.slice(0, hashesWithTreeEndIndex),
+        proof.rootIndices.slice(0, hashesWithTreeEndIndex),
+        proof.proveByIndices.slice(0, hashesWithTreeEndIndex),
+        hashesWithTree.filter((x) => x.type === "Delegate"),
+        getDelegateDecoder()
+      )
+    )[0];
+    delegateCreationArgs = { __kind: "Mutate", fields: [mutArgs] as const };
+  }
+
   const initArgs = await getCompressedAccountInitArgs(
     packedAccounts,
-    proof.treeInfos,
-    proof.roots,
-    proof.rootIndices,
-    newAddressesParams
+    proof.treeInfos.slice(hashesWithTreeEndIndex),
+    proof.roots.slice(hashesWithTreeEndIndex),
+    proof.rootIndices.slice(hashesWithTreeEndIndex),
+    newAddressParams,
+    hashesWithTreeEndIndex > 0
+      ? proof.treeInfos.slice(0, hashesWithTreeEndIndex)
+      : undefined
   );
-  const delegateCreationArgs =
-    initArgs.find((x) => x.type === "Delegate") ?? null;
+  const createArgs = initArgs.find((x) => x.type === "Delegate");
+  if (!createArgs) {
+    delegateCreationArgs = null;
+  } else {
+    delegateCreationArgs = {
+      __kind: "Create",
+      fields: [createArgs] as const,
+    };
+  }
+
   const settingsCreationArgs =
     initArgs.find((x) => x.type === "Settings") ?? null;
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
 
-  const instructions: IInstruction[] = [];
+  const instructions: Instruction[] = [];
 
   if (compressed) {
     if (!settingsCreationArgs) {
-      throw new Error("Proof args is missing.");
+      throw new Error("Settings creation args is missing.");
     }
+
     const compressedProofArgs = convertToCompressedProofArgs(
       proof,
       systemOffset
     );
     instructions.push(
       getCreateMultiWalletCompressedInstruction({
+        settingsIndex: index,
         instructionsSysvar,
         slotHashSysvar,
         payer: payer,
@@ -119,7 +185,7 @@ export async function createWallet({
         delegateCreationArgs,
         globalCounter,
         compressedProofArgs,
-        settingsCreationArgs: settingsCreationArgs,
+        settingsCreation: settingsCreationArgs,
         remainingAccounts,
       })
     );

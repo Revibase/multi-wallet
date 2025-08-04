@@ -1,16 +1,20 @@
-import {
-  AccountRole,
-  IAccountSignerMeta,
-  TransactionSigner,
-} from "@solana/kit";
+import { ValidityProofWithContext } from "@lightprotocol/stateless.js";
+import { AccountRole, AccountSignerMeta, TransactionSigner } from "@solana/kit";
 import { getCompressedSettingsAddressFromIndex } from "../compressed";
 import {
   convertToCompressedProofArgs,
+  getCompressedAccountHashes,
   getCompressedAccountInitArgs,
+  getCompressedAccountMutArgs,
   getNewAddressesParams,
 } from "../compressed/internal";
 import { PackedAccounts } from "../compressed/packedAccounts";
-import { getCompressSettingsAccountInstruction } from "../generated";
+import {
+  CompressedSettings,
+  getCompressedSettingsDecoder,
+  getCompressSettingsAccountInstruction,
+  SettingsCreateOrMutateArgsArgs,
+} from "../generated";
 import { Secp256r1Key } from "../types";
 import { getLightProtocolRpc, getSettingsFromIndex } from "../utils";
 import {
@@ -32,22 +36,63 @@ export async function compressSettingsAccount({
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
   const settingsAddress = await getCompressedSettingsAddressFromIndex(index);
-  const newAddresses = getNewAddressesParams([
-    { pubkey: settingsAddress, type: "Settings" },
-  ]);
-  const proof = await getLightProtocolRpc().getValidityProofV0(
-    [],
-    newAddresses
-  );
-  const settingsCreationArgs = (
-    await getCompressedAccountInitArgs(
-      packedAccounts,
-      proof.treeInfos,
-      proof.roots,
-      proof.rootIndices,
-      newAddresses
-    )
-  )[0];
+  let settingsArg: SettingsCreateOrMutateArgsArgs;
+  let proof: ValidityProofWithContext;
+  const result =
+    await getLightProtocolRpc().getCompressedAccount(settingsAddress);
+
+  if (!result?.data?.data) {
+    const newAddressParams = getNewAddressesParams([
+      { pubkey: settingsAddress, type: "Settings" },
+    ]);
+
+    proof = await getLightProtocolRpc().getValidityProofV0(
+      [],
+      newAddressParams
+    );
+    const settingsInitArgs = (
+      await getCompressedAccountInitArgs(
+        packedAccounts,
+        proof.treeInfos,
+        proof.roots,
+        proof.rootIndices,
+        newAddressParams
+      )
+    )[0];
+    settingsArg = {
+      __kind: "Create",
+      fields: [settingsInitArgs] as const,
+    };
+  } else {
+    const data = getCompressedSettingsDecoder().decode(result.data.data);
+    if (data.data.__option === "None") {
+      const hashesWithTree = await getCompressedAccountHashes([
+        { pubkey: settingsAddress, type: "Settings" },
+      ]);
+
+      proof = await getLightProtocolRpc().getValidityProofV0(
+        hashesWithTree,
+        []
+      );
+      const settingsMutArgs = (
+        await getCompressedAccountMutArgs<CompressedSettings>(
+          packedAccounts,
+          proof.treeInfos,
+          proof.leafIndices,
+          proof.rootIndices,
+          proof.proveByIndices,
+          hashesWithTree.filter((x) => x.type === "Settings"),
+          getCompressedSettingsDecoder()
+        )
+      )[0];
+      settingsArg = {
+        __kind: "Mutate",
+        fields: [settingsMutArgs] as const,
+      };
+    } else {
+      throw new Error("Settings account is already compressed.");
+    }
+  }
 
   const dedupSigners = getDeduplicatedSigners(signers);
   const {
@@ -71,7 +116,7 @@ export async function compressSettingsAccount({
             address: x.address,
             role: AccountRole.READONLY_SIGNER,
             signer: x,
-          } as IAccountSignerMeta)
+          }) as AccountSignerMeta
       )
   );
 
@@ -87,7 +132,7 @@ export async function compressSettingsAccount({
   instructions.push(
     getCompressSettingsAccountInstruction({
       settings,
-      settingsCreationArgs,
+      settingsArg,
       compressedProofArgs,
       payer,
       instructionsSysvar,

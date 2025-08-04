@@ -10,8 +10,6 @@ import {
   addDecoderSizePrefix,
   addEncoderSizePrefix,
   combineCodec,
-  fixDecoderSize,
-  fixEncoderSize,
   getBytesDecoder,
   getBytesEncoder,
   getStructDecoder,
@@ -20,53 +18,45 @@ import {
   getU32Encoder,
   getU64Decoder,
   getU64Encoder,
+  getU8Decoder,
+  getU8Encoder,
   type Codec,
   type Decoder,
   type Encoder,
   type ReadonlyUint8Array,
 } from '@solana/kit';
-import {
-  getSecp256r1PubkeyDecoder,
-  getSecp256r1PubkeyEncoder,
-  type Secp256r1Pubkey,
-  type Secp256r1PubkeyArgs,
-} from '.';
 
 export type Secp256r1VerifyArgs = {
-  publicKey: Secp256r1Pubkey;
-  clientDataJson: ReadonlyUint8Array;
+  index: number;
   slotNumber: bigint;
-  slotHash: ReadonlyUint8Array;
+  clientDataJson: ReadonlyUint8Array;
 };
 
 export type Secp256r1VerifyArgsArgs = {
-  publicKey: Secp256r1PubkeyArgs;
-  clientDataJson: ReadonlyUint8Array;
+  index: number;
   slotNumber: number | bigint;
-  slotHash: ReadonlyUint8Array;
+  clientDataJson: ReadonlyUint8Array;
 };
 
 export function getSecp256r1VerifyArgsEncoder(): Encoder<Secp256r1VerifyArgsArgs> {
   return getStructEncoder([
-    ['publicKey', getSecp256r1PubkeyEncoder()],
+    ['index', getU8Encoder()],
+    ['slotNumber', getU64Encoder()],
     [
       'clientDataJson',
       addEncoderSizePrefix(getBytesEncoder(), getU32Encoder()),
     ],
-    ['slotNumber', getU64Encoder()],
-    ['slotHash', fixEncoderSize(getBytesEncoder(), 32)],
   ]);
 }
 
 export function getSecp256r1VerifyArgsDecoder(): Decoder<Secp256r1VerifyArgs> {
   return getStructDecoder([
-    ['publicKey', getSecp256r1PubkeyDecoder()],
+    ['index', getU8Decoder()],
+    ['slotNumber', getU64Decoder()],
     [
       'clientDataJson',
       addDecoderSizePrefix(getBytesDecoder(), getU32Decoder()),
     ],
-    ['slotNumber', getU64Decoder()],
-    ['slotHash', fixDecoderSize(getBytesDecoder(), 32)],
   ]);
 }
 
