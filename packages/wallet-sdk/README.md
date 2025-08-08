@@ -8,7 +8,7 @@ npm install @revibase/wallet-sdk
 ## Quick Start
 
 This SDK requires a Helius RPC endpoint to connect to the Solana network.
-You can get one from Helius or any other Solana RPC provider that supports Helius features.
+You can get one from Helius or any other Solana RPC provider that supports Helius features. (DAS API & Photon RPC)
 
 
 ## Initialize the SDK
