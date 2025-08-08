@@ -17,7 +17,7 @@ You can get one from Helius or any other Solana RPC provider that supports Heliu
 import { initializeMultiWallet } from "@revibase/wallet-sdk";
 
 initializeMultiWallet({
-  rpcEndpoint: INSERT_YOUR_HELIUS_ENDPOINT_HERE
+  rpcEndpoint: INSERT_YOUR_HELIUS_RPC_ENDPOINT_HERE
 });
 ```
 
@@ -39,19 +39,19 @@ import { WalletModalProvider, WalletMultiButton } from "@solana/wallet-adapter-r
 
 
 export default function App() {
-  // Initialize the Revibase Multi-Wallet SDK
+
   useEffect(() => {
     initializeMultiWallet({
-      rpcEndpoint: RPC_ENDPOINT
+      rpcEndpoint: INSERT_YOUR_HELIUS_RPC_ENDPOINT_HERE
     });
   }, []);
 
 
   return (
-    <ConnectionProvider endpoint={RPC_ENDPOINT}>
+    <ConnectionProvider endpoint={INSERT_YOUR_HELIUS_RPC_ENDPOINT_HERE}>
       <WalletProvider wallets={[]} autoConnect>
         <WalletModalProvider>
-          <div style={{ padding: "2rem" }}>
+          <div>
             <WalletMultiButton />
             {...}
           </div>
