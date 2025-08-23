@@ -1,11 +1,12 @@
 use super::{
-    DomainConfig, MemberKeyWithPermissionsArgs, MemberWithCreationArgs, TransactionActionType,
+    DomainConfig, MemberKeyWithEditPermissionsArgs, MemberWithAddPermissionsArgs,
+    TransactionActionType,
 };
 use crate::error::MultisigError;
 use crate::id;
 use crate::state::member::{Member, MemberKey};
 use crate::state::{
-    ChallengeArgs, KeyType, MemberKeyWithCloseArgs, Permission, PermissionCounts,
+    ChallengeArgs, KeyType, MemberKeyWithRemovePermissionsArgs, Permission, PermissionCounts,
     SEED_DOMAIN_CONFIG, SEED_MULTISIG,
 };
 use anchor_lang::prelude::*;
@@ -35,21 +36,21 @@ impl Settings {
     }
     pub fn edit_permissions(
         &mut self,
-        members: Vec<MemberKeyWithPermissionsArgs>,
+        members: Vec<MemberKeyWithEditPermissionsArgs>,
     ) -> Result<(
-        Vec<MemberKeyWithPermissionsArgs>,
-        Vec<MemberKeyWithPermissionsArgs>,
+        Vec<MemberKeyWithEditPermissionsArgs>,
+        Vec<MemberKeyWithEditPermissionsArgs>,
     )> {
         MultisigSettings::edit_permissions(self, members)
     }
     pub fn add_members<'a>(
         &mut self,
         settings: &Pubkey,
-        new_members: Vec<MemberWithCreationArgs>,
+        new_members: Vec<MemberWithAddPermissionsArgs>,
         remaining_accounts: &'a [AccountInfo<'a>],
         sysvar_slot_history: &Option<UncheckedAccount<'a>>,
         instructions_sysvar: Option<&UncheckedAccount<'a>>,
-    ) -> Result<Vec<MemberWithCreationArgs>> {
+    ) -> Result<Vec<MemberWithAddPermissionsArgs>> {
         MultisigSettings::add_members(
             self,
             settings,
@@ -62,8 +63,8 @@ impl Settings {
 
     pub fn remove_members(
         &mut self,
-        member_pubkeys: Vec<MemberKeyWithCloseArgs>,
-    ) -> Result<Vec<MemberKeyWithCloseArgs>> {
+        member_pubkeys: Vec<MemberKeyWithRemovePermissionsArgs>,
+    ) -> Result<Vec<MemberKeyWithRemovePermissionsArgs>> {
         MultisigSettings::remove_members(self, member_pubkeys)
     }
 
@@ -174,11 +175,19 @@ pub trait MultisigSettings {
             if permissions.has(Permission::ExecuteTransaction) {
                 permission_counts.executors += 1;
             }
+            if permissions.has(Permission::IsPermanent) {
+                permission_counts.is_permanent += 1;
+            }
         }
 
         require!(
             threshold as usize <= permission_counts.voters,
             MultisigError::InsufficientSignersWithVotePermission
+        );
+
+        require!(
+            permission_counts.is_permanent <= 1,
+            MultisigError::TooManyPermanentMember
         );
 
         require!(
@@ -197,16 +206,21 @@ pub trait MultisigSettings {
     fn add_members<'a>(
         &mut self,
         settings: &Pubkey,
-        new_members: Vec<MemberWithCreationArgs>,
+        new_members: Vec<MemberWithAddPermissionsArgs>,
         remaining_accounts: &'a [AccountInfo<'a>],
         sysvar_slot_history: &Option<UncheckedAccount<'a>>,
         instructions_sysvar: Option<&UncheckedAccount<'a>>,
-    ) -> Result<Vec<MemberWithCreationArgs>> {
+    ) -> Result<Vec<MemberWithAddPermissionsArgs>> {
         let mut members_to_create_delegate_accounts = Vec::with_capacity(new_members.len());
         let mut new_member_data = Vec::with_capacity(new_members.len());
 
         for member_with_args in new_members.into_iter() {
             let member = &member_with_args.data;
+
+            require!(
+                !member.permissions.has(Permission::IsPermanent),
+                MultisigError::PermanentMemberPermissionNotAllowed
+            );
 
             if member.pubkey.get_type() == KeyType::Secp256r1 {
                 let (domain_config, rp_id_hash) =
@@ -248,8 +262,8 @@ pub trait MultisigSettings {
 
     fn remove_members(
         &mut self,
-        member_pubkeys: Vec<MemberKeyWithCloseArgs>,
-    ) -> Result<Vec<MemberKeyWithCloseArgs>> {
+        member_pubkeys: Vec<MemberKeyWithRemovePermissionsArgs>,
+    ) -> Result<Vec<MemberKeyWithRemovePermissionsArgs>> {
         let members = self.get_members().unwrap();
         let mut members_to_close = Vec::with_capacity(member_pubkeys.len());
         let mut keys_to_delete = Vec::with_capacity(member_pubkeys.len());
@@ -258,6 +272,13 @@ pub trait MultisigSettings {
             let is_delegate = members.iter().any(|member| {
                 member.pubkey == m.data && member.permissions.has(Permission::IsDelegate)
             });
+
+            require!(
+                !members.iter().any(|member| {
+                    member.pubkey == m.data && member.permissions.has(Permission::IsPermanent)
+                }),
+                MultisigError::PermanentMember
+            );
 
             if is_delegate {
                 members_to_close.push(m);
@@ -274,10 +295,10 @@ pub trait MultisigSettings {
 
     fn edit_permissions(
         &mut self,
-        new_members: Vec<MemberKeyWithPermissionsArgs>,
+        new_members: Vec<MemberKeyWithEditPermissionsArgs>,
     ) -> Result<(
-        Vec<MemberKeyWithPermissionsArgs>,
-        Vec<MemberKeyWithPermissionsArgs>,
+        Vec<MemberKeyWithEditPermissionsArgs>,
+        Vec<MemberKeyWithEditPermissionsArgs>,
     )> {
         let mut members_to_close_delegate_account = vec![];
         let mut members_to_create_delegate_account = vec![];
@@ -292,12 +313,20 @@ pub trait MultisigSettings {
         for member in new_members {
             let permission = member.permissions;
             let is_delegate = permission.has(Permission::IsDelegate);
+            let is_permanent = permission.has(Permission::IsPermanent);
             let pubkey = member.pubkey;
 
             match current_members_map.get(&pubkey) {
                 Some(existing_member) => {
                     let is_currently_delegate =
                         existing_member.permissions.has(Permission::IsDelegate);
+                    let is_currently_permanent_member =
+                        existing_member.permissions.has(Permission::IsPermanent);
+
+                    require!(
+                        is_currently_permanent_member.eq(&is_permanent),
+                        MultisigError::PermanentMember
+                    );
 
                     if is_delegate && !is_currently_delegate {
                         members_to_create_delegate_account.push(member);

@@ -26,7 +26,7 @@ pub struct CreateDomainConfig<'info> {
     pub domain_config: AccountLoader<'info, DomainConfig>,
     #[account(
         mut,
-        // address = ADMIN,
+        address = ADMIN,
     )]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,

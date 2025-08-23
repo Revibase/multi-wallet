@@ -16,6 +16,20 @@ pub enum MultisigError {
     )]
     DuplicateMember,
 
+    #[msg("Permanent members cannot be removed from the wallet.")]
+    PermanentMember,
+
+    #[msg("Permanent members can only be added during wallet creation.")]
+    PermanentMemberPermissionNotAllowed,
+
+    #[msg(
+        "A permanent member must be have delegate permissions and have no settings index assigned."
+    )]
+    InvalidPermanentMember,
+
+    #[msg("Only a maximum of one permanent member is allowed per wallet.")]
+    TooManyPermanentMember,
+
     #[msg("No members were provided. A multisig must have at least one member.")]
     EmptyMembers,
 
@@ -44,8 +58,14 @@ pub enum MultisigError {
     #[msg("A required account is missing from the transaction context.")]
     MissingAccount,
 
-    #[msg("A delegate creation args is required when the initial member has requested delegate permissions.")]
-    MissingDelegateArgs,
+    #[msg("A user delegate mutation args is required when the initial member has requested delegate permissions.")]
+    MissingUserDelegateArgs,
+
+    #[msg("A user is currently delegated to another wallet.")]
+    UserAlreadyDelegated,
+
+    #[msg("A user is currently not delegated.")]
+    UserNotDelegated,
 
     #[msg("At least one signer must have execute permissions to proceed.")]
     InsufficientSignerWithExecutePermission,

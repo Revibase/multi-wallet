@@ -12,7 +12,9 @@
       "docs": [
         "Applies one or more configuration changes to an existing multi-wallet."
       ],
-      "discriminator": [6],
+      "discriminator": [
+        8
+      ],
       "accounts": [
         {
           "name": "settings",
@@ -31,7 +33,18 @@
               {
                 "kind": "const",
                 "value": [
-                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
+                  109,
+                  117,
+                  108,
+                  116,
+                  105,
+                  95,
+                  119,
+                  97,
+                  108,
+                  108,
+                  101,
+                  116
                 ]
               },
               {
@@ -40,7 +53,13 @@
               },
               {
                 "kind": "const",
-                "value": [118, 97, 117, 108, 116]
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
               }
             ]
           }
@@ -88,7 +107,9 @@
       "docs": [
         "Applies one or more configuration changes to an existing multi-wallet."
       ],
-      "discriminator": [19],
+      "discriminator": [
+        19
+      ],
       "accounts": [
         {
           "name": "payer",
@@ -145,7 +166,9 @@
         "* Compressed Versions",
         "Compress an existing settings account."
       ],
-      "discriminator": [16],
+      "discriminator": [
+        16
+      ],
       "accounts": [
         {
           "name": "settings",
@@ -204,7 +227,9 @@
       "docs": [
         "Initializes a new domain configuration used for WebAuthn (secp256r1) verification."
       ],
-      "discriminator": [0],
+      "discriminator": [
+        0
+      ],
       "accounts": [
         {
           "name": "domain_config",
@@ -214,7 +239,19 @@
               {
                 "kind": "const",
                 "value": [
-                  100, 111, 109, 97, 105, 110, 95, 99, 111, 110, 102, 105, 103
+                  100,
+                  111,
+                  109,
+                  97,
+                  105,
+                  110,
+                  95,
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
                 ]
               },
               {
@@ -246,9 +283,56 @@
       ]
     },
     {
+      "name": "create_domain_users",
+      "docs": [
+        "Create User Account for WebAuthn"
+      ],
+      "discriminator": [
+        5
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "domain_config"
+        },
+        {
+          "name": "authority",
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
+            }
+          }
+        },
+        {
+          "name": "create_user_args",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "CreateDomainUserArgs"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "create_global_counter",
-      "docs": ["Create a global counter to index all multi wallets"],
-      "discriminator": [4],
+      "docs": [
+        "Create a global counter to index all multi wallets"
+      ],
+      "discriminator": [
+        4
+      ],
       "accounts": [
         {
           "name": "global_counter",
@@ -258,7 +342,19 @@
               {
                 "kind": "const",
                 "value": [
-                  103, 108, 111, 98, 97, 108, 95, 99, 111, 117, 110, 116, 101,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116,
+                  101,
                   114
                 ]
               }
@@ -278,11 +374,49 @@
       "args": []
     },
     {
+      "name": "create_global_users",
+      "docs": [
+        "Create Global User Account (for linking a user to a multisig wallet)"
+      ],
+      "discriminator": [
+        6
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
+            }
+          }
+        },
+        {
+          "name": "create_user_args",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "CreateGlobalUserArgs"
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "create_multi_wallet",
       "docs": [
         "Creates a new multi-wallet with the specified permissions and ownership."
       ],
-      "discriminator": [5],
+      "discriminator": [
+        7
+      ],
       "accounts": [
         {
           "name": "settings",
@@ -292,7 +426,18 @@
               {
                 "kind": "const",
                 "value": [
-                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
+                  109,
+                  117,
+                  108,
+                  116,
+                  105,
+                  95,
+                  119,
+                  97,
+                  108,
+                  108,
+                  101,
+                  116
                 ]
               },
               {
@@ -355,11 +500,11 @@
           }
         },
         {
-          "name": "delegate_creation_args",
+          "name": "user_mut_args",
           "type": {
             "option": {
               "defined": {
-                "name": "DelegateCreateOrMutateArgs"
+                "name": "UserMutArgs"
               }
             }
           }
@@ -381,7 +526,9 @@
       "docs": [
         "Creates a new multi-wallet with the specified permissions and ownership."
       ],
-      "discriminator": [18],
+      "discriminator": [
+        18
+      ],
       "accounts": [
         {
           "name": "payer",
@@ -452,11 +599,11 @@
           }
         },
         {
-          "name": "delegate_creation_args",
+          "name": "user_mut_args",
           "type": {
             "option": {
               "defined": {
-                "name": "DelegateCreateOrMutateArgs"
+                "name": "UserMutArgs"
               }
             }
           }
@@ -469,8 +616,12 @@
     },
     {
       "name": "decompress_settings_account",
-      "docs": ["Decompress an existing settings account."],
-      "discriminator": [17],
+      "docs": [
+        "Decompress an existing settings account."
+      ],
+      "discriminator": [
+        17
+      ],
       "accounts": [
         {
           "name": "settings",
@@ -480,7 +631,18 @@
               {
                 "kind": "const",
                 "value": [
-                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
+                  109,
+                  117,
+                  108,
+                  116,
+                  105,
+                  95,
+                  119,
+                  97,
+                  108,
+                  108,
+                  101,
+                  116
                 ]
               },
               {
@@ -547,7 +709,9 @@
       "docs": [
         "Deletes an existing domain configuration used for WebAuthn (secp256r1) verification."
       ],
-      "discriminator": [2],
+      "discriminator": [
+        2
+      ],
       "accounts": [
         {
           "name": "domain_config",
@@ -570,7 +734,9 @@
       "docs": [
         "Enables or disables a domain configuration. Useful for temporary suspension."
       ],
-      "discriminator": [3],
+      "discriminator": [
+        3
+      ],
       "accounts": [
         {
           "name": "domain_config",
@@ -594,7 +760,9 @@
       "docs": [
         "Updates an existing domain configuration used for WebAuthn (secp256r1) verification."
       ],
-      "discriminator": [1],
+      "discriminator": [
+        1
+      ],
       "accounts": [
         {
           "name": "domain_config",
@@ -621,357 +789,13 @@
       ]
     },
     {
-      "name": "native_transfer_intent",
-      "docs": ["Transfers SOL using a signed transfer intent."],
-      "discriminator": [15],
-      "accounts": [
-        {
-          "name": "settings"
-        },
-        {
-          "name": "slot_hash_sysvar",
-          "optional": true,
-          "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "instructions_sysvar",
-          "address": "Sysvar1nstructions1111111111111111111111111"
-        },
-        {
-          "name": "domain_config",
-          "optional": true
-        },
-        {
-          "name": "source",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "settings"
-              },
-              {
-                "kind": "const",
-                "value": [118, 97, 117, 108, 116]
-              }
-            ]
-          }
-        },
-        {
-          "name": "destination",
-          "writable": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        },
-        {
-          "name": "secp256r1_verify_args",
-          "type": {
-            "option": {
-              "defined": {
-                "name": "Secp256r1VerifyArgs"
-              }
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "native_transfer_intent_compressed",
-      "docs": ["Transfers SOL using a signed transfer intent."],
-      "discriminator": [28],
-      "accounts": [
-        {
-          "name": "slot_hash_sysvar",
-          "optional": true,
-          "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "instructions_sysvar",
-          "address": "Sysvar1nstructions1111111111111111111111111"
-        },
-        {
-          "name": "domain_config",
-          "optional": true
-        },
-        {
-          "name": "source",
-          "writable": true
-        },
-        {
-          "name": "destination",
-          "writable": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        },
-        {
-          "name": "secp256r1_verify_args",
-          "type": {
-            "option": {
-              "defined": {
-                "name": "Secp256r1VerifyArgs"
-              }
-            }
-          }
-        },
-        {
-          "name": "settings_readonly",
-          "type": {
-            "defined": {
-              "name": "SettingsReadonlyArgs"
-            }
-          }
-        },
-        {
-          "name": "compressed_proof_args",
-          "type": {
-            "defined": {
-              "name": "ProofArgs"
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "token_transfer_intent",
-      "docs": ["Transfers SPL tokens using a signed transfer intent."],
-      "discriminator": [14],
-      "accounts": [
-        {
-          "name": "settings"
-        },
-        {
-          "name": "slot_hash_sysvar",
-          "optional": true,
-          "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "instructions_sysvar",
-          "address": "Sysvar1nstructions1111111111111111111111111"
-        },
-        {
-          "name": "domain_config",
-          "optional": true
-        },
-        {
-          "name": "source",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "settings"
-              },
-              {
-                "kind": "const",
-                "value": [118, 97, 117, 108, 116]
-              }
-            ]
-          }
-        },
-        {
-          "name": "source_token_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "source"
-              },
-              {
-                "kind": "account",
-                "path": "token_program"
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
-                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
-                219, 233, 248, 89
-              ]
-            }
-          }
-        },
-        {
-          "name": "destination"
-        },
-        {
-          "name": "destination_token_account",
-          "writable": true
-        },
-        {
-          "name": "token_program"
-        },
-        {
-          "name": "mint"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        },
-        {
-          "name": "secp256r1_verify_args",
-          "type": {
-            "option": {
-              "defined": {
-                "name": "Secp256r1VerifyArgs"
-              }
-            }
-          }
-        }
-      ]
-    },
-    {
-      "name": "token_transfer_intent_compressed",
-      "docs": ["Transfers SPL tokens using a signed transfer intent."],
-      "discriminator": [27],
-      "accounts": [
-        {
-          "name": "slot_hash_sysvar",
-          "optional": true,
-          "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "instructions_sysvar",
-          "address": "Sysvar1nstructions1111111111111111111111111"
-        },
-        {
-          "name": "domain_config",
-          "optional": true
-        },
-        {
-          "name": "source",
-          "writable": true
-        },
-        {
-          "name": "source_token_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "source"
-              },
-              {
-                "kind": "account",
-                "path": "token_program"
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
-                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
-                219, 233, 248, 89
-              ]
-            }
-          }
-        },
-        {
-          "name": "destination"
-        },
-        {
-          "name": "destination_token_account",
-          "writable": true
-        },
-        {
-          "name": "token_program"
-        },
-        {
-          "name": "mint"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
-        }
-      ],
-      "args": [
-        {
-          "name": "amount",
-          "type": "u64"
-        },
-        {
-          "name": "secp256r1_verify_args",
-          "type": {
-            "option": {
-              "defined": {
-                "name": "Secp256r1VerifyArgs"
-              }
-            }
-          }
-        },
-        {
-          "name": "settings_readonly",
-          "type": {
-            "defined": {
-              "name": "SettingsReadonlyArgs"
-            }
-          }
-        },
-        {
-          "name": "compressed_proof_args",
-          "type": {
-            "defined": {
-              "name": "ProofArgs"
-            }
-          }
-        }
-      ]
-    },
-    {
       "name": "transaction_buffer_close",
-      "docs": ["Closes and cleans up a transaction buffer."],
-      "discriminator": [10],
+      "docs": [
+        "Closes and cleans up a transaction buffer."
+      ],
+      "discriminator": [
+        12
+      ],
       "accounts": [
         {
           "name": "settings"
@@ -1019,8 +843,12 @@
     },
     {
       "name": "transaction_buffer_close_compressed",
-      "docs": ["Closes and cleans up a transaction buffer."],
-      "discriminator": [23],
+      "docs": [
+        "Closes and cleans up a transaction buffer."
+      ],
+      "discriminator": [
+        23
+      ],
       "accounts": [
         {
           "name": "payer",
@@ -1089,7 +917,9 @@
       "docs": [
         "Creates a new transaction buffer to stage a transaction before execution."
       ],
-      "discriminator": [7],
+      "discriminator": [
+        9
+      ],
       "accounts": [
         {
           "name": "settings"
@@ -1152,7 +982,9 @@
       "docs": [
         "Creates a new transaction buffer to stage a transaction before execution."
       ],
-      "discriminator": [20],
+      "discriminator": [
+        20
+      ],
       "accounts": [
         {
           "name": "payer",
@@ -1225,8 +1057,12 @@
     },
     {
       "name": "transaction_buffer_execute",
-      "docs": ["Executes a previously approved transaction buffer."],
-      "discriminator": [11],
+      "docs": [
+        "Executes a previously approved transaction buffer."
+      ],
+      "discriminator": [
+        13
+      ],
       "accounts": [
         {
           "name": "settings"
@@ -1270,8 +1106,12 @@
     },
     {
       "name": "transaction_buffer_execute_compressed",
-      "docs": ["Executes a previously approved transaction buffer."],
-      "discriminator": [24],
+      "docs": [
+        "Executes a previously approved transaction buffer."
+      ],
+      "discriminator": [
+        24
+      ],
       "accounts": [
         {
           "name": "payer",
@@ -1336,7 +1176,9 @@
       "docs": [
         "Extends an existing transaction buffer to allow for updated data or additional time."
       ],
-      "discriminator": [9],
+      "discriminator": [
+        11
+      ],
       "accounts": [
         {
           "name": "settings"
@@ -1358,7 +1200,9 @@
       "docs": [
         "Extends an existing transaction buffer to allow for updated data or additional time."
       ],
-      "discriminator": [22],
+      "discriminator": [
+        22
+      ],
       "accounts": [
         {
           "name": "transaction_buffer",
@@ -1378,8 +1222,12 @@
     },
     {
       "name": "transaction_buffer_vote",
-      "docs": ["Signs a transaction buffer to register approval."],
-      "discriminator": [8],
+      "docs": [
+        "Signs a transaction buffer to register approval."
+      ],
+      "discriminator": [
+        10
+      ],
       "accounts": [
         {
           "name": "settings"
@@ -1427,8 +1275,12 @@
     },
     {
       "name": "transaction_buffer_vote_compressed",
-      "docs": ["Signs a transaction buffer to register approval."],
-      "discriminator": [21],
+      "docs": [
+        "Signs a transaction buffer to register approval."
+      ],
+      "discriminator": [
+        21
+      ],
       "accounts": [
         {
           "name": "payer",
@@ -1494,8 +1346,12 @@
     },
     {
       "name": "transaction_execute",
-      "docs": ["Executes a staged transaction from a buffer."],
-      "discriminator": [12],
+      "docs": [
+        "Executes a staged transaction from a buffer."
+      ],
+      "discriminator": [
+        14
+      ],
       "accounts": [
         {
           "name": "settings",
@@ -1514,8 +1370,12 @@
     },
     {
       "name": "transaction_execute_compressed",
-      "docs": ["Executes a staged transaction from a buffer."],
-      "discriminator": [25],
+      "docs": [
+        "Executes a staged transaction from a buffer."
+      ],
+      "discriminator": [
+        25
+      ],
       "accounts": [
         {
           "name": "payer",
@@ -1538,7 +1398,9 @@
       "docs": [
         "Executes a transaction synchronously by directly submitting the message and verifying it."
       ],
-      "discriminator": [13],
+      "discriminator": [
+        15
+      ],
       "accounts": [
         {
           "name": "settings",
@@ -1584,7 +1446,9 @@
       "docs": [
         "Executes a transaction synchronously by directly submitting the message and verifying it."
       ],
-      "discriminator": [26],
+      "discriminator": [
+        26
+      ],
       "accounts": [
         {
           "name": "payer",
@@ -1646,19 +1510,55 @@
   "accounts": [
     {
       "name": "DomainConfig",
-      "discriminator": [201, 232, 212, 229, 59, 241, 106, 197]
+      "discriminator": [
+        201,
+        232,
+        212,
+        229,
+        59,
+        241,
+        106,
+        197
+      ]
     },
     {
       "name": "GlobalCounter",
-      "discriminator": [42, 206, 176, 58, 175, 129, 130, 233]
+      "discriminator": [
+        42,
+        206,
+        176,
+        58,
+        175,
+        129,
+        130,
+        233
+      ]
     },
     {
       "name": "Settings",
-      "discriminator": [223, 179, 163, 190, 177, 224, 67, 173]
+      "discriminator": [
+        223,
+        179,
+        163,
+        190,
+        177,
+        224,
+        67,
+        173
+      ]
     },
     {
       "name": "TransactionBuffer",
-      "discriminator": [90, 36, 35, 219, 93, 225, 110, 96]
+      "discriminator": [
+        90,
+        36,
+        35,
+        219,
+        93,
+        225,
+        110,
+        96
+      ]
     }
   ],
   "errors": [
@@ -1684,181 +1584,211 @@
     },
     {
       "code": 6004,
+      "name": "PermanentMember",
+      "msg": "Permanent members cannot be removed from the wallet."
+    },
+    {
+      "code": 6005,
+      "name": "PermanentMemberPermissionNotAllowed",
+      "msg": "Permanent members can only be added during wallet creation."
+    },
+    {
+      "code": 6006,
+      "name": "InvalidPermanentMember",
+      "msg": "A permanent member must be have delegate permissions and have no settings index assigned."
+    },
+    {
+      "code": 6007,
+      "name": "TooManyPermanentMember",
+      "msg": "Only a maximum of one permanent member is allowed per wallet."
+    },
+    {
+      "code": 6008,
       "name": "EmptyMembers",
       "msg": "No members were provided. A multisig must have at least one member."
     },
     {
-      "code": 6005,
+      "code": 6009,
       "name": "TooManyMembers",
       "msg": "The number of members exceeds the supported maximum 4."
     },
     {
-      "code": 6006,
+      "code": 6010,
       "name": "InvalidThreshold",
       "msg": "Invalid threshold value. It must be at least 1 and not exceed the number of voting-eligible members."
     },
     {
-      "code": 6007,
+      "code": 6011,
       "name": "InvalidTransactionMessage",
       "msg": "The transaction message structure is malformed or does not follow expected formatting."
     },
     {
-      "code": 6008,
+      "code": 6012,
       "name": "InvalidNumberOfAccounts",
       "msg": "The number of provided accounts does not match what was expected for this instruction."
     },
     {
-      "code": 6009,
+      "code": 6013,
       "name": "InvalidAccount",
       "msg": "One or more accounts provided failed validation. Ensure all required accounts are included and correct."
     },
     {
-      "code": 6010,
+      "code": 6014,
       "name": "InvalidArguments",
       "msg": "One or more arguments provided failed validation. Ensure all required arguments are included and correct."
     },
     {
-      "code": 6011,
+      "code": 6015,
       "name": "MissingAccount",
       "msg": "A required account is missing from the transaction context."
     },
     {
-      "code": 6012,
-      "name": "MissingDelegateArgs",
-      "msg": "A delegate creation args is required when the initial member has requested delegate permissions."
+      "code": 6016,
+      "name": "MissingUserDelegateArgs",
+      "msg": "A user delegate mutation args is required when the initial member has requested delegate permissions."
     },
     {
-      "code": 6013,
+      "code": 6017,
+      "name": "UserAlreadyDelegated",
+      "msg": "A user is currently delegated to another wallet."
+    },
+    {
+      "code": 6018,
+      "name": "UserNotDelegated",
+      "msg": "A user is currently not delegated."
+    },
+    {
+      "code": 6019,
       "name": "InsufficientSignerWithExecutePermission",
       "msg": "At least one signer must have execute permissions to proceed."
     },
     {
-      "code": 6014,
+      "code": 6020,
       "name": "InsufficientSignerWithInitiatePermission",
       "msg": "At least one signer must have initiate permissions to perform this action."
     },
     {
-      "code": 6015,
+      "code": 6021,
       "name": "InsufficientSignersWithVotePermission",
       "msg": "The approval threshold cannot be met because there aren't enough voters with the vote permission."
     },
     {
-      "code": 6016,
+      "code": 6022,
       "name": "NoSignerFound",
       "msg": "No valid signer was found in this transaction. Ensure at least one authorized signer is present."
     },
     {
-      "code": 6017,
+      "code": 6023,
       "name": "UnauthorisedToCloseTransactionBuffer",
       "msg": "Only the transaction's creator or rent payer is allowed to close the transaction buffer."
     },
     {
-      "code": 6018,
+      "code": 6024,
       "name": "InvalidBuffer",
       "msg": "The contents of the buffer do not match the expected hash. It may have been tampered with."
     },
     {
-      "code": 6019,
+      "code": 6025,
       "name": "FinalBufferHashMismatch",
       "msg": "The final hash of the buffer doesn't match what was expected. The buffer might be corrupted or altered."
     },
     {
-      "code": 6020,
+      "code": 6026,
       "name": "FinalBufferSizeExceeded",
       "msg": "The serialized transaction buffer exceeds the maximum allowed size of 10,128 bytes."
     },
     {
-      "code": 6021,
+      "code": 6027,
       "name": "FinalBufferSizeMismatch",
       "msg": "The declared size of the buffer does not match its actual size."
     },
     {
-      "code": 6022,
+      "code": 6028,
       "name": "TransactionHasExpired",
       "msg": "The transaction has expired. It must be executed within 3 minutes of approval."
     },
     {
-      "code": 6023,
+      "code": 6029,
       "name": "TransactionNotApproved",
       "msg": "The transaction hasn't received enough approvals yet to be executed."
     },
     {
-      "code": 6024,
+      "code": 6030,
       "name": "ProtectedAccount",
       "msg": "Writable CPI calls to protected accounts are not permitted."
     },
     {
-      "code": 6025,
+      "code": 6031,
       "name": "MaxLengthExceeded",
       "msg": "One of the input strings exceeds the maximum allowed character limit."
     },
     {
-      "code": 6026,
+      "code": 6032,
       "name": "MissingSysvarSlotHistory",
       "msg": "The Slot History sysvar account is missing. It must be included as an account in this instruction."
     },
     {
-      "code": 6027,
+      "code": 6033,
       "name": "InvalidSysvarDataFormat",
       "msg": "Failed to parse sysvar: slot history format is invalid or corrupted."
     },
     {
-      "code": 6028,
+      "code": 6034,
       "name": "SlotNumberNotFound",
       "msg": "The specified slot number is not present in the provided slot history."
     },
     {
-      "code": 6029,
+      "code": 6035,
       "name": "DomainConfigIsDisabled",
       "msg": "The domain configuration account is currently disabled. Contact support or try again later."
     },
     {
-      "code": 6030,
+      "code": 6036,
       "name": "DomainConfigIsMissing",
       "msg": "Missing domain configuration account. Ensure it's passed in the instruction."
     },
     {
-      "code": 6031,
+      "code": 6037,
       "name": "MemberDoesNotBelongToDomainConfig",
       "msg": "This member is not registered in the provided domain configuration."
     },
     {
-      "code": 6032,
+      "code": 6038,
       "name": "RpIdHashMismatch",
       "msg": "The relying party ID hash does not match the one specified in the domain configuration."
     },
     {
-      "code": 6033,
+      "code": 6039,
       "name": "InvalidJson",
       "msg": "Failed to parse the client data JSON. The format may be invalid."
     },
     {
-      "code": 6034,
+      "code": 6040,
       "name": "MissingOrigin",
       "msg": "Missing origin field in clientDataJSON. This field is required for WebAuthn validation."
     },
     {
-      "code": 6035,
+      "code": 6041,
       "name": "InvalidOrigin",
       "msg": "The origin value in clientDataJSON does not match the expected domain."
     },
     {
-      "code": 6036,
+      "code": 6042,
       "name": "MissingType",
       "msg": "Missing type field in clientDataJSON. This field is required for WebAuthn validation."
     },
     {
-      "code": 6037,
+      "code": 6043,
       "name": "InvalidType",
       "msg": "The type field in clientDataJSON is invalid. Expected value: webauthn.get."
     },
     {
-      "code": 6038,
+      "code": 6044,
       "name": "MissingChallenge",
       "msg": "Missing challenge field in clientDataJSON. This is required for validating the authentication request."
     },
     {
-      "code": 6039,
+      "code": 6045,
       "name": "InvalidChallenge",
       "msg": "The challenge value in clientDataJSON is missing or doesn't match the expected challenge."
     }
@@ -1891,7 +1821,9 @@
         "fields": [
           {
             "name": "tree_info",
-            "docs": ["Merkle tree context."],
+            "docs": [
+              "Merkle tree context."
+            ],
             "type": {
               "defined": {
                 "name": "PackedStateTreeInfo"
@@ -1900,14 +1832,21 @@
           },
           {
             "name": "address",
-            "docs": ["Address."],
+            "docs": [
+              "Address."
+            ],
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           },
           {
             "name": "output_state_tree_index",
-            "docs": ["Output merkle tree index."],
+            "docs": [
+              "Output merkle tree index."
+            ],
             "type": "u8"
           }
         ]
@@ -1954,19 +1893,28 @@
           {
             "name": "a",
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           },
           {
             "name": "b",
             "type": {
-              "array": ["u8", 64]
+              "array": [
+                "u8",
+                64
+              ]
             }
           },
           {
             "name": "c",
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           }
         ]
@@ -2035,7 +1983,7 @@
               {
                 "vec": {
                   "defined": {
-                    "name": "MemberKeyWithPermissionsArgs"
+                    "name": "MemberKeyWithEditPermissionsArgs"
                   }
                 }
               }
@@ -2047,7 +1995,7 @@
               {
                 "vec": {
                   "defined": {
-                    "name": "MemberWithCreationArgs"
+                    "name": "MemberWithAddPermissionsArgs"
                   }
                 }
               }
@@ -2059,7 +2007,7 @@
               {
                 "vec": {
                   "defined": {
-                    "name": "MemberKeyWithCloseArgs"
+                    "name": "MemberKeyWithRemovePermissionsArgs"
                   }
                 }
               }
@@ -2067,7 +2015,9 @@
           },
           {
             "name": "SetThreshold",
-            "fields": ["u8"]
+            "fields": [
+              "u8"
+            ]
           }
         ]
       }
@@ -2084,7 +2034,10 @@
           {
             "name": "rp_id_hash",
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           },
           {
@@ -2101,85 +2054,79 @@
       }
     },
     {
-      "name": "Delegate",
+      "name": "CreateDomainUserArgs",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "index",
+            "name": "member",
             "type": {
-              "option": "u128"
+              "defined": {
+                "name": "Secp256r1Pubkey"
+              }
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "DelegateCreateOrMutateArgs",
-      "type": {
-        "kind": "enum",
-        "variants": [
+          },
           {
-            "name": "Create",
-            "fields": [
-              {
+            "name": "credential_id",
+            "type": "bytes"
+          },
+          {
+            "name": "mint",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "username",
+            "type": {
+              "option": "string"
+            }
+          },
+          {
+            "name": "expiry",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "is_permanent_member",
+            "type": "bool"
+          },
+          {
+            "name": "user_creation_args",
+            "type": {
+              "defined": {
+                "name": "UserCreationArgs"
+              }
+            }
+          },
+          {
+            "name": "transports",
+            "type": {
+              "vec": {
                 "defined": {
-                  "name": "DelegateCreationArgs"
+                  "name": "Transport"
                 }
               }
-            ]
-          },
-          {
-            "name": "Mutate",
-            "fields": [
-              {
-                "defined": {
-                  "name": "DelegateMutArgs"
-                }
-              }
-            ]
+            }
           }
         ]
       }
     },
     {
-      "name": "DelegateCreationArgs",
+      "name": "CreateGlobalUserArgs",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "address_tree_info",
-            "type": {
-              "defined": {
-                "name": "PackedAddressTreeInfo"
-              }
-            }
+            "name": "member",
+            "type": "pubkey"
           },
           {
-            "name": "output_state_tree_index",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "DelegateMutArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "account_meta",
+            "name": "user_creation_args",
             "type": {
               "defined": {
-                "name": "CompressedAccountMeta"
-              }
-            }
-          },
-          {
-            "name": "data",
-            "type": {
-              "defined": {
-                "name": "Delegate"
+                "name": "UserCreationArgs"
               }
             }
           }
@@ -2206,7 +2153,10 @@
           {
             "name": "rp_id_hash",
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           },
           {
@@ -2224,19 +2174,28 @@
           {
             "name": "rp_id",
             "type": {
-              "array": ["u8", 256]
+              "array": [
+                "u8",
+                256
+              ]
             }
           },
           {
             "name": "origins",
             "type": {
-              "array": ["u8", 512]
+              "array": [
+                "u8",
+                512
+              ]
             }
           },
           {
             "name": "padding",
             "type": {
-              "array": ["u8", 1]
+              "array": [
+                "u8",
+                1
+              ]
             }
           }
         ]
@@ -2250,12 +2209,16 @@
           {
             "name": "new_origins",
             "type": {
-              "vec": "string"
+              "option": {
+                "vec": "string"
+              }
             }
           },
           {
             "name": "new_authority",
-            "type": "pubkey"
+            "type": {
+              "option": "pubkey"
+            }
           }
         ]
       }
@@ -2322,40 +2285,17 @@
           {
             "name": "key",
             "type": {
-              "array": ["u8", 33]
+              "array": [
+                "u8",
+                33
+              ]
             }
           }
         ]
       }
     },
     {
-      "name": "MemberKeyWithCloseArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "data",
-            "type": {
-              "defined": {
-                "name": "MemberKey"
-              }
-            }
-          },
-          {
-            "name": "delegate_args",
-            "type": {
-              "option": {
-                "defined": {
-                  "name": "DelegateMutArgs"
-                }
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "MemberKeyWithPermissionsArgs",
+      "name": "MemberKeyWithEditPermissionsArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2376,21 +2316,21 @@
             }
           },
           {
-            "name": "delegate_close_args",
+            "name": "user_delegate_close_args",
             "type": {
               "option": {
                 "defined": {
-                  "name": "DelegateMutArgs"
+                  "name": "UserMutArgs"
                 }
               }
             }
           },
           {
-            "name": "delegate_creation_args",
+            "name": "user_delegate_creation_args",
             "type": {
               "option": {
                 "defined": {
-                  "name": "DelegateCreateOrMutateArgs"
+                  "name": "UserMutArgs"
                 }
               }
             }
@@ -2399,7 +2339,33 @@
       }
     },
     {
-      "name": "MemberWithCreationArgs",
+      "name": "MemberKeyWithRemovePermissionsArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "data",
+            "type": {
+              "defined": {
+                "name": "MemberKey"
+              }
+            }
+          },
+          {
+            "name": "user_delegate_close_args",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "UserMutArgs"
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "MemberWithAddPermissionsArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2422,11 +2388,11 @@
             }
           },
           {
-            "name": "delegate_args",
+            "name": "user_delegate_creation_args",
             "type": {
               "option": {
                 "defined": {
-                  "name": "DelegateCreateOrMutateArgs"
+                  "name": "UserMutArgs"
                 }
               }
             }
@@ -2508,7 +2474,9 @@
     },
     {
       "name": "Permissions",
-      "docs": ["Bitmask for permissions."],
+      "docs": [
+        "Bitmask for permissions."
+      ],
       "repr": {
         "kind": "c"
       },
@@ -2538,6 +2506,20 @@
           {
             "name": "light_cpi_accounts_start_index",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Secp256r1Pubkey",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "array": [
+              "u8",
+              33
+            ]
           }
         ]
       }
@@ -2722,17 +2704,23 @@
         "fields": [
           {
             "name": "multi_wallet_settings",
-            "docs": ["The multisig settings this belongs to."],
+            "docs": [
+              "The multisig settings this belongs to."
+            ],
             "type": "pubkey"
           },
           {
             "name": "multi_wallet_bump",
-            "docs": ["The bump for the multi_wallet"],
+            "docs": [
+              "The bump for the multi_wallet"
+            ],
             "type": "u8"
           },
           {
             "name": "can_execute",
-            "docs": ["Flag to allow transaction to be executed"],
+            "docs": [
+              "Flag to allow transaction to be executed"
+            ],
             "type": "bool"
           },
           {
@@ -2748,29 +2736,42 @@
           },
           {
             "name": "payer",
-            "docs": ["Payer for the transaction buffer"],
+            "docs": [
+              "Payer for the transaction buffer"
+            ],
             "type": "pubkey"
           },
           {
             "name": "bump",
-            "docs": ["transaction bump"],
+            "docs": [
+              "transaction bump"
+            ],
             "type": "u8"
           },
           {
             "name": "buffer_index",
-            "docs": ["Index to seed address derivation"],
+            "docs": [
+              "Index to seed address derivation"
+            ],
             "type": "u8"
           },
           {
             "name": "final_buffer_hash",
-            "docs": ["Hash of the final assembled transaction message."],
+            "docs": [
+              "Hash of the final assembled transaction message."
+            ],
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           },
           {
             "name": "final_buffer_size",
-            "docs": ["The size of the final assembled transaction message."],
+            "docs": [
+              "The size of the final assembled transaction message."
+            ],
             "type": "u16"
           },
           {
@@ -2786,16 +2787,23 @@
           },
           {
             "name": "buffer_extend_hashes",
-            "docs": ["Buffer hash for all the buffer extend instruction"],
+            "docs": [
+              "Buffer hash for all the buffer extend instruction"
+            ],
             "type": {
               "vec": {
-                "array": ["u8", 32]
+                "array": [
+                  "u8",
+                  32
+                ]
               }
             }
           },
           {
             "name": "voters",
-            "docs": ["Members that voted for this transaction"],
+            "docs": [
+              "Members that voted for this transaction"
+            ],
             "type": {
               "vec": {
                 "defined": {
@@ -2806,7 +2814,9 @@
           },
           {
             "name": "buffer",
-            "docs": ["The buffer of the transaction message."],
+            "docs": [
+              "The buffer of the transaction message."
+            ],
             "type": "bytes"
           }
         ]
@@ -2829,14 +2839,20 @@
             "name": "buffer_extend_hashes",
             "type": {
               "vec": {
-                "array": ["u8", 32]
+                "array": [
+                  "u8",
+                  32
+                ]
               }
             }
           },
           {
             "name": "final_buffer_hash",
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           },
           {
@@ -2906,6 +2922,147 @@
           {
             "name": "readonly_indexes",
             "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Transport",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Ble"
+          },
+          {
+            "name": "Cable"
+          },
+          {
+            "name": "Hybrid"
+          },
+          {
+            "name": "Internal"
+          },
+          {
+            "name": "Nfc"
+          },
+          {
+            "name": "SmartCard"
+          },
+          {
+            "name": "USB"
+          }
+        ]
+      }
+    },
+    {
+      "name": "User",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "member",
+            "type": {
+              "defined": {
+                "name": "MemberKey"
+              }
+            }
+          },
+          {
+            "name": "credential_id",
+            "type": {
+              "option": "bytes"
+            }
+          },
+          {
+            "name": "mint",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "domain_config",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "transports",
+            "type": {
+              "option": {
+                "vec": {
+                  "defined": {
+                    "name": "Transport"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "is_permanent_member",
+            "type": "bool"
+          },
+          {
+            "name": "username",
+            "type": {
+              "option": "string"
+            }
+          },
+          {
+            "name": "expiry",
+            "type": {
+              "option": "u64"
+            }
+          },
+          {
+            "name": "settings_index",
+            "type": {
+              "option": "u128"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserCreationArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "address_tree_info",
+            "type": {
+              "defined": {
+                "name": "PackedAddressTreeInfo"
+              }
+            }
+          },
+          {
+            "name": "output_state_tree_index",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserMutArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account_meta",
+            "type": {
+              "defined": {
+                "name": "CompressedAccountMeta"
+              }
+            }
+          },
+          {
+            "name": "data",
+            "type": {
+              "defined": {
+                "name": "User"
+              }
+            }
           }
         ]
       }

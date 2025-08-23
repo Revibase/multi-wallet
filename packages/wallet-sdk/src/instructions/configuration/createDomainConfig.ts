@@ -14,7 +14,7 @@ export async function createDomainConfig({
   origins: string[];
   authority: Address;
 }) {
-  const rpIdHash = await getHash(rpId);
+  const rpIdHash = getHash(new TextEncoder().encode(rpId));
   const domainConfig = await getDomainConfig({ rpIdHash });
   return getCreateDomainConfigInstruction({
     rpIdHash,

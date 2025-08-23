@@ -1,3 +1,5 @@
+import { sha256 } from "@noble/hashes/sha2";
+import { Input } from "@noble/hashes/utils";
 import { getTransferSolInstruction } from "@solana-program/system";
 import {
   AccountMeta,
@@ -18,13 +20,13 @@ import { PublicKey } from "@solana/web3.js";
 import { getSolanaRpc } from ".";
 import {
   ConfigAction,
-  DelegateCreateOrMutateArgs,
-  DelegateMutArgs,
   IPermissions,
   MemberKey,
-  MemberKeyWithCloseArgs,
-  MemberWithCreationArgs,
+  MemberKeyWithEditPermissionsArgs,
+  MemberKeyWithRemovePermissionsArgs,
+  MemberWithAddPermissionsArgs,
   Secp256r1VerifyArgs,
+  UserMutArgs,
 } from "../generated";
 import {
   ConfigActionWrapperWithDelegateArgs,
@@ -38,11 +40,8 @@ import {
   customTransactionMessageDeserialize,
 } from "./transactionMessage";
 
-export async function getHash(text: string) {
-  const hash = new Uint8Array(
-    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))
-  );
-  return hash;
+export function getHash(payload: Input) {
+  return sha256(payload);
 }
 function getAccountRole(
   message: CustomTransactionMessage,
@@ -228,9 +227,7 @@ export function convertPubkeyToMemberkey(
     };
   }
 }
-export function convertMemberkeyToPubKey(
-  pubkey: MemberKey
-): Address | Secp256r1Key {
+export function convertMemberkey(pubkey: MemberKey): Address | Secp256r1Key {
   if (pubkey.keyType === KeyType.Ed25519) {
     return address(convertMemberKeyToString(pubkey));
   } else {
@@ -254,7 +251,7 @@ export function normalizeKey(key: any) {
     return new Uint8Array(Object.values(key));
   throw new Error("Invalid key format");
 }
-export async function extractSecp256r1VerificationArgs(
+export function extractSecp256r1VerificationArgs(
   signer?: Secp256r1Key | TransactionSigner,
   index = 0
 ) {
@@ -282,20 +279,14 @@ export async function extractSecp256r1VerificationArgs(
     ? secp256r1PublicKey.signature
     : undefined;
   const message =
-    secp256r1PublicKey?.authData && secp256r1PublicKey.verifyArgs
+    secp256r1PublicKey?.authData &&
+    secp256r1PublicKey.verifyArgs?.clientDataJson
       ? new Uint8Array([
           ...secp256r1PublicKey.authData,
-          ...new Uint8Array(
-            await crypto.subtle.digest(
-              "SHA-256",
-              secp256r1PublicKey.verifyArgs.clientDataJson
-            )
-          ),
+          ...getHash(secp256r1PublicKey.verifyArgs.clientDataJson),
         ])
       : undefined;
-  const publicKey = secp256r1PublicKey?.verifyArgs
-    ? secp256r1PublicKey.verifyArgs.publicKey
-    : undefined;
+  const publicKey = secp256r1PublicKey?.toBuffer();
 
   return {
     slotHashSysvar,
@@ -336,24 +327,17 @@ export function convertConfigActionWrapper(
   for (const action of configActionsWrapper) {
     switch (action.type) {
       case "EditPermissions":
+        const editMembers: MemberKeyWithEditPermissionsArgs[] = [];
+        for (const x of action.members) {
+          editMembers.push(convertEditMember(x));
+        }
         configActions.push({
           __kind: "EditPermissions",
-          fields: [
-            action.members.map((x) => ({
-              pubkey: convertPubkeyToMemberkey(x.pubkey),
-              permissions: x.permissions,
-              delegateCloseArgs: x.delegateCloseArgs
-                ? some(x.delegateCloseArgs)
-                : none(),
-              delegateCreationArgs: x.delegateCreateArgs
-                ? some(x.delegateCreateArgs)
-                : none(),
-            })),
-          ],
+          fields: [editMembers],
         });
         break;
       case "AddMembers":
-        const addMembers: MemberWithCreationArgs[] = [];
+        const addMembers: MemberWithAddPermissionsArgs[] = [];
         for (const x of action.members) {
           addMembers.push(convertAddMember(x));
         }
@@ -363,7 +347,7 @@ export function convertConfigActionWrapper(
         });
         break;
       case "RemoveMembers":
-        const removeMembers: MemberKeyWithCloseArgs[] = [];
+        const removeMembers: MemberKeyWithRemovePermissionsArgs[] = [];
         for (const x of action.members) {
           removeMembers.push(convertRemoveMember(x));
         }
@@ -384,22 +368,42 @@ export function convertConfigActionWrapper(
   return configActions;
 }
 
-export function convertRemoveMember(x: {
+function convertEditMember(x: {
   pubkey: Address | Secp256r1Key;
-  delegateArgs?: DelegateMutArgs;
-}): MemberKeyWithCloseArgs {
+  permissions: IPermissions;
+  userDelegateCloseArgs?: UserMutArgs;
+  userDelegateCreationArgs?: UserMutArgs;
+}): MemberKeyWithEditPermissionsArgs {
   return {
-    data: convertPubkeyToMemberkey(x.pubkey),
-    delegateArgs: x.delegateArgs ? some(x.delegateArgs) : none(),
+    pubkey: convertPubkeyToMemberkey(x.pubkey),
+    permissions: x.permissions,
+    userDelegateCloseArgs: x.userDelegateCloseArgs
+      ? some(x.userDelegateCloseArgs)
+      : none(),
+    userDelegateCreationArgs: x.userDelegateCreationArgs
+      ? some(x.userDelegateCreationArgs)
+      : none(),
   };
 }
 
-export function convertAddMember(member: {
+function convertRemoveMember(x: {
+  pubkey: Address | Secp256r1Key;
+  userDelegateCloseArgs?: UserMutArgs;
+}): MemberKeyWithRemovePermissionsArgs {
+  return {
+    data: convertPubkeyToMemberkey(x.pubkey),
+    userDelegateCloseArgs: x.userDelegateCloseArgs
+      ? some(x.userDelegateCloseArgs)
+      : none(),
+  };
+}
+
+function convertAddMember(member: {
   pubkey: Address | Secp256r1Key;
   permissions: IPermissions;
   index: number;
-  delegateArgs?: DelegateCreateOrMutateArgs;
-}): MemberWithCreationArgs {
+  userDelegateCreationArgs?: UserMutArgs;
+}): MemberWithAddPermissionsArgs {
   return {
     data: {
       permissions: member.permissions,
@@ -419,9 +423,12 @@ export function convertAddMember(member: {
             index: member.index,
           })
         : none(),
-    delegateArgs: member.delegateArgs ? some(member.delegateArgs) : none(),
+    userDelegateCreationArgs: member.userDelegateCreationArgs
+      ? some(member.userDelegateCreationArgs)
+      : none(),
   };
 }
+
 export function getPubkeyString(pubkey: TransactionSigner | Secp256r1Key) {
   if (pubkey instanceof Secp256r1Key) {
     return pubkey.toString();
@@ -444,4 +451,15 @@ export function addJitoTip({
     destination: address(tipAccount),
     amount: tipAmount,
   });
+}
+
+export async function estimateJitoTips(
+  estimateJitoTipEndpoint: string,
+  level = "ema_landed_tips_50th_percentile"
+) {
+  const response = await fetch(estimateJitoTipEndpoint);
+  const result = await response.json();
+  const tipAmount = Math.round(result[0][level] * 10 ** 9) as number;
+
+  return tipAmount;
 }

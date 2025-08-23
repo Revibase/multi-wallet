@@ -3,7 +3,7 @@ use bytemuck::{Pod, Zeroable};
 
 use crate::{
     error::MultisigError,
-    state::{DelegateCreateOrMutateArgs, DelegateMutArgs, KeyType, Permissions},
+    state::{KeyType, Permissions, UserMutArgs},
 };
 
 use super::{Secp256r1Pubkey, Secp256r1VerifyArgs, COMPRESSED_PUBKEY_SERIALIZED_SIZE};
@@ -109,30 +109,30 @@ impl AsRef<[u8]> for MemberKey {
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq)]
-pub struct MemberWithCreationArgs {
+pub struct MemberWithAddPermissionsArgs {
     pub data: Member,
     pub verify_args: Option<Secp256r1VerifyArgs>,
-    pub delegate_args: Option<DelegateCreateOrMutateArgs>,
+    pub user_delegate_creation_args: Option<UserMutArgs>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq)]
-pub struct MemberKeyWithCloseArgs {
+pub struct MemberKeyWithRemovePermissionsArgs {
     pub data: MemberKey,
-    pub delegate_args: Option<DelegateMutArgs>,
+    pub user_delegate_close_args: Option<UserMutArgs>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct MemberKeyWithPermissionsArgs {
+pub struct MemberKeyWithEditPermissionsArgs {
     pub pubkey: MemberKey,
     pub permissions: Permissions,
-    pub delegate_close_args: Option<DelegateMutArgs>,
-    pub delegate_creation_args: Option<DelegateCreateOrMutateArgs>,
+    pub user_delegate_close_args: Option<UserMutArgs>,
+    pub user_delegate_creation_args: Option<UserMutArgs>,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub enum ConfigAction {
-    EditPermissions(Vec<MemberKeyWithPermissionsArgs>),
-    AddMembers(Vec<MemberWithCreationArgs>),
-    RemoveMembers(Vec<MemberKeyWithCloseArgs>),
+    EditPermissions(Vec<MemberKeyWithEditPermissionsArgs>),
+    AddMembers(Vec<MemberWithAddPermissionsArgs>),
+    RemoveMembers(Vec<MemberKeyWithRemovePermissionsArgs>),
     SetThreshold(u8),
 }

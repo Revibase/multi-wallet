@@ -1,6 +1,6 @@
 import {
-  fetchDelegateIndex,
   fetchSettingsData,
+  fetchUserData,
   getMultiWalletFromSettings,
   getSettingsFromIndex,
   prepareTransactionMessage,
@@ -97,10 +97,13 @@ export function runTransactionTests() {
         const settings = await getSettingsFromIndex(ctx.index);
         // Verify transaction was successful
         const accountData = await fetchSettingsData(ctx.index);
-        const delegateIndex = await fetchDelegateIndex(ctx.wallet.address);
-
-        expect(Number(delegateIndex)).to.equal(
-          Number(ctx.index),
+        const userData = await fetchUserData(ctx.wallet.address);
+        const settingsIndex =
+          userData.settingsIndex.__option === "Some"
+            ? userData.settingsIndex.value
+            : null;
+        expect(settingsIndex).to.equal(
+          ctx.index,
           "Delegate should be associated with the correct settings"
         );
         const multiWallet = await getMultiWalletFromSettings(settings);

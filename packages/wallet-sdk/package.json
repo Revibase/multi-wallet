@@ -1,6 +1,6 @@
 {
   "name": "@revibase/wallet-sdk",
-  "version": "2.2.0",
+  "version": "2.2.7",
   "scripts": {
     "build": "tsup",
     "clean": "rimraf dist",
@@ -26,14 +26,14 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "@codama/nodes-from-anchor": "1.2.2",
-    "@codama/renderers-js": "1.3.1",
-    "@types/node": "24.0.15",
-    "codama": "1.3.0",
+    "@codama/nodes-from-anchor": "1.2.5",
+    "@codama/renderers-js": "1.3.4",
+    "@types/node": "24.2.1",
+    "codama": "1.3.3",
     "prettier": "^3.5.3",
     "rimraf": "^6.0.1",
     "tsup": "^8.4.0",
-    "typescript": "5.8.3"
+    "typescript": "5.9.2"
   },
   "repository": {
     "type": "git",

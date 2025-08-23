@@ -1,6 +1,5 @@
 import {
   Address,
-  address,
   getAddressEncoder,
   getBase58Decoder,
   getProgramDerivedAddress,
@@ -9,7 +8,6 @@ import {
   getU16Encoder,
   getU8Encoder,
   getUtf8Encoder,
-  isAddress,
 } from "@solana/kit";
 import {
   ConfigAction,
@@ -34,7 +32,7 @@ export async function getDomainConfig({
 }) {
   if (!rpIdHash) {
     if (rpId) {
-      rpIdHash = await getHash(rpId);
+      rpIdHash = getHash(new TextEncoder().encode(rpId));
     } else {
       throw new Error("RpId not found.");
     }
@@ -105,21 +103,19 @@ export async function getTransactionBufferAddress(
     });
 
     return transactionBuffer;
-  } else if (isAddress(creator.toString())) {
+  } else {
     const [transactionBuffer] = await getProgramDerivedAddress({
       programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
       seeds: [
         getUtf8Encoder().encode("multi_wallet"),
         getAddressEncoder().encode(settings),
         getUtf8Encoder().encode("transaction_buffer"),
-        getAddressEncoder().encode(address(creator.toString())),
+        getAddressEncoder().encode(creator),
         getU8Encoder().encode(buffer_index),
       ],
     });
 
     return transactionBuffer;
-  } else {
-    throw new Error("Unable to parse PublicKey.");
   }
 }
 
@@ -189,13 +185,4 @@ export function deserializeConfigActions(
   }
 
   return result;
-}
-export async function estimateJitoTips(estimateJitoTipEndpoint: string) {
-  const response = await fetch(estimateJitoTipEndpoint);
-  const result = await response.json();
-  const tipAmount = Math.round(
-    result[0]["ema_landed_tips_50th_percentile"] * 10 ** 9
-  ) as number;
-
-  return tipAmount;
 }

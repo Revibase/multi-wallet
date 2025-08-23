@@ -36,7 +36,6 @@ export async function createTransactionBuffer({
   bufferExtendHashes: Uint8Array[];
   compressed?: boolean;
 }) {
-  const settings = await getSettingsFromIndex(index);
   const packedAccounts = new PackedAccounts();
   const { settingsReadonlyArgs, proof } = await constructSettingsProofArgs(
     packedAccounts,
@@ -52,7 +51,7 @@ export async function createTransactionBuffer({
     message,
     signature,
     publicKey,
-  } = await extractSecp256r1VerificationArgs(creator);
+  } = extractSecp256r1VerificationArgs(creator);
   const instructions = [];
   if (message && signature && publicKey) {
     instructions.push(
@@ -97,6 +96,7 @@ export async function createTransactionBuffer({
       })
     );
   } else {
+    const settings = await getSettingsFromIndex(index);
     instructions.push(
       getTransactionBufferCreateInstruction({
         instructionsSysvar,

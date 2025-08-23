@@ -42,16 +42,14 @@ export async function decompressSettingsAccount({
     hashesWithTree,
     []
   );
-  const settingsMutArgs = (
-    await getCompressedAccountMutArgs<CompressedSettings>(
-      packedAccounts,
-      proof.treeInfos,
-      proof.leafIndices,
-      proof.rootIndices,
-      proof.proveByIndices,
-      hashesWithTree.filter((x) => x.type === "Settings"),
-      getCompressedSettingsDecoder()
-    )
+  const settingsMutArgs = getCompressedAccountMutArgs<CompressedSettings>(
+    packedAccounts,
+    proof.treeInfos,
+    proof.leafIndices,
+    proof.rootIndices,
+    proof.proveByIndices,
+    hashesWithTree.filter((x) => x.type === "Settings"),
+    getCompressedSettingsDecoder()
   )[0];
 
   const dedupSigners = getDeduplicatedSigners(signers);
@@ -63,7 +61,7 @@ export async function decompressSettingsAccount({
     signature,
     publicKey,
     message,
-  } = await extractSecp256r1VerificationArgs(
+  } = extractSecp256r1VerificationArgs(
     dedupSigners.find((x) => x instanceof Secp256r1Key)
   );
   packedAccounts.addPreAccounts(

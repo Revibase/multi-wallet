@@ -1,16 +1,15 @@
 import { p256 } from "@noble/curves/nist.js";
 import {
-  MULTI_WALLET_PROGRAM_ADDRESS,
   ParsedAuthenticationResponse,
   type TransactionPayload,
 } from "@revibase/wallet-sdk";
 import {
   address,
   type GetAccountInfoApi,
+  getAddressEncoder,
   getBase58Decoder,
   getBase58Encoder,
   getBase64Encoder,
-  getProgramDerivedAddress,
   getU64Decoder,
   getUtf8Encoder,
   type Rpc,
@@ -33,7 +32,6 @@ export async function createTransactionChallenge(
     await connection
       .getAccountInfo(address("SysvarS1otHashes111111111111111111111111111"), {
         encoding: "base64",
-        commitment: "processed",
       })
       .send()
   ).value?.data;
@@ -56,9 +54,7 @@ export async function createTransactionChallenge(
         ...new Uint8Array(getUtf8Encoder().encode(transactionActionType)),
         ...getBase58Encoder().encode(transactionAddress),
         ...new Uint8Array(
-          transactionActionType !== "close"
-            ? await crypto.subtle.digest("SHA-256", transactionMessageBytes)
-            : transactionMessageBytes
+          await crypto.subtle.digest("SHA-256", transactionMessageBytes)
         ),
         ...slotHashBytes,
       ])
@@ -75,7 +71,6 @@ export async function mockAuthenticationResponse(
   connection: Rpc<GetAccountInfoApi>,
   transaction: TransactionPayload,
   privateKey: Uint8Array,
-  publicKey: Uint8Array,
   ctx: TestContext
 ): Promise<ParsedAuthenticationResponse> {
   const flags = new Uint8Array([0x01]); // User present
@@ -88,14 +83,35 @@ export async function mockAuthenticationResponse(
     ...signCount,
   ]);
 
-  const { challenge, slotHash, slotNumber } = await createTransactionChallenge(
-    connection,
-    transaction
-  );
+  let challenge: Uint8Array;
+  let slotHash: string | undefined;
+  let slotNumber: string | undefined;
+  if (transaction.transactionActionType === "create_new_wallet") {
+    challenge = new Uint8Array(
+      await crypto.subtle.digest(
+        "SHA-256",
+        new Uint8Array([
+          ...getUtf8Encoder().encode("create_new_wallet"),
+          ...getAddressEncoder().encode(ctx.domainConfig),
+          ...new Uint8Array(
+            await crypto.subtle.digest(
+              "SHA-256",
+              new Uint8Array(getUtf8Encoder().encode(ctx.rpId))
+            )
+          ),
+        ])
+      )
+    );
+  } else {
+    ({ challenge, slotHash, slotNumber } = await createTransactionChallenge(
+      connection,
+      transaction
+    ));
+  }
 
   const clientDataJSON = JSON.stringify({
     type: "webauthn.get",
-    challenge: bufferToBase64URLString(challenge),
+    challenge: bufferToBase64URLString(challenge.buffer as ArrayBuffer),
     origin: "happy",
   });
 
@@ -121,23 +137,19 @@ export async function mockAuthenticationResponse(
     .sign(new Uint8Array(webauthnMessageHash), privateKey)
     .toBytes("compact");
 
-  const [domainConfig] = await getProgramDerivedAddress({
-    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-    seeds: [
-      new TextEncoder().encode("domain_config"),
-      mockAuthenticatorData.subarray(0, 32),
-    ],
-  });
-
   return {
     verifyArgs: {
-      publicKey,
       clientDataJson: clientDataJSONBytes,
-      slotNumber: BigInt(slotNumber),
-      slotHash: new Uint8Array(getBase58Encoder().encode(slotHash)),
+      slotNumber: BigInt(slotNumber ?? 0),
+      slotHash: slotHash
+        ? new Uint8Array(getBase58Encoder().encode(slotHash))
+        : undefined,
     },
+    credentialId: getBase58Decoder().decode(
+      crypto.getRandomValues(new Uint8Array(32))
+    ),
     authData: mockAuthenticatorData,
-    domainConfig,
+    domainConfig: ctx.domainConfig,
     signature: normalizeSignatureToLowS(signatureRS),
   };
 }

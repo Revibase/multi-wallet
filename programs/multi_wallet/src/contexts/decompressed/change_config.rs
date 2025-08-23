@@ -1,8 +1,8 @@
 use crate::{
     error::MultisigError,
     state::{
-        Delegate, DelegateOp, Member, MemberKeyWithCloseArgs, MemberWithCreationArgs, ProofArgs,
-        Settings, SEED_MULTISIG, SEED_VAULT,
+        Member, MemberKeyWithRemovePermissionsArgs, MemberWithAddPermissionsArgs, Ops, ProofArgs,
+        Settings, User, SEED_MULTISIG, SEED_VAULT,
     },
     ConfigAction, LIGHT_CPI_SIGNER,
 };
@@ -51,27 +51,27 @@ impl<'info> ChangeConfig<'info> {
         let payer = &ctx.accounts.payer;
         let remaining_accounts = ctx.remaining_accounts;
 
-        let mut delegate_ops: Vec<DelegateOp> = vec![];
+        let mut delegate_ops: Vec<Ops> = vec![];
         for action in config_actions {
             match action {
                 ConfigAction::EditPermissions(members) => {
                     let ops = settings.edit_permissions(members)?;
                     delegate_ops.extend(ops.0.into_iter().map(|f| {
-                        DelegateOp::Create(MemberWithCreationArgs {
+                        Ops::Create(Box::new(MemberWithAddPermissionsArgs {
                             data: Member {
                                 pubkey: f.pubkey,
                                 permissions: f.permissions,
                                 domain_config: Pubkey::default(),
                             },
                             verify_args: None,
-                            delegate_args: f.delegate_creation_args,
-                        })
+                            user_delegate_creation_args: f.user_delegate_creation_args,
+                        }))
                     }));
                     delegate_ops.extend(ops.1.into_iter().map(|f| {
-                        DelegateOp::Close(MemberKeyWithCloseArgs {
+                        Ops::Close(Box::new(MemberKeyWithRemovePermissionsArgs {
                             data: f.pubkey,
-                            delegate_args: f.delegate_close_args,
-                        })
+                            user_delegate_close_args: f.user_delegate_close_args,
+                        }))
                     }));
                 }
                 ConfigAction::AddMembers(members) => {
@@ -82,11 +82,11 @@ impl<'info> ChangeConfig<'info> {
                         slot_hash_sysvar,
                         instructions_sysvar.as_ref(),
                     )?;
-                    delegate_ops.extend(ops.into_iter().map(DelegateOp::Create));
+                    delegate_ops.extend(ops.into_iter().map(|op| Ops::Create(Box::new(op))));
                 }
                 ConfigAction::RemoveMembers(members) => {
                     let ops = settings.remove_members(members)?;
-                    delegate_ops.extend(ops.into_iter().map(DelegateOp::Close));
+                    delegate_ops.extend(ops.into_iter().map(|op| Ops::Close(Box::new(op))));
                 }
                 ConfigAction::SetThreshold(new_threshold) => {
                     settings.set_threshold(new_threshold)?;
@@ -96,24 +96,16 @@ impl<'info> ChangeConfig<'info> {
         settings.invariant()?;
 
         if !delegate_ops.is_empty() {
-            let proof_args = compressed_proof_args.ok_or(MultisigError::MissingDelegateArgs)?;
+            let proof_args = compressed_proof_args.ok_or(MultisigError::MissingUserDelegateArgs)?;
             let light_cpi_accounts = CpiAccounts::new(
                 &payer,
                 &remaining_accounts[proof_args.light_cpi_accounts_start_index as usize..],
                 LIGHT_CPI_SIGNER,
             );
-            let (account_infos, new_addresses) = Delegate::handle_delegate_accounts(
-                delegate_ops,
-                settings.index,
-                &light_cpi_accounts,
-            )?;
+            let account_infos = User::handle_user_delegate_accounts(delegate_ops, settings.index)?;
 
-            if account_infos.len() > 0 || new_addresses.len() > 0 {
-                let cpi_inputs = if new_addresses.is_empty() {
-                    CpiInputs::new(proof_args.proof, account_infos)
-                } else {
-                    CpiInputs::new_with_address(proof_args.proof, account_infos, new_addresses)
-                };
+            if account_infos.len() > 0 {
+                let cpi_inputs = CpiInputs::new(proof_args.proof, account_infos);
                 cpi_inputs
                     .invoke_light_system_program(light_cpi_accounts)
                     .unwrap();

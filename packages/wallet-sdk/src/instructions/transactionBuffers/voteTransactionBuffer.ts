@@ -34,7 +34,7 @@ export async function voteTransactionBuffer({
     signature,
     publicKey,
     message,
-  } = await extractSecp256r1VerificationArgs(voter);
+  } = extractSecp256r1VerificationArgs(voter);
   const settings = await getSettingsFromIndex(index);
   const packedAccounts = new PackedAccounts();
   const { settingsReadonlyArgs, proof } = await constructSettingsProofArgs(

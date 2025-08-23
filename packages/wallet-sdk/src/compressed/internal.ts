@@ -24,7 +24,7 @@ import { getCompressedSettingsAddressFromIndex } from "./helper";
 import { PackedAccounts } from "./packedAccounts";
 
 export function getNewAddressesParams(
-  addresses: { pubkey: BN254; type: "Settings" | "Delegate" }[]
+  addresses: { pubkey: BN254; type: "Settings" | "User" }[]
 ) {
   const { tree, queue } = getDefaultAddressTreeInfo();
 
@@ -38,16 +38,14 @@ export function getNewAddressesParams(
 }
 
 export async function getCompressedAccountHashes(
-  addresses: { pubkey: BN254; type: "Settings" | "Delegate" }[]
+  addresses: { pubkey: BN254; type: "Settings" | "User" }[]
 ) {
   const compressedAccounts = await Promise.all(
     addresses.map(
       async (x) => await getLightProtocolRpc().getCompressedAccount(x.pubkey)
     )
   );
-  if (compressedAccounts.length === 0) {
-    throw new Error("Unable to find compressed account.");
-  }
+
   const filtered = compressedAccounts.filter((x) => x !== null);
 
   if (filtered.length !== compressedAccounts.length) {
@@ -83,7 +81,7 @@ export async function getCompressedAccountInitArgs(
   treeInfos: TreeInfo[],
   roots: BN[],
   rootIndices: number[],
-  newAddresses: (AddressWithTree & { type: "Delegate" | "Settings" })[],
+  newAddresses: (AddressWithTree & { type: "User" | "Settings" })[],
   excludedTreeInfo?: TreeInfo[]
 ) {
   const newAddressProofInputs = newAddresses.map((x, index) => ({
@@ -149,7 +147,7 @@ export async function getCompressedAccountInitArgs(
   return creationArgs;
 }
 
-export async function getCompressedAccountMutArgs<T>(
+export function getCompressedAccountMutArgs<T>(
   packedAccounts: PackedAccounts,
   treeInfos: TreeInfo[],
   leafIndices: number[],

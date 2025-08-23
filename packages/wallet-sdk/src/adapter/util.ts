@@ -31,32 +31,52 @@ export function arraysEqual<T>(a: Indexed<T>, b: Indexed<T>): boolean {
   return true;
 }
 
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export async function sendJitoBundle(
   jitoBlockEngineUrl: string,
-  serializedTransactions: string[]
-) {
-  const response = await fetch(`${jitoBlockEngineUrl}/bundles`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: 1,
-      method: "sendBundle",
-      params: [
-        serializedTransactions,
-        {
-          encoding: "base64",
-        },
-      ],
-    }),
-  });
-  const data = await response.json();
-  if (data.error) {
-    throw new Error(
-      `Error sending bundles: ${JSON.stringify(data.error, null, 2)}`
-    );
+  serializedTransactions: string[],
+  maxRetries = 10,
+  delayMs = 1000
+): Promise<string> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const response = await fetch(`${jitoBlockEngineUrl}/bundles`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "sendBundle",
+        params: [
+          serializedTransactions,
+          {
+            encoding: "base64",
+          },
+        ],
+      }),
+    });
+
+    if (response.status === 429) {
+      if (attempt < maxRetries) {
+        await delay(delayMs);
+        continue;
+      }
+    }
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(
+        `Error sending bundles: ${JSON.stringify(data.error, null, 2)}`
+      );
+    }
+
+    return data.result as string;
   }
-  return data.result;
+
+  throw new Error("Failed to send bundle after retries.");
 }
 
 export function assertTransactionIsNotSigned(signatures: SignaturesMap) {

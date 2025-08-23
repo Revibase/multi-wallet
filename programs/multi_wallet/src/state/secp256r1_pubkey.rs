@@ -18,6 +18,12 @@ impl Secp256r1Pubkey {
     }
 }
 
+impl Default for Secp256r1Pubkey {
+    fn default() -> Self {
+        Secp256r1Pubkey([0u8; COMPRESSED_PUBKEY_SERIALIZED_SIZE])
+    }
+}
+
 impl AsRef<[u8]> for Secp256r1Pubkey {
     fn as_ref(&self) -> &[u8] {
         &self.0[..]

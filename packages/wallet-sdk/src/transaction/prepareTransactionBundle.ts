@@ -22,6 +22,7 @@ import {
 } from "../utils";
 import {
   deduplicateSignersAndFeePayer,
+  getHash,
   getPubkeyString,
 } from "../utils/internal";
 
@@ -67,18 +68,14 @@ export async function prepareTransactionBundle({
     bufferIndex
   );
 
-  const finalBufferHash = new Uint8Array(
-    await crypto.subtle.digest("SHA-256", transactionMessageBytes)
-  );
+  const finalBufferHash = getHash(transactionMessageBytes);
 
   const chunks: Uint8Array[] = [];
   const chunksHash: Uint8Array[] = [];
   for (let i = 0; i < transactionMessageBytes.length; i += chunkSize) {
     const chunk = transactionMessageBytes.subarray(i, i + chunkSize);
     chunks.push(chunk);
-    chunksHash.push(
-      new Uint8Array(await crypto.subtle.digest("SHA-256", chunk))
-    );
+    chunksHash.push(getHash(chunk));
   }
 
   const transactionBufferCreateIxs = await createTransactionBuffer({

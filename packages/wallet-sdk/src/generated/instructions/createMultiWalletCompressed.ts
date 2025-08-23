@@ -40,8 +40,6 @@ import {
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
-  getDelegateCreateOrMutateArgsDecoder,
-  getDelegateCreateOrMutateArgsEncoder,
   getPermissionsDecoder,
   getPermissionsEncoder,
   getProofArgsDecoder,
@@ -50,8 +48,8 @@ import {
   getSecp256r1VerifyArgsEncoder,
   getSettingsCreationArgsDecoder,
   getSettingsCreationArgsEncoder,
-  type DelegateCreateOrMutateArgs,
-  type DelegateCreateOrMutateArgsArgs,
+  getUserMutArgsDecoder,
+  getUserMutArgsEncoder,
   type IPermissions,
   type PermissionsArgs,
   type ProofArgs,
@@ -60,6 +58,8 @@ import {
   type Secp256r1VerifyArgsArgs,
   type SettingsCreationArgs,
   type SettingsCreationArgsArgs,
+  type UserMutArgs,
+  type UserMutArgsArgs,
 } from "../types";
 
 export const CREATE_MULTI_WALLET_COMPRESSED_DISCRIMINATOR = new Uint8Array([
@@ -125,7 +125,7 @@ export type CreateMultiWalletCompressedInstructionData = {
   permissions: IPermissions;
   compressedProofArgs: ProofArgs;
   settingsCreation: SettingsCreationArgs;
-  delegateCreationArgs: Option<DelegateCreateOrMutateArgs>;
+  userMutArgs: Option<UserMutArgs>;
   settingsIndex: bigint;
 };
 
@@ -134,7 +134,7 @@ export type CreateMultiWalletCompressedInstructionDataArgs = {
   permissions: PermissionsArgs;
   compressedProofArgs: ProofArgsArgs;
   settingsCreation: SettingsCreationArgsArgs;
-  delegateCreationArgs: OptionOrNullable<DelegateCreateOrMutateArgsArgs>;
+  userMutArgs: OptionOrNullable<UserMutArgsArgs>;
   settingsIndex: number | bigint;
 };
 
@@ -149,10 +149,7 @@ export function getCreateMultiWalletCompressedInstructionDataEncoder(): Encoder<
       ["permissions", getPermissionsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
       ["settingsCreation", getSettingsCreationArgsEncoder()],
-      [
-        "delegateCreationArgs",
-        getOptionEncoder(getDelegateCreateOrMutateArgsEncoder()),
-      ],
+      ["userMutArgs", getOptionEncoder(getUserMutArgsEncoder())],
       ["settingsIndex", getU128Encoder()],
     ]),
     (value) => ({
@@ -169,10 +166,7 @@ export function getCreateMultiWalletCompressedInstructionDataDecoder(): Decoder<
     ["permissions", getPermissionsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
     ["settingsCreation", getSettingsCreationArgsDecoder()],
-    [
-      "delegateCreationArgs",
-      getOptionDecoder(getDelegateCreateOrMutateArgsDecoder()),
-    ],
+    ["userMutArgs", getOptionDecoder(getUserMutArgsDecoder())],
     ["settingsIndex", getU128Decoder()],
   ]);
 }
@@ -208,7 +202,7 @@ export type CreateMultiWalletCompressedInput<
   permissions: CreateMultiWalletCompressedInstructionDataArgs["permissions"];
   compressedProofArgs: CreateMultiWalletCompressedInstructionDataArgs["compressedProofArgs"];
   settingsCreation: CreateMultiWalletCompressedInstructionDataArgs["settingsCreation"];
-  delegateCreationArgs: CreateMultiWalletCompressedInstructionDataArgs["delegateCreationArgs"];
+  userMutArgs: CreateMultiWalletCompressedInstructionDataArgs["userMutArgs"];
   settingsIndex: CreateMultiWalletCompressedInstructionDataArgs["settingsIndex"];
   remainingAccounts: TRemainingAccounts;
 };
@@ -346,7 +340,7 @@ export function parseCreateMultiWalletCompressedInstruction<
   }
   let accountIndex = 0;
   const getNextAccount = () => {
-    const accountMeta = instruction.accounts![accountIndex]!;
+    const accountMeta = (instruction.accounts as TAccountMetas)[accountIndex]!;
     accountIndex += 1;
     return accountMeta;
   };

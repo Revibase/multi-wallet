@@ -35,7 +35,7 @@ export async function executeTransactionBuffer({
     message,
     publicKey,
     instructionsSysvar,
-  } = await extractSecp256r1VerificationArgs(executor);
+  } = extractSecp256r1VerificationArgs(executor);
   const packedAccounts = new PackedAccounts();
   const { settingsReadonlyArgs, proof } = await constructSettingsProofArgs(
     packedAccounts,

@@ -43,7 +43,7 @@ import {
   type Secp256r1VerifyArgsArgs,
 } from '../types';
 
-export const TRANSACTION_BUFFER_CLOSE_DISCRIMINATOR = new Uint8Array([10]);
+export const TRANSACTION_BUFFER_CLOSE_DISCRIMINATOR = new Uint8Array([12]);
 
 export function getTransactionBufferCloseDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(

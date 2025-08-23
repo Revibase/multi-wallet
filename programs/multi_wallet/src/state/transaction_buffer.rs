@@ -61,9 +61,8 @@ pub enum TransactionActionType {
     Vote,
     Sync,
     Close,
+    CreateNewWallet,
     AddNewMember,
-    TokenTransferIntent,
-    NativeTransferIntent,
     Compress,
     Decompress,
 }
@@ -79,9 +78,8 @@ impl TransactionActionType {
             TransactionActionType::Vote => b"vote",
             TransactionActionType::Sync => b"sync",
             TransactionActionType::Close => b"close",
+            TransactionActionType::CreateNewWallet => b"create_new_wallet",
             TransactionActionType::AddNewMember => b"add_new_member",
-            TransactionActionType::TokenTransferIntent => b"token_transfer_intent",
-            TransactionActionType::NativeTransferIntent => b"native_transfer_intent",
             TransactionActionType::Compress => b"compress",
             TransactionActionType::Decompress => b"decompress",
         }

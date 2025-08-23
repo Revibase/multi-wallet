@@ -1,7 +1,6 @@
 import {
   AuthenticationResponseJSON,
   PublicKeyCredentialHint,
-  RegistrationResponseJSON,
 } from "@simplewebauthn/server";
 import { getProgramDerivedAddress } from "@solana/addresses";
 import { getBase58Encoder } from "@solana/codecs";
@@ -21,7 +20,8 @@ export async function openAuthUrl({
   authUrl,
   additionalInfo,
   hints,
-  publicKey,
+  credentialId,
+  transports,
   popUp = null,
   timeout = 2 * 60 * 1000, // 2 minutes default timeout
   debug = false,
@@ -33,8 +33,9 @@ export async function openAuthUrl({
     type: "transaction" | "message";
     payload: string;
   };
+  credentialId?: string;
+  transports?: string;
   hints?: PublicKeyCredentialHint[];
-  publicKey?: string;
   popUp?: Window | null;
   timeout?: number;
   debug?: boolean;
@@ -100,7 +101,8 @@ export async function openAuthUrl({
             {
               type: "popup-init",
               payload: {
-                publicKey,
+                credentialId,
+                transports,
                 hints,
                 data,
                 additionalInfo,
@@ -172,20 +174,6 @@ export function bufferToBase64URLString(buffer: any) {
   return base64String.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-export function uint8ArrayToHex(bytes: Uint8Array) {
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
-
-export function hexToUint8Array(hex: string): Uint8Array {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < bytes.length; i++) {
-    bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
-  }
-  return bytes;
-}
-
 export function base64URLStringToBuffer(base64URLString: string) {
   // Convert from Base64URL to Base64
   const base64 = base64URLString.replace(/-/g, "+").replace(/_/g, "/");
@@ -209,10 +197,18 @@ export function base64URLStringToBuffer(base64URLString: string) {
   return buffer;
 }
 
-export function isAuthenticationResponseJSON(
-  response: AuthenticationResponseJSON | RegistrationResponseJSON
-): response is AuthenticationResponseJSON {
-  return "signature" in response.response;
+export function uint8ArrayToHex(bytes: Uint8Array) {
+  return Array.from(bytes)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+export function hexToUint8Array(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < bytes.length; i++) {
+    bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  }
+  return bytes;
 }
 
 export async function parseAuthenticationResponse(
@@ -245,9 +241,9 @@ export async function parseAuthenticationResponse(
   });
 
   return {
+    credentialId: payload.authResponse.id,
     verifyArgs: {
-      publicKey: new Uint8Array(getBase58Encoder().encode(payload.publicKey)),
-      clientDataJson: clientDataJson,
+      clientDataJson,
       slotNumber: BigInt(payload.slotNumber),
       slotHash: new Uint8Array(getBase58Encoder().encode(payload.slotHash)),
     },

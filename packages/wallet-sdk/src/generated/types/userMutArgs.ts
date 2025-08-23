@@ -17,41 +17,35 @@ import {
 import {
   getCompressedAccountMetaDecoder,
   getCompressedAccountMetaEncoder,
-  getDelegateDecoder,
-  getDelegateEncoder,
+  getUserDecoder,
+  getUserEncoder,
   type CompressedAccountMeta,
   type CompressedAccountMetaArgs,
-  type Delegate,
-  type DelegateArgs,
+  type User,
+  type UserArgs,
 } from '.';
 
-export type DelegateMutArgs = {
-  accountMeta: CompressedAccountMeta;
-  data: Delegate;
-};
+export type UserMutArgs = { accountMeta: CompressedAccountMeta; data: User };
 
-export type DelegateMutArgsArgs = {
+export type UserMutArgsArgs = {
   accountMeta: CompressedAccountMetaArgs;
-  data: DelegateArgs;
+  data: UserArgs;
 };
 
-export function getDelegateMutArgsEncoder(): Encoder<DelegateMutArgsArgs> {
+export function getUserMutArgsEncoder(): Encoder<UserMutArgsArgs> {
   return getStructEncoder([
     ['accountMeta', getCompressedAccountMetaEncoder()],
-    ['data', getDelegateEncoder()],
+    ['data', getUserEncoder()],
   ]);
 }
 
-export function getDelegateMutArgsDecoder(): Decoder<DelegateMutArgs> {
+export function getUserMutArgsDecoder(): Decoder<UserMutArgs> {
   return getStructDecoder([
     ['accountMeta', getCompressedAccountMetaDecoder()],
-    ['data', getDelegateDecoder()],
+    ['data', getUserDecoder()],
   ]);
 }
 
-export function getDelegateMutArgsCodec(): Codec<
-  DelegateMutArgsArgs,
-  DelegateMutArgs
-> {
-  return combineCodec(getDelegateMutArgsEncoder(), getDelegateMutArgsDecoder());
+export function getUserMutArgsCodec(): Codec<UserMutArgsArgs, UserMutArgs> {
+  return combineCodec(getUserMutArgsEncoder(), getUserMutArgsDecoder());
 }

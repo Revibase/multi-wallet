@@ -43,7 +43,7 @@ import {
   type Secp256r1VerifyArgsArgs,
 } from '../types';
 
-export const TRANSACTION_BUFFER_VOTE_DISCRIMINATOR = new Uint8Array([8]);
+export const TRANSACTION_BUFFER_VOTE_DISCRIMINATOR = new Uint8Array([10]);
 
 export function getTransactionBufferVoteDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(

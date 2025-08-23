@@ -40,14 +40,20 @@ export async function executeTransactionSync({
   const multiWallet = await getMultiWalletFromSettings(settings);
   const packedAccounts = new PackedAccounts();
 
-  const { accountMetas, addressLookupTableAccounts, transactionMessage } =
-    await accountsForTransactionExecute({
+  const [
+    { accountMetas, addressLookupTableAccounts, transactionMessage },
+    { settingsReadonlyArgs, proof },
+  ] = await Promise.all([
+    accountsForTransactionExecute({
       transactionMessageBytes,
       multiWallet,
       additionalSigners: dedupSigners.filter(
         (x) => !(x instanceof Secp256r1Key)
       ) as TransactionSigner[],
-    });
+    }),
+    constructSettingsProofArgs(packedAccounts, compressed, index),
+  ]);
+
   packedAccounts.addPreAccounts(accountMetas);
 
   const {
@@ -58,14 +64,9 @@ export async function executeTransactionSync({
     signature,
     publicKey,
     message,
-  } = await extractSecp256r1VerificationArgs(
+  } = extractSecp256r1VerificationArgs(
     dedupSigners.find((x) => x instanceof Secp256r1Key),
     secp256r1VerifyInput.length
-  );
-  const { settingsReadonlyArgs, proof } = await constructSettingsProofArgs(
-    packedAccounts,
-    compressed,
-    index
   );
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();

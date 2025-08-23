@@ -1,8 +1,9 @@
 import {
   changeConfig,
   convertMemberKeyToString,
-  fetchMaybeDelegateIndex,
+  fetchMaybeUserData,
   fetchSettingsData,
+  fetchUserData,
   MULTI_WALLET_PROGRAM_ADDRESS,
   Permission,
   Permissions,
@@ -39,7 +40,12 @@ export function runMemberManagementTests() {
             members: [
               {
                 pubkey: ctx.payer.address,
-                permissions: Permissions.all(),
+                permissions: Permissions.fromPermissions([
+                  Permission.InitiateTransaction,
+                  Permission.ExecuteTransaction,
+                  Permission.VoteTransaction,
+                  Permission.IsDelegate,
+                ]),
               },
             ],
           },
@@ -72,9 +78,12 @@ export function runMemberManagementTests() {
 
       // Verify member was added
       const accountData = await fetchSettingsData(ctx.index);
-      const delegateData = await fetchMaybeDelegateIndex(ctx.payer.address);
-
-      expect(delegateData).equal(ctx.index, "Payer should be a delegate");
+      const userData = await fetchUserData(ctx.payer.address);
+      const settingsIndex =
+        userData.settingsIndex.__option === "Some"
+          ? userData.settingsIndex.value
+          : null;
+      expect(settingsIndex).equal(ctx.index, "Payer should be a delegate");
       expect(accountData.members.length).to.equal(2, "Should have two members");
       expect(convertMemberKeyToString(accountData.members[1].pubkey)).to.equal(
         ctx.payer.address.toString(),
@@ -152,7 +161,12 @@ export function runMemberManagementTests() {
             members: [
               {
                 pubkey: ctx.payer.address,
-                permissions: Permissions.all(),
+                permissions: Permissions.fromPermissions([
+                  Permission.InitiateTransaction,
+                  Permission.ExecuteTransaction,
+                  Permission.VoteTransaction,
+                  Permission.IsDelegate,
+                ]),
               },
             ],
           },
@@ -237,9 +251,12 @@ export function runMemberManagementTests() {
       }
       // Verify member was removed
       const accountData = await fetchSettingsData(ctx.index);
-      const delegateData = await fetchMaybeDelegateIndex(ctx.payer.address);
-
-      expect(delegateData).equal(null, "Payer should not be a delegate");
+      const userData = await fetchMaybeUserData(ctx.payer.address);
+      const settingsIndex =
+        userData.settingsIndex.__option === "Some"
+          ? userData.settingsIndex.value
+          : null;
+      expect(settingsIndex).equal(null, "Payer should not be a delegate");
       expect(accountData.members.length).to.equal(1, "Should have one member");
       expect(convertMemberKeyToString(accountData.members[0].pubkey)).to.equal(
         ctx.wallet.address.toString(),

@@ -12,3 +12,9 @@ pub use disable_domain_config::*;
 
 pub mod create_global_counter;
 pub use create_global_counter::*;
+
+pub mod create_domain_users;
+pub use create_domain_users::*;
+
+pub mod create_global_users;
+pub use create_global_users::*;

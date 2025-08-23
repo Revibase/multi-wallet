@@ -1,6 +1,6 @@
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::cpi::{CpiAccounts, CpiInputs};
-use crate::{error::MultisigError, id, state::{ChallengeArgs, Delegate, DelegateCreateOrMutateArgs, DomainConfig, GlobalCounter, KeyType, Member, MemberKey, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs, Settings, TransactionActionType, SEED_MULTISIG, SEED_VAULT}, LIGHT_CPI_SIGNER};
+use crate::{error::MultisigError, id, state::{ChallengeArgs, DomainConfig, GlobalCounter, KeyType, Member, MemberKey, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs, Settings, TransactionActionType, User, UserMutArgs, SEED_MULTISIG, SEED_VAULT}, LIGHT_CPI_SIGNER};
 
 #[derive(Accounts)]
 pub struct CreateMultiWallet<'info> {
@@ -42,7 +42,7 @@ impl<'info> CreateMultiWallet<'info> {
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         permissions: Permissions,
         compressed_proof_args: Option<ProofArgs>,
-        delegate_creation_args: Option<DelegateCreateOrMutateArgs>,
+        user_mut_args: Option<UserMutArgs>,
     ) -> Result<()> {
         let settings = &mut ctx.accounts.settings.load_init()?;
         let initial_member = &ctx.accounts.initial_member;
@@ -56,7 +56,7 @@ impl<'info> CreateMultiWallet<'info> {
         );
         let signer: MemberKey = MemberKey::get_signer(&initial_member, &secp256r1_verify_args, ctx.accounts.instructions_sysvar.as_ref())?;
 
-        let domain_config = ctx.accounts.domain_config.as_ref().map(|f| f.key());
+        let domain_config_key = ctx.accounts.domain_config.as_ref().map(|f| f.key());
 
         if signer.get_type().eq(&KeyType::Secp256r1) {
             let secp256r1_verify_data = secp256r1_verify_args
@@ -74,11 +74,19 @@ impl<'info> CreateMultiWallet<'info> {
                 &ctx.accounts.domain_config,
                 instructions_sysvar,
                 ChallengeArgs {
-                    account: ctx.accounts.settings.key(),
+                    account: domain_config_key.unwrap(),
                     message_hash: rp_id_hash,
-                    action_type: TransactionActionType::AddNewMember,
+                    action_type: TransactionActionType::CreateNewWallet,
                 },
             )?;
+        }
+
+
+        if permissions.has(Permission::IsPermanent) {
+            require!(
+                permissions.has(Permission::IsDelegate),
+                MultisigError::PermanentMemberPermissionNotAllowed
+            );
         }
 
         let global_counter =&mut  ctx.accounts.global_counter.load_mut()?;
@@ -88,7 +96,7 @@ impl<'info> CreateMultiWallet<'info> {
         settings.set_members(vec![Member { 
             pubkey: signer, 
             permissions, 
-            domain_config: match  domain_config {
+            domain_config: match  domain_config_key {
                 Some(value) => value,
                 None => Pubkey::default()
             },
@@ -98,25 +106,36 @@ impl<'info> CreateMultiWallet<'info> {
         settings.invariant()?;
 
         if permissions.has(Permission::IsDelegate) {
-            let proof_args = compressed_proof_args.ok_or(MultisigError::MissingDelegateArgs)?;
+            let proof_args = compressed_proof_args.ok_or(MultisigError::MissingUserDelegateArgs)?;
             let light_cpi_accounts =
                 CpiAccounts::new(&ctx.accounts.payer, &ctx.remaining_accounts[proof_args.light_cpi_accounts_start_index as usize..], LIGHT_CPI_SIGNER);
-            let (account_infos, new_addresses) = Delegate::handle_create_or_recreate_delegate(
-                delegate_creation_args,
+            let user_mut_args = user_mut_args.ok_or(MultisigError::MissingUserDelegateArgs)?;
+            require!(
+                user_mut_args
+                    .data
+                    .is_permanent_member
+                    .eq(&permissions.has(Permission::IsPermanent)),
+                MultisigError::InvalidPermanentMember
+            );
+
+            let account_infos = vec![User::handle_set_user_delegate(
+                user_mut_args,
                 global_counter.index,
-                signer,
-                &light_cpi_accounts,
-            )?;
-            if account_infos.len() > 0 || new_addresses.len() > 0 {
-                let cpi_inputs = CpiInputs::new_with_address(
-                    proof_args.proof,
-                    account_infos,
-                    new_addresses,
-                );
-                cpi_inputs
-                    .invoke_light_system_program(light_cpi_accounts)
-                    .map_err(ProgramError::from)?;
-            }
+            )?];
+            
+            let cpi_inputs = CpiInputs::new(
+                proof_args.proof,
+                account_infos,
+            );
+            cpi_inputs
+                .invoke_light_system_program(light_cpi_accounts)
+                .map_err(ProgramError::from)?;
+            
+        } else {
+              require!(
+                !permissions.has(Permission::IsPermanent),
+                MultisigError::InvalidPermanentMember
+            )
         }
         global_counter.index +=1;
         Ok(())

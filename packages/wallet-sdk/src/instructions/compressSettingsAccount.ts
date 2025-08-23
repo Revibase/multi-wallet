@@ -103,7 +103,7 @@ export async function compressSettingsAccount({
     signature,
     publicKey,
     message,
-  } = await extractSecp256r1VerificationArgs(
+  } = extractSecp256r1VerificationArgs(
     dedupSigners.find((x) => x instanceof Secp256r1Key)
   );
 

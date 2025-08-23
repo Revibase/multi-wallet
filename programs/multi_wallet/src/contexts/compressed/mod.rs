@@ -19,9 +19,6 @@ pub use transaction_buffer_execute::*;
 pub mod transaction_execute_sync;
 pub use transaction_execute_sync::*;
 
-pub mod intents;
-pub use intents::*;
-
 pub mod transaction_execute;
 pub use transaction_execute::*;
 

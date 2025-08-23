@@ -19,54 +19,54 @@ import {
   type OptionOrNullable,
 } from '@solana/kit';
 import {
-  getDelegateCreateOrMutateArgsDecoder,
-  getDelegateCreateOrMutateArgsEncoder,
   getMemberDecoder,
   getMemberEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  type DelegateCreateOrMutateArgs,
-  type DelegateCreateOrMutateArgsArgs,
+  getUserMutArgsDecoder,
+  getUserMutArgsEncoder,
   type Member,
   type MemberArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
+  type UserMutArgs,
+  type UserMutArgsArgs,
 } from '.';
 
-export type MemberWithCreationArgs = {
+export type MemberWithAddPermissionsArgs = {
   data: Member;
   verifyArgs: Option<Secp256r1VerifyArgs>;
-  delegateArgs: Option<DelegateCreateOrMutateArgs>;
+  userDelegateCreationArgs: Option<UserMutArgs>;
 };
 
-export type MemberWithCreationArgsArgs = {
+export type MemberWithAddPermissionsArgsArgs = {
   data: MemberArgs;
   verifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  delegateArgs: OptionOrNullable<DelegateCreateOrMutateArgsArgs>;
+  userDelegateCreationArgs: OptionOrNullable<UserMutArgsArgs>;
 };
 
-export function getMemberWithCreationArgsEncoder(): Encoder<MemberWithCreationArgsArgs> {
+export function getMemberWithAddPermissionsArgsEncoder(): Encoder<MemberWithAddPermissionsArgsArgs> {
   return getStructEncoder([
     ['data', getMemberEncoder()],
     ['verifyArgs', getOptionEncoder(getSecp256r1VerifyArgsEncoder())],
-    ['delegateArgs', getOptionEncoder(getDelegateCreateOrMutateArgsEncoder())],
+    ['userDelegateCreationArgs', getOptionEncoder(getUserMutArgsEncoder())],
   ]);
 }
 
-export function getMemberWithCreationArgsDecoder(): Decoder<MemberWithCreationArgs> {
+export function getMemberWithAddPermissionsArgsDecoder(): Decoder<MemberWithAddPermissionsArgs> {
   return getStructDecoder([
     ['data', getMemberDecoder()],
     ['verifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ['delegateArgs', getOptionDecoder(getDelegateCreateOrMutateArgsDecoder())],
+    ['userDelegateCreationArgs', getOptionDecoder(getUserMutArgsDecoder())],
   ]);
 }
 
-export function getMemberWithCreationArgsCodec(): Codec<
-  MemberWithCreationArgsArgs,
-  MemberWithCreationArgs
+export function getMemberWithAddPermissionsArgsCodec(): Codec<
+  MemberWithAddPermissionsArgsArgs,
+  MemberWithAddPermissionsArgs
 > {
   return combineCodec(
-    getMemberWithCreationArgsEncoder(),
-    getMemberWithCreationArgsDecoder()
+    getMemberWithAddPermissionsArgsEncoder(),
+    getMemberWithAddPermissionsArgsDecoder()
   );
 }

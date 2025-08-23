@@ -59,13 +59,33 @@ pub mod multi_wallet {
         CreateGlobalCounter::process(ctx)
     }
 
-    /// Creates a new multi-wallet with the specified permissions and ownership.
+    /// Create User Account for WebAuthn
     #[instruction(discriminator = 5)]
+    pub fn create_domain_users<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateDomainUsers<'info>>,
+        compressed_proof_args: ProofArgs,
+        create_user_args: Vec<CreateDomainUserArgs>,
+    ) -> Result<()> {
+        CreateDomainUsers::process(ctx, compressed_proof_args, create_user_args)
+    }
+
+    /// Create Global User Account (for linking a user to a multisig wallet)
+    #[instruction(discriminator = 6)]
+    pub fn create_global_users<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateGlobalUsers<'info>>,
+        compressed_proof_args: ProofArgs,
+        create_user_args: Vec<CreateGlobalUserArgs>,
+    ) -> Result<()> {
+        CreateGlobalUsers::process(ctx, compressed_proof_args, create_user_args)
+    }
+
+    /// Creates a new multi-wallet with the specified permissions and ownership.
+    #[instruction(discriminator = 7)]
     pub fn create_multi_wallet<'info>(
         ctx: Context<'_, '_, 'info, 'info, CreateMultiWallet<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         permissions: Permissions,
-        delegate_creation_args: Option<DelegateCreateOrMutateArgs>,
+        user_mut_args: Option<UserMutArgs>,
         compressed_proof_args: Option<ProofArgs>,
     ) -> Result<()> {
         CreateMultiWallet::process(
@@ -73,12 +93,12 @@ pub mod multi_wallet {
             secp256r1_verify_args,
             permissions,
             compressed_proof_args,
-            delegate_creation_args,
+            user_mut_args,
         )
     }
 
     /// Applies one or more configuration changes to an existing multi-wallet.
-    #[instruction(discriminator = 6)]
+    #[instruction(discriminator = 8)]
     pub fn change_config<'info>(
         ctx: Context<'_, '_, 'info, 'info, ChangeConfig<'info>>,
         config_actions: Vec<ConfigAction>,
@@ -88,7 +108,7 @@ pub mod multi_wallet {
     }
 
     /// Creates a new transaction buffer to stage a transaction before execution.
-    #[instruction(discriminator = 7)]
+    #[instruction(discriminator = 9)]
     pub fn transaction_buffer_create<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferCreate<'info>>,
         args: TransactionBufferCreateArgs,
@@ -98,7 +118,7 @@ pub mod multi_wallet {
     }
 
     /// Signs a transaction buffer to register approval.
-    #[instruction(discriminator = 8)]
+    #[instruction(discriminator = 10)]
     pub fn transaction_buffer_vote<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferVote<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
@@ -107,7 +127,7 @@ pub mod multi_wallet {
     }
 
     /// Extends an existing transaction buffer to allow for updated data or additional time.
-    #[instruction(discriminator = 9)]
+    #[instruction(discriminator = 11)]
     pub fn transaction_buffer_extend<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferExtend<'info>>,
         buffer: Vec<u8>,
@@ -116,7 +136,7 @@ pub mod multi_wallet {
     }
 
     /// Closes and cleans up a transaction buffer.
-    #[instruction(discriminator = 10)]
+    #[instruction(discriminator = 12)]
     pub fn transaction_buffer_close<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferClose<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
@@ -125,7 +145,7 @@ pub mod multi_wallet {
     }
 
     /// Executes a previously approved transaction buffer.
-    #[instruction(discriminator = 11)]
+    #[instruction(discriminator = 13)]
     pub fn transaction_buffer_execute<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferExecute<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
@@ -134,7 +154,7 @@ pub mod multi_wallet {
     }
 
     /// Executes a staged transaction from a buffer.
-    #[instruction(discriminator = 12)]
+    #[instruction(discriminator = 14)]
     pub fn transaction_execute<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionExecute<'info>>,
     ) -> Result<()> {
@@ -142,33 +162,13 @@ pub mod multi_wallet {
     }
 
     /// Executes a transaction synchronously by directly submitting the message and verifying it.
-    #[instruction(discriminator = 13)]
+    #[instruction(discriminator = 15)]
     pub fn transaction_execute_sync<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionExecuteSync<'info>>,
         transaction_message: TransactionMessage,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
         TransactionExecuteSync::process(ctx, transaction_message, secp256r1_verify_args)
-    }
-
-    /// Transfers SPL tokens using a signed transfer intent.
-    #[instruction(discriminator = 14)]
-    pub fn token_transfer_intent<'info>(
-        ctx: Context<'_, '_, '_, 'info, TokenTransferIntent<'info>>,
-        amount: u64,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-    ) -> Result<()> {
-        TokenTransferIntent::process(ctx, amount, secp256r1_verify_args)
-    }
-
-    /// Transfers SOL using a signed transfer intent.
-    #[instruction(discriminator = 15)]
-    pub fn native_transfer_intent<'info>(
-        ctx: Context<'_, '_, '_, 'info, NativeTransferIntent<'info>>,
-        amount: u64,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-    ) -> Result<()> {
-        NativeTransferIntent::process(ctx, amount, secp256r1_verify_args)
     }
 
     /**
@@ -215,7 +215,7 @@ pub mod multi_wallet {
         permissions: Permissions,
         compressed_proof_args: ProofArgs,
         settings_creation: SettingsCreationArgs,
-        delegate_creation_args: Option<DelegateCreateOrMutateArgs>,
+        user_mut_args: Option<UserMutArgs>,
         settings_index: u128,
     ) -> Result<()> {
         CreateMultiWalletCompressed::process(
@@ -224,7 +224,7 @@ pub mod multi_wallet {
             permissions,
             compressed_proof_args,
             settings_creation,
-            delegate_creation_args,
+            user_mut_args,
             settings_index,
         )
     }
@@ -337,42 +337,6 @@ pub mod multi_wallet {
         TransactionExecuteSyncCompressed::process(
             ctx,
             transaction_message,
-            secp256r1_verify_args,
-            settings_readonly,
-            compressed_proof_args,
-        )
-    }
-
-    /// Transfers SPL tokens using a signed transfer intent.
-    #[instruction(discriminator = 27)]
-    pub fn token_transfer_intent_compressed<'info>(
-        ctx: Context<'_, '_, '_, 'info, TokenTransferIntentCompressed<'info>>,
-        amount: u64,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly: SettingsReadonlyArgs,
-        compressed_proof_args: ProofArgs,
-    ) -> Result<()> {
-        TokenTransferIntentCompressed::process(
-            ctx,
-            amount,
-            secp256r1_verify_args,
-            settings_readonly,
-            compressed_proof_args,
-        )
-    }
-
-    /// Transfers SOL using a signed transfer intent.
-    #[instruction(discriminator = 28)]
-    pub fn native_transfer_intent_compressed<'info>(
-        ctx: Context<'_, '_, '_, 'info, NativeTransferIntentCompressed<'info>>,
-        amount: u64,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly: SettingsReadonlyArgs,
-        compressed_proof_args: ProofArgs,
-    ) -> Result<()> {
-        NativeTransferIntentCompressed::process(
-            ctx,
-            amount,
             secp256r1_verify_args,
             settings_readonly,
             compressed_proof_args,

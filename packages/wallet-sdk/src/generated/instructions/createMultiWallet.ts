@@ -44,25 +44,25 @@ import {
   type ResolvedAccount,
 } from "../shared";
 import {
-  getDelegateCreateOrMutateArgsDecoder,
-  getDelegateCreateOrMutateArgsEncoder,
   getPermissionsDecoder,
   getPermissionsEncoder,
   getProofArgsDecoder,
   getProofArgsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  type DelegateCreateOrMutateArgs,
-  type DelegateCreateOrMutateArgsArgs,
+  getUserMutArgsDecoder,
+  getUserMutArgsEncoder,
   type IPermissions,
   type PermissionsArgs,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
+  type UserMutArgs,
+  type UserMutArgsArgs,
 } from "../types";
 
-export const CREATE_MULTI_WALLET_DISCRIMINATOR = new Uint8Array([5]);
+export const CREATE_MULTI_WALLET_DISCRIMINATOR = new Uint8Array([7]);
 
 export function getCreateMultiWalletDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
@@ -125,14 +125,14 @@ export type CreateMultiWalletInstructionData = {
   discriminator: ReadonlyUint8Array;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
   permissions: IPermissions;
-  delegateCreationArgs: Option<DelegateCreateOrMutateArgs>;
+  userMutArgs: Option<UserMutArgs>;
   compressedProofArgs: Option<ProofArgs>;
 };
 
 export type CreateMultiWalletInstructionDataArgs = {
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
   permissions: PermissionsArgs;
-  delegateCreationArgs: OptionOrNullable<DelegateCreateOrMutateArgsArgs>;
+  userMutArgs: OptionOrNullable<UserMutArgsArgs>;
   compressedProofArgs: OptionOrNullable<ProofArgsArgs>;
 };
 
@@ -145,10 +145,7 @@ export function getCreateMultiWalletInstructionDataEncoder(): Encoder<CreateMult
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
       ["permissions", getPermissionsEncoder()],
-      [
-        "delegateCreationArgs",
-        getOptionEncoder(getDelegateCreateOrMutateArgsEncoder()),
-      ],
+      ["userMutArgs", getOptionEncoder(getUserMutArgsEncoder())],
       ["compressedProofArgs", getOptionEncoder(getProofArgsEncoder())],
     ]),
     (value) => ({ ...value, discriminator: CREATE_MULTI_WALLET_DISCRIMINATOR })
@@ -160,10 +157,7 @@ export function getCreateMultiWalletInstructionDataDecoder(): Decoder<CreateMult
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
     ["permissions", getPermissionsDecoder()],
-    [
-      "delegateCreationArgs",
-      getOptionDecoder(getDelegateCreateOrMutateArgsDecoder()),
-    ],
+    ["userMutArgs", getOptionDecoder(getUserMutArgsDecoder())],
     ["compressedProofArgs", getOptionDecoder(getProofArgsDecoder())],
   ]);
 }
@@ -187,7 +181,6 @@ export type CreateMultiWalletAsyncInput<
   TAccountInstructionsSysvar extends string = string,
   TAccountDomainConfig extends string = string,
   TAccountGlobalCounter extends string = string,
-  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = {
   settings?: Address<TAccountSettings>;
   payer: TransactionSigner<TAccountPayer>;
@@ -199,9 +192,8 @@ export type CreateMultiWalletAsyncInput<
   globalCounter: Address<TAccountGlobalCounter>;
   secp256r1VerifyArgs: CreateMultiWalletInstructionDataArgs["secp256r1VerifyArgs"];
   permissions: CreateMultiWalletInstructionDataArgs["permissions"];
-  delegateCreationArgs: CreateMultiWalletInstructionDataArgs["delegateCreationArgs"];
+  userMutArgs: CreateMultiWalletInstructionDataArgs["userMutArgs"];
   compressedProofArgs: CreateMultiWalletInstructionDataArgs["compressedProofArgs"];
-  remainingAccounts: TRemainingAccounts;
 };
 
 export async function getCreateMultiWalletInstructionAsync<
@@ -214,7 +206,6 @@ export async function getCreateMultiWalletInstructionAsync<
   TAccountDomainConfig extends string,
   TAccountGlobalCounter extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 >(
   input: CreateMultiWalletAsyncInput<
     TAccountSettings,
@@ -224,8 +215,7 @@ export async function getCreateMultiWalletInstructionAsync<
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar,
     TAccountDomainConfig,
-    TAccountGlobalCounter,
-    TRemainingAccounts
+    TAccountGlobalCounter
   >,
   config?: { programAddress?: TProgramAddress }
 ): Promise<
@@ -238,8 +228,7 @@ export async function getCreateMultiWalletInstructionAsync<
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar,
     TAccountDomainConfig,
-    TAccountGlobalCounter,
-    TRemainingAccounts
+    TAccountGlobalCounter
   >
 > {
   // Program address.
@@ -305,7 +294,6 @@ export async function getCreateMultiWalletInstructionAsync<
       getAccountMeta(accounts.instructionsSysvar),
       getAccountMeta(accounts.domainConfig),
       getAccountMeta(accounts.globalCounter),
-      ...input.remainingAccounts,
     ],
     programAddress,
     data: getCreateMultiWalletInstructionDataEncoder().encode(
@@ -320,8 +308,7 @@ export async function getCreateMultiWalletInstructionAsync<
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar,
     TAccountDomainConfig,
-    TAccountGlobalCounter,
-    TRemainingAccounts
+    TAccountGlobalCounter
   >;
 
   return instruction;
@@ -336,6 +323,7 @@ export type CreateMultiWalletInput<
   TAccountInstructionsSysvar extends string = string,
   TAccountDomainConfig extends string = string,
   TAccountGlobalCounter extends string = string,
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = {
   settings: Address<TAccountSettings>;
   payer: TransactionSigner<TAccountPayer>;
@@ -347,8 +335,9 @@ export type CreateMultiWalletInput<
   globalCounter: Address<TAccountGlobalCounter>;
   secp256r1VerifyArgs: CreateMultiWalletInstructionDataArgs["secp256r1VerifyArgs"];
   permissions: CreateMultiWalletInstructionDataArgs["permissions"];
-  delegateCreationArgs: CreateMultiWalletInstructionDataArgs["delegateCreationArgs"];
+  userMutArgs: CreateMultiWalletInstructionDataArgs["userMutArgs"];
   compressedProofArgs: CreateMultiWalletInstructionDataArgs["compressedProofArgs"];
+  remainingAccounts: TRemainingAccounts;
 };
 
 export function getCreateMultiWalletInstruction<
@@ -361,6 +350,7 @@ export function getCreateMultiWalletInstruction<
   TAccountDomainConfig extends string,
   TAccountGlobalCounter extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
+  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 >(
   input: CreateMultiWalletInput<
     TAccountSettings,
@@ -370,7 +360,8 @@ export function getCreateMultiWalletInstruction<
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar,
     TAccountDomainConfig,
-    TAccountGlobalCounter
+    TAccountGlobalCounter,
+    TRemainingAccounts
   >,
   config?: { programAddress?: TProgramAddress }
 ): CreateMultiWalletInstruction<
@@ -382,7 +373,8 @@ export function getCreateMultiWalletInstruction<
   TAccountSlotHashSysvar,
   TAccountInstructionsSysvar,
   TAccountDomainConfig,
-  TAccountGlobalCounter
+  TAccountGlobalCounter,
+  TRemainingAccounts
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -434,6 +426,7 @@ export function getCreateMultiWalletInstruction<
       getAccountMeta(accounts.instructionsSysvar),
       getAccountMeta(accounts.domainConfig),
       getAccountMeta(accounts.globalCounter),
+      ...input.remainingAccounts,
     ],
     programAddress,
     data: getCreateMultiWalletInstructionDataEncoder().encode(
@@ -448,7 +441,8 @@ export function getCreateMultiWalletInstruction<
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar,
     TAccountDomainConfig,
-    TAccountGlobalCounter
+    TAccountGlobalCounter,
+    TRemainingAccounts
   >;
 
   return instruction;

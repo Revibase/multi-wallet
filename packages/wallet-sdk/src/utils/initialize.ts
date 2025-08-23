@@ -45,6 +45,9 @@ export function initializeMultiWallet({
   compressionApiEndpoint,
   proverEndpoint,
   payer,
+  authUrl,
+  expectedOrigin,
+  expectedRPID,
   estimateJitoTipEndpoint = `https://proxy.revibase.com/?url=https://bundles.jito.wtf/api/v1/bundles/tip_floor`,
   jitoBlockEngineEndpoint = `https://mainnet.block-engine.jito.wtf/api/v1`,
 }: {
@@ -54,6 +57,9 @@ export function initializeMultiWallet({
   payer?: TransactionSigner;
   estimateJitoTipEndpoint?: string;
   jitoBlockEngineEndpoint?: string;
+  authUrl?: string;
+  expectedOrigin?: string;
+  expectedRPID?: string;
 }) {
   rpc = createSolanaRpc(rpcEndpoint);
   lightProtocolRpc = createRpc(
@@ -71,6 +77,9 @@ export function initializeMultiWallet({
           payer,
           jitoBlockEngineEndpoint,
           estimateJitoTipEndpoint,
+          authUrl,
+          expectedOrigin,
+          expectedRPID,
         })
       )
     );

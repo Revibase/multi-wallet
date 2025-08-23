@@ -8,7 +8,7 @@
     "@coral-xyz/anchor": "^0.31.1",
     "@lightprotocol/stateless.js": "^0.22.0",
     "@noble/curves": "^1.9.0",
-    "@revibase/wallet-sdk": "^2.2.0",
+    "@revibase/wallet-sdk": "2.2.7",
     "@solana-program/address-lookup-table": "^0.7.0",
     "@solana-program/compute-budget": "^0.8.0",
     "@solana-program/system": "^0.7.0",
