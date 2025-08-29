@@ -1,24 +1,17 @@
-import { AuthenticatorAssertionResponseJSON } from "@simplewebauthn/server";
 import {
   COMPUTE_BUDGET_PROGRAM_ADDRESS,
   estimateComputeUnitLimitFactory,
   getSetComputeUnitLimitInstruction,
+  getSetComputeUnitPriceInstruction,
 } from "@solana-program/compute-budget";
 import {
   AddressesByLookupTableAddress,
   appendTransactionMessageInstructions,
-  assertTransactionIsFullySigned,
-  Commitment,
-  compileTransaction,
   compressTransactionMessageUsingAddressLookupTables,
   createTransactionMessage,
   decompileTransactionMessage,
   fetchAddressesForLookupTables,
-  getAddressDecoder,
-  getBase64EncodedWireTransaction,
-  getBlockhashDecoder,
   getCompiledTransactionMessageDecoder,
-  getSignatureFromTransaction,
   getSignersFromTransactionMessage,
   getTransactionDecoder,
   getTransactionEncoder,
@@ -27,155 +20,59 @@ import {
   partiallySignTransactionMessageWithSigners,
   pipe,
   prependTransactionMessageInstructions,
-  sendAndConfirmTransactionFactory,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
-  Transaction,
   TransactionSigner,
 } from "@solana/kit";
 import {
-  createBlockHeightExceedencePromiseFactory,
-  createRecentSignatureConfirmationPromiseFactory,
-  TransactionWithLastValidBlockHeight,
-  waitForRecentTransactionConfirmation,
-} from "@solana/transaction-confirmation";
-import {
-  SolanaSignAndSendTransactionOptions,
   SolanaSignInInput,
   SolanaSignInOutput,
 } from "@solana/wallet-standard-features";
-import {
-  checkIfSettingsAccountIsCompressed,
-  fetchDelegateIndex,
-} from "../compressed";
 import {
   signMessage as signPasskeyMessage,
   signTransaction as signPasskeyTransaction,
   verifyMessage,
 } from "../passkeys";
 import {
+  estimateTransactionSize,
   prepareTransactionBundle,
   prepareTransactionMessage,
   prepareTransactionSync,
 } from "../transaction";
-import { Secp256r1Key } from "../types";
+import { Secp256r1Key, SignerPayload } from "../types";
 import {
-  estimateJitoTips,
+  checkIfSettingsAccountIsCompressed,
+  getFeePayer,
   getMultiWalletFromSettings,
   getSettingsFromIndex,
   getSolanaRpc,
-  getSolanaRpcSubscriptions,
   getTransactionBufferAddress,
 } from "../utils";
 import { base64URLStringToBuffer } from "../utils/passkeys/internal";
+import { getHash } from "../utils/transactionMessage/internal";
 import {
   assertTransactionIsNotSigned,
   createSignInMessageText,
-  getRandomPayer,
-  sendJitoBundle,
+  estimateJitoTips,
+  getMedianPriorityFees,
+  JitoTipsConfig,
 } from "./util";
 import { Revibase, RevibaseEvent } from "./window";
 
-async function estimateTxSizeExceedLimit({
-  payer,
-  settingsIndex,
-  transactionMessageBytes,
-  additionalSigners,
-  compressed,
-}: {
-  payer: TransactionSigner;
-  settingsIndex: number;
-  compressed: boolean;
-  transactionMessageBytes: Uint8Array;
-  additionalSigners: TransactionSigner[];
-}) {
-  const randomPubkey = crypto.getRandomValues(new Uint8Array(33));
-  const signer = new Secp256r1Key(randomPubkey, {
-    authData: crypto.getRandomValues(new Uint8Array(37)),
-    domainConfig: getAddressDecoder().decode(
-      crypto.getRandomValues(new Uint8Array(32))
-    ),
-    signature: crypto.getRandomValues(new Uint8Array(64)),
-    verifyArgs: {
-      publicKey: randomPubkey,
-      slotHash: crypto.getRandomValues(new Uint8Array(32)),
-      slotNumber: BigInt(0),
-      clientDataJson: crypto.getRandomValues(new Uint8Array(150)),
-    },
-  });
-  const result = await prepareTransactionSync({
-    payer,
-    index: settingsIndex,
-    transactionMessageBytes,
-    signers: [signer, ...(additionalSigners ?? [])],
-    compressed,
-    skipChecks: true,
-  });
-
-  const tx = pipe(
-    createTransactionMessage({ version: 0 }),
-    (tx) => appendTransactionMessageInstructions(result.ixs, tx),
-    (tx) => setTransactionMessageFeePayerSigner(result.payer, tx),
-    (tx) =>
-      setTransactionMessageLifetimeUsingBlockhash(
-        {
-          blockhash: getBlockhashDecoder().decode(
-            crypto.getRandomValues(new Uint8Array(32))
-          ),
-          lastValidBlockHeight: BigInt(Number.MAX_SAFE_INTEGER),
-        },
-        tx
-      ),
-    (tx) =>
-      result.addressLookupTableAccounts
-        ? compressTransactionMessageUsingAddressLookupTables(
-            tx,
-            result.addressLookupTableAccounts
-          )
-        : tx,
-    (tx) => compileTransaction(tx)
-  );
-  const txSize = getBase64EncodedWireTransaction(tx).length;
-  console.log("Estimated Tx Size: ", txSize);
-  return txSize > 1644;
-}
-
 export function createRevibaseAdapter({
-  payer,
-  jitoBlockEngineEndpoint,
-  estimateJitoTipEndpoint,
+  jitoTipsConfig,
+  expectedRPID,
+  expectedOrigin,
+  authUrl,
 }: {
-  payer?: TransactionSigner;
-  estimateJitoTipEndpoint: string;
-  jitoBlockEngineEndpoint: string;
+  jitoTipsConfig: JitoTipsConfig;
+  expectedOrigin?: string;
+  expectedRPID?: string;
+  authUrl?: string;
 }): Revibase {
   const computeBudgetEstimate = estimateComputeUnitLimitFactory({
     rpc: getSolanaRpc(),
   });
-
-  const sendAndConfirm = sendAndConfirmTransactionFactory({
-    rpc: getSolanaRpc(),
-    rpcSubscriptions: getSolanaRpcSubscriptions(),
-  });
-  const getBlockHeightExceedencePromise =
-    createBlockHeightExceedencePromiseFactory({
-      rpc: getSolanaRpc(),
-      rpcSubscriptions: getSolanaRpcSubscriptions(),
-    });
-  const getRecentSignatureConfirmationPromise =
-    createRecentSignatureConfirmationPromiseFactory({
-      rpc: getSolanaRpc(),
-      rpcSubscriptions: getSolanaRpcSubscriptions(),
-    });
-  const confirmTransaction = (config: {
-    transaction: Readonly<Transaction & TransactionWithLastValidBlockHeight>;
-    commitment: Commitment;
-  }) =>
-    waitForRecentTransactionConfirmation({
-      getBlockHeightExceedencePromise,
-      getRecentSignatureConfirmationPromise,
-      ...config,
-    });
   // 👇 Event listener map
   const listeners: {
     [E in keyof RevibaseEvent]?: Array<{ fn: RevibaseEvent[E]; ctx?: any }>;
@@ -202,7 +99,7 @@ export function createRevibaseAdapter({
           if (account) {
             const { publicKey, member, index } = JSON.parse(account) as {
               publicKey: string | null;
-              member: { type: "ed25519" | "secp256r1"; value: string } | null;
+              member: SignerPayload | null;
               index: number | null;
             };
             this.publicKey = publicKey;
@@ -231,74 +128,13 @@ export function createRevibaseAdapter({
         throw error;
       }
     },
-    signAndSendTransaction: async function (
-      transaction: Uint8Array,
-      options?: SolanaSignAndSendTransactionOptions
-    ): Promise<string> {
-      try {
-        const signedTransactions = (
-          await this.signTransaction(transaction)
-        ).map(getTransactionDecoder().decode);
-
-        let signature: string;
-        if (signedTransactions.length === 1) {
-          const signedTransaction = signedTransactions[0];
-          assertTransactionIsFullySigned(signedTransaction);
-          await sendAndConfirm(
-            {
-              ...signedTransaction,
-              lifetimeConstraint: {
-                lastValidBlockHeight: 2n ** 64n - 1n,
-              },
-            },
-            {
-              commitment: "confirmed",
-              ...options,
-              minContextSlot: options?.minContextSlot
-                ? BigInt(options.minContextSlot)
-                : undefined,
-              maxRetries: options?.maxRetries
-                ? BigInt(options.maxRetries)
-                : undefined,
-            }
-          );
-          signature = getSignatureFromTransaction(signedTransaction);
-        } else {
-          await sendJitoBundle(
-            jitoBlockEngineEndpoint,
-            signedTransactions.map(getBase64EncodedWireTransaction)
-          );
-          const lastTransaction =
-            signedTransactions[signedTransactions.length - 1];
-          await confirmTransaction({
-            transaction: {
-              ...lastTransaction,
-              lifetimeConstraint: {
-                lastValidBlockHeight: 2n ** 64n - 1n,
-              },
-            },
-            commitment: "confirmed",
-            ...options,
-          });
-          signature = getSignatureFromTransaction(lastTransaction);
-        }
-
-        return signature;
-      } catch (error) {
-        console.error("signAndSendTransaction() failed:", error);
-        throw error;
-      }
-    },
     signTransaction: async function (
       transaction: Uint8Array
     ): Promise<Uint8Array[]> {
       try {
         const outputs: Uint8Array[] = [];
-        const member = this.member;
-        if (!member || !this.index)
+        if (!this.member || !this.index || !this.publicKey)
           throw new Error("Wallet is not connected or member is not set.");
-        if (member.type !== "secp256r1")
-          throw new Error("Only secp256r1 keys are supported for signing.");
 
         const { messageBytes, signatures } =
           getTransactionDecoder().decode(transaction);
@@ -332,8 +168,11 @@ export function createRevibaseAdapter({
         const additionalSigners = getSignersFromTransactionMessage(
           decompiledMessage
         ) as TransactionSigner[];
+        additionalSigners.filter(
+          (x) => x.address.toString() !== this.publicKey
+        );
 
-        const transactionMessageBytes = await prepareTransactionMessage(
+        const transactionMessageBytes = prepareTransactionMessage(
           decompiledMessage.lifetimeConstraint.blockhash.toString(),
           decompiledMessage.feePayer.address,
           decompiledMessage.instructions.filter(
@@ -348,7 +187,6 @@ export function createRevibaseAdapter({
 
         const payload: {
           id: string;
-          signers: string[];
           payer: TransactionSigner;
           ixs: Instruction[];
           addressLookupTableAccounts?: AddressesByLookupTableAddress;
@@ -356,58 +194,59 @@ export function createRevibaseAdapter({
 
         const compressed = await checkIfSettingsAccountIsCompressed(this.index);
         const settings = await getSettingsFromIndex(this.index);
-        payer = payer ?? (await getRandomPayer("https://api.revibase.com"));
+
         if (
-          await estimateTxSizeExceedLimit({
+          (await estimateTransactionSize({
             additionalSigners,
             compressed,
-            payer,
+            payer: getFeePayer(),
             settingsIndex: this.index,
             transactionMessageBytes,
-          })
+          })) > 1644
         ) {
           const bufferIndex = Math.round(Math.random() * 255);
           const transactionBufferAddress = await getTransactionBufferAddress(
             settings,
-            new Secp256r1Key(member.value),
+            new Secp256r1Key(this.member.publicKey),
             bufferIndex
           );
+
           const signedTx = await signPasskeyTransaction({
-            publicKey: member.value,
+            signer: this.member,
             transactionActionType: "create_with_permissionless_execution",
             transactionAddress: transactionBufferAddress,
             transactionMessageBytes,
+            authUrl,
           });
-          const jitoBundlesTipAmount = await estimateJitoTips(
-            estimateJitoTipEndpoint
-          );
+          const jitoBundlesTipAmount = await estimateJitoTips(jitoTipsConfig);
 
           const result = await prepareTransactionBundle({
             compressed,
             index: this.index,
             bufferIndex,
             transactionMessageBytes,
-            creator: new Secp256r1Key(member.value, signedTx),
+            creator: new Secp256r1Key(signedTx.signer.publicKey, signedTx),
             jitoBundlesTipAmount,
-            payer: payer,
+            payer: getFeePayer(),
             additionalSigners,
           });
           payload.push(...result);
         } else {
-          const result = await signPasskeyTransaction({
-            publicKey: member.value,
+          const signedTx = await signPasskeyTransaction({
+            signer: this.member,
             transactionActionType: "sync",
             transactionAddress: settings.toString(),
             transactionMessageBytes,
+            authUrl,
           });
           payload.push(
             await prepareTransactionSync({
               compressed,
               signers: [
-                new Secp256r1Key(member.value, result),
+                new Secp256r1Key(signedTx.signer.publicKey, signedTx),
                 ...additionalSigners,
               ],
-              payer: payer,
+              payer: getFeePayer(),
               transactionMessageBytes,
               index: this.index,
             })
@@ -433,15 +272,35 @@ export function createRevibaseAdapter({
                     item.addressLookupTableAccounts
                   )
                 : tx,
-            async (tx) =>
-              prependTransactionMessageInstructions(
+            async (tx) => {
+              const [estimatedUnits, priorityFees] = await Promise.all([
+                computeBudgetEstimate(tx),
+                getMedianPriorityFees(
+                  getSolanaRpc(),
+                  tx.instructions.flatMap((x) => x.accounts ?? [])
+                ),
+              ]);
+              const computeUnits = Math.ceil(estimatedUnits * 1.1);
+              return prependTransactionMessageInstructions(
                 [
-                  getSetComputeUnitLimitInstruction({
-                    units: (await computeBudgetEstimate(tx)) * 1.1,
-                  }),
+                  ...(computeUnits > 200_000
+                    ? [
+                        getSetComputeUnitLimitInstruction({
+                          units: computeUnits,
+                        }),
+                      ]
+                    : []),
+                  ...(priorityFees > 0
+                    ? [
+                        getSetComputeUnitPriceInstruction({
+                          microLamports: priorityFees,
+                        }),
+                      ]
+                    : []),
                 ],
                 tx
-              ),
+              );
+            },
             async (tx) =>
               await partiallySignTransactionMessageWithSigners(await tx)
           );
@@ -462,37 +321,43 @@ export function createRevibaseAdapter({
     },
     signMessage: async function (
       message: Uint8Array
-    ): Promise<{ signature: Uint8Array }> {
+    ): Promise<{ signature: Uint8Array; signedMessage: Uint8Array }> {
       try {
         if (!this.member) {
           throw new Error("Invalid account member");
         }
-        if (this.member.type !== "secp256r1")
-          throw new Error("Only secp256r1 keys are supported for signing.");
+
         const decodedMessage = new TextDecoder().decode(message);
 
         const response = await signPasskeyMessage({
           message: decodedMessage,
-          publicKey: this.member.value,
+          signer: this.member,
+          authUrl,
         });
-        const verified = await verifyMessage({
-          message: decodedMessage,
-          response,
-        });
-        if (!verified) {
-          throw Error("Failed to verify signed message");
-        }
 
-        return {
-          signature: new Uint8Array(
+        const authenticatorData = new Uint8Array(
+          base64URLStringToBuffer(
+            response.authResponse.response.authenticatorData ?? ""
+          )
+        );
+        const clientDataHash = getHash(
+          new Uint8Array(
             base64URLStringToBuffer(
-              (
-                response.authResponse
-                  .response as AuthenticatorAssertionResponseJSON
-              ).signature
+              response.authResponse.response.clientDataJSON
             )
-          ),
-        };
+          )
+        );
+        const signedMessage = new Uint8Array(
+          authenticatorData.length + clientDataHash.length
+        );
+        signedMessage.set(authenticatorData);
+        signedMessage.set(clientDataHash, authenticatorData.length);
+
+        const signature = new Uint8Array(
+          base64URLStringToBuffer(response.authResponse.response.signature)
+        );
+
+        return { signedMessage, signature };
       } catch (error) {
         console.error("signMessage() failed:", error);
         throw error;
@@ -501,7 +366,7 @@ export function createRevibaseAdapter({
     signIn: async function (input?: SolanaSignInInput): Promise<
       {
         publicKey: string;
-        member: { type: "ed25519" | "secp256r1"; value: string };
+        member: SignerPayload;
         index: number;
       } & Omit<SolanaSignInOutput, "account">
     > {
@@ -515,18 +380,28 @@ export function createRevibaseAdapter({
 
         const response = await signPasskeyMessage({
           message,
+          authUrl,
         });
-        const verified = await verifyMessage({ message, response });
+
+        const verified = await verifyMessage({
+          message,
+          response,
+          expectedOrigin,
+          expectedRPID,
+        });
         if (!verified) {
           throw Error("Failed to verify signed message");
         }
-        const member = new Secp256r1Key(response.publicKey);
-        const delegateIndex = await fetchDelegateIndex(member);
-        const settings = await getSettingsFromIndex(delegateIndex);
-        const address = await getMultiWalletFromSettings(settings);
-        this.publicKey = address.toString();
-        this.member = { type: "secp256r1", value: member.toString() };
-        this.index = Number(delegateIndex);
+        this.member = response.signer;
+        if (!this.member.settingsIndex) {
+          throw Error("User has no delegated wallet");
+        }
+        this.index = this.member.settingsIndex;
+        const settings = await getSettingsFromIndex(this.index);
+        this.publicKey = (
+          await getMultiWalletFromSettings(settings)
+        ).toString();
+
         window.sessionStorage.setItem(
           "Revibase:account",
           JSON.stringify({
@@ -542,33 +417,27 @@ export function createRevibaseAdapter({
             response.authResponse.response.authenticatorData ?? ""
           )
         );
-        const clientDataHash = new Uint8Array(
-          await crypto.subtle.digest(
-            "SHA-256",
+        const clientDataHash = getHash(
+          new Uint8Array(
             base64URLStringToBuffer(
-              response.authResponse.response.clientDataJSON ?? ""
+              response.authResponse.response.clientDataJSON
             )
           )
         );
-        const concatenatedData = new Uint8Array(
+        const signedMessage = new Uint8Array(
           authenticatorData.length + clientDataHash.length
         );
-        concatenatedData.set(authenticatorData);
-        concatenatedData.set(clientDataHash, authenticatorData.length);
-
+        signedMessage.set(authenticatorData);
+        signedMessage.set(clientDataHash, authenticatorData.length);
+        const signature = new Uint8Array(
+          base64URLStringToBuffer(response.authResponse.response.signature)
+        );
         return {
           publicKey: this.publicKey,
           member: this.member,
           index: this.index,
-          signedMessage: concatenatedData,
-          signature: new Uint8Array(
-            base64URLStringToBuffer(
-              (
-                response.authResponse
-                  .response as AuthenticatorAssertionResponseJSON
-              ).signature
-            )
-          ),
+          signedMessage,
+          signature,
         };
       } catch (error) {
         console.error("signIn() failed:", error);

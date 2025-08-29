@@ -7,13 +7,14 @@ import {
 import {
   createDomainConfig,
   createGlobalCounter,
+  createGlobalUsers,
   createWallet,
   fetchMaybeGlobalCounter,
   getGlobalCounterAddress,
   getMultiWalletFromSettings,
-  getSecp256r1VerifyInstruction,
   getSettingsFromIndex,
   initializeMultiWallet,
+  MULTI_WALLET_PROGRAM_ADDRESS,
   Permissions,
 } from "@revibase/wallet-sdk";
 import {
@@ -32,6 +33,7 @@ import {
   createSolanaRpc,
   createSolanaRpcSubscriptions,
   fetchAddressesForLookupTables,
+  getProgramDerivedAddress,
   sendAndConfirmTransactionFactory,
 } from "@solana/kit";
 import {
@@ -129,6 +131,16 @@ export async function setupTestEnvironment(
   const rpId = crypto.randomUUID();
   const origin = crypto.randomUUID();
 
+  const [domainConfig] = await getProgramDerivedAddress({
+    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
+    seeds: [
+      new TextEncoder().encode("domain_config"),
+      new Uint8Array(
+        await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rpId))
+      ),
+    ],
+  });
+
   return {
     compressed,
     connection,
@@ -141,6 +153,7 @@ export async function setupTestEnvironment(
     rpId,
     origin,
     addressLookUpTable,
+    domainConfig,
   };
 }
 
@@ -174,7 +187,7 @@ export async function createMultiWallet(
   const setDomainIx = await createDomainConfig({
     payer: ctx.payer,
     rpId: ctx.rpId,
-    origins: [ctx.origin, "happy_1"],
+    origins: [ctx.origin, "happy"],
     authority: ctx.wallet.address,
   });
 
@@ -184,23 +197,32 @@ export async function createMultiWallet(
     ctx.payer,
     ctx.sendAndConfirm
   );
+
+  const createGlobalUserIxs = await createGlobalUsers({
+    members: [ctx.wallet.address, ctx.payer.address],
+    payer: ctx.payer,
+  });
+
+  await sendTransaction(
+    ctx.connection,
+    [createGlobalUserIxs],
+    ctx.payer,
+    ctx.sendAndConfirm
+  );
+
   const createIndex = globalCounter.exists ? globalCounter.data.index : null;
 
   const settings = await getSettingsFromIndex(createIndex);
   const multiWallet = await getMultiWalletFromSettings(settings);
 
   // Create wallet
-  const { instructions, secp256r1VerifyInput } = await createWallet({
+  const { instructions } = await createWallet({
     payer: ctx.payer,
     initialMember: ctx.wallet,
     permissions: Permissions.all(),
     index: createIndex,
     compressed: ctx.compressed,
   });
-
-  if (secp256r1VerifyInput.length > 0) {
-    instructions.unshift(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
-  }
 
   await sendTransaction(
     ctx.connection,

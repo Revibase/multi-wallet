@@ -1,23 +1,21 @@
-import { Address, TransactionSigner } from "@solana/kit";
+import { Address, none, some, TransactionSigner } from "@solana/kit";
 import { getEditDomainConfigInstruction } from "../../generated";
-import { getDomainConfig } from "../../utils";
 
 export async function editDomainConfig({
+  authority,
+  domainConfig,
   newAuthority,
   newOrigins,
-  currentAuthority,
-  rpId,
 }: {
-  rpId: string;
-  newAuthority: Address;
-  newOrigins: string[];
-  currentAuthority: TransactionSigner;
+  domainConfig: Address;
+  authority: TransactionSigner;
+  newAuthority?: Address;
+  newOrigins?: string[];
 }) {
-  const domainConfig = await getDomainConfig({ rpId });
   return getEditDomainConfigInstruction({
     domainConfig,
-    newOrigins,
-    authority: currentAuthority,
-    newAuthority,
+    authority,
+    newOrigins: newOrigins ? some(newOrigins) : none(),
+    newAuthority: newAuthority ? some(newAuthority) : none(),
   });
 }

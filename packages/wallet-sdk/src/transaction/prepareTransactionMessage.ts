@@ -6,7 +6,7 @@ import {
 import { customTransactionMessageSerialize } from "../utils";
 import { compileToWrappedMessageV0 } from "../utils/transactionMessage/compileToWrappedMessageV0";
 
-export async function prepareTransactionMessage(
+export function prepareTransactionMessage(
   recentBlockhash: string,
   payer: Address,
   instructions: Instruction[],

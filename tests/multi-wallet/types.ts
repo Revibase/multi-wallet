@@ -21,4 +21,5 @@ export interface TestContext {
   origin: string;
   compressed: boolean;
   addressLookUpTable: AddressesByLookupTableAddress;
+  domainConfig: Address;
 }

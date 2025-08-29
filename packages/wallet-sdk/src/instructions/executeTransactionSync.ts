@@ -1,20 +1,19 @@
 import { Instruction, TransactionSigner } from "@solana/kit";
 import {
-  constructSettingsProofArgs,
-  convertToCompressedProofArgs,
-} from "../compressed/internal";
-import { PackedAccounts } from "../compressed/packedAccounts";
-import {
   getTransactionExecuteSyncCompressedInstruction,
   getTransactionExecuteSyncInstruction,
 } from "../generated";
 import { Secp256r1Key } from "../types";
 import { getMultiWalletFromSettings, getSettingsFromIndex } from "../utils";
 import {
+  constructSettingsProofArgs,
+  convertToCompressedProofArgs,
+} from "../utils/compressed/internal";
+import {
   accountsForTransactionExecute,
   extractSecp256r1VerificationArgs,
   getDeduplicatedSigners,
-} from "../utils/internal";
+} from "../utils/transactionMessage/internal";
 import {
   getSecp256r1VerifyInstruction,
   Secp256r1VerifyInput,
@@ -38,16 +37,20 @@ export async function executeTransactionSync({
   const dedupSigners = getDeduplicatedSigners(signers);
   const settings = await getSettingsFromIndex(index);
   const multiWallet = await getMultiWalletFromSettings(settings);
-  const packedAccounts = new PackedAccounts();
-
-  const { accountMetas, addressLookupTableAccounts, transactionMessage } =
-    await accountsForTransactionExecute({
+  const [
+    { accountMetas, addressLookupTableAccounts, transactionMessage },
+    { settingsReadonlyArgs, proof, packedAccounts },
+  ] = await Promise.all([
+    accountsForTransactionExecute({
       transactionMessageBytes,
       multiWallet,
       additionalSigners: dedupSigners.filter(
         (x) => !(x instanceof Secp256r1Key)
       ) as TransactionSigner[],
-    });
+    }),
+    constructSettingsProofArgs(compressed, index),
+  ]);
+
   packedAccounts.addPreAccounts(accountMetas);
 
   const {
@@ -58,14 +61,9 @@ export async function executeTransactionSync({
     signature,
     publicKey,
     message,
-  } = await extractSecp256r1VerificationArgs(
+  } = extractSecp256r1VerificationArgs(
     dedupSigners.find((x) => x instanceof Secp256r1Key),
     secp256r1VerifyInput.length
-  );
-  const { settingsReadonlyArgs, proof } = await constructSettingsProofArgs(
-    packedAccounts,
-    compressed,
-    index
   );
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();

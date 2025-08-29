@@ -1,3 +1,5 @@
+import { sha256 } from "@noble/hashes/sha2";
+import { Input } from "@noble/hashes/utils";
 import { getTransferSolInstruction } from "@solana-program/system";
 import {
   AccountMeta,
@@ -6,43 +8,21 @@ import {
   Address,
   address,
   fetchAddressesForLookupTables,
-  getAddressEncoder,
-  getSignersFromInstruction,
-  Instruction,
-  none,
   OptionOrNullable,
   some,
   TransactionSigner,
 } from "@solana/kit";
-import { PublicKey } from "@solana/web3.js";
-import { getSolanaRpc } from ".";
-import {
-  ConfigAction,
-  DelegateCreateOrMutateArgs,
-  DelegateMutArgs,
-  IPermissions,
-  MemberKey,
-  MemberKeyWithCloseArgs,
-  MemberWithCreationArgs,
-  Secp256r1VerifyArgs,
-} from "../generated";
-import {
-  ConfigActionWrapperWithDelegateArgs,
-  KeyType,
-  Secp256r1Key,
-} from "../types";
-import { JITO_TIP_ACCOUNTS } from "./consts";
-import { convertMemberKeyToString } from "./helper";
 import {
   CustomTransactionMessage,
   customTransactionMessageDeserialize,
-} from "./transactionMessage";
+} from ".";
+import { getSolanaRpc } from "..";
+import { Secp256r1VerifyArgs } from "../../generated";
+import { Secp256r1Key } from "../../types";
+import { JITO_TIP_ACCOUNTS } from "../consts";
 
-export async function getHash(text: string) {
-  const hash = new Uint8Array(
-    await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text))
-  );
-  return hash;
+export function getHash(payload: Input) {
+  return sha256(payload);
 }
 function getAccountRole(
   message: CustomTransactionMessage,
@@ -213,40 +193,7 @@ export async function accountsForTransactionExecute({
     transactionMessage,
   };
 }
-export function convertPubkeyToMemberkey(
-  pubkey: Address | Secp256r1Key
-): MemberKey {
-  if (pubkey instanceof Secp256r1Key) {
-    return { keyType: KeyType.Secp256r1, key: pubkey.toBytes() };
-  } else {
-    return {
-      keyType: KeyType.Ed25519,
-      key: new Uint8Array([
-        0, // pad start with zero to make it 33 bytes
-        ...getAddressEncoder().encode(pubkey),
-      ]),
-    };
-  }
-}
-export function convertMemberkeyToPubKey(
-  pubkey: MemberKey
-): Address | Secp256r1Key {
-  if (pubkey.keyType === KeyType.Ed25519) {
-    return address(convertMemberKeyToString(pubkey));
-  } else {
-    return new Secp256r1Key(convertMemberKeyToString(pubkey));
-  }
-}
-export function deduplicateSignersAndFeePayer(
-  instructions: Instruction[],
-  payer: TransactionSigner
-): Address[] {
-  const signers = instructions
-    .flatMap((instruction) => getSignersFromInstruction(instruction))
-    .filter((x) => x.address !== payer.address)
-    .concat([payer]);
-  return signers.map((x) => x.address);
-}
+
 export function normalizeKey(key: any) {
   if (key instanceof Uint8Array) return key;
   if (Array.isArray(key)) return new Uint8Array(key);
@@ -254,7 +201,7 @@ export function normalizeKey(key: any) {
     return new Uint8Array(Object.values(key));
   throw new Error("Invalid key format");
 }
-export async function extractSecp256r1VerificationArgs(
+export function extractSecp256r1VerificationArgs(
   signer?: Secp256r1Key | TransactionSigner,
   index = 0
 ) {
@@ -282,20 +229,14 @@ export async function extractSecp256r1VerificationArgs(
     ? secp256r1PublicKey.signature
     : undefined;
   const message =
-    secp256r1PublicKey?.authData && secp256r1PublicKey.verifyArgs
+    secp256r1PublicKey?.authData &&
+    secp256r1PublicKey.verifyArgs?.clientDataJson
       ? new Uint8Array([
           ...secp256r1PublicKey.authData,
-          ...new Uint8Array(
-            await crypto.subtle.digest(
-              "SHA-256",
-              secp256r1PublicKey.verifyArgs.clientDataJson
-            )
-          ),
+          ...getHash(secp256r1PublicKey.verifyArgs.clientDataJson),
         ])
       : undefined;
-  const publicKey = secp256r1PublicKey?.verifyArgs
-    ? secp256r1PublicKey.verifyArgs.publicKey
-    : undefined;
+  const publicKey = secp256r1PublicKey?.toBuffer();
 
   return {
     slotHashSysvar,
@@ -329,100 +270,8 @@ export function getDeduplicatedSigners(
   }
   return dedupSigners;
 }
-export function convertConfigActionWrapper(
-  configActionsWrapper: ConfigActionWrapperWithDelegateArgs[]
-) {
-  const configActions: ConfigAction[] = [];
-  for (const action of configActionsWrapper) {
-    switch (action.type) {
-      case "EditPermissions":
-        configActions.push({
-          __kind: "EditPermissions",
-          fields: [
-            action.members.map((x) => ({
-              pubkey: convertPubkeyToMemberkey(x.pubkey),
-              permissions: x.permissions,
-              delegateCloseArgs: x.delegateCloseArgs
-                ? some(x.delegateCloseArgs)
-                : none(),
-              delegateCreationArgs: x.delegateCreateArgs
-                ? some(x.delegateCreateArgs)
-                : none(),
-            })),
-          ],
-        });
-        break;
-      case "AddMembers":
-        const addMembers: MemberWithCreationArgs[] = [];
-        for (const x of action.members) {
-          addMembers.push(convertAddMember(x));
-        }
-        configActions.push({
-          __kind: "AddMembers",
-          fields: [addMembers],
-        });
-        break;
-      case "RemoveMembers":
-        const removeMembers: MemberKeyWithCloseArgs[] = [];
-        for (const x of action.members) {
-          removeMembers.push(convertRemoveMember(x));
-        }
-        configActions.push({
-          __kind: "RemoveMembers",
-          fields: [removeMembers],
-        });
-        break;
-      case "SetThreshold":
-        configActions.push({
-          __kind: "SetThreshold",
-          fields: [action.threshold],
-        });
-        break;
-    }
-  }
 
-  return configActions;
-}
-
-export function convertRemoveMember(x: {
-  pubkey: Address | Secp256r1Key;
-  delegateArgs?: DelegateMutArgs;
-}): MemberKeyWithCloseArgs {
-  return {
-    data: convertPubkeyToMemberkey(x.pubkey),
-    delegateArgs: x.delegateArgs ? some(x.delegateArgs) : none(),
-  };
-}
-
-export function convertAddMember(member: {
-  pubkey: Address | Secp256r1Key;
-  permissions: IPermissions;
-  index: number;
-  delegateArgs?: DelegateCreateOrMutateArgs;
-}): MemberWithCreationArgs {
-  return {
-    data: {
-      permissions: member.permissions,
-      domainConfig:
-        member.pubkey instanceof Secp256r1Key && member.pubkey.domainConfig
-          ? member.pubkey.domainConfig
-          : address(PublicKey.default.toString()),
-      pubkey: convertPubkeyToMemberkey(member.pubkey),
-    },
-    verifyArgs:
-      member.pubkey instanceof Secp256r1Key &&
-      member.pubkey.verifyArgs &&
-      member.index !== -1
-        ? some({
-            clientDataJson: member.pubkey.verifyArgs.clientDataJson,
-            slotNumber: member.pubkey.verifyArgs.slotNumber,
-            index: member.index,
-          })
-        : none(),
-    delegateArgs: member.delegateArgs ? some(member.delegateArgs) : none(),
-  };
-}
-export function getPubkeyString(pubkey: TransactionSigner | Secp256r1Key) {
+function getPubkeyString(pubkey: TransactionSigner | Secp256r1Key) {
   if (pubkey instanceof Secp256r1Key) {
     return pubkey.toString();
   } else {

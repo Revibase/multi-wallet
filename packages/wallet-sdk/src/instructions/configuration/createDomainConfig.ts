@@ -1,7 +1,7 @@
 import { Address, TransactionSigner } from "@solana/kit";
 import { getCreateDomainConfigInstruction } from "../../generated";
-import { getDomainConfig } from "../../utils";
-import { getHash } from "../../utils/internal";
+import { getDomainConfigAddress } from "../../utils";
+import { getHash } from "../../utils/transactionMessage/internal";
 
 export async function createDomainConfig({
   payer,
@@ -14,8 +14,8 @@ export async function createDomainConfig({
   origins: string[];
   authority: Address;
 }) {
-  const rpIdHash = await getHash(rpId);
-  const domainConfig = await getDomainConfig({ rpIdHash });
+  const rpIdHash = getHash(new TextEncoder().encode(rpId));
+  const domainConfig = await getDomainConfigAddress({ rpIdHash });
   return getCreateDomainConfigInstruction({
     rpIdHash,
     origins,

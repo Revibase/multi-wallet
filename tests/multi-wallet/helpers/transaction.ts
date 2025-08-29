@@ -69,7 +69,7 @@ export async function sendTransaction(
     console.log(getBase64EncodedWireTransaction(tx).length);
     signature = getSignatureFromTransaction(tx);
     await sendAndConfirm(tx, { commitment: "confirmed", skipPreflight: true });
-    await delay(2000);
+    await delay(3000);
     return signature;
   } catch (error) {
     console.log(signature);

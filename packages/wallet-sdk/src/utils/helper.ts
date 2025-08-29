@@ -1,31 +1,17 @@
 import {
   Address,
-  address,
   getAddressEncoder,
   getBase58Decoder,
   getProgramDerivedAddress,
   getU128Encoder,
-  getU16Decoder,
-  getU16Encoder,
   getU8Encoder,
   getUtf8Encoder,
-  isAddress,
 } from "@solana/kit";
-import {
-  ConfigAction,
-  getConfigActionDecoder,
-  getConfigActionEncoder,
-  MemberKey,
-  MULTI_WALLET_PROGRAM_ADDRESS,
-} from "../generated";
-import {
-  ConfigActionWrapperWithDelegateArgs,
-  KeyType,
-  Secp256r1Key,
-} from "../types";
-import { convertConfigActionWrapper, getHash, normalizeKey } from "./internal";
+import { MemberKey, MULTI_WALLET_PROGRAM_ADDRESS } from "../generated";
+import { KeyType, Secp256r1Key } from "../types";
+import { getHash, normalizeKey } from "./transactionMessage/internal";
 
-export async function getDomainConfig({
+export async function getDomainConfigAddress({
   rpIdHash,
   rpId,
 }: {
@@ -34,7 +20,7 @@ export async function getDomainConfig({
 }) {
   if (!rpIdHash) {
     if (rpId) {
-      rpIdHash = await getHash(rpId);
+      rpIdHash = getHash(new TextEncoder().encode(rpId));
     } else {
       throw new Error("RpId not found.");
     }
@@ -105,21 +91,19 @@ export async function getTransactionBufferAddress(
     });
 
     return transactionBuffer;
-  } else if (isAddress(creator.toString())) {
+  } else {
     const [transactionBuffer] = await getProgramDerivedAddress({
       programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
       seeds: [
         getUtf8Encoder().encode("multi_wallet"),
         getAddressEncoder().encode(settings),
         getUtf8Encoder().encode("transaction_buffer"),
-        getAddressEncoder().encode(address(creator.toString())),
+        getAddressEncoder().encode(creator),
         getU8Encoder().encode(buffer_index),
       ],
     });
 
     return transactionBuffer;
-  } else {
-    throw new Error("Unable to parse PublicKey.");
   }
 }
 
@@ -131,71 +115,4 @@ export function convertMemberKeyToString(memberKey: MemberKey) {
   } else {
     return getBase58Decoder().decode(normalizeKey(memberKey.key));
   }
-}
-
-export function serializeConfigActions(
-  configActions: ConfigActionWrapperWithDelegateArgs[]
-) {
-  const converted = convertConfigActionWrapper(configActions);
-  const serializedActions = converted.map((x) =>
-    getConfigActionEncoder().encode(x)
-  );
-  const totalLength = serializedActions.reduce(
-    (acc, bytes) => acc + 2 + bytes.length,
-    0
-  );
-  const result = new Uint8Array(totalLength);
-  let offset = 0;
-  for (const serialized of serializedActions) {
-    if (serialized.length > 0xffff) {
-      throw new Error("Serialized config_action too large for u16 prefix");
-    }
-
-    result.set(getU16Encoder().encode(serialized.length), offset);
-    offset += 2;
-
-    result.set(serialized, offset);
-    offset += serialized.length;
-  }
-
-  return result;
-}
-
-export function deserializeConfigActions(
-  configActions: Uint8Array
-): ConfigAction[] {
-  const result: ConfigAction[] = [];
-
-  let offset = 0;
-  while (offset < configActions.length) {
-    if (offset + 2 > configActions.length) {
-      throw new Error("Unexpected end of buffer while reading length prefix.");
-    }
-
-    // Read u16 length (little endian)
-    const length = getU16Decoder().decode(
-      configActions.subarray(offset, offset + 2)
-    );
-    offset += 2;
-
-    if (offset + length > configActions.length) {
-      throw new Error("Unexpected end of buffer while reading config action.");
-    }
-
-    const bytes = configActions.subarray(offset, offset + length);
-    const decoded = getConfigActionDecoder().decode(bytes);
-    result.push(decoded);
-    offset += length;
-  }
-
-  return result;
-}
-export async function estimateJitoTips(estimateJitoTipEndpoint: string) {
-  const response = await fetch(estimateJitoTipEndpoint);
-  const result = await response.json();
-  const tipAmount = Math.round(
-    result[0]["ema_landed_tips_50th_percentile"] * 10 ** 9
-  ) as number;
-
-  return tipAmount;
 }

@@ -1,6 +1,6 @@
 import { TransactionSigner } from "@solana/kit";
 import { getDeleteDomainConfigInstruction } from "../../generated";
-import { getDomainConfig } from "../../utils";
+import { getDomainConfigAddress } from "../../utils";
 
 export async function deleteDomainConfig({
   authority,
@@ -9,7 +9,7 @@ export async function deleteDomainConfig({
   authority: TransactionSigner;
   rpId: string;
 }) {
-  const domainConfig = await getDomainConfig({ rpId });
+  const domainConfig = await getDomainConfigAddress({ rpId });
   return getDeleteDomainConfigInstruction({
     domainConfig,
     authority,

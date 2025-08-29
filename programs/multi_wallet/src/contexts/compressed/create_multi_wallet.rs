@@ -2,10 +2,9 @@ use crate::{
     error::MultisigError,
     id,
     state::{
-        ChallengeArgs, CompressedMember, CompressedSettings, CompressedSettingsData, Delegate,
-        DelegateCreateOrMutateArgs, DomainConfig, GlobalCounter, KeyType, MemberKey, Permission,
-        Permissions, ProofArgs, Secp256r1VerifyArgs, SettingsCreationArgs, TransactionActionType,
-        SEED_MULTISIG, SEED_VAULT,
+        ChallengeArgs, CompressedMember, CompressedSettings, CompressedSettingsData, DomainConfig,
+        GlobalCounter, KeyType, MemberKey, Permissions, ProofArgs, Secp256r1VerifyArgs,
+        SettingsCreationArgs, TransactionActionType, User, UserMutArgs, SEED_MULTISIG, SEED_VAULT,
     },
     LIGHT_CPI_SIGNER,
 };
@@ -40,25 +39,25 @@ impl<'info> CreateMultiWalletCompressed<'info> {
         permissions: Permissions,
         compressed_proof_args: ProofArgs,
         settings_creation: SettingsCreationArgs,
-        delegate_creation_args: Option<DelegateCreateOrMutateArgs>,
+        user_mut_args: UserMutArgs,
         settings_index: u128,
     ) -> Result<()> {
         let global_counter = &mut ctx.accounts.global_counter.load_mut()?;
-
-        let (settings_key, bump) = Pubkey::find_program_address(
-            &[SEED_MULTISIG, global_counter.index.to_le_bytes().as_ref()],
-            &crate::ID,
-        );
         require!(
             settings_index.eq(&global_counter.index),
             MultisigError::InvalidArguments
         );
+        let (settings_key, bump) = Pubkey::find_program_address(
+            &[SEED_MULTISIG, settings_index.to_le_bytes().as_ref()],
+            &crate::ID,
+        );
+
         let signer: MemberKey = MemberKey::get_signer(
             &ctx.accounts.initial_member,
             &secp256r1_verify_args,
             ctx.accounts.instructions_sysvar.as_ref(),
         )?;
-        let domain_config = ctx.accounts.domain_config.as_ref().map(|f| f.key());
+        let domain_config_key = ctx.accounts.domain_config.as_ref().map(|f| f.key());
 
         if signer.get_type().eq(&KeyType::Secp256r1) {
             let secp256r1_verify_data = secp256r1_verify_args
@@ -79,14 +78,16 @@ impl<'info> CreateMultiWalletCompressed<'info> {
                 .as_ref()
                 .ok_or(MultisigError::MissingAccount)?;
 
+            let domain_config_key =
+                domain_config_key.ok_or(MultisigError::DomainConfigIsMissing)?;
             secp256r1_verify_data.verify_webauthn(
                 &ctx.accounts.slot_hash_sysvar,
                 &ctx.accounts.domain_config,
                 instructions_sysvar,
                 ChallengeArgs {
-                    account: settings_key,
+                    account: domain_config_key,
                     message_hash: rp_id_hash,
-                    action_type: TransactionActionType::AddNewMember,
+                    action_type: TransactionActionType::CreateNewWallet,
                 },
             )?;
         }
@@ -106,14 +107,15 @@ impl<'info> CreateMultiWalletCompressed<'info> {
         let data = CompressedSettingsData {
             threshold: 1,
             bump,
-            index: global_counter.index,
+            index: settings_index,
             multi_wallet_bump: multi_wallet_bump,
             members: vec![CompressedMember {
                 pubkey: signer,
                 permissions,
-                domain_config,
+                domain_config: domain_config_key,
             }],
         };
+
         let (settings_info, settings_new_address) = CompressedSettings::create_settings_account(
             settings_creation,
             data,
@@ -122,16 +124,14 @@ impl<'info> CreateMultiWalletCompressed<'info> {
 
         let mut final_account_infos = vec![];
         let mut final_new_addresses = vec![];
-        if permissions.has(Permission::IsDelegate) {
-            let (account_infos, new_addresses) = Delegate::handle_create_or_recreate_delegate(
-                delegate_creation_args,
-                settings_index,
-                signer,
-                &light_cpi_accounts,
-            )?;
-            final_account_infos.extend(account_infos);
-            final_new_addresses.extend(new_addresses);
-        }
+
+        final_account_infos.push(User::handle_set_user_delegate(
+            user_mut_args,
+            settings_index,
+            true,
+            true,
+        )?);
+
         final_account_infos.push(settings_info);
         final_new_addresses.push(settings_new_address);
 

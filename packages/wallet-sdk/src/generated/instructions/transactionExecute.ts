@@ -29,7 +29,7 @@ import {
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 
-export const TRANSACTION_EXECUTE_DISCRIMINATOR = new Uint8Array([12]);
+export const TRANSACTION_EXECUTE_DISCRIMINATOR = new Uint8Array([14]);
 
 export function getTransactionExecuteDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
@@ -187,7 +187,7 @@ export function parseTransactionExecuteInstruction<
   }
   let accountIndex = 0;
   const getNextAccount = () => {
-    const accountMeta = instruction.accounts![accountIndex]!;
+    const accountMeta = (instruction.accounts as TAccountMetas)[accountIndex]!;
     accountIndex += 1;
     return accountMeta;
   };

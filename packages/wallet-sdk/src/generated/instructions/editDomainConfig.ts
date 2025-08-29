@@ -18,6 +18,8 @@ import {
   getArrayEncoder,
   getBytesDecoder,
   getBytesEncoder,
+  getOptionDecoder,
+  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
   getU32Decoder,
@@ -34,6 +36,8 @@ import {
   type Instruction,
   type InstructionWithAccounts,
   type InstructionWithData,
+  type Option,
+  type OptionOrNullable,
   type ReadonlyAccount,
   type ReadonlySignerAccount,
   type ReadonlyUint8Array,
@@ -79,13 +83,13 @@ export type EditDomainConfigInstruction<
 
 export type EditDomainConfigInstructionData = {
   discriminator: ReadonlyUint8Array;
-  newOrigins: Array<string>;
-  newAuthority: Address;
+  newOrigins: Option<Array<string>>;
+  newAuthority: Option<Address>;
 };
 
 export type EditDomainConfigInstructionDataArgs = {
-  newOrigins: Array<string>;
-  newAuthority: Address;
+  newOrigins: OptionOrNullable<Array<string>>;
+  newAuthority: OptionOrNullable<Address>;
 };
 
 export function getEditDomainConfigInstructionDataEncoder(): Encoder<EditDomainConfigInstructionDataArgs> {
@@ -94,11 +98,13 @@ export function getEditDomainConfigInstructionDataEncoder(): Encoder<EditDomainC
       ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
       [
         'newOrigins',
-        getArrayEncoder(
-          addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())
+        getOptionEncoder(
+          getArrayEncoder(
+            addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())
+          )
         ),
       ],
-      ['newAuthority', getAddressEncoder()],
+      ['newAuthority', getOptionEncoder(getAddressEncoder())],
     ]),
     (value) => ({ ...value, discriminator: EDIT_DOMAIN_CONFIG_DISCRIMINATOR })
   );
@@ -109,9 +115,11 @@ export function getEditDomainConfigInstructionDataDecoder(): Decoder<EditDomainC
     ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
     [
       'newOrigins',
-      getArrayDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
+      getOptionDecoder(
+        getArrayDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder()))
+      ),
     ],
-    ['newAuthority', getAddressDecoder()],
+    ['newAuthority', getOptionDecoder(getAddressDecoder())],
   ]);
 }
 
@@ -226,7 +234,7 @@ export function parseEditDomainConfigInstruction<
   }
   let accountIndex = 0;
   const getNextAccount = () => {
-    const accountMeta = instruction.accounts![accountIndex]!;
+    const accountMeta = (instruction.accounts as TAccountMetas)[accountIndex]!;
     accountIndex += 1;
     return accountMeta;
   };

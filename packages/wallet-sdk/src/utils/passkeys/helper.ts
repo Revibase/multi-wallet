@@ -74,7 +74,7 @@ export function convertPubkeyCoseToCompressed(
 }
 
 export function convertPubkeyCompressedToCose(publicKey: string) {
-  const compressedPublicKey = p256.Point.fromHex(
+  const compressedPublicKey = p256.Point.fromBytes(
     new Uint8Array(getBase58Encoder().encode(publicKey))
   );
   const uncompressedPublicKey = compressedPublicKey.toBytes(false);
@@ -125,9 +125,9 @@ export function convertSignatureDERtoRS(derSig: Uint8Array): Uint8Array {
   rPad.set(rStripped, 32 - rStripped.length);
 
   // Convert s to low-s
-  const HALF_ORDER = p256.CURVE.n >> 1n;
+  const HALF_ORDER = p256.Point.CURVE().n >> 1n;
   const sBig = BigInt("0x" + uint8ArrayToHex(sStripped));
-  const sLow = sBig > HALF_ORDER ? p256.CURVE.n - sBig : sBig;
+  const sLow = sBig > HALF_ORDER ? p256.Point.CURVE().n - sBig : sBig;
   const sHex = sLow.toString(16).padStart(64, "0");
   const sPad = hexToUint8Array(sHex);
 

@@ -4,7 +4,6 @@ export const Permission = {
   InitiateTransaction: 1 << 0,
   VoteTransaction: 1 << 1,
   ExecuteTransaction: 1 << 2,
-  IsDelegate: 1 << 3,
 } as const;
 
 export type IPermission = (typeof Permission)[keyof typeof Permission];

@@ -1,11 +1,8 @@
 import {
-  Address,
-  address,
   AddressesByLookupTableAddress,
   Instruction,
   TransactionSigner,
 } from "@solana/kit";
-import { fetchSettingsData } from "../compressed";
 import {
   createTransactionBuffer,
   executeTransaction,
@@ -14,16 +11,13 @@ import {
   Secp256r1VerifyInput,
   voteTransactionBuffer,
 } from "../instructions";
-import { Permission, Permissions, Secp256r1Key } from "../types";
+import { Secp256r1Key } from "../types";
+import { getSettingsFromIndex, getTransactionBufferAddress } from "../utils";
 import {
-  convertMemberKeyToString,
-  getSettingsFromIndex,
-  getTransactionBufferAddress,
-} from "../utils";
-import {
-  deduplicateSignersAndFeePayer,
-  getPubkeyString,
-} from "../utils/internal";
+  constructSettingsProofArgs,
+  convertToCompressedProofArgs,
+} from "../utils/compressed/internal";
+import { getHash } from "../utils/transactionMessage/internal";
 
 interface CreateTransactionBundleArgs {
   payer: TransactionSigner;
@@ -36,7 +30,6 @@ interface CreateTransactionBundleArgs {
   additionalSigners?: TransactionSigner[];
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   jitoBundlesTipAmount?: number;
-  skipChecks?: boolean;
   chunkSize?: number;
   compressed?: boolean;
 }
@@ -52,84 +45,85 @@ export async function prepareTransactionBundle({
   bufferIndex = Math.floor(Math.random() * 255),
   additionalVoters = [],
   additionalSigners = [],
-  skipChecks = false,
   compressed = false,
   chunkSize = Math.ceil(transactionMessageBytes.length / 2),
 }: CreateTransactionBundleArgs) {
-  if (!skipChecks) {
-    await preTransactionChecks(index, creator, additionalVoters, executor);
-  }
+  // --- Stage 1: Setup Addresses ---
+  const [settings, transactionBufferAddress] = await Promise.all([
+    getSettingsFromIndex(index),
+    getTransactionBufferAddress(
+      await getSettingsFromIndex(index),
+      creator instanceof Secp256r1Key ? creator : creator.address,
+      bufferIndex
+    ),
+  ]);
 
-  const settings = await getSettingsFromIndex(index);
-  const transactionBufferAddress = await getTransactionBufferAddress(
-    settings,
-    creator instanceof Secp256r1Key ? creator : creator.address,
-    bufferIndex
-  );
-
-  const finalBufferHash = new Uint8Array(
-    await crypto.subtle.digest("SHA-256", transactionMessageBytes)
-  );
-
+  // --- Stage 2: Split Transaction Message into chunks + hashing ---
   const chunks: Uint8Array[] = [];
   const chunksHash: Uint8Array[] = [];
   for (let i = 0; i < transactionMessageBytes.length; i += chunkSize) {
     const chunk = transactionMessageBytes.subarray(i, i + chunkSize);
     chunks.push(chunk);
-    chunksHash.push(
-      new Uint8Array(await crypto.subtle.digest("SHA-256", chunk))
-    );
+    chunksHash.push(getHash(chunk));
   }
+  const finalBufferHash = getHash(transactionMessageBytes);
 
-  const transactionBufferCreateIxs = await createTransactionBuffer({
+  // --- Stage 3: Derive readonly compressed proof args if necessary---
+  const { settingsReadonlyArgs, proof, packedAccounts } =
+    await constructSettingsProofArgs(compressed, index);
+  const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
+  const compressedArgs = settingsReadonlyArgs
+    ? {
+        settingsReadonlyArgs,
+        compressedProofArgs: convertToCompressedProofArgs(proof, systemOffset),
+        remainingAccounts,
+        payer,
+      }
+    : null;
+
+  // --- Stage 4: Instruction groups ---
+  const createIxs = createTransactionBuffer({
     finalBufferHash,
     finalBufferSize: transactionMessageBytes.length,
     bufferIndex,
     payer,
     transactionBufferAddress,
-    index,
+    settings,
     creator,
     permissionlessExecution: !executor,
     bufferExtendHashes: chunksHash,
-    compressed,
+    compressedArgs,
   });
 
-  const transactionBufferExtendIxs = await Promise.all(
-    chunks.map(
-      async (transactionMessageBytes) =>
-        await extendTransactionBuffer({
-          transactionMessageBytes,
-          transactionBufferAddress,
-          index,
-          compressed,
-        })
-    )
+  const extendIxs = chunks.map((bytes) =>
+    extendTransactionBuffer({
+      transactionMessageBytes: bytes,
+      transactionBufferAddress,
+      settings,
+      compressed,
+    })
   );
 
-  const transactionVoteIxs = await Promise.all(
-    additionalVoters.map((voter) =>
-      voteTransactionBuffer({
-        voter,
-        transactionBufferAddress,
-        index,
-        compressed,
-        payer,
-      })
-    )
+  const voteIxs = additionalVoters.map((voter) =>
+    voteTransactionBuffer({
+      voter,
+      transactionBufferAddress,
+      settings,
+      compressedArgs,
+    })
   );
 
-  const transactionBufferExecuteIxs = await executeTransactionBuffer({
-    compressed,
-    payer,
-    index,
+  const executeApprovalIxs = executeTransactionBuffer({
+    compressedArgs,
+    settings,
     executor,
     transactionBufferAddress,
   });
 
-  const { instructions: transactionExecuteIx, addressLookupTableAccounts } =
+  const { instructions: executeIxs, addressLookupTableAccounts } =
     await executeTransaction({
       compressed,
-      index,
+      settings,
       transactionMessageBytes,
       transactionBufferAddress,
       payer,
@@ -138,134 +132,29 @@ export async function prepareTransactionBundle({
       jitoBundlesTipAmount,
     });
 
-  const txs: {
+  // --- Stage 5: Assemble transactions ---
+  const buildTx = (
+    id: string,
+    ixs: Instruction[]
+  ): {
     id: string;
-    signers: Address[];
     payer: TransactionSigner;
     ixs: Instruction[];
     addressLookupTableAccounts?: AddressesByLookupTableAddress;
-  }[] = [];
-  txs.push({
-    id: "Create Transaction Buffer",
-    signers: deduplicateSignersAndFeePayer(transactionBufferCreateIxs, payer),
+  } => ({
+    id,
     payer,
-    ixs: transactionBufferCreateIxs,
+    ixs,
     addressLookupTableAccounts,
   });
 
-  txs.push(
-    ...transactionBufferExtendIxs.map((transactionBufferExtendIx) => ({
-      id: "Extend Transaction Buffer",
-      signers: deduplicateSignersAndFeePayer(
-        [transactionBufferExtendIx],
-        payer
-      ),
-      payer,
-      ixs: [transactionBufferExtendIx],
-      addressLookupTableAccounts,
-    }))
-  );
-
-  if (transactionVoteIxs.length > 0) {
-    txs.push({
-      id: "Vote Transaction",
-      signers: additionalVoters
-        .filter(
-          (x) =>
-            !(x instanceof Secp256r1Key) &&
-            getPubkeyString(x) !== payer.address.toString()
-        )
-        .map((x) => address(getPubkeyString(x)))
-        .concat([payer.address]),
-      payer,
-      ixs: transactionVoteIxs.flatMap((x) => ({ ...x })),
-      addressLookupTableAccounts,
-    });
-  }
-
-  txs.push({
-    id: "Execute Transaction Approval",
-    signers: deduplicateSignersAndFeePayer(transactionBufferExecuteIxs, payer),
-    payer,
-    ixs: transactionBufferExecuteIxs,
-    addressLookupTableAccounts,
-  });
-
-  txs.push({
-    id: "Execute Transaction",
-    signers: deduplicateSignersAndFeePayer(transactionExecuteIx, payer),
-    payer,
-    ixs: transactionExecuteIx,
-    addressLookupTableAccounts,
-  });
+  const txs = [
+    buildTx("Create Transaction Buffer", createIxs),
+    ...extendIxs.map((ix) => buildTx("Extend Transaction Buffer", [ix])),
+    ...(voteIxs.length ? [buildTx("Vote Transaction", voteIxs.flat())] : []),
+    buildTx("Execute Transaction Approval", executeApprovalIxs),
+    buildTx("Execute Transaction", executeIxs),
+  ];
 
   return txs;
-}
-
-async function preTransactionChecks(
-  index: bigint | number,
-  creator: TransactionSigner | Secp256r1Key,
-  additionalVoters: (TransactionSigner | Secp256r1Key)[],
-  executor?: TransactionSigner | Secp256r1Key
-) {
-  const settingsData = await fetchSettingsData(index);
-
-  let votes = 0;
-
-  const creatorMember = settingsData.members.find(
-    (x) =>
-      getPubkeyString(creator) === convertMemberKeyToString(x.pubkey) &&
-      Permissions.has(x.permissions, Permission.InitiateTransaction)
-  );
-
-  if (!creatorMember) {
-    throw new Error("Creator does not have initiate transaction permission.");
-  }
-
-  if (Permissions.has(creatorMember.permissions, Permission.VoteTransaction)) {
-    votes += 1;
-  }
-
-  const executorMember = settingsData.members.find(
-    (x) =>
-      getPubkeyString(executor ?? creator) ===
-        convertMemberKeyToString(x.pubkey) &&
-      Permissions.has(x.permissions, Permission.ExecuteTransaction)
-  );
-
-  if (!executorMember) {
-    throw new Error(
-      `${
-        executor ? "Executor" : "Creator"
-      } does not have execute transaction permission.`
-    );
-  }
-
-  if (
-    !(
-      convertMemberKeyToString(executorMember.pubkey) ===
-      convertMemberKeyToString(creatorMember.pubkey)
-    ) &&
-    Permissions.has(executorMember.permissions, Permission.VoteTransaction)
-  ) {
-    votes += 1;
-  }
-
-  votes += additionalVoters
-    .filter(
-      (x) =>
-        getPubkeyString(x) !== getPubkeyString(creator) &&
-        getPubkeyString(x) !== getPubkeyString(executor ?? creator)
-    )
-    .filter((x) =>
-      settingsData.members.some(
-        (y) =>
-          getPubkeyString(x) === convertMemberKeyToString(y.pubkey) &&
-          Permissions.has(y.permissions, Permission.VoteTransaction)
-      )
-    ).length;
-
-  if (votes < settingsData.threshold) {
-    throw new Error("Insufficient voters with vote transaction permission.");
-  }
 }

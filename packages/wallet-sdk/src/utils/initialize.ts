@@ -4,20 +4,18 @@ import {
 } from "@lightprotocol/stateless.js";
 import {
   createSolanaRpc,
-  createSolanaRpcSubscriptions,
   Rpc,
-  RpcSubscriptions,
   SolanaRpcApi,
-  SolanaRpcSubscriptionsApi,
   TransactionSigner,
 } from "@solana/kit";
 import { registerWallet } from "@wallet-standard/core";
 import { createRevibaseAdapter } from "../adapter/core";
+import { getRandomPayer, JitoTipsConfig } from "../adapter/util";
 import { RevibaseWallet } from "../adapter/wallet";
 
 let lightProtocolRpc: LightProtocolRpc | null = null;
 let rpc: Rpc<SolanaRpcApi> | null = null;
-let rpcSubscriptions: RpcSubscriptions<SolanaRpcSubscriptionsApi> | null = null;
+let feePayer: TransactionSigner | null = null;
 
 export function getLightProtocolRpc() {
   if (!lightProtocolRpc) {
@@ -33,27 +31,31 @@ export function getSolanaRpc() {
   return rpc;
 }
 
-export function getSolanaRpcSubscriptions() {
-  if (!rpcSubscriptions) {
-    throw new Error("Rpc not initialized yet");
+export function getFeePayer() {
+  if (!feePayer) {
+    throw new Error("Payer not initialized yet");
   }
-  return rpcSubscriptions;
+  return feePayer;
 }
 
 export function initializeMultiWallet({
+  jitoTipsConfig,
   rpcEndpoint,
   compressionApiEndpoint,
   proverEndpoint,
   payer,
-  estimateJitoTipEndpoint = `https://proxy.revibase.com/?url=https://bundles.jito.wtf/api/v1/bundles/tip_floor`,
-  jitoBlockEngineEndpoint = `https://mainnet.block-engine.jito.wtf/api/v1`,
+  authUrl,
+  expectedOrigin,
+  expectedRPID,
 }: {
+  jitoTipsConfig: JitoTipsConfig;
   rpcEndpoint: string;
+  payer?: TransactionSigner;
   compressionApiEndpoint?: string;
   proverEndpoint?: string;
-  payer?: TransactionSigner;
-  estimateJitoTipEndpoint?: string;
-  jitoBlockEngineEndpoint?: string;
+  authUrl?: string;
+  expectedOrigin?: string;
+  expectedRPID?: string;
 }) {
   rpc = createSolanaRpc(rpcEndpoint);
   lightProtocolRpc = createRpc(
@@ -61,16 +63,21 @@ export function initializeMultiWallet({
     compressionApiEndpoint,
     proverEndpoint
   );
-  rpcSubscriptions = createSolanaRpcSubscriptions(
-    "wss://" + new URL(rpcEndpoint).hostname
-  );
+  if (!payer) {
+    getRandomPayer().then((result) => {
+      feePayer = result;
+    });
+  } else {
+    feePayer = payer;
+  }
   if (typeof window !== "undefined") {
     registerWallet(
       new RevibaseWallet(
         createRevibaseAdapter({
-          payer,
-          jitoBlockEngineEndpoint,
-          estimateJitoTipEndpoint,
+          jitoTipsConfig,
+          authUrl,
+          expectedOrigin,
+          expectedRPID,
         })
       )
     );

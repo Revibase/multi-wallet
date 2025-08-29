@@ -1,8 +1,8 @@
 use crate::{
     error::MultisigError,
     state::{
-        CompressedSettings, Delegate, DelegateOp, Member, MemberKeyWithCloseArgs,
-        MemberWithCreationArgs, ProofArgs, Settings, SettingsMutArgs, SEED_MULTISIG, SEED_VAULT,
+        CompressedSettings, Ops, ProofArgs, Settings, SettingsMutArgs, User, SEED_MULTISIG,
+        SEED_VAULT,
     },
     ConfigAction, LIGHT_CPI_SIGNER,
 };
@@ -70,28 +70,14 @@ impl<'info> ChangeConfigCompressed<'info> {
         let payer: &Signer<'info> = &ctx.accounts.payer;
         let remaining_accounts = ctx.remaining_accounts;
 
-        let mut delegate_ops: Vec<DelegateOp> = vec![];
+        let mut delegate_ops: Vec<Ops> = vec![];
+
         for action in config_actions {
             match action {
                 ConfigAction::EditPermissions(members) => {
                     let ops = settings.edit_permissions(members)?;
-                    delegate_ops.extend(ops.0.into_iter().map(|f| {
-                        DelegateOp::Create(MemberWithCreationArgs {
-                            data: Member {
-                                pubkey: f.pubkey,
-                                permissions: f.permissions,
-                                domain_config: Pubkey::default(),
-                            },
-                            verify_args: None,
-                            delegate_args: f.delegate_creation_args,
-                        })
-                    }));
-                    delegate_ops.extend(ops.1.into_iter().map(|f| {
-                        DelegateOp::Close(MemberKeyWithCloseArgs {
-                            data: f.pubkey,
-                            delegate_args: f.delegate_close_args,
-                        })
-                    }));
+                    delegate_ops.extend(ops.0.into_iter().map(Ops::Create));
+                    delegate_ops.extend(ops.1.into_iter().map(Ops::Close));
                 }
                 ConfigAction::AddMembers(members) => {
                     let ops = settings.add_members(
@@ -101,11 +87,11 @@ impl<'info> ChangeConfigCompressed<'info> {
                         slot_hash_sysvar,
                         ctx.accounts.instructions_sysvar.as_ref(),
                     )?;
-                    delegate_ops.extend(ops.into_iter().map(DelegateOp::Create));
+                    delegate_ops.extend(ops.into_iter().map(Ops::Create));
                 }
                 ConfigAction::RemoveMembers(members) => {
                     let ops = settings.remove_members(members)?;
-                    delegate_ops.extend(ops.into_iter().map(DelegateOp::Close));
+                    delegate_ops.extend(ops.into_iter().map(Ops::Close));
                 }
                 ConfigAction::SetThreshold(new_threshold) => {
                     settings.set_threshold(new_threshold)?;
@@ -120,20 +106,11 @@ impl<'info> ChangeConfigCompressed<'info> {
             LIGHT_CPI_SIGNER,
         );
 
-        let (mut account_infos, new_addresses) =
-            Delegate::handle_delegate_accounts(delegate_ops, settings_index, &light_cpi_accounts)?;
-
+        let mut account_infos = User::handle_user_delegate_accounts(delegate_ops, settings_index)?;
         account_infos.insert(0, settings.to_account_info().map_err(ProgramError::from)?);
-        if account_infos.len() > 0 || new_addresses.len() > 0 {
-            let cpi_inputs = if new_addresses.is_empty() {
-                CpiInputs::new(compressed_proof_args.proof, account_infos)
-            } else {
-                CpiInputs::new_with_address(
-                    compressed_proof_args.proof,
-                    account_infos,
-                    new_addresses,
-                )
-            };
+
+        if account_infos.len() > 0 {
+            let cpi_inputs = CpiInputs::new(compressed_proof_args.proof, account_infos);
             cpi_inputs
                 .invoke_light_system_program(light_cpi_accounts)
                 .unwrap();

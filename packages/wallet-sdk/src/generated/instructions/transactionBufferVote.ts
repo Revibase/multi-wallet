@@ -43,7 +43,7 @@ import {
   type Secp256r1VerifyArgsArgs,
 } from '../types';
 
-export const TRANSACTION_BUFFER_VOTE_DISCRIMINATOR = new Uint8Array([8]);
+export const TRANSACTION_BUFFER_VOTE_DISCRIMINATOR = new Uint8Array([10]);
 
 export function getTransactionBufferVoteDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
@@ -289,7 +289,7 @@ export function parseTransactionBufferVoteInstruction<
   }
   let accountIndex = 0;
   const getNextAccount = () => {
-    const accountMeta = instruction.accounts![accountIndex]!;
+    const accountMeta = (instruction.accounts as TAccountMetas)[accountIndex]!;
     accountIndex += 1;
     return accountMeta;
   };

@@ -1,8 +1,9 @@
 use crate::{
     error::MultisigError,
     state::{
-        Member, MemberKey, MemberKeyWithCloseArgs, MemberKeyWithPermissionsArgs,
-        MemberWithCreationArgs, MultisigSettings, Permissions, Settings, SEED_MULTISIG, SEED_VAULT,
+        Member, MemberKey, MemberKeyWithEditPermissionsArgs, MemberKeyWithRemovePermissionsArgs,
+        MemberWithAddPermissionsArgs, MultisigSettings, Permissions, Settings, SEED_MULTISIG,
+        SEED_VAULT,
     },
     LIGHT_CPI_SIGNER,
 };
@@ -59,21 +60,21 @@ pub struct CompressedMember {
 impl CompressedSettings {
     pub fn edit_permissions(
         &mut self,
-        members: Vec<MemberKeyWithPermissionsArgs>,
+        members: Vec<MemberKeyWithEditPermissionsArgs>,
     ) -> Result<(
-        Vec<MemberKeyWithPermissionsArgs>,
-        Vec<MemberKeyWithPermissionsArgs>,
+        Vec<MemberWithAddPermissionsArgs>,
+        Vec<MemberKeyWithRemovePermissionsArgs>,
     )> {
         MultisigSettings::edit_permissions(self, members)
     }
     pub fn add_members<'a>(
         &mut self,
         settings: &Pubkey,
-        new_members: Vec<MemberWithCreationArgs>,
+        new_members: Vec<MemberWithAddPermissionsArgs>,
         remaining_accounts: &'a [AccountInfo<'a>],
         sysvar_slot_history: &Option<UncheckedAccount<'a>>,
         instructions_sysvar: Option<&UncheckedAccount<'a>>,
-    ) -> Result<Vec<MemberWithCreationArgs>> {
+    ) -> Result<Vec<MemberWithAddPermissionsArgs>> {
         MultisigSettings::add_members(
             self,
             settings,
@@ -85,8 +86,8 @@ impl CompressedSettings {
     }
     pub fn remove_members(
         &mut self,
-        member_pubkeys: Vec<MemberKeyWithCloseArgs>,
-    ) -> Result<Vec<MemberKeyWithCloseArgs>> {
+        member_pubkeys: Vec<MemberKeyWithRemovePermissionsArgs>,
+    ) -> Result<Vec<MemberKeyWithRemovePermissionsArgs>> {
         MultisigSettings::remove_members(self, member_pubkeys)
     }
 

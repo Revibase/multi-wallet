@@ -1,17 +1,16 @@
 import { Address, TransactionSigner } from "@solana/kit";
 import {
-  constructSettingsProofArgs,
-  convertToCompressedProofArgs,
-} from "../../compressed/internal";
-import { PackedAccounts } from "../../compressed/packedAccounts";
-import {
   fetchTransactionBuffer,
   getTransactionBufferCloseCompressedInstruction,
   getTransactionBufferCloseInstruction,
 } from "../../generated";
 import { Secp256r1Key } from "../../types";
-import { getSettingsFromIndex, getSolanaRpc } from "../../utils";
-import { extractSecp256r1VerificationArgs } from "../../utils/internal";
+import { getSolanaRpc } from "../../utils";
+import {
+  constructSettingsProofArgs,
+  convertToCompressedProofArgs,
+} from "../../utils/compressed/internal";
+import { extractSecp256r1VerificationArgs } from "../../utils/transactionMessage/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
 export async function closeTransactionBuffer({
@@ -31,13 +30,10 @@ export async function closeTransactionBuffer({
     getSolanaRpc(),
     transactionBufferAddress
   );
-  const settings = await getSettingsFromIndex(index);
-  const packedAccounts = new PackedAccounts();
-  const { settingsReadonlyArgs, proof } = await constructSettingsProofArgs(
-    packedAccounts,
-    compressed,
-    index
-  );
+  const settings = transactionBuffer.data.multiWalletSettings;
+  const { settingsReadonlyArgs, proof, packedAccounts } =
+    await constructSettingsProofArgs(compressed, index);
+
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const {
     slotHashSysvar,
@@ -47,7 +43,7 @@ export async function closeTransactionBuffer({
     message,
     signature,
     publicKey,
-  } = await extractSecp256r1VerificationArgs(closer);
+  } = extractSecp256r1VerificationArgs(closer);
 
   const instructions = [];
   if (message && signature && publicKey) {

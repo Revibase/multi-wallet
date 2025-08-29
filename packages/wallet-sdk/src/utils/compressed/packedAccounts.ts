@@ -3,18 +3,21 @@ import {
   defaultStaticAccountsStruct,
   lightSystemProgram,
   NewAddressProofInput,
+  PackedAddressTreeInfo,
+  PackedStateTreeInfo,
   PackedTreeInfos,
   TreeInfo,
   TreeType,
 } from "@lightprotocol/stateless.js";
 import { SYSTEM_PROGRAM_ADDRESS } from "@solana-program/system";
-import { AccountMeta, AccountRole, address } from "@solana/kit";
-import { PublicKey } from "@solana/web3.js";
 import {
-  MULTI_WALLET_PROGRAM_ADDRESS,
-  PackedAddressTreeInfo,
-  PackedStateTreeInfo,
-} from "../generated";
+  AccountMeta,
+  AccountRole,
+  AccountSignerMeta,
+  address,
+} from "@solana/kit";
+import { PublicKey } from "@solana/web3.js";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
 import { getLightCpiSigner } from "./internal";
 
 interface MapData {
@@ -35,7 +38,7 @@ export class PackedAccounts {
     this.map = new Map();
   }
 
-  addPreAccounts(accounts: AccountMeta[]) {
+  addPreAccounts(accounts: (AccountMeta | AccountSignerMeta)[]) {
     this.preAccounts.push(...accounts);
   }
 

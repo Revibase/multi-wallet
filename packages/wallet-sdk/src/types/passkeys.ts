@@ -1,28 +1,31 @@
 import {
   AuthenticationResponseJSON,
   PublicKeyCredentialHint,
-  RegistrationResponseJSON,
 } from "@simplewebauthn/server";
 import { Address } from "@solana/kit";
 
-export type AuthenticationResponse = {
-  username: string;
-  publicKey: string;
-  authResponse: AuthenticationResponseJSON | RegistrationResponseJSON;
-  slotNumber?: string;
-  slotHash?: string;
+export type TransactionAuthenticationResponse = {
+  authResponse: AuthenticationResponseJSON;
+  signer: SignerPayload;
+  slotNumber: string;
+  slotHash: string;
+};
+
+export type MessageAuthenticationResponse = {
+  authResponse: AuthenticationResponseJSON;
+  signer: SignerPayload;
 };
 
 export type ParsedAuthenticationResponse = {
-  verifyArgs: {
-    publicKey: Uint8Array;
+  verifyArgs?: {
     clientDataJson: Uint8Array;
     slotNumber: bigint;
     slotHash: Uint8Array;
   };
-  domainConfig: Address;
-  authData: Uint8Array;
-  signature: Uint8Array;
+  signer: SignerPayload;
+  domainConfig?: Address;
+  authData?: Uint8Array;
+  signature?: Uint8Array;
 };
 
 export type TransactionActionType =
@@ -32,9 +35,8 @@ export type TransactionActionType =
   | "vote"
   | "sync"
   | "close"
+  | "create_new_wallet"
   | "add_new_member"
-  | "token_transfer_intent"
-  | "native_transfer_intent"
   | "compress"
   | "decompress";
 
@@ -42,17 +44,24 @@ export type TransactionPayload = {
   transactionActionType: TransactionActionType;
   transactionAddress: string;
   transactionMessageBytes: Uint8Array;
-  additionalInfo?: any;
 };
 
 export type MessagePayload = {
   message: string;
 };
 
+export type SignerPayload = {
+  publicKey: string;
+  credentialId: string;
+  username?: string;
+  transports?: string;
+  settingsIndex?: number;
+};
+
 export type BasePayload = {
   hints?: PublicKeyCredentialHint[];
   authUrl?: string;
-  publicKey?: string;
+  signer?: SignerPayload;
   popUp?: Window | null;
   debug?: boolean;
   additionalInfo?: any;

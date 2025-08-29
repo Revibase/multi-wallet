@@ -45,7 +45,9 @@ export function getCreateGlobalCounterDiscriminatorBytes() {
 export type CreateGlobalCounterInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountGlobalCounter extends string | AccountMeta<string> = string,
-  TAccountPayer extends string | AccountMeta<string> = string,
+  TAccountPayer extends
+    | string
+    | AccountMeta<string> = 'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ',
   TAccountSystemProgram extends
     | string
     | AccountMeta<string> = '11111111111111111111111111111111',
@@ -106,7 +108,7 @@ export type CreateGlobalCounterAsyncInput<
   TAccountSystemProgram extends string = string,
 > = {
   globalCounter?: Address<TAccountGlobalCounter>;
-  payer: TransactionSigner<TAccountPayer>;
+  payer?: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
 };
 
@@ -157,6 +159,10 @@ export async function getCreateGlobalCounterInstructionAsync<
       ],
     });
   }
+  if (!accounts.payer.value) {
+    accounts.payer.value =
+      'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ' as Address<'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ'>;
+  }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
@@ -187,7 +193,7 @@ export type CreateGlobalCounterInput<
   TAccountSystemProgram extends string = string,
 > = {
   globalCounter: Address<TAccountGlobalCounter>;
-  payer: TransactionSigner<TAccountPayer>;
+  payer?: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
 };
 
@@ -224,6 +230,10 @@ export function getCreateGlobalCounterInstruction<
   >;
 
   // Resolve default values.
+  if (!accounts.payer.value) {
+    accounts.payer.value =
+      'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ' as Address<'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ'>;
+  }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
@@ -275,7 +285,7 @@ export function parseCreateGlobalCounterInstruction<
   }
   let accountIndex = 0;
   const getNextAccount = () => {
-    const accountMeta = instruction.accounts![accountIndex]!;
+    const accountMeta = (instruction.accounts as TAccountMetas)[accountIndex]!;
     accountIndex += 1;
     return accountMeta;
   };

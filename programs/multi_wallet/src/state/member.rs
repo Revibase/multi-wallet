@@ -3,7 +3,7 @@ use bytemuck::{Pod, Zeroable};
 
 use crate::{
     error::MultisigError,
-    state::{DelegateCreateOrMutateArgs, DelegateMutArgs, KeyType, Permissions},
+    state::{KeyType, Permissions, UserMutArgs},
 };
 
 use super::{Secp256r1Pubkey, Secp256r1VerifyArgs, COMPRESSED_PUBKEY_SERIALIZED_SIZE};
@@ -108,31 +108,39 @@ impl AsRef<[u8]> for MemberKey {
     }
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug)]
+pub enum DelegateOp {
+    Add,
+    Remove,
+    Ignore,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq)]
-pub struct MemberWithCreationArgs {
-    pub data: Member,
+pub struct MemberWithAddPermissionsArgs {
+    pub member: Member,
     pub verify_args: Option<Secp256r1VerifyArgs>,
-    pub delegate_args: Option<DelegateCreateOrMutateArgs>,
+    pub user_args: UserMutArgs,
+    pub set_as_delegate: bool,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq)]
-pub struct MemberKeyWithCloseArgs {
-    pub data: MemberKey,
-    pub delegate_args: Option<DelegateMutArgs>,
+pub struct MemberKeyWithRemovePermissionsArgs {
+    pub member_key: MemberKey,
+    pub user_args: UserMutArgs,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct MemberKeyWithPermissionsArgs {
-    pub pubkey: MemberKey,
+#[derive(AnchorSerialize, AnchorDeserialize, Debug)]
+pub struct MemberKeyWithEditPermissionsArgs {
+    pub member_key: MemberKey,
     pub permissions: Permissions,
-    pub delegate_close_args: Option<DelegateMutArgs>,
-    pub delegate_creation_args: Option<DelegateCreateOrMutateArgs>,
+    pub user_args: Option<UserMutArgs>,
+    pub delegate_operation: DelegateOp,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub enum ConfigAction {
-    EditPermissions(Vec<MemberKeyWithPermissionsArgs>),
-    AddMembers(Vec<MemberWithCreationArgs>),
-    RemoveMembers(Vec<MemberKeyWithCloseArgs>),
+    EditPermissions(Vec<MemberKeyWithEditPermissionsArgs>),
+    AddMembers(Vec<MemberWithAddPermissionsArgs>),
+    RemoveMembers(Vec<MemberKeyWithRemovePermissionsArgs>),
     SetThreshold(u8),
 }

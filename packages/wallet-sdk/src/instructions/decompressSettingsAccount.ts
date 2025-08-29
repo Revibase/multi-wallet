@@ -1,22 +1,25 @@
 import { AccountRole, AccountSignerMeta, TransactionSigner } from "@solana/kit";
-import { getCompressedSettingsAddressFromIndex } from "../compressed";
-import {
-  convertToCompressedProofArgs,
-  getCompressedAccountHashes,
-  getCompressedAccountMutArgs,
-} from "../compressed/internal";
-import { PackedAccounts } from "../compressed/packedAccounts";
 import {
   CompressedSettings,
   getCompressedSettingsDecoder,
   getDecompressSettingsAccountInstruction,
 } from "../generated";
 import { Secp256r1Key } from "../types";
-import { getLightProtocolRpc, getSettingsFromIndex } from "../utils";
+import {
+  getCompressedSettingsAddressFromIndex,
+  getLightProtocolRpc,
+  getSettingsFromIndex,
+} from "../utils";
+import {
+  convertToCompressedProofArgs,
+  getCompressedAccountHashes,
+  getCompressedAccountMutArgs,
+} from "../utils/compressed/internal";
+import { PackedAccounts } from "../utils/compressed/packedAccounts";
 import {
   extractSecp256r1VerificationArgs,
   getDeduplicatedSigners,
-} from "../utils/internal";
+} from "../utils/transactionMessage/internal";
 import { getSecp256r1VerifyInstruction } from "./secp256r1Verify";
 
 export async function decompressSettingsAccount({
@@ -28,13 +31,12 @@ export async function decompressSettingsAccount({
   payer: TransactionSigner;
   signers: (Secp256r1Key | TransactionSigner)[];
 }) {
-  const settings = await getSettingsFromIndex(index);
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
 
   const hashesWithTree = await getCompressedAccountHashes([
     {
-      pubkey: await getCompressedSettingsAddressFromIndex(index),
+      address: await getCompressedSettingsAddressFromIndex(index),
       type: "Settings" as const,
     },
   ]);
@@ -42,16 +44,14 @@ export async function decompressSettingsAccount({
     hashesWithTree,
     []
   );
-  const settingsMutArgs = (
-    await getCompressedAccountMutArgs<CompressedSettings>(
-      packedAccounts,
-      proof.treeInfos,
-      proof.leafIndices,
-      proof.rootIndices,
-      proof.proveByIndices,
-      hashesWithTree.filter((x) => x.type === "Settings"),
-      getCompressedSettingsDecoder()
-    )
+  const settingsMutArgs = getCompressedAccountMutArgs<CompressedSettings>(
+    packedAccounts,
+    proof.treeInfos,
+    proof.leafIndices,
+    proof.rootIndices,
+    proof.proveByIndices,
+    hashesWithTree.filter((x) => x.type === "Settings"),
+    getCompressedSettingsDecoder()
   )[0];
 
   const dedupSigners = getDeduplicatedSigners(signers);
@@ -63,7 +63,7 @@ export async function decompressSettingsAccount({
     signature,
     publicKey,
     message,
-  } = await extractSecp256r1VerificationArgs(
+  } = extractSecp256r1VerificationArgs(
     dedupSigners.find((x) => x instanceof Secp256r1Key)
   );
   packedAccounts.addPreAccounts(
@@ -87,6 +87,7 @@ export async function decompressSettingsAccount({
       getSecp256r1VerifyInstruction([{ message, signature, publicKey }])
     );
   }
+  const settings = await getSettingsFromIndex(index);
   instructions.push(
     getDecompressSettingsAccountInstruction({
       settings,

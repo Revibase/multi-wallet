@@ -10,8 +10,8 @@ pub use seeds::*;
 pub mod transaction_buffer;
 pub use transaction_buffer::*;
 
-pub mod delegate;
-pub use delegate::*;
+pub mod user;
+pub use user::*;
 
 pub mod member;
 pub use member::*;

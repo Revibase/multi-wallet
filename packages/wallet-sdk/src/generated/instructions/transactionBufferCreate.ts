@@ -48,7 +48,7 @@ import {
   type TransactionBufferCreateArgsArgs,
 } from '../types';
 
-export const TRANSACTION_BUFFER_CREATE_DISCRIMINATOR = new Uint8Array([7]);
+export const TRANSACTION_BUFFER_CREATE_DISCRIMINATOR = new Uint8Array([9]);
 
 export function getTransactionBufferCreateDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
@@ -313,7 +313,7 @@ export function parseTransactionBufferCreateInstruction<
   }
   let accountIndex = 0;
   const getNextAccount = () => {
-    const accountMeta = instruction.accounts![accountIndex]!;
+    const accountMeta = (instruction.accounts as TAccountMetas)[accountIndex]!;
     accountIndex += 1;
     return accountMeta;
   };

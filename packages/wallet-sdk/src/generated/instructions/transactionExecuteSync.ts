@@ -44,7 +44,7 @@ import {
   type TransactionMessageArgs,
 } from "../types";
 
-export const TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR = new Uint8Array([13]);
+export const TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR = new Uint8Array([15]);
 
 export function getTransactionExecuteSyncDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
@@ -253,7 +253,7 @@ export function parseTransactionExecuteSyncInstruction<
   }
   let accountIndex = 0;
   const getNextAccount = () => {
-    const accountMeta = instruction.accounts![accountIndex]!;
+    const accountMeta = (instruction.accounts as TAccountMetas)[accountIndex]!;
     accountIndex += 1;
     return accountMeta;
   };

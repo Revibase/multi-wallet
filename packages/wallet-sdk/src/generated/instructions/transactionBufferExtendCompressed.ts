@@ -31,9 +31,9 @@ import {
   type InstructionWithData,
   type ReadonlyUint8Array,
   type WritableAccount,
-} from "@solana/kit";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from '@solana/kit';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 
 export const TRANSACTION_BUFFER_EXTEND_COMPRESSED_DISCRIMINATOR =
   new Uint8Array([22]);
@@ -73,9 +73,9 @@ export type TransactionBufferExtendCompressedInstructionDataArgs = {
 export function getTransactionBufferExtendCompressedInstructionDataEncoder(): Encoder<TransactionBufferExtendCompressedInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["buffer", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
-      ["settingsKey", getAddressEncoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      ['buffer', addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
+      ['settingsKey', getAddressEncoder()],
     ]),
     (value) => ({
       ...value,
@@ -86,9 +86,9 @@ export function getTransactionBufferExtendCompressedInstructionDataEncoder(): En
 
 export function getTransactionBufferExtendCompressedInstructionDataDecoder(): Decoder<TransactionBufferExtendCompressedInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["buffer", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
-    ["settingsKey", getAddressDecoder()],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ['buffer', addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
+    ['settingsKey', getAddressDecoder()],
   ]);
 }
 
@@ -104,28 +104,21 @@ export function getTransactionBufferExtendCompressedInstructionDataCodec(): Code
 
 export type TransactionBufferExtendCompressedInput<
   TAccountTransactionBuffer extends string = string,
-  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = {
   transactionBuffer: Address<TAccountTransactionBuffer>;
-  buffer: TransactionBufferExtendCompressedInstructionDataArgs["buffer"];
-  settingsKey: TransactionBufferExtendCompressedInstructionDataArgs["settingsKey"];
-  remainingAccounts: TRemainingAccounts;
+  buffer: TransactionBufferExtendCompressedInstructionDataArgs['buffer'];
+  settingsKey: TransactionBufferExtendCompressedInstructionDataArgs['settingsKey'];
 };
 
 export function getTransactionBufferExtendCompressedInstruction<
   TAccountTransactionBuffer extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 >(
-  input: TransactionBufferExtendCompressedInput<
-    TAccountTransactionBuffer,
-    TRemainingAccounts
-  >,
+  input: TransactionBufferExtendCompressedInput<TAccountTransactionBuffer>,
   config?: { programAddress?: TProgramAddress }
 ): TransactionBufferExtendCompressedInstruction<
   TProgramAddress,
-  TAccountTransactionBuffer,
-  TRemainingAccounts
+  TAccountTransactionBuffer
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -145,20 +138,16 @@ export function getTransactionBufferExtendCompressedInstruction<
   // Original args.
   const args = { ...input };
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   const instruction = {
-    accounts: [
-      getAccountMeta(accounts.transactionBuffer),
-      ...input.remainingAccounts,
-    ],
+    accounts: [getAccountMeta(accounts.transactionBuffer)],
     programAddress,
     data: getTransactionBufferExtendCompressedInstructionDataEncoder().encode(
       args as TransactionBufferExtendCompressedInstructionDataArgs
     ),
   } as TransactionBufferExtendCompressedInstruction<
     TProgramAddress,
-    TAccountTransactionBuffer,
-    TRemainingAccounts
+    TAccountTransactionBuffer
   >;
 
   return instruction;
@@ -185,11 +174,11 @@ export function parseTransactionBufferExtendCompressedInstruction<
 ): ParsedTransactionBufferExtendCompressedInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 1) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {
-    const accountMeta = instruction.accounts![accountIndex]!;
+    const accountMeta = (instruction.accounts as TAccountMetas)[accountIndex]!;
     accountIndex += 1;
     return accountMeta;
   };

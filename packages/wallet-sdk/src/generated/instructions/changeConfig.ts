@@ -56,7 +56,7 @@ import {
   type ProofArgsArgs,
 } from "../types";
 
-export const CHANGE_CONFIG_DISCRIMINATOR = new Uint8Array([6]);
+export const CHANGE_CONFIG_DISCRIMINATOR = new Uint8Array([8]);
 
 export function getChangeConfigDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
@@ -418,7 +418,7 @@ export function parseChangeConfigInstruction<
   }
   let accountIndex = 0;
   const getNextAccount = () => {
-    const accountMeta = instruction.accounts![accountIndex]!;
+    const accountMeta = (instruction.accounts as TAccountMetas)[accountIndex]!;
     accountIndex += 1;
     return accountMeta;
   };

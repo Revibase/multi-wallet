@@ -6,11 +6,9 @@ import {
 } from "@lightprotocol/stateless.js";
 import {
   Address,
-  address,
   getAddressEncoder,
   getU128Encoder,
   getUtf8Encoder,
-  isAddress,
   none,
   some,
 } from "@solana/kit";
@@ -19,75 +17,61 @@ import {
   CompressedSettingsData,
   fetchMaybeSettings,
   getCompressedSettingsDecoder,
-  getDelegateDecoder,
+  getUserDecoder,
   MULTI_WALLET_PROGRAM_ADDRESS,
-} from "../generated";
-import { Secp256r1Key } from "../types";
-import {
-  getLightProtocolRpc,
-  getSettingsFromIndex,
-  getSolanaRpc,
-} from "../utils";
+  Secp256r1Key,
+  User,
+} from "../..";
+import { getSettingsFromIndex } from "../helper";
+import { getLightProtocolRpc, getSolanaRpc } from "../initialize";
 
-export async function getDelegateAddress(member: Address | Secp256r1Key) {
+export async function getUserAddress(member: Address | Secp256r1Key) {
   const { tree } = getDefaultAddressTreeInfo();
   if (member instanceof Secp256r1Key) {
+    if (!member.domainConfig) {
+      throw new Error("Unable to find domain config in Secp256r1Key");
+    }
     const addressSeed = deriveAddressSeed(
       [
         new Uint8Array(getUtf8Encoder().encode("delegate")),
+        new Uint8Array(getAddressEncoder().encode(member.domainConfig)),
         member.toTruncatedBuffer(),
       ],
       new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS)
     );
-    return createBN254(
-      deriveAddress(addressSeed, new PublicKey(tree)).toString(),
-      "base58"
-    );
-  } else if (isAddress(member.toString())) {
+    return createBN254(deriveAddress(addressSeed, tree).toString(), "base58");
+  } else {
     const addressSeed = deriveAddressSeed(
       [
         new Uint8Array(getUtf8Encoder().encode("delegate")),
-        new Uint8Array(getAddressEncoder().encode(address(member.toString()))),
+        new Uint8Array(getAddressEncoder().encode(member)),
       ],
       new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS)
     );
-    return createBN254(
-      deriveAddress(addressSeed, new PublicKey(tree)).toString(),
-      "base58"
-    );
-  } else {
-    throw new Error("Unable to parse Public Key");
+    return createBN254(deriveAddress(addressSeed, tree).toString(), "base58");
   }
 }
 
-export async function fetchDelegateIndex(
+export async function fetchUserData(
   member: Address | Secp256r1Key
-): Promise<bigint> {
-  const address = await getDelegateAddress(member);
-  const delegate = await getLightProtocolRpc().getCompressedAccount(address);
-  if (!delegate?.data?.data) {
-    throw Error("Unable to fetch delegate account.");
+): Promise<User> {
+  const userAddress = await getUserAddress(member);
+  const result = await getLightProtocolRpc().getCompressedAccount(userAddress);
+  if (!result?.data?.data) {
+    throw Error("Unable to fetch user account data.");
   }
-  const data = getDelegateDecoder().decode(delegate.data.data);
-  if (data.index.__option === "None") {
-    throw Error("Unable to fetch delegate account.");
-  }
-  return data.index.value;
+  return getUserDecoder().decode(result.data.data);
 }
 
-export async function fetchMaybeDelegateIndex(
+export async function fetchMaybeUserData(
   member: Address | Secp256r1Key
-): Promise<bigint | null> {
-  const address = await getDelegateAddress(member);
-  const delegate = await getLightProtocolRpc().getCompressedAccount(address);
-  if (!delegate?.data?.data) {
+): Promise<User | null> {
+  const userAddress = await getUserAddress(member);
+  const result = await getLightProtocolRpc().getCompressedAccount(userAddress);
+  if (!result?.data?.data) {
     return null;
   }
-  const data = getDelegateDecoder().decode(delegate.data.data);
-  if (data.index.__option === "None") {
-    return null;
-  }
-  return data.index.value;
+  return getUserDecoder().decode(result.data.data);
 }
 
 export async function getCompressedSettingsAddressFromIndex(

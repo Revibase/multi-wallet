@@ -34,7 +34,7 @@ import {
 import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
 import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 
-export const TRANSACTION_BUFFER_EXTEND_DISCRIMINATOR = new Uint8Array([9]);
+export const TRANSACTION_BUFFER_EXTEND_DISCRIMINATOR = new Uint8Array([11]);
 
 export function getTransactionBufferExtendDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
@@ -188,7 +188,7 @@ export function parseTransactionBufferExtendInstruction<
   }
   let accountIndex = 0;
   const getNextAccount = () => {
-    const accountMeta = instruction.accounts![accountIndex]!;
+    const accountMeta = (instruction.accounts as TAccountMetas)[accountIndex]!;
     accountIndex += 1;
     return accountMeta;
   };
