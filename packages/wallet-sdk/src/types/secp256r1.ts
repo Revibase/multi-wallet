@@ -13,7 +13,7 @@ export class Secp256r1Key {
   signature: ParsedAuthenticationResponse["signature"] | undefined;
   constructor(
     value: Secp256r1KeyInitData,
-    additionalInfo?: Omit<ParsedAuthenticationResponse, "credentialId">
+    additionalInfo?: Omit<ParsedAuthenticationResponse, "signer">
   ) {
     if (typeof value === "string") {
       // Assume base-58 encoding by default

@@ -4,10 +4,16 @@ import {
 } from "@simplewebauthn/server";
 import { Address } from "@solana/kit";
 
-export type AuthenticationResponse = {
+export type TransactionAuthenticationResponse = {
   authResponse: AuthenticationResponseJSON;
-  slotNumber?: string;
-  slotHash?: string;
+  signer: SignerPayload;
+  slotNumber: string;
+  slotHash: string;
+};
+
+export type MessageAuthenticationResponse = {
+  authResponse: AuthenticationResponseJSON;
+  signer: SignerPayload;
 };
 
 export type ParsedAuthenticationResponse = {
@@ -16,7 +22,7 @@ export type ParsedAuthenticationResponse = {
     slotNumber: bigint;
     slotHash: Uint8Array;
   };
-  credentialId: string;
+  signer: SignerPayload;
   domainConfig?: Address;
   authData?: Uint8Array;
   signature?: Uint8Array;
@@ -38,18 +44,24 @@ export type TransactionPayload = {
   transactionActionType: TransactionActionType;
   transactionAddress: string;
   transactionMessageBytes: Uint8Array;
-  additionalInfo?: any;
 };
 
 export type MessagePayload = {
   message: string;
 };
 
+export type SignerPayload = {
+  publicKey: string;
+  credentialId: string;
+  username?: string;
+  transports?: string;
+  settingsIndex?: number;
+};
+
 export type BasePayload = {
   hints?: PublicKeyCredentialHint[];
   authUrl?: string;
-  credentialId?: string;
-  transports?: string;
+  signer?: SignerPayload;
   popUp?: Window | null;
   debug?: boolean;
   additionalInfo?: any;

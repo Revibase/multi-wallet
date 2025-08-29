@@ -125,15 +125,15 @@ export type CreateMultiWalletInstructionData = {
   discriminator: ReadonlyUint8Array;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
   permissions: IPermissions;
-  userMutArgs: Option<UserMutArgs>;
-  compressedProofArgs: Option<ProofArgs>;
+  userMutArgs: UserMutArgs;
+  compressedProofArgs: ProofArgs;
 };
 
 export type CreateMultiWalletInstructionDataArgs = {
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
   permissions: PermissionsArgs;
-  userMutArgs: OptionOrNullable<UserMutArgsArgs>;
-  compressedProofArgs: OptionOrNullable<ProofArgsArgs>;
+  userMutArgs: UserMutArgsArgs;
+  compressedProofArgs: ProofArgsArgs;
 };
 
 export function getCreateMultiWalletInstructionDataEncoder(): Encoder<CreateMultiWalletInstructionDataArgs> {
@@ -145,8 +145,8 @@ export function getCreateMultiWalletInstructionDataEncoder(): Encoder<CreateMult
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
       ["permissions", getPermissionsEncoder()],
-      ["userMutArgs", getOptionEncoder(getUserMutArgsEncoder())],
-      ["compressedProofArgs", getOptionEncoder(getProofArgsEncoder())],
+      ["userMutArgs", getUserMutArgsEncoder()],
+      ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({ ...value, discriminator: CREATE_MULTI_WALLET_DISCRIMINATOR })
   );
@@ -157,8 +157,8 @@ export function getCreateMultiWalletInstructionDataDecoder(): Decoder<CreateMult
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
     ["permissions", getPermissionsDecoder()],
-    ["userMutArgs", getOptionDecoder(getUserMutArgsDecoder())],
-    ["compressedProofArgs", getOptionDecoder(getProofArgsDecoder())],
+    ["userMutArgs", getUserMutArgsDecoder()],
+    ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }
 
@@ -480,7 +480,7 @@ export function parseCreateMultiWalletInstruction<
   }
   let accountIndex = 0;
   const getNextAccount = () => {
-    const accountMeta = instruction.accounts![accountIndex]!;
+    const accountMeta = (instruction.accounts as TAccountMetas)[accountIndex]!;
     accountIndex += 1;
     return accountMeta;
   };

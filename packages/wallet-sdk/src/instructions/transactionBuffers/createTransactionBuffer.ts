@@ -1,48 +1,41 @@
-import { Address, TransactionSigner } from "@solana/kit";
-import {
-  constructSettingsProofArgs,
-  convertToCompressedProofArgs,
-} from "../../compressed/internal";
-import { PackedAccounts } from "../../compressed/packedAccounts";
+import { AccountMeta, Address, TransactionSigner } from "@solana/kit";
 import {
   getTransactionBufferCreateCompressedInstruction,
   getTransactionBufferCreateInstruction,
+  ProofArgsArgs,
+  SettingsReadonlyArgs,
 } from "../../generated";
 import { Secp256r1Key } from "../../types";
-import { getSettingsFromIndex } from "../../utils";
-import { extractSecp256r1VerificationArgs } from "../../utils/internal";
+import { extractSecp256r1VerificationArgs } from "../../utils/transactionMessage/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
-export async function createTransactionBuffer({
-  index,
+export function createTransactionBuffer({
   payer,
   creator,
   bufferIndex,
+  settings,
   transactionBufferAddress,
   finalBufferHash,
   finalBufferSize,
   permissionlessExecution,
   bufferExtendHashes,
-  compressed = false,
+  compressedArgs,
 }: {
   finalBufferHash: Uint8Array;
   finalBufferSize: number;
   payer: TransactionSigner;
-  index: bigint | number;
   creator: TransactionSigner | Secp256r1Key;
+  settings: Address;
   bufferIndex: number;
   transactionBufferAddress: Address;
   permissionlessExecution: boolean;
   bufferExtendHashes: Uint8Array[];
-  compressed?: boolean;
+  compressedArgs: {
+    settingsReadonlyArgs: SettingsReadonlyArgs;
+    compressedProofArgs: ProofArgsArgs;
+    remainingAccounts: AccountMeta[];
+  } | null;
 }) {
-  const packedAccounts = new PackedAccounts();
-  const { settingsReadonlyArgs, proof } = await constructSettingsProofArgs(
-    packedAccounts,
-    compressed,
-    index
-  );
-  const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const {
     slotHashSysvar,
     domainConfig,
@@ -65,15 +58,7 @@ export async function createTransactionBuffer({
     );
   }
 
-  if (compressed) {
-    if (!payer || !settingsReadonlyArgs) {
-      throw new Error("Payer not found or proof args is missing.");
-    }
-    const compressedProofArgs = convertToCompressedProofArgs(
-      proof,
-      systemOffset
-    );
-
+  if (compressedArgs) {
     instructions.push(
       getTransactionBufferCreateCompressedInstruction({
         instructionsSysvar,
@@ -90,13 +75,12 @@ export async function createTransactionBuffer({
           bufferExtendHashes,
           permissionlessExecution,
         },
-        settingsReadonly: settingsReadonlyArgs,
-        compressedProofArgs,
-        remainingAccounts,
+        settingsReadonly: compressedArgs.settingsReadonlyArgs,
+        compressedProofArgs: compressedArgs.compressedProofArgs,
+        remainingAccounts: compressedArgs.remainingAccounts,
       })
     );
   } else {
-    const settings = await getSettingsFromIndex(index);
     instructions.push(
       getTransactionBufferCreateInstruction({
         instructionsSysvar,

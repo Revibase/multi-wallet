@@ -1,9 +1,8 @@
 use crate::{
     error::MultisigError,
     state::{
-        CompressedSettings, Member, MemberKeyWithRemovePermissionsArgs,
-        MemberWithAddPermissionsArgs, Ops, ProofArgs, Settings, SettingsMutArgs, User,
-        SEED_MULTISIG, SEED_VAULT,
+        CompressedSettings, Ops, ProofArgs, Settings, SettingsMutArgs, User, SEED_MULTISIG,
+        SEED_VAULT,
     },
     ConfigAction, LIGHT_CPI_SIGNER,
 };
@@ -72,27 +71,13 @@ impl<'info> ChangeConfigCompressed<'info> {
         let remaining_accounts = ctx.remaining_accounts;
 
         let mut delegate_ops: Vec<Ops> = vec![];
+
         for action in config_actions {
             match action {
                 ConfigAction::EditPermissions(members) => {
                     let ops = settings.edit_permissions(members)?;
-                    delegate_ops.extend(ops.0.into_iter().map(|f| {
-                        Ops::Create(Box::new(MemberWithAddPermissionsArgs {
-                            data: Member {
-                                pubkey: f.pubkey,
-                                permissions: f.permissions,
-                                domain_config: Pubkey::default(),
-                            },
-                            verify_args: None,
-                            user_delegate_creation_args: f.user_delegate_creation_args,
-                        }))
-                    }));
-                    delegate_ops.extend(ops.1.into_iter().map(|f| {
-                        Ops::Close(Box::new(MemberKeyWithRemovePermissionsArgs {
-                            data: f.pubkey,
-                            user_delegate_close_args: f.user_delegate_close_args,
-                        }))
-                    }));
+                    delegate_ops.extend(ops.0.into_iter().map(Ops::Create));
+                    delegate_ops.extend(ops.1.into_iter().map(Ops::Close));
                 }
                 ConfigAction::AddMembers(members) => {
                     let ops = settings.add_members(
@@ -102,11 +87,11 @@ impl<'info> ChangeConfigCompressed<'info> {
                         slot_hash_sysvar,
                         ctx.accounts.instructions_sysvar.as_ref(),
                     )?;
-                    delegate_ops.extend(ops.into_iter().map(|op| Ops::Create(Box::new(op))));
+                    delegate_ops.extend(ops.into_iter().map(Ops::Create));
                 }
                 ConfigAction::RemoveMembers(members) => {
                     let ops = settings.remove_members(members)?;
-                    delegate_ops.extend(ops.into_iter().map(|op| Ops::Close(Box::new(op))));
+                    delegate_ops.extend(ops.into_iter().map(Ops::Close));
                 }
                 ConfigAction::SetThreshold(new_threshold) => {
                     settings.set_threshold(new_threshold)?;

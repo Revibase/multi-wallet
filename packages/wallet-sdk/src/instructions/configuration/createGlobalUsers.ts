@@ -1,13 +1,12 @@
 import { Address, TransactionSigner } from "@solana/kit";
-import { getUserAddress } from "../../compressed";
+import { getCreateGlobalUsersInstruction } from "../../generated";
+import { getLightProtocolRpc, getUserAddress } from "../../utils";
 import {
   convertToCompressedProofArgs,
   getCompressedAccountInitArgs,
   getNewAddressesParams,
-} from "../../compressed/internal";
-import { PackedAccounts } from "../../compressed/packedAccounts";
-import { getCreateGlobalUsersInstruction } from "../../generated";
-import { getLightProtocolRpc } from "../../utils";
+} from "../../utils/compressed/internal";
+import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 
 export async function createGlobalUsers({
   members,

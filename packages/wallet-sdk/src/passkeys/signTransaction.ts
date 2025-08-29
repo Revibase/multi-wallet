@@ -1,6 +1,6 @@
 import {
-  AuthenticationResponse,
   BasePayload,
+  TransactionAuthenticationResponse,
   TransactionPayload,
 } from "../types";
 import {
@@ -16,8 +16,7 @@ export async function signTransaction({
   transactionMessageBytes,
   additionalInfo,
   hints,
-  credentialId,
-  transports,
+  signer,
   popUp,
   debug,
 }: TransactionPayload & BasePayload) {
@@ -32,11 +31,10 @@ export async function signTransaction({
       }),
     },
     additionalInfo,
-    credentialId,
-    transports,
+    signer,
     popUp,
     debug,
     hints,
-  })) as AuthenticationResponse;
+  })) as TransactionAuthenticationResponse;
   return await parseAuthenticationResponse(authResponse);
 }

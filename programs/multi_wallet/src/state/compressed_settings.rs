@@ -1,8 +1,9 @@
 use crate::{
     error::MultisigError,
     state::{
-        Member, MemberKey, MemberKeyWithRemovePermissionsArgs, MemberKeyWithEditPermissionsArgs,
-        MemberWithAddPermissionsArgs, MultisigSettings, Permissions, Settings, SEED_MULTISIG, SEED_VAULT,
+        Member, MemberKey, MemberKeyWithEditPermissionsArgs, MemberKeyWithRemovePermissionsArgs,
+        MemberWithAddPermissionsArgs, MultisigSettings, Permissions, Settings, SEED_MULTISIG,
+        SEED_VAULT,
     },
     LIGHT_CPI_SIGNER,
 };
@@ -61,8 +62,8 @@ impl CompressedSettings {
         &mut self,
         members: Vec<MemberKeyWithEditPermissionsArgs>,
     ) -> Result<(
-        Vec<MemberKeyWithEditPermissionsArgs>,
-        Vec<MemberKeyWithEditPermissionsArgs>,
+        Vec<MemberWithAddPermissionsArgs>,
+        Vec<MemberKeyWithRemovePermissionsArgs>,
     )> {
         MultisigSettings::edit_permissions(self, members)
     }

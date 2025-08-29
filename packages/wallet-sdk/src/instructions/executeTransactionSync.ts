@@ -1,20 +1,19 @@
 import { Instruction, TransactionSigner } from "@solana/kit";
 import {
-  constructSettingsProofArgs,
-  convertToCompressedProofArgs,
-} from "../compressed/internal";
-import { PackedAccounts } from "../compressed/packedAccounts";
-import {
   getTransactionExecuteSyncCompressedInstruction,
   getTransactionExecuteSyncInstruction,
 } from "../generated";
 import { Secp256r1Key } from "../types";
 import { getMultiWalletFromSettings, getSettingsFromIndex } from "../utils";
 import {
+  constructSettingsProofArgs,
+  convertToCompressedProofArgs,
+} from "../utils/compressed/internal";
+import {
   accountsForTransactionExecute,
   extractSecp256r1VerificationArgs,
   getDeduplicatedSigners,
-} from "../utils/internal";
+} from "../utils/transactionMessage/internal";
 import {
   getSecp256r1VerifyInstruction,
   Secp256r1VerifyInput,
@@ -38,11 +37,9 @@ export async function executeTransactionSync({
   const dedupSigners = getDeduplicatedSigners(signers);
   const settings = await getSettingsFromIndex(index);
   const multiWallet = await getMultiWalletFromSettings(settings);
-  const packedAccounts = new PackedAccounts();
-
   const [
     { accountMetas, addressLookupTableAccounts, transactionMessage },
-    { settingsReadonlyArgs, proof },
+    { settingsReadonlyArgs, proof, packedAccounts },
   ] = await Promise.all([
     accountsForTransactionExecute({
       transactionMessageBytes,
@@ -51,7 +48,7 @@ export async function executeTransactionSync({
         (x) => !(x instanceof Secp256r1Key)
       ) as TransactionSigner[],
     }),
-    constructSettingsProofArgs(packedAccounts, compressed, index),
+    constructSettingsProofArgs(compressed, index),
   ]);
 
   packedAccounts.addPreAccounts(accountMetas);

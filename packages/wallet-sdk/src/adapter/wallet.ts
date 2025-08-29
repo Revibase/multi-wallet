@@ -1,8 +1,5 @@
-import { address, getAddressEncoder, getBase58Encoder } from "@solana/kit";
+import { address, getAddressEncoder } from "@solana/kit";
 import {
-  SolanaSignAndSendTransactionFeature,
-  SolanaSignAndSendTransactionMethod,
-  SolanaSignAndSendTransactionOutput,
   SolanaSignTransactionMethod,
   type SolanaSignInFeature,
   type SolanaSignInMethod,
@@ -68,7 +65,6 @@ export class RevibaseWallet implements Wallet {
   get features(): StandardConnectFeature &
     StandardDisconnectFeature &
     StandardEventsFeature &
-    SolanaSignAndSendTransactionFeature &
     SolanaSignTransactionFeature &
     SolanaSignMessageFeature &
     SolanaSignInFeature &
@@ -90,11 +86,6 @@ export class RevibaseWallet implements Wallet {
         version: "1.0.0",
         supportedTransactionVersions: [0],
         signTransaction: this.#signTransaction,
-      },
-      "solana:signAndSendTransaction": {
-        version: "1.0.0",
-        supportedTransactionVersions: [0],
-        signAndSendTransaction: this.#signAndSendTransaction,
       },
       "solana:signMessage": {
         version: "1.0.0",
@@ -127,32 +118,6 @@ export class RevibaseWallet implements Wallet {
 
     this.#connected();
   }
-
-  #signAndSendTransaction: SolanaSignAndSendTransactionMethod = async (
-    ...inputs
-  ) => {
-    if (!this.#account) throw new Error("not connected");
-
-    const outputs: SolanaSignAndSendTransactionOutput[] = [];
-
-    for (const input of inputs) {
-      const { transaction, account, chain, options } = input;
-      if (account !== this.#account) throw new Error("invalid account");
-      if (chain && this.chains.includes(chain) === false)
-        throw new Error("invalid chain");
-
-      const signature = await this.#revibase.signAndSendTransaction(
-        transaction,
-        options
-      );
-
-      outputs.push({
-        signature: new Uint8Array(getBase58Encoder().encode(signature)),
-      });
-    }
-
-    return outputs;
-  };
 
   #on: StandardEventsOnMethod = (event, listener) => {
     this.#listeners[event]?.push(listener) ||
@@ -280,8 +245,13 @@ export class RevibaseWallet implements Wallet {
       ) {
         throw new Error("invalid account");
       }
-      const { signature } = await this.#revibase.signMessage(message);
-      outputs.push({ signedMessage: message, signature });
+      const { signedMessage, signature } =
+        await this.#revibase.signMessage(message);
+
+      outputs.push({
+        signedMessage,
+        signature,
+      });
     }
 
     return outputs;

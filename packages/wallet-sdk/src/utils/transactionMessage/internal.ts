@@ -8,37 +8,18 @@ import {
   Address,
   address,
   fetchAddressesForLookupTables,
-  getAddressEncoder,
-  getSignersFromInstruction,
-  Instruction,
-  none,
   OptionOrNullable,
   some,
   TransactionSigner,
 } from "@solana/kit";
-import { PublicKey } from "@solana/web3.js";
-import { getSolanaRpc } from ".";
-import {
-  ConfigAction,
-  IPermissions,
-  MemberKey,
-  MemberKeyWithEditPermissionsArgs,
-  MemberKeyWithRemovePermissionsArgs,
-  MemberWithAddPermissionsArgs,
-  Secp256r1VerifyArgs,
-  UserMutArgs,
-} from "../generated";
-import {
-  ConfigActionWrapperWithDelegateArgs,
-  KeyType,
-  Secp256r1Key,
-} from "../types";
-import { JITO_TIP_ACCOUNTS } from "./consts";
-import { convertMemberKeyToString } from "./helper";
 import {
   CustomTransactionMessage,
   customTransactionMessageDeserialize,
-} from "./transactionMessage";
+} from ".";
+import { getSolanaRpc } from "..";
+import { Secp256r1VerifyArgs } from "../../generated";
+import { Secp256r1Key } from "../../types";
+import { JITO_TIP_ACCOUNTS } from "../consts";
 
 export function getHash(payload: Input) {
   return sha256(payload);
@@ -212,38 +193,7 @@ export async function accountsForTransactionExecute({
     transactionMessage,
   };
 }
-export function convertPubkeyToMemberkey(
-  pubkey: Address | Secp256r1Key
-): MemberKey {
-  if (pubkey instanceof Secp256r1Key) {
-    return { keyType: KeyType.Secp256r1, key: pubkey.toBytes() };
-  } else {
-    return {
-      keyType: KeyType.Ed25519,
-      key: new Uint8Array([
-        0, // pad start with zero to make it 33 bytes
-        ...getAddressEncoder().encode(pubkey),
-      ]),
-    };
-  }
-}
-export function convertMemberkey(pubkey: MemberKey): Address | Secp256r1Key {
-  if (pubkey.keyType === KeyType.Ed25519) {
-    return address(convertMemberKeyToString(pubkey));
-  } else {
-    return new Secp256r1Key(convertMemberKeyToString(pubkey));
-  }
-}
-export function deduplicateSignersAndFeePayer(
-  instructions: Instruction[],
-  payer: TransactionSigner
-): Address[] {
-  const signers = instructions
-    .flatMap((instruction) => getSignersFromInstruction(instruction))
-    .filter((x) => x.address !== payer.address)
-    .concat([payer]);
-  return signers.map((x) => x.address);
-}
+
 export function normalizeKey(key: any) {
   if (key instanceof Uint8Array) return key;
   if (Array.isArray(key)) return new Uint8Array(key);
@@ -320,116 +270,8 @@ export function getDeduplicatedSigners(
   }
   return dedupSigners;
 }
-export function convertConfigActionWrapper(
-  configActionsWrapper: ConfigActionWrapperWithDelegateArgs[]
-) {
-  const configActions: ConfigAction[] = [];
-  for (const action of configActionsWrapper) {
-    switch (action.type) {
-      case "EditPermissions":
-        const editMembers: MemberKeyWithEditPermissionsArgs[] = [];
-        for (const x of action.members) {
-          editMembers.push(convertEditMember(x));
-        }
-        configActions.push({
-          __kind: "EditPermissions",
-          fields: [editMembers],
-        });
-        break;
-      case "AddMembers":
-        const addMembers: MemberWithAddPermissionsArgs[] = [];
-        for (const x of action.members) {
-          addMembers.push(convertAddMember(x));
-        }
-        configActions.push({
-          __kind: "AddMembers",
-          fields: [addMembers],
-        });
-        break;
-      case "RemoveMembers":
-        const removeMembers: MemberKeyWithRemovePermissionsArgs[] = [];
-        for (const x of action.members) {
-          removeMembers.push(convertRemoveMember(x));
-        }
-        configActions.push({
-          __kind: "RemoveMembers",
-          fields: [removeMembers],
-        });
-        break;
-      case "SetThreshold":
-        configActions.push({
-          __kind: "SetThreshold",
-          fields: [action.threshold],
-        });
-        break;
-    }
-  }
 
-  return configActions;
-}
-
-function convertEditMember(x: {
-  pubkey: Address | Secp256r1Key;
-  permissions: IPermissions;
-  userDelegateCloseArgs?: UserMutArgs;
-  userDelegateCreationArgs?: UserMutArgs;
-}): MemberKeyWithEditPermissionsArgs {
-  return {
-    pubkey: convertPubkeyToMemberkey(x.pubkey),
-    permissions: x.permissions,
-    userDelegateCloseArgs: x.userDelegateCloseArgs
-      ? some(x.userDelegateCloseArgs)
-      : none(),
-    userDelegateCreationArgs: x.userDelegateCreationArgs
-      ? some(x.userDelegateCreationArgs)
-      : none(),
-  };
-}
-
-function convertRemoveMember(x: {
-  pubkey: Address | Secp256r1Key;
-  userDelegateCloseArgs?: UserMutArgs;
-}): MemberKeyWithRemovePermissionsArgs {
-  return {
-    data: convertPubkeyToMemberkey(x.pubkey),
-    userDelegateCloseArgs: x.userDelegateCloseArgs
-      ? some(x.userDelegateCloseArgs)
-      : none(),
-  };
-}
-
-function convertAddMember(member: {
-  pubkey: Address | Secp256r1Key;
-  permissions: IPermissions;
-  index: number;
-  userDelegateCreationArgs?: UserMutArgs;
-}): MemberWithAddPermissionsArgs {
-  return {
-    data: {
-      permissions: member.permissions,
-      domainConfig:
-        member.pubkey instanceof Secp256r1Key && member.pubkey.domainConfig
-          ? member.pubkey.domainConfig
-          : address(PublicKey.default.toString()),
-      pubkey: convertPubkeyToMemberkey(member.pubkey),
-    },
-    verifyArgs:
-      member.pubkey instanceof Secp256r1Key &&
-      member.pubkey.verifyArgs &&
-      member.index !== -1
-        ? some({
-            clientDataJson: member.pubkey.verifyArgs.clientDataJson,
-            slotNumber: member.pubkey.verifyArgs.slotNumber,
-            index: member.index,
-          })
-        : none(),
-    userDelegateCreationArgs: member.userDelegateCreationArgs
-      ? some(member.userDelegateCreationArgs)
-      : none(),
-  };
-}
-
-export function getPubkeyString(pubkey: TransactionSigner | Secp256r1Key) {
+function getPubkeyString(pubkey: TransactionSigner | Secp256r1Key) {
   if (pubkey instanceof Secp256r1Key) {
     return pubkey.toString();
   } else {
@@ -451,15 +293,4 @@ export function addJitoTip({
     destination: address(tipAccount),
     amount: tipAmount,
   });
-}
-
-export async function estimateJitoTips(
-  estimateJitoTipEndpoint: string,
-  level = "ema_landed_tips_50th_percentile"
-) {
-  const response = await fetch(estimateJitoTipEndpoint);
-  const result = await response.json();
-  const tipAmount = Math.round(result[0][level] * 10 ** 9) as number;
-
-  return tipAmount;
 }

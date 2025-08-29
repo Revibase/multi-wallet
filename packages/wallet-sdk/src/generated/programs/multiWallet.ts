@@ -12,7 +12,7 @@ import {
   getBytesEncoder,
   type Address,
   type ReadonlyUint8Array,
-} from "@solana/kit";
+} from '@solana/kit';
 import {
   type ParsedChangeConfigCompressedInstruction,
   type ParsedChangeConfigInstruction,
@@ -41,10 +41,10 @@ import {
   type ParsedTransactionExecuteInstruction,
   type ParsedTransactionExecuteSyncCompressedInstruction,
   type ParsedTransactionExecuteSyncInstruction,
-} from "../instructions";
+} from '../instructions';
 
 export const MULTI_WALLET_PROGRAM_ADDRESS =
-  "revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb" as Address<"revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb">;
+  'revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb' as Address<'revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb'>;
 
 export enum MultiWalletAccount {
   DomainConfig,
@@ -56,7 +56,7 @@ export enum MultiWalletAccount {
 export function identifyMultiWalletAccount(
   account: { data: ReadonlyUint8Array } | ReadonlyUint8Array
 ): MultiWalletAccount {
-  const data = "data" in account ? account.data : account;
+  const data = 'data' in account ? account.data : account;
   if (
     containsBytes(
       data,
@@ -102,7 +102,7 @@ export function identifyMultiWalletAccount(
     return MultiWalletAccount.TransactionBuffer;
   }
   throw new Error(
-    "The provided account could not be identified as a multiWallet account."
+    'The provided account could not be identified as a multiWallet account.'
   );
 }
 
@@ -139,7 +139,7 @@ export enum MultiWalletInstruction {
 export function identifyMultiWalletInstruction(
   instruction: { data: ReadonlyUint8Array } | ReadonlyUint8Array
 ): MultiWalletInstruction {
-  const data = "data" in instruction ? instruction.data : instruction;
+  const data = 'data' in instruction ? instruction.data : instruction;
   if (
     containsBytes(
       data,
@@ -384,12 +384,12 @@ export function identifyMultiWalletInstruction(
     return MultiWalletInstruction.TransactionExecuteSyncCompressed;
   }
   throw new Error(
-    "The provided instruction could not be identified as a multiWallet instruction."
+    'The provided instruction could not be identified as a multiWallet instruction.'
   );
 }
 
 export type ParsedMultiWalletInstruction<
-  TProgram extends string = "revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb",
+  TProgram extends string = 'revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb',
 > =
   | ({
       instructionType: MultiWalletInstruction.ChangeConfig;

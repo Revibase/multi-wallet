@@ -1,18 +1,16 @@
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
-import { AuthenticationResponse } from "../types";
+import { MessageAuthenticationResponse } from "../types";
 import { convertPubkeyCompressedToCose } from "../utils";
 import { bufferToBase64URLString } from "../utils/passkeys/internal";
 
 export async function verifyMessage({
   message,
   response,
-  publicKey,
   expectedOrigin = "https://auth.revibase.com",
   expectedRPID = "revibase.com",
 }: {
   message: string;
-  response: AuthenticationResponse;
-  publicKey: string;
+  response: MessageAuthenticationResponse;
   expectedOrigin?: string;
   expectedRPID?: string;
 }): Promise<boolean> {
@@ -26,7 +24,7 @@ export async function verifyMessage({
     requireUserVerification: false,
     credential: {
       id: response.authResponse.id,
-      publicKey: convertPubkeyCompressedToCose(publicKey),
+      publicKey: convertPubkeyCompressedToCose(response.signer.publicKey),
       counter: 0,
     },
   });

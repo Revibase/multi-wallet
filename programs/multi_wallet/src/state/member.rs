@@ -108,25 +108,33 @@ impl AsRef<[u8]> for MemberKey {
     }
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug)]
+pub enum DelegateOp {
+    Add,
+    Remove,
+    Ignore,
+}
+
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq)]
 pub struct MemberWithAddPermissionsArgs {
-    pub data: Member,
+    pub member: Member,
     pub verify_args: Option<Secp256r1VerifyArgs>,
-    pub user_delegate_creation_args: Option<UserMutArgs>,
+    pub user_args: UserMutArgs,
+    pub set_as_delegate: bool,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq)]
 pub struct MemberKeyWithRemovePermissionsArgs {
-    pub data: MemberKey,
-    pub user_delegate_close_args: Option<UserMutArgs>,
+    pub member_key: MemberKey,
+    pub user_args: UserMutArgs,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize)]
+#[derive(AnchorSerialize, AnchorDeserialize, Debug)]
 pub struct MemberKeyWithEditPermissionsArgs {
-    pub pubkey: MemberKey,
+    pub member_key: MemberKey,
     pub permissions: Permissions,
-    pub user_delegate_close_args: Option<UserMutArgs>,
-    pub user_delegate_creation_args: Option<UserMutArgs>,
+    pub user_args: Option<UserMutArgs>,
+    pub delegate_operation: DelegateOp,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]

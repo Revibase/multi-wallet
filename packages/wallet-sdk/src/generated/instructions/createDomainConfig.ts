@@ -54,7 +54,9 @@ export function getCreateDomainConfigDiscriminatorBytes() {
 export type CreateDomainConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountDomainConfig extends string | AccountMeta<string> = string,
-  TAccountPayer extends string | AccountMeta<string> = string,
+  TAccountPayer extends
+    | string
+    | AccountMeta<string> = 'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ',
   TAccountSystemProgram extends
     | string
     | AccountMeta<string> = '11111111111111111111111111111111',
@@ -139,7 +141,7 @@ export type CreateDomainConfigInput<
   TAccountSystemProgram extends string = string,
 > = {
   domainConfig: Address<TAccountDomainConfig>;
-  payer: TransactionSigner<TAccountPayer>;
+  payer?: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
   rpId: CreateDomainConfigInstructionDataArgs['rpId'];
   rpIdHash: CreateDomainConfigInstructionDataArgs['rpIdHash'];
@@ -183,6 +185,10 @@ export function getCreateDomainConfigInstruction<
   const args = { ...input };
 
   // Resolve default values.
+  if (!accounts.payer.value) {
+    accounts.payer.value =
+      'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ' as Address<'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ'>;
+  }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
@@ -236,7 +242,7 @@ export function parseCreateDomainConfigInstruction<
   }
   let accountIndex = 0;
   const getNextAccount = () => {
-    const accountMeta = instruction.accounts![accountIndex]!;
+    const accountMeta = (instruction.accounts as TAccountMetas)[accountIndex]!;
     accountIndex += 1;
     return accountMeta;
   };

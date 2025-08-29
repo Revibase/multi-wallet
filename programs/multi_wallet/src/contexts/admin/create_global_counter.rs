@@ -16,7 +16,7 @@ pub struct CreateGlobalCounter<'info> {
     pub global_counter: AccountLoader<'info, GlobalCounter>,
     #[account(
         mut,
-        address = ADMIN,
+        // address = ADMIN,
     )]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,

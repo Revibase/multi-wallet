@@ -1,18 +1,17 @@
 import { Address, none, some, TransactionSigner } from "@solana/kit";
-import { getUserAddress } from "../../compressed";
-import {
-  convertToCompressedProofArgs,
-  getCompressedAccountInitArgs,
-  getNewAddressesParams,
-} from "../../compressed/internal";
-import { PackedAccounts } from "../../compressed/packedAccounts";
 import {
   getCreateDomainUsersInstruction,
   getSecp256r1PubkeyDecoder,
   Transport,
 } from "../../generated";
 import { Secp256r1Key } from "../../types";
-import { getLightProtocolRpc } from "../../utils";
+import { getLightProtocolRpc, getUserAddress } from "../../utils";
+import {
+  convertToCompressedProofArgs,
+  getCompressedAccountInitArgs,
+  getNewAddressesParams,
+} from "../../utils/compressed/internal";
+import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 
 interface UserCreationArgs {
   member: Secp256r1Key;

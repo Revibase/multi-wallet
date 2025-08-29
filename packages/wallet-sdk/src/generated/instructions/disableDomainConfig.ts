@@ -47,7 +47,7 @@ export type DisableDomainConfigInstruction<
   TAccountDomainConfig extends string | AccountMeta<string> = string,
   TAccountAdmin extends
     | string
-    | AccountMeta<string> = 'G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF',
+    | AccountMeta<string> = 'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ',
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -141,7 +141,7 @@ export function getDisableDomainConfigInstruction<
   // Resolve default values.
   if (!accounts.admin.value) {
     accounts.admin.value =
-      'G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF' as Address<'G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF'>;
+      'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ' as Address<'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ'>;
   }
 
   const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
@@ -189,7 +189,7 @@ export function parseDisableDomainConfigInstruction<
   }
   let accountIndex = 0;
   const getNextAccount = () => {
-    const accountMeta = instruction.accounts![accountIndex]!;
+    const accountMeta = (instruction.accounts as TAccountMetas)[accountIndex]!;
     accountIndex += 1;
     return accountMeta;
   };

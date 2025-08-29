@@ -49,6 +49,34 @@ export function runDecompressionTests() {
         console.error("Test failed:", error);
         throw error;
       }
+    });
+
+    it("should handle decompress settings account then compress settings account", async () => {
+      const decompressIxs = await decompressSettingsAccount({
+        index: ctx.index,
+        payer: ctx.payer,
+        signers: [ctx.wallet],
+      });
+
+      try {
+        await sendTransaction(
+          ctx.connection,
+          [...decompressIxs],
+          ctx.payer,
+          ctx.sendAndConfirm,
+          ctx.addressLookUpTable
+        );
+        const settings = await getSettingsFromIndex(ctx.index);
+        const settingsData = await fetchMaybeSettings(ctx.connection, settings);
+
+        expect(settingsData.exists).equal(
+          true,
+          "Settings account should exist"
+        );
+      } catch (error) {
+        console.error("Test failed:", error);
+        throw error;
+      }
 
       const compressIxs = await compressSettingsAccount({
         index: ctx.index,

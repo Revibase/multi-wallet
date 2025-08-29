@@ -1,10 +1,14 @@
 import {
+  AccountMeta,
+  AccountRole,
   address,
   getBase58Encoder,
   getBase64Decoder,
   getTransactionEncoder,
+  Rpc,
   SignatureBytes,
   SignaturesMap,
+  SolanaRpcApi,
   TransactionSigner,
 } from "@solana/kit";
 import { SolanaSignInInput } from "@solana/wallet-standard-features";
@@ -91,13 +95,16 @@ export function assertTransactionIsNotSigned(signatures: SignaturesMap) {
   }
 }
 
-async function fetchRandomPayer(apiEndpoint: string) {
-  const result = await fetch(`${apiEndpoint}`);
-  return (await result.text()).replace(/"/g, "");
+async function fetchRandomPayer(
+  apiEndpoint = `https://api.revibase.com/getRandomPayer`
+) {
+  const response = await fetch(`${apiEndpoint}`);
+  const result = (await response.json()) as { randomPayer: string };
+  return result.randomPayer;
 }
 
 export async function getRandomPayer(
-  apiEndpoint: string
+  apiEndpoint?: string
 ): Promise<TransactionSigner> {
   const payer = await fetchRandomPayer(apiEndpoint);
   return {
@@ -196,4 +203,52 @@ export function createSignInMessageText(input: SolanaSignInInput): string {
   }
 
   return message;
+}
+
+export interface JitoTipsConfig {
+  estimateJitoTipsEndpoint: string;
+  priority:
+    | "landed_tips_25th_percentile"
+    | "landed_tips_50th_percentile"
+    | "landed_tips_75th_percentile"
+    | "landed_tips_95th_percentile"
+    | "landed_tips_99th_percentile"
+    | "ema_landed_tips_50th_percentile";
+}
+
+export async function estimateJitoTips({
+  estimateJitoTipsEndpoint,
+  priority = "ema_landed_tips_50th_percentile",
+}: JitoTipsConfig) {
+  const response = await fetch(estimateJitoTipsEndpoint);
+  const result = await response.json();
+  const tipAmount = Math.round(result[0][priority] * 10 ** 9) as number;
+
+  return tipAmount;
+}
+
+export async function getMedianPriorityFees(
+  connection: Rpc<SolanaRpcApi>,
+  accounts: AccountMeta[]
+) {
+  const recentFees = await connection
+    .getRecentPrioritizationFees(
+      accounts
+        .filter(
+          (x) =>
+            x.role === AccountRole.WRITABLE ||
+            x.role === AccountRole.WRITABLE_SIGNER
+        )
+        .map((x) => x.address)
+    )
+    .send();
+  const fees = recentFees.map((f) => Number(f.prioritizationFee));
+  fees.sort((a, b) => a - b);
+  const mid = Math.floor(fees.length / 2);
+
+  if (fees.length % 2 === 0) {
+    return Math.round((fees[mid - 1] + fees[mid]) / 2);
+  } else {
+    return fees[mid];
+  }
 }

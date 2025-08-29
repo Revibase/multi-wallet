@@ -19,14 +19,11 @@ import {
   getCompressedSettingsDecoder,
   getUserDecoder,
   MULTI_WALLET_PROGRAM_ADDRESS,
+  Secp256r1Key,
   User,
-} from "../generated";
-import { Secp256r1Key } from "../types";
-import {
-  getLightProtocolRpc,
-  getSettingsFromIndex,
-  getSolanaRpc,
-} from "../utils";
+} from "../..";
+import { getSettingsFromIndex } from "../helper";
+import { getLightProtocolRpc, getSolanaRpc } from "../initialize";
 
 export async function getUserAddress(member: Address | Secp256r1Key) {
   const { tree } = getDefaultAddressTreeInfo();
@@ -42,10 +39,7 @@ export async function getUserAddress(member: Address | Secp256r1Key) {
       ],
       new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS)
     );
-    return createBN254(
-      deriveAddress(addressSeed, new PublicKey(tree)).toString(),
-      "base58"
-    );
+    return createBN254(deriveAddress(addressSeed, tree).toString(), "base58");
   } else {
     const addressSeed = deriveAddressSeed(
       [
@@ -54,10 +48,7 @@ export async function getUserAddress(member: Address | Secp256r1Key) {
       ],
       new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS)
     );
-    return createBN254(
-      deriveAddress(addressSeed, new PublicKey(tree)).toString(),
-      "base58"
-    );
+    return createBN254(deriveAddress(addressSeed, tree).toString(), "base58");
   }
 }
 

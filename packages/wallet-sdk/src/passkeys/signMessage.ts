@@ -1,11 +1,14 @@
-import { AuthenticationResponse, BasePayload, MessagePayload } from "../types";
+import {
+  BasePayload,
+  MessageAuthenticationResponse,
+  MessagePayload,
+} from "../types";
 import { openAuthUrl } from "../utils/passkeys/internal";
 
 export async function signMessage({
   authUrl = "https://auth.revibase.com",
   message,
-  credentialId,
-  transports,
+  signer,
   popUp,
   hints,
   debug,
@@ -14,11 +17,10 @@ export async function signMessage({
   return (await openAuthUrl({
     authUrl: `${authUrl}/?redirectUrl=${encodeURIComponent(window.origin)}`,
     data: { type: "message", payload: message },
-    credentialId,
-    transports,
+    signer,
     popUp,
     debug,
     hints,
     additionalInfo,
-  })) as AuthenticationResponse;
+  })) as MessageAuthenticationResponse;
 }

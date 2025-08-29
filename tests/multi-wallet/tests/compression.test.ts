@@ -53,6 +53,38 @@ export function runCompressionTests() {
         console.error("Test failed:", error);
         throw error;
       }
+    });
+
+    it("should handle compress settings account then decompress settings account", async () => {
+      const compressIxs = await compressSettingsAccount({
+        index: ctx.index,
+        payer: ctx.payer,
+        signers: [ctx.wallet],
+      });
+
+      try {
+        await sendTransaction(
+          ctx.connection,
+          [...compressIxs],
+          ctx.payer,
+          ctx.sendAndConfirm,
+          ctx.addressLookUpTable
+        );
+        const settings = await getSettingsFromIndex(ctx.index);
+        const settingsData = await fetchMaybeSettings(ctx.connection, settings);
+        expect(settingsData.exists).equal(
+          false,
+          "Settings account should be null"
+        );
+        const settingsDataCompressed = await fetchSettingsData(ctx.index);
+        expect(Number(settingsDataCompressed.index)).equal(
+          Number(ctx.index),
+          "Settings compressed account should not be null"
+        );
+      } catch (error) {
+        console.error("Test failed:", error);
+        throw error;
+      }
 
       const decompressIxs = await decompressSettingsAccount({
         index: ctx.index,

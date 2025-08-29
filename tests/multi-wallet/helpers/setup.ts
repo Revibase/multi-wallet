@@ -15,7 +15,6 @@ import {
   getSettingsFromIndex,
   initializeMultiWallet,
   MULTI_WALLET_PROGRAM_ADDRESS,
-  Permission,
   Permissions,
 } from "@revibase/wallet-sdk";
 import {
@@ -220,12 +219,7 @@ export async function createMultiWallet(
   const { instructions } = await createWallet({
     payer: ctx.payer,
     initialMember: ctx.wallet,
-    permissions: Permissions.fromPermissions([
-      Permission.InitiateTransaction,
-      Permission.VoteTransaction,
-      Permission.ExecuteTransaction,
-      Permission.IsDelegate,
-    ]),
+    permissions: Permissions.all(),
     index: createIndex,
     compressed: ctx.compressed,
   });

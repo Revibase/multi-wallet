@@ -19,12 +19,16 @@ import {
   type OptionOrNullable,
 } from "@solana/kit";
 import {
+  getDelegateOpDecoder,
+  getDelegateOpEncoder,
   getMemberKeyDecoder,
   getMemberKeyEncoder,
   getPermissionsDecoder,
   getPermissionsEncoder,
   getUserMutArgsDecoder,
   getUserMutArgsEncoder,
+  type DelegateOp,
+  type DelegateOpArgs,
   type IPermissions,
   type MemberKey,
   type MemberKeyArgs,
@@ -34,34 +38,34 @@ import {
 } from ".";
 
 export type MemberKeyWithEditPermissionsArgs = {
-  pubkey: MemberKey;
+  memberKey: MemberKey;
   permissions: IPermissions;
-  userDelegateCloseArgs: Option<UserMutArgs>;
-  userDelegateCreationArgs: Option<UserMutArgs>;
+  userArgs: Option<UserMutArgs>;
+  delegateOperation: DelegateOp;
 };
 
 export type MemberKeyWithEditPermissionsArgsArgs = {
-  pubkey: MemberKeyArgs;
+  memberKey: MemberKeyArgs;
   permissions: PermissionsArgs;
-  userDelegateCloseArgs: OptionOrNullable<UserMutArgsArgs>;
-  userDelegateCreationArgs: OptionOrNullable<UserMutArgsArgs>;
+  userArgs: OptionOrNullable<UserMutArgsArgs>;
+  delegateOperation: DelegateOpArgs;
 };
 
 export function getMemberKeyWithEditPermissionsArgsEncoder(): Encoder<MemberKeyWithEditPermissionsArgsArgs> {
   return getStructEncoder([
-    ["pubkey", getMemberKeyEncoder()],
+    ["memberKey", getMemberKeyEncoder()],
     ["permissions", getPermissionsEncoder()],
-    ["userDelegateCloseArgs", getOptionEncoder(getUserMutArgsEncoder())],
-    ["userDelegateCreationArgs", getOptionEncoder(getUserMutArgsEncoder())],
+    ["userArgs", getOptionEncoder(getUserMutArgsEncoder())],
+    ["delegateOperation", getDelegateOpEncoder()],
   ]);
 }
 
 export function getMemberKeyWithEditPermissionsArgsDecoder(): Decoder<MemberKeyWithEditPermissionsArgs> {
   return getStructDecoder([
-    ["pubkey", getMemberKeyDecoder()],
+    ["memberKey", getMemberKeyDecoder()],
     ["permissions", getPermissionsDecoder()],
-    ["userDelegateCloseArgs", getOptionDecoder(getUserMutArgsDecoder())],
-    ["userDelegateCreationArgs", getOptionDecoder(getUserMutArgsDecoder())],
+    ["userArgs", getOptionDecoder(getUserMutArgsDecoder())],
+    ["delegateOperation", getDelegateOpDecoder()],
   ]);
 }
 

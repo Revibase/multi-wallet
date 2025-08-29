@@ -1,11 +1,11 @@
 import {
   changeConfig,
   convertMemberKeyToString,
+  DelegateOp,
   fetchMaybeUserData,
   fetchSettingsData,
   fetchUserData,
   MULTI_WALLET_PROGRAM_ADDRESS,
-  Permission,
   Permissions,
   prepareTransactionBundle,
   prepareTransactionMessage,
@@ -34,25 +34,21 @@ export function runMemberManagementTests() {
         payer: ctx.payer,
         compressed: ctx.compressed,
         index: ctx.index,
-        configActions: [
+        configActionsArgs: [
           {
             type: "AddMembers",
             members: [
               {
-                pubkey: ctx.payer.address,
-                permissions: Permissions.fromPermissions([
-                  Permission.InitiateTransaction,
-                  Permission.ExecuteTransaction,
-                  Permission.VoteTransaction,
-                  Permission.IsDelegate,
-                ]),
+                pubkey: ctx.payer,
+                permissions: Permissions.all(),
+                setAsDelegate: true,
               },
             ],
           },
         ],
       });
 
-      const transactionMessageBytes = await prepareTransactionMessage(
+      const transactionMessageBytes = prepareTransactionMessage(
         MULTI_WALLET_PROGRAM_ADDRESS.toString(),
         ctx.multiWalletVault,
         instructions,
@@ -97,24 +93,21 @@ export function runMemberManagementTests() {
         payer: ctx.payer,
         compressed: ctx.compressed,
         index: ctx.index,
-        configActions: [
+        configActionsArgs: [
           {
             type: "EditPermissions",
             members: [
               {
                 pubkey: ctx.payer.address,
-                permissions: Permissions.fromPermissions([
-                  Permission.InitiateTransaction,
-                  Permission.ExecuteTransaction,
-                  Permission.VoteTransaction,
-                ]),
+                permissions: Permissions.all(),
+                delegateOperation: DelegateOp.Remove,
               },
             ],
           },
         ],
       });
 
-      const transactionMessageBytes = await prepareTransactionMessage(
+      const transactionMessageBytes = prepareTransactionMessage(
         MULTI_WALLET_PROGRAM_ADDRESS,
         ctx.multiWalletVault,
         instructions,
@@ -138,15 +131,11 @@ export function runMemberManagementTests() {
         );
       }
       // Verify permissions were updated
-      const accountData = await fetchSettingsData(ctx.index);
-      const memberPermissions = accountData.members[1].permissions;
-
-      expect(Permissions.has(memberPermissions, Permission.InitiateTransaction))
-        .to.be.true;
-      expect(Permissions.has(memberPermissions, Permission.ExecuteTransaction))
-        .to.be.true;
-      expect(Permissions.has(memberPermissions, Permission.VoteTransaction)).to
-        .be.true;
+      const userData = await fetchUserData(ctx.payer.address);
+      expect(userData.settingsIndex.__option).equal(
+        "None",
+        "Payer should be a delegate"
+      );
     });
 
     it("add back delegate permission for new member", async () => {
@@ -155,25 +144,21 @@ export function runMemberManagementTests() {
         payer: ctx.payer,
         compressed: ctx.compressed,
         index: ctx.index,
-        configActions: [
+        configActionsArgs: [
           {
             type: "EditPermissions",
             members: [
               {
                 pubkey: ctx.payer.address,
-                permissions: Permissions.fromPermissions([
-                  Permission.InitiateTransaction,
-                  Permission.ExecuteTransaction,
-                  Permission.VoteTransaction,
-                  Permission.IsDelegate,
-                ]),
+                permissions: Permissions.all(),
+                delegateOperation: DelegateOp.Add,
               },
             ],
           },
         ],
       });
 
-      const transactionMessageBytes = await prepareTransactionMessage(
+      const transactionMessageBytes = prepareTransactionMessage(
         MULTI_WALLET_PROGRAM_ADDRESS,
         ctx.multiWalletVault,
         instructions,
@@ -197,16 +182,12 @@ export function runMemberManagementTests() {
         );
       }
       // Verify permissions were updated
-      const accountData = await fetchSettingsData(ctx.index);
-      const memberPermissions = accountData.members[1].permissions;
-      expect(Permissions.has(memberPermissions, Permission.IsDelegate)).to.be
-        .true;
-      expect(Permissions.has(memberPermissions, Permission.InitiateTransaction))
-        .to.be.true;
-      expect(Permissions.has(memberPermissions, Permission.ExecuteTransaction))
-        .to.be.true;
-      expect(Permissions.has(memberPermissions, Permission.VoteTransaction)).to
-        .be.true;
+      const userData = await fetchUserData(ctx.payer.address);
+      const settingsIndex =
+        userData.settingsIndex.__option === "Some"
+          ? userData.settingsIndex.value
+          : null;
+      expect(settingsIndex).equal(ctx.index, "Payer should be a delegate");
     });
 
     it("should remove a member", async () => {
@@ -214,7 +195,7 @@ export function runMemberManagementTests() {
         payer: ctx.payer,
         compressed: ctx.compressed,
         index: ctx.index,
-        configActions: [
+        configActionsArgs: [
           {
             type: "RemoveMembers",
             members: [
@@ -226,7 +207,7 @@ export function runMemberManagementTests() {
         ],
       });
 
-      const transactionMessageBytes = await prepareTransactionMessage(
+      const transactionMessageBytes = prepareTransactionMessage(
         MULTI_WALLET_PROGRAM_ADDRESS,
         ctx.multiWalletVault,
         instructions,

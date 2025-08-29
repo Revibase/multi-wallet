@@ -1,7 +1,9 @@
 import {
   changeConfig,
+  ConfigurationArgs,
   createDomainUsers,
   createWallet,
+  DelegateOp,
   fetchGlobalCounter,
   fetchSettingsData,
   fetchUserData,
@@ -10,7 +12,6 @@ import {
   getSecp256r1VerifyInstruction,
   getSettingsFromIndex,
   MULTI_WALLET_PROGRAM_ADDRESS,
-  Permission,
   Permissions,
   prepareTransactionBundle,
   prepareTransactionMessage,
@@ -84,28 +85,35 @@ export function runSecp256r1Tests() {
         ctx.sendAndConfirm,
         ctx.addressLookUpTable
       );
+      const configActionsArgs: ConfigurationArgs[] = [
+        {
+          type: "AddMembers",
+          members: [
+            {
+              pubkey: secp256r1Key,
+              permissions: Permissions.all(),
+              setAsDelegate: false,
+            },
+          ],
+        },
+        {
+          type: "EditPermissions",
+          members: [
+            {
+              pubkey: ctx.wallet.address,
+              permissions: Permissions.fromPermissions([]),
+              delegateOperation: DelegateOp.Ignore,
+            },
+          ],
+        },
+      ];
 
       // Add Secp256r1Key as member
       const { instructions, secp256r1VerifyInput } = await changeConfig({
         payer: ctx.payer,
         compressed: ctx.compressed,
         index: ctx.index,
-        configActions: [
-          {
-            type: "AddMembers",
-            members: [
-              {
-                pubkey: secp256r1Key,
-                permissions: Permissions.fromPermissions([
-                  Permission.InitiateTransaction,
-                  Permission.ExecuteTransaction,
-                  Permission.VoteTransaction,
-                  Permission.IsDelegate,
-                ]),
-              },
-            ],
-          },
-        ],
+        configActionsArgs,
       });
 
       const transactionMessageBytes = prepareTransactionMessage(
@@ -141,7 +149,7 @@ export function runSecp256r1Tests() {
           ? userData.settingsIndex.value
           : null;
       expect(settingsIndex).to.equal(
-        ctx.index,
+        null,
         "Delegate should be associated with the correct settings"
       );
       const multiWallet = await getMultiWalletFromSettings(settings);

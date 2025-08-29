@@ -43,9 +43,9 @@ import {
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableAccount,
-} from "@solana/kit";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from '@solana/kit';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 
 export const EDIT_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([1]);
 
@@ -61,7 +61,7 @@ export type EditDomainConfigInstruction<
   TAccountAuthority extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | AccountMeta<string> = "11111111111111111111111111111111",
+    | AccountMeta<string> = '11111111111111111111111111111111',
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -95,16 +95,16 @@ export type EditDomainConfigInstructionDataArgs = {
 export function getEditDomainConfigInstructionDataEncoder(): Encoder<EditDomainConfigInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
       [
-        "newOrigins",
+        'newOrigins',
         getOptionEncoder(
           getArrayEncoder(
             addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())
           )
         ),
       ],
-      ["newAuthority", getOptionEncoder(getAddressEncoder())],
+      ['newAuthority', getOptionEncoder(getAddressEncoder())],
     ]),
     (value) => ({ ...value, discriminator: EDIT_DOMAIN_CONFIG_DISCRIMINATOR })
   );
@@ -112,14 +112,14 @@ export function getEditDomainConfigInstructionDataEncoder(): Encoder<EditDomainC
 
 export function getEditDomainConfigInstructionDataDecoder(): Decoder<EditDomainConfigInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
     [
-      "newOrigins",
+      'newOrigins',
       getOptionDecoder(
         getArrayDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder()))
       ),
     ],
-    ["newAuthority", getOptionDecoder(getAddressDecoder())],
+    ['newAuthority', getOptionDecoder(getAddressDecoder())],
   ]);
 }
 
@@ -141,8 +141,8 @@ export type EditDomainConfigInput<
   domainConfig: Address<TAccountDomainConfig>;
   authority: TransactionSigner<TAccountAuthority>;
   systemProgram?: Address<TAccountSystemProgram>;
-  newOrigins: EditDomainConfigInstructionDataArgs["newOrigins"];
-  newAuthority: EditDomainConfigInstructionDataArgs["newAuthority"];
+  newOrigins: EditDomainConfigInstructionDataArgs['newOrigins'];
+  newAuthority: EditDomainConfigInstructionDataArgs['newAuthority'];
 };
 
 export function getEditDomainConfigInstruction<
@@ -183,10 +183,10 @@ export function getEditDomainConfigInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   const instruction = {
     accounts: [
       getAccountMeta(accounts.domainConfig),
@@ -230,7 +230,7 @@ export function parseEditDomainConfigInstruction<
 ): ParsedEditDomainConfigInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 3) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {

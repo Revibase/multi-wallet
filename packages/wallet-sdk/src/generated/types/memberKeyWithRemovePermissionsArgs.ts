@@ -8,15 +8,11 @@
 
 import {
   combineCodec,
-  getOptionDecoder,
-  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
   type Codec,
   type Decoder,
   type Encoder,
-  type Option,
-  type OptionOrNullable,
 } from '@solana/kit';
 import {
   getMemberKeyDecoder,
@@ -30,26 +26,26 @@ import {
 } from '.';
 
 export type MemberKeyWithRemovePermissionsArgs = {
-  data: MemberKey;
-  userDelegateCloseArgs: Option<UserMutArgs>;
+  memberKey: MemberKey;
+  userArgs: UserMutArgs;
 };
 
 export type MemberKeyWithRemovePermissionsArgsArgs = {
-  data: MemberKeyArgs;
-  userDelegateCloseArgs: OptionOrNullable<UserMutArgsArgs>;
+  memberKey: MemberKeyArgs;
+  userArgs: UserMutArgsArgs;
 };
 
 export function getMemberKeyWithRemovePermissionsArgsEncoder(): Encoder<MemberKeyWithRemovePermissionsArgsArgs> {
   return getStructEncoder([
-    ['data', getMemberKeyEncoder()],
-    ['userDelegateCloseArgs', getOptionEncoder(getUserMutArgsEncoder())],
+    ['memberKey', getMemberKeyEncoder()],
+    ['userArgs', getUserMutArgsEncoder()],
   ]);
 }
 
 export function getMemberKeyWithRemovePermissionsArgsDecoder(): Decoder<MemberKeyWithRemovePermissionsArgs> {
   return getStructDecoder([
-    ['data', getMemberKeyDecoder()],
-    ['userDelegateCloseArgs', getOptionDecoder(getUserMutArgsDecoder())],
+    ['memberKey', getMemberKeyDecoder()],
+    ['userArgs', getUserMutArgsDecoder()],
   ]);
 }
 

@@ -115,7 +115,7 @@ impl<'info> DecompressSettingsAccount<'info> {
                     ChallengeArgs {
                         account: settings.key(),
                         message_hash: hash::hash(&payer.key().to_bytes()).to_bytes(),
-                        action_type: TransactionActionType::Compress,
+                        action_type: TransactionActionType::Decompress,
                     },
                 )?;
             }

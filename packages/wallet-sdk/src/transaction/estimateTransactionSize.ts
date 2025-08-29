@@ -1,4 +1,8 @@
 import {
+  getSetComputeUnitLimitInstruction,
+  getSetComputeUnitPriceInstruction,
+} from "@solana-program/compute-budget";
+import {
   TransactionSigner,
   appendTransactionMessageInstructions,
   compileTransaction,
@@ -7,6 +11,7 @@ import {
   getAddressDecoder,
   getBase64EncodedWireTransaction,
   getBlockhashDecoder,
+  prependTransactionMessageInstructions,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
 } from "@solana/kit";
@@ -46,7 +51,6 @@ export async function estimateTransactionSize({
     transactionMessageBytes,
     signers: [signer, ...(additionalSigners ?? [])],
     compressed,
-    skipChecks: true,
   });
 
   const tx = pipe(
@@ -61,6 +65,18 @@ export async function estimateTransactionSize({
           ),
           lastValidBlockHeight: BigInt(Number.MAX_SAFE_INTEGER),
         },
+        tx
+      ),
+    (tx) =>
+      prependTransactionMessageInstructions(
+        [
+          getSetComputeUnitLimitInstruction({
+            units: 800_000,
+          }),
+          getSetComputeUnitPriceInstruction({
+            microLamports: 1000,
+          }),
+        ],
         tx
       ),
     (tx) =>

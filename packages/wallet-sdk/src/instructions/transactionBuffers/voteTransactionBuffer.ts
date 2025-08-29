@@ -1,30 +1,34 @@
-import { Address, Instruction, TransactionSigner } from "@solana/kit";
 import {
-  constructSettingsProofArgs,
-  convertToCompressedProofArgs,
-} from "../../compressed/internal";
-import { PackedAccounts } from "../../compressed/packedAccounts";
+  AccountMeta,
+  Address,
+  Instruction,
+  TransactionSigner,
+} from "@solana/kit";
 import {
   getTransactionBufferVoteCompressedInstruction,
   getTransactionBufferVoteInstruction,
+  ProofArgsArgs,
+  SettingsReadonlyArgs,
 } from "../../generated";
 import { Secp256r1Key } from "../../types";
-import { getSettingsFromIndex } from "../../utils";
-import { extractSecp256r1VerificationArgs } from "../../utils/internal";
+import { extractSecp256r1VerificationArgs } from "../../utils/transactionMessage/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
-export async function voteTransactionBuffer({
-  index,
+export function voteTransactionBuffer({
+  settings,
   voter,
   transactionBufferAddress,
-  compressed = false,
-  payer,
+  compressedArgs,
 }: {
-  index: bigint | number;
+  settings: Address;
   voter: TransactionSigner | Secp256r1Key;
   transactionBufferAddress: Address;
-  compressed?: boolean;
-  payer?: TransactionSigner;
+  compressedArgs: {
+    settingsReadonlyArgs: SettingsReadonlyArgs;
+    compressedProofArgs: ProofArgsArgs;
+    remainingAccounts: AccountMeta[];
+    payer: TransactionSigner;
+  } | null;
 }) {
   const {
     instructionsSysvar,
@@ -35,14 +39,6 @@ export async function voteTransactionBuffer({
     publicKey,
     message,
   } = extractSecp256r1VerificationArgs(voter);
-  const settings = await getSettingsFromIndex(index);
-  const packedAccounts = new PackedAccounts();
-  const { settingsReadonlyArgs, proof } = await constructSettingsProofArgs(
-    packedAccounts,
-    compressed,
-    index
-  );
-  const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const instructions: Instruction[] = [];
   if (message && signature && publicKey) {
     instructions.push(
@@ -56,15 +52,7 @@ export async function voteTransactionBuffer({
     );
   }
 
-  if (compressed) {
-    if (!payer || !settingsReadonlyArgs) {
-      throw new Error("Payer not found or proof args is missing.");
-    }
-    const compressedProofArgs = convertToCompressedProofArgs(
-      proof,
-      systemOffset
-    );
-
+  if (compressedArgs) {
     instructions.push(
       getTransactionBufferVoteCompressedInstruction({
         instructionsSysvar,
@@ -73,10 +61,10 @@ export async function voteTransactionBuffer({
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
         voter: voter instanceof Secp256r1Key ? undefined : voter,
-        settingsReadonly: settingsReadonlyArgs,
-        payer,
-        compressedProofArgs,
-        remainingAccounts,
+        settingsReadonly: compressedArgs.settingsReadonlyArgs,
+        payer: compressedArgs.payer,
+        compressedProofArgs: compressedArgs.compressedProofArgs,
+        remainingAccounts: compressedArgs.remainingAccounts,
       })
     );
   } else {

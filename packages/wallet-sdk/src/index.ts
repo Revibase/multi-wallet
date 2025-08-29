@@ -1,4 +1,3 @@
-export * from "./compressed";
 export * from "./generated";
 export * from "./instructions";
 export * from "./passkeys";

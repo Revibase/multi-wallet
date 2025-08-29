@@ -3,15 +3,18 @@ import {
   getTransactionExecuteCompressedInstruction,
   getTransactionExecuteInstruction,
 } from "../generated";
-import { getMultiWalletFromSettings, getSettingsFromIndex } from "../utils";
-import { accountsForTransactionExecute, addJitoTip } from "../utils/internal";
+import { getMultiWalletFromSettings } from "../utils";
+import {
+  accountsForTransactionExecute,
+  addJitoTip,
+} from "../utils/transactionMessage/internal";
 import {
   getSecp256r1VerifyInstruction,
   Secp256r1VerifyInput,
 } from "./secp256r1Verify";
 
 export async function executeTransaction({
-  index,
+  settings,
   transactionBufferAddress,
   transactionMessageBytes,
   payer,
@@ -20,7 +23,7 @@ export async function executeTransaction({
   jitoBundlesTipAmount,
   compressed = false,
 }: {
-  index: bigint | number;
+  settings: Address;
   payer: TransactionSigner;
   transactionBufferAddress: Address;
   transactionMessageBytes: Uint8Array;
@@ -29,7 +32,6 @@ export async function executeTransaction({
   jitoBundlesTipAmount?: number;
   compressed?: boolean;
 }) {
-  const settings = await getSettingsFromIndex(index);
   const multiWallet = await getMultiWalletFromSettings(settings);
 
   const { accountMetas, addressLookupTableAccounts } =

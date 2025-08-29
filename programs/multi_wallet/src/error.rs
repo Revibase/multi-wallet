@@ -19,16 +19,8 @@ pub enum MultisigError {
     #[msg("Permanent members cannot be removed from the wallet.")]
     PermanentMember,
 
-    #[msg("Permanent members can only be added during wallet creation.")]
-    PermanentMemberPermissionNotAllowed,
-
-    #[msg(
-        "A permanent member must be have delegate permissions and have no settings index assigned."
-    )]
-    InvalidPermanentMember,
-
-    #[msg("Only a maximum of one permanent member is allowed per wallet.")]
-    TooManyPermanentMember,
+    #[msg("Permanent members can only be configured during wallet creation.")]
+    PermanentMemberNotAllowed,
 
     #[msg("No members were provided. A multisig must have at least one member.")]
     EmptyMembers,

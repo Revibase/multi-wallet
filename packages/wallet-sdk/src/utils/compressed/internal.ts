@@ -17,9 +17,9 @@ import {
   MULTI_WALLET_PROGRAM_ADDRESS,
   SettingsReadonlyArgs,
   ValidityProofArgs,
-} from "../generated";
-import { getLightProtocolRpc } from "../utils";
-import { MAX_HOTSPOTS } from "../utils/consts";
+} from "../../generated";
+import { MAX_HOTSPOTS } from "../consts";
+import { getLightProtocolRpc } from "../initialize";
 import { getCompressedSettingsAddressFromIndex } from "./helper";
 import { PackedAccounts } from "./packedAccounts";
 
@@ -38,25 +38,27 @@ export function getNewAddressesParams(
 }
 
 export async function getCompressedAccountHashes(
-  addresses: { pubkey: BN254; type: "Settings" | "User" }[]
+  addresses: { address: BN254; type: "Settings" | "User" }[]
 ) {
   const compressedAccounts = await Promise.all(
     addresses.map(
-      async (x) => await getLightProtocolRpc().getCompressedAccount(x.pubkey)
+      async (x) => await getLightProtocolRpc().getCompressedAccount(x.address)
     )
   );
 
-  const filtered = compressedAccounts.filter((x) => x !== null);
+  const filtered = compressedAccounts
+    .filter((x) => x !== null)
+    .filter((x) => x.data !== null && x.address !== null);
 
-  if (filtered.length !== compressedAccounts.length) {
+  if (filtered.length !== addresses.length) {
     throw new Error("Unable to find compressed account.");
   }
 
   return filtered.map((x, index) => ({
     ...x,
     type: addresses[index].type,
-    tree: x!.treeInfo.tree,
-    queue: x!.treeInfo.queue,
+    tree: x.treeInfo.tree,
+    queue: x.treeInfo.queue,
   }));
 }
 
@@ -84,6 +86,7 @@ export async function getCompressedAccountInitArgs(
   newAddresses: (AddressWithTree & { type: "User" | "Settings" })[],
   excludedTreeInfo?: TreeInfo[]
 ) {
+  if (newAddresses.length === 0) return [];
   const newAddressProofInputs = newAddresses.map((x, index) => ({
     treeInfo: treeInfos[index],
     root: roots[index],
@@ -196,18 +199,18 @@ export async function getLightCpiSigner() {
   return lightCpiSigner;
 }
 export async function constructSettingsProofArgs(
-  packedAccounts: PackedAccounts,
   compressed: boolean,
   index: bigint | number
 ) {
   let settingsReadonlyArgs: SettingsReadonlyArgs | null = null;
   let proof: ValidityProofWithContext | null = null;
+  const packedAccounts = new PackedAccounts();
   if (compressed) {
     await packedAccounts.addSystemAccounts();
     const settingsAddress = await getCompressedSettingsAddressFromIndex(index);
     const settings = (
       await getCompressedAccountHashes([
-        { pubkey: settingsAddress, type: "Settings" },
+        { address: settingsAddress, type: "Settings" },
       ])
     )[0];
     proof = await getLightProtocolRpc().getValidityProofV0([settings], []);
@@ -229,5 +232,5 @@ export async function constructSettingsProofArgs(
       },
     };
   }
-  return { settingsReadonlyArgs, proof };
+  return { settingsReadonlyArgs, proof, packedAccounts };
 }

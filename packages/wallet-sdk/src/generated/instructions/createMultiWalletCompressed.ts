@@ -125,7 +125,7 @@ export type CreateMultiWalletCompressedInstructionData = {
   permissions: IPermissions;
   compressedProofArgs: ProofArgs;
   settingsCreation: SettingsCreationArgs;
-  userMutArgs: Option<UserMutArgs>;
+  userMutArgs: UserMutArgs;
   settingsIndex: bigint;
 };
 
@@ -134,7 +134,7 @@ export type CreateMultiWalletCompressedInstructionDataArgs = {
   permissions: PermissionsArgs;
   compressedProofArgs: ProofArgsArgs;
   settingsCreation: SettingsCreationArgsArgs;
-  userMutArgs: OptionOrNullable<UserMutArgsArgs>;
+  userMutArgs: UserMutArgsArgs;
   settingsIndex: number | bigint;
 };
 
@@ -149,7 +149,7 @@ export function getCreateMultiWalletCompressedInstructionDataEncoder(): Encoder<
       ["permissions", getPermissionsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
       ["settingsCreation", getSettingsCreationArgsEncoder()],
-      ["userMutArgs", getOptionEncoder(getUserMutArgsEncoder())],
+      ["userMutArgs", getUserMutArgsEncoder()],
       ["settingsIndex", getU128Encoder()],
     ]),
     (value) => ({
@@ -166,7 +166,7 @@ export function getCreateMultiWalletCompressedInstructionDataDecoder(): Decoder<
     ["permissions", getPermissionsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
     ["settingsCreation", getSettingsCreationArgsDecoder()],
-    ["userMutArgs", getOptionDecoder(getUserMutArgsDecoder())],
+    ["userMutArgs", getUserMutArgsDecoder()],
     ["settingsIndex", getU128Decoder()],
   ]);
 }

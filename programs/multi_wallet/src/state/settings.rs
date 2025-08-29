@@ -38,8 +38,8 @@ impl Settings {
         &mut self,
         members: Vec<MemberKeyWithEditPermissionsArgs>,
     ) -> Result<(
-        Vec<MemberKeyWithEditPermissionsArgs>,
-        Vec<MemberKeyWithEditPermissionsArgs>,
+        Vec<MemberWithAddPermissionsArgs>,
+        Vec<MemberKeyWithRemovePermissionsArgs>,
     )> {
         MultisigSettings::edit_permissions(self, members)
     }
@@ -175,19 +175,11 @@ pub trait MultisigSettings {
             if permissions.has(Permission::ExecuteTransaction) {
                 permission_counts.executors += 1;
             }
-            if permissions.has(Permission::IsPermanent) {
-                permission_counts.is_permanent += 1;
-            }
         }
 
         require!(
             threshold as usize <= permission_counts.voters,
             MultisigError::InsufficientSignersWithVotePermission
-        );
-
-        require!(
-            permission_counts.is_permanent <= 1,
-            MultisigError::TooManyPermanentMember
         );
 
         require!(
@@ -211,148 +203,130 @@ pub trait MultisigSettings {
         sysvar_slot_history: &Option<UncheckedAccount<'a>>,
         instructions_sysvar: Option<&UncheckedAccount<'a>>,
     ) -> Result<Vec<MemberWithAddPermissionsArgs>> {
-        let mut members_to_create_delegate_accounts = Vec::with_capacity(new_members.len());
-        let mut new_member_data = Vec::with_capacity(new_members.len());
-
-        for member_with_args in new_members.into_iter() {
-            let member = &member_with_args.data;
+        // Validate and verify all members
+        for member_with_args in &new_members {
+            let member = &member_with_args.member;
 
             require!(
-                !member.permissions.has(Permission::IsPermanent),
-                MultisigError::PermanentMemberPermissionNotAllowed
+                !member_with_args.user_args.data.is_permanent_member,
+                MultisigError::PermanentMemberNotAllowed
             );
 
-            if member.pubkey.get_type() == KeyType::Secp256r1 {
-                let (domain_config, rp_id_hash) =
-                    Self::verify_domain_config(remaining_accounts, &member.domain_config)?;
+            match member.pubkey.get_type() {
+                KeyType::Ed25519 => {
+                    require!(
+                        remaining_accounts
+                            .iter()
+                            .any(|f| f.is_signer && f.key.to_bytes().eq(&member.pubkey.get_seed())),
+                        MultisigError::NoSignerFound
+                    );
+                }
+                KeyType::Secp256r1 => {
+                    let (domain_config, rp_id_hash) =
+                        Self::verify_domain_config(remaining_accounts, &member.domain_config)?;
 
-                let secp256r1_verify_data = member_with_args
-                    .verify_args
-                    .as_ref()
-                    .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
+                    let secp256r1_verify_data = member_with_args
+                        .verify_args
+                        .as_ref()
+                        .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
 
-                let instructions_sysvar =
-                    instructions_sysvar.ok_or(MultisigError::MissingAccount)?;
+                    let instructions_sysvar =
+                        instructions_sysvar.ok_or(MultisigError::MissingAccount)?;
 
-                secp256r1_verify_data.verify_webauthn(
-                    sysvar_slot_history,
-                    &domain_config,
-                    instructions_sysvar,
-                    ChallengeArgs {
-                        account: *settings,
-                        message_hash: rp_id_hash,
-                        action_type: TransactionActionType::AddNewMember,
-                    },
-                )?;
-            }
-
-            // Push the `Member` into a new list for appending
-            new_member_data.push(member_with_args.data);
-
-            // If it's a delegate, push the whole `MemberWithCreationArgs`
-            if member.permissions.has(Permission::IsDelegate) {
-                members_to_create_delegate_accounts.push(member_with_args);
+                    secp256r1_verify_data.verify_webauthn(
+                        sysvar_slot_history,
+                        &domain_config,
+                        instructions_sysvar,
+                        ChallengeArgs {
+                            account: *settings,
+                            message_hash: rp_id_hash,
+                            action_type: TransactionActionType::AddNewMember,
+                        },
+                    )?;
+                }
             }
         }
 
+        let new_member_data: Vec<_> = new_members.iter().map(|m| m.member).collect();
+
         self.extend_members(new_member_data)?;
 
-        Ok(members_to_create_delegate_accounts)
+        Ok(new_members)
     }
 
     fn remove_members(
         &mut self,
         member_pubkeys: Vec<MemberKeyWithRemovePermissionsArgs>,
     ) -> Result<Vec<MemberKeyWithRemovePermissionsArgs>> {
-        let members = self.get_members().unwrap();
-        let mut members_to_close = Vec::with_capacity(member_pubkeys.len());
-        let mut keys_to_delete = Vec::with_capacity(member_pubkeys.len());
-
-        for m in member_pubkeys.into_iter() {
-            let is_delegate = members.iter().any(|member| {
-                member.pubkey == m.data && member.permissions.has(Permission::IsDelegate)
-            });
-
+        for member in &member_pubkeys {
             require!(
-                !members.iter().any(|member| {
-                    member.pubkey == m.data && member.permissions.has(Permission::IsPermanent)
-                }),
-                MultisigError::PermanentMember
+                !member.user_args.data.is_permanent_member,
+                MultisigError::PermanentMemberNotAllowed
             );
-
-            if is_delegate {
-                members_to_close.push(m);
-            } else {
-                keys_to_delete.push(m.data);
-            }
         }
 
-        keys_to_delete.extend(members_to_close.iter().map(|m| m.data));
+        let keys_to_delete: Vec<_> = member_pubkeys.iter().map(|m| m.member_key).collect();
 
         self.delete_members(keys_to_delete)?;
-        Ok(members_to_close)
+        Ok(member_pubkeys)
     }
 
     fn edit_permissions(
         &mut self,
         new_members: Vec<MemberKeyWithEditPermissionsArgs>,
     ) -> Result<(
-        Vec<MemberKeyWithEditPermissionsArgs>,
-        Vec<MemberKeyWithEditPermissionsArgs>,
+        Vec<MemberWithAddPermissionsArgs>,
+        Vec<MemberKeyWithRemovePermissionsArgs>,
     )> {
-        let mut members_to_close_delegate_account = vec![];
-        let mut members_to_create_delegate_account = vec![];
+        let mut members_to_close_delegate_account = Vec::new();
+        let mut members_to_create_delegate_account = Vec::new();
 
         let mut current_members_map: HashMap<MemberKey, Member> = self
-            .get_members()
-            .unwrap()
+            .get_members()?
             .into_iter()
             .map(|m| (m.pubkey, m))
             .collect();
 
         for member in new_members {
-            let permission = member.permissions;
-            let is_delegate = permission.has(Permission::IsDelegate);
-            let is_permanent = permission.has(Permission::IsPermanent);
-            let pubkey = member.pubkey;
+            let pubkey = member.member_key;
+            let existing_member = current_members_map
+                .get_mut(&pubkey)
+                .ok_or(MultisigError::InvalidArguments)?;
 
-            match current_members_map.get(&pubkey) {
-                Some(existing_member) => {
-                    let is_currently_delegate =
-                        existing_member.permissions.has(Permission::IsDelegate);
-                    let is_currently_permanent_member =
-                        existing_member.permissions.has(Permission::IsPermanent);
+            // update permissions in place
+            existing_member.permissions = member.permissions;
 
-                    require!(
-                        is_currently_permanent_member.eq(&is_permanent),
-                        MultisigError::PermanentMember
-                    );
+            match member.delegate_operation {
+                crate::state::DelegateOp::Add | crate::state::DelegateOp::Remove => {
+                    let user_args = member
+                        .user_args
+                        .ok_or(MultisigError::MissingUserDelegateArgs)?;
 
-                    if is_delegate && !is_currently_delegate {
-                        members_to_create_delegate_account.push(member);
-                    } else if !is_delegate && is_currently_delegate {
-                        members_to_close_delegate_account.push(member);
+                    if member.delegate_operation == crate::state::DelegateOp::Add {
+                        members_to_create_delegate_account.push(MemberWithAddPermissionsArgs {
+                            member: Member {
+                                pubkey,
+                                permissions: member.permissions,
+                                domain_config: existing_member.domain_config,
+                            },
+                            verify_args: None,
+                            user_args,
+                            set_as_delegate: true,
+                        });
+                    } else {
+                        members_to_close_delegate_account.push(
+                            MemberKeyWithRemovePermissionsArgs {
+                                member_key: pubkey,
+                                user_args,
+                            },
+                        );
                     }
                 }
-                None => return err!(MultisigError::InvalidArguments),
+                crate::state::DelegateOp::Ignore => {}
             }
-
-            current_members_map.insert(
-                pubkey,
-                Member {
-                    pubkey,
-                    permissions: permission,
-                    domain_config: current_members_map
-                        .get(&pubkey)
-                        .map(|m| m.domain_config)
-                        .unwrap_or_default(),
-                },
-            );
         }
 
-        let updated_members: Vec<Member> = current_members_map.into_values().collect();
-
-        self.set_members(updated_members)?;
+        self.set_members(current_members_map.into_values().collect())?;
 
         Ok((
             members_to_create_delegate_account,

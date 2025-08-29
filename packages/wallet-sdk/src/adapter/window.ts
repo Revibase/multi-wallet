@@ -4,6 +4,7 @@ import {
 } from "@solana/wallet-standard-features";
 import { WalletAccount } from "@wallet-standard/base";
 import { ReadonlyWalletAccount } from "@wallet-standard/core";
+import { SignerPayload } from "../types";
 
 export interface RevibaseEvent {
   connect(...args: unknown[]): unknown;
@@ -26,32 +27,30 @@ export interface RevibaseEventEmitter {
 
 export interface Revibase extends RevibaseEventEmitter {
   publicKey: string | null;
-  member: { type: "ed25519" | "secp256r1"; value: string } | null;
+  member: SignerPayload | null;
   index: number | null;
   connect(options?: { onlyIfTrusted?: boolean }): Promise<void>;
   disconnect(): void;
   signTransaction(transaction: Uint8Array): Promise<Uint8Array[]>;
-  signAndSendTransaction(
-    transaction: Uint8Array,
-    options?: any
-  ): Promise<string>;
-  signMessage(message: Uint8Array): Promise<{ signature: Uint8Array }>;
+  signMessage(
+    message: Uint8Array
+  ): Promise<{ signature: Uint8Array; signedMessage: Uint8Array }>;
   signIn(input?: SolanaSignInInput): Promise<
     {
       publicKey: string;
-      member: { type: "ed25519" | "secp256r1"; value: string };
+      member: SignerPayload;
       index: number;
     } & Omit<SolanaSignInOutput, "account">
   >;
 }
 
 export class RevibaseWalletAccount extends ReadonlyWalletAccount {
-  readonly member: { type: "ed25519" | "secp256r1"; value: string } | null;
+  readonly member: SignerPayload | null;
   readonly index: number;
 
   constructor(
     account: WalletAccount,
-    member: { type: "ed25519" | "secp256r1"; value: string } | null,
+    member: SignerPayload | null,
     index: number
   ) {
     super(account);

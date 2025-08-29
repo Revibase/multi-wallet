@@ -1,36 +1,27 @@
+import { Instruction, TransactionSigner } from "@solana/kit";
 import {
-  Instruction,
-  none,
-  OptionOrNullable,
-  some,
-  TransactionSigner,
-} from "@solana/kit";
+  getCreateMultiWalletCompressedInstruction,
+  getCreateMultiWalletInstruction,
+  getUserDecoder,
+  User,
+} from "../generated";
+import { Permissions, Secp256r1Key } from "../types";
 import {
   getCompressedSettingsAddressFromIndex,
+  getGlobalCounterAddress,
+  getLightProtocolRpc,
+  getSettingsFromIndex,
   getUserAddress,
-} from "../compressed";
+} from "../utils";
 import {
   convertToCompressedProofArgs,
   getCompressedAccountHashes,
   getCompressedAccountInitArgs,
   getCompressedAccountMutArgs,
   getNewAddressesParams,
-} from "../compressed/internal";
-import { PackedAccounts } from "../compressed/packedAccounts";
-import {
-  getCreateMultiWalletCompressedInstruction,
-  getCreateMultiWalletInstruction,
-  getUserDecoder,
-  User,
-  UserMutArgsArgs,
-} from "../generated";
-import { Permission, Permissions, Secp256r1Key } from "../types";
-import {
-  getGlobalCounterAddress,
-  getLightProtocolRpc,
-  getSettingsFromIndex,
-} from "../utils";
-import { extractSecp256r1VerificationArgs } from "../utils/internal";
+} from "../utils/compressed/internal";
+import { PackedAccounts } from "../utils/compressed/packedAccounts";
+import { extractSecp256r1VerificationArgs } from "../utils/transactionMessage/internal";
 import { Secp256r1VerifyInput } from "./secp256r1Verify";
 
 export async function createWallet({
@@ -67,25 +58,22 @@ export async function createWallet({
   }
 
   const packedAccounts = new PackedAccounts();
-  if (Permissions.has(permissions, Permission.IsDelegate) || compressed) {
-    await packedAccounts.addSystemAccounts();
-  }
+  await packedAccounts.addSystemAccounts();
+
   const newAddressParams = [];
   const hashesWithTree = [];
 
-  if (Permissions.has(permissions, Permission.IsDelegate)) {
-    const member =
-      "address" in initialMember ? initialMember.address : initialMember;
-    const userAddress = await getUserAddress(member);
-    hashesWithTree.push(
-      ...(await getCompressedAccountHashes([
-        {
-          pubkey: userAddress,
-          type: "User" as const,
-        },
-      ]))
-    );
-  }
+  const member =
+    "address" in initialMember ? initialMember.address : initialMember;
+  const userAddress = await getUserAddress(member);
+  hashesWithTree.push(
+    ...(await getCompressedAccountHashes([
+      {
+        address: userAddress,
+        type: "User" as const,
+      },
+    ]))
+  );
 
   if (compressed) {
     const settingsAddress = await getCompressedSettingsAddressFromIndex(index);
@@ -105,19 +93,15 @@ export async function createWallet({
     newAddressParams
   );
 
-  let userMutArgs: OptionOrNullable<UserMutArgsArgs> = none();
-  if (hashesWithTreeEndIndex > 0) {
-    const mutArgs = getCompressedAccountMutArgs<User>(
-      packedAccounts,
-      proof.treeInfos.slice(0, hashesWithTreeEndIndex),
-      proof.leafIndices.slice(0, hashesWithTreeEndIndex),
-      proof.rootIndices.slice(0, hashesWithTreeEndIndex),
-      proof.proveByIndices.slice(0, hashesWithTreeEndIndex),
-      hashesWithTree.filter((x) => x.type === "User"),
-      getUserDecoder()
-    )[0];
-    userMutArgs = some(mutArgs);
-  }
+  const userMutArgs = getCompressedAccountMutArgs<User>(
+    packedAccounts,
+    proof.treeInfos.slice(0, hashesWithTreeEndIndex),
+    proof.leafIndices.slice(0, hashesWithTreeEndIndex),
+    proof.rootIndices.slice(0, hashesWithTreeEndIndex),
+    proof.proveByIndices.slice(0, hashesWithTreeEndIndex),
+    hashesWithTree.filter((x) => x.type === "User"),
+    getUserDecoder()
+  )[0];
 
   const initArgs = await getCompressedAccountInitArgs(
     packedAccounts,
@@ -134,18 +118,14 @@ export async function createWallet({
     initArgs.find((x) => x.type === "Settings") ?? null;
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
+  const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
 
   const instructions: Instruction[] = [];
-
   if (compressed) {
     if (!settingsCreationArgs) {
       throw new Error("Settings creation args is missing.");
     }
 
-    const compressedProofArgs = convertToCompressedProofArgs(
-      proof,
-      systemOffset
-    );
     instructions.push(
       getCreateMultiWalletCompressedInstruction({
         settingsIndex: index,
@@ -179,7 +159,7 @@ export async function createWallet({
         permissions,
         userMutArgs,
         globalCounter,
-        compressedProofArgs: convertToCompressedProofArgs(proof, systemOffset),
+        compressedProofArgs,
         remainingAccounts,
       })
     );

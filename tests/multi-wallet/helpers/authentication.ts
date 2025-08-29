@@ -145,9 +145,12 @@ export async function mockAuthenticationResponse(
         ? new Uint8Array(getBase58Encoder().encode(slotHash))
         : undefined,
     },
-    credentialId: getBase58Decoder().decode(
-      crypto.getRandomValues(new Uint8Array(32))
-    ),
+    signer: {
+      credentialId: "",
+      publicKey: getBase58Decoder().decode(
+        crypto.getRandomValues(new Uint8Array(32))
+      ),
+    },
     authData: mockAuthenticatorData,
     domainConfig: ctx.domainConfig,
     signature: normalizeSignatureToLowS(signatureRS),

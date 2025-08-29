@@ -37,7 +37,7 @@ import {
   type Option,
   type OptionOrNullable,
   type ReadonlyUint8Array,
-} from "@solana/kit";
+} from '@solana/kit';
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
@@ -47,7 +47,7 @@ import {
   type MemberKeyArgs,
   type Transport,
   type TransportArgs,
-} from ".";
+} from '.';
 
 export type User = {
   member: MemberKey;
@@ -75,45 +75,45 @@ export type UserArgs = {
 
 export function getUserEncoder(): Encoder<UserArgs> {
   return getStructEncoder([
-    ["member", getMemberKeyEncoder()],
+    ['member', getMemberKeyEncoder()],
     [
-      "credentialId",
+      'credentialId',
       getOptionEncoder(
         addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())
       ),
     ],
-    ["mint", getOptionEncoder(getAddressEncoder())],
-    ["domainConfig", getOptionEncoder(getAddressEncoder())],
-    ["transports", getOptionEncoder(getArrayEncoder(getTransportEncoder()))],
-    ["isPermanentMember", getBooleanEncoder()],
+    ['mint', getOptionEncoder(getAddressEncoder())],
+    ['domainConfig', getOptionEncoder(getAddressEncoder())],
+    ['transports', getOptionEncoder(getArrayEncoder(getTransportEncoder()))],
+    ['isPermanentMember', getBooleanEncoder()],
     [
-      "username",
+      'username',
       getOptionEncoder(addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())),
     ],
-    ["expiry", getOptionEncoder(getU64Encoder())],
-    ["settingsIndex", getOptionEncoder(getU128Encoder())],
+    ['expiry', getOptionEncoder(getU64Encoder())],
+    ['settingsIndex', getOptionEncoder(getU128Encoder())],
   ]);
 }
 
 export function getUserDecoder(): Decoder<User> {
   return getStructDecoder([
-    ["member", getMemberKeyDecoder()],
+    ['member', getMemberKeyDecoder()],
     [
-      "credentialId",
+      'credentialId',
       getOptionDecoder(
         addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())
       ),
     ],
-    ["mint", getOptionDecoder(getAddressDecoder())],
-    ["domainConfig", getOptionDecoder(getAddressDecoder())],
-    ["transports", getOptionDecoder(getArrayDecoder(getTransportDecoder()))],
-    ["isPermanentMember", getBooleanDecoder()],
+    ['mint', getOptionDecoder(getAddressDecoder())],
+    ['domainConfig', getOptionDecoder(getAddressDecoder())],
+    ['transports', getOptionDecoder(getArrayDecoder(getTransportDecoder()))],
+    ['isPermanentMember', getBooleanDecoder()],
     [
-      "username",
+      'username',
       getOptionDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
     ],
-    ["expiry", getOptionDecoder(getU64Decoder())],
-    ["settingsIndex", getOptionDecoder(getU128Decoder())],
+    ['expiry', getOptionDecoder(getU64Decoder())],
+    ['settingsIndex', getOptionDecoder(getU128Decoder())],
   ]);
 }
 

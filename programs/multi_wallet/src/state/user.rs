@@ -15,10 +15,9 @@ use light_sdk::{
     instruction::{account_meta::CompressedAccountMeta, PackedAddressTreeInfo},
     LightDiscriminator, LightHasher,
 };
-use std::collections::HashMap;
 
 #[derive(
-    Default, AnchorDeserialize, AnchorSerialize, LightDiscriminator, LightHasher, PartialEq,
+    Default, AnchorDeserialize, AnchorSerialize, LightDiscriminator, LightHasher, PartialEq, Debug,
 )]
 pub struct User {
     #[hash]
@@ -31,13 +30,14 @@ pub struct User {
     pub domain_config: Option<Pubkey>,
     #[hash]
     pub transports: Option<Vec<Transport>>,
-    pub is_permanent_member: bool, // this user will be permanently linked to the first wallet it is assigned to
+    pub is_permanent_member: bool, // this user will be permanently to the wallet upon wallet creation
+    #[hash]
     pub username: Option<String>,
     pub expiry: Option<u64>,
     pub settings_index: Option<u128>,
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, PartialEq)]
+#[derive(AnchorDeserialize, AnchorSerialize, PartialEq, Debug)]
 pub enum Transport {
     Ble,
     Cable,
@@ -54,7 +54,7 @@ pub struct UserCreationArgs {
     pub output_state_tree_index: u8,
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, PartialEq)]
+#[derive(AnchorDeserialize, AnchorSerialize, PartialEq, Debug)]
 pub struct UserMutArgs {
     pub account_meta: CompressedAccountMeta,
     pub data: User,
@@ -62,8 +62,8 @@ pub struct UserMutArgs {
 
 #[derive(PartialEq)]
 pub enum Ops {
-    Create(Box<MemberWithAddPermissionsArgs>),
-    Close(Box<MemberKeyWithRemovePermissionsArgs>),
+    Create(MemberWithAddPermissionsArgs),
+    Close(MemberKeyWithRemovePermissionsArgs),
 }
 
 pub struct CreateUserArgs {
@@ -127,50 +127,27 @@ impl User {
 
     #[inline(never)]
     pub fn handle_user_delegate_accounts<'info>(
-        delegate_ops: Vec<Ops>,
+        mut delegate_ops: Vec<Ops>,
         settings_index: u128,
     ) -> Result<Vec<CompressedAccountInfo>> {
-        let mut net_ops: HashMap<MemberKey, Option<Ops>> = HashMap::new();
-
-        for op in delegate_ops {
-            let key = match &op {
-                Ops::Create(pk) => &pk.data.pubkey,
-                Ops::Close(pk) => &pk.data,
-            };
-            match net_ops.get(&key) {
-                Some(Some(prev)) if prev != &op => {
-                    net_ops.insert(*key, None); // cancel out
-                }
-                _ => {
-                    net_ops.insert(*key, Some(op));
-                }
-            }
-        }
-
         let mut final_account_infos: Vec<CompressedAccountInfo> = vec![];
 
-        let mut actions: Vec<_> = net_ops.into_values().flatten().collect();
-
-        actions.sort_by_key(|op| match op {
+        delegate_ops.sort_by_key(|op| match op {
             Ops::Close(_) => 0,
             Ops::Create(_) => 1,
         });
 
-        for action in actions.into_iter() {
+        for action in delegate_ops.into_iter() {
             match action {
                 Ops::Close(pk) => {
-                    let user_mut_arg = pk
-                        .user_delegate_close_args
-                        .ok_or(MultisigError::MissingUserDelegateArgs)?;
-                    final_account_infos.push(User::remove_user_delegate_account(user_mut_arg)?);
+                    final_account_infos.push(User::remove_user_delegate_account(pk.user_args)?);
                 }
                 Ops::Create(pk) => {
-                    let user_mut_arg = pk
-                        .user_delegate_creation_args
-                        .ok_or(MultisigError::MissingUserDelegateArgs)?;
                     final_account_infos.push(User::handle_set_user_delegate(
-                        user_mut_arg,
+                        pk.user_args,
                         settings_index,
+                        false,
+                        pk.set_as_delegate,
                     )?);
                 }
             }
@@ -183,6 +160,8 @@ impl User {
     pub fn handle_set_user_delegate(
         user_mut_args: UserMutArgs,
         settings_index: u128,
+        is_wallet_creation: bool,
+        set_as_delegate: bool,
     ) -> Result<CompressedAccountInfo> {
         let mut user_account = LightAccount::<'_, User>::new_mut(
             &crate::ID,
@@ -191,12 +170,17 @@ impl User {
         )
         .map_err(ProgramError::from)?;
 
-        require!(
-            user_account.settings_index.is_none(),
-            MultisigError::UserAlreadyDelegated
-        );
+        if user_account.is_permanent_member {
+            require!(is_wallet_creation, MultisigError::PermanentMemberNotAllowed);
+            require!(
+                user_account.settings_index.is_none(),
+                MultisigError::UserAlreadyDelegated
+            );
+        }
 
-        user_account.settings_index = Some(settings_index);
+        if set_as_delegate {
+            user_account.settings_index = Some(settings_index);
+        }
 
         Ok(user_account.to_account_info().map_err(ProgramError::from)?)
     }
@@ -213,8 +197,8 @@ impl User {
         .map_err(ProgramError::from)?;
 
         require!(
-            user_account.settings_index.is_some(),
-            MultisigError::UserNotDelegated
+            !user_account.is_permanent_member,
+            MultisigError::PermanentMember
         );
 
         user_account.settings_index = None;

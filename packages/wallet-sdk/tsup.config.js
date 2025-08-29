@@ -8,11 +8,8 @@ export default defineConfig({
   sourcemap: true,
   external: [
     "@solana/kit",
-    "@solana/transaction-confirmation",
+    "@solana/web3.js",
+    "@solana-program/system",
     "@solana-program/compute-budget",
-    "@solana/wallet-standard-features",
-    "@wallet-standard/base",
-    "@wallet-standard/core",
-    "@wallet-standard/features",
   ],
 });

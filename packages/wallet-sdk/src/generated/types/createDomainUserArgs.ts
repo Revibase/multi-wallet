@@ -35,7 +35,7 @@ import {
   type Option,
   type OptionOrNullable,
   type ReadonlyUint8Array,
-} from "@solana/kit";
+} from '@solana/kit';
 import {
   getSecp256r1PubkeyDecoder,
   getSecp256r1PubkeyEncoder,
@@ -49,7 +49,7 @@ import {
   type TransportArgs,
   type UserCreationArgs,
   type UserCreationArgsArgs,
-} from ".";
+} from '.';
 
 export type CreateDomainUserArgs = {
   member: Secp256r1Pubkey;
@@ -75,33 +75,33 @@ export type CreateDomainUserArgsArgs = {
 
 export function getCreateDomainUserArgsEncoder(): Encoder<CreateDomainUserArgsArgs> {
   return getStructEncoder([
-    ["member", getSecp256r1PubkeyEncoder()],
-    ["credentialId", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
-    ["mint", getOptionEncoder(getAddressEncoder())],
+    ['member', getSecp256r1PubkeyEncoder()],
+    ['credentialId', addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
+    ['mint', getOptionEncoder(getAddressEncoder())],
     [
-      "username",
+      'username',
       getOptionEncoder(addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())),
     ],
-    ["expiry", getOptionEncoder(getU64Encoder())],
-    ["isPermanentMember", getBooleanEncoder()],
-    ["userCreationArgs", getUserCreationArgsEncoder()],
-    ["transports", getArrayEncoder(getTransportEncoder())],
+    ['expiry', getOptionEncoder(getU64Encoder())],
+    ['isPermanentMember', getBooleanEncoder()],
+    ['userCreationArgs', getUserCreationArgsEncoder()],
+    ['transports', getArrayEncoder(getTransportEncoder())],
   ]);
 }
 
 export function getCreateDomainUserArgsDecoder(): Decoder<CreateDomainUserArgs> {
   return getStructDecoder([
-    ["member", getSecp256r1PubkeyDecoder()],
-    ["credentialId", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
-    ["mint", getOptionDecoder(getAddressDecoder())],
+    ['member', getSecp256r1PubkeyDecoder()],
+    ['credentialId', addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
+    ['mint', getOptionDecoder(getAddressDecoder())],
     [
-      "username",
+      'username',
       getOptionDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
     ],
-    ["expiry", getOptionDecoder(getU64Decoder())],
-    ["isPermanentMember", getBooleanDecoder()],
-    ["userCreationArgs", getUserCreationArgsDecoder()],
-    ["transports", getArrayDecoder(getTransportDecoder())],
+    ['expiry', getOptionDecoder(getU64Decoder())],
+    ['isPermanentMember', getBooleanDecoder()],
+    ['userCreationArgs', getUserCreationArgsDecoder()],
+    ['transports', getArrayDecoder(getTransportDecoder())],
   ]);
 }
 

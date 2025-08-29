@@ -13,7 +13,7 @@ use utils::*;
 
 declare_id!("revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb");
 
-pub const ADMIN: Pubkey = pubkey!("G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF");
+pub const ADMIN: Pubkey = pubkey!("AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ");
 
 pub const LIGHT_CPI_SIGNER: CpiSigner =
     derive_light_cpi_signer!("revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb");
@@ -85,8 +85,8 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, CreateMultiWallet<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         permissions: Permissions,
-        user_mut_args: Option<UserMutArgs>,
-        compressed_proof_args: Option<ProofArgs>,
+        user_mut_args: UserMutArgs,
+        compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         CreateMultiWallet::process(
             ctx,
@@ -215,7 +215,7 @@ pub mod multi_wallet {
         permissions: Permissions,
         compressed_proof_args: ProofArgs,
         settings_creation: SettingsCreationArgs,
-        user_mut_args: Option<UserMutArgs>,
+        user_mut_args: UserMutArgs,
         settings_index: u128,
     ) -> Result<()> {
         CreateMultiWalletCompressed::process(

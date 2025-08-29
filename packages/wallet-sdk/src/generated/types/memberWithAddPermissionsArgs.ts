@@ -8,6 +8,8 @@
 
 import {
   combineCodec,
+  getBooleanDecoder,
+  getBooleanEncoder,
   getOptionDecoder,
   getOptionEncoder,
   getStructDecoder,
@@ -34,30 +36,34 @@ import {
 } from '.';
 
 export type MemberWithAddPermissionsArgs = {
-  data: Member;
+  member: Member;
   verifyArgs: Option<Secp256r1VerifyArgs>;
-  userDelegateCreationArgs: Option<UserMutArgs>;
+  userArgs: UserMutArgs;
+  setAsDelegate: boolean;
 };
 
 export type MemberWithAddPermissionsArgsArgs = {
-  data: MemberArgs;
+  member: MemberArgs;
   verifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  userDelegateCreationArgs: OptionOrNullable<UserMutArgsArgs>;
+  userArgs: UserMutArgsArgs;
+  setAsDelegate: boolean;
 };
 
 export function getMemberWithAddPermissionsArgsEncoder(): Encoder<MemberWithAddPermissionsArgsArgs> {
   return getStructEncoder([
-    ['data', getMemberEncoder()],
+    ['member', getMemberEncoder()],
     ['verifyArgs', getOptionEncoder(getSecp256r1VerifyArgsEncoder())],
-    ['userDelegateCreationArgs', getOptionEncoder(getUserMutArgsEncoder())],
+    ['userArgs', getUserMutArgsEncoder()],
+    ['setAsDelegate', getBooleanEncoder()],
   ]);
 }
 
 export function getMemberWithAddPermissionsArgsDecoder(): Decoder<MemberWithAddPermissionsArgs> {
   return getStructDecoder([
-    ['data', getMemberDecoder()],
+    ['member', getMemberDecoder()],
     ['verifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ['userDelegateCreationArgs', getOptionDecoder(getUserMutArgsDecoder())],
+    ['userArgs', getUserMutArgsDecoder()],
+    ['setAsDelegate', getBooleanDecoder()],
   ]);
 }
 

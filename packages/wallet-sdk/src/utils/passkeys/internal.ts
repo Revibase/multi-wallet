@@ -2,12 +2,14 @@ import {
   AuthenticationResponseJSON,
   PublicKeyCredentialHint,
 } from "@simplewebauthn/server";
-import { getProgramDerivedAddress } from "@solana/addresses";
 import { getBase58Encoder } from "@solana/codecs";
+import { getProgramDerivedAddress } from "@solana/kit";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
 import {
-  AuthenticationResponse,
+  MessageAuthenticationResponse,
   ParsedAuthenticationResponse,
+  SignerPayload,
+  TransactionAuthenticationResponse,
   TransactionPayload,
 } from "../../types";
 import { convertSignatureDERtoRS, createPopUp } from "./helper";
@@ -20,8 +22,7 @@ export async function openAuthUrl({
   authUrl,
   additionalInfo,
   hints,
-  credentialId,
-  transports,
+  signer,
   popUp = null,
   timeout = 2 * 60 * 1000, // 2 minutes default timeout
   debug = false,
@@ -33,13 +34,12 @@ export async function openAuthUrl({
     type: "transaction" | "message";
     payload: string;
   };
-  credentialId?: string;
-  transports?: string;
+  signer?: SignerPayload;
   hints?: PublicKeyCredentialHint[];
   popUp?: Window | null;
   timeout?: number;
   debug?: boolean;
-}): Promise<AuthenticationResponse> {
+}): Promise<TransactionAuthenticationResponse | MessageAuthenticationResponse> {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }
@@ -101,8 +101,7 @@ export async function openAuthUrl({
             {
               type: "popup-init",
               payload: {
-                credentialId,
-                transports,
+                signer,
                 hints,
                 data,
                 additionalInfo,
@@ -212,12 +211,8 @@ export function hexToUint8Array(hex: string): Uint8Array {
 }
 
 export async function parseAuthenticationResponse(
-  payload: AuthenticationResponse
+  payload: TransactionAuthenticationResponse
 ): Promise<ParsedAuthenticationResponse> {
-  if (!payload.slotNumber || !payload.slotHash) {
-    throw new Error("Missing slot hash.");
-  }
-
   const { authenticatorData, clientDataJSON, signature } = (
     payload.authResponse as AuthenticationResponseJSON
   ).response;
@@ -241,7 +236,7 @@ export async function parseAuthenticationResponse(
   });
 
   return {
-    credentialId: payload.authResponse.id,
+    signer: payload.signer,
     verifyArgs: {
       clientDataJson,
       slotNumber: BigInt(payload.slotNumber),

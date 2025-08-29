@@ -1,338 +1,350 @@
-import {
-  BN254,
-  PackedStateTreeInfo,
-  ValidityProofWithContext,
-} from "@lightprotocol/stateless.js";
+import { ValidityProofWithContext } from "@lightprotocol/stateless.js";
+import { SYSTEM_PROGRAM_ADDRESS } from "@solana-program/system";
 import {
   AccountRole,
+  AccountSignerMeta,
   Address,
   createNoopSigner,
+  getAddressEncoder,
+  none,
+  some,
   TransactionSigner,
 } from "@solana/kit";
 import BN from "bn.js";
 import {
-  fetchSettingsData,
-  getCompressedSettingsAddressFromIndex,
-  getUserAddress,
-} from "../compressed";
-import {
-  convertToCompressedProofArgs,
-  getCompressedAccountHashes,
-  getCompressedAccountMutArgs,
-} from "../compressed/internal";
-import { PackedAccounts } from "../compressed/packedAccounts";
-import {
   CompressedSettings,
+  ConfigAction,
+  DelegateOp,
+  DelegateOpArgs,
   getChangeConfigCompressedInstruction,
   getChangeConfigInstruction,
   getCompressedSettingsDecoder,
   getUserDecoder,
   IPermissions,
+  MemberKey,
+  MemberKeyWithEditPermissionsArgs,
+  MemberKeyWithRemovePermissionsArgs,
+  MemberWithAddPermissionsArgs,
+  SettingsMutArgs,
   User,
   UserMutArgs,
 } from "../generated";
+import { ConfigurationArgs, KeyType, Secp256r1Key } from "../types";
 import {
-  ConfigActionWrapper,
-  ConfigActionWrapperWithDelegateArgs,
-  Permission,
-  Permissions,
-  Secp256r1Key,
-} from "../types";
-import {
-  convertMemberKeyToString,
+  getCompressedSettingsAddressFromIndex,
   getLightProtocolRpc,
   getMultiWalletFromSettings,
   getSettingsFromIndex,
+  getUserAddress,
 } from "../utils";
 import {
-  convertConfigActionWrapper,
-  convertMemberkey,
-  extractSecp256r1VerificationArgs,
-} from "../utils/internal";
+  convertToCompressedProofArgs,
+  getCompressedAccountHashes,
+  getCompressedAccountMutArgs,
+} from "../utils/compressed/internal";
+import { PackedAccounts } from "../utils/compressed/packedAccounts";
+import { extractSecp256r1VerificationArgs } from "../utils/transactionMessage/internal";
 import { Secp256r1VerifyInput } from "./secp256r1Verify";
 
 export async function changeConfig({
   index,
-  configActions,
+  configActionsArgs,
   payer,
   compressed = false,
 }: {
   index: bigint | number;
-  configActions: ConfigActionWrapper[];
+  configActionsArgs: ConfigurationArgs[];
   payer: TransactionSigner;
   compressed?: boolean;
 }) {
-  const [settingsData, settings] = await Promise.all([
-    fetchSettingsData(index),
-    getSettingsFromIndex(index),
-  ]);
+  // --- Stage 1: Setup Addresses---
+  const settings = await getSettingsFromIndex(index);
   const multiWallet = await getMultiWalletFromSettings(settings);
-  const packedAccounts = new PackedAccounts();
-  const hashesWithTree = [];
-  let proof: ValidityProofWithContext | null = null;
 
-  const addDelegates = configActions.flatMap((action) => {
-    if (action.type === "AddMembers")
-      return action.members.filter((m) => isDelegate(m.permissions));
-    if (action.type === "EditPermissions") {
-      return action.members.filter((m) => {
-        const existing = settingsData.members.find(
-          (x) => convertMemberKeyToString(x.pubkey) === m.pubkey.toString()
-        );
-        return (
-          existing &&
-          isDelegate(m.permissions) &&
-          !isDelegate(existing.permissions)
-        );
-      });
-    }
-    return [];
-  });
+  const addDelegates: (Address<string> | Secp256r1Key)[] = [];
+  const removeDelegates: (Address<string> | Secp256r1Key)[] = [];
 
-  const removeDelegates = configActions.flatMap((action) => {
-    if (action.type === "RemoveMembers") {
-      const removing = new Set(action.members.map((m) => m.pubkey.toString()));
-      return settingsData.members.filter(
-        (m) =>
-          isDelegate(m.permissions) &&
-          removing.has(convertMemberKeyToString(m.pubkey))
+  for (const action of configActionsArgs) {
+    if (action.type === "AddMembers") {
+      addDelegates.push(
+        ...action.members.map((m) =>
+          m.pubkey instanceof Secp256r1Key ? m.pubkey : m.pubkey.address
+        )
       );
+    } else if (action.type === "RemoveMembers") {
+      removeDelegates.push(...action.members.map((m) => m.pubkey));
+    } else if (action.type === "EditPermissions") {
+      for (const m of action.members) {
+        if (m.delegateOperation !== DelegateOp.Ignore) {
+          (m.delegateOperation === DelegateOp.Add
+            ? addDelegates
+            : removeDelegates
+          ).push(m.pubkey);
+        }
+      }
     }
-    if (action.type === "EditPermissions") {
-      return settingsData.members.filter((m) => {
-        const edited = action.members.find(
-          (am) => am.pubkey.toString() === convertMemberKeyToString(m.pubkey)
-        );
-        return (
-          edited && !isDelegate(edited.permissions) && isDelegate(m.permissions)
-        );
-      });
-    }
-    return [];
-  });
+  }
+
+  // --- Stage 2: Proof preparation ---
+  const packedAccounts = new PackedAccounts();
+  let proof: ValidityProofWithContext | null = null;
+  let settingsMutArgs: SettingsMutArgs | null = null;
+  let userMutArgs: UserMutArgs[] = [];
 
   if (addDelegates.length || removeDelegates.length || compressed) {
     await packedAccounts.addSystemAccounts();
-    const addresses: { pubkey: BN254; type: "Settings" | "User" }[] = [];
 
-    if (compressed) {
-      addresses.push({
-        pubkey: await getCompressedSettingsAddressFromIndex(index),
-        type: "Settings",
-      });
-    }
+    const addresses = [
+      ...(compressed
+        ? [
+            {
+              address: await getCompressedSettingsAddressFromIndex(index),
+              type: "Settings" as const,
+            },
+          ]
+        : []),
+      ...(await Promise.all(
+        removeDelegates.map(async (m) => ({
+          address: await getUserAddress(m),
+          type: "User" as const,
+        }))
+      )),
+      ...(await Promise.all(
+        addDelegates.map(async (m) => ({
+          address: await getUserAddress(m),
+          type: "User" as const,
+        }))
+      )),
+    ];
 
-    for (const m of removeDelegates) {
-      addresses.push({
-        pubkey: await getCachedUserAddress(convertMemberkey(m.pubkey)),
-        type: "User",
-      });
-    }
-
-    for (const m of addDelegates) {
-      addresses.push({
-        pubkey: await getCachedUserAddress(m.pubkey),
-        type: "User",
-      });
-    }
-
-    if (addresses.length) {
-      hashesWithTree.push(...(await getCompressedAccountHashes(addresses)));
-    }
-    proof = await getLightProtocolRpc().getValidityProofV0(hashesWithTree, []);
-  }
-  const settingsEndIndex = compressed ? 1 : 0;
-  const hashesWithTreeEndIndex = hashesWithTree.length;
-
-  const settingsMutArgs =
-    settingsEndIndex > 0 && proof
-      ? getCompressedAccountMutArgs<CompressedSettings>(
-          packedAccounts,
-          proof.treeInfos.slice(0, settingsEndIndex),
-          proof.leafIndices.slice(0, settingsEndIndex),
-          proof.rootIndices.slice(0, settingsEndIndex),
-          proof.proveByIndices.slice(0, settingsEndIndex),
-          hashesWithTree.filter((x) => x.type === "Settings"),
-          getCompressedSettingsDecoder()
-        )[0]
-      : null;
-
-  const userMutArgs =
-    settingsEndIndex < hashesWithTreeEndIndex && proof
-      ? getCompressedAccountMutArgs<User>(
-          packedAccounts,
-          proof.treeInfos.slice(settingsEndIndex, hashesWithTreeEndIndex),
-          proof.leafIndices.slice(settingsEndIndex, hashesWithTreeEndIndex),
-          proof.rootIndices.slice(settingsEndIndex, hashesWithTreeEndIndex),
-          proof.proveByIndices.slice(settingsEndIndex, hashesWithTreeEndIndex),
-          hashesWithTree.filter((x) => x.type === "User"),
-          getUserDecoder()
-        )
+    const hashesWithTree = addresses.length
+      ? await getCompressedAccountHashes(addresses)
       : [];
 
-  const secp256r1VerifyInput: Secp256r1VerifyInput = [];
-  let instructionsSysvar;
-  let slotHashSysvar;
-  const configActionsWithDelegate: ConfigActionWrapperWithDelegateArgs[] = [];
-  for (const action of configActions) {
-    if (action.type === "AddMembers") {
-      const enriched = [];
-      for (const m of action.members) {
-        let index = -1;
-        if (m.pubkey instanceof Secp256r1Key) {
-          index = secp256r1VerifyInput.length;
+    if (hashesWithTree.length) {
+      proof = await getLightProtocolRpc().getValidityProofV0(
+        hashesWithTree,
+        []
+      );
 
-          const {
-            message,
-            signature,
-            publicKey,
-            domainConfig,
-            instructionsSysvar: ixSysvar,
-            slotHashSysvar: slotSysvar,
-          } = extractSecp256r1VerificationArgs(m.pubkey, index);
-          instructionsSysvar = ixSysvar;
-          slotHashSysvar = slotSysvar;
-          if (message && signature && publicKey) {
-            secp256r1VerifyInput.push({ message, signature, publicKey });
-          }
+      const settingsHashes = hashesWithTree.filter(
+        (x) => x.type === "Settings"
+      );
+      const userHashes = hashesWithTree.filter((x) => x.type === "User");
 
-          if (domainConfig) {
-            packedAccounts.addPreAccounts([
-              { address: domainConfig, role: AccountRole.READONLY },
-            ]);
-          }
-        }
-
-        const userDelegateCreationArgs = await getUserDelegateCreateArgs(
-          m,
-          userMutArgs
-        );
-
-        enriched.push({ ...m, userDelegateCreationArgs, index });
+      if (compressed && proof) {
+        settingsMutArgs = getCompressedAccountMutArgs<CompressedSettings>(
+          packedAccounts,
+          proof.treeInfos.slice(0, 1),
+          proof.leafIndices.slice(0, 1),
+          proof.rootIndices.slice(0, 1),
+          proof.proveByIndices.slice(0, 1),
+          settingsHashes,
+          getCompressedSettingsDecoder()
+        )[0];
       }
 
-      configActionsWithDelegate.push({ ...action, members: enriched });
-    } else if (action.type === "RemoveMembers") {
-      const enriched = await Promise.all(
-        action.members.map(async (m) => {
-          const userDelegateCloseArgs = await getUserDelegateRemoveArgs(
-            m.pubkey,
-            userMutArgs
-          );
-          return { ...m, userDelegateCloseArgs };
-        })
-      );
-      configActionsWithDelegate.push({ ...action, members: enriched });
-    } else if (action.type === "EditPermissions") {
-      const enriched = await Promise.all(
-        action.members.map(async (m) => {
-          const userDelegateCreationArgs = await getUserDelegateCreateArgs(
-            m,
-            userMutArgs
-          );
-          const userDelegateCloseArgs = await getUserDelegateRemoveArgs(
-            m.pubkey,
-            userMutArgs
-          );
-          return {
-            ...m,
-            userDelegateCreationArgs,
-            userDelegateCloseArgs,
-          };
-        })
-      );
-      configActionsWithDelegate.push({ ...action, members: enriched });
-    } else {
-      configActionsWithDelegate.push(action);
+      if (userHashes.length && proof) {
+        userMutArgs = getCompressedAccountMutArgs<User>(
+          packedAccounts,
+          proof.treeInfos.slice(compressed ? 1 : 0),
+          proof.leafIndices.slice(compressed ? 1 : 0),
+          proof.rootIndices.slice(compressed ? 1 : 0),
+          proof.proveByIndices.slice(compressed ? 1 : 0),
+          userHashes,
+          getUserDecoder()
+        );
+      }
     }
   }
+  // --- Stage 3: Build config actions ---
+  const secp256r1VerifyInput: Secp256r1VerifyInput = [];
+  const configActions: ConfigAction[] = [];
+
+  for (const action of configActionsArgs) {
+    switch (action.type) {
+      case "AddMembers": {
+        const field: MemberWithAddPermissionsArgs[] = [];
+        for (const m of action.members) {
+          if (m.pubkey instanceof Secp256r1Key) {
+            const index = secp256r1VerifyInput.length;
+            const { message, signature, publicKey, domainConfig } =
+              extractSecp256r1VerificationArgs(m.pubkey, index);
+
+            if (message && signature && publicKey) {
+              secp256r1VerifyInput.push({ message, signature, publicKey });
+            }
+
+            if (domainConfig) {
+              packedAccounts.addPreAccounts([
+                { address: domainConfig, role: AccountRole.READONLY },
+              ]);
+            }
+
+            const userArgs = await getUserDelegateArgs(m.pubkey, userMutArgs);
+            if (userArgs) {
+              field.push(convertAddMember({ ...m, index, userArgs }));
+            }
+          } else {
+            packedAccounts.addPreAccounts([
+              {
+                address: m.pubkey.address,
+                role: AccountRole.READONLY_SIGNER,
+                signer: m.pubkey,
+              } as AccountSignerMeta,
+            ]);
+
+            const userArgs = await getUserDelegateArgs(
+              m.pubkey.address,
+              userMutArgs
+            );
+            if (userArgs) {
+              field.push(convertAddMember({ ...m, index: -1, userArgs }));
+            }
+          }
+        }
+        configActions.push({ __kind: action.type, fields: [field] });
+        break;
+      }
+
+      case "RemoveMembers": {
+        const field = await Promise.all(
+          action.members.map(async (m) => {
+            const userArgs = await getUserDelegateArgs(m.pubkey, userMutArgs);
+            if (!userArgs) throw new Error("User account not found");
+            return convertRemoveMember({ ...m, userArgs });
+          })
+        );
+        configActions.push({
+          __kind: action.type,
+          fields: [field.filter(Boolean)],
+        });
+        break;
+      }
+
+      case "EditPermissions": {
+        const field = await Promise.all(
+          action.members.map(async (m) => {
+            const userArgs =
+              m.delegateOperation !== DelegateOp.Ignore
+                ? await getUserDelegateArgs(m.pubkey, userMutArgs)
+                : undefined;
+            return convertEditMember({ ...m, userArgs });
+          })
+        );
+        configActions.push({ __kind: action.type, fields: [field] });
+        break;
+      }
+
+      default:
+        configActions.push({ __kind: action.type, fields: [action.threshold] });
+    }
+  }
+
+  // --- Stage 4: Instruction assembly ---
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
-  const configurations = convertConfigActionWrapper(configActionsWithDelegate);
-  const instructions = [];
-  if (compressed) {
-    if (!settingsMutArgs) {
-      throw new Error("Proof args is missing.");
-    }
-    instructions.push(
-      getChangeConfigCompressedInstruction({
-        instructionsSysvar,
-        slotHashSysvar,
-        configActions: configurations,
-        payer,
-        authority: createNoopSigner(multiWallet),
-        compressedProofArgs,
-        settingsMut: settingsMutArgs,
-        remainingAccounts,
-      })
-    );
-  } else {
-    instructions.push(
-      getChangeConfigInstruction({
-        instructionsSysvar,
-        slotHashSysvar,
-        configActions: configurations,
-        settings,
-        payer,
-        authority: createNoopSigner(multiWallet),
-        compressedProofArgs,
-        remainingAccounts,
-      })
-    );
-  }
+  const instructions = compressed
+    ? [
+        getChangeConfigCompressedInstruction({
+          configActions,
+          payer,
+          authority: createNoopSigner(multiWallet),
+          compressedProofArgs,
+          settingsMut: settingsMutArgs!,
+          remainingAccounts,
+        }),
+      ]
+    : [
+        getChangeConfigInstruction({
+          configActions,
+          settings,
+          payer,
+          authority: createNoopSigner(multiWallet),
+          compressedProofArgs,
+          remainingAccounts,
+        }),
+      ];
 
   return { instructions, secp256r1VerifyInput };
 }
 
-const delegateAddressCache = new Map<string, BN>();
-async function getCachedUserAddress(
-  pubkey: Address | Secp256r1Key
-): Promise<BN> {
-  const key = pubkey.toString();
-  if (!delegateAddressCache.has(key)) {
-    delegateAddressCache.set(key, await getUserAddress(pubkey));
-  }
-  return delegateAddressCache.get(key)!;
-}
-
-const isDelegate = (permissions: IPermissions) =>
-  Permissions.has(permissions, Permission.IsDelegate);
-
-async function getUserDelegateCreateArgs(
-  m: {
-    pubkey: Address | Secp256r1Key;
-    permissions: IPermissions;
-  },
-  userMutArgs: {
-    data: User;
-    accountMeta: {
-      treeInfo: PackedStateTreeInfo;
-      address: Uint8Array<ArrayBuffer>;
-      outputStateTreeIndex: number;
-    };
-  }[]
+async function getUserDelegateArgs(
+  pubkey: Address | Secp256r1Key,
+  userMutArgs: UserMutArgs[]
 ): Promise<UserMutArgs | undefined> {
-  const userAddress = await getCachedUserAddress(m.pubkey);
-
+  const userAddress = await getUserAddress(pubkey);
   const mutArg = userMutArgs.find((arg) =>
-    new BN(arg.accountMeta.address).eq(userAddress)
+    new BN(new Uint8Array(arg.accountMeta.address)).eq(userAddress)
   );
   return mutArg;
 }
 
-async function getUserDelegateRemoveArgs(
-  pubkey: Secp256r1Key | Address,
-  userMutArgs: {
-    data: User;
-    accountMeta: {
-      treeInfo: PackedStateTreeInfo;
-      address: Uint8Array<ArrayBuffer>;
-      outputStateTreeIndex: number;
+function convertEditMember(x: {
+  pubkey: Address | Secp256r1Key;
+  permissions: IPermissions;
+  userArgs?: UserMutArgs;
+  delegateOperation: DelegateOpArgs;
+}): MemberKeyWithEditPermissionsArgs {
+  return {
+    memberKey: convertPubkeyToMemberkey(x.pubkey),
+    permissions: x.permissions,
+    userArgs: x.userArgs ? some(x.userArgs) : none(),
+    delegateOperation: x.delegateOperation,
+  };
+}
+
+function convertRemoveMember(x: {
+  pubkey: Address | Secp256r1Key;
+  userArgs: UserMutArgs;
+}): MemberKeyWithRemovePermissionsArgs {
+  return {
+    memberKey: convertPubkeyToMemberkey(x.pubkey),
+    userArgs: x.userArgs,
+  };
+}
+
+function convertAddMember(x: {
+  pubkey: TransactionSigner | Secp256r1Key;
+  permissions: IPermissions;
+  index: number;
+  userArgs: UserMutArgs;
+  setAsDelegate: boolean;
+}): MemberWithAddPermissionsArgs {
+  return {
+    member: {
+      permissions: x.permissions,
+      domainConfig:
+        x.pubkey instanceof Secp256r1Key && x.pubkey.domainConfig
+          ? x.pubkey.domainConfig
+          : SYSTEM_PROGRAM_ADDRESS,
+      pubkey: convertPubkeyToMemberkey(
+        x.pubkey instanceof Secp256r1Key ? x.pubkey : x.pubkey.address
+      ),
+    },
+    verifyArgs:
+      x.pubkey instanceof Secp256r1Key && x.pubkey.verifyArgs && x.index !== -1
+        ? some({
+            clientDataJson: x.pubkey.verifyArgs.clientDataJson,
+            slotNumber: x.pubkey.verifyArgs.slotNumber,
+            index: x.index,
+          })
+        : none(),
+    userArgs: x.userArgs,
+    setAsDelegate: x.setAsDelegate,
+  };
+}
+
+function convertPubkeyToMemberkey(pubkey: Address | Secp256r1Key): MemberKey {
+  if (pubkey instanceof Secp256r1Key) {
+    return { keyType: KeyType.Secp256r1, key: pubkey.toBytes() };
+  } else {
+    return {
+      keyType: KeyType.Ed25519,
+      key: new Uint8Array([
+        0, // pad start with zero to make it 33 bytes
+        ...getAddressEncoder().encode(pubkey),
+      ]),
     };
-  }[]
-) {
-  const delegateAddress = await getCachedUserAddress(pubkey);
-  return userMutArgs.find((arg) =>
-    new BN(arg.accountMeta.address).eq(delegateAddress)
-  );
+  }
 }
