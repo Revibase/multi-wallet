@@ -95,16 +95,14 @@ export function assertTransactionIsNotSigned(signatures: SignaturesMap) {
   }
 }
 
-async function fetchRandomPayer(
-  apiEndpoint = `https://api.revibase.com/getRandomPayer`
-) {
-  const response = await fetch(`${apiEndpoint}`);
+async function fetchRandomPayer(apiEndpoint: string) {
+  const response = await fetch(`${apiEndpoint}/getRandomPayer`);
   const result = (await response.json()) as { randomPayer: string };
   return result.randomPayer;
 }
 
 export async function getRandomPayer(
-  apiEndpoint?: string
+  apiEndpoint = `https://api.revibase.com`
 ): Promise<TransactionSigner> {
   const payer = await fetchRandomPayer(apiEndpoint);
   return {
