@@ -10,6 +10,8 @@ import {
   combineCodec,
   getAddressDecoder,
   getAddressEncoder,
+  getBooleanDecoder,
+  getBooleanEncoder,
   getStructDecoder,
   getStructEncoder,
   type Address,
@@ -26,17 +28,20 @@ import {
 
 export type CreateGlobalUserArgs = {
   member: Address;
+  isPermanentMember: boolean;
   userCreationArgs: UserCreationArgs;
 };
 
 export type CreateGlobalUserArgsArgs = {
   member: Address;
+  isPermanentMember: boolean;
   userCreationArgs: UserCreationArgsArgs;
 };
 
 export function getCreateGlobalUserArgsEncoder(): FixedSizeEncoder<CreateGlobalUserArgsArgs> {
   return getStructEncoder([
     ['member', getAddressEncoder()],
+    ['isPermanentMember', getBooleanEncoder()],
     ['userCreationArgs', getUserCreationArgsEncoder()],
   ]);
 }
@@ -44,6 +49,7 @@ export function getCreateGlobalUserArgsEncoder(): FixedSizeEncoder<CreateGlobalU
 export function getCreateGlobalUserArgsDecoder(): FixedSizeDecoder<CreateGlobalUserArgs> {
   return getStructDecoder([
     ['member', getAddressDecoder()],
+    ['isPermanentMember', getBooleanDecoder()],
     ['userCreationArgs', getUserCreationArgsDecoder()],
   ]);
 }

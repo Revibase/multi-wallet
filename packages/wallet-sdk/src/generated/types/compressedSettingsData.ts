@@ -21,10 +21,10 @@ import {
   type Encoder,
 } from '@solana/kit';
 import {
-  getCompressedMemberDecoder,
-  getCompressedMemberEncoder,
-  type CompressedMember,
-  type CompressedMemberArgs,
+  getMemberDecoder,
+  getMemberEncoder,
+  type Member,
+  type MemberArgs,
 } from '.';
 
 export type CompressedSettingsData = {
@@ -32,7 +32,7 @@ export type CompressedSettingsData = {
   bump: number;
   index: bigint;
   multiWalletBump: number;
-  members: Array<CompressedMember>;
+  members: Array<Member>;
 };
 
 export type CompressedSettingsDataArgs = {
@@ -40,7 +40,7 @@ export type CompressedSettingsDataArgs = {
   bump: number;
   index: number | bigint;
   multiWalletBump: number;
-  members: Array<CompressedMemberArgs>;
+  members: Array<MemberArgs>;
 };
 
 export function getCompressedSettingsDataEncoder(): Encoder<CompressedSettingsDataArgs> {
@@ -49,7 +49,7 @@ export function getCompressedSettingsDataEncoder(): Encoder<CompressedSettingsDa
     ['bump', getU8Encoder()],
     ['index', getU128Encoder()],
     ['multiWalletBump', getU8Encoder()],
-    ['members', getArrayEncoder(getCompressedMemberEncoder())],
+    ['members', getArrayEncoder(getMemberEncoder())],
   ]);
 }
 
@@ -59,7 +59,7 @@ export function getCompressedSettingsDataDecoder(): Decoder<CompressedSettingsDa
     ['bump', getU8Decoder()],
     ['index', getU128Decoder()],
     ['multiWalletBump', getU8Decoder()],
-    ['members', getArrayDecoder(getCompressedMemberDecoder())],
+    ['members', getArrayDecoder(getMemberDecoder())],
   ]);
 }
 

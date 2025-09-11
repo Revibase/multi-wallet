@@ -1,5 +1,4 @@
 import { ValidityProofWithContext } from "@lightprotocol/stateless.js";
-import { SYSTEM_PROGRAM_ADDRESS } from "@solana-program/system";
 import {
   AccountRole,
   AccountSignerMeta,
@@ -29,8 +28,16 @@ import {
   User,
   UserMutArgs,
 } from "../generated";
-import { ConfigurationArgs, KeyType, Secp256r1Key } from "../types";
 import {
+  ConfigurationArgs,
+  KeyType,
+  PermanentMemberPermission,
+  Permissions,
+  Secp256r1Key,
+} from "../types";
+import {
+  convertMemberKeyToString,
+  fetchSettingsData,
   getCompressedSettingsAddressFromIndex,
   getLightProtocolRpc,
   getMultiWalletFromSettings,
@@ -98,23 +105,19 @@ export async function changeConfig({
       ...(compressed
         ? [
             {
-              address: await getCompressedSettingsAddressFromIndex(index),
+              address: getCompressedSettingsAddressFromIndex(index),
               type: "Settings" as const,
             },
           ]
         : []),
-      ...(await Promise.all(
-        removeDelegates.map(async (m) => ({
-          address: await getUserAddress(m),
-          type: "User" as const,
-        }))
-      )),
-      ...(await Promise.all(
-        addDelegates.map(async (m) => ({
-          address: await getUserAddress(m),
-          type: "User" as const,
-        }))
-      )),
+      ...removeDelegates.map((m) => ({
+        address: getUserAddress(m),
+        type: "User" as const,
+      })),
+      ...addDelegates.map((m) => ({
+        address: getUserAddress(m),
+        type: "User" as const,
+      })),
     ];
 
     const hashesWithTree = addresses.length
@@ -223,13 +226,31 @@ export async function changeConfig({
       }
 
       case "EditPermissions": {
+        const settingsData = await fetchSettingsData(index);
+        const permanentMember = settingsData.members.find((x) =>
+          Permissions.has(x.permissions, PermanentMemberPermission)
+        );
         const field = await Promise.all(
           action.members.map(async (m) => {
             const userArgs =
               m.delegateOperation !== DelegateOp.Ignore
                 ? await getUserDelegateArgs(m.pubkey, userMutArgs)
                 : undefined;
-            return convertEditMember({ ...m, userArgs });
+            const isPermanentMember =
+              !!permanentMember?.pubkey &&
+              convertMemberKeyToString(permanentMember.pubkey) ===
+                m.pubkey.toString();
+            if (isPermanentMember) {
+              if (userArgs || m.delegateOperation !== DelegateOp.Ignore) {
+                throw new Error(
+                  "Delegation cannot be modified for a permanent member. Permanent members must always remain delegates."
+                );
+              }
+            }
+            const permissions = isPermanentMember
+              ? { mask: m.permissions.mask | PermanentMemberPermission }
+              : m.permissions;
+            return convertEditMember({ ...m, permissions, userArgs });
           })
         );
         configActions.push({ __kind: action.type, fields: [field] });
@@ -273,65 +294,88 @@ async function getUserDelegateArgs(
   pubkey: Address | Secp256r1Key,
   userMutArgs: UserMutArgs[]
 ): Promise<UserMutArgs | undefined> {
-  const userAddress = await getUserAddress(pubkey);
+  const userAddress = getUserAddress(pubkey);
   const mutArg = userMutArgs.find((arg) =>
     new BN(new Uint8Array(arg.accountMeta.address)).eq(userAddress)
   );
   return mutArg;
 }
 
-function convertEditMember(x: {
+function convertEditMember({
+  pubkey,
+  permissions,
+  userArgs,
+  delegateOperation,
+}: {
   pubkey: Address | Secp256r1Key;
   permissions: IPermissions;
   userArgs?: UserMutArgs;
   delegateOperation: DelegateOpArgs;
 }): MemberKeyWithEditPermissionsArgs {
   return {
-    memberKey: convertPubkeyToMemberkey(x.pubkey),
-    permissions: x.permissions,
-    userArgs: x.userArgs ? some(x.userArgs) : none(),
-    delegateOperation: x.delegateOperation,
+    memberKey: convertPubkeyToMemberkey(pubkey),
+    permissions,
+    userArgs: userArgs ? some(userArgs) : none(),
+    delegateOperation,
   };
 }
 
-function convertRemoveMember(x: {
+function convertRemoveMember({
+  pubkey,
+  userArgs,
+}: {
   pubkey: Address | Secp256r1Key;
   userArgs: UserMutArgs;
 }): MemberKeyWithRemovePermissionsArgs {
   return {
-    memberKey: convertPubkeyToMemberkey(x.pubkey),
-    userArgs: x.userArgs,
+    memberKey: convertPubkeyToMemberkey(pubkey),
+    userArgs,
   };
 }
 
-function convertAddMember(x: {
+function convertAddMember({
+  pubkey,
+  permissions,
+  index,
+  userArgs,
+  setAsDelegate,
+}: {
   pubkey: TransactionSigner | Secp256r1Key;
   permissions: IPermissions;
   index: number;
   userArgs: UserMutArgs;
   setAsDelegate: boolean;
 }): MemberWithAddPermissionsArgs {
+  if (userArgs.data.isPermanentMember) {
+    if (!setAsDelegate) {
+      throw new Error(
+        "Permanent members must also be delegates. Please set `setAsDelegate = true`."
+      );
+    }
+    if (userArgs.data.settingsIndex.__option === "Some") {
+      throw new Error(
+        "This user is already registered as a permanent member in another wallet. A permanent member can only belong to one wallet."
+      );
+    }
+    permissions.mask |= PermanentMemberPermission;
+  }
   return {
     member: {
-      permissions: x.permissions,
-      domainConfig:
-        x.pubkey instanceof Secp256r1Key && x.pubkey.domainConfig
-          ? x.pubkey.domainConfig
-          : SYSTEM_PROGRAM_ADDRESS,
+      permissions,
       pubkey: convertPubkeyToMemberkey(
-        x.pubkey instanceof Secp256r1Key ? x.pubkey : x.pubkey.address
+        pubkey instanceof Secp256r1Key ? pubkey : pubkey.address
       ),
     },
     verifyArgs:
-      x.pubkey instanceof Secp256r1Key && x.pubkey.verifyArgs && x.index !== -1
+      pubkey instanceof Secp256r1Key && pubkey.verifyArgs && index !== -1
         ? some({
-            clientDataJson: x.pubkey.verifyArgs.clientDataJson,
-            slotNumber: x.pubkey.verifyArgs.slotNumber,
-            index: x.index,
+            clientDataJson: pubkey.verifyArgs.clientDataJson,
+            slotNumber: pubkey.verifyArgs.slotNumber,
+            index: index,
           })
         : none(),
-    userArgs: x.userArgs,
-    setAsDelegate: x.setAsDelegate,
+    userArgs,
+    setAsDelegate,
   };
 }
 

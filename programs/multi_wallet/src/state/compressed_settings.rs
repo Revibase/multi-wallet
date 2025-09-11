@@ -2,22 +2,18 @@ use crate::{
     error::MultisigError,
     state::{
         Member, MemberKey, MemberKeyWithEditPermissionsArgs, MemberKeyWithRemovePermissionsArgs,
-        MemberWithAddPermissionsArgs, MultisigSettings, Permissions, Settings, SEED_MULTISIG,
-        SEED_VAULT,
+        MemberWithAddPermissionsArgs, MultisigSettings, Settings, SEED_MULTISIG,
     },
     LIGHT_CPI_SIGNER,
 };
 use anchor_lang::{prelude::*, solana_program::instruction::Instruction};
+use light_compressed_account::compressed_account::{CompressedAccount, CompressedAccountData};
 use light_compressed_account::{
     compressed_account::PackedReadOnlyCompressedAccount,
     instruction_data::{
         compressed_proof::CompressedProof, cpi_context::CompressedCpiContext,
         data::NewAddressParamsPacked, with_readonly::InstructionDataInvokeCpiWithReadOnly,
     },
-};
-use light_compressed_account::{
-    compressed_account::{CompressedAccount, CompressedAccountData},
-    instruction_data::with_account_info::CompressedAccountInfo,
 };
 use light_hasher::{DataHasher, Poseidon};
 use light_sdk::{
@@ -47,14 +43,7 @@ pub struct CompressedSettingsData {
     pub index: u128,
     pub multi_wallet_bump: u8,
     #[hash]
-    pub members: Vec<CompressedMember>,
-}
-
-#[derive(InitSpace, PartialEq, AnchorSerialize, AnchorDeserialize, Copy, Clone, Default, Debug)]
-pub struct CompressedMember {
-    pub pubkey: MemberKey,
-    pub permissions: Permissions,
-    pub domain_config: Option<Pubkey>,
+    pub members: Vec<Member>,
 }
 
 impl CompressedSettings {
@@ -95,7 +84,10 @@ impl CompressedSettings {
         settings_creation: SettingsCreationArgs,
         data: CompressedSettingsData,
         light_cpi_accounts: &CpiAccounts,
-    ) -> Result<(CompressedAccountInfo, NewAddressParamsPacked)> {
+    ) -> Result<(
+        LightAccount<'info, CompressedSettings>,
+        NewAddressParamsPacked,
+    )> {
         let (address, address_seed) = derive_address(
             &[SEED_MULTISIG, data.index.to_le_bytes().as_ref()],
             &settings_creation
@@ -117,12 +109,7 @@ impl CompressedSettings {
 
         settings_account.data = Some(data);
 
-        Ok((
-            settings_account
-                .to_account_info()
-                .map_err(ProgramError::from)?,
-            new_address_params,
-        ))
+        Ok((settings_account, new_address_params))
     }
 
     pub fn set_threshold(&mut self, value: u8) -> Result<()> {
@@ -133,46 +120,8 @@ impl CompressedSettings {
         MultisigSettings::invariant(self)
     }
 
-    pub fn convert_compressed_member_to_member(
-        members: Vec<CompressedMember>,
-    ) -> Result<Vec<Member>> {
-        members
-            .iter()
-            .map(|f| {
-                Ok(Member {
-                    pubkey: f.pubkey,
-                    permissions: f.permissions,
-                    domain_config: match f.domain_config {
-                        Some(value) => value,
-                        None => Pubkey::default(),
-                    },
-                })
-            })
-            .collect()
-    }
-
-    pub fn convert_member_to_compressed_member(
-        members: Vec<Member>,
-    ) -> Result<Vec<CompressedMember>> {
-        members
-            .iter()
-            .map(|f: &Member| {
-                Ok(CompressedMember {
-                    pubkey: f.pubkey,
-                    permissions: f.permissions,
-                    domain_config: if f.domain_config.eq(&Pubkey::default()) {
-                        None
-                    } else {
-                        Some(f.domain_config)
-                    },
-                })
-            })
-            .collect()
-    }
-
     pub fn verify_compressed_settings<'info>(
         payer: &AccountInfo<'info>,
-        use_signer_seed: bool,
         settings_readonly: &SettingsReadonlyArgs,
         remaining_accounts: &[AccountInfo<'info>],
         compressed_proof_args: &ProofArgs,
@@ -239,25 +188,11 @@ impl CompressedSettings {
             compressed_proof_args.proof.0,
         )?;
 
-        if use_signer_seed {
-            let _vault_signer_seed: &[&[u8]] = &[
-                SEED_MULTISIG,
-                settings_key.as_ref(),
-                SEED_VAULT,
-                &[settings_data.multi_wallet_bump],
-            ];
-            // invoke_signed(
-            //     &instruction,
-            //     &account_infos,
-            //     &[vault_signer_seed, cpi_authority_seeds.as_slice()],
-            // )?;
-        } else {
-            // invoke_signed(
-            //     &instruction,
-            //     &account_infos,
-            //     &[cpi_authority_seeds.as_slice()],
-            // )?;
-        }
+        // invoke_signed(
+        //     &instruction,
+        //     &account_infos,
+        //     &[cpi_authority_seeds.as_slice()],
+        // )?;
 
         Ok((settings_data.clone(), settings_key))
     }
@@ -323,9 +258,7 @@ impl MultisigSettings for CompressedSettings {
 
     fn get_members(&self) -> Result<Vec<Member>> {
         if let Some(data) = &self.data {
-            Ok(CompressedSettings::convert_compressed_member_to_member(
-                data.members.clone(),
-            )?)
+            Ok(data.members.clone())
         } else {
             err!(MultisigError::InvalidArguments)
         }
@@ -333,10 +266,7 @@ impl MultisigSettings for CompressedSettings {
 
     fn extend_members(&mut self, members: Vec<Member>) -> Result<()> {
         if let Some(data) = &mut self.data {
-            data.members
-                .extend(CompressedSettings::convert_member_to_compressed_member(
-                    members,
-                )?);
+            data.members.extend(members);
         }
         Ok(())
     }
@@ -350,7 +280,7 @@ impl MultisigSettings for CompressedSettings {
 
     fn set_members(&mut self, members: Vec<Member>) -> Result<()> {
         if let Some(data) = &mut self.data {
-            data.members = CompressedSettings::convert_member_to_compressed_member(members)?;
+            data.members = members;
         }
         Ok(())
     }

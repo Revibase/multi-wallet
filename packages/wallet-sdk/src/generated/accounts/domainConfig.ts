@@ -84,9 +84,9 @@ export function getDomainConfigEncoder(): FixedSizeEncoder<DomainConfigArgs> {
       ['bump', getU8Encoder()],
       ['isDisabled', getU8Encoder()],
       ['rpIdLength', getU8Encoder()],
-      ['rpId', fixEncoderSize(getBytesEncoder(), 256)],
+      ['rpId', fixEncoderSize(getBytesEncoder(), 255)],
       ['origins', fixEncoderSize(getBytesEncoder(), 512)],
-      ['padding', fixEncoderSize(getBytesEncoder(), 1)],
+      ['padding', fixEncoderSize(getBytesEncoder(), 2)],
     ]),
     (value) => ({ ...value, discriminator: DOMAIN_CONFIG_DISCRIMINATOR })
   );
@@ -101,9 +101,9 @@ export function getDomainConfigDecoder(): FixedSizeDecoder<DomainConfig> {
     ['bump', getU8Decoder()],
     ['isDisabled', getU8Decoder()],
     ['rpIdLength', getU8Decoder()],
-    ['rpId', fixDecoderSize(getBytesDecoder(), 256)],
+    ['rpId', fixDecoderSize(getBytesDecoder(), 255)],
     ['origins', fixDecoderSize(getBytesDecoder(), 512)],
-    ['padding', fixDecoderSize(getBytesDecoder(), 1)],
+    ['padding', fixDecoderSize(getBytesDecoder(), 2)],
   ]);
 }
 

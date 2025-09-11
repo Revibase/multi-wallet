@@ -41,7 +41,6 @@ pub struct TransactionBufferClose<'info> {
 impl TransactionBufferClose<'_> {
     fn validate(&self, secp256r1_verify_args: &Option<Secp256r1VerifyArgs>) -> Result<()> {
         let Self {
-            settings,
             closer,
             transaction_buffer,
             domain_config,
@@ -49,7 +48,6 @@ impl TransactionBufferClose<'_> {
             instructions_sysvar,
             ..
         } = self;
-        let settings = settings.load()?;
         let signer =
             MemberKey::get_signer(closer, secp256r1_verify_args, instructions_sysvar.as_ref())?;
 
@@ -65,27 +63,6 @@ impl TransactionBufferClose<'_> {
                 MultisigError::UnauthorisedToCloseTransactionBuffer
             );
             if signer.get_type().eq(&KeyType::Secp256r1) {
-                let member = settings
-                    .members
-                    .iter()
-                    .find(|x| x.pubkey.eq(&signer))
-                    .ok_or(MultisigError::MissingAccount)?;
-
-                require!(
-                    member.domain_config.ne(&Pubkey::default()),
-                    MultisigError::DomainConfigIsMissing
-                );
-
-                require!(
-                    domain_config.is_some()
-                        && domain_config
-                            .as_ref()
-                            .unwrap()
-                            .key()
-                            .eq(&member.domain_config),
-                    MultisigError::MemberDoesNotBelongToDomainConfig
-                );
-
                 let secp256r1_verify_data = secp256r1_verify_args
                     .as_ref()
                     .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;

@@ -1,5 +1,5 @@
 {
-  "address": "revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb",
+  "address": "reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT",
   "metadata": {
     "name": "multi_wallet",
     "version": "0.1.0",
@@ -208,27 +208,12 @@
       "accounts": [
         {
           "name": "domain_config",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  100, 111, 109, 97, 105, 110, 95, 99, 111, 110, 102, 105, 103
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "args.rp_id_hash"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "payer",
           "writable": true,
-          "signer": true,
-          "address": "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ"
+          "signer": true
         },
         {
           "name": "system_program",
@@ -308,8 +293,7 @@
         {
           "name": "payer",
           "writable": true,
-          "signer": true,
-          "address": "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ"
+          "signer": true
         },
         {
           "name": "system_program",
@@ -444,6 +428,10 @@
               "name": "ProofArgs"
             }
           }
+        },
+        {
+          "name": "set_as_delegate",
+          "type": "bool"
         }
       ]
     },
@@ -533,6 +521,10 @@
         {
           "name": "settings_index",
           "type": "u128"
+        },
+        {
+          "name": "set_as_delegate",
+          "type": "bool"
         }
       ]
     },
@@ -1411,7 +1403,7 @@
     {
       "code": 6005,
       "name": "PermanentMemberNotAllowed",
-      "msg": "Permanent members can only be configured during wallet creation."
+      "msg": "Unable to set permanent member for this operation."
     },
     {
       "code": 6006,
@@ -1465,141 +1457,136 @@
     },
     {
       "code": 6016,
-      "name": "UserNotDelegated",
-      "msg": "A user is currently not delegated."
-    },
-    {
-      "code": 6017,
       "name": "InsufficientSignerWithExecutePermission",
       "msg": "At least one signer must have execute permissions to proceed."
     },
     {
-      "code": 6018,
+      "code": 6017,
       "name": "InsufficientSignerWithInitiatePermission",
       "msg": "At least one signer must have initiate permissions to perform this action."
     },
     {
-      "code": 6019,
+      "code": 6018,
       "name": "InsufficientSignersWithVotePermission",
       "msg": "The approval threshold cannot be met because there aren't enough voters with the vote permission."
     },
     {
-      "code": 6020,
+      "code": 6019,
       "name": "NoSignerFound",
-      "msg": "No valid signer was found in this transaction. Ensure at least one authorized signer is present."
+      "msg": "No valid signer was found in this transaction."
     },
     {
-      "code": 6021,
+      "code": 6020,
       "name": "UnauthorisedToCloseTransactionBuffer",
       "msg": "Only the transaction's creator or rent payer is allowed to close the transaction buffer."
     },
     {
-      "code": 6022,
+      "code": 6021,
       "name": "InvalidBuffer",
       "msg": "The contents of the buffer do not match the expected hash. It may have been tampered with."
     },
     {
-      "code": 6023,
+      "code": 6022,
       "name": "FinalBufferHashMismatch",
       "msg": "The final hash of the buffer doesn't match what was expected. The buffer might be corrupted or altered."
     },
     {
-      "code": 6024,
+      "code": 6023,
       "name": "FinalBufferSizeExceeded",
       "msg": "The serialized transaction buffer exceeds the maximum allowed size of 10,128 bytes."
     },
     {
-      "code": 6025,
+      "code": 6024,
       "name": "FinalBufferSizeMismatch",
       "msg": "The declared size of the buffer does not match its actual size."
     },
     {
-      "code": 6026,
+      "code": 6025,
       "name": "TransactionHasExpired",
       "msg": "The transaction has expired. It must be executed within 3 minutes of approval."
     },
     {
-      "code": 6027,
+      "code": 6026,
       "name": "TransactionNotApproved",
       "msg": "The transaction hasn't received enough approvals yet to be executed."
     },
     {
-      "code": 6028,
+      "code": 6027,
       "name": "ProtectedAccount",
       "msg": "Writable CPI calls to protected accounts are not permitted."
     },
     {
-      "code": 6029,
+      "code": 6028,
       "name": "MaxLengthExceeded",
       "msg": "One of the input strings exceeds the maximum allowed character limit."
     },
     {
-      "code": 6030,
+      "code": 6029,
       "name": "MissingSysvarSlotHistory",
       "msg": "The Slot History sysvar account is missing. It must be included as an account in this instruction."
     },
     {
-      "code": 6031,
+      "code": 6030,
       "name": "InvalidSysvarDataFormat",
       "msg": "Failed to parse sysvar: slot history format is invalid or corrupted."
     },
     {
-      "code": 6032,
+      "code": 6031,
       "name": "SlotNumberNotFound",
       "msg": "The specified slot number is not present in the provided slot history."
     },
     {
-      "code": 6033,
+      "code": 6032,
       "name": "DomainConfigIsDisabled",
       "msg": "The domain configuration account is currently disabled. Contact support or try again later."
     },
     {
-      "code": 6034,
+      "code": 6033,
       "name": "DomainConfigIsMissing",
       "msg": "Missing domain configuration account. Ensure it's passed in the instruction."
     },
     {
-      "code": 6035,
+      "code": 6034,
       "name": "MemberDoesNotBelongToDomainConfig",
       "msg": "This member is not registered in the provided domain configuration."
     },
     {
-      "code": 6036,
+      "code": 6035,
       "name": "RpIdHashMismatch",
       "msg": "The relying party ID hash does not match the one specified in the domain configuration."
     },
     {
-      "code": 6037,
+      "code": 6036,
       "name": "InvalidJson",
       "msg": "Failed to parse the client data JSON. The format may be invalid."
     },
     {
-      "code": 6038,
+      "code": 6037,
       "name": "MissingOrigin",
       "msg": "Missing origin field in clientDataJSON. This field is required for WebAuthn validation."
     },
     {
-      "code": 6039,
+      "code": 6038,
       "name": "InvalidOrigin",
       "msg": "The origin value in clientDataJSON does not match the expected domain."
     },
     {
-      "code": 6040,
+      "code": 6039,
       "name": "MissingType",
       "msg": "Missing type field in clientDataJSON. This field is required for WebAuthn validation."
     },
     {
-      "code": 6041,
+      "code": 6040,
       "name": "InvalidType",
       "msg": "The type field in clientDataJSON is invalid. Expected value: webauthn.get."
     },
     {
-      "code": 6042,
+      "code": 6041,
       "name": "MissingChallenge",
       "msg": "Missing challenge field in clientDataJSON. This is required for validating the authentication request."
     },
     {
-      "code": 6043,
+      "code": 6042,
       "name": "InvalidChallenge",
       "msg": "The challenge value in clientDataJSON is missing or doesn't match the expected challenge."
     }
@@ -1650,36 +1637,6 @@
             "name": "output_state_tree_index",
             "docs": ["Output merkle tree index."],
             "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "CompressedMember",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "pubkey",
-            "type": {
-              "defined": {
-                "name": "MemberKey"
-              }
-            }
-          },
-          {
-            "name": "permissions",
-            "type": {
-              "defined": {
-                "name": "Permissions"
-              }
-            }
-          },
-          {
-            "name": "domain_config",
-            "type": {
-              "option": "pubkey"
-            }
           }
         ]
       }
@@ -1757,7 +1714,7 @@
             "type": {
               "vec": {
                 "defined": {
-                  "name": "CompressedMember"
+                  "name": "Member"
                 }
               }
             }
@@ -1823,12 +1780,6 @@
             "type": "string"
           },
           {
-            "name": "rp_id_hash",
-            "type": {
-              "array": ["u8", 32]
-            }
-          },
-          {
             "name": "origins",
             "type": {
               "vec": "string"
@@ -1855,28 +1806,6 @@
             }
           },
           {
-            "name": "credential_id",
-            "type": "bytes"
-          },
-          {
-            "name": "mint",
-            "type": {
-              "option": "pubkey"
-            }
-          },
-          {
-            "name": "username",
-            "type": {
-              "option": "string"
-            }
-          },
-          {
-            "name": "expiry",
-            "type": {
-              "option": "u64"
-            }
-          },
-          {
             "name": "is_permanent_member",
             "type": "bool"
           },
@@ -1889,11 +1818,11 @@
             }
           },
           {
-            "name": "transports",
+            "name": "link_wallet_args",
             "type": {
-              "vec": {
+              "option": {
                 "defined": {
-                  "name": "Transport"
+                  "name": "SettingsMutArgs"
                 }
               }
             }
@@ -1909,6 +1838,10 @@
           {
             "name": "member",
             "type": "pubkey"
+          },
+          {
+            "name": "is_permanent_member",
+            "type": "bool"
           },
           {
             "name": "user_creation_args",
@@ -1976,7 +1909,7 @@
           {
             "name": "rp_id",
             "type": {
-              "array": ["u8", 256]
+              "array": ["u8", 255]
             }
           },
           {
@@ -1988,7 +1921,7 @@
           {
             "name": "padding",
             "type": {
-              "array": ["u8", 1]
+              "array": ["u8", 2]
             }
           }
         ]
@@ -2055,10 +1988,6 @@
                 "name": "Permissions"
               }
             }
-          },
-          {
-            "name": "domain_config",
-            "type": "pubkey"
           }
         ]
       }
@@ -2676,35 +2605,6 @@
       }
     },
     {
-      "name": "Transport",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Ble"
-          },
-          {
-            "name": "Cable"
-          },
-          {
-            "name": "Hybrid"
-          },
-          {
-            "name": "Internal"
-          },
-          {
-            "name": "Nfc"
-          },
-          {
-            "name": "SmartCard"
-          },
-          {
-            "name": "USB"
-          }
-        ]
-      }
-    },
-    {
       "name": "User",
       "type": {
         "kind": "struct",
@@ -2718,50 +2618,14 @@
             }
           },
           {
-            "name": "credential_id",
-            "type": {
-              "option": "bytes"
-            }
-          },
-          {
-            "name": "mint",
-            "type": {
-              "option": "pubkey"
-            }
-          },
-          {
             "name": "domain_config",
             "type": {
               "option": "pubkey"
             }
           },
           {
-            "name": "transports",
-            "type": {
-              "option": {
-                "vec": {
-                  "defined": {
-                    "name": "Transport"
-                  }
-                }
-              }
-            }
-          },
-          {
             "name": "is_permanent_member",
             "type": "bool"
-          },
-          {
-            "name": "username",
-            "type": {
-              "option": "string"
-            }
-          },
-          {
-            "name": "expiry",
-            "type": {
-              "option": "u64"
-            }
           },
           {
             "name": "settings_index",

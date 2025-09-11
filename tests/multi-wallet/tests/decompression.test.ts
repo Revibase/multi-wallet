@@ -16,11 +16,13 @@ import type { TestContext } from "../types";
 export function runDecompressionTests() {
   describe("Decompress Settings Account", () => {
     let ctx: TestContext;
-
+    let ctx1: TestContext;
     // Set up a fresh context for this test suite
     before(async () => {
       ctx = await setupTestEnvironment(true);
       ctx = await createMultiWallet(ctx);
+      ctx1 = await setupTestEnvironment(true);
+      ctx1 = await createMultiWallet(ctx1);
     });
 
     it("should handle decompress settings account", async () => {
@@ -53,21 +55,24 @@ export function runDecompressionTests() {
 
     it("should handle decompress settings account then compress settings account", async () => {
       const decompressIxs = await decompressSettingsAccount({
-        index: ctx.index,
-        payer: ctx.payer,
-        signers: [ctx.wallet],
+        index: ctx1.index,
+        payer: ctx1.payer,
+        signers: [ctx1.wallet],
       });
 
       try {
         await sendTransaction(
-          ctx.connection,
+          ctx1.connection,
           [...decompressIxs],
-          ctx.payer,
-          ctx.sendAndConfirm,
-          ctx.addressLookUpTable
+          ctx1.payer,
+          ctx1.sendAndConfirm,
+          ctx1.addressLookUpTable
         );
-        const settings = await getSettingsFromIndex(ctx.index);
-        const settingsData = await fetchMaybeSettings(ctx.connection, settings);
+        const settings = await getSettingsFromIndex(ctx1.index);
+        const settingsData = await fetchMaybeSettings(
+          ctx1.connection,
+          settings
+        );
 
         expect(settingsData.exists).equal(
           true,
@@ -79,28 +84,31 @@ export function runDecompressionTests() {
       }
 
       const compressIxs = await compressSettingsAccount({
-        index: ctx.index,
-        payer: ctx.payer,
-        signers: [ctx.wallet],
+        index: ctx1.index,
+        payer: ctx1.payer,
+        signers: [ctx1.wallet],
       });
 
       try {
         await sendTransaction(
-          ctx.connection,
+          ctx1.connection,
           [...compressIxs],
-          ctx.payer,
-          ctx.sendAndConfirm,
-          ctx.addressLookUpTable
+          ctx1.payer,
+          ctx1.sendAndConfirm,
+          ctx1.addressLookUpTable
         );
-        const settings = await getSettingsFromIndex(ctx.index);
-        const settingsData = await fetchMaybeSettings(ctx.connection, settings);
+        const settings = await getSettingsFromIndex(ctx1.index);
+        const settingsData = await fetchMaybeSettings(
+          ctx1.connection,
+          settings
+        );
         expect(settingsData.exists).equal(
           false,
           "Settings account should be null"
         );
-        const settingsDataCompressed = await fetchSettingsData(ctx.index);
+        const settingsDataCompressed = await fetchSettingsData(ctx1.index);
         expect(Number(settingsDataCompressed.index)).equal(
-          Number(ctx.index),
+          Number(ctx1.index),
           "Settings compressed account should not be null"
         );
       } catch (error) {

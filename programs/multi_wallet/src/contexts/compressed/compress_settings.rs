@@ -92,21 +92,6 @@ impl<'info> CompressSettingsAccount<'info> {
             }
 
             if is_secp256r1_signer {
-                require!(
-                    member.domain_config.ne(&Pubkey::default()),
-                    MultisigError::DomainConfigIsMissing
-                );
-
-                require!(
-                    domain_config.is_some()
-                        && domain_config
-                            .as_ref()
-                            .unwrap()
-                            .key()
-                            .eq(&member.domain_config),
-                    MultisigError::MemberDoesNotBelongToDomainConfig
-                );
-
                 let secp256r1_verify_data = secp256r1_verify_args
                     .as_ref()
                     .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
@@ -162,20 +147,22 @@ impl<'info> CompressSettingsAccount<'info> {
                     bump: settings_data.bump,
                     index: settings_data.index,
                     multi_wallet_bump: settings_data.multi_wallet_bump,
-                    members: CompressedSettings::convert_member_to_compressed_member(
-                        settings_data.get_members()?,
-                    )?,
+                    members: settings_data.get_members()?,
                 };
-                let (settings_info, settings_new_address) =
+                let (settings_account, settings_new_address) =
                     CompressedSettings::create_settings_account(
                         settings_creation_args,
                         data,
                         &light_cpi_accounts,
                     )?;
 
+                settings_account.invariant()?;
+
                 let cpi_inputs = CpiInputs::new_with_address(
                     compressed_proof_args.proof,
-                    vec![settings_info],
+                    vec![settings_account
+                        .to_account_info()
+                        .map_err(ProgramError::from)?],
                     vec![settings_new_address],
                 );
 
@@ -196,10 +183,10 @@ impl<'info> CompressSettingsAccount<'info> {
                     bump: settings_data.bump,
                     index: settings_data.index,
                     multi_wallet_bump: settings_data.multi_wallet_bump,
-                    members: CompressedSettings::convert_member_to_compressed_member(
-                        settings_data.get_members()?,
-                    )?,
+                    members: settings_data.get_members()?,
                 });
+
+                settings_account.invariant()?;
 
                 let settings_info = settings_account
                     .to_account_info()

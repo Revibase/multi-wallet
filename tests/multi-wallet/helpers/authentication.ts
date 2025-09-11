@@ -6,7 +6,6 @@ import {
 import {
   address,
   type GetAccountInfoApi,
-  getAddressEncoder,
   getBase58Decoder,
   getBase58Encoder,
   getBase64Encoder,
@@ -86,28 +85,11 @@ export async function mockAuthenticationResponse(
   let challenge: Uint8Array;
   let slotHash: string | undefined;
   let slotNumber: string | undefined;
-  if (transaction.transactionActionType === "create_new_wallet") {
-    challenge = new Uint8Array(
-      await crypto.subtle.digest(
-        "SHA-256",
-        new Uint8Array([
-          ...getUtf8Encoder().encode("create_new_wallet"),
-          ...getAddressEncoder().encode(ctx.domainConfig),
-          ...new Uint8Array(
-            await crypto.subtle.digest(
-              "SHA-256",
-              new Uint8Array(getUtf8Encoder().encode(ctx.rpId))
-            )
-          ),
-        ])
-      )
-    );
-  } else {
-    ({ challenge, slotHash, slotNumber } = await createTransactionChallenge(
-      connection,
-      transaction
-    ));
-  }
+
+  ({ challenge, slotHash, slotNumber } = await createTransactionChallenge(
+    connection,
+    transaction
+  ));
 
   const clientDataJSON = JSON.stringify({
     type: "webauthn.get",
@@ -145,12 +127,9 @@ export async function mockAuthenticationResponse(
         ? new Uint8Array(getBase58Encoder().encode(slotHash))
         : undefined,
     },
-    signer: {
-      credentialId: "",
-      publicKey: getBase58Decoder().decode(
-        crypto.getRandomValues(new Uint8Array(32))
-      ),
-    },
+    signer: getBase58Decoder().decode(
+      crypto.getRandomValues(new Uint8Array(32))
+    ),
     authData: mockAuthenticatorData,
     domainConfig: ctx.domainConfig,
     signature: normalizeSignatureToLowS(signatureRS),

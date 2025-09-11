@@ -1,23 +1,24 @@
 use crate::{
+    error::MultisigError,
     state::{
-        CreateUserArgs, DomainConfig, MemberKey, ProofArgs, Secp256r1Pubkey, Transport, User,
+        CompressedSettings, CreateUserArgs, DomainConfig, Member, MemberKey, MultisigSettings,
+        Permission, Permissions, ProofArgs, Secp256r1Pubkey, SettingsMutArgs, User,
         UserCreationArgs,
     },
     LIGHT_CPI_SIGNER,
 };
 use anchor_lang::prelude::*;
-use light_sdk::cpi::{CpiAccounts, CpiInputs};
+use light_sdk::{
+    account::LightAccount,
+    cpi::{CpiAccounts, CpiInputs},
+};
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct CreateDomainUserArgs {
     pub member: Secp256r1Pubkey,
-    pub credential_id: Vec<u8>,
-    pub mint: Option<Pubkey>,
-    pub username: Option<String>,
-    pub expiry: Option<u64>,
     pub is_permanent_member: bool,
     pub user_creation_args: UserCreationArgs,
-    pub transports: Vec<Transport>,
+    pub link_wallet_args: Option<SettingsMutArgs>,
 }
 
 #[derive(Accounts)]
@@ -46,20 +47,70 @@ impl<'info> CreateDomainUsers<'info> {
 
         let mut account_infos = vec![];
         let mut new_addressess = vec![];
+
         for args in create_user_args {
+            let mut settings_index = None;
+            //allow domain authority to directly link domain user to a particular wallet owned by the domain authority
+            if let Some(link_wallet_args) = args.link_wallet_args {
+                let mut settings_account = LightAccount::<'_, CompressedSettings>::new_mut(
+                    &crate::ID,
+                    &link_wallet_args.account_meta,
+                    link_wallet_args.data,
+                )
+                .map_err(ProgramError::from)?;
+
+                let settings_data = settings_account
+                    .data
+                    .as_ref()
+                    .ok_or(MultisigError::InvalidArguments)?;
+
+                settings_index = Some(settings_data.index);
+
+                require!(
+                    settings_data.threshold == 1
+                        && settings_data.members.len() == 1
+                        && settings_data.members[0]
+                            .pubkey
+                            .eq(&MemberKey::convert_ed25519(ctx.accounts.authority.key)?)
+                        && !settings_data.members[0]
+                            .permissions
+                            .has(Permission::IsPermanentMember),
+                    MultisigError::InvalidArguments
+                );
+
+                let mut permissions = vec![
+                    Permission::InitiateTransaction,
+                    Permission::VoteTransaction,
+                    Permission::ExecuteTransaction,
+                ];
+
+                if args.is_permanent_member {
+                    permissions.push(Permission::IsPermanentMember);
+                }
+
+                settings_account.set_members(vec![Member {
+                    pubkey: MemberKey::convert_secp256r1(&args.member)?,
+                    permissions: Permissions::from_permissions(permissions),
+                }])?;
+
+                settings_account.invariant()?;
+
+                account_infos.push(
+                    settings_account
+                        .to_account_info()
+                        .map_err(ProgramError::from)?,
+                );
+            }
+
             let (account_info, new_address_params) = User::create_user_account(
                 args.user_creation_args,
                 &light_cpi_accounts,
                 CreateUserArgs {
                     member: MemberKey::convert_secp256r1(&args.member)?,
-                    credential_id: Some(args.credential_id),
-                    mint: args.mint,
-                    username: args.username,
-                    expiry: args.expiry,
                     is_permanent_member: args.is_permanent_member,
-                    transports: Some(args.transports),
                 },
                 Some(ctx.accounts.domain_config.key()),
+                settings_index,
             )?;
             account_infos.push(account_info);
             new_addressess.push(new_address_params);

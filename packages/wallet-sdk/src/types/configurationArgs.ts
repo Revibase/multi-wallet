@@ -21,6 +21,8 @@ export type ConfigurationArgs =
     }
   | {
       type: "RemoveMembers";
-      members: { pubkey: Address | Secp256r1Key }[];
+      members: {
+        pubkey: Address | Secp256r1Key;
+      }[];
     }
   | { type: "SetThreshold"; threshold: number };

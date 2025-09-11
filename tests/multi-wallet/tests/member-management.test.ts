@@ -5,7 +5,6 @@ import {
   fetchMaybeUserData,
   fetchSettingsData,
   fetchUserData,
-  MULTI_WALLET_PROGRAM_ADDRESS,
   Permissions,
   prepareTransactionBundle,
   prepareTransactionMessage,
@@ -48,12 +47,11 @@ export function runMemberManagementTests() {
         ],
       });
 
-      const transactionMessageBytes = prepareTransactionMessage(
-        MULTI_WALLET_PROGRAM_ADDRESS.toString(),
-        ctx.multiWalletVault,
+      const transactionMessageBytes = prepareTransactionMessage({
+        payer: ctx.multiWalletVault,
         instructions,
-        ctx.addressLookUpTable
-      );
+        addressesByLookupTableAddress: ctx.addressLookUpTable,
+      });
       const { ixs, payer, addressLookupTableAccounts } =
         await prepareTransactionSync({
           compressed: ctx.compressed,
@@ -107,12 +105,11 @@ export function runMemberManagementTests() {
         ],
       });
 
-      const transactionMessageBytes = prepareTransactionMessage(
-        MULTI_WALLET_PROGRAM_ADDRESS,
-        ctx.multiWalletVault,
+      const transactionMessageBytes = prepareTransactionMessage({
+        payer: ctx.multiWalletVault,
         instructions,
-        ctx.addressLookUpTable
-      );
+        addressesByLookupTableAddress: ctx.addressLookUpTable,
+      });
       const result = await prepareTransactionBundle({
         compressed: ctx.compressed,
         payer: ctx.payer,
@@ -158,12 +155,11 @@ export function runMemberManagementTests() {
         ],
       });
 
-      const transactionMessageBytes = prepareTransactionMessage(
-        MULTI_WALLET_PROGRAM_ADDRESS,
-        ctx.multiWalletVault,
+      const transactionMessageBytes = prepareTransactionMessage({
+        payer: ctx.multiWalletVault,
         instructions,
-        ctx.addressLookUpTable
-      );
+        addressesByLookupTableAddress: ctx.addressLookUpTable,
+      });
       const result = await prepareTransactionBundle({
         compressed: ctx.compressed,
         payer: ctx.payer,
@@ -207,12 +203,11 @@ export function runMemberManagementTests() {
         ],
       });
 
-      const transactionMessageBytes = prepareTransactionMessage(
-        MULTI_WALLET_PROGRAM_ADDRESS,
-        ctx.multiWalletVault,
+      const transactionMessageBytes = prepareTransactionMessage({
+        payer: ctx.multiWalletVault,
         instructions,
-        ctx.addressLookUpTable
-      );
+        addressesByLookupTableAddress: ctx.addressLookUpTable,
+      });
       const result = await prepareTransactionBundle({
         compressed: ctx.compressed,
         payer: ctx.payer,

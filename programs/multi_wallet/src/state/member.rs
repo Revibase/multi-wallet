@@ -24,7 +24,6 @@ use super::{Secp256r1Pubkey, Secp256r1VerifyArgs, COMPRESSED_PUBKEY_SERIALIZED_S
 pub struct Member {
     pub pubkey: MemberKey,
     pub permissions: Permissions,
-    pub domain_config: Pubkey, // if none, value will be Pubkey::Default
 }
 
 #[derive(

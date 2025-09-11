@@ -3,19 +3,25 @@ import {
   AddressesByLookupTableAddress,
   Instruction,
 } from "@solana/kit";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../generated";
 import { customTransactionMessageSerialize } from "../utils";
 import { compileToWrappedMessageV0 } from "../utils/transactionMessage/compileToWrappedMessageV0";
-
-export function prepareTransactionMessage(
-  recentBlockhash: string,
-  payer: Address,
-  instructions: Instruction[],
-  addressesByLookupTableAddress?: AddressesByLookupTableAddress
-) {
+interface PrepareTransactionMessageArgs {
+  instructions: Instruction[];
+  payer: Address;
+  recentBlockhash?: string;
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
+}
+export function prepareTransactionMessage({
+  instructions,
+  payer,
+  recentBlockhash = MULTI_WALLET_PROGRAM_ADDRESS.toString(),
+  addressesByLookupTableAddress,
+}: PrepareTransactionMessageArgs) {
   const compiledMessage = compileToWrappedMessageV0({
+    instructions,
     payer,
     recentBlockhash,
-    instructions,
     addressesByLookupTableAddress,
   });
 

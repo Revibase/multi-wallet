@@ -8,13 +8,13 @@
     "@coral-xyz/anchor": "^0.31.1",
     "@lightprotocol/stateless.js": "^0.22.0",
     "@noble/curves": "1.9.7",
-    "@revibase/wallet-sdk": "2.3.6",
-    "@solana-program/address-lookup-table": "^0.7.0",
-    "@solana-program/compute-budget": "^0.8.0",
-    "@solana-program/system": "^0.7.0",
-    "@solana-program/token": "^0.5.1",
-    "@solana/kit": "2.3.0",
-    "@solana/transaction-confirmation": "2.3.0"
+    "@revibase/wallet-sdk": "^2.4.7",
+    "@solana-program/address-lookup-table": "0.8.0",
+    "@solana-program/compute-budget": "0.9.0",
+    "@solana-program/system": "0.8.0",
+    "@solana-program/token": "0.6.0",
+    "@solana/kit": "3.0.2",
+    "@solana/transaction-confirmation": "3.0.2"
   },
   "devDependencies": {
     "@types/bn.js": "^5.1.0",

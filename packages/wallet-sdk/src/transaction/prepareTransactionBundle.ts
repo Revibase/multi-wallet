@@ -1,3 +1,4 @@
+import { sha256 } from "@noble/hashes/sha2";
 import {
   AddressesByLookupTableAddress,
   Instruction,
@@ -17,7 +18,6 @@ import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
 } from "../utils/compressed/internal";
-import { getHash } from "../utils/transactionMessage/internal";
 
 interface CreateTransactionBundleArgs {
   payer: TransactionSigner;
@@ -64,9 +64,9 @@ export async function prepareTransactionBundle({
   for (let i = 0; i < transactionMessageBytes.length; i += chunkSize) {
     const chunk = transactionMessageBytes.subarray(i, i + chunkSize);
     chunks.push(chunk);
-    chunksHash.push(getHash(chunk));
+    chunksHash.push(sha256(chunk));
   }
-  const finalBufferHash = getHash(transactionMessageBytes);
+  const finalBufferHash = sha256(transactionMessageBytes);
 
   // --- Stage 3: Derive readonly compressed proof args if necessary---
   const { settingsReadonlyArgs, proof, packedAccounts } =

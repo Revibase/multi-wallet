@@ -93,21 +93,6 @@ impl<'info> TransactionBufferExecute<'info> {
         );
 
         if signer.get_type().eq(&KeyType::Secp256r1) {
-            require!(
-                member.domain_config.ne(&Pubkey::default()),
-                MultisigError::DomainConfigIsMissing
-            );
-
-            require!(
-                domain_config.is_some()
-                    && domain_config
-                        .as_ref()
-                        .unwrap()
-                        .key()
-                        .eq(&member.domain_config),
-                MultisigError::MemberDoesNotBelongToDomainConfig
-            );
-
             let secp256r1_verify_data = secp256r1_verify_args
                 .as_ref()
                 .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;

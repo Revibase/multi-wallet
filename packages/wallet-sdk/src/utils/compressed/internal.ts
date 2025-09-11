@@ -207,7 +207,7 @@ export async function constructSettingsProofArgs(
   const packedAccounts = new PackedAccounts();
   if (compressed) {
     await packedAccounts.addSystemAccounts();
-    const settingsAddress = await getCompressedSettingsAddressFromIndex(index);
+    const settingsAddress = getCompressedSettingsAddressFromIndex(index);
     const settings = (
       await getCompressedAccountHashes([
         { address: settingsAddress, type: "Settings" },

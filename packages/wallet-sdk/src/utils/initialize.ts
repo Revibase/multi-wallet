@@ -2,84 +2,86 @@ import {
   createRpc,
   Rpc as LightProtocolRpc,
 } from "@lightprotocol/stateless.js";
-import {
-  createSolanaRpc,
-  Rpc,
-  SolanaRpcApi,
-  TransactionSigner,
-} from "@solana/kit";
+import { createSolanaRpc, Rpc, SolanaRpcApi } from "@solana/kit";
 import { registerWallet } from "@wallet-standard/core";
 import { createRevibaseAdapter } from "../adapter/core";
-import { getRandomPayer, JitoTipsConfig } from "../adapter/util";
 import { RevibaseWallet } from "../adapter/wallet";
+import { JitoTipsConfig } from "../types";
+import { getRandomPayer } from "./helper";
 
-let lightProtocolRpc: LightProtocolRpc | null = null;
-let rpc: Rpc<SolanaRpcApi> | null = null;
-let feePayer: TransactionSigner | null = null;
+let lightProtocolRpc: LightProtocolRpc | undefined;
+let solanaRpc: Rpc<SolanaRpcApi> | undefined;
+let globalPayerEndpoint: string | undefined;
+let globalJitoTipsConfig: JitoTipsConfig | undefined;
+let globalAuthUrl: string | undefined;
+let globalExpectedOrigin: string | undefined;
+let globalExpectedRPID: string | undefined;
 
 export function getLightProtocolRpc() {
-  if (!lightProtocolRpc) {
-    throw new Error("Rpc not initialized yet");
-  }
+  if (!lightProtocolRpc) throw new Error("Rpc not initialized yet");
   return lightProtocolRpc;
 }
 
 export function getSolanaRpc() {
-  if (!rpc) {
-    throw new Error("Rpc not initialized yet");
-  }
-  return rpc;
+  if (!solanaRpc) throw new Error("Rpc not initialized yet");
+  return solanaRpc;
 }
 
 export function getFeePayer() {
-  if (!feePayer) {
-    throw new Error("Payer not initialized yet");
-  }
-  return feePayer;
+  return getRandomPayer(globalPayerEndpoint ?? "https://api.revibase.com");
+}
+
+export function getJitoTipsConfig() {
+  if (!globalJitoTipsConfig)
+    throw new Error("Jito Tips Configuration is not initialized yet");
+  return globalJitoTipsConfig;
+}
+
+export function getAuthUrl() {
+  return globalAuthUrl ?? "https://auth.revibase.com";
+}
+
+export function getExpectedOrigin() {
+  return globalExpectedOrigin ?? "https://auth.revibase.com";
+}
+
+export function getExpectedRPID() {
+  return globalExpectedRPID ?? "revibase.com";
 }
 
 export function initializeMultiWallet({
-  jitoTipsConfig,
   rpcEndpoint,
+  payerEndpoint,
+  jitoTipsConfig,
   compressionApiEndpoint,
   proverEndpoint,
-  payer,
   authUrl,
   expectedOrigin,
   expectedRPID,
 }: {
-  jitoTipsConfig: JitoTipsConfig;
   rpcEndpoint: string;
-  payer?: TransactionSigner;
+  payerEndpoint?: string;
+  jitoTipsConfig?: JitoTipsConfig;
   compressionApiEndpoint?: string;
   proverEndpoint?: string;
   authUrl?: string;
   expectedOrigin?: string;
   expectedRPID?: string;
 }) {
-  rpc = createSolanaRpc(rpcEndpoint);
+  solanaRpc = createSolanaRpc(rpcEndpoint);
   lightProtocolRpc = createRpc(
     rpcEndpoint,
     compressionApiEndpoint,
     proverEndpoint
   );
-  if (!payer) {
-    getRandomPayer().then((result) => {
-      feePayer = result;
-    });
-  } else {
-    feePayer = payer;
-  }
+
+  globalPayerEndpoint = payerEndpoint;
+  globalJitoTipsConfig = jitoTipsConfig;
+  globalAuthUrl = authUrl;
+  globalExpectedOrigin = expectedOrigin;
+  globalExpectedRPID = expectedRPID;
+
   if (typeof window !== "undefined") {
-    registerWallet(
-      new RevibaseWallet(
-        createRevibaseAdapter({
-          jitoTipsConfig,
-          authUrl,
-          expectedOrigin,
-          expectedRPID,
-        })
-      )
-    );
+    registerWallet(new RevibaseWallet(createRevibaseAdapter()));
   }
 }

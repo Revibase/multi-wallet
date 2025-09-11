@@ -6,6 +6,8 @@ export const Permission = {
   ExecuteTransaction: 1 << 2,
 } as const;
 
+export const PermanentMemberPermission: IPermission = 1 << 3;
+
 export type IPermission = (typeof Permission)[keyof typeof Permission];
 
 export class Permissions implements IPermissions {

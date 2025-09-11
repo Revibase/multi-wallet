@@ -4,7 +4,6 @@ import {
 } from "@solana/wallet-standard-features";
 import { WalletAccount } from "@wallet-standard/base";
 import { ReadonlyWalletAccount } from "@wallet-standard/core";
-import { SignerPayload } from "../types";
 
 export interface RevibaseEvent {
   connect(...args: unknown[]): unknown;
@@ -27,7 +26,7 @@ export interface RevibaseEventEmitter {
 
 export interface Revibase extends RevibaseEventEmitter {
   publicKey: string | null;
-  member: SignerPayload | null;
+  member: string | null;
   index: number | null;
   connect(options?: { onlyIfTrusted?: boolean }): Promise<void>;
   disconnect(): void;
@@ -38,21 +37,17 @@ export interface Revibase extends RevibaseEventEmitter {
   signIn(input?: SolanaSignInInput): Promise<
     {
       publicKey: string;
-      member: SignerPayload;
+      member: string;
       index: number;
     } & Omit<SolanaSignInOutput, "account">
   >;
 }
 
 export class RevibaseWalletAccount extends ReadonlyWalletAccount {
-  readonly member: SignerPayload | null;
+  readonly member: string | null;
   readonly index: number;
 
-  constructor(
-    account: WalletAccount,
-    member: SignerPayload | null,
-    index: number
-  ) {
+  constructor(account: WalletAccount, member: string | null, index: number) {
     super(account);
     this.member = member;
     this.index = index;

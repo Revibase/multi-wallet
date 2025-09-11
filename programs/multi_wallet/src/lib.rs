@@ -11,12 +11,12 @@ use light_sdk::{cpi::CpiSigner, derive_light_cpi_signer};
 use state::*;
 use utils::*;
 
-declare_id!("revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb");
+declare_id!("reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT");
 
 pub const ADMIN: Pubkey = pubkey!("AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ");
 
 pub const LIGHT_CPI_SIGNER: CpiSigner =
-    derive_light_cpi_signer!("revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb");
+    derive_light_cpi_signer!("reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT");
 
 #[program]
 pub mod multi_wallet {
@@ -87,6 +87,7 @@ pub mod multi_wallet {
         permissions: Permissions,
         user_mut_args: UserMutArgs,
         compressed_proof_args: ProofArgs,
+        set_as_delegate: bool,
     ) -> Result<()> {
         CreateMultiWallet::process(
             ctx,
@@ -94,6 +95,7 @@ pub mod multi_wallet {
             permissions,
             compressed_proof_args,
             user_mut_args,
+            set_as_delegate,
         )
     }
 
@@ -217,6 +219,7 @@ pub mod multi_wallet {
         settings_creation: SettingsCreationArgs,
         user_mut_args: UserMutArgs,
         settings_index: u128,
+        set_as_delegate: bool,
     ) -> Result<()> {
         CreateMultiWalletCompressed::process(
             ctx,
@@ -226,6 +229,7 @@ pub mod multi_wallet {
             settings_creation,
             user_mut_args,
             settings_index,
+            set_as_delegate,
         )
     }
 

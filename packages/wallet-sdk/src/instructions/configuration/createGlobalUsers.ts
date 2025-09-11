@@ -1,4 +1,4 @@
-import { Address, TransactionSigner } from "@solana/kit";
+import { AccountRole, TransactionSigner } from "@solana/kit";
 import { getCreateGlobalUsersInstruction } from "../../generated";
 import { getLightProtocolRpc, getUserAddress } from "../../utils";
 import {
@@ -8,23 +8,31 @@ import {
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 
+interface UserCreationArgs {
+  member: TransactionSigner;
+  isPermanentMember: boolean;
+}
 export async function createGlobalUsers({
-  members,
+  createUserArgs,
   payer,
 }: {
   payer: TransactionSigner;
-  members: Address[];
+  createUserArgs: UserCreationArgs[];
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
-
+  packedAccounts.addPreAccounts(
+    createUserArgs.map((x) => ({
+      address: x.member.address,
+      role: AccountRole.READONLY_SIGNER,
+      signer: x.member,
+    }))
+  );
   const newAddressParams = getNewAddressesParams(
-    await Promise.all(
-      members.map(async (member) => ({
-        pubkey: await getUserAddress(member),
-        type: "User",
-      }))
-    )
+    createUserArgs.map((x) => ({
+      pubkey: getUserAddress(x.member.address),
+      type: "User",
+    }))
   );
   const proof = await getLightProtocolRpc().getValidityProofV0(
     [],
@@ -37,14 +45,17 @@ export async function createGlobalUsers({
     proof.rootIndices,
     newAddressParams
   );
+
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
+
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
 
   return getCreateGlobalUsersInstruction({
     compressedProofArgs,
     payer,
-    createUserArgs: members.map((x, index) => ({
-      member: x,
+    createUserArgs: createUserArgs.map((x, index) => ({
+      member: x.member.address,
+      isPermanentMember: x.isPermanentMember,
       userCreationArgs: userCreationArgs[index],
     })),
     remainingAccounts,

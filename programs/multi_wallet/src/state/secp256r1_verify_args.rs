@@ -225,10 +225,8 @@ impl Secp256r1VerifyArgs {
             domain_data.is_disabled.eq(&0),
             MultisigError::DomainConfigIsDisabled
         );
-        let mut slot_hash: Option<[u8; 32]> = None;
-        if challenge_args.action_type != TransactionActionType::CreateNewWallet {
-            slot_hash = Some(self.fetch_slot_hash(sysvar_slot_history)?);
-        }
+
+        let slot_hash = self.fetch_slot_hash(sysvar_slot_history)?;
 
         let (origin, challenge, webauthn_type) = self.parse_client_data_json()?;
 
@@ -245,9 +243,7 @@ impl Secp256r1VerifyArgs {
         buffer.extend_from_slice(challenge_args.action_type.to_bytes());
         buffer.extend_from_slice(challenge_args.account.as_ref());
         buffer.extend_from_slice(&challenge_args.message_hash);
-        if slot_hash.is_some() {
-            buffer.extend_from_slice(&slot_hash.unwrap());
-        }
+        buffer.extend_from_slice(&slot_hash);
 
         let expected_challenge = hash(&buffer).to_bytes();
 
@@ -261,7 +257,7 @@ impl Secp256r1VerifyArgs {
 
         require!(
             domain_data.rp_id_hash.eq(&rp_id_hash),
-            MultisigError::InvalidSignedMessage
+            MultisigError::RpIdHashMismatch
         );
 
         let expected_client_data_hash = hash(&self.client_data_json).to_bytes();

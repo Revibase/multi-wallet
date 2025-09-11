@@ -80,21 +80,6 @@ impl<'info> TransactionExecuteSync<'info> {
             }
 
             if is_secp256r1_signer {
-                require!(
-                    member.domain_config.ne(&Pubkey::default()),
-                    MultisigError::DomainConfigIsMissing
-                );
-
-                require!(
-                    domain_config.is_some()
-                        && domain_config
-                            .as_ref()
-                            .unwrap()
-                            .key()
-                            .eq(&member.domain_config),
-                    MultisigError::MemberDoesNotBelongToDomainConfig
-                );
-
                 let vault_transaction_message = transaction_message
                     .convert_to_vault_transaction_message(ctx.remaining_accounts)?;
 

@@ -1,9 +1,10 @@
 import { CBORType, decodeCBOR, encodeCBOR } from "@levischuck/tiny-cbor";
 import { p256 } from "@noble/curves/nist.js";
 import { getBase58Decoder, getBase58Encoder } from "@solana/kit";
+import { getAuthUrl } from "../initialize";
 import { hexToUint8Array, uint8ArrayToHex } from "./internal";
 
-export function createPopUp(url = "https://auth.revibase.com/loading") {
+export function createPopUp(url = `${getAuthUrl()}/loading`) {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }

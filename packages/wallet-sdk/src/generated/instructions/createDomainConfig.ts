@@ -54,9 +54,7 @@ export function getCreateDomainConfigDiscriminatorBytes() {
 export type CreateDomainConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountDomainConfig extends string | AccountMeta<string> = string,
-  TAccountPayer extends
-    | string
-    | AccountMeta<string> = 'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ',
+  TAccountPayer extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
     | AccountMeta<string> = '11111111111111111111111111111111',
@@ -82,14 +80,12 @@ export type CreateDomainConfigInstruction<
 export type CreateDomainConfigInstructionData = {
   discriminator: ReadonlyUint8Array;
   rpId: string;
-  rpIdHash: ReadonlyUint8Array;
   origins: Array<string>;
   authority: Address;
 };
 
 export type CreateDomainConfigInstructionDataArgs = {
   rpId: string;
-  rpIdHash: ReadonlyUint8Array;
   origins: Array<string>;
   authority: Address;
 };
@@ -99,7 +95,6 @@ export function getCreateDomainConfigInstructionDataEncoder(): Encoder<CreateDom
     getStructEncoder([
       ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
       ['rpId', addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
-      ['rpIdHash', fixEncoderSize(getBytesEncoder(), 32)],
       [
         'origins',
         getArrayEncoder(
@@ -116,7 +111,6 @@ export function getCreateDomainConfigInstructionDataDecoder(): Decoder<CreateDom
   return getStructDecoder([
     ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
     ['rpId', addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
-    ['rpIdHash', fixDecoderSize(getBytesDecoder(), 32)],
     [
       'origins',
       getArrayDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
@@ -141,10 +135,9 @@ export type CreateDomainConfigInput<
   TAccountSystemProgram extends string = string,
 > = {
   domainConfig: Address<TAccountDomainConfig>;
-  payer?: TransactionSigner<TAccountPayer>;
+  payer: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
   rpId: CreateDomainConfigInstructionDataArgs['rpId'];
-  rpIdHash: CreateDomainConfigInstructionDataArgs['rpIdHash'];
   origins: CreateDomainConfigInstructionDataArgs['origins'];
   authority: CreateDomainConfigInstructionDataArgs['authority'];
 };
@@ -185,10 +178,6 @@ export function getCreateDomainConfigInstruction<
   const args = { ...input };
 
   // Resolve default values.
-  if (!accounts.payer.value) {
-    accounts.payer.value =
-      'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ' as Address<'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ'>;
-  }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;

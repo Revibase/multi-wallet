@@ -1,3 +1,4 @@
+import { sha256 } from "@noble/hashes/sha2";
 import {
   COMPUTE_BUDGET_PROGRAM_ADDRESS,
   estimateComputeUnitLimitFactory,
@@ -5,6 +6,7 @@ import {
   getSetComputeUnitPriceInstruction,
 } from "@solana-program/compute-budget";
 import {
+  address,
   AddressesByLookupTableAddress,
   appendTransactionMessageInstructions,
   compressTransactionMessageUsingAddressLookupTables,
@@ -34,14 +36,17 @@ import {
   verifyMessage,
 } from "../passkeys";
 import {
-  estimateTransactionSize,
   prepareTransactionBundle,
   prepareTransactionMessage,
   prepareTransactionSync,
 } from "../transaction";
-import { Secp256r1Key, SignerPayload } from "../types";
+import { Secp256r1Key } from "../types";
 import {
   checkIfSettingsAccountIsCompressed,
+  fetchUserData,
+  getAuthUrl,
+  getExpectedOrigin,
+  getExpectedRPID,
   getFeePayer,
   getMultiWalletFromSettings,
   getSettingsFromIndex,
@@ -49,27 +54,15 @@ import {
   getTransactionBufferAddress,
 } from "../utils";
 import { base64URLStringToBuffer } from "../utils/passkeys/internal";
-import { getHash } from "../utils/transactionMessage/internal";
 import {
-  assertTransactionIsNotSigned,
-  createSignInMessageText,
   estimateJitoTips,
+  estimateTransactionSizeExceedLimit,
   getMedianPriorityFees,
-  JitoTipsConfig,
-} from "./util";
+} from "../utils/transactionMessage/helper";
+import { assertTransactionIsNotSigned, createSignInMessageText } from "./util";
 import { Revibase, RevibaseEvent } from "./window";
 
-export function createRevibaseAdapter({
-  jitoTipsConfig,
-  expectedRPID,
-  expectedOrigin,
-  authUrl,
-}: {
-  jitoTipsConfig: JitoTipsConfig;
-  expectedOrigin?: string;
-  expectedRPID?: string;
-  authUrl?: string;
-}): Revibase {
+export function createRevibaseAdapter(): Revibase {
   const computeBudgetEstimate = estimateComputeUnitLimitFactory({
     rpc: getSolanaRpc(),
   });
@@ -99,7 +92,7 @@ export function createRevibaseAdapter({
           if (account) {
             const { publicKey, member, index } = JSON.parse(account) as {
               publicKey: string | null;
-              member: SignerPayload | null;
+              member: string | null;
               index: number | null;
             };
             this.publicKey = publicKey;
@@ -172,18 +165,17 @@ export function createRevibaseAdapter({
           (x) => x.address.toString() !== this.publicKey
         );
 
-        const transactionMessageBytes = prepareTransactionMessage(
-          decompiledMessage.lifetimeConstraint.blockhash.toString(),
-          decompiledMessage.feePayer.address,
-          decompiledMessage.instructions.filter(
+        const transactionMessageBytes = prepareTransactionMessage({
+          payer: address(this.publicKey),
+          instructions: decompiledMessage.instructions.filter(
             (x, index) =>
               !(
                 index <= 1 &&
                 x.programAddress === COMPUTE_BUDGET_PROGRAM_ADDRESS
               )
           ),
-          addressesByLookupTableAddress
-        );
+          addressesByLookupTableAddress,
+        });
 
         const payload: {
           id: string;
@@ -194,20 +186,21 @@ export function createRevibaseAdapter({
 
         const compressed = await checkIfSettingsAccountIsCompressed(this.index);
         const settings = await getSettingsFromIndex(this.index);
-
+        const payer = await getFeePayer();
+        const authUrl = getAuthUrl();
         if (
-          (await estimateTransactionSize({
+          await estimateTransactionSizeExceedLimit({
             additionalSigners,
             compressed,
-            payer: getFeePayer(),
+            payer,
             settingsIndex: this.index,
             transactionMessageBytes,
-          })) > 1644
+          })
         ) {
           const bufferIndex = Math.round(Math.random() * 255);
           const transactionBufferAddress = await getTransactionBufferAddress(
             settings,
-            new Secp256r1Key(this.member.publicKey),
+            new Secp256r1Key(this.member),
             bufferIndex
           );
 
@@ -218,16 +211,17 @@ export function createRevibaseAdapter({
             transactionMessageBytes,
             authUrl,
           });
-          const jitoBundlesTipAmount = await estimateJitoTips(jitoTipsConfig);
+
+          const jitoBundlesTipAmount = await estimateJitoTips();
 
           const result = await prepareTransactionBundle({
             compressed,
             index: this.index,
             bufferIndex,
             transactionMessageBytes,
-            creator: new Secp256r1Key(signedTx.signer.publicKey, signedTx),
+            creator: new Secp256r1Key(signedTx.signer, signedTx),
             jitoBundlesTipAmount,
-            payer: getFeePayer(),
+            payer,
             additionalSigners,
           });
           payload.push(...result);
@@ -243,10 +237,10 @@ export function createRevibaseAdapter({
             await prepareTransactionSync({
               compressed,
               signers: [
-                new Secp256r1Key(signedTx.signer.publicKey, signedTx),
+                new Secp256r1Key(signedTx.signer, signedTx),
                 ...additionalSigners,
               ],
-              payer: getFeePayer(),
+              payer,
               transactionMessageBytes,
               index: this.index,
             })
@@ -328,7 +322,7 @@ export function createRevibaseAdapter({
         }
 
         const decodedMessage = new TextDecoder().decode(message);
-
+        const authUrl = getAuthUrl();
         const response = await signPasskeyMessage({
           message: decodedMessage,
           signer: this.member,
@@ -340,7 +334,7 @@ export function createRevibaseAdapter({
             response.authResponse.response.authenticatorData ?? ""
           )
         );
-        const clientDataHash = getHash(
+        const clientDataHash = sha256(
           new Uint8Array(
             base64URLStringToBuffer(
               response.authResponse.response.clientDataJSON
@@ -366,7 +360,7 @@ export function createRevibaseAdapter({
     signIn: async function (input?: SolanaSignInInput): Promise<
       {
         publicKey: string;
-        member: SignerPayload;
+        member: string;
         index: number;
       } & Omit<SolanaSignInOutput, "account">
     > {
@@ -377,12 +371,13 @@ export function createRevibaseAdapter({
           address: input?.address ?? this.publicKey ?? undefined,
           nonce: crypto.randomUUID(),
         });
-
+        const authUrl = getAuthUrl();
         const response = await signPasskeyMessage({
           message,
           authUrl,
         });
-
+        const expectedOrigin = getExpectedOrigin();
+        const expectedRPID = getExpectedRPID();
         const verified = await verifyMessage({
           message,
           response,
@@ -393,10 +388,11 @@ export function createRevibaseAdapter({
           throw Error("Failed to verify signed message");
         }
         this.member = response.signer;
-        if (!this.member.settingsIndex) {
+        const userData = await fetchUserData(new Secp256r1Key(this.member));
+        if (userData.settingsIndex.__option === "None") {
           throw Error("User has no delegated wallet");
         }
-        this.index = this.member.settingsIndex;
+        this.index = Number(userData.settingsIndex.value);
         const settings = await getSettingsFromIndex(this.index);
         this.publicKey = (
           await getMultiWalletFromSettings(settings)
@@ -417,7 +413,7 @@ export function createRevibaseAdapter({
             response.authResponse.response.authenticatorData ?? ""
           )
         );
-        const clientDataHash = getHash(
+        const clientDataHash = sha256(
           new Uint8Array(
             base64URLStringToBuffer(
               response.authResponse.response.clientDataJSON

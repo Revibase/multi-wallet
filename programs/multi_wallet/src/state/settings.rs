@@ -175,7 +175,15 @@ pub trait MultisigSettings {
             if permissions.has(Permission::ExecuteTransaction) {
                 permission_counts.executors += 1;
             }
+            if permissions.has(Permission::IsPermanentMember) {
+                permission_counts.permanent_members += 1;
+            }
         }
+
+        require!(
+            permission_counts.permanent_members <= 1,
+            MultisigError::PermanentMemberNotAllowed
+        );
 
         require!(
             threshold as usize <= permission_counts.voters,
@@ -203,27 +211,59 @@ pub trait MultisigSettings {
         sysvar_slot_history: &Option<UncheckedAccount<'a>>,
         instructions_sysvar: Option<&UncheckedAccount<'a>>,
     ) -> Result<Vec<MemberWithAddPermissionsArgs>> {
+        let has_existing_perm_member = self
+            .get_members()
+            .unwrap()
+            .iter()
+            .any(|f| f.permissions.has(Permission::IsPermanentMember));
         // Validate and verify all members
         for member_with_args in &new_members {
-            let member = &member_with_args.member;
+            if member_with_args.user_args.data.is_permanent_member {
+                require!(
+                    !has_existing_perm_member,
+                    MultisigError::PermanentMemberNotAllowed
+                );
 
-            require!(
-                !member_with_args.user_args.data.is_permanent_member,
-                MultisigError::PermanentMemberNotAllowed
-            );
+                require!(
+                    member_with_args.user_args.data.settings_index.is_none(),
+                    MultisigError::UserAlreadyDelegated
+                );
 
-            match member.pubkey.get_type() {
+                require!(
+                    member_with_args.set_as_delegate,
+                    MultisigError::PermanentMemberNotAllowed
+                );
+
+                require!(
+                    member_with_args
+                        .member
+                        .permissions
+                        .has(Permission::IsPermanentMember),
+                    MultisigError::PermanentMemberNotAllowed
+                );
+            } else {
+                require!(
+                    !member_with_args
+                        .member
+                        .permissions
+                        .has(Permission::IsPermanentMember),
+                    MultisigError::PermanentMemberNotAllowed
+                )
+            }
+
+            match member_with_args.member.pubkey.get_type() {
                 KeyType::Ed25519 => {
                     require!(
-                        remaining_accounts
-                            .iter()
-                            .any(|f| f.is_signer && f.key.to_bytes().eq(&member.pubkey.get_seed())),
+                        remaining_accounts.iter().any(|f| f.is_signer
+                            && f.key
+                                .to_bytes()
+                                .eq(&member_with_args.member.pubkey.get_seed())),
                         MultisigError::NoSignerFound
                     );
                 }
                 KeyType::Secp256r1 => {
                     let (domain_config, rp_id_hash) =
-                        Self::verify_domain_config(remaining_accounts, &member.domain_config)?;
+                        Self::extract_domain_config_account(remaining_accounts, &member_with_args)?;
 
                     let secp256r1_verify_data = member_with_args
                         .verify_args
@@ -235,7 +275,7 @@ pub trait MultisigSettings {
 
                     secp256r1_verify_data.verify_webauthn(
                         sysvar_slot_history,
-                        &domain_config,
+                        &Some(domain_config),
                         instructions_sysvar,
                         ChallengeArgs {
                             account: *settings,
@@ -258,16 +298,23 @@ pub trait MultisigSettings {
         &mut self,
         member_pubkeys: Vec<MemberKeyWithRemovePermissionsArgs>,
     ) -> Result<Vec<MemberKeyWithRemovePermissionsArgs>> {
-        for member in &member_pubkeys {
+        if let Some(existing_perm_member) = self
+            .get_members()?
+            .iter()
+            .find(|f| f.permissions.has(Permission::IsPermanentMember))
+        {
             require!(
-                !member.user_args.data.is_permanent_member,
-                MultisigError::PermanentMemberNotAllowed
+                !member_pubkeys
+                    .iter()
+                    .any(|f| f.member_key.eq(&existing_perm_member.pubkey)),
+                MultisigError::PermanentMember
             );
         }
 
-        let keys_to_delete: Vec<_> = member_pubkeys.iter().map(|m| m.member_key).collect();
+        let keys_to_delete = member_pubkeys.iter().map(|f| f.member_key).collect();
 
         self.delete_members(keys_to_delete)?;
+
         Ok(member_pubkeys)
     }
 
@@ -293,6 +340,16 @@ pub trait MultisigSettings {
                 .get_mut(&pubkey)
                 .ok_or(MultisigError::InvalidArguments)?;
 
+            let existing_is_perm = existing_member
+                .permissions
+                .has(Permission::IsPermanentMember);
+            let new_is_perm = member.permissions.has(Permission::IsPermanentMember);
+
+            require!(
+                existing_is_perm == new_is_perm,
+                MultisigError::PermanentMemberNotAllowed
+            );
+
             // update permissions in place
             existing_member.permissions = member.permissions;
 
@@ -307,7 +364,6 @@ pub trait MultisigSettings {
                             member: Member {
                                 pubkey,
                                 permissions: member.permissions,
-                                domain_config: existing_member.domain_config,
                             },
                             verify_args: None,
                             user_args,
@@ -334,17 +390,18 @@ pub trait MultisigSettings {
         ))
     }
 
-    fn verify_domain_config<'a>(
+    fn extract_domain_config_account<'a>(
         remaining_accounts: &'a [AccountInfo<'a>],
-        domain_config: &Pubkey,
-    ) -> Result<(Option<AccountLoader<'a, DomainConfig>>, [u8; 32])> {
-        require!(
-            domain_config.ne(&Pubkey::default()),
-            MultisigError::DomainConfigIsMissing
-        );
+        member_with_args: &MemberWithAddPermissionsArgs,
+    ) -> Result<(AccountLoader<'a, DomainConfig>, [u8; 32])> {
+        let domain_config_key = member_with_args
+            .user_args
+            .data
+            .domain_config
+            .ok_or(MultisigError::DomainConfigIsMissing)?;
         let domain_account = remaining_accounts
             .iter()
-            .find(|f| f.key.eq(domain_config))
+            .find(|f| f.key.eq(&domain_config_key))
             .ok_or(MultisigError::MissingAccount)?;
         let account_loader = AccountLoader::<DomainConfig>::try_from(domain_account)
             .map_err(|_| MultisigError::DomainConfigIsMissing)?;
@@ -366,6 +423,6 @@ pub trait MultisigSettings {
             domain_data.rp_id_hash
         };
 
-        Ok((Some(account_loader), rp_id_hash))
+        Ok((account_loader, rp_id_hash))
     }
 }

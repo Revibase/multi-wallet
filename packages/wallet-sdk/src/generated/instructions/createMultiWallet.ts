@@ -11,6 +11,8 @@ import {
   fixDecoderSize,
   fixEncoderSize,
   getAddressEncoder,
+  getBooleanDecoder,
+  getBooleanEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getOptionDecoder,
@@ -127,6 +129,7 @@ export type CreateMultiWalletInstructionData = {
   permissions: IPermissions;
   userMutArgs: UserMutArgs;
   compressedProofArgs: ProofArgs;
+  setAsDelegate: boolean;
 };
 
 export type CreateMultiWalletInstructionDataArgs = {
@@ -134,6 +137,7 @@ export type CreateMultiWalletInstructionDataArgs = {
   permissions: PermissionsArgs;
   userMutArgs: UserMutArgsArgs;
   compressedProofArgs: ProofArgsArgs;
+  setAsDelegate: boolean;
 };
 
 export function getCreateMultiWalletInstructionDataEncoder(): Encoder<CreateMultiWalletInstructionDataArgs> {
@@ -147,6 +151,7 @@ export function getCreateMultiWalletInstructionDataEncoder(): Encoder<CreateMult
       ["permissions", getPermissionsEncoder()],
       ["userMutArgs", getUserMutArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
+      ["setAsDelegate", getBooleanEncoder()],
     ]),
     (value) => ({ ...value, discriminator: CREATE_MULTI_WALLET_DISCRIMINATOR })
   );
@@ -159,6 +164,7 @@ export function getCreateMultiWalletInstructionDataDecoder(): Decoder<CreateMult
     ["permissions", getPermissionsDecoder()],
     ["userMutArgs", getUserMutArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
+    ["setAsDelegate", getBooleanDecoder()],
   ]);
 }
 
@@ -194,6 +200,7 @@ export type CreateMultiWalletAsyncInput<
   permissions: CreateMultiWalletInstructionDataArgs["permissions"];
   userMutArgs: CreateMultiWalletInstructionDataArgs["userMutArgs"];
   compressedProofArgs: CreateMultiWalletInstructionDataArgs["compressedProofArgs"];
+  setAsDelegate: CreateMultiWalletInstructionDataArgs["setAsDelegate"];
 };
 
 export async function getCreateMultiWalletInstructionAsync<
@@ -337,6 +344,7 @@ export type CreateMultiWalletInput<
   permissions: CreateMultiWalletInstructionDataArgs["permissions"];
   userMutArgs: CreateMultiWalletInstructionDataArgs["userMutArgs"];
   compressedProofArgs: CreateMultiWalletInstructionDataArgs["compressedProofArgs"];
+  setAsDelegate: CreateMultiWalletInstructionDataArgs["setAsDelegate"];
   remainingAccounts: TRemainingAccounts;
 };
 

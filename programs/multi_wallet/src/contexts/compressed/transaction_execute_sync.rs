@@ -81,21 +81,6 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
             }
 
             if is_secp256r1_signer {
-                require!(
-                    member.domain_config.is_some(),
-                    MultisigError::DomainConfigIsMissing
-                );
-
-                require!(
-                    domain_config.is_some()
-                        && domain_config
-                            .as_ref()
-                            .unwrap()
-                            .key()
-                            .eq(&member.domain_config.unwrap()),
-                    MultisigError::MemberDoesNotBelongToDomainConfig
-                );
-
                 let vault_transaction_message =
                     transaction_message.convert_to_vault_transaction_message(remaining_accounts)?;
 
@@ -161,7 +146,6 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
 
         let (settings, settings_key) = CompressedSettings::verify_compressed_settings(
             &ctx.accounts.payer.to_account_info(),
-            false,
             &settings_readonly,
             ctx.remaining_accounts,
             &compressed_proof_args,

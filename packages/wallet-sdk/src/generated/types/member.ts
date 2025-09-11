@@ -8,11 +8,8 @@
 
 import {
   combineCodec,
-  getAddressDecoder,
-  getAddressEncoder,
   getStructDecoder,
   getStructEncoder,
-  type Address,
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
@@ -28,23 +25,17 @@ import {
   type PermissionsArgs,
 } from ".";
 
-export type Member = {
-  pubkey: MemberKey;
-  permissions: IPermissions;
-  domainConfig: Address;
-};
+export type Member = { pubkey: MemberKey; permissions: IPermissions };
 
 export type MemberArgs = {
   pubkey: MemberKeyArgs;
   permissions: PermissionsArgs;
-  domainConfig: Address;
 };
 
 export function getMemberEncoder(): FixedSizeEncoder<MemberArgs> {
   return getStructEncoder([
     ["pubkey", getMemberKeyEncoder()],
     ["permissions", getPermissionsEncoder()],
-    ["domainConfig", getAddressEncoder()],
   ]);
 }
 
@@ -52,7 +43,6 @@ export function getMemberDecoder(): FixedSizeDecoder<Member> {
   return getStructDecoder([
     ["pubkey", getMemberKeyDecoder()],
     ["permissions", getPermissionsDecoder()],
-    ["domainConfig", getAddressDecoder()],
   ]);
 }
 

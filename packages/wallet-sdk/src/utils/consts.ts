@@ -9,6 +9,4 @@ export const JITO_TIP_ACCOUNTS = [
   "DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL",
 ];
 
-export const ADMIN = "G6kBnedts6uAivtY72ToaFHBs1UVbT9udiXmQZgMEjoF";
-
 export const MAX_HOTSPOTS = 5;

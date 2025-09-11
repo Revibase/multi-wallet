@@ -1,11 +1,12 @@
-import { Instruction, TransactionSigner } from "@solana/kit";
+import { AccountRole, Instruction, TransactionSigner } from "@solana/kit";
 import {
   getCreateMultiWalletCompressedInstruction,
   getCreateMultiWalletInstruction,
   getUserDecoder,
+  IPermissions,
   User,
 } from "../generated";
-import { Permissions, Secp256r1Key } from "../types";
+import { PermanentMemberPermission, Secp256r1Key } from "../types";
 import {
   getCompressedSettingsAddressFromIndex,
   getGlobalCounterAddress,
@@ -29,12 +30,14 @@ export async function createWallet({
   payer,
   initialMember,
   permissions,
+  setAsDelegate,
   compressed = false,
 }: {
   index: bigint | number;
   payer: TransactionSigner;
   initialMember: TransactionSigner | Secp256r1Key;
-  permissions: Permissions;
+  permissions: IPermissions;
+  setAsDelegate: boolean;
   compressed?: boolean;
 }) {
   const globalCounter = await getGlobalCounterAddress();
@@ -63,20 +66,19 @@ export async function createWallet({
   const newAddressParams = [];
   const hashesWithTree = [];
 
-  const member =
-    "address" in initialMember ? initialMember.address : initialMember;
-  const userAddress = await getUserAddress(member);
   hashesWithTree.push(
     ...(await getCompressedAccountHashes([
       {
-        address: userAddress,
+        address: getUserAddress(
+          "address" in initialMember ? initialMember.address : initialMember
+        ),
         type: "User" as const,
       },
     ]))
   );
 
   if (compressed) {
-    const settingsAddress = await getCompressedSettingsAddressFromIndex(index);
+    const settingsAddress = getCompressedSettingsAddressFromIndex(index);
     newAddressParams.push(
       ...getNewAddressesParams([
         {
@@ -103,6 +105,20 @@ export async function createWallet({
     getUserDecoder()
   )[0];
 
+  if (userMutArgs.data.isPermanentMember) {
+    if (!setAsDelegate) {
+      throw new Error(
+        "Permanent members must also be delegates. Please set `setAsDelegate = true`."
+      );
+    }
+    if (userMutArgs.data.settingsIndex.__option === "Some") {
+      throw new Error(
+        "This user is already registered as a permanent member in another wallet. A permanent member can only belong to one wallet."
+      );
+    }
+    permissions.mask |= PermanentMemberPermission;
+  }
+
   const initArgs = await getCompressedAccountInitArgs(
     packedAccounts,
     proof.treeInfos.slice(hashesWithTreeEndIndex),
@@ -117,7 +133,22 @@ export async function createWallet({
   const settingsCreationArgs =
     initArgs.find((x) => x.type === "Settings") ?? null;
 
+  if (domainConfig) {
+    packedAccounts.addPreAccounts([
+      { address: domainConfig, role: AccountRole.READONLY },
+    ]);
+  } else if ("address" in initialMember) {
+    packedAccounts.addPreAccounts([
+      {
+        address: initialMember.address,
+        role: AccountRole.READONLY_SIGNER,
+        signer: initialMember,
+      },
+    ]);
+  }
+
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
+
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
 
   const instructions: Instruction[] = [];
@@ -141,6 +172,7 @@ export async function createWallet({
         globalCounter,
         compressedProofArgs,
         settingsCreation: settingsCreationArgs,
+        setAsDelegate,
         remainingAccounts,
       })
     );
@@ -160,6 +192,7 @@ export async function createWallet({
         userMutArgs,
         globalCounter,
         compressedProofArgs,
+        setAsDelegate,
         remainingAccounts,
       })
     );

@@ -39,7 +39,7 @@ export async function compressSettingsAccount({
   await packedAccounts.addSystemAccounts();
 
   const settings = await getSettingsFromIndex(index);
-  const settingsAddress = await getCompressedSettingsAddressFromIndex(index);
+  const settingsAddress = getCompressedSettingsAddressFromIndex(index);
   const result =
     await getLightProtocolRpc().getCompressedAccount(settingsAddress);
 

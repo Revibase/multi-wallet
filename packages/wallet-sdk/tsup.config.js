@@ -11,5 +11,6 @@ export default defineConfig({
     "@solana/web3.js",
     "@solana-program/system",
     "@solana-program/compute-budget",
+    "@solana-program/memo",
   ],
 });

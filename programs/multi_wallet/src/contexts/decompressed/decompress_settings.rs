@@ -90,20 +90,6 @@ impl<'info> DecompressSettingsAccount<'info> {
             }
 
             if is_secp256r1_signer {
-                require!(
-                    member.domain_config.is_some(),
-                    MultisigError::DomainConfigIsMissing
-                );
-                require!(
-                    domain_config.is_some()
-                        && domain_config
-                            .as_ref()
-                            .unwrap()
-                            .key()
-                            .eq(&member.domain_config.unwrap()),
-                    MultisigError::MemberDoesNotBelongToDomainConfig
-                );
-
                 let secp256r1_verify_data = secp256r1_verify_args
                     .as_ref()
                     .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
@@ -164,9 +150,7 @@ impl<'info> DecompressSettingsAccount<'info> {
         settings.multi_wallet_bump = settings_data.multi_wallet_bump;
         settings.bump = ctx.bumps.settings;
         settings.index = settings_data.index;
-        settings.set_members(CompressedSettings::convert_compressed_member_to_member(
-            settings_data.members.clone(),
-        )?)?;
+        settings.set_members(settings_data.members.clone())?;
         settings.invariant()?;
 
         settings_account.data = None;
@@ -179,8 +163,7 @@ impl<'info> DecompressSettingsAccount<'info> {
             compressed_proof_args.proof,
             vec![settings_info],
         );
-
-        cpi_inputs.invoke_light_system_program(light_cpi_accounts).unwrap();
+        cpi_inputs.invoke_light_system_program(light_cpi_accounts).map_err(ProgramError::from)?;
         Ok(())
     }
 }

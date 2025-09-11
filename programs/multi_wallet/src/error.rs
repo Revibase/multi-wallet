@@ -19,7 +19,7 @@ pub enum MultisigError {
     #[msg("Permanent members cannot be removed from the wallet.")]
     PermanentMember,
 
-    #[msg("Permanent members can only be configured during wallet creation.")]
+    #[msg("Unable to set permanent member for this operation.")]
     PermanentMemberNotAllowed,
 
     #[msg("No members were provided. A multisig must have at least one member.")]
@@ -56,9 +56,6 @@ pub enum MultisigError {
     #[msg("A user is currently delegated to another wallet.")]
     UserAlreadyDelegated,
 
-    #[msg("A user is currently not delegated.")]
-    UserNotDelegated,
-
     #[msg("At least one signer must have execute permissions to proceed.")]
     InsufficientSignerWithExecutePermission,
 
@@ -68,7 +65,7 @@ pub enum MultisigError {
     #[msg("The approval threshold cannot be met because there aren't enough voters with the vote permission.")]
     InsufficientSignersWithVotePermission,
 
-    #[msg("No valid signer was found in this transaction. Ensure at least one authorized signer is present.")]
+    #[msg("No valid signer was found in this transaction.")]
     NoSignerFound,
 
     #[msg(

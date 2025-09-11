@@ -1,5 +1,4 @@
 import { sha256 } from "@noble/hashes/sha2";
-import { Input } from "@noble/hashes/utils";
 import { getTransferSolInstruction } from "@solana-program/system";
 import {
   AccountMeta,
@@ -21,9 +20,6 @@ import { Secp256r1VerifyArgs } from "../../generated";
 import { Secp256r1Key } from "../../types";
 import { JITO_TIP_ACCOUNTS } from "../consts";
 
-export function getHash(payload: Input) {
-  return sha256(payload);
-}
 function getAccountRole(
   message: CustomTransactionMessage,
   index: number,
@@ -233,7 +229,7 @@ export function extractSecp256r1VerificationArgs(
     secp256r1PublicKey.verifyArgs?.clientDataJson
       ? new Uint8Array([
           ...secp256r1PublicKey.authData,
-          ...getHash(secp256r1PublicKey.verifyArgs.clientDataJson),
+          ...sha256(secp256r1PublicKey.verifyArgs.clientDataJson),
         ])
       : undefined;
   const publicKey = secp256r1PublicKey?.toBuffer();

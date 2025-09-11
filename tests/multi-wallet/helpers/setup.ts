@@ -52,17 +52,16 @@ export async function setupTestEnvironment(
   compressed = true
 ): Promise<TestContext> {
   const connection = createSolanaRpc(LOCAL_RPC_URL);
-  initializeMultiWallet({
-    rpcEndpoint: LOCAL_RPC_URL,
-    compressionApiEndpoint: LOCAL_INDEXER_URL,
-    proverEndpoint: LOCAL_PROVER_URL,
-  });
   const rpcSubscriptions = createSolanaRpcSubscriptions(LOCAL_WS_URL);
   const sendAndConfirm = sendAndConfirmTransactionFactory({
     rpc: connection,
     rpcSubscriptions,
   });
-
+  initializeMultiWallet({
+    rpcEndpoint: LOCAL_RPC_URL,
+    compressionApiEndpoint: LOCAL_INDEXER_URL,
+    proverEndpoint: LOCAL_PROVER_URL,
+  });
   // Create keypairs with deterministic seeds for testing
   // Using deterministic seeds for testing makes tests more reproducible
   const payerSeed = crypto.getRandomValues(new Uint8Array(32));
@@ -199,7 +198,10 @@ export async function createMultiWallet(
   );
 
   const createGlobalUserIxs = await createGlobalUsers({
-    members: [ctx.wallet.address, ctx.payer.address],
+    createUserArgs: [
+      { member: ctx.wallet, isPermanentMember: false },
+      { member: ctx.payer, isPermanentMember: false },
+    ],
     payer: ctx.payer,
   });
 
@@ -222,6 +224,7 @@ export async function createMultiWallet(
     permissions: Permissions.all(),
     index: createIndex,
     compressed: ctx.compressed,
+    setAsDelegate: false,
   });
 
   await sendTransaction(

@@ -7,90 +7,50 @@
  */
 
 import {
-  addDecoderSizePrefix,
-  addEncoderSizePrefix,
   combineCodec,
   getAddressDecoder,
   getAddressEncoder,
-  getArrayDecoder,
-  getArrayEncoder,
   getBooleanDecoder,
   getBooleanEncoder,
-  getBytesDecoder,
-  getBytesEncoder,
   getOptionDecoder,
   getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
   getU128Decoder,
   getU128Encoder,
-  getU32Decoder,
-  getU32Encoder,
-  getU64Decoder,
-  getU64Encoder,
-  getUtf8Decoder,
-  getUtf8Encoder,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
   type Option,
   type OptionOrNullable,
-  type ReadonlyUint8Array,
 } from '@solana/kit';
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
-  getTransportDecoder,
-  getTransportEncoder,
   type MemberKey,
   type MemberKeyArgs,
-  type Transport,
-  type TransportArgs,
 } from '.';
 
 export type User = {
   member: MemberKey;
-  credentialId: Option<ReadonlyUint8Array>;
-  mint: Option<Address>;
   domainConfig: Option<Address>;
-  transports: Option<Array<Transport>>;
   isPermanentMember: boolean;
-  username: Option<string>;
-  expiry: Option<bigint>;
   settingsIndex: Option<bigint>;
 };
 
 export type UserArgs = {
   member: MemberKeyArgs;
-  credentialId: OptionOrNullable<ReadonlyUint8Array>;
-  mint: OptionOrNullable<Address>;
   domainConfig: OptionOrNullable<Address>;
-  transports: OptionOrNullable<Array<TransportArgs>>;
   isPermanentMember: boolean;
-  username: OptionOrNullable<string>;
-  expiry: OptionOrNullable<number | bigint>;
   settingsIndex: OptionOrNullable<number | bigint>;
 };
 
 export function getUserEncoder(): Encoder<UserArgs> {
   return getStructEncoder([
     ['member', getMemberKeyEncoder()],
-    [
-      'credentialId',
-      getOptionEncoder(
-        addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())
-      ),
-    ],
-    ['mint', getOptionEncoder(getAddressEncoder())],
     ['domainConfig', getOptionEncoder(getAddressEncoder())],
-    ['transports', getOptionEncoder(getArrayEncoder(getTransportEncoder()))],
     ['isPermanentMember', getBooleanEncoder()],
-    [
-      'username',
-      getOptionEncoder(addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())),
-    ],
-    ['expiry', getOptionEncoder(getU64Encoder())],
     ['settingsIndex', getOptionEncoder(getU128Encoder())],
   ]);
 }
@@ -98,21 +58,8 @@ export function getUserEncoder(): Encoder<UserArgs> {
 export function getUserDecoder(): Decoder<User> {
   return getStructDecoder([
     ['member', getMemberKeyDecoder()],
-    [
-      'credentialId',
-      getOptionDecoder(
-        addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())
-      ),
-    ],
-    ['mint', getOptionDecoder(getAddressDecoder())],
     ['domainConfig', getOptionDecoder(getAddressDecoder())],
-    ['transports', getOptionDecoder(getArrayDecoder(getTransportDecoder()))],
     ['isPermanentMember', getBooleanDecoder()],
-    [
-      'username',
-      getOptionDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
-    ],
-    ['expiry', getOptionDecoder(getU64Decoder())],
     ['settingsIndex', getOptionDecoder(getU128Decoder())],
   ]);
 }

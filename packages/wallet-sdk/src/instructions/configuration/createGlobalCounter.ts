@@ -1,12 +1,15 @@
 import { TransactionSigner } from "@solana/kit";
-import { getCreateGlobalCounterInstructionAsync } from "../../generated";
+import { getCreateGlobalCounterInstructionAsync as getCreateGlobalCounterInstruction } from "../../generated";
+import { getGlobalCounterAddress } from "../../utils";
 
 export async function createGlobalCounter({
   payer,
 }: {
   payer: TransactionSigner;
 }) {
-  return await getCreateGlobalCounterInstructionAsync({
+  const globalCounter = await getGlobalCounterAddress();
+  return getCreateGlobalCounterInstruction({
     payer,
+    globalCounter,
   });
 }

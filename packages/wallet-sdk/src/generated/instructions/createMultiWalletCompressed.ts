@@ -10,6 +10,8 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
+  getBooleanDecoder,
+  getBooleanEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getOptionDecoder,
@@ -127,6 +129,7 @@ export type CreateMultiWalletCompressedInstructionData = {
   settingsCreation: SettingsCreationArgs;
   userMutArgs: UserMutArgs;
   settingsIndex: bigint;
+  setAsDelegate: boolean;
 };
 
 export type CreateMultiWalletCompressedInstructionDataArgs = {
@@ -136,6 +139,7 @@ export type CreateMultiWalletCompressedInstructionDataArgs = {
   settingsCreation: SettingsCreationArgsArgs;
   userMutArgs: UserMutArgsArgs;
   settingsIndex: number | bigint;
+  setAsDelegate: boolean;
 };
 
 export function getCreateMultiWalletCompressedInstructionDataEncoder(): Encoder<CreateMultiWalletCompressedInstructionDataArgs> {
@@ -151,6 +155,7 @@ export function getCreateMultiWalletCompressedInstructionDataEncoder(): Encoder<
       ["settingsCreation", getSettingsCreationArgsEncoder()],
       ["userMutArgs", getUserMutArgsEncoder()],
       ["settingsIndex", getU128Encoder()],
+      ["setAsDelegate", getBooleanEncoder()],
     ]),
     (value) => ({
       ...value,
@@ -168,6 +173,7 @@ export function getCreateMultiWalletCompressedInstructionDataDecoder(): Decoder<
     ["settingsCreation", getSettingsCreationArgsDecoder()],
     ["userMutArgs", getUserMutArgsDecoder()],
     ["settingsIndex", getU128Decoder()],
+    ["setAsDelegate", getBooleanDecoder()],
   ]);
 }
 
@@ -204,6 +210,7 @@ export type CreateMultiWalletCompressedInput<
   settingsCreation: CreateMultiWalletCompressedInstructionDataArgs["settingsCreation"];
   userMutArgs: CreateMultiWalletCompressedInstructionDataArgs["userMutArgs"];
   settingsIndex: CreateMultiWalletCompressedInstructionDataArgs["settingsIndex"];
+  setAsDelegate: CreateMultiWalletCompressedInstructionDataArgs["setAsDelegate"];
   remainingAccounts: TRemainingAccounts;
 };
 

@@ -44,7 +44,7 @@ import {
 } from '../instructions';
 
 export const MULTI_WALLET_PROGRAM_ADDRESS =
-  'revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb' as Address<'revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb'>;
+  'reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT' as Address<'reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT'>;
 
 export enum MultiWalletAccount {
   DomainConfig,
@@ -389,7 +389,7 @@ export function identifyMultiWalletInstruction(
 }
 
 export type ParsedMultiWalletInstruction<
-  TProgram extends string = 'revibJxgb7X4j3tFT4n1oDNqZwLS28snWpPdwLRm7hb',
+  TProgram extends string = 'reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT',
 > =
   | ({
       instructionType: MultiWalletInstruction.ChangeConfig;

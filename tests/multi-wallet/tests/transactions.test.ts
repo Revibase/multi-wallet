@@ -21,7 +21,6 @@ import { expect } from "chai";
 import {
   createMultiWallet,
   fundMultiWalletVault,
-  generateSecp256r1KeyPair,
   sendTransaction,
   setupTestEnvironment,
 } from "../helpers";
@@ -30,13 +29,11 @@ import type { TestContext } from "../types";
 export function runTransactionTests() {
   describe("Transaction Handling", () => {
     let ctx: TestContext;
-    let secp256r1Keys: { privateKey: Uint8Array; publicKey: Uint8Array };
 
     // Set up a fresh context for this test suite
     before(async () => {
       ctx = await setupTestEnvironment();
       ctx = await createMultiWallet(ctx);
-      secp256r1Keys = generateSecp256r1KeyPair();
     });
 
     it("should handle ephemeral transactions", async () => {
@@ -66,16 +63,12 @@ export function runTransactionTests() {
         mintAuthority: address(ctx.multiWalletVault),
       });
 
-      // Get recent blockhash
-      const recentBlockHash = await ctx.connection.getLatestBlockhash().send();
-
       // Prepare transaction message
-      const transactionMessageBytes = await prepareTransactionMessage(
-        recentBlockHash.value.blockhash,
-        ctx.payer.address,
-        [createAccount, createMint],
-        ctx.addressLookUpTable
-      );
+      const transactionMessageBytes = prepareTransactionMessage({
+        payer: ctx.multiWalletVault,
+        instructions: [createAccount, createMint],
+        addressesByLookupTableAddress: ctx.addressLookUpTable,
+      });
 
       try {
         // Prepare transaction
@@ -103,7 +96,7 @@ export function runTransactionTests() {
             ? userData.settingsIndex.value
             : null;
         expect(settingsIndex).to.equal(
-          ctx.index,
+          null,
           "Delegate should be associated with the correct settings"
         );
         const multiWallet = await getMultiWalletFromSettings(settings);
