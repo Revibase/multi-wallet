@@ -32,6 +32,7 @@ export async function createWallet({
   permissions,
   setAsDelegate,
   compressed = false,
+  cachedCompressedAccounts,
 }: {
   index: bigint | number;
   payer: TransactionSigner;
@@ -39,6 +40,7 @@ export async function createWallet({
   permissions: IPermissions;
   setAsDelegate: boolean;
   compressed?: boolean;
+  cachedCompressedAccounts?: Map<string, any>;
 }) {
   const globalCounter = await getGlobalCounterAddress();
   const {
@@ -67,14 +69,17 @@ export async function createWallet({
   const hashesWithTree = [];
 
   hashesWithTree.push(
-    ...(await getCompressedAccountHashes([
-      {
-        address: getUserAddress(
-          "address" in initialMember ? initialMember.address : initialMember
-        ),
-        type: "User" as const,
-      },
-    ]))
+    ...(await getCompressedAccountHashes(
+      [
+        {
+          address: getUserAddress(
+            "address" in initialMember ? initialMember.address : initialMember
+          ),
+          type: "User" as const,
+        },
+      ],
+      cachedCompressedAccounts
+    ))
   );
 
   if (compressed) {

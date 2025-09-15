@@ -21,7 +21,8 @@ import {
   User,
 } from "../..";
 import { getSettingsFromIndex } from "../helper";
-import { getLightProtocolRpc, getSolanaRpc } from "../initialize";
+import { getSolanaRpc } from "../initialize";
+import { getCompressedAccount } from "./internal";
 
 export function getUserAddress(member: Address | Secp256r1Key) {
   const { tree } = getDefaultAddressTreeInfo();
@@ -47,10 +48,14 @@ export function getUserAddress(member: Address | Secp256r1Key) {
 }
 
 export async function fetchUserData(
-  member: Address | Secp256r1Key
+  member: Address | Secp256r1Key,
+  cachedCompressedAccounts?: Map<string, any>
 ): Promise<User> {
   const userAddress = getUserAddress(member);
-  const result = await getLightProtocolRpc().getCompressedAccount(userAddress);
+  const result = await getCompressedAccount(
+    userAddress,
+    cachedCompressedAccounts
+  );
   if (!result?.data?.data) {
     throw Error("Unable to fetch user account data.");
   }
@@ -58,10 +63,14 @@ export async function fetchUserData(
 }
 
 export async function fetchMaybeUserData(
-  member: Address | Secp256r1Key
+  member: Address | Secp256r1Key,
+  cachedCompressedAccounts?: Map<string, any>
 ): Promise<User | null> {
   const userAddress = getUserAddress(member);
-  const result = await getLightProtocolRpc().getCompressedAccount(userAddress);
+  const result = await getCompressedAccount(
+    userAddress,
+    cachedCompressedAccounts
+  );
   if (!result?.data?.data) {
     return null;
   }
@@ -85,10 +94,11 @@ export function getCompressedSettingsAddressFromIndex(index: number | bigint) {
 }
 
 export async function checkIfSettingsAccountIsCompressed(
-  index: bigint | number
+  index: bigint | number,
+  cachedCompressedAccounts?: Map<string, any>
 ): Promise<boolean> {
   const address = getCompressedSettingsAddressFromIndex(index);
-  const result = await getLightProtocolRpc().getCompressedAccount(address);
+  const result = await getCompressedAccount(address, cachedCompressedAccounts);
   if (!result?.data?.data) {
     return false;
   }
@@ -97,20 +107,15 @@ export async function checkIfSettingsAccountIsCompressed(
 }
 
 export async function fetchSettingsData(
-  index: number | bigint
+  index: number | bigint,
+  cachedCompressedAccounts?: Map<string, any>
 ): Promise<CompressedSettingsData> {
-  const result = await fetchMaybeSettings(
-    getSolanaRpc(),
-    await getSettingsFromIndex(index)
-  );
-  if (result.exists) {
-    return {
-      ...result.data,
-      members: result.data.members.slice(0, result.data.membersLen),
-    };
-  } else {
+  try {
     const address = getCompressedSettingsAddressFromIndex(index);
-    const result = await getLightProtocolRpc().getCompressedAccount(address);
+    const result = await getCompressedAccount(
+      address,
+      cachedCompressedAccounts
+    );
     if (!result?.data?.data) {
       throw new Error("Settings account does not exist.");
     }
@@ -119,5 +124,17 @@ export async function fetchSettingsData(
       throw new Error("Settings account does not exist.");
     }
     return data.data.value;
+  } catch {
+    const result = await fetchMaybeSettings(
+      getSolanaRpc(),
+      await getSettingsFromIndex(index)
+    );
+    if (!result.exists) {
+      throw new Error("Settings account does not exist.");
+    }
+    return {
+      ...result.data,
+      members: result.data.members.slice(0, result.data.membersLen),
+    };
   }
 }

@@ -6,6 +6,7 @@ import { getAddMemoInstruction } from "@solana-program/memo";
 import {
   AccountMeta,
   AccountRole,
+  AddressesByLookupTableAddress,
   Rpc,
   SolanaRpcApi,
   TransactionSigner,
@@ -32,16 +33,20 @@ export async function estimateTransactionSizeExceedLimit({
   transactionMessageBytes,
   additionalSigners,
   compressed,
+  addressesByLookupTableAddress,
   memo,
   secp256r1VerifyInput,
+  cachedCompressedAccounts,
 }: {
   payer: TransactionSigner;
   transactionMessageBytes: Uint8Array;
   settingsIndex: number;
   compressed: boolean;
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   additionalSigners?: TransactionSigner[];
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   memo?: string | null;
+  cachedCompressedAccounts?: Map<string, any>;
 }) {
   const randomPubkey = crypto.getRandomValues(new Uint8Array(33));
   const signer = new Secp256r1Key(randomPubkey, {
@@ -63,6 +68,9 @@ export async function estimateTransactionSizeExceedLimit({
     signers: [signer, ...(additionalSigners ?? [])],
     secp256r1VerifyInput,
     compressed,
+    simulateProof: true,
+    addressesByLookupTableAddress,
+    cachedCompressedAccounts,
   });
 
   const tx = pipe(

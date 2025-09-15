@@ -1,14 +1,17 @@
-import { TransactionSigner } from "@solana/kit";
+import { AddressesByLookupTableAddress, TransactionSigner } from "@solana/kit";
 import { executeTransactionSync, Secp256r1VerifyInput } from "../instructions";
-import { Secp256r1Key } from "../types";
+import { BundleResponse, Secp256r1Key } from "../types";
 
 interface CreateTransactionSyncArgs {
   payer: TransactionSigner;
   index: number | bigint;
   transactionMessageBytes: Uint8Array;
   signers: (TransactionSigner | Secp256r1Key)[];
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   compressed?: boolean;
+  simulateProof?: boolean;
+  cachedCompressedAccounts?: Map<string, any>;
 }
 
 export async function prepareTransactionSync({
@@ -17,8 +20,11 @@ export async function prepareTransactionSync({
   transactionMessageBytes,
   signers,
   secp256r1VerifyInput,
+  addressesByLookupTableAddress,
+  cachedCompressedAccounts,
   compressed = false,
-}: CreateTransactionSyncArgs) {
+  simulateProof = false,
+}: CreateTransactionSyncArgs): Promise<BundleResponse> {
   const { instructions, addressLookupTableAccounts } =
     await executeTransactionSync({
       index,
@@ -27,6 +33,9 @@ export async function prepareTransactionSync({
       transactionMessageBytes,
       secp256r1VerifyInput,
       compressed,
+      addressesByLookupTableAddress,
+      simulateProof,
+      cachedCompressedAccounts,
     });
 
   return {

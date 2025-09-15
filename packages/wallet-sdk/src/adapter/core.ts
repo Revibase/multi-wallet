@@ -195,6 +195,7 @@ export function createRevibaseAdapter(): Revibase {
             payer,
             settingsIndex: this.index,
             transactionMessageBytes,
+            addressesByLookupTableAddress,
           })
         ) {
           const bufferIndex = Math.round(Math.random() * 255);
@@ -223,6 +224,7 @@ export function createRevibaseAdapter(): Revibase {
             jitoBundlesTipAmount,
             payer,
             additionalSigners,
+            addressesByLookupTableAddress,
           });
           payload.push(...result);
         } else {
@@ -243,6 +245,7 @@ export function createRevibaseAdapter(): Revibase {
               payer,
               transactionMessageBytes,
               index: this.index,
+              addressesByLookupTableAddress,
             })
           );
         }

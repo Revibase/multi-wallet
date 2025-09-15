@@ -6,6 +6,7 @@ import {
   AccountSignerMeta,
   Address,
   address,
+  AddressesByLookupTableAddress,
   fetchAddressesForLookupTables,
   OptionOrNullable,
   some,
@@ -72,20 +73,24 @@ function isSignerIndex(message: CustomTransactionMessage, index: number) {
 export async function accountsForTransactionExecute({
   multiWallet,
   transactionMessageBytes,
+  addressesByLookupTableAddress,
   additionalSigners,
 }: {
   transactionMessageBytes: Uint8Array;
   multiWallet: Address;
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   additionalSigners?: TransactionSigner[];
 }) {
   const transactionMessage = customTransactionMessageDeserialize(
     transactionMessageBytes
   );
 
-  const addressLookupTableAccounts = await fetchAddressesForLookupTables(
-    transactionMessage.addressTableLookups.map((x) => x.accountKey),
-    getSolanaRpc()
-  );
+  const addressLookupTableAccounts =
+    addressesByLookupTableAddress ??
+    (await fetchAddressesForLookupTables(
+      transactionMessage.addressTableLookups.map((x) => x.accountKey),
+      getSolanaRpc()
+    ));
 
   // Populate account metas required for execution of the transaction.
   const accountMetas: (AccountMeta | AccountSignerMeta)[] = [];

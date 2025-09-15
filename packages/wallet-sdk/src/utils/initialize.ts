@@ -2,7 +2,12 @@ import {
   createRpc,
   Rpc as LightProtocolRpc,
 } from "@lightprotocol/stateless.js";
-import { createSolanaRpc, Rpc, SolanaRpcApi } from "@solana/kit";
+import {
+  createSolanaRpc,
+  Rpc,
+  SolanaRpcApi,
+  TransactionSigner,
+} from "@solana/kit";
 import { registerWallet } from "@wallet-standard/core";
 import { createRevibaseAdapter } from "../adapter/core";
 import { RevibaseWallet } from "../adapter/wallet";
@@ -11,6 +16,7 @@ import { getRandomPayer } from "./helper";
 
 let lightProtocolRpc: LightProtocolRpc | undefined;
 let solanaRpc: Rpc<SolanaRpcApi> | undefined;
+let globalFeePayer: TransactionSigner | undefined;
 let globalPayerEndpoint: string | undefined;
 let globalJitoTipsConfig: JitoTipsConfig | undefined;
 let globalAuthUrl: string | undefined;
@@ -27,8 +33,13 @@ export function getSolanaRpc() {
   return solanaRpc;
 }
 
-export function getFeePayer() {
-  return getRandomPayer(globalPayerEndpoint ?? "https://api.revibase.com");
+export async function getFeePayer() {
+  if (!globalFeePayer) {
+    globalFeePayer = await getRandomPayer(
+      globalPayerEndpoint ?? "https://api.revibase.com"
+    );
+  }
+  return globalFeePayer;
 }
 
 export function getJitoTipsConfig() {

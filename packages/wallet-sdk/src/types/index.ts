@@ -1,3 +1,4 @@
+export * from "./bundle";
 export * from "./configurationArgs";
 export * from "./jitoTipsConfig";
 export * from "./keyType";

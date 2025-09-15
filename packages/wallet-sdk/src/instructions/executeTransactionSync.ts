@@ -1,4 +1,8 @@
-import { Instruction, TransactionSigner } from "@solana/kit";
+import {
+  AddressesByLookupTableAddress,
+  Instruction,
+  TransactionSigner,
+} from "@solana/kit";
 import {
   getTransactionExecuteSyncCompressedInstruction,
   getTransactionExecuteSyncInstruction,
@@ -23,16 +27,22 @@ export async function executeTransactionSync({
   index,
   transactionMessageBytes,
   signers,
+  payer,
+  addressesByLookupTableAddress,
   secp256r1VerifyInput = [],
   compressed = false,
-  payer,
+  simulateProof = false,
+  cachedCompressedAccounts,
 }: {
   index: bigint | number;
   signers: (TransactionSigner | Secp256r1Key)[];
   transactionMessageBytes: Uint8Array;
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   compressed?: boolean;
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   payer?: TransactionSigner;
+  simulateProof?: boolean;
+  cachedCompressedAccounts?: Map<string, any>;
 }) {
   const dedupSigners = getDeduplicatedSigners(signers);
   const settings = await getSettingsFromIndex(index);
@@ -47,8 +57,14 @@ export async function executeTransactionSync({
       additionalSigners: dedupSigners.filter(
         (x) => !(x instanceof Secp256r1Key)
       ) as TransactionSigner[],
+      addressesByLookupTableAddress,
     }),
-    constructSettingsProofArgs(compressed, index),
+    constructSettingsProofArgs(
+      compressed,
+      index,
+      simulateProof,
+      cachedCompressedAccounts
+    ),
   ]);
 
   packedAccounts.addPreAccounts(accountMetas);

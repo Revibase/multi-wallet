@@ -39,11 +39,13 @@ export async function createDomainUsers({
   payer,
   createUserArgs,
   domainConfig,
+  cachedCompressedAccounts,
 }: {
   domainConfig: Address;
   authority: TransactionSigner;
   payer: TransactionSigner;
   createUserArgs: UserCreationArgs[];
+  cachedCompressedAccounts?: Map<string, any>;
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
@@ -58,7 +60,7 @@ export async function createDomainUsers({
     }));
 
   const hashesWithTree = addresses.length
-    ? await getCompressedAccountHashes(addresses)
+    ? await getCompressedAccountHashes(addresses, cachedCompressedAccounts)
     : [];
 
   const newAddressParams = getNewAddressesParams(

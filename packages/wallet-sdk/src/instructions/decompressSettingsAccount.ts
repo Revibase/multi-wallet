@@ -26,20 +26,25 @@ export async function decompressSettingsAccount({
   index,
   payer,
   signers,
+  cachedCompressedAccounts,
 }: {
   index: number | bigint;
   payer: TransactionSigner;
   signers: (Secp256r1Key | TransactionSigner)[];
+  cachedCompressedAccounts?: Map<string, any>;
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
 
-  const hashesWithTree = await getCompressedAccountHashes([
-    {
-      address: getCompressedSettingsAddressFromIndex(index),
-      type: "Settings" as const,
-    },
-  ]);
+  const hashesWithTree = await getCompressedAccountHashes(
+    [
+      {
+        address: getCompressedSettingsAddressFromIndex(index),
+        type: "Settings" as const,
+      },
+    ],
+    cachedCompressedAccounts
+  );
   const proof = await getLightProtocolRpc().getValidityProofV0(
     hashesWithTree,
     []

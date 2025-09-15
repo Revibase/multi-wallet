@@ -14,6 +14,7 @@ import {
 } from "../utils";
 import {
   convertToCompressedProofArgs,
+  getCompressedAccount,
   getCompressedAccountHashes,
   getCompressedAccountInitArgs,
   getCompressedAccountMutArgs,
@@ -30,18 +31,22 @@ export async function compressSettingsAccount({
   index,
   payer,
   signers,
+  cachedCompressedAccounts,
 }: {
   index: number | bigint;
   payer: TransactionSigner;
   signers: (Secp256r1Key | TransactionSigner)[];
+  cachedCompressedAccounts?: Map<string, any>;
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
 
   const settings = await getSettingsFromIndex(index);
   const settingsAddress = getCompressedSettingsAddressFromIndex(index);
-  const result =
-    await getLightProtocolRpc().getCompressedAccount(settingsAddress);
+  const result = await getCompressedAccount(
+    settingsAddress,
+    cachedCompressedAccounts
+  );
 
   let settingsArg: SettingsCreateOrMutateArgs;
   let proof: ValidityProofWithContext;
@@ -70,9 +75,10 @@ export async function compressSettingsAccount({
   } else {
     const data = getCompressedSettingsDecoder().decode(result.data.data);
     if (data.data.__option === "None") {
-      const hashesWithTree = await getCompressedAccountHashes([
-        { address: settingsAddress, type: "Settings" },
-      ]);
+      const hashesWithTree = await getCompressedAccountHashes(
+        [{ address: settingsAddress, type: "Settings" }],
+        cachedCompressedAccounts
+      );
 
       proof = await getLightProtocolRpc().getValidityProofV0(
         hashesWithTree,

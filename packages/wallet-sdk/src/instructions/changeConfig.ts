@@ -58,11 +58,13 @@ export async function changeConfig({
   configActionsArgs,
   payer,
   compressed = false,
+  cachedCompressedAccounts,
 }: {
   index: bigint | number;
   configActionsArgs: ConfigurationArgs[];
   payer: TransactionSigner;
   compressed?: boolean;
+  cachedCompressedAccounts?: Map<string, any>;
 }) {
   // --- Stage 1: Setup Addresses---
   const settings = await getSettingsFromIndex(index);
@@ -121,7 +123,7 @@ export async function changeConfig({
     ];
 
     const hashesWithTree = addresses.length
-      ? await getCompressedAccountHashes(addresses)
+      ? await getCompressedAccountHashes(addresses, cachedCompressedAccounts)
       : [];
 
     if (hashesWithTree.length) {
@@ -220,13 +222,16 @@ export async function changeConfig({
         );
         configActions.push({
           __kind: action.type,
-          fields: [field.filter(Boolean)],
+          fields: [field],
         });
         break;
       }
 
       case "EditPermissions": {
-        const settingsData = await fetchSettingsData(index);
+        const settingsData = await fetchSettingsData(
+          index,
+          cachedCompressedAccounts
+        );
         const permanentMember = settingsData.members.find((x) =>
           Permissions.has(x.permissions, PermanentMemberPermission)
         );

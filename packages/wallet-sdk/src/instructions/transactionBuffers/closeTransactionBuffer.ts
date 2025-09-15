@@ -19,12 +19,14 @@ export async function closeTransactionBuffer({
   transactionBufferAddress,
   payer,
   compressed = false,
+  cachedCompressedAccounts,
 }: {
   index: bigint | number;
   closer: TransactionSigner | Secp256r1Key;
   transactionBufferAddress: Address;
   payer?: TransactionSigner;
   compressed?: boolean;
+  cachedCompressedAccounts?: Map<string, any>;
 }) {
   const transactionBuffer = await fetchTransactionBuffer(
     getSolanaRpc(),
@@ -32,7 +34,12 @@ export async function closeTransactionBuffer({
   );
   const settings = transactionBuffer.data.multiWalletSettings;
   const { settingsReadonlyArgs, proof, packedAccounts } =
-    await constructSettingsProofArgs(compressed, index);
+    await constructSettingsProofArgs(
+      compressed,
+      index,
+      false,
+      cachedCompressedAccounts
+    );
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const {

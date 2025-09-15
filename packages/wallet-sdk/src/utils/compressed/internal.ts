@@ -37,12 +37,30 @@ export function getNewAddressesParams(
   return newAddresses;
 }
 
+export async function getCompressedAccount(
+  address: BN,
+  cachedCompressedAccounts?: Map<string, any>
+): Promise<CompressedAccount | null> {
+  let result = cachedCompressedAccounts?.get(address.toString());
+  if (result) {
+    return result;
+  } else {
+    const compressedAccount =
+      await getLightProtocolRpc().getCompressedAccount(address);
+    if (compressedAccount) {
+      cachedCompressedAccounts?.set(address.toString(), compressedAccount);
+    }
+    return compressedAccount;
+  }
+}
+
 export async function getCompressedAccountHashes(
-  addresses: { address: BN254; type: "Settings" | "User" }[]
+  addresses: { address: BN254; type: "Settings" | "User" }[],
+  cachedCompressedAccounts?: Map<string, any>
 ) {
   const compressedAccounts = await Promise.all(
-    addresses.map(
-      async (x) => await getLightProtocolRpc().getCompressedAccount(x.address)
+    addresses.map(async (x) =>
+      getCompressedAccount(x.address, cachedCompressedAccounts)
     )
   );
 
@@ -200,7 +218,9 @@ export async function getLightCpiSigner() {
 }
 export async function constructSettingsProofArgs(
   compressed: boolean,
-  index: bigint | number
+  index: bigint | number,
+  simulateProof?: boolean,
+  cachedCompressedAccounts?: Map<string, any>
 ) {
   let settingsReadonlyArgs: SettingsReadonlyArgs | null = null;
   let proof: ValidityProofWithContext | null = null;
@@ -209,18 +229,37 @@ export async function constructSettingsProofArgs(
     await packedAccounts.addSystemAccounts();
     const settingsAddress = getCompressedSettingsAddressFromIndex(index);
     const settings = (
-      await getCompressedAccountHashes([
-        { address: settingsAddress, type: "Settings" },
-      ])
+      await getCompressedAccountHashes(
+        [{ address: settingsAddress, type: "Settings" }],
+        cachedCompressedAccounts
+      )
     )[0];
-    proof = await getLightProtocolRpc().getValidityProofV0([settings], []);
     const { tree, queue } = getDefaultAddressTreeInfo();
+    let rootIndex = 0;
+    if (simulateProof) {
+      proof = {
+        rootIndices: [],
+        roots: [],
+        leafIndices: [],
+        leaves: [],
+        treeInfos: [],
+        proveByIndices: [],
+        compressedProof: {
+          a: Array.from(crypto.getRandomValues(new Uint8Array(32))),
+          b: Array.from(crypto.getRandomValues(new Uint8Array(32))),
+          c: Array.from(crypto.getRandomValues(new Uint8Array(32))),
+        },
+      };
+    } else {
+      proof = await getLightProtocolRpc().getValidityProofV0([settings], []);
+      rootIndex = proof.rootIndices[0];
+    }
 
     settingsReadonlyArgs = {
       lamports: BigInt(settings.lamports.toNumber()),
       data: getCompressedSettingsDecoder().decode(settings.data?.data!),
       addressTreeInfo: {
-        rootIndex: proof.rootIndices[0],
+        rootIndex,
         addressMerkleTreePubkeyIndex: packedAccounts.insertOrGet(tree),
         addressQueuePubkeyIndex: packedAccounts.insertOrGet(queue),
       },
