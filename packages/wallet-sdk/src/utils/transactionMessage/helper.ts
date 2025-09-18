@@ -119,8 +119,8 @@ export async function estimateTransactionSizeExceedLimit({
   console.log("Estimated Tx Size: ", txSize);
   return txSize > 1644;
 }
-export async function estimateJitoTips() {
-  const { estimateJitoTipsEndpoint, priority } = getJitoTipsConfig();
+export async function estimateJitoTips(jitoTipsConfig = getJitoTipsConfig()) {
+  const { estimateJitoTipsEndpoint, priority } = jitoTipsConfig;
   const response = await fetch(estimateJitoTipsEndpoint);
   const result = await response.json();
   const tipAmount = Math.round(result[0][priority] * 10 ** 9) as number;

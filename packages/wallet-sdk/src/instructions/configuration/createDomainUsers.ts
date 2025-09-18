@@ -16,7 +16,6 @@ import {
 import { Secp256r1Key } from "../../types";
 import {
   getCompressedSettingsAddressFromIndex,
-  getLightProtocolRpc,
   getUserAddress,
 } from "../../utils";
 import {
@@ -25,6 +24,7 @@ import {
   getCompressedAccountInitArgs,
   getCompressedAccountMutArgs,
   getNewAddressesParams,
+  getValidityProofWithRetry,
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 
@@ -70,7 +70,7 @@ export async function createDomainUsers({
     }))
   );
 
-  const proof = await getLightProtocolRpc().getValidityProofV0(
+  const proof = await getValidityProofWithRetry(
     hashesWithTree,
     newAddressParams
   );

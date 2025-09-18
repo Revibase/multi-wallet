@@ -7,13 +7,13 @@ import {
 import { Secp256r1Key } from "../types";
 import {
   getCompressedSettingsAddressFromIndex,
-  getLightProtocolRpc,
   getSettingsFromIndex,
 } from "../utils";
 import {
   convertToCompressedProofArgs,
   getCompressedAccountHashes,
   getCompressedAccountMutArgs,
+  getValidityProofWithRetry,
 } from "../utils/compressed/internal";
 import { PackedAccounts } from "../utils/compressed/packedAccounts";
 import {
@@ -45,10 +45,7 @@ export async function decompressSettingsAccount({
     ],
     cachedCompressedAccounts
   );
-  const proof = await getLightProtocolRpc().getValidityProofV0(
-    hashesWithTree,
-    []
-  );
+  const proof = await getValidityProofWithRetry(hashesWithTree, []);
   const settingsMutArgs = getCompressedAccountMutArgs<CompressedSettings>(
     packedAccounts,
     proof.treeInfos,

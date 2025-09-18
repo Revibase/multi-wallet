@@ -1,10 +1,11 @@
 import { AccountRole, TransactionSigner } from "@solana/kit";
 import { getCreateGlobalUsersInstruction } from "../../generated";
-import { getLightProtocolRpc, getUserAddress } from "../../utils";
+import { getUserAddress } from "../../utils";
 import {
   convertToCompressedProofArgs,
   getCompressedAccountInitArgs,
   getNewAddressesParams,
+  getValidityProofWithRetry,
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 
@@ -34,10 +35,7 @@ export async function createGlobalUsers({
       type: "User",
     }))
   );
-  const proof = await getLightProtocolRpc().getValidityProofV0(
-    [],
-    newAddressParams
-  );
+  const proof = await getValidityProofWithRetry([], newAddressParams);
   const userCreationArgs = await getCompressedAccountInitArgs(
     packedAccounts,
     proof.treeInfos,

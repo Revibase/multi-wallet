@@ -251,7 +251,7 @@ export async function constructSettingsProofArgs(
         },
       };
     } else {
-      proof = await getLightProtocolRpc().getValidityProofV0([settings], []);
+      proof = await getValidityProofWithRetry([settings], []);
       rootIndex = proof.rootIndices[0];
     }
 
@@ -272,4 +272,32 @@ export async function constructSettingsProofArgs(
     };
   }
   return { settingsReadonlyArgs, proof, packedAccounts };
+}
+
+export async function getValidityProofWithRetry(
+  hashes?: HashWithTree[] | undefined,
+  newAddresses?: AddressWithTree[],
+  retry = 5,
+  delay = 1000
+) {
+  let attempt = 1;
+  while (attempt < retry) {
+    try {
+      const proof = await getLightProtocolRpc().getValidityProofV0(
+        hashes,
+        newAddresses
+      );
+      return proof;
+    } catch (error) {
+      console.error(`Attempt ${attempt}, Get Validity Proof failed. ${error}`);
+      attempt++;
+      if (attempt >= retry) {
+        throw new Error(
+          `Failed to get validity proof after ${retry} attempts: ${error}`
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw new Error(`Failed to get validity proof after ${retry} attempts`);
 }

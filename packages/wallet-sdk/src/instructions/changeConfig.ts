@@ -39,7 +39,6 @@ import {
   convertMemberKeyToString,
   fetchSettingsData,
   getCompressedSettingsAddressFromIndex,
-  getLightProtocolRpc,
   getMultiWalletFromSettings,
   getSettingsFromIndex,
   getUserAddress,
@@ -48,6 +47,7 @@ import {
   convertToCompressedProofArgs,
   getCompressedAccountHashes,
   getCompressedAccountMutArgs,
+  getValidityProofWithRetry,
 } from "../utils/compressed/internal";
 import { PackedAccounts } from "../utils/compressed/packedAccounts";
 import { extractSecp256r1VerificationArgs } from "../utils/transactionMessage/internal";
@@ -127,10 +127,7 @@ export async function changeConfig({
       : [];
 
     if (hashesWithTree.length) {
-      proof = await getLightProtocolRpc().getValidityProofV0(
-        hashesWithTree,
-        []
-      );
+      proof = await getValidityProofWithRetry(hashesWithTree, []);
 
       const settingsHashes = hashesWithTree.filter(
         (x) => x.type === "Settings"

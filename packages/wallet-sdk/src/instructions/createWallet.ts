@@ -10,7 +10,6 @@ import { PermanentMemberPermission, Secp256r1Key } from "../types";
 import {
   getCompressedSettingsAddressFromIndex,
   getGlobalCounterAddress,
-  getLightProtocolRpc,
   getSettingsFromIndex,
   getUserAddress,
 } from "../utils";
@@ -20,6 +19,7 @@ import {
   getCompressedAccountInitArgs,
   getCompressedAccountMutArgs,
   getNewAddressesParams,
+  getValidityProofWithRetry,
 } from "../utils/compressed/internal";
 import { PackedAccounts } from "../utils/compressed/packedAccounts";
 import { extractSecp256r1VerificationArgs } from "../utils/transactionMessage/internal";
@@ -95,7 +95,7 @@ export async function createWallet({
   }
   const hashesWithTreeEndIndex = hashesWithTree.length;
 
-  const proof = await getLightProtocolRpc().getValidityProofV0(
+  const proof = await getValidityProofWithRetry(
     hashesWithTree,
     newAddressParams
   );
