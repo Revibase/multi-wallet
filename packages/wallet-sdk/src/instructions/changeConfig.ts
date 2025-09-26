@@ -1,38 +1,45 @@
-import { ValidityProofWithContext } from "@lightprotocol/stateless.js";
-import { SYSTEM_PROGRAM_ADDRESS } from "@solana-program/system";
+import type { ValidityProofWithContext } from "@lightprotocol/stateless.js";
+import BN from "bn.js";
 import {
   AccountRole,
-  AccountSignerMeta,
-  Address,
+  type AccountSignerMeta,
+  type Address,
   createNoopSigner,
   getAddressEncoder,
   none,
   some,
-  TransactionSigner,
-} from "@solana/kit";
-import BN from "bn.js";
+  type TransactionSigner,
+} from "gill";
 import {
-  CompressedSettings,
-  ConfigAction,
+  type CompressedSettings,
+  type ConfigAction,
   DelegateOp,
-  DelegateOpArgs,
+  type DelegateOpArgs,
   getChangeConfigCompressedInstruction,
   getChangeConfigInstruction,
   getCompressedSettingsDecoder,
   getUserDecoder,
-  IPermissions,
-  MemberKey,
-  MemberKeyWithEditPermissionsArgs,
-  MemberKeyWithRemovePermissionsArgs,
-  MemberWithAddPermissionsArgs,
-  SettingsMutArgs,
-  User,
-  UserMutArgs,
+  type MemberKey,
+  type MemberKeyWithEditPermissionsArgs,
+  type MemberKeyWithRemovePermissionsArgs,
+  type MemberWithAddPermissionsArgs,
+  type SettingsMutArgs,
+  type User,
+  type UserMutArgs,
 } from "../generated";
-import { ConfigurationArgs, KeyType, Secp256r1Key } from "../types";
 import {
+  type ConfigurationArgs,
+  KeyType,
+  PermanentMemberPermission,
+  type PermissionArgs,
+  Permissions,
+  Secp256r1Key,
+  TransactionManagerPermission,
+} from "../types";
+import {
+  convertMemberKeyToString,
+  fetchSettingsData,
   getCompressedSettingsAddressFromIndex,
-  getLightProtocolRpc,
   getMultiWalletFromSettings,
   getSettingsFromIndex,
   getUserAddress,
@@ -41,21 +48,25 @@ import {
   convertToCompressedProofArgs,
   getCompressedAccountHashes,
   getCompressedAccountMutArgs,
+  getValidityProofWithRetry,
 } from "../utils/compressed/internal";
 import { PackedAccounts } from "../utils/compressed/packedAccounts";
-import { extractSecp256r1VerificationArgs } from "../utils/transactionMessage/internal";
-import { Secp256r1VerifyInput } from "./secp256r1Verify";
+import { convertPermissions, getUserExtensionsAddress } from "../utils/helper";
+import { extractSecp256r1VerificationArgs } from "../utils/internal";
+import type { Secp256r1VerifyInput } from "./secp256r1Verify";
 
 export async function changeConfig({
   index,
   configActionsArgs,
   payer,
   compressed = false,
+  cachedCompressedAccounts,
 }: {
   index: bigint | number;
   configActionsArgs: ConfigurationArgs[];
   payer: TransactionSigner;
   compressed?: boolean;
+  cachedCompressedAccounts?: Map<string, any>;
 }) {
   // --- Stage 1: Setup Addresses---
   const settings = await getSettingsFromIndex(index);
@@ -68,7 +79,11 @@ export async function changeConfig({
     if (action.type === "AddMembers") {
       addDelegates.push(
         ...action.members.map((m) =>
-          m.pubkey instanceof Secp256r1Key ? m.pubkey : m.pubkey.address
+          m.pubkey instanceof Secp256r1Key
+            ? m.pubkey
+            : m.setAsDelegate
+              ? m.pubkey.address
+              : m.pubkey
         )
       );
     } else if (action.type === "RemoveMembers") {
@@ -98,34 +113,27 @@ export async function changeConfig({
       ...(compressed
         ? [
             {
-              address: await getCompressedSettingsAddressFromIndex(index),
+              address: getCompressedSettingsAddressFromIndex(index),
               type: "Settings" as const,
             },
           ]
         : []),
-      ...(await Promise.all(
-        removeDelegates.map(async (m) => ({
-          address: await getUserAddress(m),
-          type: "User" as const,
-        }))
-      )),
-      ...(await Promise.all(
-        addDelegates.map(async (m) => ({
-          address: await getUserAddress(m),
-          type: "User" as const,
-        }))
-      )),
+      ...removeDelegates.map((m) => ({
+        address: getUserAddress(m),
+        type: "User" as const,
+      })),
+      ...addDelegates.map((m) => ({
+        address: getUserAddress(m),
+        type: "User" as const,
+      })),
     ];
 
     const hashesWithTree = addresses.length
-      ? await getCompressedAccountHashes(addresses)
+      ? await getCompressedAccountHashes(addresses, cachedCompressedAccounts)
       : [];
 
     if (hashesWithTree.length) {
-      proof = await getLightProtocolRpc().getValidityProofV0(
-        hashesWithTree,
-        []
-      );
+      proof = await getValidityProofWithRetry(hashesWithTree, []);
 
       const settingsHashes = hashesWithTree.filter(
         (x) => x.type === "Settings"
@@ -183,23 +191,46 @@ export async function changeConfig({
 
             const userArgs = await getUserDelegateArgs(m.pubkey, userMutArgs);
             if (userArgs) {
-              field.push(convertAddMember({ ...m, index, userArgs }));
+              field.push(
+                convertAddMember({
+                  ...m,
+                  permissionArgs: m.permissions,
+                  index,
+                  userArgs,
+                })
+              );
             }
           } else {
-            packedAccounts.addPreAccounts([
-              {
-                address: m.pubkey.address,
-                role: AccountRole.READONLY_SIGNER,
-                signer: m.pubkey,
-              } as AccountSignerMeta,
-            ]);
+            if (m.setAsDelegate) {
+              packedAccounts.addPreAccounts([
+                {
+                  address: m.pubkey.address,
+                  role: AccountRole.READONLY_SIGNER,
+                  signer: m.pubkey,
+                } as AccountSignerMeta,
+              ]);
+            } else if (m.isTransactionManager) {
+              packedAccounts.addPreAccounts([
+                {
+                  address: await getUserExtensionsAddress(m.pubkey),
+                  role: AccountRole.READONLY,
+                },
+              ]);
+            }
 
             const userArgs = await getUserDelegateArgs(
-              m.pubkey.address,
+              m.setAsDelegate ? m.pubkey.address : m.pubkey,
               userMutArgs
             );
             if (userArgs) {
-              field.push(convertAddMember({ ...m, index: -1, userArgs }));
+              field.push(
+                convertAddMember({
+                  ...m,
+                  permissionArgs: m.permissions,
+                  index: -1,
+                  userArgs,
+                })
+              );
             }
           }
         }
@@ -217,19 +248,44 @@ export async function changeConfig({
         );
         configActions.push({
           __kind: action.type,
-          fields: [field.filter(Boolean)],
+          fields: [field],
         });
         break;
       }
 
       case "EditPermissions": {
+        const settingsData = await fetchSettingsData(
+          index,
+          cachedCompressedAccounts
+        );
+        const transactionManager = settingsData.members.find((x) =>
+          Permissions.has(x.permissions, TransactionManagerPermission)
+        );
+        if (transactionManager) {
+          throw new Error(
+            "Transaction Manager's permission cannot be changed."
+          );
+        }
+        const permanentMember = settingsData.members.find((x) =>
+          Permissions.has(x.permissions, PermanentMemberPermission)
+        );
         const field = await Promise.all(
           action.members.map(async (m) => {
             const userArgs =
               m.delegateOperation !== DelegateOp.Ignore
                 ? await getUserDelegateArgs(m.pubkey, userMutArgs)
                 : undefined;
-            return convertEditMember({ ...m, userArgs });
+            const isPermanentMember =
+              !!permanentMember?.pubkey &&
+              convertMemberKeyToString(permanentMember.pubkey) ===
+                m.pubkey.toString();
+
+            return convertEditMember({
+              ...m,
+              permissionArgs: m.permissions,
+              isPermanentMember,
+              userArgs,
+            });
           })
         );
         configActions.push({ __kind: action.type, fields: [field] });
@@ -273,65 +329,103 @@ async function getUserDelegateArgs(
   pubkey: Address | Secp256r1Key,
   userMutArgs: UserMutArgs[]
 ): Promise<UserMutArgs | undefined> {
-  const userAddress = await getUserAddress(pubkey);
+  const userAddress = getUserAddress(pubkey);
   const mutArg = userMutArgs.find((arg) =>
     new BN(new Uint8Array(arg.accountMeta.address)).eq(userAddress)
   );
   return mutArg;
 }
 
-function convertEditMember(x: {
+function convertEditMember({
+  pubkey,
+  permissionArgs,
+  userArgs,
+  delegateOperation,
+  isPermanentMember,
+}: {
   pubkey: Address | Secp256r1Key;
-  permissions: IPermissions;
+  permissionArgs: PermissionArgs;
+  isPermanentMember: boolean;
   userArgs?: UserMutArgs;
   delegateOperation: DelegateOpArgs;
 }): MemberKeyWithEditPermissionsArgs {
+  if (isPermanentMember) {
+    if (userArgs || delegateOperation !== DelegateOp.Ignore) {
+      throw new Error(
+        "Delegation cannot be modified for a permanent member. Permanent members must always remain delegates."
+      );
+    }
+  }
+  const permissions = convertPermissions(permissionArgs, isPermanentMember);
+
   return {
-    memberKey: convertPubkeyToMemberkey(x.pubkey),
-    permissions: x.permissions,
-    userArgs: x.userArgs ? some(x.userArgs) : none(),
-    delegateOperation: x.delegateOperation,
+    memberKey: convertPubkeyToMemberkey(pubkey),
+    permissions,
+    userArgs: userArgs ? some(userArgs) : none(),
+    delegateOperation,
   };
 }
 
-function convertRemoveMember(x: {
+function convertRemoveMember({
+  pubkey,
+  userArgs,
+}: {
   pubkey: Address | Secp256r1Key;
   userArgs: UserMutArgs;
 }): MemberKeyWithRemovePermissionsArgs {
+  const userData = userArgs.data;
+  const isPermanentMember = userData.isPermanentMember;
+  if (isPermanentMember) {
+    throw new Error("Permanent Member cannot be removed from the wallet.");
+  }
   return {
-    memberKey: convertPubkeyToMemberkey(x.pubkey),
-    userArgs: x.userArgs,
+    memberKey: convertPubkeyToMemberkey(pubkey),
+    userArgs,
   };
 }
 
-function convertAddMember(x: {
-  pubkey: TransactionSigner | Secp256r1Key;
-  permissions: IPermissions;
+function convertAddMember({
+  pubkey,
+  permissionArgs,
+  index,
+  userArgs,
+  setAsDelegate,
+  isTransactionManager,
+}: {
+  pubkey: TransactionSigner | Secp256r1Key | Address;
+  permissionArgs: PermissionArgs;
   index: number;
   userArgs: UserMutArgs;
   setAsDelegate: boolean;
+  isTransactionManager: boolean;
 }): MemberWithAddPermissionsArgs {
+  const permissions = getAddMemberPermission(
+    userArgs,
+    setAsDelegate,
+    permissionArgs,
+    isTransactionManager
+  );
   return {
     member: {
-      permissions: x.permissions,
-      domainConfig:
-        x.pubkey instanceof Secp256r1Key && x.pubkey.domainConfig
-          ? x.pubkey.domainConfig
-          : SYSTEM_PROGRAM_ADDRESS,
+      permissions,
       pubkey: convertPubkeyToMemberkey(
-        x.pubkey instanceof Secp256r1Key ? x.pubkey : x.pubkey.address
+        pubkey instanceof Secp256r1Key
+          ? pubkey
+          : setAsDelegate
+            ? (pubkey as TransactionSigner).address
+            : (pubkey as Address)
       ),
     },
     verifyArgs:
-      x.pubkey instanceof Secp256r1Key && x.pubkey.verifyArgs && x.index !== -1
+      pubkey instanceof Secp256r1Key && pubkey.verifyArgs && index !== -1
         ? some({
-            clientDataJson: x.pubkey.verifyArgs.clientDataJson,
-            slotNumber: x.pubkey.verifyArgs.slotNumber,
-            index: x.index,
+            clientDataJson: pubkey.verifyArgs.clientDataJson,
+            slotNumber: pubkey.verifyArgs.slotNumber,
+            index: index,
           })
         : none(),
-    userArgs: x.userArgs,
-    setAsDelegate: x.setAsDelegate,
+    userArgs,
+    setAsDelegate,
   };
 }
 
@@ -347,4 +441,44 @@ function convertPubkeyToMemberkey(pubkey: Address | Secp256r1Key): MemberKey {
       ]),
     };
   }
+}
+
+function getAddMemberPermission(
+  userMutArgs: UserMutArgs,
+  setAsDelegate: boolean,
+  permissionArgs: PermissionArgs,
+  isTransactionManager: boolean
+) {
+  const userData = userMutArgs.data;
+  const isPermanentMember = userData.isPermanentMember;
+  if (isPermanentMember) {
+    if (!setAsDelegate) {
+      throw new Error(
+        "Permanent members must also be delegates. Please set `setAsDelegate = true`."
+      );
+    }
+    if (userData.settingsIndex.__option === "Some") {
+      throw new Error(
+        "This user is already registered as a permanent member in another wallet. A permanent member can only belong to one wallet."
+      );
+    }
+  }
+
+  if (isTransactionManager) {
+    if (permissionArgs.execute || permissionArgs.vote) {
+      throw new Error("Transaction Manager can only have initiate permission");
+    }
+    if (setAsDelegate) {
+      throw new Error(
+        "Transaction Manager cannot be a delegate. Please set `setAsDelegate = false`."
+      );
+    }
+  }
+
+  const permissions = convertPermissions(
+    permissionArgs,
+    isPermanentMember,
+    isTransactionManager
+  );
+  return permissions;
 }

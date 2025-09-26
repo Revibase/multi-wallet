@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use std::str::from_utf8;
 
 const MAX_ORIGIN_LEN: usize = 512;
-const MAX_RP_ID_LEN: usize = 256;
+pub const MAX_RP_ID_LEN: usize = u8::MAX as usize;
 
 #[account(zero_copy)]
 pub struct DomainConfig {
@@ -15,12 +15,12 @@ pub struct DomainConfig {
     pub rp_id_length: u8,
     pub rp_id: [u8; MAX_RP_ID_LEN],
     pub origins: [u8; MAX_ORIGIN_LEN], // [origin_len, origin..., origin_len, origin...]
-    pub padding: [u8; 1],
+    pub padding: [u8; 2],
 }
 
 impl DomainConfig {
     pub fn size() -> usize {
-        return 8 + 2 + 32 + 32 + 1 + 1 + 1 + 256 + 512 + 1;
+        return 8 + 2 + 32 + 32 + 1 + 1 + 1 + MAX_RP_ID_LEN + MAX_ORIGIN_LEN + 2;
     }
 
     pub fn write_origins(&mut self, origins: Vec<String>) -> Result<()> {
@@ -87,5 +87,18 @@ impl DomainConfig {
         }
 
         Ok(origins)
+    }
+
+    pub fn extract_domain_config_account<'a>(
+        remaining_accounts: &'a [AccountInfo<'a>],
+        domain_config_key: Pubkey,
+    ) -> Result<AccountLoader<'a, DomainConfig>> {
+        let domain_account = remaining_accounts
+            .iter()
+            .find(|f| f.key.eq(&domain_config_key))
+            .ok_or(MultisigError::MissingAccount)?;
+        let account_loader = AccountLoader::<DomainConfig>::try_from(domain_account)?;
+
+        Ok(account_loader)
     }
 }

@@ -1,18 +1,13 @@
 import {
-  Address,
-  AddressesByLookupTableAddress,
+  type Address,
+  type AddressesByLookupTableAddress,
   type KeyPairSigner,
-  type Rpc,
-  type SolanaRpcApi,
-} from "@solana/kit";
+} from "gill";
 
 /**
  * Shared test context that is passed between test files
  */
 export interface TestContext {
-  connection: Rpc<SolanaRpcApi>;
-  rpcSubscriptions: any;
-  sendAndConfirm: any;
   payer: KeyPairSigner;
   wallet: KeyPairSigner;
   index: number | bigint | undefined;

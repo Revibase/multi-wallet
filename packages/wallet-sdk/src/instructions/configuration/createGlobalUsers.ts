@@ -1,35 +1,49 @@
-import { Address, TransactionSigner } from "@solana/kit";
+import { AccountRole, type TransactionSigner } from "gill";
 import { getCreateGlobalUsersInstruction } from "../../generated";
-import { getLightProtocolRpc, getUserAddress } from "../../utils";
+import { getUserAddress, getUserExtensionsAddress } from "../../utils";
 import {
   convertToCompressedProofArgs,
   getCompressedAccountInitArgs,
   getNewAddressesParams,
+  getValidityProofWithRetry,
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 
+type UserCreationArgs =
+  | {
+      member: TransactionSigner;
+      isPermanentMember: boolean;
+      apiUrl: undefined;
+    }
+  | {
+      member: TransactionSigner;
+      isPermanentMember: false;
+      apiUrl: string;
+    };
+
 export async function createGlobalUsers({
-  members,
+  createUserArgs,
   payer,
 }: {
   payer: TransactionSigner;
-  members: Address[];
+  createUserArgs: UserCreationArgs[];
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
-
+  packedAccounts.addPreAccounts(
+    createUserArgs.map((x) => ({
+      address: x.member.address,
+      role: AccountRole.READONLY_SIGNER,
+      signer: x.member,
+    }))
+  );
   const newAddressParams = getNewAddressesParams(
-    await Promise.all(
-      members.map(async (member) => ({
-        pubkey: await getUserAddress(member),
-        type: "User",
-      }))
-    )
+    createUserArgs.map((x) => ({
+      pubkey: getUserAddress(x.member.address),
+      type: "User",
+    }))
   );
-  const proof = await getLightProtocolRpc().getValidityProofV0(
-    [],
-    newAddressParams
-  );
+  const proof = await getValidityProofWithRetry([], newAddressParams);
   const userCreationArgs = await getCompressedAccountInitArgs(
     packedAccounts,
     proof.treeInfos,
@@ -37,15 +51,30 @@ export async function createGlobalUsers({
     proof.rootIndices,
     newAddressParams
   );
+
+  packedAccounts.addPreAccounts(
+    await Promise.all(
+      createUserArgs
+        .filter((x) => !!x.apiUrl)
+        .map(async (x) => ({
+          address: await getUserExtensionsAddress(x.member.address),
+          role: AccountRole.WRITABLE,
+        }))
+    )
+  );
+
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
+
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
 
   return getCreateGlobalUsersInstruction({
     compressedProofArgs,
     payer,
-    createUserArgs: members.map((x, index) => ({
-      member: x,
+    createUserArgs: createUserArgs.map((x, index) => ({
+      member: x.member.address,
+      isPermanentMember: x.isPermanentMember,
       userCreationArgs: userCreationArgs[index],
+      apiUrl: x.apiUrl ?? null,
     })),
     remainingAccounts,
   });

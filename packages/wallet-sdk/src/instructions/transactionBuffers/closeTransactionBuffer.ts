@@ -1,4 +1,4 @@
-import { Address, TransactionSigner } from "@solana/kit";
+import type { Address, TransactionSigner } from "gill";
 import {
   fetchTransactionBuffer,
   getTransactionBufferCloseCompressedInstruction,
@@ -10,7 +10,7 @@ import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
 } from "../../utils/compressed/internal";
-import { extractSecp256r1VerificationArgs } from "../../utils/transactionMessage/internal";
+import { extractSecp256r1VerificationArgs } from "../../utils/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
 export async function closeTransactionBuffer({
@@ -19,12 +19,14 @@ export async function closeTransactionBuffer({
   transactionBufferAddress,
   payer,
   compressed = false,
+  cachedCompressedAccounts,
 }: {
   index: bigint | number;
   closer: TransactionSigner | Secp256r1Key;
   transactionBufferAddress: Address;
   payer?: TransactionSigner;
   compressed?: boolean;
+  cachedCompressedAccounts?: Map<string, any>;
 }) {
   const transactionBuffer = await fetchTransactionBuffer(
     getSolanaRpc(),
@@ -32,7 +34,12 @@ export async function closeTransactionBuffer({
   );
   const settings = transactionBuffer.data.multiWalletSettings;
   const { settingsReadonlyArgs, proof, packedAccounts } =
-    await constructSettingsProofArgs(compressed, index);
+    await constructSettingsProofArgs(
+      compressed,
+      index,
+      false,
+      cachedCompressedAccounts
+    );
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const {
@@ -93,6 +100,7 @@ export async function closeTransactionBuffer({
         settings,
         payer: transactionBuffer.data.payer,
         secp256r1VerifyArgs: verifyArgs,
+        remainingAccounts: [],
       })
     );
   }

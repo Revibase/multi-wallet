@@ -1,12 +1,13 @@
-import {
+import type {
   BasePayload,
   MessageAuthenticationResponse,
   MessagePayload,
 } from "../types";
+import { getAuthUrl } from "../utils";
 import { openAuthUrl } from "../utils/passkeys/internal";
 
 export async function signMessage({
-  authUrl = "https://auth.revibase.com",
+  authUrl = getAuthUrl(),
   message,
   signer,
   popUp,

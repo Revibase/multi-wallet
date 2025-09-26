@@ -1,21 +1,21 @@
-import { p256 } from "@noble/curves/nist.js";
-import {
+import { p256 } from "@noble/curves/p256";
+import { sha256 } from "@noble/hashes/sha256";
+import type {
   ParsedAuthenticationResponse,
-  type TransactionPayload,
+  TransactionPayload,
 } from "@revibase/wallet-sdk";
 import {
   address,
   type GetAccountInfoApi,
-  getAddressEncoder,
   getBase58Decoder,
   getBase58Encoder,
   getBase64Encoder,
   getU64Decoder,
   getUtf8Encoder,
   type Rpc,
-} from "@solana/kit";
-import { TestContext } from "../types";
-import { bufferToBase64URLString, normalizeSignatureToLowS } from "./crypto";
+} from "gill";
+import type { TestContext } from "../types.ts";
+import { bufferToBase64URLString } from "./crypto.ts";
 
 /**
  * Creates a transaction challenge for authentication
@@ -53,9 +53,7 @@ export async function createTransactionChallenge(
       new Uint8Array([
         ...new Uint8Array(getUtf8Encoder().encode(transactionActionType)),
         ...getBase58Encoder().encode(transactionAddress),
-        ...new Uint8Array(
-          await crypto.subtle.digest("SHA-256", transactionMessageBytes)
-        ),
+        ...sha256(transactionMessageBytes),
         ...slotHashBytes,
       ])
     )
@@ -76,9 +74,7 @@ export async function mockAuthenticationResponse(
   const flags = new Uint8Array([0x01]); // User present
   const signCount = new Uint8Array([0, 0, 0, 1]); // Sign counter
   const mockAuthenticatorData = new Uint8Array([
-    ...new Uint8Array(
-      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ctx.rpId))
-    ),
+    ...sha256(new TextEncoder().encode(ctx.rpId)),
     ...flags,
     ...signCount,
   ]);
@@ -86,28 +82,11 @@ export async function mockAuthenticationResponse(
   let challenge: Uint8Array;
   let slotHash: string | undefined;
   let slotNumber: string | undefined;
-  if (transaction.transactionActionType === "create_new_wallet") {
-    challenge = new Uint8Array(
-      await crypto.subtle.digest(
-        "SHA-256",
-        new Uint8Array([
-          ...getUtf8Encoder().encode("create_new_wallet"),
-          ...getAddressEncoder().encode(ctx.domainConfig),
-          ...new Uint8Array(
-            await crypto.subtle.digest(
-              "SHA-256",
-              new Uint8Array(getUtf8Encoder().encode(ctx.rpId))
-            )
-          ),
-        ])
-      )
-    );
-  } else {
-    ({ challenge, slotHash, slotNumber } = await createTransactionChallenge(
-      connection,
-      transaction
-    ));
-  }
+
+  ({ challenge, slotHash, slotNumber } = await createTransactionChallenge(
+    connection,
+    transaction
+  ));
 
   const clientDataJSON = JSON.stringify({
     type: "webauthn.get",
@@ -128,31 +107,26 @@ export async function mockAuthenticationResponse(
     ...new Uint8Array(clientDataHash),
   ]);
 
-  const webauthnMessageHash = await crypto.subtle.digest(
-    "SHA-256",
-    messageBuffer
-  );
+  const webauthnMessageHash = sha256(messageBuffer);
 
-  const signatureRS = p256
-    .sign(new Uint8Array(webauthnMessageHash), privateKey)
+  const signature = p256
+    .sign(new Uint8Array(webauthnMessageHash), privateKey, {
+      format: "compact",
+      lowS: true,
+    })
     .toBytes("compact");
 
   return {
     verifyArgs: {
       clientDataJson: clientDataJSONBytes,
       slotNumber: BigInt(slotNumber ?? 0),
-      slotHash: slotHash
-        ? new Uint8Array(getBase58Encoder().encode(slotHash))
-        : undefined,
+      slotHash: new Uint8Array(getBase58Encoder().encode(slotHash)),
     },
-    signer: {
-      credentialId: "",
-      publicKey: getBase58Decoder().decode(
-        crypto.getRandomValues(new Uint8Array(32))
-      ),
-    },
+    signer: getBase58Decoder().decode(
+      crypto.getRandomValues(new Uint8Array(32))
+    ),
     authData: mockAuthenticatorData,
     domainConfig: ctx.domainConfig,
-    signature: normalizeSignatureToLowS(signatureRS),
+    signature,
   };
 }

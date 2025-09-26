@@ -2,9 +2,9 @@ use crate::{
     error::MultisigError,
     id,
     state::{
-        ChallengeArgs, CompressedMember, CompressedSettings, CompressedSettingsData, DomainConfig,
-        GlobalCounter, KeyType, MemberKey, Permissions, ProofArgs, Secp256r1VerifyArgs,
-        SettingsCreationArgs, TransactionActionType, User, UserMutArgs, SEED_MULTISIG, SEED_VAULT,
+        CompressedSettings, CompressedSettingsData, DomainConfig, GlobalCounter, Member, MemberKey,
+        MemberWithAddPermissionsArgs, Ops, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs,
+        SettingsCreationArgs, User, UserMutArgs, SEED_MULTISIG, SEED_VAULT,
     },
     LIGHT_CPI_SIGNER,
 };
@@ -36,11 +36,11 @@ impl<'info> CreateMultiWalletCompressed<'info> {
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        permissions: Permissions,
         compressed_proof_args: ProofArgs,
         settings_creation: SettingsCreationArgs,
         user_mut_args: UserMutArgs,
         settings_index: u128,
+        set_as_delegate: bool,
     ) -> Result<()> {
         let global_counter = &mut ctx.accounts.global_counter.load_mut()?;
         require!(
@@ -57,40 +57,6 @@ impl<'info> CreateMultiWalletCompressed<'info> {
             &secp256r1_verify_args,
             ctx.accounts.instructions_sysvar.as_ref(),
         )?;
-        let domain_config_key = ctx.accounts.domain_config.as_ref().map(|f| f.key());
-
-        if signer.get_type().eq(&KeyType::Secp256r1) {
-            let secp256r1_verify_data = secp256r1_verify_args
-                .as_ref()
-                .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
-
-            let rp_id_hash = ctx
-                .accounts
-                .domain_config
-                .as_ref()
-                .ok_or(MultisigError::DomainConfigIsMissing)?
-                .load()?
-                .rp_id_hash;
-
-            let instructions_sysvar = ctx
-                .accounts
-                .instructions_sysvar
-                .as_ref()
-                .ok_or(MultisigError::MissingAccount)?;
-
-            let domain_config_key =
-                domain_config_key.ok_or(MultisigError::DomainConfigIsMissing)?;
-            secp256r1_verify_data.verify_webauthn(
-                &ctx.accounts.slot_hash_sysvar,
-                &ctx.accounts.domain_config,
-                instructions_sysvar,
-                ChallengeArgs {
-                    account: domain_config_key,
-                    message_hash: rp_id_hash,
-                    action_type: TransactionActionType::CreateNewWallet,
-                },
-            )?;
-        }
 
         let (_, multi_wallet_bump) = Pubkey::find_program_address(
             &[SEED_MULTISIG, settings_key.as_ref(), SEED_VAULT],
@@ -109,30 +75,57 @@ impl<'info> CreateMultiWalletCompressed<'info> {
             bump,
             index: settings_index,
             multi_wallet_bump: multi_wallet_bump,
-            members: vec![CompressedMember {
-                pubkey: signer,
-                permissions,
-                domain_config: domain_config_key,
-            }],
+            members: vec![],
         };
 
-        let (settings_info, settings_new_address) = CompressedSettings::create_settings_account(
-            settings_creation,
-            data,
-            &light_cpi_accounts,
+        let (mut settings_account, settings_new_address) =
+            CompressedSettings::create_settings_account(
+                settings_creation,
+                data,
+                &light_cpi_accounts,
+            )?;
+
+        let mut permissions = Vec::new();
+        permissions.extend([
+            Permission::InitiateTransaction,
+            Permission::VoteTransaction,
+            Permission::ExecuteTransaction,
+        ]);
+        if user_mut_args.data.is_permanent_member {
+            permissions.push(Permission::IsPermanentMember);
+        }
+
+        let delegate_ops = settings_account.add_members(
+            &settings_key,
+            vec![MemberWithAddPermissionsArgs {
+                member: Member {
+                    pubkey: signer,
+                    permissions: Permissions::from_permissions(permissions),
+                },
+                verify_args: secp256r1_verify_args,
+                user_args: user_mut_args,
+                set_as_delegate,
+            }],
+            ctx.remaining_accounts,
+            &ctx.accounts.slot_hash_sysvar,
+            ctx.accounts.instructions_sysvar.as_ref(),
         )?;
+
+        settings_account.invariant()?;
 
         let mut final_account_infos = vec![];
         let mut final_new_addresses = vec![];
 
-        final_account_infos.push(User::handle_set_user_delegate(
-            user_mut_args,
+        final_account_infos.extend(User::handle_user_delegate_accounts(
+            delegate_ops.into_iter().map(Ops::Create).collect(),
             settings_index,
-            true,
-            true,
         )?);
 
-        final_account_infos.push(settings_info);
+        final_account_infos.push(
+            settings_account
+                .to_account_info()
+                .map_err(ProgramError::from)?,
+        );
         final_new_addresses.push(settings_new_address);
 
         let cpi_inputs = CpiInputs::new_with_address(

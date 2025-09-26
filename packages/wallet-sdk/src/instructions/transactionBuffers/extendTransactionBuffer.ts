@@ -1,4 +1,4 @@
-import { Address } from "@solana/kit";
+import type { Address } from "gill";
 import {
   getTransactionBufferExtendCompressedInstruction,
   getTransactionBufferExtendInstruction,
@@ -20,12 +20,14 @@ export function extendTransactionBuffer({
       transactionBuffer: transactionBufferAddress,
       buffer: transactionMessageBytes,
       settingsKey: settings,
+      remainingAccounts: [],
     });
   } else {
     return getTransactionBufferExtendInstruction({
       transactionBuffer: transactionBufferAddress,
       buffer: transactionMessageBytes,
       settings,
+      remainingAccounts: [],
     });
   }
 }

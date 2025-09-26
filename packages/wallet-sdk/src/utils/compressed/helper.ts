@@ -4,37 +4,32 @@ import {
   deriveAddressSeed,
   getDefaultAddressTreeInfo,
 } from "@lightprotocol/stateless.js";
+import { PublicKey } from "@solana/web3.js";
 import {
-  Address,
+  type Address,
   getAddressEncoder,
   getU128Encoder,
   getUtf8Encoder,
-  none,
-  some,
-} from "@solana/kit";
-import { PublicKey } from "@solana/web3.js";
+} from "gill";
 import {
-  CompressedSettingsData,
+  type CompressedSettingsData,
   fetchMaybeSettings,
   getCompressedSettingsDecoder,
   getUserDecoder,
   MULTI_WALLET_PROGRAM_ADDRESS,
   Secp256r1Key,
-  User,
+  type User,
 } from "../..";
 import { getSettingsFromIndex } from "../helper";
-import { getLightProtocolRpc, getSolanaRpc } from "../initialize";
+import { getSolanaRpc } from "../initialize";
+import { getCompressedAccount } from "./internal";
 
-export async function getUserAddress(member: Address | Secp256r1Key) {
+export function getUserAddress(member: Address | Secp256r1Key) {
   const { tree } = getDefaultAddressTreeInfo();
   if (member instanceof Secp256r1Key) {
-    if (!member.domainConfig) {
-      throw new Error("Unable to find domain config in Secp256r1Key");
-    }
     const addressSeed = deriveAddressSeed(
       [
         new Uint8Array(getUtf8Encoder().encode("delegate")),
-        new Uint8Array(getAddressEncoder().encode(member.domainConfig)),
         member.toTruncatedBuffer(),
       ],
       new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS)
@@ -53,30 +48,32 @@ export async function getUserAddress(member: Address | Secp256r1Key) {
 }
 
 export async function fetchUserData(
-  member: Address | Secp256r1Key
+  member: Address | Secp256r1Key,
+  cachedCompressedAccounts?: Map<string, any>
 ): Promise<User> {
-  const userAddress = await getUserAddress(member);
-  const result = await getLightProtocolRpc().getCompressedAccount(userAddress);
-  if (!result?.data?.data) {
-    throw Error("Unable to fetch user account data.");
+  const result = await fetchMaybeUserData(member, cachedCompressedAccounts);
+  if (!result) {
+    throw new Error("User cannot be found.");
   }
-  return getUserDecoder().decode(result.data.data);
+  return result;
 }
 
 export async function fetchMaybeUserData(
-  member: Address | Secp256r1Key
+  member: Address | Secp256r1Key,
+  cachedCompressedAccounts?: Map<string, any>
 ): Promise<User | null> {
-  const userAddress = await getUserAddress(member);
-  const result = await getLightProtocolRpc().getCompressedAccount(userAddress);
+  const userAddress = getUserAddress(member);
+  const result = await getCompressedAccount(
+    userAddress,
+    cachedCompressedAccounts
+  );
   if (!result?.data?.data) {
     return null;
   }
   return getUserDecoder().decode(result.data.data);
 }
 
-export async function getCompressedSettingsAddressFromIndex(
-  index: number | bigint
-) {
+export function getCompressedSettingsAddressFromIndex(index: number | bigint) {
   const { tree } = getDefaultAddressTreeInfo();
 
   const addressSeed = deriveAddressSeed(
@@ -92,42 +89,16 @@ export async function getCompressedSettingsAddressFromIndex(
   );
 }
 
-export async function checkIfSettingsAccountIsCompressed(
-  index: bigint | number
-): Promise<boolean> {
-  const address = await getCompressedSettingsAddressFromIndex(index);
-  const result = await getLightProtocolRpc().getCompressedAccount(address);
-  if (!result?.data?.data) {
-    return false;
-  }
-  const decoded = getCompressedSettingsDecoder().decode(result?.data?.data);
-  return decoded.data.__option === "Some";
-}
-
-type SettingsData = CompressedSettingsData;
 export async function fetchSettingsData(
-  index: number | bigint
-): Promise<SettingsData> {
-  const result = await fetchMaybeSettings(
-    getSolanaRpc(),
-    await getSettingsFromIndex(index)
-  );
-  if (result.exists) {
-    return {
-      ...result.data,
-      members: result.data.members
-        .slice(0, result.data.membersLen)
-        .map((x) => ({
-          ...x,
-          domainConfig:
-            x.domainConfig.toString() === PublicKey.default.toString()
-              ? none()
-              : some(x.domainConfig),
-        })),
-    };
-  } else {
-    const address = await getCompressedSettingsAddressFromIndex(index);
-    const result = await getLightProtocolRpc().getCompressedAccount(address);
+  index: number | bigint,
+  cachedCompressedAccounts?: Map<string, any>
+): Promise<CompressedSettingsData & { isCompressed: boolean }> {
+  try {
+    const address = getCompressedSettingsAddressFromIndex(index);
+    const result = await getCompressedAccount(
+      address,
+      cachedCompressedAccounts
+    );
     if (!result?.data?.data) {
       throw new Error("Settings account does not exist.");
     }
@@ -135,6 +106,19 @@ export async function fetchSettingsData(
     if (data.data.__option === "None") {
       throw new Error("Settings account does not exist.");
     }
-    return data.data.value;
+    return { ...data.data.value, isCompressed: true };
+  } catch {
+    const result = await fetchMaybeSettings(
+      getSolanaRpc(),
+      await getSettingsFromIndex(index)
+    );
+    if (!result.exists) {
+      throw new Error("Settings account does not exist.");
+    }
+    return {
+      ...result.data,
+      members: result.data.members.slice(0, result.data.membersLen),
+      isCompressed: false,
+    };
   }
 }

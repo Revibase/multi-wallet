@@ -6,10 +6,5 @@ export default defineConfig({
   format: ["cjs", "esm"],
   dts: true,
   sourcemap: true,
-  external: [
-    "@solana/kit",
-    "@solana/web3.js",
-    "@solana-program/system",
-    "@solana-program/compute-budget",
-  ],
+  external: ["gill", "@solana/web3.js", "@solana/transaction-confirmation"],
 });

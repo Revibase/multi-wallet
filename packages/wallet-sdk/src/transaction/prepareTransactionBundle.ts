@@ -1,23 +1,24 @@
-import {
+import { sha256 } from "@noble/hashes/sha256";
+import type {
   AddressesByLookupTableAddress,
   Instruction,
   TransactionSigner,
-} from "@solana/kit";
+} from "gill";
 import {
   createTransactionBuffer,
   executeTransaction,
   executeTransactionBuffer,
   extendTransactionBuffer,
-  Secp256r1VerifyInput,
+  type Secp256r1VerifyInput,
   voteTransactionBuffer,
 } from "../instructions";
 import { Secp256r1Key } from "../types";
+import type { BundleResponse } from "../types/bundle";
 import { getSettingsFromIndex, getTransactionBufferAddress } from "../utils";
 import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
 } from "../utils/compressed/internal";
-import { getHash } from "../utils/transactionMessage/internal";
 
 interface CreateTransactionBundleArgs {
   payer: TransactionSigner;
@@ -32,6 +33,8 @@ interface CreateTransactionBundleArgs {
   jitoBundlesTipAmount?: number;
   chunkSize?: number;
   compressed?: boolean;
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
+  cachedCompressedAccounts?: Map<string, any>;
 }
 
 export async function prepareTransactionBundle({
@@ -42,11 +45,13 @@ export async function prepareTransactionBundle({
   executor,
   secp256r1VerifyInput,
   jitoBundlesTipAmount,
+  addressesByLookupTableAddress,
   bufferIndex = Math.floor(Math.random() * 255),
   additionalVoters = [],
   additionalSigners = [],
   compressed = false,
   chunkSize = Math.ceil(transactionMessageBytes.length / 2),
+  cachedCompressedAccounts,
 }: CreateTransactionBundleArgs) {
   // --- Stage 1: Setup Addresses ---
   const [settings, transactionBufferAddress] = await Promise.all([
@@ -64,13 +69,18 @@ export async function prepareTransactionBundle({
   for (let i = 0; i < transactionMessageBytes.length; i += chunkSize) {
     const chunk = transactionMessageBytes.subarray(i, i + chunkSize);
     chunks.push(chunk);
-    chunksHash.push(getHash(chunk));
+    chunksHash.push(sha256(chunk));
   }
-  const finalBufferHash = getHash(transactionMessageBytes);
+  const finalBufferHash = sha256(transactionMessageBytes);
 
   // --- Stage 3: Derive readonly compressed proof args if necessary---
   const { settingsReadonlyArgs, proof, packedAccounts } =
-    await constructSettingsProofArgs(compressed, index);
+    await constructSettingsProofArgs(
+      compressed,
+      index,
+      false,
+      cachedCompressedAccounts
+    );
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const compressedArgs = settingsReadonlyArgs
     ? {
@@ -130,18 +140,14 @@ export async function prepareTransactionBundle({
       additionalSigners,
       secp256r1VerifyInput,
       jitoBundlesTipAmount,
+      addressesByLookupTableAddress,
     });
 
   // --- Stage 5: Assemble transactions ---
   const buildTx = (
-    id: string,
+    id: BundleResponse["id"],
     ixs: Instruction[]
-  ): {
-    id: string;
-    payer: TransactionSigner;
-    ixs: Instruction[];
-    addressLookupTableAccounts?: AddressesByLookupTableAddress;
-  } => ({
+  ): BundleResponse => ({
     id,
     payer,
     ixs,

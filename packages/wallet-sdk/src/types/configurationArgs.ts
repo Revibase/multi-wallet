@@ -1,26 +1,50 @@
-import { Address, TransactionSigner } from "@solana/kit";
+import type { Address, TransactionSigner } from "gill";
 import { Secp256r1Key } from ".";
-import { DelegateOpArgs, IPermissions } from "../generated";
+import type { DelegateOpArgs } from "../generated";
+
+export type PermissionArgs = {
+  initiate: boolean;
+  vote: boolean;
+  execute: boolean;
+};
+
+type AddMemberArgs =
+  | {
+      setAsDelegate: true;
+      pubkey: TransactionSigner | Secp256r1Key;
+      permissions: PermissionArgs;
+      isTransactionManager: false;
+    }
+  | {
+      setAsDelegate: false;
+      pubkey: Address;
+      permissions: { initiate: true; vote: false; execute: false };
+      isTransactionManager: true;
+    }
+  | {
+      setAsDelegate: false;
+      pubkey: Address | Secp256r1Key;
+      permissions: PermissionArgs;
+      isTransactionManager: false;
+    };
 
 export type ConfigurationArgs =
   | {
       type: "EditPermissions";
       members: {
         pubkey: Address | Secp256r1Key;
-        permissions: IPermissions;
+        permissions: PermissionArgs;
         delegateOperation: DelegateOpArgs;
       }[];
     }
   | {
       type: "AddMembers";
-      members: {
-        pubkey: TransactionSigner | Secp256r1Key;
-        permissions: IPermissions;
-        setAsDelegate: boolean;
-      }[];
+      members: AddMemberArgs[];
     }
   | {
       type: "RemoveMembers";
-      members: { pubkey: Address | Secp256r1Key }[];
+      members: {
+        pubkey: Address | Secp256r1Key;
+      }[];
     }
   | { type: "SetThreshold"; threshold: number };

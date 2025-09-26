@@ -1,17 +1,14 @@
 use super::{
-    DomainConfig, MemberKeyWithEditPermissionsArgs, MemberWithAddPermissionsArgs,
-    TransactionActionType,
+    MemberKeyWithEditPermissionsArgs, MemberWithAddPermissionsArgs, TransactionActionType,
 };
 use crate::error::MultisigError;
-use crate::id;
 use crate::state::member::{Member, MemberKey};
 use crate::state::{
-    ChallengeArgs, KeyType, MemberKeyWithRemovePermissionsArgs, Permission, PermissionCounts,
-    SEED_DOMAIN_CONFIG, SEED_MULTISIG,
+    ChallengeArgs, DomainConfig, KeyType, MemberKeyWithRemovePermissionsArgs, Permission,
+    PermissionCounts, UserExtensions, SEED_MULTISIG,
 };
 use anchor_lang::prelude::*;
 use std::collections::{HashMap, HashSet};
-
 pub const MAXIMUM_AMOUNT_OF_MEMBERS: usize = 4;
 
 #[account(zero_copy)]
@@ -148,9 +145,9 @@ pub trait MultisigSettings {
     fn get_threshold(&self) -> Result<u8>;
     fn get_members(&self) -> Result<Vec<Member>>;
     fn invariant(&self) -> Result<()> {
-        let members = self.get_members().unwrap();
+        let members = self.get_members()?;
         let member_count = members.len();
-        let threshold = self.get_threshold().unwrap();
+        let threshold = self.get_threshold()?;
         require!(member_count > 0, MultisigError::EmptyMembers);
         require!(
             member_count <= MAXIMUM_AMOUNT_OF_MEMBERS,
@@ -165,17 +162,49 @@ pub trait MultisigSettings {
             if !seen.insert(member.pubkey) {
                 return Err(MultisigError::DuplicateMember.into());
             }
-            let permissions = &member.permissions;
-            if permissions.has(Permission::VoteTransaction) {
+            let p = &member.permissions;
+            if p.has(Permission::VoteTransaction) {
                 permission_counts.voters += 1
             }
-            if permissions.has(Permission::InitiateTransaction) {
+            if p.has(Permission::InitiateTransaction) {
                 permission_counts.initiators += 1;
             }
-            if permissions.has(Permission::ExecuteTransaction) {
+            if p.has(Permission::ExecuteTransaction) {
                 permission_counts.executors += 1;
             }
+            if p.has(Permission::IsPermanentMember) {
+                permission_counts.permanent_members += 1;
+            }
+            if p.has(Permission::IsTransactionManager) {
+                permission_counts.transaction_manager += 1;
+                require!(
+                    p.has(Permission::InitiateTransaction),
+                    MultisigError::TransactionManagerNotAllowed
+                );
+                require!(
+                    !p.has(Permission::VoteTransaction),
+                    MultisigError::TransactionManagerNotAllowed
+                );
+                require!(
+                    !p.has(Permission::ExecuteTransaction),
+                    MultisigError::TransactionManagerNotAllowed
+                );
+                require!(
+                    !p.has(Permission::IsPermanentMember),
+                    MultisigError::TransactionManagerNotAllowed
+                );
+            }
         }
+
+        require!(
+            permission_counts.permanent_members <= 1,
+            MultisigError::OnlyOnePermanentMemberAllowed
+        );
+
+        require!(
+            permission_counts.transaction_manager <= 1,
+            MultisigError::OnlyOneTransactionManagerAllowed
+        );
 
         require!(
             threshold as usize <= permission_counts.voters,
@@ -194,7 +223,6 @@ pub trait MultisigSettings {
 
         Ok(())
     }
-
     fn add_members<'a>(
         &mut self,
         settings: &Pubkey,
@@ -203,39 +231,65 @@ pub trait MultisigSettings {
         sysvar_slot_history: &Option<UncheckedAccount<'a>>,
         instructions_sysvar: Option<&UncheckedAccount<'a>>,
     ) -> Result<Vec<MemberWithAddPermissionsArgs>> {
-        // Validate and verify all members
-        for member_with_args in &new_members {
-            let member = &member_with_args.member;
+        for member in &new_members {
+            let is_perm = member.member.permissions.has(Permission::IsPermanentMember);
+            let is_tx_manager = member
+                .member
+                .permissions
+                .has(Permission::IsTransactionManager);
 
             require!(
-                !member_with_args.user_args.data.is_permanent_member,
+                member.user_args.data.is_permanent_member == is_perm
+                    && (!is_perm || member.set_as_delegate),
                 MultisigError::PermanentMemberNotAllowed
             );
 
-            match member.pubkey.get_type() {
+            if is_tx_manager {
+                require!(
+                    !member.set_as_delegate,
+                    MultisigError::TransactionManagerNotAllowed
+                );
+                let user_extension_loader = UserExtensions::extract_user_extension(
+                    member.member.pubkey,
+                    remaining_accounts,
+                )?;
+
+                require!(
+                    user_extension_loader.load()?.api_url_len > 0,
+                    MultisigError::TransactionManagerNotAllowed
+                );
+            }
+
+            match member.member.pubkey.get_type() {
                 KeyType::Ed25519 => {
-                    require!(
-                        remaining_accounts
+                    if member.set_as_delegate {
+                        let expected_seed = member.member.pubkey.get_seed();
+                        let has_signer = remaining_accounts
                             .iter()
-                            .any(|f| f.is_signer && f.key.to_bytes().eq(&member.pubkey.get_seed())),
-                        MultisigError::NoSignerFound
-                    );
+                            .any(|f| f.is_signer && f.key.to_bytes().eq(&expected_seed));
+                        require!(has_signer, MultisigError::NoSignerFound);
+                    }
                 }
                 KeyType::Secp256r1 => {
-                    let (domain_config, rp_id_hash) =
-                        Self::verify_domain_config(remaining_accounts, &member.domain_config)?;
-
-                    let secp256r1_verify_data = member_with_args
+                    let domain_config_key = member
+                        .user_args
+                        .data
+                        .domain_config
+                        .ok_or(MultisigError::DomainConfigIsMissing)?;
+                    let domain_config = DomainConfig::extract_domain_config_account(
+                        remaining_accounts,
+                        domain_config_key,
+                    )?;
+                    let rp_id_hash = domain_config.load()?.rp_id_hash;
+                    let verify_data = member
                         .verify_args
                         .as_ref()
                         .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
-
                     let instructions_sysvar =
                         instructions_sysvar.ok_or(MultisigError::MissingAccount)?;
-
-                    secp256r1_verify_data.verify_webauthn(
+                    verify_data.verify_webauthn(
                         sysvar_slot_history,
-                        &domain_config,
+                        &Some(domain_config),
                         instructions_sysvar,
                         ChallengeArgs {
                             account: *settings,
@@ -248,7 +302,6 @@ pub trait MultisigSettings {
         }
 
         let new_member_data: Vec<_> = new_members.iter().map(|m| m.member).collect();
-
         self.extend_members(new_member_data)?;
 
         Ok(new_members)
@@ -258,16 +311,24 @@ pub trait MultisigSettings {
         &mut self,
         member_pubkeys: Vec<MemberKeyWithRemovePermissionsArgs>,
     ) -> Result<Vec<MemberKeyWithRemovePermissionsArgs>> {
-        for member in &member_pubkeys {
+        let members = self.get_members()?;
+
+        if let Some(existing_perm_member) = members
+            .iter()
+            .find(|m| m.permissions.has(Permission::IsPermanentMember))
+        {
             require!(
-                !member.user_args.data.is_permanent_member,
-                MultisigError::PermanentMemberNotAllowed
+                !member_pubkeys
+                    .iter()
+                    .any(|f| f.member_key.eq(&existing_perm_member.pubkey)),
+                MultisigError::PermanentMember
             );
         }
 
-        let keys_to_delete: Vec<_> = member_pubkeys.iter().map(|m| m.member_key).collect();
+        let keys_to_delete = member_pubkeys.iter().map(|f| f.member_key).collect();
 
         self.delete_members(keys_to_delete)?;
+
         Ok(member_pubkeys)
     }
 
@@ -293,6 +354,21 @@ pub trait MultisigSettings {
                 .get_mut(&pubkey)
                 .ok_or(MultisigError::InvalidArguments)?;
 
+            require!(
+                existing_member
+                    .permissions
+                    .has(Permission::IsPermanentMember)
+                    .eq(&member.permissions.has(Permission::IsPermanentMember)),
+                MultisigError::PermanentMemberNotAllowed
+            );
+
+            require!(
+                !existing_member
+                    .permissions
+                    .has(Permission::IsTransactionManager),
+                MultisigError::TransactionManagerNotAllowed
+            );
+
             // update permissions in place
             existing_member.permissions = member.permissions;
 
@@ -307,7 +383,6 @@ pub trait MultisigSettings {
                             member: Member {
                                 pubkey,
                                 permissions: member.permissions,
-                                domain_config: existing_member.domain_config,
                             },
                             verify_args: None,
                             user_args,
@@ -332,40 +407,5 @@ pub trait MultisigSettings {
             members_to_create_delegate_account,
             members_to_close_delegate_account,
         ))
-    }
-
-    fn verify_domain_config<'a>(
-        remaining_accounts: &'a [AccountInfo<'a>],
-        domain_config: &Pubkey,
-    ) -> Result<(Option<AccountLoader<'a, DomainConfig>>, [u8; 32])> {
-        require!(
-            domain_config.ne(&Pubkey::default()),
-            MultisigError::DomainConfigIsMissing
-        );
-        let domain_account = remaining_accounts
-            .iter()
-            .find(|f| f.key.eq(domain_config))
-            .ok_or(MultisigError::MissingAccount)?;
-        let account_loader = AccountLoader::<DomainConfig>::try_from(domain_account)
-            .map_err(|_| MultisigError::DomainConfigIsMissing)?;
-        let rp_id_hash = {
-            let domain_data = account_loader.load()?;
-            let seeds = &[
-                SEED_DOMAIN_CONFIG,
-                domain_data.rp_id_hash.as_ref(),
-                &[domain_data.bump],
-            ];
-
-            let delegate_account = Pubkey::create_program_address(seeds, &id()).unwrap();
-
-            require!(
-                delegate_account == *domain_account.key,
-                MultisigError::MemberDoesNotBelongToDomainConfig
-            );
-
-            domain_data.rp_id_hash
-        };
-
-        Ok((Some(account_loader), rp_id_hash))
     }
 }

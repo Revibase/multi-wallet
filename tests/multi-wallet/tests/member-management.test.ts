@@ -2,11 +2,8 @@ import {
   changeConfig,
   convertMemberKeyToString,
   DelegateOp,
-  fetchMaybeUserData,
   fetchSettingsData,
   fetchUserData,
-  MULTI_WALLET_PROGRAM_ADDRESS,
-  Permissions,
   prepareTransactionBundle,
   prepareTransactionMessage,
   prepareTransactionSync,
@@ -16,8 +13,8 @@ import {
   createMultiWallet,
   sendTransaction,
   setupTestEnvironment,
-} from "../helpers";
-import type { TestContext } from "../types";
+} from "../helpers/index.ts";
+import type { TestContext } from "../types.ts";
 
 export function runMemberManagementTests() {
   describe("Member Management", () => {
@@ -30,6 +27,7 @@ export function runMemberManagementTests() {
     });
 
     it("should add a new member", async () => {
+      if (!ctx.index || !ctx.multiWalletVault) return;
       const { instructions, secp256r1VerifyInput } = await changeConfig({
         payer: ctx.payer,
         compressed: ctx.compressed,
@@ -40,20 +38,20 @@ export function runMemberManagementTests() {
             members: [
               {
                 pubkey: ctx.payer,
-                permissions: Permissions.all(),
+                permissions: { initiate: true, vote: true, execute: true },
                 setAsDelegate: true,
+                isTransactionManager: false,
               },
             ],
           },
         ],
       });
 
-      const transactionMessageBytes = prepareTransactionMessage(
-        MULTI_WALLET_PROGRAM_ADDRESS.toString(),
-        ctx.multiWalletVault,
+      const transactionMessageBytes = prepareTransactionMessage({
+        payer: ctx.multiWalletVault,
         instructions,
-        ctx.addressLookUpTable
-      );
+        addressesByLookupTableAddress: ctx.addressLookUpTable,
+      });
       const { ixs, payer, addressLookupTableAccounts } =
         await prepareTransactionSync({
           compressed: ctx.compressed,
@@ -64,13 +62,7 @@ export function runMemberManagementTests() {
           secp256r1VerifyInput,
         });
 
-      await sendTransaction(
-        ctx.connection,
-        ixs,
-        payer,
-        ctx.sendAndConfirm,
-        addressLookupTableAccounts
-      );
+      await sendTransaction(ixs, payer, addressLookupTableAccounts);
 
       // Verify member was added
       const accountData = await fetchSettingsData(ctx.index);
@@ -88,6 +80,7 @@ export function runMemberManagementTests() {
     });
 
     it("remove delegate permission for new member", async () => {
+      if (!ctx.index || !ctx.multiWalletVault) return;
       // Test updating permissions for existing members
       const { instructions, secp256r1VerifyInput } = await changeConfig({
         payer: ctx.payer,
@@ -99,7 +92,7 @@ export function runMemberManagementTests() {
             members: [
               {
                 pubkey: ctx.payer.address,
-                permissions: Permissions.all(),
+                permissions: { initiate: true, vote: true, execute: true },
                 delegateOperation: DelegateOp.Remove,
               },
             ],
@@ -107,12 +100,11 @@ export function runMemberManagementTests() {
         ],
       });
 
-      const transactionMessageBytes = prepareTransactionMessage(
-        MULTI_WALLET_PROGRAM_ADDRESS,
-        ctx.multiWalletVault,
+      const transactionMessageBytes = prepareTransactionMessage({
+        payer: ctx.multiWalletVault,
         instructions,
-        ctx.addressLookUpTable
-      );
+        addressesByLookupTableAddress: ctx.addressLookUpTable,
+      });
       const result = await prepareTransactionBundle({
         compressed: ctx.compressed,
         payer: ctx.payer,
@@ -122,13 +114,7 @@ export function runMemberManagementTests() {
         secp256r1VerifyInput,
       });
       for (const x of result) {
-        await sendTransaction(
-          ctx.connection,
-          x.ixs,
-          x.payer,
-          ctx.sendAndConfirm,
-          x.addressLookupTableAccounts
-        );
+        await sendTransaction(x.ixs, x.payer, x.addressLookupTableAccounts);
       }
       // Verify permissions were updated
       const userData = await fetchUserData(ctx.payer.address);
@@ -139,6 +125,7 @@ export function runMemberManagementTests() {
     });
 
     it("add back delegate permission for new member", async () => {
+      if (!ctx.index || !ctx.multiWalletVault) return;
       // Test updating permissions for existing members
       const { instructions, secp256r1VerifyInput } = await changeConfig({
         payer: ctx.payer,
@@ -150,7 +137,7 @@ export function runMemberManagementTests() {
             members: [
               {
                 pubkey: ctx.payer.address,
-                permissions: Permissions.all(),
+                permissions: { initiate: true, vote: true, execute: true },
                 delegateOperation: DelegateOp.Add,
               },
             ],
@@ -158,12 +145,11 @@ export function runMemberManagementTests() {
         ],
       });
 
-      const transactionMessageBytes = prepareTransactionMessage(
-        MULTI_WALLET_PROGRAM_ADDRESS,
-        ctx.multiWalletVault,
+      const transactionMessageBytes = prepareTransactionMessage({
+        payer: ctx.multiWalletVault,
         instructions,
-        ctx.addressLookUpTable
-      );
+        addressesByLookupTableAddress: ctx.addressLookUpTable,
+      });
       const result = await prepareTransactionBundle({
         compressed: ctx.compressed,
         payer: ctx.payer,
@@ -173,13 +159,7 @@ export function runMemberManagementTests() {
         secp256r1VerifyInput,
       });
       for (const x of result) {
-        await sendTransaction(
-          ctx.connection,
-          x.ixs,
-          x.payer,
-          ctx.sendAndConfirm,
-          x.addressLookupTableAccounts
-        );
+        await sendTransaction(x.ixs, x.payer, x.addressLookupTableAccounts);
       }
       // Verify permissions were updated
       const userData = await fetchUserData(ctx.payer.address);
@@ -191,6 +171,7 @@ export function runMemberManagementTests() {
     });
 
     it("should remove a member", async () => {
+      if (!ctx.index || !ctx.multiWalletVault) return;
       const { instructions, secp256r1VerifyInput } = await changeConfig({
         payer: ctx.payer,
         compressed: ctx.compressed,
@@ -207,12 +188,11 @@ export function runMemberManagementTests() {
         ],
       });
 
-      const transactionMessageBytes = prepareTransactionMessage(
-        MULTI_WALLET_PROGRAM_ADDRESS,
-        ctx.multiWalletVault,
+      const transactionMessageBytes = prepareTransactionMessage({
+        payer: ctx.multiWalletVault,
         instructions,
-        ctx.addressLookUpTable
-      );
+        addressesByLookupTableAddress: ctx.addressLookUpTable,
+      });
       const result = await prepareTransactionBundle({
         compressed: ctx.compressed,
         payer: ctx.payer,
@@ -222,17 +202,11 @@ export function runMemberManagementTests() {
         secp256r1VerifyInput,
       });
       for (const x of result) {
-        await sendTransaction(
-          ctx.connection,
-          x.ixs,
-          x.payer,
-          ctx.sendAndConfirm,
-          x.addressLookupTableAccounts
-        );
+        await sendTransaction(x.ixs, x.payer, x.addressLookupTableAccounts);
       }
       // Verify member was removed
       const accountData = await fetchSettingsData(ctx.index);
-      const userData = await fetchMaybeUserData(ctx.payer.address);
+      const userData = await fetchUserData(ctx.payer.address);
       const settingsIndex =
         userData.settingsIndex.__option === "Some"
           ? userData.settingsIndex.value

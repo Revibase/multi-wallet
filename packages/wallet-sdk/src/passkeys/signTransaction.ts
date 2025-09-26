@@ -1,8 +1,9 @@
-import {
+import type {
   BasePayload,
   TransactionAuthenticationResponse,
   TransactionPayload,
 } from "../types";
+import { getAuthUrl } from "../utils";
 import {
   convertTransactionPayload,
   openAuthUrl,
@@ -10,7 +11,7 @@ import {
 } from "../utils/passkeys/internal";
 
 export async function signTransaction({
-  authUrl = "https://auth.revibase.com",
+  authUrl = getAuthUrl(),
   transactionActionType,
   transactionAddress,
   transactionMessageBytes,

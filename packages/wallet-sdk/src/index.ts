@@ -1,3 +1,4 @@
+export * from "./adapter/features";
 export * from "./generated";
 export * from "./instructions";
 export * from "./passkeys";

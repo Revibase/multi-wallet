@@ -9,60 +9,48 @@ import {
   createGlobalCounter,
   createGlobalUsers,
   createWallet,
+  fetchGlobalCounter,
   fetchMaybeGlobalCounter,
   getGlobalCounterAddress,
   getMultiWalletFromSettings,
   getSettingsFromIndex,
+  getSolanaRpc,
   initializeMultiWallet,
   MULTI_WALLET_PROGRAM_ADDRESS,
-  Permissions,
 } from "@revibase/wallet-sdk";
-import {
-  findAddressLookupTablePda,
-  getCreateLookupTableInstructionAsync,
-  getExtendLookupTableInstruction,
-} from "@solana-program/address-lookup-table";
-import { SYSTEM_PROGRAM_ADDRESS } from "@solana-program/system";
-import {
-  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
-  TOKEN_PROGRAM_ADDRESS,
-} from "@solana-program/token";
 import {
   address,
   createKeyPairSignerFromPrivateKeyBytes,
-  createSolanaRpc,
-  createSolanaRpcSubscriptions,
   fetchAddressesForLookupTables,
   getProgramDerivedAddress,
-  sendAndConfirmTransactionFactory,
-} from "@solana/kit";
+} from "gill";
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
+  findAddressLookupTablePda,
+  getCreateLookupTableInstructionAsync,
+  getExtendLookupTableInstruction,
+  SYSTEM_PROGRAM_ADDRESS,
+  TOKEN_PROGRAM_ADDRESS,
+} from "gill/programs";
 import {
   AIRDROP_AMOUNT,
   LOCAL_INDEXER_URL,
   LOCAL_PROVER_URL,
   LOCAL_RPC_URL,
-  LOCAL_WS_URL,
-} from "../constants";
-import type { TestContext } from "../types";
-import { sendTransaction } from "./transaction";
+} from "../constants.ts";
+import type { TestContext } from "../types.ts";
+import { sendTransaction } from "./transaction.ts";
 /**
  * Sets up a fresh test environment for each test
  */
 export async function setupTestEnvironment(
   compressed = true
 ): Promise<TestContext> {
-  const connection = createSolanaRpc(LOCAL_RPC_URL);
   initializeMultiWallet({
     rpcEndpoint: LOCAL_RPC_URL,
     compressionApiEndpoint: LOCAL_INDEXER_URL,
     proverEndpoint: LOCAL_PROVER_URL,
   });
-  const rpcSubscriptions = createSolanaRpcSubscriptions(LOCAL_WS_URL);
-  const sendAndConfirm = sendAndConfirmTransactionFactory({
-    rpc: connection,
-    rpcSubscriptions,
-  });
-
   // Create keypairs with deterministic seeds for testing
   // Using deterministic seeds for testing makes tests more reproducible
   const payerSeed = crypto.getRandomValues(new Uint8Array(32));
@@ -72,15 +60,15 @@ export async function setupTestEnvironment(
   const wallet = await createKeyPairSignerFromPrivateKeyBytes(walletSeed);
 
   // Fund the payer account
-  await connection.requestAirdrop(payer.address, AIRDROP_AMOUNT).send();
-  const recentSlot = await connection
+  await getSolanaRpc().requestAirdrop(payer.address, AIRDROP_AMOUNT).send();
+  const recentSlot = await getSolanaRpc()
     .getSlot({ commitment: "finalized" })
     .send();
   const ix = await getCreateLookupTableInstructionAsync({
     authority: payer,
     recentSlot,
   });
-  await sendTransaction(connection, [ix], payer, sendAndConfirm);
+  await sendTransaction([ix], payer);
   // Wait for airdrop to be confirmed
   await new Promise((resolve) => setTimeout(resolve, 1000));
   const [lut] = await findAddressLookupTablePda({
@@ -121,11 +109,11 @@ export async function setupTestEnvironment(
       ]),
     ],
   });
-  await sendTransaction(connection, [extendIx], payer, sendAndConfirm);
+  await sendTransaction([extendIx], payer);
 
   const addressLookUpTable = await fetchAddressesForLookupTables(
     [lut],
-    connection
+    getSolanaRpc()
   );
 
   const rpId = crypto.randomUUID();
@@ -143,9 +131,6 @@ export async function setupTestEnvironment(
 
   return {
     compressed,
-    connection,
-    rpcSubscriptions,
-    sendAndConfirm,
     payer,
     wallet,
     index: undefined, // Will be set during wallet creation
@@ -163,24 +148,23 @@ export async function setupTestEnvironment(
 export async function createMultiWallet(
   ctx: TestContext
 ): Promise<TestContext> {
-  let globalCounter = await fetchMaybeGlobalCounter(
-    ctx.connection,
+  const globalCounter = await fetchMaybeGlobalCounter(
+    getSolanaRpc(),
     await getGlobalCounterAddress()
   );
 
+  let createIndex;
   if (!globalCounter.exists) {
     const globalCounterIx = await createGlobalCounter({ payer: ctx.payer });
 
-    await sendTransaction(
-      ctx.connection,
-      [globalCounterIx],
-      ctx.payer,
-      ctx.sendAndConfirm
-    );
-    globalCounter = await fetchMaybeGlobalCounter(
-      ctx.connection,
+    await sendTransaction([globalCounterIx], ctx.payer);
+    const result = await fetchGlobalCounter(
+      getSolanaRpc(),
       await getGlobalCounterAddress()
     );
+    createIndex = result.data.index;
+  } else {
+    createIndex = globalCounter.data.index;
   }
 
   // Set up domain config
@@ -191,26 +175,17 @@ export async function createMultiWallet(
     authority: ctx.wallet.address,
   });
 
-  await sendTransaction(
-    ctx.connection,
-    [setDomainIx],
-    ctx.payer,
-    ctx.sendAndConfirm
-  );
+  await sendTransaction([setDomainIx], ctx.payer);
 
   const createGlobalUserIxs = await createGlobalUsers({
-    members: [ctx.wallet.address, ctx.payer.address],
+    createUserArgs: [
+      { member: ctx.wallet, isPermanentMember: false, apiUrl: undefined },
+      { member: ctx.payer, isPermanentMember: false, apiUrl: undefined },
+    ],
     payer: ctx.payer,
   });
 
-  await sendTransaction(
-    ctx.connection,
-    [createGlobalUserIxs],
-    ctx.payer,
-    ctx.sendAndConfirm
-  );
-
-  const createIndex = globalCounter.exists ? globalCounter.data.index : null;
+  await sendTransaction([createGlobalUserIxs], ctx.payer);
 
   const settings = await getSettingsFromIndex(createIndex);
   const multiWallet = await getMultiWalletFromSettings(settings);
@@ -219,17 +194,12 @@ export async function createMultiWallet(
   const { instructions } = await createWallet({
     payer: ctx.payer,
     initialMember: ctx.wallet,
-    permissions: Permissions.all(),
     index: createIndex,
     compressed: ctx.compressed,
+    setAsDelegate: false,
   });
 
-  await sendTransaction(
-    ctx.connection,
-    instructions,
-    ctx.payer,
-    ctx.sendAndConfirm
-  );
+  await sendTransaction(instructions, ctx.payer);
 
   // Return a new context with the updated settings and multiWalletVault
   return {

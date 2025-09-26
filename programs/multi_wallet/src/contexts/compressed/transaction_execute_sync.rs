@@ -2,8 +2,8 @@ use crate::{
     id,
     state::{
         ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig, MemberKey,
-        ProofArgs, Secp256r1VerifyArgs, SettingsReadonlyArgs, TransactionActionType,
-        TransactionMessage, SEED_MULTISIG,
+        ProofArgs, Secp256r1VerifyArgsWithDomainAddress, SettingsReadonlyArgs,
+        TransactionActionType, TransactionMessage, SEED_MULTISIG,
     },
     utils::durable_nonce_check,
     ExecutableTransactionMessage, MultisigError, Permission, SEED_VAULT,
@@ -20,7 +20,6 @@ pub struct TransactionExecuteSyncCompressed<'info> {
         address = SlotHashes::id()
     )]
     pub slot_hash_sysvar: Option<UncheckedAccount<'info>>,
-    pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
     /// CHECK:
     #[account(
         address = Instructions::id(),
@@ -31,14 +30,13 @@ pub struct TransactionExecuteSyncCompressed<'info> {
 impl<'info> TransactionExecuteSyncCompressed<'info> {
     fn validate(
         &self,
-        remaining_accounts: &[AccountInfo<'info>],
+        remaining_accounts: &'info [AccountInfo<'info>],
         transaction_message: &TransactionMessage,
-        secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
+        secp256r1_verify_args: &Vec<Secp256r1VerifyArgsWithDomainAddress>,
         settings: &CompressedSettingsData,
         settings_key: &Pubkey,
     ) -> Result<()> {
         let Self {
-            domain_config,
             slot_hash_sysvar,
             instructions_sysvar,
             ..
@@ -51,16 +49,28 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
         let mut vote_count = 0;
 
         let threshold = settings.threshold as usize;
-        let secp256r1_member_key =
-            MemberKey::get_signer(&None, secp256r1_verify_args, Some(instructions_sysvar))
-                .map_or(None, |f| Some(f));
+        let secp256r1_member_keys: Vec<(MemberKey, &Secp256r1VerifyArgsWithDomainAddress)> =
+            secp256r1_verify_args
+                .iter()
+                .filter_map(|arg| {
+                    let pubkey = arg
+                        .verify_args
+                        .extract_public_key_from_instruction(Some(&self.instructions_sysvar))
+                        .ok()?;
+
+                    let member_key = MemberKey::convert_secp256r1(&pubkey).ok()?;
+
+                    Some((member_key, arg))
+                })
+                .collect();
 
         for member in &settings.members {
             let has_permission = |perm| member.permissions.has(perm);
 
-            let is_secp256r1_signer =
-                secp256r1_member_key.is_some() && member.pubkey.eq(&secp256r1_member_key.unwrap());
-            let is_signer = is_secp256r1_signer
+            let secp256r1_signer = secp256r1_member_keys
+                .iter()
+                .find(|f| f.0.eq(&member.pubkey));
+            let is_signer = secp256r1_signer.is_some()
                 || remaining_accounts.iter().any(|account| {
                     account.is_signer
                         && MemberKey::convert_ed25519(account.key)
@@ -80,22 +90,7 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
                 }
             }
 
-            if is_secp256r1_signer {
-                require!(
-                    member.domain_config.is_some(),
-                    MultisigError::DomainConfigIsMissing
-                );
-
-                require!(
-                    domain_config.is_some()
-                        && domain_config
-                            .as_ref()
-                            .unwrap()
-                            .key()
-                            .eq(&member.domain_config.unwrap()),
-                    MultisigError::MemberDoesNotBelongToDomainConfig
-                );
-
+            if let Some((_, secp256r1_verify_data)) = secp256r1_signer {
                 let vault_transaction_message =
                     transaction_message.convert_to_vault_transaction_message(remaining_accounts)?;
 
@@ -103,13 +98,14 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
                 vault_transaction_message.serialize(&mut writer)?;
                 let transaction_message_hash = hash(&writer);
 
-                let secp256r1_verify_data = secp256r1_verify_args
-                    .as_ref()
-                    .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
+                let account_loader = DomainConfig::extract_domain_config_account(
+                    remaining_accounts,
+                    secp256r1_verify_data.domain_config_key,
+                )?;
 
-                secp256r1_verify_data.verify_webauthn(
+                secp256r1_verify_data.verify_args.verify_webauthn(
                     slot_hash_sysvar,
-                    domain_config,
+                    &Some(account_loader),
                     instructions_sysvar,
                     ChallengeArgs {
                         account: *settings_key,
@@ -137,9 +133,9 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
     }
 
     pub fn process(
-        ctx: Context<'_, '_, '_, 'info, Self>,
+        ctx: Context<'_, '_, 'info, 'info, TransactionExecuteSyncCompressed<'info>>,
         transaction_message: TransactionMessage,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
+        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
         settings_readonly: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
@@ -161,7 +157,6 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
 
         let (settings, settings_key) = CompressedSettings::verify_compressed_settings(
             &ctx.accounts.payer.to_account_info(),
-            false,
             &settings_readonly,
             ctx.remaining_accounts,
             &compressed_proof_args,

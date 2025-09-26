@@ -1,8 +1,10 @@
-import { getSetComputeUnitLimitInstruction } from "@solana-program/compute-budget";
-import { getTransferSolInstruction } from "@solana-program/system";
+import {
+  getSendAndConfirmTransaction,
+  getSolanaRpc,
+} from "@revibase/wallet-sdk";
 import {
   address,
-  AddressesByLookupTableAddress,
+  type AddressesByLookupTableAddress,
   appendTransactionMessageInstructions,
   compressTransactionMessageUsingAddressLookupTables,
   createTransactionMessage,
@@ -13,14 +15,16 @@ import {
   lamports,
   pipe,
   prependTransactionMessageInstruction,
-  type Rpc,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
   signTransactionMessageWithSigners,
-  type SolanaRpcApi,
-  TransactionSigner,
-} from "@solana/kit";
-import type { TestContext } from "../types";
+  type TransactionSigner,
+} from "gill";
+import {
+  getSetComputeUnitLimitInstruction,
+  getTransferSolInstruction,
+} from "gill/programs";
+import type { TestContext } from "../types.ts";
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -30,14 +34,12 @@ function delay(ms: number) {
  * Sends a transaction with the given instructions
  */
 export async function sendTransaction(
-  connection: Rpc<SolanaRpcApi>,
   instructions: Instruction[],
   payer: TransactionSigner,
-  sendAndConfirm: any,
   addressLookupTableAccounts?: AddressesByLookupTableAddress
 ): Promise<string | undefined> {
   // Get latest blockhash before starting transaction
-  const latestBlockHash = await connection.getLatestBlockhash().send();
+  const latestBlockHash = await getSolanaRpc().getLatestBlockhash().send();
 
   let signature;
   let tx;
@@ -68,7 +70,10 @@ export async function sendTransaction(
 
     console.log(getBase64EncodedWireTransaction(tx).length);
     signature = getSignatureFromTransaction(tx);
-    await sendAndConfirm(tx, { commitment: "confirmed", skipPreflight: true });
+    await getSendAndConfirmTransaction()(tx, {
+      commitment: "confirmed",
+      skipPreflight: true,
+    });
     await delay(3000);
     return signature;
   } catch (error) {
@@ -105,16 +110,12 @@ export async function fundMultiWalletVault(
   ctx: TestContext,
   amount: bigint
 ): Promise<void> {
+  if (!ctx.multiWalletVault) return;
   const transfer = getTransferSolInstruction({
     source: ctx.payer,
     destination: address(ctx.multiWalletVault.toString()),
     amount: lamports(amount),
   });
 
-  await sendTransaction(
-    ctx.connection,
-    [transfer],
-    ctx.payer,
-    ctx.sendAndConfirm
-  );
+  await sendTransaction([transfer], ctx.payer);
 }

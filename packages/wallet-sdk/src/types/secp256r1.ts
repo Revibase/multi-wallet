@@ -1,5 +1,5 @@
-import { getBase58Decoder, getBase58Encoder } from "@solana/kit";
-import { ParsedAuthenticationResponse } from "./passkeys";
+import { getBase58Decoder, getBase58Encoder } from "gill";
+import type { ParsedAuthenticationResponse } from "./passkeys";
 
 const SECP256R1_PUBLIC_KEY_LENGTH = 33;
 

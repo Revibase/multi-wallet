@@ -1,14 +1,16 @@
-import {
+import type {
   AuthenticationResponseJSON,
   PublicKeyCredentialHint,
 } from "@simplewebauthn/server";
-import { getBase58Encoder } from "@solana/codecs";
-import { getProgramDerivedAddress } from "@solana/kit";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
 import {
+  getBase58Encoder,
+  getProgramDerivedAddress,
+  type ReadonlyUint8Array,
+} from "gill";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
+import type {
   MessageAuthenticationResponse,
   ParsedAuthenticationResponse,
-  SignerPayload,
   TransactionAuthenticationResponse,
   TransactionPayload,
 } from "../../types";
@@ -34,7 +36,7 @@ export async function openAuthUrl({
     type: "transaction" | "message";
     payload: string;
   };
-  signer?: SignerPayload;
+  signer?: string;
   hints?: PublicKeyCredentialHint[];
   popUp?: Window | null;
   timeout?: number;
@@ -163,7 +165,7 @@ export function convertTransactionPayload(payload: TransactionPayload) {
     ),
   });
 }
-export function bufferToBase64URLString(buffer: any) {
+export function bufferToBase64URLString(buffer: ReadonlyUint8Array) {
   const bytes = new Uint8Array(buffer);
   let str = "";
   for (const charCode of bytes) {

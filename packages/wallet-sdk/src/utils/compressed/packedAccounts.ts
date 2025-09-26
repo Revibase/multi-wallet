@@ -1,22 +1,22 @@
 import {
-  AccountProofInput,
+  type AccountProofInput,
   defaultStaticAccountsStruct,
   lightSystemProgram,
-  NewAddressProofInput,
-  PackedAddressTreeInfo,
-  PackedStateTreeInfo,
-  PackedTreeInfos,
-  TreeInfo,
+  type NewAddressProofInput,
+  type PackedAddressTreeInfo,
+  type PackedStateTreeInfo,
+  type PackedTreeInfos,
+  type TreeInfo,
   TreeType,
 } from "@lightprotocol/stateless.js";
-import { SYSTEM_PROGRAM_ADDRESS } from "@solana-program/system";
-import {
-  AccountMeta,
-  AccountRole,
-  AccountSignerMeta,
-  address,
-} from "@solana/kit";
 import { PublicKey } from "@solana/web3.js";
+import {
+  type AccountMeta,
+  AccountRole,
+  type AccountSignerMeta,
+  address,
+} from "gill";
+import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
 import { getLightCpiSigner } from "./internal";
 
@@ -38,11 +38,11 @@ export class PackedAccounts {
     this.map = new Map();
   }
 
-  addPreAccounts(accounts: (AccountMeta | AccountSignerMeta)[]) {
+  addPreAccounts(accounts: (AccountMeta | AccountSignerMeta)[]): void {
     this.preAccounts.push(...accounts);
   }
 
-  async addSystemAccounts() {
+  async addSystemAccounts(): Promise<void> {
     const staticAccounts = defaultStaticAccountsStruct();
     this.systemAccounts.push(
       ...[
@@ -61,14 +61,14 @@ export class PackedAccounts {
     );
   }
 
-  insertOrGet(pubkey: PublicKey) {
+  insertOrGet(pubkey: PublicKey): number {
     return this.insertOrGetConfig(pubkey, AccountRole.WRITABLE);
   }
 
-  insertOrGetConfig(pubkey: PublicKey, role: AccountRole) {
+  insertOrGetConfig(pubkey: PublicKey, role: AccountRole): number {
     if (!this.map.has(pubkey)) {
       const index = this.nextIndex++;
-      const accountMeta = {
+      const accountMeta: AccountMeta = {
         address: address(pubkey.toString()),
         role,
       };
@@ -77,13 +77,13 @@ export class PackedAccounts {
     return this.map.get(pubkey)!.index;
   }
 
-  packOutputTreeIndex(outputStateTreeInfo: TreeInfo) {
+  packOutputTreeIndex(outputStateTreeInfo: TreeInfo): number | undefined {
     if (outputStateTreeInfo.treeType === TreeType.StateV1) {
       return this.insertOrGet(outputStateTreeInfo.tree);
     } else if (outputStateTreeInfo.treeType === TreeType.StateV2) {
       return this.insertOrGet(outputStateTreeInfo.queue);
     }
-    return;
+    return undefined;
   }
 
   packTreeInfos(
@@ -93,16 +93,15 @@ export class PackedAccounts {
     const packedTreeInfos: PackedStateTreeInfo[] = [];
     const addressTrees: PackedAddressTreeInfo[] = [];
     let outputTreeIndex: number | undefined = undefined;
+
     if (accountProofInputs.length === 0 && newAddressProofInputs.length === 0) {
-      return {
-        stateTrees: undefined,
-        addressTrees: addressTrees,
-      };
+      return { stateTrees: undefined, addressTrees };
     }
 
     accountProofInputs.forEach((account) => {
       const merkleTreePubkeyIndex = this.insertOrGet(account.treeInfo.tree);
       const queuePubkeyIndex = this.insertOrGet(account.treeInfo.queue);
+
       packedTreeInfos.push({
         rootIndex: account.rootIndex,
         merkleTreePubkeyIndex,
@@ -110,6 +109,7 @@ export class PackedAccounts {
         leafIndex: account.leafIndex,
         proveByIndex: account.proveByIndex,
       });
+
       const treeToUse = account.treeInfo.nextTreeInfo ?? account.treeInfo;
       const index = this.packOutputTreeIndex(treeToUse);
       if (outputTreeIndex === undefined && index !== undefined) {
@@ -142,22 +142,25 @@ export class PackedAccounts {
     };
   }
 
-  hashSetAccountsToMetas() {
-    const packedAccounts = Array.from(this.map.entries())
+  hashSetAccountsToMetas(): AccountMeta[] {
+    const packedAccounts: AccountMeta[] = Array.from(this.map.entries())
       .sort((a, b) => a[1].index - b[1].index)
-      .map(([, { index, accountMeta }]) => ({ ...accountMeta }));
-
+      .map(([, { accountMeta }]) => ({ ...accountMeta }));
     return packedAccounts;
   }
 
-  getOffsets() {
+  getOffsets(): [number, number] {
     const systemAccountsStartOffset = this.preAccounts.length;
     const packedAccountsStartOffset =
       systemAccountsStartOffset + this.systemAccounts.length;
     return [systemAccountsStartOffset, packedAccountsStartOffset];
   }
 
-  toAccountMetas() {
+  toAccountMetas(): {
+    remainingAccounts: AccountMeta[];
+    systemOffset: number;
+    packedOffset: number;
+  } {
     const packedAccounts = this.hashSetAccountsToMetas();
     const [systemOffset, packedOffset] = this.getOffsets();
     const remainingAccounts = [

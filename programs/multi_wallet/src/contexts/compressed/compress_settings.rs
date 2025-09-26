@@ -2,7 +2,7 @@ use crate::{
     error::MultisigError,
     state::{
         ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig, MemberKey,
-        MultisigSettings, Permission, ProofArgs, Secp256r1VerifyArgs, Settings,
+        MultisigSettings, Permission, ProofArgs, Secp256r1VerifyArgsWithDomainAddress, Settings,
         SettingsCreateOrMutateArgs, TransactionActionType,
     },
     utils::durable_nonce_check,
@@ -31,7 +31,6 @@ pub struct CompressSettingsAccount<'info> {
         address = SlotHashes::id()
     )]
     pub slot_hash_sysvar: Option<UncheckedAccount<'info>>,
-    pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
     /// CHECK:
     #[account(
         address = Instructions::id(),
@@ -42,12 +41,11 @@ pub struct CompressSettingsAccount<'info> {
 impl<'info> CompressSettingsAccount<'info> {
     fn validate(
         &self,
-        remaining_accounts: &[AccountInfo<'info>],
-        secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
+        remaining_accounts: &'info [AccountInfo<'info>],
+        secp256r1_verify_args: &Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
         let Self {
             settings,
-            domain_config,
             slot_hash_sysvar,
             instructions_sysvar,
             payer,
@@ -62,16 +60,28 @@ impl<'info> CompressSettingsAccount<'info> {
 
         let settings_data = settings.load()?;
         let threshold = settings_data.threshold as usize;
-        let secp256r1_member_key =
-            MemberKey::get_signer(&None, secp256r1_verify_args, Some(instructions_sysvar))
-                .map_or(None, |f| Some(f));
+        let secp256r1_member_keys: Vec<(MemberKey, &Secp256r1VerifyArgsWithDomainAddress)> =
+            secp256r1_verify_args
+                .iter()
+                .filter_map(|arg| {
+                    let pubkey = arg
+                        .verify_args
+                        .extract_public_key_from_instruction(Some(&self.instructions_sysvar))
+                        .ok()?;
+
+                    let member_key = MemberKey::convert_secp256r1(&pubkey).ok()?;
+
+                    Some((member_key, arg))
+                })
+                .collect();
 
         for member in &settings_data.members {
             let has_permission = |perm| member.permissions.has(perm);
 
-            let is_secp256r1_signer =
-                secp256r1_member_key.is_some() && member.pubkey.eq(&secp256r1_member_key.unwrap());
-            let is_signer = is_secp256r1_signer
+            let secp256r1_signer = secp256r1_member_keys
+                .iter()
+                .find(|f| f.0.eq(&member.pubkey));
+            let is_signer = secp256r1_signer.is_some()
                 || remaining_accounts.iter().any(|account| {
                     account.is_signer
                         && MemberKey::convert_ed25519(account.key)
@@ -91,29 +101,15 @@ impl<'info> CompressSettingsAccount<'info> {
                 }
             }
 
-            if is_secp256r1_signer {
-                require!(
-                    member.domain_config.ne(&Pubkey::default()),
-                    MultisigError::DomainConfigIsMissing
-                );
+            if let Some((_, secp256r1_verify_data)) = secp256r1_signer {
+                let account_loader = DomainConfig::extract_domain_config_account(
+                    remaining_accounts,
+                    secp256r1_verify_data.domain_config_key,
+                )?;
 
-                require!(
-                    domain_config.is_some()
-                        && domain_config
-                            .as_ref()
-                            .unwrap()
-                            .key()
-                            .eq(&member.domain_config),
-                    MultisigError::MemberDoesNotBelongToDomainConfig
-                );
-
-                let secp256r1_verify_data = secp256r1_verify_args
-                    .as_ref()
-                    .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
-
-                secp256r1_verify_data.verify_webauthn(
+                secp256r1_verify_data.verify_args.verify_webauthn(
                     slot_hash_sysvar,
-                    domain_config,
+                    &Some(account_loader),
                     instructions_sysvar,
                     ChallengeArgs {
                         account: settings.key(),
@@ -145,7 +141,7 @@ impl<'info> CompressSettingsAccount<'info> {
         ctx: Context<'_, '_, 'info, 'info, Self>,
         compressed_proof_args: ProofArgs,
         settings_args: SettingsCreateOrMutateArgs,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
+        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
         let settings_data = ctx.accounts.settings.load()?;
         let light_cpi_accounts = CpiAccounts::new(
@@ -162,20 +158,22 @@ impl<'info> CompressSettingsAccount<'info> {
                     bump: settings_data.bump,
                     index: settings_data.index,
                     multi_wallet_bump: settings_data.multi_wallet_bump,
-                    members: CompressedSettings::convert_member_to_compressed_member(
-                        settings_data.get_members()?,
-                    )?,
+                    members: settings_data.get_members()?,
                 };
-                let (settings_info, settings_new_address) =
+                let (settings_account, settings_new_address) =
                     CompressedSettings::create_settings_account(
                         settings_creation_args,
                         data,
                         &light_cpi_accounts,
                     )?;
 
+                settings_account.invariant()?;
+
                 let cpi_inputs = CpiInputs::new_with_address(
                     compressed_proof_args.proof,
-                    vec![settings_info],
+                    vec![settings_account
+                        .to_account_info()
+                        .map_err(ProgramError::from)?],
                     vec![settings_new_address],
                 );
 
@@ -196,10 +194,10 @@ impl<'info> CompressSettingsAccount<'info> {
                     bump: settings_data.bump,
                     index: settings_data.index,
                     multi_wallet_bump: settings_data.multi_wallet_bump,
-                    members: CompressedSettings::convert_member_to_compressed_member(
-                        settings_data.get_members()?,
-                    )?,
+                    members: settings_data.get_members()?,
                 });
+
+                settings_account.invariant()?;
 
                 let settings_info = settings_account
                     .to_account_info()

@@ -1,5 +1,6 @@
 use crate::{
-    state::{CreateUserArgs, MemberKey, ProofArgs, User, UserCreationArgs},
+    error::MultisigError,
+    state::{CreateUserArgs, MemberKey, ProofArgs, User, UserCreationArgs, UserExtensions},
     LIGHT_CPI_SIGNER,
 };
 use anchor_lang::prelude::*;
@@ -8,13 +9,16 @@ use light_sdk::cpi::{CpiAccounts, CpiInputs};
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct CreateGlobalUserArgs {
     pub member: Pubkey,
+    pub is_permanent_member: bool,
     pub user_creation_args: UserCreationArgs,
+    pub api_url: Option<String>,
 }
 
 #[derive(Accounts)]
 pub struct CreateGlobalUsers<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 impl<'info> CreateGlobalUsers<'info> {
@@ -32,18 +36,34 @@ impl<'info> CreateGlobalUsers<'info> {
         let mut account_infos = vec![];
         let mut new_addressess = vec![];
         for args in create_user_args {
+            let signer = ctx
+                .remaining_accounts
+                .iter()
+                .find(|f| f.key.eq(&args.member));
+
+            require!(
+                signer.is_some() && signer.unwrap().is_signer,
+                MultisigError::NoSignerFound
+            );
+
+            if let Some(api_url) = args.api_url {
+                UserExtensions::initialize(
+                    api_url,
+                    &args.member,
+                    ctx.remaining_accounts,
+                    &ctx.accounts.payer,
+                    &ctx.accounts.system_program,
+                )?;
+            }
+
             let (account_info, new_address_params) = User::create_user_account(
                 args.user_creation_args,
                 &light_cpi_accounts,
                 CreateUserArgs {
                     member: MemberKey::convert_ed25519(&args.member)?,
-                    credential_id: None,
-                    mint: None,
-                    username: None,
-                    expiry: None,
-                    is_permanent_member: false,
-                    transports: None,
+                    is_permanent_member: args.is_permanent_member,
                 },
+                None,
                 None,
             )?;
             account_infos.push(account_info);

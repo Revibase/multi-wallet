@@ -1,22 +1,22 @@
 import {
-  AccountProofInput,
-  AddressWithTree,
-  BN254,
-  CompressedAccount,
+  type AccountProofInput,
+  type AddressWithTree,
+  type BN254,
+  type CompressedAccount,
   featureFlags,
   getDefaultAddressTreeInfo,
-  HashWithTree,
-  TreeInfo,
+  type HashWithTree,
+  type TreeInfo,
   TreeType,
-  ValidityProofWithContext,
+  type ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
-import { Decoder, getProgramDerivedAddress, getUtf8Encoder } from "@solana/kit";
 import BN from "bn.js";
+import { type Decoder, getProgramDerivedAddress, getUtf8Encoder } from "gill";
 import {
   getCompressedSettingsDecoder,
   MULTI_WALLET_PROGRAM_ADDRESS,
-  SettingsReadonlyArgs,
-  ValidityProofArgs,
+  type SettingsReadonlyArgs,
+  type ValidityProofArgs,
 } from "../../generated";
 import { MAX_HOTSPOTS } from "../consts";
 import { getLightProtocolRpc } from "../initialize";
@@ -37,12 +37,30 @@ export function getNewAddressesParams(
   return newAddresses;
 }
 
+export async function getCompressedAccount(
+  address: BN,
+  cachedCompressedAccounts?: Map<string, any>
+): Promise<CompressedAccount | null> {
+  let result = cachedCompressedAccounts?.get(address.toString());
+  if (result) {
+    return result;
+  } else {
+    const compressedAccount =
+      await getLightProtocolRpc().getCompressedAccount(address);
+    if (compressedAccount) {
+      cachedCompressedAccounts?.set(address.toString(), compressedAccount);
+    }
+    return compressedAccount;
+  }
+}
+
 export async function getCompressedAccountHashes(
-  addresses: { address: BN254; type: "Settings" | "User" }[]
+  addresses: { address: BN254; type: "Settings" | "User" }[],
+  cachedCompressedAccounts?: Map<string, any>
 ) {
   const compressedAccounts = await Promise.all(
-    addresses.map(
-      async (x) => await getLightProtocolRpc().getCompressedAccount(x.address)
+    addresses.map(async (x) =>
+      getCompressedAccount(x.address, cachedCompressedAccounts)
     )
   );
 
@@ -200,27 +218,48 @@ export async function getLightCpiSigner() {
 }
 export async function constructSettingsProofArgs(
   compressed: boolean,
-  index: bigint | number
+  index: bigint | number,
+  simulateProof?: boolean,
+  cachedCompressedAccounts?: Map<string, any>
 ) {
   let settingsReadonlyArgs: SettingsReadonlyArgs | null = null;
   let proof: ValidityProofWithContext | null = null;
   const packedAccounts = new PackedAccounts();
   if (compressed) {
     await packedAccounts.addSystemAccounts();
-    const settingsAddress = await getCompressedSettingsAddressFromIndex(index);
+    const settingsAddress = getCompressedSettingsAddressFromIndex(index);
     const settings = (
-      await getCompressedAccountHashes([
-        { address: settingsAddress, type: "Settings" },
-      ])
+      await getCompressedAccountHashes(
+        [{ address: settingsAddress, type: "Settings" }],
+        cachedCompressedAccounts
+      )
     )[0];
-    proof = await getLightProtocolRpc().getValidityProofV0([settings], []);
     const { tree, queue } = getDefaultAddressTreeInfo();
+    let rootIndex = 0;
+    if (simulateProof) {
+      proof = {
+        rootIndices: [],
+        roots: [],
+        leafIndices: [],
+        leaves: [],
+        treeInfos: [],
+        proveByIndices: [],
+        compressedProof: {
+          a: Array.from(crypto.getRandomValues(new Uint8Array(32))),
+          b: Array.from(crypto.getRandomValues(new Uint8Array(32))),
+          c: Array.from(crypto.getRandomValues(new Uint8Array(32))),
+        },
+      };
+    } else {
+      proof = await getValidityProofWithRetry([settings], []);
+      rootIndex = proof.rootIndices[0];
+    }
 
     settingsReadonlyArgs = {
       lamports: BigInt(settings.lamports.toNumber()),
       data: getCompressedSettingsDecoder().decode(settings.data?.data!),
       addressTreeInfo: {
-        rootIndex: proof.rootIndices[0],
+        rootIndex,
         addressMerkleTreePubkeyIndex: packedAccounts.insertOrGet(tree),
         addressQueuePubkeyIndex: packedAccounts.insertOrGet(queue),
       },
@@ -233,4 +272,32 @@ export async function constructSettingsProofArgs(
     };
   }
   return { settingsReadonlyArgs, proof, packedAccounts };
+}
+
+export async function getValidityProofWithRetry(
+  hashes?: HashWithTree[] | undefined,
+  newAddresses?: AddressWithTree[],
+  retry = 5,
+  delay = 1000
+) {
+  let attempt = 1;
+  while (attempt < retry) {
+    try {
+      const proof = await getLightProtocolRpc().getValidityProofV0(
+        hashes,
+        newAddresses
+      );
+      return proof;
+    } catch (error) {
+      console.error(`Attempt ${attempt}, Get Validity Proof failed. ${error}`);
+      attempt++;
+      if (attempt >= retry) {
+        throw new Error(
+          `Failed to get validity proof after ${retry} attempts: ${error}`
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  throw new Error(`Failed to get validity proof after ${retry} attempts`);
 }

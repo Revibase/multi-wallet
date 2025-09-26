@@ -1,16 +1,19 @@
-import { Address, Instruction, TransactionSigner } from "@solana/kit";
+import type {
+  Address,
+  AddressesByLookupTableAddress,
+  Instruction,
+  TransactionSigner,
+} from "gill";
 import {
   getTransactionExecuteCompressedInstruction,
   getTransactionExecuteInstruction,
 } from "../generated";
 import { getMultiWalletFromSettings } from "../utils";
-import {
-  accountsForTransactionExecute,
-  addJitoTip,
-} from "../utils/transactionMessage/internal";
+import { addJitoTip } from "../utils/internal";
+import { accountsForTransactionExecute } from "../utils/transactionMessage/internal";
 import {
   getSecp256r1VerifyInstruction,
-  Secp256r1VerifyInput,
+  type Secp256r1VerifyInput,
 } from "./secp256r1Verify";
 
 export async function executeTransaction({
@@ -18,6 +21,7 @@ export async function executeTransaction({
   transactionBufferAddress,
   transactionMessageBytes,
   payer,
+  addressesByLookupTableAddress,
   secp256r1VerifyInput = [],
   additionalSigners = [],
   jitoBundlesTipAmount,
@@ -27,6 +31,7 @@ export async function executeTransaction({
   payer: TransactionSigner;
   transactionBufferAddress: Address;
   transactionMessageBytes: Uint8Array;
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   additionalSigners?: TransactionSigner[];
   jitoBundlesTipAmount?: number;
@@ -39,6 +44,7 @@ export async function executeTransaction({
       transactionMessageBytes,
       multiWallet,
       additionalSigners,
+      addressesByLookupTableAddress,
     });
 
   const instructions: Instruction[] = [];

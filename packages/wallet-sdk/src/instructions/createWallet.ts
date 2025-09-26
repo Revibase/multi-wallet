@@ -1,15 +1,14 @@
-import { Instruction, TransactionSigner } from "@solana/kit";
+import { AccountRole, type Instruction, type TransactionSigner } from "gill";
 import {
   getCreateMultiWalletCompressedInstruction,
   getCreateMultiWalletInstruction,
   getUserDecoder,
-  User,
+  type User,
 } from "../generated";
-import { Permissions, Secp256r1Key } from "../types";
+import { Secp256r1Key } from "../types";
 import {
   getCompressedSettingsAddressFromIndex,
   getGlobalCounterAddress,
-  getLightProtocolRpc,
   getSettingsFromIndex,
   getUserAddress,
 } from "../utils";
@@ -19,24 +18,28 @@ import {
   getCompressedAccountInitArgs,
   getCompressedAccountMutArgs,
   getNewAddressesParams,
+  getValidityProofWithRetry,
 } from "../utils/compressed/internal";
 import { PackedAccounts } from "../utils/compressed/packedAccounts";
-import { extractSecp256r1VerificationArgs } from "../utils/transactionMessage/internal";
-import { Secp256r1VerifyInput } from "./secp256r1Verify";
+import { extractSecp256r1VerificationArgs } from "../utils/internal";
+import type { Secp256r1VerifyInput } from "./secp256r1Verify";
 
+type CreateWalletArgs = {
+  index: bigint | number;
+  payer: TransactionSigner;
+  compressed?: boolean;
+  cachedCompressedAccounts?: Map<string, any>;
+  initialMember: TransactionSigner | Secp256r1Key;
+  setAsDelegate: boolean;
+};
 export async function createWallet({
   index,
   payer,
   initialMember,
-  permissions,
+  setAsDelegate,
   compressed = false,
-}: {
-  index: bigint | number;
-  payer: TransactionSigner;
-  initialMember: TransactionSigner | Secp256r1Key;
-  permissions: Permissions;
-  compressed?: boolean;
-}) {
+  cachedCompressedAccounts,
+}: CreateWalletArgs) {
   const globalCounter = await getGlobalCounterAddress();
   const {
     domainConfig,
@@ -63,20 +66,22 @@ export async function createWallet({
   const newAddressParams = [];
   const hashesWithTree = [];
 
-  const member =
-    "address" in initialMember ? initialMember.address : initialMember;
-  const userAddress = await getUserAddress(member);
   hashesWithTree.push(
-    ...(await getCompressedAccountHashes([
-      {
-        address: userAddress,
-        type: "User" as const,
-      },
-    ]))
+    ...(await getCompressedAccountHashes(
+      [
+        {
+          address: getUserAddress(
+            "address" in initialMember ? initialMember.address : initialMember
+          ),
+          type: "User" as const,
+        },
+      ],
+      cachedCompressedAccounts
+    ))
   );
 
   if (compressed) {
-    const settingsAddress = await getCompressedSettingsAddressFromIndex(index);
+    const settingsAddress = getCompressedSettingsAddressFromIndex(index);
     newAddressParams.push(
       ...getNewAddressesParams([
         {
@@ -88,7 +93,7 @@ export async function createWallet({
   }
   const hashesWithTreeEndIndex = hashesWithTree.length;
 
-  const proof = await getLightProtocolRpc().getValidityProofV0(
+  const proof = await getValidityProofWithRetry(
     hashesWithTree,
     newAddressParams
   );
@@ -117,7 +122,22 @@ export async function createWallet({
   const settingsCreationArgs =
     initArgs.find((x) => x.type === "Settings") ?? null;
 
+  if (domainConfig) {
+    packedAccounts.addPreAccounts([
+      { address: domainConfig, role: AccountRole.READONLY },
+    ]);
+  } else if ("address" in initialMember) {
+    packedAccounts.addPreAccounts([
+      {
+        address: initialMember.address,
+        role: AccountRole.READONLY_SIGNER,
+        signer: initialMember,
+      },
+    ]);
+  }
+
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
+
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
 
   const instructions: Instruction[] = [];
@@ -136,11 +156,11 @@ export async function createWallet({
           initialMember instanceof Secp256r1Key ? undefined : initialMember,
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
-        permissions,
         userMutArgs,
         globalCounter,
         compressedProofArgs,
         settingsCreation: settingsCreationArgs,
+        setAsDelegate,
         remainingAccounts,
       })
     );
@@ -156,10 +176,10 @@ export async function createWallet({
           initialMember instanceof Secp256r1Key ? undefined : initialMember,
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
-        permissions,
         userMutArgs,
         globalCounter,
         compressedProofArgs,
+        setAsDelegate,
         remainingAccounts,
       })
     );

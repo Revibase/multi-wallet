@@ -1,4 +1,4 @@
-import { TransactionSigner } from "@solana/kit";
+import type { TransactionSigner } from "gill";
 import { getDeleteDomainConfigInstruction } from "../../generated";
 import { getDomainConfigAddress } from "../../utils";
 
@@ -13,5 +13,6 @@ export async function deleteDomainConfig({
   return getDeleteDomainConfigInstruction({
     domainConfig,
     authority,
+    remainingAccounts: [],
   });
 }

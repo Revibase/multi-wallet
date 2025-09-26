@@ -1,12 +1,12 @@
-import { AccountMeta, Address, TransactionSigner } from "@solana/kit";
+import type { AccountMeta, Address, TransactionSigner } from "gill";
 import {
   getTransactionBufferExecuteCompressedInstruction,
   getTransactionBufferExecuteInstruction,
-  ProofArgsArgs,
-  SettingsReadonlyArgs,
+  type ProofArgsArgs,
+  type SettingsReadonlyArgs,
 } from "../../generated";
 import { Secp256r1Key } from "../../types";
-import { extractSecp256r1VerificationArgs } from "../../utils/transactionMessage/internal";
+import { extractSecp256r1VerificationArgs } from "../../utils/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
 export function executeTransactionBuffer({
@@ -72,6 +72,7 @@ export function executeTransactionBuffer({
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
         executor: executor instanceof Secp256r1Key ? undefined : executor,
+        remainingAccounts: [],
       })
     );
   }

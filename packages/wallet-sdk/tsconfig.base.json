@@ -1,9 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "module": "CommonJS",
-    "moduleResolution": "Node",
     "jsx": "preserve",
     "strict": true,
     "removeComments": true,
@@ -18,6 +15,10 @@
     "experimentalDecorators": true,
     "declaration": true,
     "sourceMap": true,
-    "allowJs": true
+    "allowJs": true,
+    "verbatimModuleSyntax": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "target": "ES2022"
   }
 }

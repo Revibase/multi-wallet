@@ -1,7 +1,13 @@
-import { Instruction, TransactionSigner } from "@solana/kit";
+import {
+  AccountRole,
+  type AddressesByLookupTableAddress,
+  type Instruction,
+  type TransactionSigner,
+} from "gill";
 import {
   getTransactionExecuteSyncCompressedInstruction,
   getTransactionExecuteSyncInstruction,
+  type Secp256r1VerifyArgsWithDomainAddressArgs,
 } from "../generated";
 import { Secp256r1Key } from "../types";
 import { getMultiWalletFromSettings, getSettingsFromIndex } from "../utils";
@@ -10,29 +16,35 @@ import {
   convertToCompressedProofArgs,
 } from "../utils/compressed/internal";
 import {
-  accountsForTransactionExecute,
   extractSecp256r1VerificationArgs,
   getDeduplicatedSigners,
-} from "../utils/transactionMessage/internal";
+} from "../utils/internal";
+import { accountsForTransactionExecute } from "../utils/transactionMessage/internal";
 import {
   getSecp256r1VerifyInstruction,
-  Secp256r1VerifyInput,
+  type Secp256r1VerifyInput,
 } from "./secp256r1Verify";
 
 export async function executeTransactionSync({
   index,
   transactionMessageBytes,
   signers,
+  payer,
+  addressesByLookupTableAddress,
   secp256r1VerifyInput = [],
   compressed = false,
-  payer,
+  simulateProof = false,
+  cachedCompressedAccounts,
 }: {
   index: bigint | number;
   signers: (TransactionSigner | Secp256r1Key)[];
   transactionMessageBytes: Uint8Array;
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   compressed?: boolean;
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   payer?: TransactionSigner;
+  simulateProof?: boolean;
+  cachedCompressedAccounts?: Map<string, any>;
 }) {
   const dedupSigners = getDeduplicatedSigners(signers);
   const settings = await getSettingsFromIndex(index);
@@ -47,32 +59,46 @@ export async function executeTransactionSync({
       additionalSigners: dedupSigners.filter(
         (x) => !(x instanceof Secp256r1Key)
       ) as TransactionSigner[],
+      addressesByLookupTableAddress,
     }),
-    constructSettingsProofArgs(compressed, index),
+    constructSettingsProofArgs(
+      compressed,
+      index,
+      simulateProof,
+      cachedCompressedAccounts
+    ),
   ]);
 
   packedAccounts.addPreAccounts(accountMetas);
 
-  const {
-    slotHashSysvar,
-    domainConfig,
-    verifyArgs,
-    instructionsSysvar,
-    signature,
-    publicKey,
-    message,
-  } = extractSecp256r1VerificationArgs(
-    dedupSigners.find((x) => x instanceof Secp256r1Key),
-    secp256r1VerifyInput.length
+  const secp256r1Signers = dedupSigners.filter(
+    (x) => x instanceof Secp256r1Key
   );
+
+  const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];
+  for (const x of secp256r1Signers) {
+    const index = secp256r1VerifyInput.length;
+    const { domainConfig, verifyArgs, signature, publicKey, message } =
+      extractSecp256r1VerificationArgs(x, index);
+    if (message && signature && publicKey) {
+      secp256r1VerifyInput.push({ message, signature, publicKey });
+    }
+    if (domainConfig) {
+      packedAccounts.addPreAccounts([
+        { address: domainConfig, role: AccountRole.READONLY },
+      ]);
+      if (verifyArgs?.__option === "Some") {
+        secp256r1VerifyArgs.push({
+          domainConfigKey: domainConfig,
+          verifyArgs: verifyArgs.value,
+        });
+      }
+    }
+  }
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
 
   const instructions: Instruction[] = [];
-
-  if (message && signature && publicKey) {
-    secp256r1VerifyInput.push({ message, signature, publicKey });
-  }
 
   if (secp256r1VerifyInput.length > 0) {
     instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
@@ -89,10 +115,7 @@ export async function executeTransactionSync({
 
     instructions.push(
       getTransactionExecuteSyncCompressedInstruction({
-        instructionsSysvar,
-        domainConfig,
-        slotHashSysvar,
-        secp256r1VerifyArgs: verifyArgs,
+        secp256r1VerifyArgs,
         transactionMessage: {
           ...transactionMessage,
           numAccountKeys: transactionMessage.accountKeys.length,
@@ -120,10 +143,7 @@ export async function executeTransactionSync({
   } else {
     instructions.push(
       getTransactionExecuteSyncInstruction({
-        instructionsSysvar,
-        domainConfig,
-        slotHashSysvar,
-        secp256r1VerifyArgs: verifyArgs,
+        secp256r1VerifyArgs,
         settings,
         transactionMessage: {
           ...transactionMessage,
