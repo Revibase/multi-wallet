@@ -9,10 +9,9 @@ pub struct EditUserExtensionsArgs {
 #[derive(Accounts)]
 pub struct EditUserExtensions<'info> {
     #[account(
-        mut,
         address = user_extensions.load()?.authority
     )]
-    pub payer: Signer<'info>,
+    pub authority: Signer<'info>,
     #[account(mut)]
     pub user_extensions: AccountLoader<'info, UserExtensions>,
 }

@@ -51,11 +51,6 @@ export function runTransactionManagerTests() {
         ctx.addressLookUpTable
       );
 
-      const test = await fetchUserExtensions(
-        getSolanaRpc(),
-        await getUserExtensionsAddress(ephemeralKeypair.address)
-      );
-
       const { instructions, secp256r1VerifyInput } = await changeConfig({
         payer: ctx.payer,
         compressed: ctx.compressed,

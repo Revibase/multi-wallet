@@ -3,16 +3,16 @@ import { getEditUserExtensionInstruction } from "../../generated";
 import { getUserExtensionsAddress } from "../../utils";
 
 export async function editUserExtensions({
-  payer,
-  transactionManagerUrl,
+  authority,
+  apiUrl,
 }: {
-  payer: TransactionSigner;
-  transactionManagerUrl: string;
+  authority: TransactionSigner;
+  apiUrl: string;
 }) {
-  const userExtensions = await getUserExtensionsAddress(payer.address);
+  const userExtensions = await getUserExtensionsAddress(authority.address);
   return getEditUserExtensionInstruction({
-    payer,
-    apiUrl: transactionManagerUrl,
+    authority,
+    apiUrl,
     userExtensions,
     remainingAccounts: [],
   });

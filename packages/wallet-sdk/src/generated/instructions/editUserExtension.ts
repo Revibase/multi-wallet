@@ -30,10 +30,10 @@ import {
   type Instruction,
   type InstructionWithAccounts,
   type InstructionWithData,
+  type ReadonlySignerAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableAccount,
-  type WritableSignerAccount,
 } from "gill";
 import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
@@ -49,17 +49,17 @@ export function getEditUserExtensionDiscriminatorBytes() {
 
 export type EditUserExtensionInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountPayer extends string | AccountMeta<string> = string,
+  TAccountAuthority extends string | AccountMeta<string> = string,
   TAccountUserExtensions extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
   InstructionWithAccounts<
     [
-      TAccountPayer extends string
-        ? WritableSignerAccount<TAccountPayer> &
-            AccountSignerMeta<TAccountPayer>
-        : TAccountPayer,
+      TAccountAuthority extends string
+        ? ReadonlySignerAccount<TAccountAuthority> &
+            AccountSignerMeta<TAccountAuthority>
+        : TAccountAuthority,
       TAccountUserExtensions extends string
         ? WritableAccount<TAccountUserExtensions>
         : TAccountUserExtensions,
@@ -106,25 +106,25 @@ export type EditUserExtensionInstructionExtraArgs = {
 };
 
 export type EditUserExtensionInput<
-  TAccountPayer extends string = string,
+  TAccountAuthority extends string = string,
   TAccountUserExtensions extends string = string,
 > = {
-  payer: TransactionSigner<TAccountPayer>;
+  authority: TransactionSigner<TAccountAuthority>;
   userExtensions: Address<TAccountUserExtensions>;
   apiUrl: EditUserExtensionInstructionDataArgs["apiUrl"];
   remainingAccounts: EditUserExtensionInstructionExtraArgs["remainingAccounts"];
 };
 
 export function getEditUserExtensionInstruction<
-  TAccountPayer extends string,
+  TAccountAuthority extends string,
   TAccountUserExtensions extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
-  input: EditUserExtensionInput<TAccountPayer, TAccountUserExtensions>,
+  input: EditUserExtensionInput<TAccountAuthority, TAccountUserExtensions>,
   config?: { programAddress?: TProgramAddress }
 ): EditUserExtensionInstruction<
   TProgramAddress,
-  TAccountPayer,
+  TAccountAuthority,
   TAccountUserExtensions
 > {
   // Program address.
@@ -132,7 +132,7 @@ export function getEditUserExtensionInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    payer: { value: input.payer ?? null, isWritable: true },
+    authority: { value: input.authority ?? null, isWritable: false },
     userExtensions: { value: input.userExtensions ?? null, isWritable: true },
   };
   const accounts = originalAccounts as Record<
@@ -153,7 +153,7 @@ export function getEditUserExtensionInstruction<
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
-      getAccountMeta(accounts.payer),
+      getAccountMeta(accounts.authority),
       getAccountMeta(accounts.userExtensions),
       ...remainingAccounts,
     ],
@@ -163,7 +163,7 @@ export function getEditUserExtensionInstruction<
     programAddress,
   } as EditUserExtensionInstruction<
     TProgramAddress,
-    TAccountPayer,
+    TAccountAuthority,
     TAccountUserExtensions
   >);
 }
@@ -174,7 +174,7 @@ export type ParsedEditUserExtensionInstruction<
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    payer: TAccountMetas[0];
+    authority: TAccountMetas[0];
     userExtensions: TAccountMetas[1];
   };
   data: EditUserExtensionInstructionData;
@@ -200,7 +200,7 @@ export function parseEditUserExtensionInstruction<
   };
   return {
     programAddress: instruction.programAddress,
-    accounts: { payer: getNextAccount(), userExtensions: getNextAccount() },
+    accounts: { authority: getNextAccount(), userExtensions: getNextAccount() },
     data: getEditUserExtensionInstructionDataDecoder().decode(instruction.data),
   };
 }

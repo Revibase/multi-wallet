@@ -667,8 +667,7 @@
       "discriminator": [27],
       "accounts": [
         {
-          "name": "payer",
-          "writable": true,
+          "name": "authority",
           "signer": true
         },
         {
