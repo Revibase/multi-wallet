@@ -1,11 +1,11 @@
 import {
-  Address,
-  CompiledTransactionMessage,
+  type Address,
+  type CompiledTransactionMessage,
   getAddressCodec,
   getArrayCodec,
   getStructCodec,
   getU8Codec,
-} from "@solana/kit";
+} from "gill";
 
 function getMultiWalletInstructionCodec() {
   return getStructCodec([

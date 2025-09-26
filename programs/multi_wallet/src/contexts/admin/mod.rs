@@ -18,3 +18,6 @@ pub use create_domain_users::*;
 
 pub mod create_global_users;
 pub use create_global_users::*;
+
+pub mod edit_user_extension;
+pub use edit_user_extension::*;

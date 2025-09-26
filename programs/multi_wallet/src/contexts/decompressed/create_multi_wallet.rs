@@ -1,6 +1,6 @@
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::cpi::{CpiAccounts, CpiInputs};
-use crate::{id, state::{DomainConfig, GlobalCounter, Member, MemberKey, MemberWithAddPermissionsArgs, Ops, Permissions, ProofArgs, Secp256r1VerifyArgs, Settings, User, UserMutArgs, SEED_MULTISIG, SEED_VAULT}, LIGHT_CPI_SIGNER};
+use crate::{id, state::{DomainConfig, GlobalCounter, Member, MemberKey, MemberWithAddPermissionsArgs, Ops, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs, Settings, User, UserMutArgs, SEED_MULTISIG, SEED_VAULT}, LIGHT_CPI_SIGNER};
 
 #[derive(Accounts)]
 pub struct CreateMultiWallet<'info> {
@@ -40,7 +40,6 @@ impl<'info> CreateMultiWallet<'info> {
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, CreateMultiWallet<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        permissions: Permissions,
         compressed_proof_args: ProofArgs,
         user_mut_args: UserMutArgs,
         set_as_delegate: bool,
@@ -64,11 +63,21 @@ impl<'info> CreateMultiWallet<'info> {
         settings.members_len = 1;
         settings.index = global_counter.index;
 
+        let mut permissions = Vec::new();
+        permissions.extend([
+            Permission::InitiateTransaction,
+            Permission::VoteTransaction,
+            Permission::ExecuteTransaction,
+        ]);
+        if user_mut_args.data.is_permanent_member {
+            permissions.push(Permission::IsPermanentMember);
+        }
+
         let delegate_ops = settings.add_members(&ctx.accounts.settings.key(), 
         vec![MemberWithAddPermissionsArgs {
                 member: Member {
                     pubkey: signer,
-                    permissions,
+                    permissions: Permissions::from_permissions(permissions),
                 },
                 verify_args: secp256r1_verify_args,
                 user_args: user_mut_args,

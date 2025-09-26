@@ -1,21 +1,19 @@
-import {
+import type {
   Address,
   AddressesByLookupTableAddress,
   Instruction,
   TransactionSigner,
-} from "@solana/kit";
+} from "gill";
 import {
   getTransactionExecuteCompressedInstruction,
   getTransactionExecuteInstruction,
 } from "../generated";
 import { getMultiWalletFromSettings } from "../utils";
-import {
-  accountsForTransactionExecute,
-  addJitoTip,
-} from "../utils/transactionMessage/internal";
+import { addJitoTip } from "../utils/internal";
+import { accountsForTransactionExecute } from "../utils/transactionMessage/internal";
 import {
   getSecp256r1VerifyInstruction,
-  Secp256r1VerifyInput,
+  type Secp256r1VerifyInput,
 } from "./secp256r1Verify";
 
 export async function executeTransaction({

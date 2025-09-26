@@ -1,6 +1,9 @@
-import { AddressesByLookupTableAddress, TransactionSigner } from "@solana/kit";
-import { executeTransactionSync, Secp256r1VerifyInput } from "../instructions";
-import { BundleResponse, Secp256r1Key } from "../types";
+import type { AddressesByLookupTableAddress, TransactionSigner } from "gill";
+import {
+  executeTransactionSync,
+  type Secp256r1VerifyInput,
+} from "../instructions";
+import { type BundleResponse, Secp256r1Key } from "../types";
 
 interface CreateTransactionSyncArgs {
   payer: TransactionSigner;

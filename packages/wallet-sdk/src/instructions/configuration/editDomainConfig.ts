@@ -1,4 +1,4 @@
-import { Address, none, some, TransactionSigner } from "@solana/kit";
+import { type Address, none, some, type TransactionSigner } from "gill";
 import { getEditDomainConfigInstruction } from "../../generated";
 
 export async function editDomainConfig({
@@ -17,5 +17,6 @@ export async function editDomainConfig({
     authority,
     newOrigins: newOrigins ? some(newOrigins) : none(),
     newAuthority: newAuthority ? some(newAuthority) : none(),
+    remainingAccounts: [],
   });
 }

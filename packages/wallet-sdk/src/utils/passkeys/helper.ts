@@ -1,6 +1,6 @@
-import { CBORType, decodeCBOR, encodeCBOR } from "@levischuck/tiny-cbor";
-import { p256 } from "@noble/curves/nist.js";
-import { getBase58Decoder, getBase58Encoder } from "@solana/kit";
+import { type CBORType, decodeCBOR, encodeCBOR } from "@levischuck/tiny-cbor";
+import { p256 } from "@noble/curves/p256";
+import { getBase58Decoder, getBase58Encoder } from "gill";
 import { getAuthUrl } from "../initialize";
 import { hexToUint8Array, uint8ArrayToHex } from "./internal";
 

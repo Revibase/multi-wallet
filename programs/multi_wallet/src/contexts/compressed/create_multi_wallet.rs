@@ -3,7 +3,7 @@ use crate::{
     id,
     state::{
         CompressedSettings, CompressedSettingsData, DomainConfig, GlobalCounter, Member, MemberKey,
-        MemberWithAddPermissionsArgs, Ops, Permissions, ProofArgs, Secp256r1VerifyArgs,
+        MemberWithAddPermissionsArgs, Ops, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs,
         SettingsCreationArgs, User, UserMutArgs, SEED_MULTISIG, SEED_VAULT,
     },
     LIGHT_CPI_SIGNER,
@@ -36,7 +36,6 @@ impl<'info> CreateMultiWalletCompressed<'info> {
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        permissions: Permissions,
         compressed_proof_args: ProofArgs,
         settings_creation: SettingsCreationArgs,
         user_mut_args: UserMutArgs,
@@ -86,12 +85,22 @@ impl<'info> CreateMultiWalletCompressed<'info> {
                 &light_cpi_accounts,
             )?;
 
+        let mut permissions = Vec::new();
+        permissions.extend([
+            Permission::InitiateTransaction,
+            Permission::VoteTransaction,
+            Permission::ExecuteTransaction,
+        ]);
+        if user_mut_args.data.is_permanent_member {
+            permissions.push(Permission::IsPermanentMember);
+        }
+
         let delegate_ops = settings_account.add_members(
             &settings_key,
             vec![MemberWithAddPermissionsArgs {
                 member: Member {
                     pubkey: signer,
-                    permissions,
+                    permissions: Permissions::from_permissions(permissions),
                 },
                 verify_args: secp256r1_verify_args,
                 user_args: user_mut_args,

@@ -1,8 +1,8 @@
-import {
+import type {
   AddressesByLookupTableAddress,
   Instruction,
   TransactionSigner,
-} from "@solana/kit";
+} from "gill";
 
 export type BundleResponse = {
   id:

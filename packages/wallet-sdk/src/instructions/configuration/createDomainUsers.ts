@@ -1,17 +1,17 @@
-import { CompressedSettings } from "@revibase/wallet-sdk";
-import {
-  Address,
-  none,
-  OptionOrNullable,
-  some,
-  TransactionSigner,
-} from "@solana/kit";
 import BN from "bn.js";
 import {
+  type Address,
+  none,
+  type OptionOrNullable,
+  some,
+  type TransactionSigner,
+} from "gill";
+import {
+  type CompressedSettings,
   getCompressedSettingsDecoder,
   getCreateDomainUsersInstruction,
   getSecp256r1PubkeyDecoder,
-  SettingsMutArgs,
+  type SettingsMutArgs,
 } from "../../generated";
 import { Secp256r1Key } from "../../types";
 import {

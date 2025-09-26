@@ -7,6 +7,7 @@ pub enum Permission {
     VoteTransaction = 1 << 1,
     ExecuteTransaction = 1 << 2,
     IsPermanentMember = 1 << 3,
+    IsTransactionManager = 1 << 4,
 }
 
 /// Bitmask for permissions.
@@ -45,4 +46,5 @@ pub struct PermissionCounts {
     pub initiators: usize,
     pub executors: usize,
     pub permanent_members: usize,
+    pub transaction_manager: usize,
 }

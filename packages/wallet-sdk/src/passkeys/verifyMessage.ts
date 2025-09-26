@@ -1,6 +1,6 @@
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
-import { getUtf8Encoder } from "@solana/kit";
-import { MessageAuthenticationResponse } from "../types";
+import { getUtf8Encoder } from "gill";
+import type { MessageAuthenticationResponse } from "../types";
 import {
   convertPubkeyCompressedToCose,
   getExpectedOrigin,

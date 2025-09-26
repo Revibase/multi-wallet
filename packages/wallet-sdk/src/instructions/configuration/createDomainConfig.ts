@@ -1,4 +1,4 @@
-import { Address, TransactionSigner } from "@solana/kit";
+import type { Address, TransactionSigner } from "gill";
 import { getCreateDomainConfigInstruction } from "../../generated";
 import { getDomainConfigAddress } from "../../utils";
 
@@ -20,5 +20,6 @@ export async function createDomainConfig({
     payer,
     domainConfig,
     rpId,
+    remainingAccounts: [],
   });
 }

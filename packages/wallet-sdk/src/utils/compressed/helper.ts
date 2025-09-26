@@ -4,21 +4,21 @@ import {
   deriveAddressSeed,
   getDefaultAddressTreeInfo,
 } from "@lightprotocol/stateless.js";
+import { PublicKey } from "@solana/web3.js";
 import {
-  Address,
+  type Address,
   getAddressEncoder,
   getU128Encoder,
   getUtf8Encoder,
-} from "@solana/kit";
-import { PublicKey } from "@solana/web3.js";
+} from "gill";
 import {
-  CompressedSettingsData,
+  type CompressedSettingsData,
   fetchMaybeSettings,
   getCompressedSettingsDecoder,
   getUserDecoder,
   MULTI_WALLET_PROGRAM_ADDRESS,
   Secp256r1Key,
-  User,
+  type User,
 } from "../..";
 import { getSettingsFromIndex } from "../helper";
 import { getSolanaRpc } from "../initialize";
@@ -51,15 +51,11 @@ export async function fetchUserData(
   member: Address | Secp256r1Key,
   cachedCompressedAccounts?: Map<string, any>
 ): Promise<User> {
-  const userAddress = getUserAddress(member);
-  const result = await getCompressedAccount(
-    userAddress,
-    cachedCompressedAccounts
-  );
-  if (!result?.data?.data) {
-    throw Error("Unable to fetch user account data.");
+  const result = await fetchMaybeUserData(member, cachedCompressedAccounts);
+  if (!result) {
+    throw new Error("User cannot be found.");
   }
-  return getUserDecoder().decode(result.data.data);
+  return result;
 }
 
 export async function fetchMaybeUserData(
@@ -93,23 +89,10 @@ export function getCompressedSettingsAddressFromIndex(index: number | bigint) {
   );
 }
 
-export async function checkIfSettingsAccountIsCompressed(
-  index: bigint | number,
-  cachedCompressedAccounts?: Map<string, any>
-): Promise<boolean> {
-  const address = getCompressedSettingsAddressFromIndex(index);
-  const result = await getCompressedAccount(address, cachedCompressedAccounts);
-  if (!result?.data?.data) {
-    return false;
-  }
-  const decoded = getCompressedSettingsDecoder().decode(result?.data?.data);
-  return decoded.data.__option === "Some";
-}
-
 export async function fetchSettingsData(
   index: number | bigint,
   cachedCompressedAccounts?: Map<string, any>
-): Promise<CompressedSettingsData> {
+): Promise<CompressedSettingsData & { isCompressed: boolean }> {
   try {
     const address = getCompressedSettingsAddressFromIndex(index);
     const result = await getCompressedAccount(
@@ -123,7 +106,7 @@ export async function fetchSettingsData(
     if (data.data.__option === "None") {
       throw new Error("Settings account does not exist.");
     }
-    return data.data.value;
+    return { ...data.data.value, isCompressed: true };
   } catch {
     const result = await fetchMaybeSettings(
       getSolanaRpc(),
@@ -135,6 +118,7 @@ export async function fetchSettingsData(
     return {
       ...result.data,
       members: result.data.members.slice(0, result.data.membersLen),
+      isCompressed: false,
     };
   }
 }

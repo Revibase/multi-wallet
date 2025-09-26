@@ -1,11 +1,14 @@
-import {
+import type {
   AuthenticationResponseJSON,
   PublicKeyCredentialHint,
 } from "@simplewebauthn/server";
-import { getBase58Encoder, ReadonlyUint8Array } from "@solana/codecs";
-import { getProgramDerivedAddress } from "@solana/kit";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
 import {
+  getBase58Encoder,
+  getProgramDerivedAddress,
+  type ReadonlyUint8Array,
+} from "gill";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
+import type {
   MessageAuthenticationResponse,
   ParsedAuthenticationResponse,
   TransactionAuthenticationResponse,

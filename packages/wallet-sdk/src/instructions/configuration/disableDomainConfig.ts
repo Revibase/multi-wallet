@@ -1,4 +1,4 @@
-import { TransactionSigner } from "@solana/kit";
+import type { TransactionSigner } from "gill";
 import { getDisableDomainConfigInstruction } from "../../generated";
 import { getDomainConfigAddress } from "../../utils";
 
@@ -16,5 +16,6 @@ export async function disableDomainConfig({
     domainConfig,
     admin,
     disable,
+    remainingAccounts: [],
   });
 }

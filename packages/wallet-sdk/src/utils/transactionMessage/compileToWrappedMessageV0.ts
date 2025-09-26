@@ -1,10 +1,10 @@
 import {
   address,
-  Address,
-  AddressesByLookupTableAddress,
-  CompiledTransactionMessage,
-  Instruction,
-} from "@solana/kit";
+  type Address,
+  type AddressesByLookupTableAddress,
+  type CompiledTransactionMessage,
+  type Instruction,
+} from "gill";
 import { CompiledKeys } from "./compiled-keys";
 import { MessageAccountKeys } from "./message-account-keys";
 

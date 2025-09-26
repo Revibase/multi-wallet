@@ -84,7 +84,6 @@ pub mod multi_wallet {
     pub fn create_multi_wallet<'info>(
         ctx: Context<'_, '_, 'info, 'info, CreateMultiWallet<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        permissions: Permissions,
         user_mut_args: UserMutArgs,
         compressed_proof_args: ProofArgs,
         set_as_delegate: bool,
@@ -92,7 +91,6 @@ pub mod multi_wallet {
         CreateMultiWallet::process(
             ctx,
             secp256r1_verify_args,
-            permissions,
             compressed_proof_args,
             user_mut_args,
             set_as_delegate,
@@ -166,9 +164,9 @@ pub mod multi_wallet {
     /// Executes a transaction synchronously by directly submitting the message and verifying it.
     #[instruction(discriminator = 15)]
     pub fn transaction_execute_sync<'info>(
-        ctx: Context<'_, '_, '_, 'info, TransactionExecuteSync<'info>>,
+        ctx: Context<'_, '_, 'info, 'info, TransactionExecuteSync<'info>>,
         transaction_message: TransactionMessage,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
+        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
         TransactionExecuteSync::process(ctx, transaction_message, secp256r1_verify_args)
     }
@@ -183,7 +181,7 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, CompressSettingsAccount<'info>>,
         compressed_proof_args: ProofArgs,
         settings_arg: SettingsCreateOrMutateArgs,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
+        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
         CompressSettingsAccount::process(
             ctx,
@@ -199,7 +197,7 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, DecompressSettingsAccount<'info>>,
         settings_mut: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
+        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
         DecompressSettingsAccount::process(
             ctx,
@@ -214,7 +212,6 @@ pub mod multi_wallet {
     pub fn create_multi_wallet_compressed<'info>(
         ctx: Context<'_, '_, 'info, 'info, CreateMultiWalletCompressed<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        permissions: Permissions,
         compressed_proof_args: ProofArgs,
         settings_creation: SettingsCreationArgs,
         user_mut_args: UserMutArgs,
@@ -224,7 +221,6 @@ pub mod multi_wallet {
         CreateMultiWalletCompressed::process(
             ctx,
             secp256r1_verify_args,
-            permissions,
             compressed_proof_args,
             settings_creation,
             user_mut_args,
@@ -332,9 +328,9 @@ pub mod multi_wallet {
     /// Executes a transaction synchronously by directly submitting the message and verifying it.
     #[instruction(discriminator = 26)]
     pub fn transaction_execute_sync_compressed<'info>(
-        ctx: Context<'_, '_, '_, 'info, TransactionExecuteSyncCompressed<'info>>,
+        ctx: Context<'_, '_, 'info, 'info, TransactionExecuteSyncCompressed<'info>>,
         transaction_message: TransactionMessage,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
+        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
         settings_readonly: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
@@ -345,5 +341,14 @@ pub mod multi_wallet {
             settings_readonly,
             compressed_proof_args,
         )
+    }
+
+    /// Edit user extension
+    #[instruction(discriminator = 27)]
+    pub fn edit_user_extension<'info>(
+        ctx: Context<'_, '_, 'info, 'info, EditUserExtensions<'info>>,
+        args: EditUserExtensionsArgs,
+    ) -> Result<()> {
+        EditUserExtensions::process(ctx, args)
     }
 }

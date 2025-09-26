@@ -1,13 +1,13 @@
-import { fetchSettingsData } from "@revibase/wallet-sdk";
-import { address } from "@solana/kit";
+import { fetchSettingsData, getSolanaRpc } from "@revibase/wallet-sdk";
 import { expect } from "chai";
-import { WALLET_TRANSFER_AMOUNT } from "../constants";
+import { address } from "gill";
+import { WALLET_TRANSFER_AMOUNT } from "../constants.ts";
 import {
   createMultiWallet,
   fundMultiWalletVault,
   setupTestEnvironment,
-} from "../helpers";
-import type { TestContext } from "../types";
+} from "../helpers/index.ts";
+import type { TestContext } from "../types.ts";
 
 export function runWalletCreationTests() {
   describe("Wallet Creation", () => {
@@ -21,6 +21,7 @@ export function runWalletCreationTests() {
     it("should create a multi-wallet with correct initial state", async () => {
       // Create the multi-wallet
       ctx = await createMultiWallet(ctx);
+      if (!ctx.index || !ctx.multiWalletVault) return;
       // Verify wallet settings
       const accountData = await fetchSettingsData(ctx.index);
 
@@ -37,7 +38,7 @@ export function runWalletCreationTests() {
       await fundMultiWalletVault(ctx, BigInt(10 ** 9 * 0.01));
 
       // Verify wallet balance
-      const vaultBalance = await ctx.connection
+      const vaultBalance = await getSolanaRpc()
         .getBalance(address(ctx.multiWalletVault))
         .send();
 

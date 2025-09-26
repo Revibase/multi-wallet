@@ -1,17 +1,17 @@
-import {
+import type {
   AccountMeta,
   Address,
   Instruction,
   TransactionSigner,
-} from "@solana/kit";
+} from "gill";
 import {
   getTransactionBufferVoteCompressedInstruction,
   getTransactionBufferVoteInstruction,
-  ProofArgsArgs,
-  SettingsReadonlyArgs,
+  type ProofArgsArgs,
+  type SettingsReadonlyArgs,
 } from "../../generated";
 import { Secp256r1Key } from "../../types";
-import { extractSecp256r1VerificationArgs } from "../../utils/transactionMessage/internal";
+import { extractSecp256r1VerificationArgs } from "../../utils/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
 export function voteTransactionBuffer({
@@ -77,6 +77,7 @@ export function voteTransactionBuffer({
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
         voter: voter instanceof Secp256r1Key ? undefined : voter,
+        remainingAccounts: [],
       })
     );
   }

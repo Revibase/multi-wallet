@@ -1,15 +1,10 @@
 import {
-  getSetComputeUnitLimitInstruction,
-  getSetComputeUnitPriceInstruction,
-} from "@solana-program/compute-budget";
-import { getAddMemoInstruction } from "@solana-program/memo";
-import {
-  AccountMeta,
+  type AccountMeta,
   AccountRole,
-  AddressesByLookupTableAddress,
-  Rpc,
-  SolanaRpcApi,
-  TransactionSigner,
+  type AddressesByLookupTableAddress,
+  type Rpc,
+  type SolanaRpcApi,
+  type TransactionSigner,
   appendTransactionMessageInstructions,
   compileTransaction,
   compressTransactionMessageUsingAddressLookupTables,
@@ -21,33 +16,18 @@ import {
   prependTransactionMessageInstructions,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
-} from "@solana/kit";
-import { Secp256r1VerifyInput } from "../../instructions";
+} from "gill";
+import {
+  getAddMemoInstruction,
+  getSetComputeUnitLimitInstruction,
+  getSetComputeUnitPriceInstruction,
+} from "gill/programs";
+import type { Secp256r1VerifyInput } from "../../instructions";
 import { prepareTransactionSync } from "../../transaction";
 import { Secp256r1Key } from "../../types";
 import { getJitoTipsConfig } from "../initialize";
 
-export async function estimateTransactionSizeExceedLimit({
-  payer,
-  settingsIndex,
-  transactionMessageBytes,
-  additionalSigners,
-  compressed,
-  addressesByLookupTableAddress,
-  memo,
-  secp256r1VerifyInput,
-  cachedCompressedAccounts,
-}: {
-  payer: TransactionSigner;
-  transactionMessageBytes: Uint8Array;
-  settingsIndex: number;
-  compressed: boolean;
-  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
-  additionalSigners?: TransactionSigner[];
-  secp256r1VerifyInput?: Secp256r1VerifyInput;
-  memo?: string | null;
-  cachedCompressedAccounts?: Map<string, any>;
-}) {
+export function simulateSecp256r1Signer() {
   const randomPubkey = crypto.getRandomValues(new Uint8Array(33));
   const signer = new Secp256r1Key(randomPubkey, {
     authData: crypto.getRandomValues(new Uint8Array(37)),
@@ -61,11 +41,35 @@ export async function estimateTransactionSizeExceedLimit({
       clientDataJson: crypto.getRandomValues(new Uint8Array(150)),
     },
   });
+  return signer;
+}
+
+export async function estimateTransactionSizeExceedLimit({
+  payer,
+  settingsIndex,
+  transactionMessageBytes,
+  signers,
+  compressed,
+  addressesByLookupTableAddress,
+  memo,
+  secp256r1VerifyInput,
+  cachedCompressedAccounts,
+}: {
+  payer: TransactionSigner;
+  transactionMessageBytes: Uint8Array;
+  settingsIndex: number;
+  compressed: boolean;
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
+  signers: (TransactionSigner | Secp256r1Key)[];
+  secp256r1VerifyInput?: Secp256r1VerifyInput;
+  memo?: string | null;
+  cachedCompressedAccounts?: Map<string, any>;
+}) {
   const result = await prepareTransactionSync({
     payer,
     index: settingsIndex,
     transactionMessageBytes,
-    signers: [signer, ...(additionalSigners ?? [])],
+    signers,
     secp256r1VerifyInput,
     compressed,
     simulateProof: true,

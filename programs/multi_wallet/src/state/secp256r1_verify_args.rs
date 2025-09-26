@@ -32,6 +32,12 @@ pub struct Secp256r1VerifyArgs {
     pub client_data_json: Vec<u8>,
 }
 
+#[derive(AnchorDeserialize, AnchorSerialize, PartialEq)]
+pub struct Secp256r1VerifyArgsWithDomainAddress {
+    pub domain_config_key: Pubkey,
+    pub verify_args: Secp256r1VerifyArgs,
+}
+
 pub struct ChallengeArgs {
     pub account: Pubkey,
     pub message_hash: [u8; 32],

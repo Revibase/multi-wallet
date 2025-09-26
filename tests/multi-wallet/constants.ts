@@ -1,4 +1,4 @@
-import { lamports } from "@solana/kit";
+import { lamports } from "gill";
 
 // Network constants
 export const LOCAL_RPC_URL = "http://localhost:8899";

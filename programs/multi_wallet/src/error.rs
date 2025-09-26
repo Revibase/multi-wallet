@@ -22,6 +22,15 @@ pub enum MultisigError {
     #[msg("Unable to set permanent member for this operation.")]
     PermanentMemberNotAllowed,
 
+    #[msg("Only one permanent member can exist per wallet.")]
+    OnlyOnePermanentMemberAllowed,
+
+    #[msg("Only one transaction manager can exist per wallet.")]
+    OnlyOneTransactionManagerAllowed,
+
+    #[msg("Unable to set transaction manager for this operation.")]
+    TransactionManagerNotAllowed,
+
     #[msg("No members were provided. A multisig must have at least one member.")]
     EmptyMembers,
 

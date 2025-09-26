@@ -1,9 +1,14 @@
 import {
-  type SolanaSignInInput,
-  type SolanaSignInOutput,
-} from "@solana/wallet-standard-features";
-import { WalletAccount } from "@wallet-standard/base";
-import { ReadonlyWalletAccount } from "@wallet-standard/core";
+  ReadonlyWalletAccount,
+  type StandardConnectInput,
+  type WalletAccount,
+} from "@wallet-standard/core";
+import type {
+  AddressesByLookupTableAddress,
+  Instruction,
+  TransactionSigner,
+} from "gill";
+import type { MessageAuthenticationResponse } from "../types";
 
 export interface RevibaseEvent {
   connect(...args: unknown[]): unknown;
@@ -28,19 +33,19 @@ export interface Revibase extends RevibaseEventEmitter {
   publicKey: string | null;
   member: string | null;
   index: number | null;
-  connect(options?: { onlyIfTrusted?: boolean }): Promise<void>;
-  disconnect(): void;
-  signTransaction(transaction: Uint8Array): Promise<Uint8Array[]>;
-  signMessage(
-    message: Uint8Array
-  ): Promise<{ signature: Uint8Array; signedMessage: Uint8Array }>;
-  signIn(input?: SolanaSignInInput): Promise<
-    {
-      publicKey: string;
-      member: string;
-      index: number;
-    } & Omit<SolanaSignInOutput, "account">
-  >;
+  connect(input: StandardConnectInput | undefined): Promise<void>;
+  disconnect(): Promise<void>;
+  signAndSendTransaction(input: {
+    instructions: Instruction[];
+    addressesByLookupTableAddress?: AddressesByLookupTableAddress;
+    additionalSigners?: TransactionSigner[];
+    cachedCompressedAccounts?: Map<string, any>;
+  }): Promise<string>;
+  signMessage(input: string): Promise<MessageAuthenticationResponse>;
+  verify(input: {
+    message: string;
+    authResponse: MessageAuthenticationResponse;
+  }): Promise<boolean>;
 }
 
 export class RevibaseWalletAccount extends ReadonlyWalletAccount {
@@ -52,8 +57,4 @@ export class RevibaseWalletAccount extends ReadonlyWalletAccount {
     this.member = member;
     this.index = index;
   }
-}
-
-export interface RevibaseSolanaSignInOutput extends SolanaSignInOutput {
-  account: RevibaseWalletAccount;
 }

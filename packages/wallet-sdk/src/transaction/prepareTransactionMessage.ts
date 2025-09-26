@@ -1,8 +1,4 @@
-import {
-  Address,
-  AddressesByLookupTableAddress,
-  Instruction,
-} from "@solana/kit";
+import type { Address, AddressesByLookupTableAddress, Instruction } from "gill";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../generated";
 import { customTransactionMessageSerialize } from "../utils";
 import { compileToWrappedMessageV0 } from "../utils/transactionMessage/compileToWrappedMessageV0";

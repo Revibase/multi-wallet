@@ -13,15 +13,15 @@ import {
   getU16Encoder,
   getU8Decoder,
   getU8Encoder,
-  InstructionWithAccounts,
-  InstructionWithData,
   type Address,
   type Codec,
   type Decoder,
   type Encoder,
   type Instruction,
+  type InstructionWithAccounts,
+  type InstructionWithData,
   type ReadonlyUint8Array,
-} from "@solana/kit";
+} from "gill";
 
 export const COMPRESSED_PUBKEY_SERIALIZED_SIZE = 33;
 export const SIGNATURE_SERIALIZED_SIZE = 64;

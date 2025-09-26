@@ -1,5 +1,5 @@
 use crate::{
-    error::MultisigError, state::{ChallengeArgs, CompressedSettings, DomainConfig, MemberKey, Permission, ProofArgs, Secp256r1VerifyArgs, Settings, SettingsMutArgs, TransactionActionType, SEED_MULTISIG}, utils::durable_nonce_check, LIGHT_CPI_SIGNER
+    error::MultisigError, state::{ChallengeArgs, CompressedSettings, DomainConfig, MemberKey, Permission, ProofArgs,  Secp256r1VerifyArgsWithDomainAddress, Settings, SettingsMutArgs, TransactionActionType, SEED_MULTISIG}, utils::durable_nonce_check, LIGHT_CPI_SIGNER
 };
 use anchor_lang::{prelude::*, solana_program::{hash, sysvar::SysvarId}};
 use light_sdk::{
@@ -28,7 +28,6 @@ pub struct DecompressSettingsAccount<'info> {
         address = SlotHashes::id()
     )]
     pub slot_hash_sysvar: Option<UncheckedAccount<'info>>,
-    pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
     /// CHECK:
     #[account(
         address = Instructions::id(),
@@ -39,13 +38,12 @@ pub struct DecompressSettingsAccount<'info> {
 impl<'info> DecompressSettingsAccount<'info> {
     fn validate(
         &self,
-        remaining_accounts: &[AccountInfo<'info>],
-        secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
+        remaining_accounts: &'info [AccountInfo<'info>],
+        secp256r1_verify_args: &Vec<Secp256r1VerifyArgsWithDomainAddress>,
         settings_mut: &SettingsMutArgs,
     ) -> Result<()> {
         let Self {
             settings,
-            domain_config,
             slot_hash_sysvar,
             instructions_sysvar,
             payer,
@@ -60,16 +58,27 @@ impl<'info> DecompressSettingsAccount<'info> {
 
         let settings_data = settings_mut.data.data.as_ref().unwrap();
         let threshold = settings_data.threshold as usize;
-        let secp256r1_member_key =
-            MemberKey::get_signer(&None, secp256r1_verify_args, Some(instructions_sysvar))
-                .map_or(None, |f| Some(f));
+        let secp256r1_member_keys: Vec<(MemberKey, &Secp256r1VerifyArgsWithDomainAddress)> =
+            secp256r1_verify_args
+                .iter()
+                .filter_map(|arg| {
+                    let pubkey = arg
+                        .verify_args
+                        .extract_public_key_from_instruction(Some(&self.instructions_sysvar))
+                        .ok()?;
 
+                    let member_key = MemberKey::convert_secp256r1(&pubkey).ok()?;
+
+                    Some((member_key, arg))
+                })
+                .collect();
         for member in &settings_data.members {
             let has_permission = |perm| member.permissions.has(perm);
 
-            let is_secp256r1_signer =
-                secp256r1_member_key.is_some() && member.pubkey.eq(&secp256r1_member_key.unwrap());
-            let is_signer = is_secp256r1_signer
+            let secp256r1_signer = secp256r1_member_keys
+                .iter()
+                .find(|f| f.0.eq(&member.pubkey));
+            let is_signer = secp256r1_signer.is_some()
                 || remaining_accounts.iter().any(|account| {
                     account.is_signer
                         && MemberKey::convert_ed25519(account.key)
@@ -89,14 +98,16 @@ impl<'info> DecompressSettingsAccount<'info> {
                 }
             }
 
-            if is_secp256r1_signer {
-                let secp256r1_verify_data = secp256r1_verify_args
-                    .as_ref()
-                    .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
+             if let Some((_, secp256r1_verify_data)) = secp256r1_signer {   
+                let account_loader = DomainConfig::extract_domain_config_account(
+                    remaining_accounts,
+                    secp256r1_verify_data.domain_config_key,
+                )?;
 
-                secp256r1_verify_data.verify_webauthn(
+
+                secp256r1_verify_data.verify_args.verify_webauthn(
                     slot_hash_sysvar,
-                    domain_config,
+                    &Some(account_loader),
                     instructions_sysvar,
                     ChallengeArgs {
                         account: settings.key(),
@@ -128,7 +139,7 @@ impl<'info> DecompressSettingsAccount<'info> {
         ctx: Context<'_, '_, 'info, 'info, Self>,
         settings_mut: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
+        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
         let settings = &mut ctx.accounts.settings.load_init()?;
 

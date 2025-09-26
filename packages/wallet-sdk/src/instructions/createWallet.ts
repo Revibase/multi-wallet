@@ -1,12 +1,11 @@
-import { AccountRole, Instruction, TransactionSigner } from "@solana/kit";
+import { AccountRole, type Instruction, type TransactionSigner } from "gill";
 import {
   getCreateMultiWalletCompressedInstruction,
   getCreateMultiWalletInstruction,
   getUserDecoder,
-  IPermissions,
-  User,
+  type User,
 } from "../generated";
-import { PermanentMemberPermission, Secp256r1Key } from "../types";
+import { Secp256r1Key } from "../types";
 import {
   getCompressedSettingsAddressFromIndex,
   getGlobalCounterAddress,
@@ -22,26 +21,25 @@ import {
   getValidityProofWithRetry,
 } from "../utils/compressed/internal";
 import { PackedAccounts } from "../utils/compressed/packedAccounts";
-import { extractSecp256r1VerificationArgs } from "../utils/transactionMessage/internal";
-import { Secp256r1VerifyInput } from "./secp256r1Verify";
+import { extractSecp256r1VerificationArgs } from "../utils/internal";
+import type { Secp256r1VerifyInput } from "./secp256r1Verify";
 
+type CreateWalletArgs = {
+  index: bigint | number;
+  payer: TransactionSigner;
+  compressed?: boolean;
+  cachedCompressedAccounts?: Map<string, any>;
+  initialMember: TransactionSigner | Secp256r1Key;
+  setAsDelegate: boolean;
+};
 export async function createWallet({
   index,
   payer,
   initialMember,
-  permissions,
   setAsDelegate,
   compressed = false,
   cachedCompressedAccounts,
-}: {
-  index: bigint | number;
-  payer: TransactionSigner;
-  initialMember: TransactionSigner | Secp256r1Key;
-  permissions: IPermissions;
-  setAsDelegate: boolean;
-  compressed?: boolean;
-  cachedCompressedAccounts?: Map<string, any>;
-}) {
+}: CreateWalletArgs) {
   const globalCounter = await getGlobalCounterAddress();
   const {
     domainConfig,
@@ -110,20 +108,6 @@ export async function createWallet({
     getUserDecoder()
   )[0];
 
-  if (userMutArgs.data.isPermanentMember) {
-    if (!setAsDelegate) {
-      throw new Error(
-        "Permanent members must also be delegates. Please set `setAsDelegate = true`."
-      );
-    }
-    if (userMutArgs.data.settingsIndex.__option === "Some") {
-      throw new Error(
-        "This user is already registered as a permanent member in another wallet. A permanent member can only belong to one wallet."
-      );
-    }
-    permissions.mask |= PermanentMemberPermission;
-  }
-
   const initArgs = await getCompressedAccountInitArgs(
     packedAccounts,
     proof.treeInfos.slice(hashesWithTreeEndIndex),
@@ -172,7 +156,6 @@ export async function createWallet({
           initialMember instanceof Secp256r1Key ? undefined : initialMember,
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
-        permissions,
         userMutArgs,
         globalCounter,
         compressedProofArgs,
@@ -193,7 +176,6 @@ export async function createWallet({
           initialMember instanceof Secp256r1Key ? undefined : initialMember,
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
-        permissions,
         userMutArgs,
         globalCounter,
         compressedProofArgs,

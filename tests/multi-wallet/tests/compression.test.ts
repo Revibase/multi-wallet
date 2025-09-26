@@ -4,14 +4,15 @@ import {
   fetchMaybeSettings,
   fetchSettingsData,
   getSettingsFromIndex,
+  getSolanaRpc,
 } from "@revibase/wallet-sdk";
 import { expect } from "chai";
 import {
   createMultiWallet,
   sendTransaction,
   setupTestEnvironment,
-} from "../helpers";
-import type { TestContext } from "../types";
+} from "../helpers/index.ts";
+import type { TestContext } from "../types.ts";
 
 export function runCompressionTests() {
   describe("Compress Settings Account", () => {
@@ -27,6 +28,7 @@ export function runCompressionTests() {
     });
 
     it("should handle compress settings account", async () => {
+      if (!ctx.index) return;
       const compressIxs = await compressSettingsAccount({
         index: ctx.index,
         payer: ctx.payer,
@@ -35,14 +37,12 @@ export function runCompressionTests() {
 
       try {
         await sendTransaction(
-          ctx.connection,
           [...compressIxs],
           ctx.payer,
-          ctx.sendAndConfirm,
           ctx.addressLookUpTable
         );
         const settings = await getSettingsFromIndex(ctx.index);
-        const settingsData = await fetchMaybeSettings(ctx.connection, settings);
+        const settingsData = await fetchMaybeSettings(getSolanaRpc(), settings);
         expect(settingsData.exists).equal(
           false,
           "Settings account should be null"
@@ -59,6 +59,7 @@ export function runCompressionTests() {
     });
 
     it("should handle compress settings account then decompress settings account", async () => {
+      if (!ctx1.index) return;
       const compressIxs = await compressSettingsAccount({
         index: ctx1.index,
         payer: ctx1.payer,
@@ -67,17 +68,12 @@ export function runCompressionTests() {
 
       try {
         await sendTransaction(
-          ctx1.connection,
           [...compressIxs],
           ctx1.payer,
-          ctx1.sendAndConfirm,
           ctx1.addressLookUpTable
         );
         const settings = await getSettingsFromIndex(ctx1.index);
-        const settingsData = await fetchMaybeSettings(
-          ctx1.connection,
-          settings
-        );
+        const settingsData = await fetchMaybeSettings(getSolanaRpc(), settings);
         expect(settingsData.exists).equal(
           false,
           "Settings account should be null"
@@ -100,17 +96,12 @@ export function runCompressionTests() {
 
       try {
         await sendTransaction(
-          ctx1.connection,
           [...decompressIxs],
           ctx1.payer,
-          ctx1.sendAndConfirm,
           ctx1.addressLookUpTable
         );
         const settings = await getSettingsFromIndex(ctx1.index);
-        const settingsData = await fetchMaybeSettings(
-          ctx1.connection,
-          settings
-        );
+        const settingsData = await fetchMaybeSettings(getSolanaRpc(), settings);
         expect(settingsData.exists).equal(
           true,
           "Settings account should exist"

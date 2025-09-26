@@ -1,19 +1,19 @@
-import { sha256 } from "@noble/hashes/sha2";
-import {
+import { sha256 } from "@noble/hashes/sha256";
+import type {
   AddressesByLookupTableAddress,
   Instruction,
   TransactionSigner,
-} from "@solana/kit";
+} from "gill";
 import {
   createTransactionBuffer,
   executeTransaction,
   executeTransactionBuffer,
   extendTransactionBuffer,
-  Secp256r1VerifyInput,
+  type Secp256r1VerifyInput,
   voteTransactionBuffer,
 } from "../instructions";
 import { Secp256r1Key } from "../types";
-import { BundleResponse } from "../types/bundle";
+import type { BundleResponse } from "../types/bundle";
 import { getSettingsFromIndex, getTransactionBufferAddress } from "../utils";
 import {
   constructSettingsProofArgs,

@@ -1,6 +1,6 @@
-import { AccountRole, TransactionSigner } from "@solana/kit";
+import { AccountRole, type TransactionSigner } from "gill";
 import { getCreateGlobalUsersInstruction } from "../../generated";
-import { getUserAddress } from "../../utils";
+import { getUserAddress, getUserExtensionsAddress } from "../../utils";
 import {
   convertToCompressedProofArgs,
   getCompressedAccountInitArgs,
@@ -9,10 +9,18 @@ import {
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 
-interface UserCreationArgs {
-  member: TransactionSigner;
-  isPermanentMember: boolean;
-}
+type UserCreationArgs =
+  | {
+      member: TransactionSigner;
+      isPermanentMember: boolean;
+      apiUrl: undefined;
+    }
+  | {
+      member: TransactionSigner;
+      isPermanentMember: false;
+      apiUrl: string;
+    };
+
 export async function createGlobalUsers({
   createUserArgs,
   payer,
@@ -44,6 +52,17 @@ export async function createGlobalUsers({
     newAddressParams
   );
 
+  packedAccounts.addPreAccounts(
+    await Promise.all(
+      createUserArgs
+        .filter((x) => !!x.apiUrl)
+        .map(async (x) => ({
+          address: await getUserExtensionsAddress(x.member.address),
+          role: AccountRole.WRITABLE,
+        }))
+    )
+  );
+
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
 
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
@@ -55,6 +74,7 @@ export async function createGlobalUsers({
       member: x.member.address,
       isPermanentMember: x.isPermanentMember,
       userCreationArgs: userCreationArgs[index],
+      apiUrl: x.apiUrl ?? null,
     })),
     remainingAccounts,
   });

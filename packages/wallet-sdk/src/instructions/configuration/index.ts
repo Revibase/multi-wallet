@@ -5,3 +5,4 @@ export * from "./createGlobalUsers";
 export * from "./deleteDomainConfig";
 export * from "./disableDomainConfig";
 export * from "./editDomainConfig";
+export * from "./editUserExtensions";

@@ -22,26 +22,6 @@ export function bigintToBytes32(num: bigint): Uint8Array {
 }
 
 /**
- * Normalizes a signature to use the low S value
- */
-export function normalizeSignatureToLowS(sig: Uint8Array): Uint8Array {
-  if (sig.length !== 64) throw new Error("Signature must be 64 bytes");
-
-  const r = sig.slice(0, 32);
-  const s = sig.slice(32, 64);
-
-  const rBig = bytesToBigInt(r);
-  const sBig = bytesToBigInt(s);
-
-  const n = p256.CURVE.n;
-  const halfN = n / 2n;
-
-  const lowS = sBig > halfN ? n - sBig : sBig;
-
-  return new Uint8Array([...bigintToBytes32(rBig), ...bigintToBytes32(lowS)]);
-}
-
-/**
  * Converts a buffer to a base64 URL string
  */
 export function bufferToBase64URLString(buffer: ArrayBuffer): string {
@@ -60,7 +40,7 @@ export function bufferToBase64URLString(buffer: ArrayBuffer): string {
  * Generates a secp256r1 key pair for testing
  */
 export function generateSecp256r1KeyPair() {
-  const privateKey = p256.utils.randomPrivateKey();
+  const privateKey = p256.utils.randomSecretKey();
   const publicKey = p256.getPublicKey(privateKey, true);
   return { privateKey, publicKey };
 }

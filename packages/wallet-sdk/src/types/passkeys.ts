@@ -1,8 +1,8 @@
-import {
+import type {
   AuthenticationResponseJSON,
   PublicKeyCredentialHint,
 } from "@simplewebauthn/server";
-import { Address } from "@solana/kit";
+import type { Address } from "gill";
 
 export type TransactionAuthenticationResponse = {
   authResponse: AuthenticationResponseJSON;

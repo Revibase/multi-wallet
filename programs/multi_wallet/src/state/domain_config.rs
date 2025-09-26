@@ -88,4 +88,17 @@ impl DomainConfig {
 
         Ok(origins)
     }
+
+    pub fn extract_domain_config_account<'a>(
+        remaining_accounts: &'a [AccountInfo<'a>],
+        domain_config_key: Pubkey,
+    ) -> Result<AccountLoader<'a, DomainConfig>> {
+        let domain_account = remaining_accounts
+            .iter()
+            .find(|f| f.key.eq(&domain_config_key))
+            .ok_or(MultisigError::MissingAccount)?;
+        let account_loader = AccountLoader::<DomainConfig>::try_from(domain_account)?;
+
+        Ok(account_loader)
+    }
 }

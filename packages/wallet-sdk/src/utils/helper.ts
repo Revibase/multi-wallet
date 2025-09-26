@@ -1,22 +1,33 @@
-import { sha256 } from "@noble/hashes/sha2";
+import { sha256 } from "@noble/hashes/sha256";
 import {
-  address,
-  Address,
+  type Address,
   getAddressEncoder,
   getBase58Decoder,
   getBase58Encoder,
   getBase64Decoder,
+  getBase64EncodedWireTransaction,
   getProgramDerivedAddress,
-  getTransactionEncoder,
   getU128Encoder,
   getU8Encoder,
   getUtf8Encoder,
-  SignatureBytes,
-  TransactionSigner,
-} from "@solana/kit";
-import { MemberKey, MULTI_WALLET_PROGRAM_ADDRESS } from "../generated";
-import { KeyType, Secp256r1Key } from "../types";
-import { normalizeKey } from "./transactionMessage/internal";
+  type SignatureBytes,
+  type TransactionSigner,
+} from "gill";
+import {
+  type IPermissions,
+  type MemberKey,
+  MULTI_WALLET_PROGRAM_ADDRESS,
+} from "../generated";
+import {
+  type IPermission,
+  KeyType,
+  PermanentMemberPermission,
+  Permission,
+  type PermissionArgs,
+  Permissions,
+  Secp256r1Key,
+  TransactionManagerPermission,
+} from "../types";
 
 export async function getDomainConfigAddress({
   rpIdHash,
@@ -50,6 +61,18 @@ export async function getGlobalCounterAddress() {
   });
 
   return globalCounter;
+}
+
+export async function getUserExtensionsAddress(member: Address) {
+  const [userExtensions] = await getProgramDerivedAddress({
+    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
+    seeds: [
+      getUtf8Encoder().encode("user_extension"),
+      getAddressEncoder().encode(member),
+    ],
+  });
+
+  return userExtensions;
 }
 
 export async function getSettingsFromIndex(index: number | bigint) {
@@ -114,6 +137,14 @@ export async function getTransactionBufferAddress(
   }
 }
 
+function normalizeKey(key: any) {
+  if (key instanceof Uint8Array) return key;
+  if (Array.isArray(key)) return new Uint8Array(key);
+  if (typeof key === "object" && key !== null)
+    return new Uint8Array(Object.values(key));
+  throw new Error("Invalid key format");
+}
+
 export function convertMemberKeyToString(memberKey: MemberKey) {
   if (memberKey.keyType === KeyType.Ed25519) {
     return getBase58Decoder().decode(
@@ -124,42 +155,56 @@ export function convertMemberKeyToString(memberKey: MemberKey) {
   }
 }
 
-export async function getRandomPayer(
-  payerEndpoint: string
-): Promise<TransactionSigner> {
-  const response = await fetch(`${payerEndpoint}/getRandomPayer`);
-  const { randomPayer } = (await response.json()) as { randomPayer: string };
+export function createTransactionManagerSigner(
+  address: Address,
+  url: string,
+  transactionMessageBytes?: Uint8Array
+): TransactionSigner {
   return {
-    address: address(randomPayer),
-    signTransactions(transactions) {
-      return new Promise(async (resolve, reject) => {
-        try {
-          const signatureResponse = await fetch(`${payerEndpoint}/sign`, {
-            method: "POST",
-            body: JSON.stringify({
-              publicKey: randomPayer,
-              transactions: transactions.map((x) =>
-                getBase64Decoder().decode(getTransactionEncoder().encode(x))
-              ),
-            }),
-          });
-          if (!signatureResponse.ok) {
-            throw new Error(await signatureResponse.json());
-          }
-          const { signatures } = (await signatureResponse.json()) as {
-            signatures: string[];
-          };
-          resolve(
-            signatures.map((x) => ({
-              [address(randomPayer)]: getBase58Encoder().encode(
-                x
-              ) as SignatureBytes,
-            }))
-          );
-        } catch (error) {
-          reject(error);
-        }
+    address,
+    async signTransactions(transactions) {
+      const payload: Record<string, string | string[]> = {
+        publicKey: address.toString(),
+        transactions: transactions.map(getBase64EncodedWireTransaction),
+      };
+
+      if (transactionMessageBytes) {
+        payload.transactionMessageBytes = getBase64Decoder().decode(
+          transactionMessageBytes
+        );
+      }
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
+
+      const data = (await response.json()) as
+        | { signatures: string[] }
+        | { error: string };
+
+      if ("error" in data) {
+        throw new Error(data.error);
+      }
+
+      return data.signatures.map((sig) => ({
+        [address]: getBase58Encoder().encode(sig) as SignatureBytes,
+      }));
     },
   };
+}
+export function convertPermissions(
+  p: PermissionArgs,
+  isPermanentMember = false,
+  isTransactionManager = false
+): IPermissions {
+  const perms: IPermission[] = [];
+  if (p.initiate) perms.push(Permission.InitiateTransaction);
+  if (p.vote) perms.push(Permission.VoteTransaction);
+  if (p.execute) perms.push(Permission.ExecuteTransaction);
+  if (isPermanentMember) perms.push(PermanentMemberPermission);
+  if (isTransactionManager) perms.push(TransactionManagerPermission);
+
+  return Permissions.fromPermissions(perms);
 }

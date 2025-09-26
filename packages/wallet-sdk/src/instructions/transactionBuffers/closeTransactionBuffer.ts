@@ -1,4 +1,4 @@
-import { Address, TransactionSigner } from "@solana/kit";
+import type { Address, TransactionSigner } from "gill";
 import {
   fetchTransactionBuffer,
   getTransactionBufferCloseCompressedInstruction,
@@ -10,7 +10,7 @@ import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
 } from "../../utils/compressed/internal";
-import { extractSecp256r1VerificationArgs } from "../../utils/transactionMessage/internal";
+import { extractSecp256r1VerificationArgs } from "../../utils/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
 export async function closeTransactionBuffer({
@@ -100,6 +100,7 @@ export async function closeTransactionBuffer({
         settings,
         payer: transactionBuffer.data.payer,
         secp256r1VerifyArgs: verifyArgs,
+        remainingAccounts: [],
       })
     );
   }

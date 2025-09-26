@@ -1,35 +1,28 @@
-import { address, getAddressEncoder } from "@solana/kit";
-import {
-  SolanaSignTransactionMethod,
-  type SolanaSignInFeature,
-  type SolanaSignInMethod,
-  type SolanaSignMessageFeature,
-  type SolanaSignMessageMethod,
-  type SolanaSignMessageOutput,
-  type SolanaSignTransactionFeature,
-  type SolanaSignTransactionOutput,
-} from "@solana/wallet-standard-features";
-import type { Wallet } from "@wallet-standard/base";
-import {
-  type StandardConnectFeature,
-  type StandardConnectMethod,
-  type StandardDisconnectFeature,
-  type StandardDisconnectMethod,
-  type StandardEventsFeature,
-  type StandardEventsListeners,
-  type StandardEventsNames,
-  type StandardEventsOnMethod,
-} from "@wallet-standard/features";
+import type {
+  StandardConnectFeature,
+  StandardConnectMethod,
+  StandardDisconnectFeature,
+  StandardDisconnectMethod,
+  StandardEventsFeature,
+  StandardEventsListeners,
+  StandardEventsNames,
+  StandardEventsOnMethod,
+  Wallet,
+} from "@wallet-standard/core";
+import { address, getAddressEncoder } from "gill";
+import type {
+  RevibaseSignAndSendTransactionFeature,
+  RevibaseSignAndSendTransactionMethod,
+  RevibaseSignMessageFeature,
+  RevibaseSignMessageMethod,
+  RevibaseVerifySignedMessageFeature,
+  RevibaseVerifySignedMessageMethod,
+} from "./features.js";
 import { icon } from "./icon.js";
 import { bytesEqual } from "./util.js";
-import {
-  Revibase,
-  RevibaseSolanaSignInOutput,
-  RevibaseWalletAccount,
-} from "./window.js";
+import { type Revibase, RevibaseWalletAccount } from "./window.js";
 
 export const RevibaseNamespace = "revibase:";
-
 export type RevibaseFeature = {
   [RevibaseNamespace]: {
     revibase: Revibase;
@@ -59,15 +52,15 @@ export class RevibaseWallet implements Wallet {
   }
 
   get chains(): readonly `${string}:${string}`[] {
-    return ["solana:mainnet", "solana:devnet", "solana:localnet"];
+    return ["solana:mainnet"];
   }
 
   get features(): StandardConnectFeature &
     StandardDisconnectFeature &
     StandardEventsFeature &
-    SolanaSignTransactionFeature &
-    SolanaSignMessageFeature &
-    SolanaSignInFeature &
+    RevibaseSignMessageFeature &
+    RevibaseVerifySignedMessageFeature &
+    RevibaseSignAndSendTransactionFeature &
     RevibaseFeature {
     return {
       "standard:connect": {
@@ -82,18 +75,17 @@ export class RevibaseWallet implements Wallet {
         version: "1.0.0",
         on: this.#on,
       },
-      "solana:signTransaction": {
+      "revibase:SignAndSendTransaction": {
         version: "1.0.0",
-        supportedTransactionVersions: [0],
-        signTransaction: this.#signTransaction,
+        signAndSendTransaction: this.#signAndSendTransaction,
       },
-      "solana:signMessage": {
+      "revibase:SignMessage": {
         version: "1.0.0",
         signMessage: this.#signMessage,
       },
-      "solana:signIn": {
+      "revibase:VerifySignedMessage": {
         version: "1.0.0",
-        signIn: this.#signIn,
+        verify: this.#verify,
       },
       "revibase:": {
         revibase: this.#revibase,
@@ -181,18 +173,16 @@ export class RevibaseWallet implements Wallet {
   };
 
   #reconnected = () => {
-    if (this.#revibase.publicKey) {
+    if (this.#account) {
       this.#connected();
     } else {
       this.#disconnected();
     }
   };
 
-  #connect: StandardConnectMethod = async ({ silent } = {}) => {
+  #connect: StandardConnectMethod = async (input) => {
     if (!this.#account) {
-      await this.#revibase.connect(
-        silent ? { onlyIfTrusted: true } : undefined
-      );
+      await this.#revibase.connect(input);
     }
 
     this.#connected();
@@ -201,83 +191,18 @@ export class RevibaseWallet implements Wallet {
   };
 
   #disconnect: StandardDisconnectMethod = async () => {
-    this.#revibase.disconnect();
+    await this.#revibase.disconnect();
   };
 
-  #signTransaction: SolanaSignTransactionMethod = async (...inputs) => {
-    if (!this.#account) throw new Error("not connected");
-    const outputs: SolanaSignTransactionOutput[] = [];
-    for (const input of inputs) {
-      if (
-        input.account &&
-        !bytesEqual(
-          new Uint8Array(input.account.publicKey),
-          this.#account.publicKey
-        )
-      ) {
-        throw new Error("invalid account");
-      }
-      if (input.chain && this.chains.includes(input.chain) === false)
-        throw new Error("invalid chain");
-
-      const serializedTransactions = await this.#revibase.signTransaction(
-        input.transaction
-      );
-
-      for (const serializedTransaction of serializedTransactions) {
-        outputs.push({
-          signedTransaction: serializedTransaction,
-        });
-      }
-    }
-
-    return outputs;
+  #signAndSendTransaction: RevibaseSignAndSendTransactionMethod = (input) => {
+    return this.#revibase.signAndSendTransaction(input);
   };
 
-  #signMessage: SolanaSignMessageMethod = async (...inputs) => {
-    if (!this.#account) throw new Error("not connected");
-    const outputs: SolanaSignMessageOutput[] = [];
-    for (const input of inputs) {
-      const { message, account } = input;
-      if (
-        account &&
-        !bytesEqual(new Uint8Array(account.publicKey), this.#account.publicKey)
-      ) {
-        throw new Error("invalid account");
-      }
-      const { signedMessage, signature } =
-        await this.#revibase.signMessage(message);
-
-      outputs.push({
-        signedMessage,
-        signature,
-      });
-    }
-
-    return outputs;
+  #signMessage: RevibaseSignMessageMethod = (input) => {
+    return this.#revibase.signMessage(input);
   };
 
-  #signIn: SolanaSignInMethod = async (...inputs) => {
-    const outputs: RevibaseSolanaSignInOutput[] = [];
-    for (const input of inputs) {
-      const result = await this.#revibase.signIn(input);
-      outputs.push({
-        ...result,
-        account: new RevibaseWalletAccount(
-          {
-            address: result.publicKey,
-            publicKey: getAddressEncoder().encode(address(result.publicKey)),
-            chains: this.chains,
-            features: Object.keys(
-              this.features
-            ) as readonly `${string}:${string}`[],
-          },
-          result.member,
-          result.index
-        ),
-      });
-    }
-
-    return outputs;
+  #verify: RevibaseVerifySignedMessageMethod = (input) => {
+    return this.#revibase.verify(input);
   };
 }

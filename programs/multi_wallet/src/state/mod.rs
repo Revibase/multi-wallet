@@ -13,6 +13,9 @@ pub use transaction_buffer::*;
 pub mod user;
 pub use user::*;
 
+pub mod user_extensions;
+pub use user_extensions::*;
+
 pub mod member;
 pub use member::*;
 

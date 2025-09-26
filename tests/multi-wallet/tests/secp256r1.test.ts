@@ -8,8 +8,7 @@ import {
   getMultiWalletFromSettings,
   getSecp256r1VerifyInstruction,
   getSettingsFromIndex,
-  Permission,
-  Permissions,
+  getSolanaRpc,
   Secp256r1Key,
 } from "@revibase/wallet-sdk";
 import { expect } from "chai";
@@ -19,8 +18,8 @@ import {
   mockAuthenticationResponse,
   sendTransaction,
   setupTestEnvironment,
-} from "../helpers";
-import type { TestContext } from "../types";
+} from "../helpers/index.ts";
+import type { TestContext } from "../types.ts";
 
 export function runSecp256r1Tests() {
   describe("Secp256r1 Key Management", () => {
@@ -33,6 +32,7 @@ export function runSecp256r1Tests() {
     });
 
     it("should add a Secp256r1 key as a member", async () => {
+      if (!ctx.index || !ctx.multiWalletVault) return;
       const settings = await getSettingsFromIndex(ctx.index);
 
       const secp256r1Keys = generateSecp256r1KeyPair();
@@ -54,10 +54,8 @@ export function runSecp256r1Tests() {
       });
 
       await sendTransaction(
-        ctx.connection,
         [createDomainUserIx],
         ctx.payer,
-        ctx.sendAndConfirm,
         ctx.addressLookUpTable
       );
 
@@ -99,21 +97,19 @@ export function runSecp256r1Tests() {
       });
 
       await sendTransaction(
-        ctx.connection,
         [createDomainUserIx],
         ctx.payer,
-        ctx.sendAndConfirm,
         ctx.addressLookUpTable
       );
 
       const globalCounter = await fetchGlobalCounter(
-        ctx.connection,
+        getSolanaRpc(),
         await getGlobalCounterAddress()
       );
 
       const settings = await getSettingsFromIndex(globalCounter.data.index);
       const mockResult = await mockAuthenticationResponse(
-        ctx.connection,
+        getSolanaRpc(),
         {
           transactionActionType: "add_new_member",
           transactionAddress: settings.toString(),
@@ -130,12 +126,6 @@ export function runSecp256r1Tests() {
       const { instructions, secp256r1VerifyInput } = await createWallet({
         payer: ctx.payer,
         initialMember: secp256r1Key,
-        permissions: Permissions.fromPermissions([
-          Permission.ExecuteTransaction,
-          Permission.InitiateTransaction,
-          Permission.VoteTransaction,
-          Permission.IsPermanentMember,
-        ]),
         index: globalCounter.data.index,
         compressed: true,
         setAsDelegate: true,
@@ -147,13 +137,7 @@ export function runSecp256r1Tests() {
         );
       }
 
-      await sendTransaction(
-        ctx.connection,
-        instructions,
-        ctx.payer,
-        ctx.sendAndConfirm,
-        ctx.addressLookUpTable
-      );
+      await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
     });
   });
 }

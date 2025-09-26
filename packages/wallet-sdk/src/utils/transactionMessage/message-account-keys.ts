@@ -1,4 +1,4 @@
-import { Address, Instruction } from "@solana/kit";
+import type { Address, Instruction } from "gill";
 
 export class MessageAccountKeys {
   private staticAccountKeys: Address[];

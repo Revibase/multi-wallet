@@ -15,4 +15,4 @@ cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/multi-wallet/index.ts"
+test = "pnpm exec mocha --loader=ts-node/esm 'tests/multi-wallet/index.ts' --timeout 1000000"

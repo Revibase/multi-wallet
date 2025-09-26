@@ -1,6 +1,6 @@
 use crate::{
     error::MultisigError,
-    state::{CreateUserArgs, MemberKey, ProofArgs, User, UserCreationArgs},
+    state::{CreateUserArgs, MemberKey, ProofArgs, User, UserCreationArgs, UserExtensions},
     LIGHT_CPI_SIGNER,
 };
 use anchor_lang::prelude::*;
@@ -11,12 +11,14 @@ pub struct CreateGlobalUserArgs {
     pub member: Pubkey,
     pub is_permanent_member: bool,
     pub user_creation_args: UserCreationArgs,
+    pub api_url: Option<String>,
 }
 
 #[derive(Accounts)]
 pub struct CreateGlobalUsers<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 impl<'info> CreateGlobalUsers<'info> {
@@ -43,6 +45,16 @@ impl<'info> CreateGlobalUsers<'info> {
                 signer.is_some() && signer.unwrap().is_signer,
                 MultisigError::NoSignerFound
             );
+
+            if let Some(api_url) = args.api_url {
+                UserExtensions::initialize(
+                    api_url,
+                    &args.member,
+                    ctx.remaining_accounts,
+                    &ctx.accounts.payer,
+                    &ctx.accounts.system_program,
+                )?;
+            }
 
             let (account_info, new_address_params) = User::create_user_account(
                 args.user_creation_args,

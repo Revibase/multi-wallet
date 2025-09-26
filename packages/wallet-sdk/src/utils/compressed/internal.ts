@@ -1,22 +1,22 @@
 import {
-  AccountProofInput,
-  AddressWithTree,
-  BN254,
-  CompressedAccount,
+  type AccountProofInput,
+  type AddressWithTree,
+  type BN254,
+  type CompressedAccount,
   featureFlags,
   getDefaultAddressTreeInfo,
-  HashWithTree,
-  TreeInfo,
+  type HashWithTree,
+  type TreeInfo,
   TreeType,
-  ValidityProofWithContext,
+  type ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
-import { Decoder, getProgramDerivedAddress, getUtf8Encoder } from "@solana/kit";
 import BN from "bn.js";
+import { type Decoder, getProgramDerivedAddress, getUtf8Encoder } from "gill";
 import {
   getCompressedSettingsDecoder,
   MULTI_WALLET_PROGRAM_ADDRESS,
-  SettingsReadonlyArgs,
-  ValidityProofArgs,
+  type SettingsReadonlyArgs,
+  type ValidityProofArgs,
 } from "../../generated";
 import { MAX_HOTSPOTS } from "../consts";
 import { getLightProtocolRpc } from "../initialize";
