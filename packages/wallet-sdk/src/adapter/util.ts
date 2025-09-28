@@ -349,10 +349,15 @@ export async function resolveTransactionManagerSigner({
   memberKey,
   settingsData,
   transactionMessageBytes,
+  authorisedClients,
 }: {
   memberKey: string;
   settingsData: CompressedSettingsData;
   transactionMessageBytes: Uint8Array;
+  authorisedClients?: {
+    publicKey: string;
+    url: string;
+  };
 }) {
   if (settingsData.threshold > 1) {
     throw new Error(
@@ -412,6 +417,7 @@ export async function resolveTransactionManagerSigner({
   return createTransactionManagerSigner(
     transactionManagerAddress,
     apiUrl,
-    transactionMessageBytes
+    transactionMessageBytes,
+    authorisedClients
   );
 }

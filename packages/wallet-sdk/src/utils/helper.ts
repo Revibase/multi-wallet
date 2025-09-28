@@ -158,12 +158,19 @@ export function convertMemberKeyToString(memberKey: MemberKey) {
 export function createTransactionManagerSigner(
   address: Address,
   url: string,
-  transactionMessageBytes?: Uint8Array
+  transactionMessageBytes?: Uint8Array,
+  authorisedClients?: {
+    publicKey: string;
+    url: string;
+  }
 ): TransactionSigner {
   return {
     address,
     async signTransactions(transactions) {
-      const payload: Record<string, string | string[]> = {
+      const payload: Record<
+        string,
+        string | string[] | { publicKey: string; signatures: string[] }
+      > = {
         publicKey: address.toString(),
         transactions: transactions.map(getBase64EncodedWireTransaction),
       };
@@ -172,6 +179,25 @@ export function createTransactionManagerSigner(
         payload.transactionMessageBytes = getBase64Decoder().decode(
           transactionMessageBytes
         );
+      }
+
+      if (authorisedClients) {
+        const { url, publicKey } = authorisedClients;
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload.transactions),
+        });
+        const data = (await response.json()) as
+          | { signatures: string[] }
+          | { error: string };
+        if ("error" in data) {
+          throw new Error(data.error);
+        }
+        payload.authorisedClients = {
+          publicKey,
+          signatures: data.signatures,
+        };
       }
 
       const response = await fetch(url, {

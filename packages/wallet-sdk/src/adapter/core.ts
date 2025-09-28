@@ -129,6 +129,7 @@ export function createRevibaseAdapter(): Revibase {
         instructions,
         additionalSigners,
         cachedCompressedAccounts = new Map(),
+        authorisedClients,
       } = input;
 
       addressesByLookupTableAddress = {
@@ -152,6 +153,7 @@ export function createRevibaseAdapter(): Revibase {
         memberKey: this.member,
         settingsData,
         transactionMessageBytes,
+        authorisedClients,
       });
 
       const useBundle = await estimateTransactionSizeExceedLimit({
