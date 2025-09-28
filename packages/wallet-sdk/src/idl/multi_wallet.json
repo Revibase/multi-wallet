@@ -243,6 +243,10 @@
         {
           "name": "authority",
           "signer": true
+        },
+        {
+          "name": "user_extensions",
+          "optional": true
         }
       ],
       "args": [

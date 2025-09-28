@@ -61,7 +61,8 @@ impl<'info> ChangeConfigCompressed<'info> {
             SEED_VAULT,
             &[settings_data.multi_wallet_bump],
         ];
-        let multi_wallet = Pubkey::create_program_address(vault_signer_seed, &crate::id()).unwrap();
+        let multi_wallet = Pubkey::create_program_address(vault_signer_seed, &crate::id())
+            .map_err(ProgramError::from)?;
         require!(
             ctx.accounts.authority.key().eq(&multi_wallet),
             MultisigError::InvalidAccount
@@ -113,7 +114,7 @@ impl<'info> ChangeConfigCompressed<'info> {
             let cpi_inputs = CpiInputs::new(compressed_proof_args.proof, account_infos);
             cpi_inputs
                 .invoke_light_system_program(light_cpi_accounts)
-                .unwrap();
+                .map_err(ProgramError::from)?;
         }
 
         Ok(())

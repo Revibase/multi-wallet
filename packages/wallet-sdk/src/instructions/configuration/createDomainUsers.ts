@@ -39,12 +39,14 @@ export async function createDomainUsers({
   payer,
   createUserArgs,
   domainConfig,
+  userExtensions,
   cachedCompressedAccounts,
 }: {
   domainConfig: Address;
   authority: TransactionSigner;
   payer: TransactionSigner;
   createUserArgs: UserCreationArgs[];
+  userExtensions?: Address;
   cachedCompressedAccounts?: Map<string, any>;
 }) {
   const packedAccounts = new PackedAccounts();
@@ -111,6 +113,7 @@ export async function createDomainUsers({
       linkWalletArgs: getLinkWalletArgs(x, settingsMutArgs),
     })),
     domainConfig,
+    userExtensions,
     remainingAccounts,
   });
 }

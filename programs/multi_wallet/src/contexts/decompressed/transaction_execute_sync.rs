@@ -73,8 +73,7 @@ impl<'info> TransactionExecuteSync<'info> {
                 || ctx.remaining_accounts.iter().any(|account| {
                     account.is_signer
                         && MemberKey::convert_ed25519(account.key)
-                            .unwrap()
-                            .eq(&member.pubkey)
+                            .map_or(false, |key| key.eq(&member.pubkey))
                 });
 
             if is_signer {
@@ -164,7 +163,8 @@ impl<'info> TransactionExecuteSync<'info> {
 
         drop(settings);
 
-        let vault_pubkey = Pubkey::create_program_address(vault_signer_seed, &id()).unwrap();
+        let vault_pubkey =
+            Pubkey::create_program_address(vault_signer_seed, &id()).map_err(ProgramError::from)?;
 
         let executable_message = ExecutableTransactionMessage::new_validated(
             vault_transaction_message,

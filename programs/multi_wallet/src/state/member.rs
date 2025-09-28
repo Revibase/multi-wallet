@@ -89,10 +89,14 @@ impl MemberKey {
         MemberKey::new(KeyType::Secp256r1, pubkey.to_bytes())
     }
 
-    pub fn get_seed(&self) -> [u8; 32] {
+    pub fn get_seed(&self) -> Result<[u8; 32]> {
         match KeyType::from(self.key_type) {
-            KeyType::Ed25519 => self.key[1..].try_into().unwrap(),
-            KeyType::Secp256r1 => self.key[1..].try_into().unwrap(),
+            KeyType::Ed25519 => self.key[1..]
+                .try_into()
+                .map_err(|_| error!(MultisigError::InvalidArguments)),
+            KeyType::Secp256r1 => self.key[1..]
+                .try_into()
+                .map_err(|_| error!(MultisigError::InvalidArguments)),
         }
     }
 

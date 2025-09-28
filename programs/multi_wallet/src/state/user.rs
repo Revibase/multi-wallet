@@ -59,7 +59,7 @@ impl User {
         domain_config: Option<Pubkey>,
         settings_index: Option<u128>,
     ) -> Result<(CompressedAccountInfo, NewAddressParamsPacked)> {
-        let member_seed = create_user_args.member.get_seed();
+        let member_seed = create_user_args.member.get_seed()?;
         let (address, address_seed) = derive_address(
             &[SEED_DELEGATE, &member_seed],
             &user_creation_args

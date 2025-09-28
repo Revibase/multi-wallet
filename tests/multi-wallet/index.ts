@@ -1,4 +1,4 @@
-import { runTransactionManagerTests } from "./tests/transaction-manager.test.ts";
+import { runSecp256r1Tests } from "./tests/secp256r1.test.ts";
 
 describe("Multi Wallet Tests", function () {
   // describe("Wallet Creation", () => {
@@ -9,17 +9,17 @@ describe("Multi Wallet Tests", function () {
   //   runMemberManagementTests();
   // });
 
-  // describe("Secp256r1 Key Management", () => {
-  //   runSecp256r1Tests();
-  // });
+  describe("Secp256r1 Key Management", () => {
+    runSecp256r1Tests();
+  });
 
   // describe("Transaction Handling", () => {
   //   runTransactionTests();
   // });
 
-  describe("Transaction Manager", () => {
-    runTransactionManagerTests();
-  });
+  // describe("Transaction Manager", () => {
+  //   runTransactionManagerTests();
+  // });
 
   // describe("Decompression Test", () => {
   //   runDecompressionTests();

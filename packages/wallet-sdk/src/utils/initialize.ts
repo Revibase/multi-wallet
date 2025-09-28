@@ -102,12 +102,8 @@ export async function getFeePayer() {
 }
 
 export function getJitoTipsConfig() {
-  return {
-    jitoBlockEngineUrl: "https://mainnet.block-engine.jito.wtf/api/v1",
-    priority: "ema_landed_tips_50th_percentile",
-    estimateJitoTipsEndpoint: `https://proxy.revibase.com?url=${encodeURIComponent("https://bundles.jito.wtf/api/v1/bundles/tip_floor")}`,
-    ...globalJitoTipsConfig,
-  };
+  if (!globalJitoTipsConfig) throw new Error("Jito Bundle Config is not set.");
+  return globalJitoTipsConfig;
 }
 
 export function getAuthUrl() {

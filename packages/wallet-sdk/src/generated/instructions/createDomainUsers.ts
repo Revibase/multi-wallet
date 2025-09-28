@@ -59,6 +59,7 @@ export type CreateDomainUsersInstruction<
   TAccountPayer extends string | AccountMeta<string> = string,
   TAccountDomainConfig extends string | AccountMeta<string> = string,
   TAccountAuthority extends string | AccountMeta<string> = string,
+  TAccountUserExtensions extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -75,6 +76,9 @@ export type CreateDomainUsersInstruction<
         ? ReadonlySignerAccount<TAccountAuthority> &
             AccountSignerMeta<TAccountAuthority>
         : TAccountAuthority,
+      TAccountUserExtensions extends string
+        ? ReadonlyAccount<TAccountUserExtensions>
+        : TAccountUserExtensions,
       ...TRemainingAccounts,
     ]
   >;
@@ -127,10 +131,12 @@ export type CreateDomainUsersInput<
   TAccountPayer extends string = string,
   TAccountDomainConfig extends string = string,
   TAccountAuthority extends string = string,
+  TAccountUserExtensions extends string = string,
 > = {
   payer: TransactionSigner<TAccountPayer>;
   domainConfig: Address<TAccountDomainConfig>;
   authority: TransactionSigner<TAccountAuthority>;
+  userExtensions?: Address<TAccountUserExtensions>;
   compressedProofArgs: CreateDomainUsersInstructionDataArgs["compressedProofArgs"];
   createUserArgs: CreateDomainUsersInstructionDataArgs["createUserArgs"];
   remainingAccounts: CreateDomainUsersInstructionExtraArgs["remainingAccounts"];
@@ -140,19 +146,22 @@ export function getCreateDomainUsersInstruction<
   TAccountPayer extends string,
   TAccountDomainConfig extends string,
   TAccountAuthority extends string,
+  TAccountUserExtensions extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
   input: CreateDomainUsersInput<
     TAccountPayer,
     TAccountDomainConfig,
-    TAccountAuthority
+    TAccountAuthority,
+    TAccountUserExtensions
   >,
   config?: { programAddress?: TProgramAddress }
 ): CreateDomainUsersInstruction<
   TProgramAddress,
   TAccountPayer,
   TAccountDomainConfig,
-  TAccountAuthority
+  TAccountAuthority,
+  TAccountUserExtensions
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -162,6 +171,7 @@ export function getCreateDomainUsersInstruction<
     payer: { value: input.payer ?? null, isWritable: true },
     domainConfig: { value: input.domainConfig ?? null, isWritable: false },
     authority: { value: input.authority ?? null, isWritable: false },
+    userExtensions: { value: input.userExtensions ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -184,6 +194,7 @@ export function getCreateDomainUsersInstruction<
       getAccountMeta(accounts.payer),
       getAccountMeta(accounts.domainConfig),
       getAccountMeta(accounts.authority),
+      getAccountMeta(accounts.userExtensions),
       ...remainingAccounts,
     ],
     data: getCreateDomainUsersInstructionDataEncoder().encode(
@@ -194,7 +205,8 @@ export function getCreateDomainUsersInstruction<
     TProgramAddress,
     TAccountPayer,
     TAccountDomainConfig,
-    TAccountAuthority
+    TAccountAuthority,
+    TAccountUserExtensions
   >);
 }
 
@@ -207,6 +219,7 @@ export type ParsedCreateDomainUsersInstruction<
     payer: TAccountMetas[0];
     domainConfig: TAccountMetas[1];
     authority: TAccountMetas[2];
+    userExtensions?: TAccountMetas[3] | undefined;
   };
   data: CreateDomainUsersInstructionData;
 };
@@ -219,7 +232,7 @@ export function parseCreateDomainUsersInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>
 ): ParsedCreateDomainUsersInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 3) {
+  if (instruction.accounts.length < 4) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -229,12 +242,19 @@ export function parseCreateDomainUsersInstruction<
     accountIndex += 1;
     return accountMeta;
   };
+  const getNextOptionalAccount = () => {
+    const accountMeta = getNextAccount();
+    return accountMeta.address === MULTI_WALLET_PROGRAM_ADDRESS
+      ? undefined
+      : accountMeta;
+  };
   return {
     programAddress: instruction.programAddress,
     accounts: {
       payer: getNextAccount(),
       domainConfig: getNextAccount(),
       authority: getNextAccount(),
+      userExtensions: getNextOptionalAccount(),
     },
     data: getCreateDomainUsersInstructionDataDecoder().decode(instruction.data),
   };

@@ -16,7 +16,7 @@ pub struct DecompressSettingsAccount<'info> {
         space = Settings::size(), 
         seeds = [
             SEED_MULTISIG,  
-            settings_mut.data.data.as_ref().unwrap().index.to_le_bytes().as_ref()
+            settings_mut.data.data.as_ref().ok_or(MultisigError::InvalidArguments)?.index.to_le_bytes().as_ref()
         ],
         bump
     )]
@@ -56,7 +56,7 @@ impl<'info> DecompressSettingsAccount<'info> {
         let mut execute = false;
         let mut vote_count = 0;
 
-        let settings_data = settings_mut.data.data.as_ref().unwrap();
+        let settings_data = settings_mut.data.data.as_ref().ok_or(MultisigError::InvalidArguments)?;
         let threshold = settings_data.threshold as usize;
         let secp256r1_member_keys: Vec<(MemberKey, &Secp256r1VerifyArgsWithDomainAddress)> =
             secp256r1_verify_args
@@ -82,8 +82,7 @@ impl<'info> DecompressSettingsAccount<'info> {
                 || remaining_accounts.iter().any(|account| {
                     account.is_signer
                         && MemberKey::convert_ed25519(account.key)
-                            .unwrap()
-                            .eq(&member.pubkey)
+                            .map_or(false, |key| key.eq(&member.pubkey))
                 });
 
             if is_signer {
@@ -156,7 +155,7 @@ impl<'info> DecompressSettingsAccount<'info> {
         )
         .map_err(ProgramError::from)?;
 
-        let settings_data = settings_account.data.as_ref().unwrap();
+        let settings_data = settings_account.data.as_ref().ok_or(MultisigError::InvalidArguments)?;
         settings.set_threshold(settings_data.threshold)?;
         settings.multi_wallet_bump = settings_data.multi_wallet_bump;
         settings.bump = ctx.bumps.settings;

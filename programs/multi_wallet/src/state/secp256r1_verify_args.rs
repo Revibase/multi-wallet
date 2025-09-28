@@ -125,7 +125,9 @@ impl Secp256r1VerifyArgs {
 
         let hash = &data[pos + 8..pos + 40];
 
-        Ok(hash.try_into().unwrap())
+        Ok(hash
+            .try_into()
+            .map_err(|_| MultisigError::InvalidSysvarDataFormat)?)
     }
 
     fn extract_webauthn_signed_message_from_instruction(
@@ -210,7 +212,7 @@ impl Secp256r1VerifyArgs {
         let extracted_pubkey: [u8; COMPRESSED_PUBKEY_SERIALIZED_SIZE] = instruction.data
             [public_key_offset..public_key_end]
             .try_into()
-            .unwrap();
+            .map_err(|_| MultisigError::InvalidSignedMessage)?;
 
         Ok(Secp256r1Pubkey(extracted_pubkey))
     }

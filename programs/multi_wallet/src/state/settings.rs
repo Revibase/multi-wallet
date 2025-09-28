@@ -72,7 +72,8 @@ impl Settings {
     pub fn get_settings_key_from_index(index: u128, bump: u8) -> Result<Pubkey> {
         let index_bytes = index.to_le_bytes();
         let signer_seeds: &[&[u8]] = &[SEED_MULTISIG, index_bytes.as_ref(), &[bump]];
-        let pubkey = Pubkey::create_program_address(signer_seeds, &crate::ID).unwrap();
+        let pubkey =
+            Pubkey::create_program_address(signer_seeds, &crate::ID).map_err(ProgramError::from)?;
         Ok(pubkey)
     }
 
@@ -263,7 +264,7 @@ pub trait MultisigSettings {
             match member.member.pubkey.get_type() {
                 KeyType::Ed25519 => {
                     if member.set_as_delegate {
-                        let expected_seed = member.member.pubkey.get_seed();
+                        let expected_seed = member.member.pubkey.get_seed()?;
                         let has_signer = remaining_accounts
                             .iter()
                             .any(|f| f.is_signer && f.key.to_bytes().eq(&expected_seed));

@@ -75,7 +75,7 @@ impl<'info> CreateGlobalUsers<'info> {
 
         cpi_inputs
             .invoke_light_system_program(light_cpi_accounts)
-            .unwrap();
+            .map_err(ProgramError::from)?;
         Ok(())
     }
 }

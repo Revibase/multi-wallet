@@ -152,7 +152,6 @@ export function createRevibaseAdapter(): Revibase {
         memberKey: this.member,
         settingsData,
         transactionMessageBytes,
-        cachedCompressedAccounts,
       });
 
       const useBundle = await estimateTransactionSizeExceedLimit({

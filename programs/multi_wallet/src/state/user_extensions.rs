@@ -30,7 +30,7 @@ impl UserExtensions {
     ) -> Result<()> {
         let member_key = MemberKey::convert_ed25519(&member)?;
         let member_key = member_key;
-        let member_seed = member_key.get_seed();
+        let member_seed = member_key.get_seed()?;
         let (user_extension_key, bump) =
             Pubkey::find_program_address(&[SEED_USER_EXTENSION, member_seed.as_ref()], &ID);
         let user_extension_account = remaining_accounts
@@ -97,7 +97,7 @@ impl UserExtensions {
         remaining_accounts: &'a [AccountInfo<'a>],
     ) -> Result<AccountLoader<'a, UserExtensions>> {
         let (user_extension_key, _) = Pubkey::find_program_address(
-            &[SEED_USER_EXTENSION, member_key.get_seed().as_ref()],
+            &[SEED_USER_EXTENSION, member_key.get_seed()?.as_ref()],
             &ID,
         );
 

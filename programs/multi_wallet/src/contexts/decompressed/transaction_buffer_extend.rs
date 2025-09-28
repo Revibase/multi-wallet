@@ -21,7 +21,7 @@ impl TransactionBufferExtend<'_> {
         let remaining_space = transaction_buffer
             .final_buffer_size
             .checked_sub(current_buffer_size)
-            .unwrap();
+            .ok_or(MultisigError::FinalBufferSizeExceeded)?;
 
         let new_data_size = buffer.len() as u16;
         require!(

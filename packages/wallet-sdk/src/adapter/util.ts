@@ -349,12 +349,10 @@ export async function resolveTransactionManagerSigner({
   memberKey,
   settingsData,
   transactionMessageBytes,
-  cachedCompressedAccounts,
 }: {
   memberKey: string;
   settingsData: CompressedSettingsData;
   transactionMessageBytes: Uint8Array;
-  cachedCompressedAccounts: Map<string, any>;
 }) {
   if (settingsData.threshold > 1) {
     throw new Error(

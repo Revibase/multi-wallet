@@ -3,7 +3,7 @@ use crate::{
     state::{
         CompressedSettings, CreateUserArgs, DomainConfig, Member, MemberKey, MultisigSettings,
         Permission, Permissions, ProofArgs, Secp256r1Pubkey, SettingsMutArgs, User,
-        UserCreationArgs,
+        UserCreationArgs, UserExtensions,
     },
     LIGHT_CPI_SIGNER,
 };
@@ -30,6 +30,7 @@ pub struct CreateDomainUsers<'info> {
         address = domain_config.load()?.authority,
     )]
     pub authority: Signer<'info>,
+    pub user_extensions: Option<AccountLoader<'info, UserExtensions>>,
 }
 
 impl<'info> CreateDomainUsers<'info> {
@@ -78,20 +79,39 @@ impl<'info> CreateDomainUsers<'info> {
                     MultisigError::InvalidArguments
                 );
 
-                let mut permissions = vec![
-                    Permission::InitiateTransaction,
-                    Permission::VoteTransaction,
-                    Permission::ExecuteTransaction,
-                ];
+                let mut new_members = Vec::new();
+
+                let mut permissions =
+                    vec![Permission::VoteTransaction, Permission::ExecuteTransaction];
 
                 if args.is_permanent_member {
                     permissions.push(Permission::IsPermanentMember);
                 }
 
-                settings_account.set_members(vec![Member {
+                // If user_extensions is provided, ensure it has a valid API URL and add the authority as a transaction manager
+                if let Some(user_extensions) = &ctx.accounts.user_extensions {
+                    let user_extension = user_extensions.load()?;
+                    require!(
+                        user_extension.api_url_len > 0,
+                        MultisigError::InvalidAccount
+                    );
+                    new_members.push(Member {
+                        pubkey: MemberKey::convert_ed25519(&user_extension.authority)?,
+                        permissions: Permissions::from_permissions(vec![
+                            Permission::InitiateTransaction,
+                            Permission::IsTransactionManager,
+                        ]),
+                    });
+                } else {
+                    permissions.push(Permission::InitiateTransaction);
+                }
+
+                new_members.push(Member {
                     pubkey: MemberKey::convert_secp256r1(&args.member)?,
                     permissions: Permissions::from_permissions(permissions),
-                }])?;
+                });
+
+                settings_account.set_members(new_members)?;
 
                 settings_account.invariant()?;
 
@@ -121,7 +141,7 @@ impl<'info> CreateDomainUsers<'info> {
 
         cpi_inputs
             .invoke_light_system_program(light_cpi_accounts)
-            .unwrap();
+            .map_err(ProgramError::from)?;
         Ok(())
     }
 }

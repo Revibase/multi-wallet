@@ -68,7 +68,8 @@ impl<'info> TransactionExecuteCompressed<'info> {
             &[transaction_buffer.multi_wallet_bump],
         ];
 
-        let vault_pubkey = Pubkey::create_program_address(vault_signer_seed, &id()).unwrap();
+        let vault_pubkey =
+            Pubkey::create_program_address(vault_signer_seed, &id()).map_err(ProgramError::from)?;
 
         let executable_message = ExecutableTransactionMessage::new_validated(
             vault_transaction_message,

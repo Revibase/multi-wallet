@@ -22,7 +22,7 @@
     "mocha": "11.7.2",
     "prettier": "^3.6.2",
     "ts-mocha": "11.1.0",
-    "ts-node": "11.0.0-beta.1",
+    "ts-node": "10.9.2",
     "typescript": "5.9.2"
   },
   "packageManager": "pnpm@10.17.0+sha512.fce8a3dd29a4ed2ec566fb53efbb04d8c44a0f05bc6f24a73046910fb9c3ce7afa35a0980500668fa3573345bd644644fa98338fa168235c80f4aa17aa17fbef"

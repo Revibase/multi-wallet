@@ -48,12 +48,12 @@ impl<'info> CreateDomainConfig<'info> {
 
         for i in 0..MAX_RP_ID_LEN {
             if i < rp_id.len() {
-                domain_config.rp_id[i] = *rp_id.get(i).unwrap();
+                domain_config.rp_id[i] = *rp_id.get(i).ok_or(MultisigError::MaxLengthExceeded)?;
             } else {
                 domain_config.rp_id[i] = 0;
             }
         }
-        domain_config.rp_id_length = rp_id.len().try_into().unwrap();
+        domain_config.rp_id_length = rp_id.len().try_into()?;
         domain_config.write_origins(args.origins)?;
         domain_config.authority = args.authority;
         domain_config.bump = ctx.bumps.domain_config;

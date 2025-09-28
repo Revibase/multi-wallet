@@ -90,7 +90,7 @@ impl<'info> ChangeConfig<'info> {
                 let cpi_inputs = CpiInputs::new(proof_args.proof, account_infos);
                 cpi_inputs
                     .invoke_light_system_program(light_cpi_accounts)
-                    .unwrap();
+                    .map_err(ProgramError::from)?;
             }
         }
 

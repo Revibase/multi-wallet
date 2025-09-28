@@ -133,7 +133,9 @@ impl CompressedSettings {
         );
         let merkle_context = settings_readonly.merkle_context;
         let settings = &settings_readonly.data;
-        let data_hash = settings.hash::<Poseidon>().unwrap();
+        let data_hash = settings
+            .hash::<Poseidon>()
+            .map_err(|_| MultisigError::InvalidArguments)?;
         let settings_data = settings
             .data
             .as_ref()
@@ -142,7 +144,7 @@ impl CompressedSettings {
             Settings::get_settings_key_from_index(settings_data.index, settings_data.bump)?;
         let merkle_tree_pubkey = light_cpi_accounts
             .get_tree_account_info(merkle_context.merkle_tree_pubkey_index.into())
-            .unwrap()
+            .map_err(|_| MultisigError::InvalidAccount)?
             .key;
         let (address, _) = derive_address(
             &[SEED_MULTISIG, settings_data.index.to_le_bytes().as_ref()],

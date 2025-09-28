@@ -84,9 +84,8 @@ impl<'info> CompressSettingsAccount<'info> {
             let is_signer = secp256r1_signer.is_some()
                 || remaining_accounts.iter().any(|account| {
                     account.is_signer
-                        && MemberKey::convert_ed25519(account.key)
-                            .unwrap()
-                            .eq(&member.pubkey)
+                        && MemberKey::convert_ed25519(&account.key())
+                            .map_or(false, |key| key.eq(&member.pubkey))
                 });
 
             if is_signer {
@@ -179,7 +178,7 @@ impl<'info> CompressSettingsAccount<'info> {
 
                 cpi_inputs
                     .invoke_light_system_program(light_cpi_accounts)
-                    .unwrap();
+                    .map_err(ProgramError::from)?;
             }
             SettingsCreateOrMutateArgs::Mutate(settings_mut_args) => {
                 let mut settings_account = LightAccount::<'_, CompressedSettings>::new_mut(
@@ -207,7 +206,7 @@ impl<'info> CompressSettingsAccount<'info> {
 
                 cpi_inputs
                     .invoke_light_system_program(light_cpi_accounts)
-                    .unwrap();
+                    .map_err(ProgramError::from)?;
             }
         };
 
