@@ -258,27 +258,33 @@ export async function changeConfig({
           index,
           cachedCompressedAccounts
         );
-        const transactionManager = settingsData.members.find((x) =>
-          Permissions.has(x.permissions, TransactionManagerPermission)
-        );
-        if (transactionManager) {
-          throw new Error(
-            "Transaction Manager's permission cannot be changed."
-          );
-        }
         const permanentMember = settingsData.members.find((x) =>
           Permissions.has(x.permissions, PermanentMemberPermission)
         );
+        const transactionManager = settingsData.members.find((x) =>
+          Permissions.has(x.permissions, TransactionManagerPermission)
+        );
         const field = await Promise.all(
           action.members.map(async (m) => {
-            const userArgs =
-              m.delegateOperation !== DelegateOp.Ignore
-                ? await getUserDelegateArgs(m.pubkey, userMutArgs)
-                : undefined;
             const isPermanentMember =
               !!permanentMember?.pubkey &&
               convertMemberKeyToString(permanentMember.pubkey) ===
                 m.pubkey.toString();
+            const isTransactionManager =
+              !!transactionManager?.pubkey &&
+              convertMemberKeyToString(transactionManager.pubkey) ===
+                m.pubkey.toString();
+
+            if (isTransactionManager) {
+              throw new Error(
+                "Transaction Manager's permission cannot be changed."
+              );
+            }
+
+            const userArgs =
+              m.delegateOperation !== DelegateOp.Ignore
+                ? await getUserDelegateArgs(m.pubkey, userMutArgs)
+                : undefined;
 
             return convertEditMember({
               ...m,
