@@ -6,16 +6,19 @@ import {
   createBlockHeightExceedencePromiseFactory,
   createRecentSignatureConfirmationPromiseFactory,
   waitForRecentTransactionConfirmation,
+  type TransactionWithLastValidBlockHeight,
 } from "@solana/transaction-confirmation";
 import { registerWallet } from "@wallet-standard/core";
 import {
-  type CompilableTransactionMessage,
   createSolanaClient,
+  type Commitment,
+  type CompilableTransactionMessage,
   type Rpc,
   type RpcSubscriptions,
   type SendAndConfirmTransactionWithSignersFunction,
   type SolanaRpcApi,
   type SolanaRpcSubscriptionsApi,
+  type Transaction,
   type TransactionMessage,
   type TransactionMessageWithFeePayer,
   type TransactionSigner,
@@ -45,7 +48,11 @@ let globalComputeBudgetEstimate:
       config?: any
     ) => Promise<number>)
   | undefined;
-let globalConfirmRecentTransaction: (config: any) => Promise<void>;
+let globalConfirmRecentTransaction: (config: {
+  transaction: Readonly<Transaction & TransactionWithLastValidBlockHeight>;
+  abortSignal?: AbortSignal;
+  commitment: Commitment;
+}) => Promise<void>;
 
 let globalFeePayer: TransactionSigner | undefined;
 let globalPayerEndpoint: string | undefined;
@@ -60,12 +67,12 @@ export function getSolanaRpcEndpoint() {
 }
 
 export function getLightProtocolRpc() {
-  if (!lightProtocolRpc) throw new Error("Rpc not initialized yet");
+  if (!lightProtocolRpc) throw new Error("Rpc is not initialized yet");
   return lightProtocolRpc;
 }
 
 export function getSolanaRpc() {
-  if (!globalSolanaRpc) throw new Error("Rpc not initialized yet");
+  if (!globalSolanaRpc) throw new Error("Rpc is not initialized yet");
   return globalSolanaRpc;
 }
 
@@ -77,18 +84,19 @@ export function getSolanaRpcSubscription() {
 
 export function getSendAndConfirmTransaction() {
   if (!globalSendAndConfirmTransaction)
-    throw new Error("Rpc not initialized yet.");
+    throw new Error("Rpc is not initialized yet.");
   return globalSendAndConfirmTransaction;
 }
 
 export function getComputeBudgetEstimate() {
-  if (!globalComputeBudgetEstimate) throw new Error("Rpc not initialized yet");
+  if (!globalComputeBudgetEstimate)
+    throw new Error("Rpc is not initialized yet");
   return globalComputeBudgetEstimate;
 }
 
 export function getConfirmRecentTransaction() {
   if (!globalConfirmRecentTransaction)
-    throw new Error("Rpc not initialized yet.");
+    throw new Error("Rpc is not initialized yet.");
   return globalConfirmRecentTransaction;
 }
 
@@ -165,17 +173,21 @@ export function initializeMultiWallet({
   globalComputeBudgetEstimate = estimateComputeUnitLimitFactory({
     rpc,
   });
-  globalConfirmRecentTransaction = (config: any) => {
-    const getBlockHeightExceedencePromise =
-      createBlockHeightExceedencePromiseFactory({
-        rpc,
-        rpcSubscriptions,
-      });
-    const getRecentSignatureConfirmationPromise =
-      createRecentSignatureConfirmationPromiseFactory({
-        rpc,
-        rpcSubscriptions,
-      });
+  const getBlockHeightExceedencePromise =
+    createBlockHeightExceedencePromiseFactory({
+      rpc,
+      rpcSubscriptions,
+    });
+  const getRecentSignatureConfirmationPromise =
+    createRecentSignatureConfirmationPromiseFactory({
+      rpc,
+      rpcSubscriptions,
+    });
+  globalConfirmRecentTransaction = (config: {
+    transaction: Readonly<Transaction & TransactionWithLastValidBlockHeight>;
+    abortSignal?: AbortSignal;
+    commitment: Commitment;
+  }) => {
     return waitForRecentTransactionConfirmation({
       ...config,
       getBlockHeightExceedencePromise,
