@@ -73,15 +73,17 @@ export function createRevibaseAdapter(): Revibase {
       if (!verified) {
         throw Error("Failed to verify signed message");
       }
-      this.member = authResponse.signer;
-      const userData = await fetchUserData(new Secp256r1Key(this.member));
+      const userData = await fetchUserData(
+        new Secp256r1Key(authResponse.signer)
+      );
       if (userData.settingsIndex.__option === "None") {
         throw Error("User has no delegated wallet");
       }
-      this.index = Number(userData.settingsIndex.value);
-      const settings = await getSettingsFromIndex(this.index);
-      this.publicKey = (await getMultiWalletFromSettings(settings)).toString();
 
+      const settings = await getSettingsFromIndex(userData.settingsIndex.value);
+      this.publicKey = (await getMultiWalletFromSettings(settings)).toString();
+      this.index = Number(userData.settingsIndex.value);
+      this.member = authResponse.signer;
       window.localStorage.setItem(
         "Revibase:account",
         JSON.stringify({
