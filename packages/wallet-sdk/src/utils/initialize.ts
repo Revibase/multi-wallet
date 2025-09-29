@@ -183,31 +183,29 @@ export function initializeMultiWallet({
       rpc,
       rpcSubscriptions,
     });
-  globalConfirmRecentTransaction = (config: {
+  globalConfirmRecentTransaction = async (config: {
     signature: Signature;
     lastValidBlockHeight: bigint;
     commitment: Commitment;
   }) => {
-    return new Promise(async () => {
-      const { commitment, signature, lastValidBlockHeight } = config;
-      const abortController = new AbortController();
-      try {
-        return await safeRace([
-          getRecentSignatureConfirmationPromise({
-            abortSignal: abortController.signal,
-            commitment,
-            signature,
-          }),
-          getBlockHeightExceedencePromise({
-            abortSignal: abortController.signal,
-            commitment,
-            lastValidBlockHeight,
-          }),
-        ]);
-      } finally {
-        abortController.abort();
-      }
-    });
+    const { commitment, signature, lastValidBlockHeight } = config;
+    const abortController = new AbortController();
+    try {
+      return await safeRace([
+        getRecentSignatureConfirmationPromise({
+          abortSignal: abortController.signal,
+          commitment,
+          signature,
+        }),
+        getBlockHeightExceedencePromise({
+          abortSignal: abortController.signal,
+          commitment,
+          lastValidBlockHeight,
+        }),
+      ]);
+    } finally {
+      abortController.abort();
+    }
   };
 
   globalPayerEndpoint = payerEndpoint;
