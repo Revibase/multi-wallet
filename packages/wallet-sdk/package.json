@@ -1,6 +1,6 @@
 {
   "name": "@revibase/wallet-sdk",
-  "version": "2.4.22",
+  "version": "2.4.23",
   "scripts": {
     "build": "tsup",
     "clean": "rimraf dist",
@@ -41,6 +41,7 @@
     "@noble/curves": "1.9.7",
     "@noble/hashes": "1.8.0",
     "@simplewebauthn/server": "13.1.2",
+    "@solana/promises": "^3.0.3",
     "@wallet-standard/core": "^1.1.1",
     "bn.js": "^5.2.2"
   },

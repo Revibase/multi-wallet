@@ -69,6 +69,9 @@ importers:
       '@simplewebauthn/server':
         specifier: 13.1.2
         version: 13.1.2
+      '@solana/promises':
+        specifier: ^3.0.3
+        version: 3.0.3(typescript@5.9.2)
       '@solana/transaction-confirmation':
         specifier: ^3.0.3
         version: 3.0.3(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.2)(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))

@@ -2,11 +2,10 @@ import {
   createRpc,
   Rpc as LightProtocolRpc,
 } from "@lightprotocol/stateless.js";
+import { safeRace } from "@solana/promises";
 import {
   createBlockHeightExceedencePromiseFactory,
   createRecentSignatureConfirmationPromiseFactory,
-  waitForRecentTransactionConfirmation,
-  type TransactionWithLastValidBlockHeight,
 } from "@solana/transaction-confirmation";
 import { registerWallet } from "@wallet-standard/core";
 import {
@@ -16,9 +15,9 @@ import {
   type Rpc,
   type RpcSubscriptions,
   type SendAndConfirmTransactionWithSignersFunction,
+  type Signature,
   type SolanaRpcApi,
   type SolanaRpcSubscriptionsApi,
-  type Transaction,
   type TransactionMessage,
   type TransactionMessageWithFeePayer,
   type TransactionSigner,
@@ -48,9 +47,10 @@ let globalComputeBudgetEstimate:
       config?: any
     ) => Promise<number>)
   | undefined;
+
 let globalConfirmRecentTransaction: (config: {
-  transaction: Readonly<Transaction & TransactionWithLastValidBlockHeight>;
-  abortSignal?: AbortSignal;
+  signature: Signature;
+  lastValidBlockHeight: bigint;
   commitment: Commitment;
 }) => Promise<void>;
 
@@ -184,14 +184,29 @@ export function initializeMultiWallet({
       rpcSubscriptions,
     });
   globalConfirmRecentTransaction = (config: {
-    transaction: Readonly<Transaction & TransactionWithLastValidBlockHeight>;
-    abortSignal?: AbortSignal;
+    signature: Signature;
+    lastValidBlockHeight: bigint;
     commitment: Commitment;
   }) => {
-    return waitForRecentTransactionConfirmation({
-      ...config,
-      getBlockHeightExceedencePromise,
-      getRecentSignatureConfirmationPromise,
+    return new Promise(async () => {
+      const { commitment, signature, lastValidBlockHeight } = config;
+      const abortController = new AbortController();
+      try {
+        return await safeRace([
+          getRecentSignatureConfirmationPromise({
+            abortSignal: abortController.signal,
+            commitment,
+            signature,
+          }),
+          getBlockHeightExceedencePromise({
+            abortSignal: abortController.signal,
+            commitment,
+            lastValidBlockHeight,
+          }),
+        ]);
+      } finally {
+        abortController.abort();
+      }
     });
   };
 

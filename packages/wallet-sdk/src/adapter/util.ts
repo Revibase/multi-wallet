@@ -223,11 +223,15 @@ export async function sendBundleTransaction(bundle: BundleResponse[]) {
   await sendJitoBundle(encodedBundle.map(getBase64EncodedWireTransaction));
 
   const transaction = encodedBundle[encodedBundle.length - 1];
+  const lastValidBlockHeight =
+    transaction.lifetimeConstraint.lastValidBlockHeight;
+  const signature = getSignatureFromTransaction(transaction);
   await getConfirmRecentTransaction()({
-    transaction,
+    signature,
+    lastValidBlockHeight,
     commitment: "confirmed",
   });
-  return getSignatureFromTransaction(transaction);
+  return signature;
 }
 
 export async function sendNonBundleTransaction(
