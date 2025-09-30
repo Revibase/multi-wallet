@@ -11,7 +11,6 @@ export type RevibaseSignAndSendTransactionMethod = (input: {
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   additionalSigners?: TransactionSigner[];
   cachedCompressedAccounts?: Map<string, any>;
-  authorisedClients?: { publicKey: string; url: string };
 }) => Promise<string>;
 export type RevibaseSignAndSendTransactionFeature = {
   /** Name of the feature. */

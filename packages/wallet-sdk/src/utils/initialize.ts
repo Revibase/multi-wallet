@@ -147,6 +147,8 @@ export function initializeMultiWallet({
   authUrl,
   expectedOrigin,
   expectedRPID,
+  authorizedClients,
+  additionalInfo,
 }: {
   rpcEndpoint: string;
   payerEndpoint?: string;
@@ -156,6 +158,8 @@ export function initializeMultiWallet({
   authUrl?: string;
   expectedOrigin?: string;
   expectedRPID?: string;
+  authorizedClients?: { publicKey: string; url: string };
+  additionalInfo?: any;
 }) {
   globalSolanaRpcEndpoint = rpcEndpoint;
   lightProtocolRpc = createRpc(
@@ -215,6 +219,10 @@ export function initializeMultiWallet({
   globalExpectedRPID = expectedRPID;
 
   if (typeof window !== "undefined") {
-    registerWallet(new RevibaseWallet(createRevibaseAdapter()));
+    registerWallet(
+      new RevibaseWallet(
+        createRevibaseAdapter({ authorizedClients, additionalInfo })
+      )
+    );
   }
 }

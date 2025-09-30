@@ -353,12 +353,12 @@ export async function resolveTransactionManagerSigner({
   memberKey,
   settingsData,
   transactionMessageBytes,
-  authorisedClients,
+  authorizedClients,
 }: {
   memberKey: string;
   settingsData: CompressedSettingsData;
   transactionMessageBytes: Uint8Array;
-  authorisedClients?: {
+  authorizedClients?: {
     publicKey: string;
     url: string;
   };
@@ -422,6 +422,6 @@ export async function resolveTransactionManagerSigner({
     transactionManagerAddress,
     apiUrl,
     transactionMessageBytes,
-    authorisedClients
+    authorizedClients
   );
 }

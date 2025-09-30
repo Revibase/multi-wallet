@@ -40,7 +40,6 @@ export interface Revibase extends RevibaseEventEmitter {
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
     additionalSigners?: TransactionSigner[];
     cachedCompressedAccounts?: Map<string, any>;
-    authorisedClients?: { publicKey: string; url: string };
   }): Promise<string>;
   signMessage(input: string): Promise<MessageAuthenticationResponse>;
   verify(input: {

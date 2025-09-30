@@ -1,6 +1,6 @@
 import { address } from "gill";
 import {
-  signMessage,
+  signMessage as signPasskeyMessage,
   signTransaction as signPasskeyTransaction,
   verifyMessage,
 } from "../passkeys";
@@ -13,8 +13,6 @@ import { Secp256r1Key } from "../types";
 import {
   fetchSettingsData,
   fetchUserData,
-  getExpectedOrigin,
-  getExpectedRPID,
   getFeePayer,
   getMultiWalletFromSettings,
   getSettingsFromIndex,
@@ -34,7 +32,13 @@ import {
 } from "./util";
 import type { Revibase, RevibaseEvent } from "./window";
 
-export function createRevibaseAdapter(): Revibase {
+export function createRevibaseAdapter({
+  additionalInfo,
+  authorizedClients,
+}: {
+  additionalInfo?: any;
+  authorizedClients?: { publicKey: string; url: string };
+}): Revibase {
   // 👇 Event listener map
   const listeners: {
     [E in keyof RevibaseEvent]?: Array<{ fn: RevibaseEvent[E]; ctx?: any }>;
@@ -103,20 +107,17 @@ export function createRevibaseAdapter(): Revibase {
       emit("disconnect");
     },
     signMessage: async function (input) {
-      const response = await signMessage({
+      const response = await signPasskeyMessage({
         signer: this.member ?? undefined,
         message: input,
+        additionalInfo,
       });
       return response;
     },
     verify: async function (input) {
-      const expectedOrigin = getExpectedOrigin();
-      const expectedRPID = getExpectedRPID();
       const verified = await verifyMessage({
         message: input.message,
         response: input.authResponse,
-        expectedOrigin,
-        expectedRPID,
       });
       return verified;
     },
@@ -131,7 +132,6 @@ export function createRevibaseAdapter(): Revibase {
         instructions,
         additionalSigners,
         cachedCompressedAccounts = new Map(),
-        authorisedClients,
       } = input;
 
       addressesByLookupTableAddress = {
@@ -155,7 +155,7 @@ export function createRevibaseAdapter(): Revibase {
         memberKey: this.member,
         settingsData,
         transactionMessageBytes,
-        authorisedClients,
+        authorizedClients: authorizedClients,
       });
 
       const useBundle = await estimateTransactionSizeExceedLimit({
@@ -188,6 +188,7 @@ export function createRevibaseAdapter(): Revibase {
               : "create_with_permissionless_execution",
             transactionAddress: transactionBufferAddress,
             transactionMessageBytes,
+            additionalInfo,
           }),
           estimateJitoTips(),
         ]);
@@ -215,6 +216,7 @@ export function createRevibaseAdapter(): Revibase {
           transactionActionType: "sync",
           transactionAddress: settings.toString(),
           transactionMessageBytes,
+          additionalInfo,
         });
         const result = await prepareTransactionSync({
           compressed: settingsData.isCompressed,
