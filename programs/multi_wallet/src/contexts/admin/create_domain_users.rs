@@ -14,11 +14,17 @@ use light_sdk::{
 };
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
+pub struct LinkWalletArgs {
+    pub settings_mut_args: SettingsMutArgs,
+    pub user_extension_authority: Option<Pubkey>,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct CreateDomainUserArgs {
     pub member: Secp256r1Pubkey,
     pub is_permanent_member: bool,
     pub user_creation_args: UserCreationArgs,
-    pub link_wallet_args: Option<SettingsMutArgs>,
+    pub link_wallet_args: Option<LinkWalletArgs>,
 }
 
 #[derive(Accounts)]
@@ -30,7 +36,6 @@ pub struct CreateDomainUsers<'info> {
         address = domain_config.load()?.authority,
     )]
     pub authority: Signer<'info>,
-    pub user_extensions: Option<AccountLoader<'info, UserExtensions>>,
 }
 
 impl<'info> CreateDomainUsers<'info> {
@@ -55,8 +60,8 @@ impl<'info> CreateDomainUsers<'info> {
             if let Some(link_wallet_args) = args.link_wallet_args {
                 let mut settings_account = LightAccount::<'_, CompressedSettings>::new_mut(
                     &crate::ID,
-                    &link_wallet_args.account_meta,
-                    link_wallet_args.data,
+                    &link_wallet_args.settings_mut_args.account_meta,
+                    link_wallet_args.settings_mut_args.data,
                 )
                 .map_err(ProgramError::from)?;
 
@@ -89,14 +94,17 @@ impl<'info> CreateDomainUsers<'info> {
                 }
 
                 // If user_extensions is provided, ensure it has a valid API URL and add the authority as a transaction manager
-                if let Some(user_extensions) = &ctx.accounts.user_extensions {
-                    let user_extension = user_extensions.load()?;
+                if let Some(user_extension_authority) = link_wallet_args.user_extension_authority {
+                    let member_key = MemberKey::convert_ed25519(&user_extension_authority)?;
+                    let user_extension_account =
+                        UserExtensions::extract_user_extension(member_key, ctx.remaining_accounts)?;
+                    let user_extension = user_extension_account.load()?;
                     require!(
                         user_extension.api_url_len > 0,
                         MultisigError::InvalidAccount
                     );
                     new_members.push(Member {
-                        pubkey: MemberKey::convert_ed25519(&user_extension.authority)?,
+                        pubkey: member_key,
                         permissions: Permissions::from_permissions(vec![
                             Permission::InitiateTransaction,
                             Permission::IsTransactionManager,

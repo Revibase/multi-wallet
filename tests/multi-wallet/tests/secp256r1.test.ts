@@ -10,7 +10,6 @@ import {
   getSecp256r1VerifyInstruction,
   getSettingsFromIndex,
   getSolanaRpc,
-  getUserExtensionsAddress,
   Secp256r1Key,
 } from "@revibase/wallet-sdk";
 import { expect } from "chai";
@@ -61,11 +60,7 @@ export function runSecp256r1Tests() {
 
       // Create Secp256r1Key
       const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey);
-      const userExtensions = await getUserExtensionsAddress(
-        ephemeralKeypair.address
-      );
       const createDomainUserIx = await createDomainUsers({
-        userExtensions,
         payer: ctx.payer,
         authority: ctx.wallet,
         domainConfig: ctx.domainConfig,
@@ -74,6 +69,7 @@ export function runSecp256r1Tests() {
             member: secp256r1Key,
             isPermanentMember: true,
             linkedWalletSettingsIndex: Number(ctx.index),
+            userExtensionsAuthority: ephemeralKeypair.address,
           },
         ],
       });

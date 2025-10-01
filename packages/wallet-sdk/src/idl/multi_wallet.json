@@ -16,7 +16,21 @@
       "accounts": [
         {
           "name": "settings",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "settings_index"
+              }
+            ]
+          }
         },
         {
           "name": "payer",
@@ -61,6 +75,10 @@
         }
       ],
       "args": [
+        {
+          "name": "settings_index",
+          "type": "u128"
+        },
         {
           "name": "config_actions",
           "type": {
@@ -243,10 +261,6 @@
         {
           "name": "authority",
           "signer": true
-        },
-        {
-          "name": "user_extensions",
-          "optional": true
         }
       ],
       "args": [
@@ -359,8 +373,8 @@
                 ]
               },
               {
-                "kind": "account",
-                "path": "global_counter"
+                "kind": "arg",
+                "path": "settings_index"
               }
             ]
           }
@@ -399,6 +413,10 @@
         }
       ],
       "args": [
+        {
+          "name": "settings_index",
+          "type": "u128"
+        },
         {
           "name": "secp256r1_verify_args",
           "type": {
@@ -1842,7 +1860,7 @@
             "type": {
               "option": {
                 "defined": {
-                  "name": "SettingsMutArgs"
+                  "name": "LinkWalletArgs"
                 }
               }
             }
@@ -1999,6 +2017,28 @@
           {
             "name": "index",
             "type": "u128"
+          }
+        ]
+      }
+    },
+    {
+      "name": "LinkWalletArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "settings_mut_args",
+            "type": {
+              "defined": {
+                "name": "SettingsMutArgs"
+              }
+            }
+          },
+          {
+            "name": "user_extension_authority",
+            "type": {
+              "option": "pubkey"
+            }
           }
         ]
       }

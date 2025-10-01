@@ -10,7 +10,6 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
-  getAddressEncoder,
   getBooleanDecoder,
   getBooleanEncoder,
   getBytesDecoder,
@@ -20,6 +19,8 @@ import {
   getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
+  getU128Decoder,
+  getU128Encoder,
   transformEncoder,
   type AccountMeta,
   type AccountSignerMeta,
@@ -42,7 +43,7 @@ import {
 import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import {
-  expectAddress,
+  expectSome,
   getAccountMetaFactory,
   type ResolvedAccount,
 } from "../shared";
@@ -122,6 +123,7 @@ export type CreateMultiWalletInstruction<
 
 export type CreateMultiWalletInstructionData = {
   discriminator: ReadonlyUint8Array;
+  settingsIndex: bigint;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
   userMutArgs: UserMutArgs;
   compressedProofArgs: ProofArgs;
@@ -129,6 +131,7 @@ export type CreateMultiWalletInstructionData = {
 };
 
 export type CreateMultiWalletInstructionDataArgs = {
+  settingsIndex: number | bigint;
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
   userMutArgs: UserMutArgsArgs;
   compressedProofArgs: ProofArgsArgs;
@@ -139,6 +142,7 @@ export function getCreateMultiWalletInstructionDataEncoder(): Encoder<CreateMult
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
+      ["settingsIndex", getU128Encoder()],
       [
         "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
@@ -154,6 +158,7 @@ export function getCreateMultiWalletInstructionDataEncoder(): Encoder<CreateMult
 export function getCreateMultiWalletInstructionDataDecoder(): Decoder<CreateMultiWalletInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ["settingsIndex", getU128Decoder()],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
     ["userMutArgs", getUserMutArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
@@ -193,6 +198,7 @@ export type CreateMultiWalletAsyncInput<
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   domainConfig?: Address<TAccountDomainConfig>;
   globalCounter: Address<TAccountGlobalCounter>;
+  settingsIndex: CreateMultiWalletInstructionDataArgs["settingsIndex"];
   secp256r1VerifyArgs: CreateMultiWalletInstructionDataArgs["secp256r1VerifyArgs"];
   userMutArgs: CreateMultiWalletInstructionDataArgs["userMutArgs"];
   compressedProofArgs: CreateMultiWalletInstructionDataArgs["compressedProofArgs"];
@@ -273,7 +279,7 @@ export async function getCreateMultiWalletInstructionAsync<
             109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116,
           ])
         ),
-        getAddressEncoder().encode(expectAddress(accounts.globalCounter.value)),
+        getU128Encoder().encode(expectSome(args.settingsIndex)),
       ],
     });
   }
@@ -342,6 +348,7 @@ export type CreateMultiWalletInput<
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   domainConfig?: Address<TAccountDomainConfig>;
   globalCounter: Address<TAccountGlobalCounter>;
+  settingsIndex: CreateMultiWalletInstructionDataArgs["settingsIndex"];
   secp256r1VerifyArgs: CreateMultiWalletInstructionDataArgs["secp256r1VerifyArgs"];
   userMutArgs: CreateMultiWalletInstructionDataArgs["userMutArgs"];
   compressedProofArgs: CreateMultiWalletInstructionDataArgs["compressedProofArgs"];

@@ -1,8 +1,9 @@
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::cpi::{CpiAccounts, CpiInputs};
-use crate::{id, state::{DomainConfig, GlobalCounter, Member, MemberKey, MemberWithAddPermissionsArgs, Ops, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs, Settings, User, UserMutArgs, SEED_MULTISIG, SEED_VAULT}, LIGHT_CPI_SIGNER};
+use crate::{error::MultisigError, id, state::{DomainConfig, GlobalCounter, Member, MemberKey, MemberWithAddPermissionsArgs, Ops, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs, Settings, User, UserMutArgs, SEED_MULTISIG, SEED_VAULT}, LIGHT_CPI_SIGNER};
 
 #[derive(Accounts)]
+#[instruction(settings_index: u128)]
 pub struct CreateMultiWallet<'info> {
     #[account(
         init, 
@@ -10,7 +11,7 @@ pub struct CreateMultiWallet<'info> {
         space = Settings::size(), 
         seeds = [
             SEED_MULTISIG,  
-            global_counter.load()?.index.to_le_bytes().as_ref(),
+            settings_index.to_le_bytes().as_ref(),
         ],
         bump
     )]
@@ -30,22 +31,21 @@ pub struct CreateMultiWallet<'info> {
     )]
     pub instructions_sysvar: Option<UncheckedAccount<'info>>,
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
-    #[account(
-        mut
-    )]
+    #[account(mut)]
     pub global_counter: AccountLoader<'info, GlobalCounter>
 }
 
 impl<'info> CreateMultiWallet<'info> {
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, CreateMultiWallet<'info>>,
+        settings_index:u128,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         compressed_proof_args: ProofArgs,
         user_mut_args: UserMutArgs,
         set_as_delegate: bool,
     ) -> Result<()> {
         let signer: MemberKey = MemberKey::get_signer(&ctx.accounts.initial_member, &secp256r1_verify_args, ctx.accounts.instructions_sysvar.as_ref())?;
-
+        
         let settings = &mut ctx.accounts.settings.load_init()?;
         let (_, multi_wallet_bump) = Pubkey::find_program_address(
             &[
@@ -56,6 +56,8 @@ impl<'info> CreateMultiWallet<'info> {
             &id(),
         );
         let global_counter =&mut  ctx.accounts.global_counter.load_mut()?;
+        require!(global_counter.index.eq(&settings_index), MultisigError::InvalidArguments);
+
         settings.bump = ctx.bumps.settings;
         settings.multi_wallet_bump = multi_wallet_bump;
         settings.set_threshold(1)?;

@@ -21,16 +21,16 @@ import {
   type OptionOrNullable,
 } from "gill";
 import {
+  getLinkWalletArgsDecoder,
+  getLinkWalletArgsEncoder,
   getSecp256r1PubkeyDecoder,
   getSecp256r1PubkeyEncoder,
-  getSettingsMutArgsDecoder,
-  getSettingsMutArgsEncoder,
   getUserCreationArgsDecoder,
   getUserCreationArgsEncoder,
+  type LinkWalletArgs,
+  type LinkWalletArgsArgs,
   type Secp256r1Pubkey,
   type Secp256r1PubkeyArgs,
-  type SettingsMutArgs,
-  type SettingsMutArgsArgs,
   type UserCreationArgs,
   type UserCreationArgsArgs,
 } from ".";
@@ -39,14 +39,14 @@ export type CreateDomainUserArgs = {
   member: Secp256r1Pubkey;
   isPermanentMember: boolean;
   userCreationArgs: UserCreationArgs;
-  linkWalletArgs: Option<SettingsMutArgs>;
+  linkWalletArgs: Option<LinkWalletArgs>;
 };
 
 export type CreateDomainUserArgsArgs = {
   member: Secp256r1PubkeyArgs;
   isPermanentMember: boolean;
   userCreationArgs: UserCreationArgsArgs;
-  linkWalletArgs: OptionOrNullable<SettingsMutArgsArgs>;
+  linkWalletArgs: OptionOrNullable<LinkWalletArgsArgs>;
 };
 
 export function getCreateDomainUserArgsEncoder(): Encoder<CreateDomainUserArgsArgs> {
@@ -54,7 +54,7 @@ export function getCreateDomainUserArgsEncoder(): Encoder<CreateDomainUserArgsAr
     ["member", getSecp256r1PubkeyEncoder()],
     ["isPermanentMember", getBooleanEncoder()],
     ["userCreationArgs", getUserCreationArgsEncoder()],
-    ["linkWalletArgs", getOptionEncoder(getSettingsMutArgsEncoder())],
+    ["linkWalletArgs", getOptionEncoder(getLinkWalletArgsEncoder())],
   ]);
 }
 
@@ -63,7 +63,7 @@ export function getCreateDomainUserArgsDecoder(): Decoder<CreateDomainUserArgs> 
     ["member", getSecp256r1PubkeyDecoder()],
     ["isPermanentMember", getBooleanDecoder()],
     ["userCreationArgs", getUserCreationArgsDecoder()],
-    ["linkWalletArgs", getOptionDecoder(getSettingsMutArgsDecoder())],
+    ["linkWalletArgs", getOptionDecoder(getLinkWalletArgsDecoder())],
   ]);
 }
 

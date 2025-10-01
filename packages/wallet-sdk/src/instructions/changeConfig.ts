@@ -319,6 +319,7 @@ export async function changeConfig({
       ]
     : [
         getChangeConfigInstruction({
+          settingsIndex: index,
           configActions,
           settings,
           payer,

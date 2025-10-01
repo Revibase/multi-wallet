@@ -15,6 +15,7 @@ export * from './configAction';
 export * from './createDomainUserArgs';
 export * from './createGlobalUserArgs';
 export * from './delegateOp';
+export * from './linkWalletArgs';
 export * from './member';
 export * from './memberKey';
 export * from './memberKeyWithEditPermissionsArgs';

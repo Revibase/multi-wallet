@@ -1,5 +1,6 @@
 import BN from "bn.js";
 import {
+  AccountRole,
   type Address,
   none,
   type OptionOrNullable,
@@ -11,12 +12,14 @@ import {
   getCompressedSettingsDecoder,
   getCreateDomainUsersInstruction,
   getSecp256r1PubkeyDecoder,
+  type LinkWalletArgs,
   type SettingsMutArgs,
 } from "../../generated";
 import { Secp256r1Key } from "../../types";
 import {
   getCompressedSettingsAddressFromIndex,
   getUserAddress,
+  getUserExtensionsAddress,
 } from "../../utils";
 import {
   convertToCompressedProofArgs,
@@ -32,6 +35,7 @@ interface UserCreationArgs {
   member: Secp256r1Key;
   isPermanentMember: boolean;
   linkedWalletSettingsIndex?: number | bigint;
+  userExtensionsAuthority?: Address;
 }
 
 export async function createDomainUsers({
@@ -39,14 +43,12 @@ export async function createDomainUsers({
   payer,
   createUserArgs,
   domainConfig,
-  userExtensions,
   cachedCompressedAccounts,
 }: {
   domainConfig: Address;
   authority: TransactionSigner;
   payer: TransactionSigner;
   createUserArgs: UserCreationArgs[];
-  userExtensions?: Address;
   cachedCompressedAccounts?: Map<string, any>;
 }) {
   const packedAccounts = new PackedAccounts();
@@ -99,6 +101,20 @@ export async function createDomainUsers({
     newAddressParams,
     hashesWithTree.length ? hashesWithTree.map((x) => x.treeInfo) : undefined
   );
+
+  const set = new Set();
+  for (const x of createUserArgs) {
+    if (x.userExtensionsAuthority && !set.has(x.userExtensionsAuthority)) {
+      packedAccounts.addPreAccounts([
+        {
+          address: await getUserExtensionsAddress(x.userExtensionsAuthority),
+          role: AccountRole.READONLY,
+        },
+      ]);
+      set.add(x.userExtensionsAuthority);
+    }
+  }
+
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
 
@@ -110,18 +126,22 @@ export async function createDomainUsers({
       member: getSecp256r1PubkeyDecoder().decode(x.member.toBuffer()),
       userCreationArgs: userCreationArgs[index],
       isPermanentMember: x.isPermanentMember,
-      linkWalletArgs: getLinkWalletArgs(x, settingsMutArgs),
+      linkWalletArgs: getLinkWalletArgs(
+        x,
+        settingsMutArgs,
+        x.userExtensionsAuthority
+      ),
     })),
     domainConfig,
-    userExtensions,
     remainingAccounts,
   });
 }
 
 function getLinkWalletArgs(
   x: UserCreationArgs,
-  settingsMutArgs: SettingsMutArgs[]
-): OptionOrNullable<SettingsMutArgs> {
+  settingsMutArgs: SettingsMutArgs[],
+  userExtensionsAuthority?: Address
+): OptionOrNullable<LinkWalletArgs> {
   const result = x.linkedWalletSettingsIndex
     ? settingsMutArgs.find((y) =>
         new BN(new Uint8Array(y.accountMeta.address)).eq(
@@ -130,5 +150,12 @@ function getLinkWalletArgs(
       )
     : undefined;
 
-  return result ? some(result) : none();
+  return result
+    ? some({
+        settingsMutArgs: result,
+        userExtensionAuthority: userExtensionsAuthority
+          ? some(userExtensionsAuthority)
+          : none(),
+      })
+    : none();
 }

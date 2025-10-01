@@ -168,6 +168,7 @@ export async function createWallet({
     const settings = await getSettingsFromIndex(index);
     instructions.push(
       getCreateMultiWalletInstruction({
+        settingsIndex: index,
         settings,
         instructionsSysvar,
         slotHashSysvar,

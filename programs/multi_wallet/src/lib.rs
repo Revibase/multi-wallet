@@ -83,6 +83,7 @@ pub mod multi_wallet {
     #[instruction(discriminator = 7)]
     pub fn create_multi_wallet<'info>(
         ctx: Context<'_, '_, 'info, 'info, CreateMultiWallet<'info>>,
+        settings_index: u128,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         user_mut_args: UserMutArgs,
         compressed_proof_args: ProofArgs,
@@ -90,6 +91,7 @@ pub mod multi_wallet {
     ) -> Result<()> {
         CreateMultiWallet::process(
             ctx,
+            settings_index,
             secp256r1_verify_args,
             compressed_proof_args,
             user_mut_args,
@@ -101,10 +103,11 @@ pub mod multi_wallet {
     #[instruction(discriminator = 8)]
     pub fn change_config<'info>(
         ctx: Context<'_, '_, 'info, 'info, ChangeConfig<'info>>,
+        settings_index: u128,
         config_actions: Vec<ConfigAction>,
         compressed_proof_args: Option<ProofArgs>,
     ) -> Result<()> {
-        ChangeConfig::process(ctx, config_actions, compressed_proof_args)
+        ChangeConfig::process(ctx, settings_index, config_actions, compressed_proof_args)
     }
 
     /// Creates a new transaction buffer to stage a transaction before execution.

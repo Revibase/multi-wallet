@@ -8,8 +8,16 @@ use light_sdk::cpi::{CpiAccounts, CpiInputs};
 use std::vec;
 
 #[derive(Accounts)]
+#[instruction(settings_index: u128)]
 pub struct ChangeConfig<'info> {
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [
+            SEED_MULTISIG,  
+            settings_index.to_le_bytes().as_ref()
+        ],
+        bump = settings.load()?.bump
+    )]
     pub settings: AccountLoader<'info, Settings>,
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -39,6 +47,7 @@ pub struct ChangeConfig<'info> {
 impl<'info> ChangeConfig<'info> {
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
+        _settings_index: u128,
         config_actions: Vec<ConfigAction>,
         compressed_proof_args: Option<ProofArgs>,
     ) -> Result<()> {

@@ -20,6 +20,8 @@ import {
   getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
+  getU128Decoder,
+  getU128Encoder,
   transformEncoder,
   type AccountMeta,
   type AccountSignerMeta,
@@ -43,6 +45,7 @@ import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import {
   expectAddress,
+  expectSome,
   getAccountMetaFactory,
   type ResolvedAccount,
 } from "../shared";
@@ -110,11 +113,13 @@ export type ChangeConfigInstruction<
 
 export type ChangeConfigInstructionData = {
   discriminator: ReadonlyUint8Array;
+  settingsIndex: bigint;
   configActions: Array<ConfigAction>;
   compressedProofArgs: Option<ProofArgs>;
 };
 
 export type ChangeConfigInstructionDataArgs = {
+  settingsIndex: number | bigint;
   configActions: Array<ConfigActionArgs>;
   compressedProofArgs: OptionOrNullable<ProofArgsArgs>;
 };
@@ -123,6 +128,7 @@ export function getChangeConfigInstructionDataEncoder(): Encoder<ChangeConfigIns
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
+      ["settingsIndex", getU128Encoder()],
       ["configActions", getArrayEncoder(getConfigActionEncoder())],
       ["compressedProofArgs", getOptionEncoder(getProofArgsEncoder())],
     ]),
@@ -133,6 +139,7 @@ export function getChangeConfigInstructionDataEncoder(): Encoder<ChangeConfigIns
 export function getChangeConfigInstructionDataDecoder(): Decoder<ChangeConfigInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ["settingsIndex", getU128Decoder()],
     ["configActions", getArrayDecoder(getConfigActionDecoder())],
     ["compressedProofArgs", getOptionDecoder(getProofArgsDecoder())],
   ]);
@@ -160,12 +167,13 @@ export type ChangeConfigAsyncInput<
   TAccountSlotHashSysvar extends string = string,
   TAccountInstructionsSysvar extends string = string,
 > = {
-  settings: Address<TAccountSettings>;
+  settings?: Address<TAccountSettings>;
   payer: TransactionSigner<TAccountPayer>;
   authority?: TransactionSigner<TAccountAuthority>;
   systemProgram?: Address<TAccountSystemProgram>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
+  settingsIndex: ChangeConfigInstructionDataArgs["settingsIndex"];
   configActions: ChangeConfigInstructionDataArgs["configActions"];
   compressedProofArgs: ChangeConfigInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: ChangeConfigInstructionExtraArgs["remainingAccounts"];
@@ -227,6 +235,19 @@ export async function getChangeConfigInstructionAsync<
   const resolverScope = { programAddress, accounts, args };
 
   // Resolve default values.
+  if (!accounts.settings.value) {
+    accounts.settings.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116,
+          ])
+        ),
+        getU128Encoder().encode(expectSome(args.settingsIndex)),
+      ],
+    });
+  }
   if (!accounts.authority.value) {
     accounts.authority.value = await getProgramDerivedAddress({
       programAddress,
@@ -298,6 +319,7 @@ export type ChangeConfigInput<
   systemProgram?: Address<TAccountSystemProgram>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
+  settingsIndex: ChangeConfigInstructionDataArgs["settingsIndex"];
   configActions: ChangeConfigInstructionDataArgs["configActions"];
   compressedProofArgs: ChangeConfigInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: ChangeConfigInstructionExtraArgs["remainingAccounts"];
