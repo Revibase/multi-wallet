@@ -9,11 +9,11 @@ import {
   type TreeInfo,
   TreeType,
 } from "@lightprotocol/stateless.js";
+import type { PublicKey } from "@solana/web3.js";
 import {
   type AccountMeta,
   AccountRole,
   type AccountSignerMeta,
-  type Address,
   address,
 } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
@@ -29,7 +29,7 @@ export class PackedAccounts {
   preAccounts: AccountMeta[];
   systemAccounts: AccountMeta[];
   nextIndex: number;
-  map: Map<Address, MapData>;
+  map: Map<PublicKey, MapData>;
 
   constructor() {
     this.preAccounts = [];
@@ -61,15 +61,15 @@ export class PackedAccounts {
     );
   }
 
-  insertOrGet(pubkey: Address): number {
+  insertOrGet(pubkey: PublicKey): number {
     return this.insertOrGetConfig(pubkey, AccountRole.WRITABLE);
   }
 
-  insertOrGetConfig(pubkey: Address, role: AccountRole): number {
+  insertOrGetConfig(pubkey: PublicKey, role: AccountRole): number {
     if (!this.map.has(pubkey)) {
       const index = this.nextIndex++;
       const accountMeta: AccountMeta = {
-        address: pubkey,
+        address: address(pubkey.toString()),
         role,
       };
       this.map.set(pubkey, { index, accountMeta });
@@ -79,9 +79,9 @@ export class PackedAccounts {
 
   packOutputTreeIndex(outputStateTreeInfo: TreeInfo) {
     if (outputStateTreeInfo.treeType === TreeType.StateV1) {
-      return this.insertOrGet(address(outputStateTreeInfo.tree.toString()));
+      return this.insertOrGet(outputStateTreeInfo.tree);
     } else if (outputStateTreeInfo.treeType === TreeType.StateV2) {
-      return this.insertOrGet(address(outputStateTreeInfo.queue.toString()));
+      return this.insertOrGet(outputStateTreeInfo.queue);
     }
     throw new Error("Tree type not supported");
   }
@@ -95,12 +95,8 @@ export class PackedAccounts {
     let outputTreeIndex: number = -1;
 
     for (const account of accountProofInputs) {
-      const merkleTreePubkeyIndex = this.insertOrGet(
-        address(account.treeInfo.tree.toString())
-      );
-      const queuePubkeyIndex = this.insertOrGet(
-        address(account.treeInfo.queue.toString())
-      );
+      const merkleTreePubkeyIndex = this.insertOrGet(account.treeInfo.tree);
+      const queuePubkeyIndex = this.insertOrGet(account.treeInfo.queue);
 
       stateTreeInfos.push({
         rootIndex: account.rootIndex,
@@ -119,11 +115,9 @@ export class PackedAccounts {
 
     for (const account of newAddressProofInputs) {
       const addressMerkleTreePubkeyIndex = this.insertOrGet(
-        address(account.treeInfo.tree.toString())
+        account.treeInfo.tree
       );
-      const addressQueuePubkeyIndex = this.insertOrGet(
-        address(account.treeInfo.queue.toString())
-      );
+      const addressQueuePubkeyIndex = this.insertOrGet(account.treeInfo.queue);
 
       addressTreeInfos.push({
         rootIndex: account.rootIndex,

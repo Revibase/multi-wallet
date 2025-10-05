@@ -195,12 +195,12 @@ export async function constructSettingsProofArgs(
     )[0];
     if (simulateProof) {
       proof = {
-        rootIndices: [],
+        rootIndices: [0],
         roots: [],
-        leafIndices: [],
+        leafIndices: [settings.leafIndex],
         leaves: [],
-        treeInfos: [],
-        proveByIndices: [],
+        treeInfos: [settings.treeInfo],
+        proveByIndices: [settings.proveByIndex],
         compressedProof: {
           a: Array.from(crypto.getRandomValues(new Uint8Array(32))),
           b: Array.from(crypto.getRandomValues(new Uint8Array(32))),
