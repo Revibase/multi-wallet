@@ -98,8 +98,7 @@ export async function createDomainUsers({
     proof.treeInfos.slice(hashesWithTree.length),
     proof.roots.slice(hashesWithTree.length),
     proof.rootIndices.slice(hashesWithTree.length),
-    newAddressParams,
-    hashesWithTree.length ? hashesWithTree.map((x) => x.treeInfo) : undefined
+    newAddressParams
   );
 
   const set = new Set();

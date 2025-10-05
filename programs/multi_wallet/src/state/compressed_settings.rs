@@ -6,12 +6,11 @@ use crate::{
     },
     LIGHT_CPI_SIGNER,
 };
-use anchor_lang::{prelude::*, solana_program::instruction::Instruction};
+use anchor_lang::prelude::*;
 use light_compressed_account::compressed_account::{CompressedAccount, CompressedAccountData};
 use light_compressed_account::{
     compressed_account::PackedReadOnlyCompressedAccount,
     instruction_data::{
-        compressed_proof::CompressedProof, cpi_context::CompressedCpiContext,
         data::NewAddressParamsPacked, with_readonly::InstructionDataInvokeCpiWithReadOnly,
     },
 };
@@ -19,21 +18,46 @@ use light_hasher::{DataHasher, Poseidon};
 use light_sdk::{
     account::LightAccount,
     address::v1::derive_address,
-    cpi::{to_account_metas, CpiAccounts},
-    error::LightSdkError,
-    instruction::{
-        account_meta::CompressedAccountMeta, PackedAddressTreeInfo, PackedMerkleContext,
-        ValidityProof,
-    },
+    cpi::CpiAccounts,
+    instruction::{account_meta::CompressedAccountMeta, PackedAddressTreeInfo, ValidityProof},
     LightDiscriminator, LightHasher,
 };
-use light_sdk_types::{CPI_AUTHORITY_PDA_SEED, LIGHT_SYSTEM_PROGRAM_ID};
 
 #[derive(
     AnchorDeserialize, AnchorSerialize, LightDiscriminator, LightHasher, PartialEq, Default, Debug,
 )]
 pub struct CompressedSettings {
     pub data: Option<CompressedSettingsData>,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize)]
+pub struct SettingsCreationArgs {
+    pub address_tree_info: PackedAddressTreeInfo,
+    pub output_state_tree_index: u8,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize)]
+pub struct SettingsMutArgs {
+    pub account_meta: CompressedAccountMeta,
+    pub data: CompressedSettings,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize)]
+pub enum SettingsCreateOrMutateArgs {
+    Create(SettingsCreationArgs),
+    Mutate(SettingsMutArgs),
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize)]
+pub struct SettingsReadonlyArgs {
+    pub account_meta: CompressedAccountMeta,
+    pub data: CompressedSettings,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize, PartialEq)]
+pub struct ProofArgs {
+    pub proof: ValidityProof,
+    pub light_cpi_accounts_start_index: u8,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, LightHasher, PartialEq, Debug, Clone)]
@@ -126,105 +150,72 @@ impl CompressedSettings {
         remaining_accounts: &[AccountInfo<'info>],
         compressed_proof_args: &ProofArgs,
     ) -> Result<(CompressedSettingsData, Pubkey)> {
+        let settings_data = settings_readonly
+            .data
+            .data
+            .as_ref()
+            .ok_or(MultisigError::InvalidArguments)?;
+
+        let settings_key =
+            Settings::get_settings_key_from_index(settings_data.index, settings_data.bump)?;
+
         let light_cpi_accounts = CpiAccounts::new(
             payer,
             &remaining_accounts[compressed_proof_args.light_cpi_accounts_start_index as usize..],
             LIGHT_CPI_SIGNER,
         );
-        let merkle_context = settings_readonly.merkle_context;
-        let settings = &settings_readonly.data;
-        let data_hash = settings
-            .hash::<Poseidon>()
-            .map_err(|_| MultisigError::InvalidArguments)?;
-        let settings_data = settings
-            .data
-            .as_ref()
-            .ok_or(MultisigError::InvalidArguments)?;
-        let settings_key =
-            Settings::get_settings_key_from_index(settings_data.index, settings_data.bump)?;
-        let merkle_tree_pubkey = light_cpi_accounts
-            .get_tree_account_info(merkle_context.merkle_tree_pubkey_index.into())
-            .map_err(|_| MultisigError::InvalidAccount)?
-            .key;
-        let (address, _) = derive_address(
-            &[SEED_MULTISIG, settings_data.index.to_le_bytes().as_ref()],
-            &settings_readonly
-                .address_tree_info
-                .get_tree_pubkey(&light_cpi_accounts)
-                .map_err(|_| ErrorCode::AccountNotEnoughKeys)?,
-            &crate::ID,
-        );
 
-        let account_hash = CompressedAccount {
-            owner: light_cpi_accounts.invoking_program().unwrap().key().into(),
-            lamports: settings_readonly.lamports,
-            address: Some(address),
+        let compressed_account = CompressedAccount {
+            address: Some(settings_readonly.account_meta.address),
+            owner: crate::ID.to_bytes().into(),
             data: Some(CompressedAccountData {
+                data: vec![],
+                data_hash: settings_readonly.data.hash::<Poseidon>().unwrap(),
                 discriminator: CompressedSettings::discriminator(),
-                data: settings.try_to_vec()?,
-                data_hash,
             }),
-        }
-        .hash(
-            &light_compressed_account::Pubkey::from(merkle_tree_pubkey),
-            &merkle_context.leaf_index,
-            false,
-        )
-        .unwrap();
+            lamports: 0,
+        };
+        let merkle_tree_pubkey = light_cpi_accounts
+            .get_tree_account_info(
+                settings_readonly
+                    .account_meta
+                    .tree_info
+                    .merkle_tree_pubkey_index as usize,
+            )
+            .unwrap()
+            .key
+            .to_bytes()
+            .into();
+        let account_hash = compressed_account
+            .hash(
+                &merkle_tree_pubkey,
+                &settings_readonly.account_meta.tree_info.leaf_index,
+                true,
+            )
+            .unwrap();
 
-        let _account_infos: Vec<AccountInfo> = light_cpi_accounts
-            .to_account_infos()
-            .into_iter()
-            .cloned()
-            .collect();
-
-        let _cpi_authority_seeds = [CPI_AUTHORITY_PDA_SEED, &[light_cpi_accounts.bump()]];
-
-        let _instruction = CompressedSettings::compressed_settings_invoke_cpi_with_read_only(
-            vec![PackedReadOnlyCompressedAccount {
+        let instruction_data = InstructionDataInvokeCpiWithReadOnly {
+            read_only_accounts: vec![PackedReadOnlyCompressedAccount {
+                root_index: settings_readonly.account_meta.tree_info.root_index,
+                merkle_context: light_sdk::instruction::PackedMerkleContext {
+                    merkle_tree_pubkey_index: settings_readonly
+                        .account_meta
+                        .tree_info
+                        .merkle_tree_pubkey_index,
+                    queue_pubkey_index: settings_readonly.account_meta.tree_info.queue_pubkey_index,
+                    leaf_index: settings_readonly.account_meta.tree_info.leaf_index,
+                    prove_by_index: settings_readonly.account_meta.tree_info.prove_by_index,
+                },
                 account_hash,
-                merkle_context,
-                root_index: settings_readonly.address_tree_info.root_index,
             }],
-            light_cpi_accounts,
-            compressed_proof_args.proof.0,
-        )?;
-
-        // invoke_signed(
-        //     &instruction,
-        //     &account_infos,
-        //     &[cpi_authority_seeds.as_slice()],
-        // )?;
-
-        Ok((settings_data.clone(), settings_key))
-    }
-
-    fn compressed_settings_invoke_cpi_with_read_only(
-        read_only_accounts: Vec<PackedReadOnlyCompressedAccount>,
-        cpi_accounts: CpiAccounts,
-        proof: Option<CompressedProof>,
-    ) -> Result<Instruction> {
-        let inputs = InstructionDataInvokeCpiWithReadOnly {
+            proof: compressed_proof_args.proof.into(),
+            bump: LIGHT_CPI_SIGNER.bump,
+            invoking_program_id: LIGHT_CPI_SIGNER.program_id.into(),
             mode: 0,
-            bump: cpi_accounts.bump(),
-            invoking_program_id: cpi_accounts.self_program_id().into(),
-            compress_or_decompress_lamports: 0,
-            is_compress: false,
-            with_cpi_context: false,
-            with_transaction_hash: true,
-            cpi_context: CompressedCpiContext::default(),
-            proof,
-            new_address_params: vec![],
-            input_compressed_accounts: vec![],
-            output_compressed_accounts: vec![],
-            read_only_addresses: vec![],
-            read_only_accounts,
+            ..Default::default()
         };
 
-        let inputs = inputs
-            .try_to_vec()
-            .map_err(|_| LightSdkError::Borsh)
-            .unwrap();
+        let inputs = instruction_data.try_to_vec().unwrap();
 
         let mut data = Vec::with_capacity(8 + inputs.len());
         data.extend_from_slice(
@@ -232,13 +223,27 @@ impl CompressedSettings {
         );
         data.extend(inputs);
 
-        let account_metas = to_account_metas(cpi_accounts).unwrap();
+        #[cfg(feature = "v2")]
+        let account_infos = light_cpi_accounts
+            .to_account_infos()
+            .iter()
+            .map(|e| e.to_account_info())
+            .collect::<Vec<_>>();
+        #[cfg(feature = "v2")]
+        let account_metas: Vec<AccountMeta> = to_account_metas(light_cpi_accounts).unwrap();
 
-        Ok(Instruction {
-            program_id: LIGHT_SYSTEM_PROGRAM_ID.into(),
+        #[cfg(feature = "v2")]
+        let instruction = anchor_lang::solana_program::instruction::Instruction {
             accounts: account_metas,
             data,
-        })
+            program_id: LIGHT_SYSTEM_PROGRAM_ID.into(),
+        };
+
+        #[cfg(feature = "v2")]
+        invoke_light_system_program(account_infos.as_slice(), instruction, LIGHT_CPI_SIGNER.bump)
+            .map_err(ProgramError::from)?;
+
+        Ok((settings_data.clone(), settings_key))
     }
 }
 
@@ -286,36 +291,4 @@ impl MultisigSettings for CompressedSettings {
         }
         Ok(())
     }
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct SettingsCreationArgs {
-    pub address_tree_info: PackedAddressTreeInfo,
-    pub output_state_tree_index: u8,
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct SettingsMutArgs {
-    pub account_meta: CompressedAccountMeta,
-    pub data: CompressedSettings,
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize)]
-pub enum SettingsCreateOrMutateArgs {
-    Create(SettingsCreationArgs),
-    Mutate(SettingsMutArgs),
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct SettingsReadonlyArgs {
-    pub merkle_context: PackedMerkleContext,
-    pub address_tree_info: PackedAddressTreeInfo,
-    pub data: CompressedSettings,
-    pub lamports: u64,
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize, PartialEq)]
-pub struct ProofArgs {
-    pub proof: ValidityProof,
-    pub light_cpi_accounts_start_index: u8,
 }

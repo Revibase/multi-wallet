@@ -3,11 +3,10 @@ import {
   type AddressWithTree,
   type BN254,
   type CompressedAccount,
-  featureFlags,
   getDefaultAddressTreeInfo,
   type HashWithTree,
+  selectStateTreeInfo,
   type TreeInfo,
-  TreeType,
   type ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
 import BN from "bn.js";
@@ -18,7 +17,6 @@ import {
   type SettingsReadonlyArgs,
   type ValidityProofArgs,
 } from "../../generated";
-import { MAX_HOTSPOTS } from "../consts";
 import { getLightProtocolRpc } from "../initialize";
 import { getCompressedSettingsAddressFromIndex } from "./helper";
 import { PackedAccounts } from "./packedAccounts";
@@ -101,8 +99,7 @@ export async function getCompressedAccountInitArgs(
   treeInfos: TreeInfo[],
   roots: BN[],
   rootIndices: number[],
-  newAddresses: (AddressWithTree & { type: "User" | "Settings" })[],
-  excludedTreeInfo?: TreeInfo[]
+  newAddresses: (AddressWithTree & { type: "User" | "Settings" })[]
 ) {
   if (newAddresses.length === 0) return [];
   const newAddressProofInputs = newAddresses.map((x, index) => ({
@@ -115,52 +112,13 @@ export async function getCompressedAccountInitArgs(
     [],
     newAddressProofInputs
   );
-
-  const excludedKeys = new Set<string>(
-    (excludedTreeInfo ?? []).map((info) =>
-      info.treeType === TreeType.StateV1
-        ? info.tree.toString()
-        : info.queue.toString()
-    )
-  );
-
   const stateTreeInfos = await getLightProtocolRpc().getStateTreeInfos();
-  const activeInfos = stateTreeInfos.filter((t) => !t.nextTreeInfo);
-  const desiredTreeType = featureFlags.isV2()
-    ? TreeType.StateV2
-    : TreeType.StateV1;
-  const filteredInfos = activeInfos.filter(
-    (t) => t.treeType === desiredTreeType && t.queue
-  );
-
-  const maxCandidates = Math.min(MAX_HOTSPOTS, filteredInfos.length);
-  const uniqueCandidates: TreeInfo[] = [];
-
-  for (const info of filteredInfos.slice(0, maxCandidates)) {
-    const key =
-      info.treeType === TreeType.StateV1
-        ? info.tree.toString()
-        : info.queue.toString();
-
-    if (!excludedKeys.has(key)) {
-      excludedKeys.add(key);
-      uniqueCandidates.push(info);
-    }
-
-    if (uniqueCandidates.length === newAddresses.length) break;
-  }
-
-  if (uniqueCandidates.length < newAddresses.length) {
-    throw new Error(
-      `Not enough unique state tree infos available: required ${newAddresses.length}, found ${uniqueCandidates.length}`
-    );
-  }
 
   const creationArgs = newAddresses.map((addressWithTree, i) => ({
     addressTreeInfo: addressTrees[i],
     outputStateTreeIndex: packedAccounts.packOutputTreeIndex(
-      uniqueCandidates[i]
-    )!,
+      selectStateTreeInfo(stateTreeInfos)
+    ),
     address: addressWithTree.address,
     type: addressWithTree.type,
   }));
@@ -188,21 +146,21 @@ export function getCompressedAccountMutArgs<T>(
     });
   }
 
-  const addressTreeInfo = packedAccounts.packTreeInfos(
+  const stateTreeInfo = packedAccounts.packTreeInfos(
     accountProofInputs,
     []
   ).stateTrees;
 
-  if (!addressTreeInfo) {
+  if (!stateTreeInfo) {
     throw new Error("Unable to parsed data.");
   }
 
   const mutArgs = hashes.map((x, index) => ({
     data: decoder.decode(x.data!.data),
     accountMeta: {
-      treeInfo: addressTreeInfo.packedTreeInfos[index],
+      treeInfo: stateTreeInfo.packedTreeInfos[index],
       address: new Uint8Array(x.address!),
-      outputStateTreeIndex: addressTreeInfo.outputTreeIndex,
+      outputStateTreeIndex: stateTreeInfo.outputTreeIndex,
     },
   }));
 
@@ -216,6 +174,7 @@ export async function getLightCpiSigner() {
   });
   return lightCpiSigner;
 }
+
 export async function constructSettingsProofArgs(
   compressed: boolean,
   index: bigint | number,
@@ -234,8 +193,6 @@ export async function constructSettingsProofArgs(
         cachedCompressedAccounts
       )
     )[0];
-    const { tree, queue } = getDefaultAddressTreeInfo();
-    let rootIndex = 0;
     if (simulateProof) {
       proof = {
         rootIndices: [],
@@ -252,23 +209,32 @@ export async function constructSettingsProofArgs(
       };
     } else {
       proof = await getValidityProofWithRetry([settings], []);
-      rootIndex = proof.rootIndices[0];
+    }
+
+    const stateTreeInfo = packedAccounts.packTreeInfos(
+      [
+        {
+          treeInfo: proof.treeInfos[0],
+          rootIndex: proof.rootIndices[0],
+          leafIndex: proof.leafIndices[0],
+          proveByIndex: proof.proveByIndices[0],
+          hash: settings.hash,
+        },
+      ],
+      []
+    ).stateTrees;
+
+    if (!stateTreeInfo) {
+      throw new Error("Unable to parsed data.");
     }
 
     settingsReadonlyArgs = {
-      lamports: BigInt(settings.lamports.toNumber()),
+      accountMeta: {
+        address: new Uint8Array(settings.address!),
+        treeInfo: stateTreeInfo.packedTreeInfos[0],
+        outputStateTreeIndex: stateTreeInfo.outputTreeIndex,
+      },
       data: getCompressedSettingsDecoder().decode(settings.data?.data!),
-      addressTreeInfo: {
-        rootIndex,
-        addressMerkleTreePubkeyIndex: packedAccounts.insertOrGet(tree),
-        addressQueuePubkeyIndex: packedAccounts.insertOrGet(queue),
-      },
-      merkleContext: {
-        leafIndex: settings.leafIndex,
-        merkleTreePubkeyIndex: packedAccounts.insertOrGet(settings.tree),
-        queuePubkeyIndex: packedAccounts.insertOrGet(settings.queue),
-        proveByIndex: settings.proveByIndex,
-      },
     };
   }
   return { settingsReadonlyArgs, proof, packedAccounts };
@@ -277,8 +243,8 @@ export async function constructSettingsProofArgs(
 export async function getValidityProofWithRetry(
   hashes?: HashWithTree[] | undefined,
   newAddresses?: AddressWithTree[],
-  retry = 5,
-  delay = 1000
+  retry = 10,
+  delay = 400
 ) {
   let attempt = 1;
   while (attempt < retry) {

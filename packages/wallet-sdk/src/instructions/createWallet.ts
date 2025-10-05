@@ -113,10 +113,7 @@ export async function createWallet({
     proof.treeInfos.slice(hashesWithTreeEndIndex),
     proof.roots.slice(hashesWithTreeEndIndex),
     proof.rootIndices.slice(hashesWithTreeEndIndex),
-    newAddressParams,
-    hashesWithTreeEndIndex > 0
-      ? proof.treeInfos.slice(0, hashesWithTreeEndIndex)
-      : undefined
+    newAddressParams
   );
 
   const settingsCreationArgs =

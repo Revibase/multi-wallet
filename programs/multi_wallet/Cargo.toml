@@ -11,6 +11,7 @@ name = "multi_wallet"
 [features]
 default = []
 mainnet = []
+v2 = []
 cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []

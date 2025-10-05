@@ -9,4 +9,4 @@ export const JITO_TIP_ACCOUNTS = [
   "DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL",
 ];
 
-export const MAX_HOTSPOTS = 5;
+// featureFlags.version = VERSION.V2;

@@ -22,7 +22,6 @@ export * from './memberKeyWithEditPermissionsArgs';
 export * from './memberKeyWithRemovePermissionsArgs';
 export * from './memberWithAddPermissionsArgs';
 export * from './packedAddressTreeInfo';
-export * from './packedMerkleContext';
 export * from './packedStateTreeInfo';
 export * from './permissions';
 export * from './proofArgs';

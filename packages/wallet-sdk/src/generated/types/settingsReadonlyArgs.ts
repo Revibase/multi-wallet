@@ -10,56 +10,42 @@ import {
   combineCodec,
   getStructDecoder,
   getStructEncoder,
-  getU64Decoder,
-  getU64Encoder,
   type Codec,
   type Decoder,
   type Encoder,
 } from "gill";
 import {
+  getCompressedAccountMetaDecoder,
+  getCompressedAccountMetaEncoder,
   getCompressedSettingsDecoder,
   getCompressedSettingsEncoder,
-  getPackedAddressTreeInfoDecoder,
-  getPackedAddressTreeInfoEncoder,
-  getPackedMerkleContextDecoder,
-  getPackedMerkleContextEncoder,
+  type CompressedAccountMeta,
+  type CompressedAccountMetaArgs,
   type CompressedSettings,
   type CompressedSettingsArgs,
-  type PackedAddressTreeInfo,
-  type PackedAddressTreeInfoArgs,
-  type PackedMerkleContext,
-  type PackedMerkleContextArgs,
 } from ".";
 
 export type SettingsReadonlyArgs = {
-  merkleContext: PackedMerkleContext;
-  addressTreeInfo: PackedAddressTreeInfo;
+  accountMeta: CompressedAccountMeta;
   data: CompressedSettings;
-  lamports: bigint;
 };
 
 export type SettingsReadonlyArgsArgs = {
-  merkleContext: PackedMerkleContextArgs;
-  addressTreeInfo: PackedAddressTreeInfoArgs;
+  accountMeta: CompressedAccountMetaArgs;
   data: CompressedSettingsArgs;
-  lamports: number | bigint;
 };
 
 export function getSettingsReadonlyArgsEncoder(): Encoder<SettingsReadonlyArgsArgs> {
   return getStructEncoder([
-    ["merkleContext", getPackedMerkleContextEncoder()],
-    ["addressTreeInfo", getPackedAddressTreeInfoEncoder()],
+    ["accountMeta", getCompressedAccountMetaEncoder()],
     ["data", getCompressedSettingsEncoder()],
-    ["lamports", getU64Encoder()],
   ]);
 }
 
 export function getSettingsReadonlyArgsDecoder(): Decoder<SettingsReadonlyArgs> {
   return getStructDecoder([
-    ["merkleContext", getPackedMerkleContextDecoder()],
-    ["addressTreeInfo", getPackedAddressTreeInfoDecoder()],
+    ["accountMeta", getCompressedAccountMetaDecoder()],
     ["data", getCompressedSettingsDecoder()],
-    ["lamports", getU64Decoder()],
   ]);
 }
 

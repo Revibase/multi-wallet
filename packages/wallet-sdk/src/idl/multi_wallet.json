@@ -2216,30 +2216,6 @@
       }
     },
     {
-      "name": "PackedMerkleContext",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "merkle_tree_pubkey_index",
-            "type": "u8"
-          },
-          {
-            "name": "queue_pubkey_index",
-            "type": "u8"
-          },
-          {
-            "name": "leaf_index",
-            "type": "u32"
-          },
-          {
-            "name": "prove_by_index",
-            "type": "bool"
-          }
-        ]
-      }
-    },
-    {
       "name": "PackedStateTreeInfo",
       "type": {
         "kind": "struct",
@@ -2477,18 +2453,10 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "merkle_context",
+            "name": "account_meta",
             "type": {
               "defined": {
-                "name": "PackedMerkleContext"
-              }
-            }
-          },
-          {
-            "name": "address_tree_info",
-            "type": {
-              "defined": {
-                "name": "PackedAddressTreeInfo"
+                "name": "CompressedAccountMeta"
               }
             }
           },
@@ -2499,10 +2467,6 @@
                 "name": "CompressedSettings"
               }
             }
-          },
-          {
-            "name": "lamports",
-            "type": "u64"
           }
         ]
       }

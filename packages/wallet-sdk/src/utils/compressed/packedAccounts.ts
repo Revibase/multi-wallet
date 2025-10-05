@@ -9,11 +9,11 @@ import {
   type TreeInfo,
   TreeType,
 } from "@lightprotocol/stateless.js";
-import { PublicKey } from "@solana/web3.js";
 import {
   type AccountMeta,
   AccountRole,
   type AccountSignerMeta,
+  type Address,
   address,
 } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
@@ -29,7 +29,7 @@ export class PackedAccounts {
   preAccounts: AccountMeta[];
   systemAccounts: AccountMeta[];
   nextIndex: number;
-  map: Map<PublicKey, MapData>;
+  map: Map<Address, MapData>;
 
   constructor() {
     this.preAccounts = [];
@@ -61,15 +61,15 @@ export class PackedAccounts {
     );
   }
 
-  insertOrGet(pubkey: PublicKey): number {
+  insertOrGet(pubkey: Address): number {
     return this.insertOrGetConfig(pubkey, AccountRole.WRITABLE);
   }
 
-  insertOrGetConfig(pubkey: PublicKey, role: AccountRole): number {
+  insertOrGetConfig(pubkey: Address, role: AccountRole): number {
     if (!this.map.has(pubkey)) {
       const index = this.nextIndex++;
       const accountMeta: AccountMeta = {
-        address: address(pubkey.toString()),
+        address: pubkey,
         role,
       };
       this.map.set(pubkey, { index, accountMeta });
@@ -77,32 +77,32 @@ export class PackedAccounts {
     return this.map.get(pubkey)!.index;
   }
 
-  packOutputTreeIndex(outputStateTreeInfo: TreeInfo): number | undefined {
+  packOutputTreeIndex(outputStateTreeInfo: TreeInfo) {
     if (outputStateTreeInfo.treeType === TreeType.StateV1) {
-      return this.insertOrGet(outputStateTreeInfo.tree);
+      return this.insertOrGet(address(outputStateTreeInfo.tree.toString()));
     } else if (outputStateTreeInfo.treeType === TreeType.StateV2) {
-      return this.insertOrGet(outputStateTreeInfo.queue);
+      return this.insertOrGet(address(outputStateTreeInfo.queue.toString()));
     }
-    return undefined;
+    throw new Error("Tree type not supported");
   }
 
   packTreeInfos(
     accountProofInputs: AccountProofInput[],
     newAddressProofInputs: NewAddressProofInput[]
   ): PackedTreeInfos {
-    const packedTreeInfos: PackedStateTreeInfo[] = [];
-    const addressTrees: PackedAddressTreeInfo[] = [];
-    let outputTreeIndex: number | undefined = undefined;
+    const stateTreeInfos: PackedStateTreeInfo[] = [];
+    const addressTreeInfos: PackedAddressTreeInfo[] = [];
+    let outputTreeIndex: number = -1;
 
-    if (accountProofInputs.length === 0 && newAddressProofInputs.length === 0) {
-      return { stateTrees: undefined, addressTrees };
-    }
+    for (const account of accountProofInputs) {
+      const merkleTreePubkeyIndex = this.insertOrGet(
+        address(account.treeInfo.tree.toString())
+      );
+      const queuePubkeyIndex = this.insertOrGet(
+        address(account.treeInfo.queue.toString())
+      );
 
-    accountProofInputs.forEach((account) => {
-      const merkleTreePubkeyIndex = this.insertOrGet(account.treeInfo.tree);
-      const queuePubkeyIndex = this.insertOrGet(account.treeInfo.queue);
-
-      packedTreeInfos.push({
+      stateTreeInfos.push({
         rootIndex: account.rootIndex,
         merkleTreePubkeyIndex,
         queuePubkeyIndex,
@@ -112,33 +112,35 @@ export class PackedAccounts {
 
       const treeToUse = account.treeInfo.nextTreeInfo ?? account.treeInfo;
       const index = this.packOutputTreeIndex(treeToUse);
-      if (outputTreeIndex === undefined && index !== undefined) {
+      if (outputTreeIndex === -1) {
         outputTreeIndex = index;
       }
-    });
+    }
 
-    newAddressProofInputs.forEach((account) => {
+    for (const account of newAddressProofInputs) {
       const addressMerkleTreePubkeyIndex = this.insertOrGet(
-        account.treeInfo.tree
+        address(account.treeInfo.tree.toString())
       );
-      const addressQueuePubkeyIndex = this.insertOrGet(account.treeInfo.queue);
+      const addressQueuePubkeyIndex = this.insertOrGet(
+        address(account.treeInfo.queue.toString())
+      );
 
-      addressTrees.push({
+      addressTreeInfos.push({
         rootIndex: account.rootIndex,
         addressMerkleTreePubkeyIndex,
         addressQueuePubkeyIndex,
       });
-    });
+    }
 
     return {
       stateTrees:
-        packedTreeInfos.length > 0
+        stateTreeInfos.length > 0
           ? {
-              packedTreeInfos,
-              outputTreeIndex: outputTreeIndex!,
+              packedTreeInfos: stateTreeInfos,
+              outputTreeIndex,
             }
           : undefined,
-      addressTrees,
+      addressTrees: addressTreeInfos,
     };
   }
 
