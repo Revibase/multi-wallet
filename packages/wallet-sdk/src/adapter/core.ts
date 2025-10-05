@@ -11,6 +11,7 @@ import {
 } from "../transaction";
 import { Secp256r1Key } from "../types";
 import {
+  createPopUp,
   fetchSettingsData,
   fetchUserData,
   getFeePayer,
@@ -139,6 +140,8 @@ export function createRevibaseAdapter({
           "Wallet is not connected or missing member/index/public key."
         );
       }
+      // open popup first so that browser won't prompt user for permission
+      const popUp = createPopUp();
       let {
         addressesByLookupTableAddress,
         instructions,
@@ -201,6 +204,7 @@ export function createRevibaseAdapter({
             transactionAddress: transactionBufferAddress,
             transactionMessageBytes,
             additionalInfo,
+            popUp,
           }),
           estimateJitoTips(),
         ]);
@@ -229,6 +233,7 @@ export function createRevibaseAdapter({
           transactionAddress: settings.toString(),
           transactionMessageBytes,
           additionalInfo,
+          popUp,
         });
         const result = await prepareTransactionSync({
           compressed: settingsData.isCompressed,
