@@ -9,7 +9,7 @@ crate-type = ["cdylib", "lib"]
 name = "multi_wallet"
 
 [features]
-default = []
+default = ["v2"]
 mainnet = []
 v2 = []
 cpi = ["no-entrypoint"]

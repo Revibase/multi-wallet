@@ -6,10 +6,10 @@ import {
   type PackedAddressTreeInfo,
   type PackedStateTreeInfo,
   type PackedTreeInfos,
+  selectStateTreeInfo,
   type TreeInfo,
   TreeType,
 } from "@lightprotocol/stateless.js";
-import type { PublicKey } from "@solana/web3.js";
 import {
   type AccountMeta,
   AccountRole,
@@ -18,6 +18,7 @@ import {
 } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
+import { getLightProtocolRpc } from "../initialize";
 import { getLightCpiSigner } from "./internal";
 
 interface MapData {
@@ -29,13 +30,15 @@ export class PackedAccounts {
   preAccounts: AccountMeta[];
   systemAccounts: AccountMeta[];
   nextIndex: number;
-  map: Map<PublicKey, MapData>;
+  map: Map<string, MapData>;
+  outputTreeIndex: number;
 
   constructor() {
     this.preAccounts = [];
     this.systemAccounts = [];
     this.nextIndex = 0;
     this.map = new Map();
+    this.outputTreeIndex = -1;
   }
 
   addPreAccounts(accounts: (AccountMeta | AccountSignerMeta)[]): void {
@@ -61,15 +64,15 @@ export class PackedAccounts {
     );
   }
 
-  insertOrGet(pubkey: PublicKey): number {
+  insertOrGet(pubkey: string): number {
     return this.insertOrGetConfig(pubkey, AccountRole.WRITABLE);
   }
 
-  insertOrGetConfig(pubkey: PublicKey, role: AccountRole): number {
+  insertOrGetConfig(pubkey: string, role: AccountRole): number {
     if (!this.map.has(pubkey)) {
       const index = this.nextIndex++;
       const accountMeta: AccountMeta = {
-        address: address(pubkey.toString()),
+        address: address(pubkey),
         role,
       };
       this.map.set(pubkey, { index, accountMeta });
@@ -79,11 +82,22 @@ export class PackedAccounts {
 
   packOutputTreeIndex(outputStateTreeInfo: TreeInfo) {
     if (outputStateTreeInfo.treeType === TreeType.StateV1) {
-      return this.insertOrGet(outputStateTreeInfo.tree);
+      return this.insertOrGet(outputStateTreeInfo.tree.toString());
     } else if (outputStateTreeInfo.treeType === TreeType.StateV2) {
-      return this.insertOrGet(outputStateTreeInfo.queue);
+      return this.insertOrGet(outputStateTreeInfo.queue.toString());
     }
     throw new Error("Tree type not supported");
+  }
+
+  async getOutputTreeIndex() {
+    if (this.outputTreeIndex !== -1) {
+      return this.outputTreeIndex;
+    }
+    const stateTreeInfos = await getLightProtocolRpc().getStateTreeInfos();
+    const outputStateTreeIndex = this.packOutputTreeIndex(
+      selectStateTreeInfo(stateTreeInfos)
+    );
+    return outputStateTreeIndex;
   }
 
   packTreeInfos(
@@ -92,11 +106,14 @@ export class PackedAccounts {
   ): PackedTreeInfos {
     const stateTreeInfos: PackedStateTreeInfo[] = [];
     const addressTreeInfos: PackedAddressTreeInfo[] = [];
-    let outputTreeIndex: number = -1;
 
     for (const account of accountProofInputs) {
-      const merkleTreePubkeyIndex = this.insertOrGet(account.treeInfo.tree);
-      const queuePubkeyIndex = this.insertOrGet(account.treeInfo.queue);
+      const merkleTreePubkeyIndex = this.insertOrGet(
+        account.treeInfo.tree.toString()
+      );
+      const queuePubkeyIndex = this.insertOrGet(
+        account.treeInfo.queue.toString()
+      );
 
       stateTreeInfos.push({
         rootIndex: account.rootIndex,
@@ -108,16 +125,18 @@ export class PackedAccounts {
 
       const treeToUse = account.treeInfo.nextTreeInfo ?? account.treeInfo;
       const index = this.packOutputTreeIndex(treeToUse);
-      if (outputTreeIndex === -1) {
-        outputTreeIndex = index;
+      if (this.outputTreeIndex === -1) {
+        this.outputTreeIndex = index;
       }
     }
 
     for (const account of newAddressProofInputs) {
       const addressMerkleTreePubkeyIndex = this.insertOrGet(
-        account.treeInfo.tree
+        account.treeInfo.tree.toString()
       );
-      const addressQueuePubkeyIndex = this.insertOrGet(account.treeInfo.queue);
+      const addressQueuePubkeyIndex = this.insertOrGet(
+        account.treeInfo.queue.toString()
+      );
 
       addressTreeInfos.push({
         rootIndex: account.rootIndex,
@@ -131,7 +150,7 @@ export class PackedAccounts {
         stateTreeInfos.length > 0
           ? {
               packedTreeInfos: stateTreeInfos,
-              outputTreeIndex,
+              outputTreeIndex: this.outputTreeIndex,
             }
           : undefined,
       addressTrees: addressTreeInfos,

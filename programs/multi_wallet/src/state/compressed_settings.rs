@@ -15,13 +15,17 @@ use light_compressed_account::{
     },
 };
 use light_hasher::{DataHasher, Poseidon};
+#[cfg(feature = "v2")]
+use light_sdk::cpi::to_account_metas;
 use light_sdk::{
     account::LightAccount,
     address::v1::derive_address,
-    cpi::CpiAccounts,
+    cpi::{invoke_light_system_program, CpiAccounts},
     instruction::{account_meta::CompressedAccountMeta, PackedAddressTreeInfo, ValidityProof},
     LightDiscriminator, LightHasher,
 };
+#[cfg(feature = "v2")]
+use light_sdk_types::LIGHT_SYSTEM_PROGRAM_ID;
 
 #[derive(
     AnchorDeserialize, AnchorSerialize, LightDiscriminator, LightHasher, PartialEq, Default, Debug,

@@ -6,5 +6,8 @@ export default defineConfig({
   format: ["cjs", "esm"],
   dts: true,
   sourcemap: true,
-  external: ["gill", "@solana/web3.js", "@solana/transaction-confirmation"],
+  treeshake: true,
+  splitting: true,
+  minify: true,
+  external: ["@solana/web3.js", "@lightprotocol/stateless.js"],
 });

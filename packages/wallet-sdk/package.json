@@ -37,18 +37,18 @@
   "description": "",
   "dependencies": {
     "@levischuck/tiny-cbor": "0.3.1",
-    "@lightprotocol/stateless.js": "^0.22.0",
     "@noble/curves": "1.9.7",
     "@noble/hashes": "1.8.0",
     "@simplewebauthn/server": "13.1.2",
     "@solana/promises": "^3.0.3",
+    "@solana/transaction-confirmation": "^3.0.3",
     "@wallet-standard/core": "^1.1.1",
-    "bn.js": "^5.2.2"
+    "bn.js": "^5.2.2",
+    "gill": "^0.12.0"
   },
   "peerDependencies": {
-    "@solana/transaction-confirmation": "^3.0.3",
-    "@solana/web3.js": "^1.98.4",
-    "gill": "^0.11.0"
+    "@lightprotocol/stateless.js": "^0.22.0",
+    "@solana/web3.js": "^1.98.4"
   },
   "devDependencies": {
     "@codama/nodes-from-anchor": "1.2.9",

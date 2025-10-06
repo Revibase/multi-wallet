@@ -5,7 +5,6 @@ import {
   type CompressedAccount,
   getDefaultAddressTreeInfo,
   type HashWithTree,
-  selectStateTreeInfo,
   type TreeInfo,
   type ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
@@ -112,13 +111,11 @@ export async function getCompressedAccountInitArgs(
     [],
     newAddressProofInputs
   );
-  const stateTreeInfos = await getLightProtocolRpc().getStateTreeInfos();
+  const outputStateTreeIndex = await packedAccounts.getOutputTreeIndex();
 
   const creationArgs = newAddresses.map((addressWithTree, i) => ({
     addressTreeInfo: addressTrees[i],
-    outputStateTreeIndex: packedAccounts.packOutputTreeIndex(
-      selectStateTreeInfo(stateTreeInfos)
-    ),
+    outputStateTreeIndex,
     address: addressWithTree.address,
     type: addressWithTree.type,
   }));

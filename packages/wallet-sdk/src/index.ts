@@ -1,4 +1,4 @@
-export * from "./adapter/features";
+export * from "./adapter";
 export * from "./generated";
 export * from "./instructions";
 export * from "./passkeys";
