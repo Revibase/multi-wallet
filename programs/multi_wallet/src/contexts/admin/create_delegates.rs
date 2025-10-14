@@ -1,6 +1,5 @@
 use crate::{
-    error::MultisigError,
-    state::{Delegate, DelegateCreationArgs, DelegateExtensions, MemberKey, ProofArgs},
+    Delegate, DelegateCreationArgs, DelegateExtensions, MemberKey, MultisigError, ProofArgs,
     LIGHT_CPI_SIGNER,
 };
 use anchor_lang::prelude::*;

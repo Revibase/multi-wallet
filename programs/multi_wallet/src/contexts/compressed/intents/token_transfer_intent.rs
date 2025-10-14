@@ -1,11 +1,8 @@
 use crate::{
-    state::{
-        ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig, MemberKey,
-        ProofArgs, Secp256r1VerifyArgs, Secp256r1VerifyArgsWithDomainAddress, SettingsReadonlyArgs,
-        TransactionActionType, SEED_MULTISIG,
-    },
-    utils::durable_nonce_check,
-    MultisigError, Permission, SEED_VAULT,
+    durable_nonce_check, ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig,
+    MemberKey, MultisigError, Permission, ProofArgs, Secp256r1VerifyArgs,
+    Secp256r1VerifyArgsWithDomainAddress, SettingsReadonlyArgs, TransactionActionType,
+    SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{
     prelude::*,
@@ -112,6 +109,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
             let secp256r1_signer = secp256r1_member_keys
                 .iter()
                 .find(|f| f.0.eq(&member.pubkey));
+
             let is_signer = secp256r1_signer.is_some()
                 || remaining_accounts.iter().any(|account| {
                     account.is_signer

@@ -1,8 +1,4 @@
-use crate::{
-    error::MultisigError,
-    state::{MemberKey, SEED_DELEGATE_EXTENSION},
-    ID,
-};
+use crate::{MemberKey, MultisigError, ID, SEED_DELEGATE_EXTENSION};
 use anchor_lang::{
     prelude::*,
     system_program::{create_account, CreateAccount},

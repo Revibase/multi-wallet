@@ -1,9 +1,6 @@
 use crate::{
-    state::{
-        ChallengeArgs, DomainConfig, KeyType, MemberKey, Secp256r1VerifyArgs, Settings,
-        TransactionActionType,
-    },
-    MultisigError, Permission, TransactionBuffer,
+    ChallengeArgs, DomainConfig, KeyType, MemberKey, MultisigError, Permission,
+    Secp256r1VerifyArgs, Settings, TransactionActionType, TransactionBuffer,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
@@ -44,7 +41,7 @@ impl<'info> TransactionBufferExecute<'info> {
         transaction_buffer.validate_hash()?;
         transaction_buffer.validate_size()?;
         let settings = settings.load()?;
-        if transaction_buffer.permissionless_execution {
+        if transaction_buffer.preauthorize_execution {
             let vote_count = settings
                 .members
                 .iter()

@@ -1,4 +1,4 @@
-use crate::state::{GlobalCounter, SEED_GLOBAL_COUNTER};
+use crate::{state::GlobalCounter, utils::SEED_GLOBAL_COUNTER};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]

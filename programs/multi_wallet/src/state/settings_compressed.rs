@@ -1,10 +1,7 @@
 use crate::{
-    error::MultisigError,
-    state::{
-        Member, MemberKey, MemberKeyWithEditPermissionsArgs, MemberKeyWithRemovePermissionsArgs,
-        MemberWithAddPermissionsArgs, MultisigSettings, Settings, SEED_MULTISIG, SEED_VERSION,
-    },
-    LIGHT_CPI_SIGNER,
+    Member, MemberKey, MemberKeyWithEditPermissionsArgs, MemberKeyWithRemovePermissionsArgs,
+    MemberWithAddPermissionsArgs, MultisigError, MultisigSettings, Settings, LIGHT_CPI_SIGNER,
+    SEED_MULTISIG, SEED_VERSION,
 };
 use anchor_lang::prelude::*;
 use light_compressed_account::compressed_account::{CompressedAccount, CompressedAccountData};
@@ -37,6 +34,15 @@ pub struct CompressedSettings {
     pub data: Option<CompressedSettingsData>,
 }
 
+#[derive(AnchorDeserialize, AnchorSerialize, LightHasherSha, PartialEq, Debug, Clone)]
+pub struct CompressedSettingsData {
+    pub threshold: u8,
+    pub bump: u8,
+    pub index: u128,
+    pub multi_wallet_bump: u8,
+    pub members: Vec<Member>,
+}
+
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct SettingsCreationArgs {
     pub address_tree_info: PackedAddressTreeInfo,
@@ -65,15 +71,6 @@ pub struct SettingsReadonlyArgs {
 pub struct ProofArgs {
     pub proof: ValidityProof,
     pub light_cpi_accounts_start_index: u8,
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize, LightHasherSha, PartialEq, Debug, Clone)]
-pub struct CompressedSettingsData {
-    pub threshold: u8,
-    pub bump: u8,
-    pub index: u128,
-    pub multi_wallet_bump: u8,
-    pub members: Vec<Member>,
 }
 
 impl CompressedSettings {

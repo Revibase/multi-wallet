@@ -1,12 +1,8 @@
 use crate::{
-    error::MultisigError,
-    state::{
-        ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig, MemberKey,
-        MultisigSettings, Permission, ProofArgs, Secp256r1VerifyArgsWithDomainAddress, Settings,
-        SettingsCreateOrMutateArgs, TransactionActionType,
-    },
-    utils::durable_nonce_check,
-    LIGHT_CPI_SIGNER,
+    durable_nonce_check, ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig,
+    MemberKey, MultisigError, MultisigSettings, Permission, ProofArgs,
+    Secp256r1VerifyArgsWithDomainAddress, Settings, SettingsCreateOrMutateArgs,
+    TransactionActionType, LIGHT_CPI_SIGNER,
 };
 use anchor_lang::{
     prelude::*,

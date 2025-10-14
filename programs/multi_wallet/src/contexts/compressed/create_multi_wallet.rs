@@ -1,13 +1,8 @@
 use crate::{
-    error::MultisigError,
-    id,
-    state::{
-        CompressedSettings, CompressedSettingsData, Delegate, DelegateMutArgs, DomainConfig,
-        GlobalCounter, Member, MemberKey, MemberWithAddPermissionsArgs, Ops, Permission,
-        Permissions, ProofArgs, Secp256r1VerifyArgs, SettingsCreationArgs, SEED_MULTISIG,
-        SEED_VAULT,
-    },
-    LIGHT_CPI_SIGNER,
+    id, CompressedSettings, CompressedSettingsData, Delegate, DelegateMutArgs, DomainConfig,
+    GlobalCounter, Member, MemberKey, MemberWithAddPermissionsArgs, MultisigError, Ops, Permission,
+    Permissions, ProofArgs, Secp256r1VerifyArgs, SettingsCreationArgs, LIGHT_CPI_SIGNER,
+    SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::cpi::{
@@ -20,7 +15,7 @@ pub struct CreateMultiWalletCompressed<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     pub initial_member: Option<Signer<'info>>,
-    pub system_program: Program<'info, System>,
+    pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
     /// CHECK:
     #[account(
         address = SlotHashes::id(),
@@ -31,9 +26,9 @@ pub struct CreateMultiWalletCompressed<'info> {
         address = Instructions::id(),
     )]
     pub instructions_sysvar: Option<UncheckedAccount<'info>>,
-    pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
     #[account(mut)]
     pub global_counter: AccountLoader<'info, GlobalCounter>,
+    pub system_program: Program<'info, System>,
 }
 
 impl<'info> CreateMultiWalletCompressed<'info> {

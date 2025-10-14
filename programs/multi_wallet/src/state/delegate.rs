@@ -1,9 +1,6 @@
 use crate::{
-    error::MultisigError,
-    state::{
-        MemberKey, MemberKeyWithRemovePermissionsArgs, MemberWithAddPermissionsArgs, SEED_DELEGATE,
-        SEED_VERSION,
-    },
+    MemberKey, MemberKeyWithRemovePermissionsArgs, MemberWithAddPermissionsArgs, MultisigError,
+    SEED_DELEGATE, SEED_VERSION,
 };
 use anchor_lang::prelude::*;
 use light_compressed_account::instruction_data::data::NewAddressParamsPacked;

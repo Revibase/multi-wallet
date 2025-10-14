@@ -1,12 +1,11 @@
+use crate::instruction::{ChangeConfig, ChangeConfigCompressed};
+use crate::{MultisigError, VaultTransactionMessage};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::address_lookup_table::{program::ID, state::AddressLookupTable};
 use anchor_lang::solana_program::instruction::Instruction;
 use anchor_lang::solana_program::program::invoke_signed;
 use std::collections::HashMap;
 use std::convert::From;
-
-use crate::instruction::{ChangeConfig, ChangeConfigCompressed};
-use crate::{state::*, MultisigError};
 
 pub struct ExecutableTransactionMessage<'a, 'info> {
     message: VaultTransactionMessage,

@@ -1,12 +1,8 @@
 use crate::{
-    id,
-    state::{
-        ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig, MemberKey,
-        ProofArgs, Secp256r1VerifyArgsWithDomainAddress, SettingsReadonlyArgs,
-        TransactionActionType, TransactionMessage, SEED_MULTISIG,
-    },
-    utils::durable_nonce_check,
-    ExecutableTransactionMessage, MultisigError, Permission, SEED_VAULT,
+    durable_nonce_check, id, ChallengeArgs, CompressedSettings, CompressedSettingsData,
+    DomainConfig, ExecutableTransactionMessage, MemberKey, MultisigError, Permission, ProofArgs,
+    Secp256r1VerifyArgsWithDomainAddress, SettingsReadonlyArgs, TransactionActionType,
+    TransactionMessage, SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::solana_program::hash::hash;
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};

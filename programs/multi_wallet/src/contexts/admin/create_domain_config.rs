@@ -1,4 +1,4 @@
-use crate::state::{DomainConfig, SEED_DOMAIN_CONFIG};
+use crate::{state::DomainConfig, utils::SEED_DOMAIN_CONFIG};
 use anchor_lang::{prelude::*, solana_program::hash};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]

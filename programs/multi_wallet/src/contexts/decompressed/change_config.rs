@@ -1,7 +1,8 @@
 use crate::{
     error::MultisigError,
-    state::{Ops, ProofArgs, Settings, Delegate, SEED_MULTISIG, SEED_VAULT},
+    state::{Ops, ProofArgs, Settings, Delegate},
     ConfigAction, LIGHT_CPI_SIGNER,
+    utils::{SEED_MULTISIG, SEED_VAULT}
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::{

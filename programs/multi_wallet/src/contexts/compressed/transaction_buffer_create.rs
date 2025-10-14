@@ -1,11 +1,8 @@
 use crate::{
-    state::{
-        ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig, KeyType,
-        MemberKey, ProofArgs, Secp256r1VerifyArgs, Settings, SettingsReadonlyArgs,
-        TransactionActionType, TransactionBufferCreateArgs, SEED_MULTISIG,
-    },
-    utils::durable_nonce_check,
-    MultisigError, Permission, TransactionBuffer, MAX_BUFFER_SIZE, SEED_TRANSACTION_BUFFER,
+    durable_nonce_check, ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig,
+    KeyType, MemberKey, MultisigError, Permission, ProofArgs, Secp256r1VerifyArgs, Settings,
+    SettingsReadonlyArgs, TransactionActionType, TransactionBuffer, TransactionBufferCreateArgs,
+    MAX_BUFFER_SIZE, SEED_MULTISIG, SEED_TRANSACTION_BUFFER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
@@ -83,7 +80,7 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
             MultisigError::InsufficientSignerWithInitiatePermission
         );
 
-        if args.permissionless_execution {
+        if args.preauthorize_execution {
             require!(
                 member.permissions.has(Permission::ExecuteTransaction),
                 MultisigError::InsufficientSignerWithExecutePermission
@@ -102,7 +99,7 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
                 ChallengeArgs {
                     account: transaction_buffer.key(),
                     message_hash: args.final_buffer_hash,
-                    action_type: if args.permissionless_execution {
+                    action_type: if args.preauthorize_execution {
                         TransactionActionType::CreateWithPermissionlessExecution
                     } else {
                         TransactionActionType::Create

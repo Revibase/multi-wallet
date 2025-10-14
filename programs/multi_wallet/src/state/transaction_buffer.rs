@@ -1,6 +1,4 @@
-use super::MemberKey;
-use crate::state::MAXIMUM_AMOUNT_OF_MEMBERS;
-use crate::MultisigError;
+use crate::{MemberKey, MultisigError, MAXIMUM_AMOUNT_OF_MEMBERS};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::hash::hash;
 
@@ -15,7 +13,7 @@ pub const TRANSACTION_TIME_LIMIT: u64 = 3 * 60;
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct TransactionBufferCreateArgs {
     pub buffer_index: u8,
-    pub permissionless_execution: bool,
+    pub preauthorize_execution: bool,
     pub buffer_extend_hashes: Vec<[u8; 32]>,
     pub final_buffer_hash: [u8; 32],
     pub final_buffer_size: u16,
@@ -29,8 +27,8 @@ pub struct TransactionBuffer {
     pub multi_wallet_bump: u8,
     /// Flag to allow transaction to be executed
     pub can_execute: bool,
-    /// Flag to allow execution straight away once sufficient threshold is met
-    pub permissionless_execution: bool,
+    /// Flag to authorize execution before sufficient threshold is met
+    pub preauthorize_execution: bool,
     // Transaction valid till
     pub valid_till: u64,
     /// Payer for the transaction buffer
@@ -53,39 +51,6 @@ pub struct TransactionBuffer {
     pub buffer: Vec<u8>,
 }
 
-#[derive(PartialEq)]
-pub enum TransactionActionType {
-    Create,
-    CreateWithPermissionlessExecution,
-    Execute,
-    Vote,
-    Sync,
-    Close,
-    AddNewMember,
-    Compress,
-    Decompress,
-    TransferIntent,
-}
-
-impl TransactionActionType {
-    pub fn to_bytes(&self) -> &[u8] {
-        match &self {
-            TransactionActionType::Create => b"create",
-            TransactionActionType::CreateWithPermissionlessExecution => {
-                b"create_with_permissionless_execution"
-            }
-            TransactionActionType::Execute => b"execute",
-            TransactionActionType::Vote => b"vote",
-            TransactionActionType::Sync => b"sync",
-            TransactionActionType::Close => b"close",
-            TransactionActionType::AddNewMember => b"add_new_member",
-            TransactionActionType::Compress => b"compress",
-            TransactionActionType::Decompress => b"decompress",
-            TransactionActionType::TransferIntent => b"transfer_intent",
-        }
-    }
-}
-
 impl TransactionBuffer {
     pub fn init(
         &mut self,
@@ -100,7 +65,7 @@ impl TransactionBuffer {
         self.multi_wallet_settings = settings_key;
         self.multi_wallet_bump = multi_wallet_bump;
         self.can_execute = false;
-        self.permissionless_execution = args.permissionless_execution;
+        self.preauthorize_execution = args.preauthorize_execution;
         self.buffer_extend_hashes = args.buffer_extend_hashes.to_vec();
         self.creator = creator;
         self.payer = payer;

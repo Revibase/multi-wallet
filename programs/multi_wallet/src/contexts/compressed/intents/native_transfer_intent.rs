@@ -1,11 +1,8 @@
 use crate::{
-    state::{
-        ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig, MemberKey,
-        ProofArgs, Secp256r1VerifyArgs, Secp256r1VerifyArgsWithDomainAddress, SettingsReadonlyArgs,
-        TransactionActionType, SEED_MULTISIG,
-    },
-    utils::durable_nonce_check,
-    MultisigError, Permission, SEED_VAULT,
+    durable_nonce_check, ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig,
+    MemberKey, MultisigError, Permission, ProofArgs, Secp256r1VerifyArgs,
+    Secp256r1VerifyArgsWithDomainAddress, SettingsReadonlyArgs, TransactionActionType,
+    SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{
     prelude::*,

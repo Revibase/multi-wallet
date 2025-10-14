@@ -1,9 +1,6 @@
 use crate::{
-    state::{
-        ChallengeArgs, DomainConfig, KeyType, MemberKey, Secp256r1VerifyArgs, Settings,
-        TransactionActionType,
-    },
-    MultisigError, TransactionBuffer,
+    ChallengeArgs, DomainConfig, KeyType, MemberKey, MultisigError, Secp256r1VerifyArgs, Settings,
+    TransactionActionType, TransactionBuffer,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 

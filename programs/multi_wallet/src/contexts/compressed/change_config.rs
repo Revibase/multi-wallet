@@ -1,9 +1,7 @@
 use crate::{
     error::MultisigError,
-    state::{
-        CompressedSettings, Delegate, Ops, ProofArgs, Settings, SettingsMutArgs, SEED_MULTISIG,
-        SEED_VAULT,
-    },
+    state::{CompressedSettings, Delegate, Ops, ProofArgs, Settings, SettingsMutArgs},
+    utils::{SEED_MULTISIG, SEED_VAULT},
     ConfigAction, LIGHT_CPI_SIGNER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};

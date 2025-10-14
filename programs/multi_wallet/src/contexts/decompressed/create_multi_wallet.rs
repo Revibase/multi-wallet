@@ -5,7 +5,7 @@ use light_sdk::{
         InvokeLightSystemProgram, LightCpiInstruction,
     },
 };
-use crate::{error::MultisigError, id, state::{DomainConfig, GlobalCounter, Member, MemberKey, MemberWithAddPermissionsArgs, Ops, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs, Settings, Delegate, DelegateMutArgs, SEED_MULTISIG, SEED_VAULT}, LIGHT_CPI_SIGNER};
+use crate::{MultisigError, id, Delegate, DelegateMutArgs, DomainConfig, GlobalCounter, Member, MemberKey, MemberWithAddPermissionsArgs, Ops, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs, Settings,SEED_MULTISIG, SEED_VAULT, LIGHT_CPI_SIGNER};
 
 #[derive(Accounts)]
 #[instruction(settings_index: u128)]

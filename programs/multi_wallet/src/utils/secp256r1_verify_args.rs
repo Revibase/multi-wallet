@@ -1,10 +1,7 @@
-use super::{DomainConfig, TransactionActionType};
 use crate::{
-    error::MultisigError,
-    state::{
-        Secp256r1Pubkey, COMPRESSED_PUBKEY_SERIALIZED_SIZE, SECP256R1_PROGRAM_ID,
-        SIGNATURE_OFFSETS_SERIALIZED_SIZE, SIGNATURE_OFFSETS_START,
-    },
+    DomainConfig, MultisigError, Secp256r1Pubkey, TransactionActionType,
+    COMPRESSED_PUBKEY_SERIALIZED_SIZE, SECP256R1_PROGRAM_ID, SIGNATURE_OFFSETS_SERIALIZED_SIZE,
+    SIGNATURE_OFFSETS_START,
 };
 use anchor_lang::{
     prelude::*,

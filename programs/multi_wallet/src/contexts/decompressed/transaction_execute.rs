@@ -1,8 +1,6 @@
 use crate::{
-    id,
-    state::{Settings, SEED_MULTISIG},
-    ExecutableTransactionMessage, MultisigError, TransactionBuffer, VaultTransactionMessage,
-    SEED_VAULT,
+    id, state::Settings, utils::SEED_MULTISIG, ExecutableTransactionMessage, MultisigError,
+    TransactionBuffer, VaultTransactionMessage, SEED_VAULT,
 };
 use anchor_lang::prelude::*;
 

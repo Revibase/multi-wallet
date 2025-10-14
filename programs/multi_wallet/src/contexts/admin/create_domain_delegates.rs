@@ -1,11 +1,7 @@
 use crate::{
-    error::MultisigError,
-    state::{
-        CompressedSettings, Delegate, DelegateCreationArgs, DelegateExtensions, DomainConfig,
-        Member, MemberKey, MultisigSettings, Permission, Permissions, ProofArgs, Secp256r1Pubkey,
-        SettingsMutArgs,
-    },
-    LIGHT_CPI_SIGNER,
+    CompressedSettings, Delegate, DelegateCreationArgs, DelegateExtensions, DomainConfig, Member,
+    MemberKey, MultisigError, MultisigSettings, Permission, Permissions, ProofArgs,
+    Secp256r1Pubkey, SettingsMutArgs, LIGHT_CPI_SIGNER,
 };
 use anchor_lang::prelude::*;
 use light_sdk::{
