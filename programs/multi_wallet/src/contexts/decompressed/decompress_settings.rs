@@ -3,7 +3,10 @@ use crate::{
 };
 use anchor_lang::{prelude::*, solana_program::{hash, sysvar::SysvarId}};
 use light_sdk::{
-    account::LightAccount, cpi::{CpiAccounts, CpiInputs}
+    cpi::{
+        v1::{CpiAccounts, LightSystemProgramCpi},
+        InvokeLightSystemProgram, LightCpiInstruction,
+    }, LightAccount,
 };
 use std::vec;
 
@@ -165,15 +168,8 @@ impl<'info> DecompressSettingsAccount<'info> {
 
         settings_account.data = None;
 
-        let settings_info = settings_account
-            .to_account_info()
-            .map_err(ProgramError::from)?;
+        LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof).with_light_account(settings_account)?.invoke(light_cpi_accounts)?;
         
-        let cpi_inputs = CpiInputs::new(
-            compressed_proof_args.proof,
-            vec![settings_info],
-        );
-        cpi_inputs.invoke_light_system_program(light_cpi_accounts).map_err(ProgramError::from)?;
         Ok(())
     }
 }

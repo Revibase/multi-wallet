@@ -2,7 +2,7 @@
   "name": "@revibase/wallet-sdk",
   "version": "2.5.4",
   "scripts": {
-    "build": "tsup",
+    "build": "rimraf dist & tsup",
     "clean": "rimraf dist",
     "generate": "node ./src/utils/codama.ts"
   },
@@ -40,14 +40,14 @@
     "@noble/curves": "1.9.7",
     "@noble/hashes": "1.8.0",
     "@simplewebauthn/server": "13.1.2",
-    "@solana/promises": "^3.0.3",
-    "@solana/transaction-confirmation": "^3.0.3",
+    "@solana/promises": "4.0.0",
+    "@solana/transaction-confirmation": "4.0.0",
     "@wallet-standard/core": "^1.1.1",
     "bn.js": "^5.2.2",
     "gill": "^0.12.0"
   },
   "peerDependencies": {
-    "@lightprotocol/stateless.js": "^0.22.0",
+    "@lightprotocol/stateless.js": "0.22.0",
     "@solana/web3.js": "^1.98.4"
   },
   "devDependencies": {

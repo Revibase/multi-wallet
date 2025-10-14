@@ -2,33 +2,36 @@ use crate::{
     error::MultisigError,
     state::{
         Member, MemberKey, MemberKeyWithEditPermissionsArgs, MemberKeyWithRemovePermissionsArgs,
-        MemberWithAddPermissionsArgs, MultisigSettings, Settings, SEED_MULTISIG,
+        MemberWithAddPermissionsArgs, MultisigSettings, Settings, SEED_MULTISIG, SEED_VERSION,
     },
     LIGHT_CPI_SIGNER,
 };
 use anchor_lang::prelude::*;
 use light_compressed_account::compressed_account::{CompressedAccount, CompressedAccountData};
+use light_compressed_account::instruction_data::data::NewAddressParamsPacked;
 use light_compressed_account::{
     compressed_account::PackedReadOnlyCompressedAccount,
-    instruction_data::{
-        data::NewAddressParamsPacked, with_readonly::InstructionDataInvokeCpiWithReadOnly,
-    },
+    instruction_data::with_readonly::InstructionDataInvokeCpiWithReadOnly,
 };
-use light_hasher::{DataHasher, Poseidon};
-#[cfg(feature = "v2")]
-use light_sdk::cpi::to_account_metas;
+use light_hasher::{DataHasher, Sha256};
+use light_sdk::cpi::{invoke::invoke_light_system_program, v1::CpiAccounts};
+use light_sdk::LightHasherSha;
 use light_sdk::{
     account::LightAccount,
-    address::v1::derive_address,
-    cpi::{invoke_light_system_program, CpiAccounts},
+    cpi::CpiAccountsTrait,
     instruction::{account_meta::CompressedAccountMeta, PackedAddressTreeInfo, ValidityProof},
-    LightDiscriminator, LightHasher,
+    LightDiscriminator,
 };
-#[cfg(feature = "v2")]
-use light_sdk_types::LIGHT_SYSTEM_PROGRAM_ID;
+use light_sdk_types::{address::v1::derive_address, LIGHT_SYSTEM_PROGRAM_ID};
 
 #[derive(
-    AnchorDeserialize, AnchorSerialize, LightDiscriminator, LightHasher, PartialEq, Default, Debug,
+    AnchorDeserialize,
+    AnchorSerialize,
+    LightDiscriminator,
+    LightHasherSha,
+    PartialEq,
+    Default,
+    Debug,
 )]
 pub struct CompressedSettings {
     pub data: Option<CompressedSettingsData>,
@@ -64,13 +67,12 @@ pub struct ProofArgs {
     pub light_cpi_accounts_start_index: u8,
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, LightHasher, PartialEq, Debug, Clone)]
+#[derive(AnchorDeserialize, AnchorSerialize, LightHasherSha, PartialEq, Debug, Clone)]
 pub struct CompressedSettingsData {
     pub threshold: u8,
     pub bump: u8,
     pub index: u128,
     pub multi_wallet_bump: u8,
-    #[hash]
     pub members: Vec<Member>,
 }
 
@@ -112,17 +114,23 @@ impl CompressedSettings {
         settings_creation: SettingsCreationArgs,
         data: CompressedSettingsData,
         light_cpi_accounts: &CpiAccounts,
+        _index: u8,
     ) -> Result<(
         LightAccount<'info, CompressedSettings>,
         NewAddressParamsPacked,
     )> {
         let (address, address_seed) = derive_address(
-            &[SEED_MULTISIG, data.index.to_le_bytes().as_ref()],
+            &[
+                SEED_MULTISIG,
+                data.index.to_le_bytes().as_ref(),
+                SEED_VERSION,
+            ],
             &settings_creation
                 .address_tree_info
                 .get_tree_pubkey(light_cpi_accounts)
-                .map_err(|_| ErrorCode::AccountNotEnoughKeys)?,
-            &crate::ID,
+                .map_err(|_| ErrorCode::AccountNotEnoughKeys)?
+                .to_bytes(),
+            &crate::ID.to_bytes(),
         );
 
         let new_address_params = settings_creation
@@ -144,7 +152,7 @@ impl CompressedSettings {
         MultisigSettings::set_threshold(self, value)
     }
 
-    pub fn invariant(&mut self) -> Result<()> {
+    pub fn invariant(&self) -> Result<()> {
         MultisigSettings::invariant(self)
     }
 
@@ -174,7 +182,7 @@ impl CompressedSettings {
             owner: crate::ID.to_bytes().into(),
             data: Some(CompressedAccountData {
                 data: vec![],
-                data_hash: settings_readonly.data.hash::<Poseidon>().unwrap(),
+                data_hash: settings_readonly.data.hash::<Sha256>().unwrap(),
                 discriminator: CompressedSettings::discriminator(),
             }),
             lamports: 0,
@@ -227,23 +235,20 @@ impl CompressedSettings {
         );
         data.extend(inputs);
 
-        #[cfg(feature = "v2")]
         let account_infos = light_cpi_accounts
             .to_account_infos()
             .iter()
             .map(|e| e.to_account_info())
             .collect::<Vec<_>>();
-        #[cfg(feature = "v2")]
-        let account_metas: Vec<AccountMeta> = to_account_metas(light_cpi_accounts).unwrap();
 
-        #[cfg(feature = "v2")]
+        let account_metas: Vec<AccountMeta> = light_cpi_accounts.to_account_metas()?;
+
         let instruction = anchor_lang::solana_program::instruction::Instruction {
             accounts: account_metas,
             data,
             program_id: LIGHT_SYSTEM_PROGRAM_ID.into(),
         };
 
-        #[cfg(feature = "v2")]
         invoke_light_system_program(account_infos.as_slice(), instruction, LIGHT_CPI_SIGNER.bump)
             .map_err(ProgramError::from)?;
 

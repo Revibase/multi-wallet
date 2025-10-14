@@ -35,7 +35,7 @@ import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 
-export const CREATE_GLOBAL_COUNTER_DISCRIMINATOR = new Uint8Array([4]);
+export const CREATE_GLOBAL_COUNTER_DISCRIMINATOR = new Uint8Array([3]);
 
 export function getCreateGlobalCounterDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(

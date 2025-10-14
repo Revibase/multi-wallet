@@ -1,7 +1,4 @@
-use crate::{
-    error::MultisigError,
-    state::{DomainConfig, MAX_RP_ID_LEN, SEED_DOMAIN_CONFIG},
-};
+use crate::state::{DomainConfig, SEED_DOMAIN_CONFIG};
 use anchor_lang::{prelude::*, solana_program::hash};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -9,6 +6,7 @@ pub struct CreateDomainConfigArgs {
     rp_id: String,
     origins: Vec<String>,
     authority: Pubkey,
+    metadata_url: String,
 }
 
 #[derive(Accounts)]
@@ -40,20 +38,8 @@ impl<'info> CreateDomainConfig<'info> {
         let domain_config = &mut ctx.accounts.domain_config.load_init()?;
         domain_config.rp_id_hash = hash::hash(args.rp_id.as_bytes()).to_bytes();
 
-        let rp_id = args.rp_id.as_bytes();
-        require!(
-            rp_id.len() <= MAX_RP_ID_LEN,
-            MultisigError::MaxLengthExceeded
-        );
-
-        for i in 0..MAX_RP_ID_LEN {
-            if i < rp_id.len() {
-                domain_config.rp_id[i] = *rp_id.get(i).ok_or(MultisigError::MaxLengthExceeded)?;
-            } else {
-                domain_config.rp_id[i] = 0;
-            }
-        }
-        domain_config.rp_id_length = rp_id.len().try_into()?;
+        domain_config.write_metadata_url(args.metadata_url)?;
+        domain_config.write_rp_id(args.rp_id)?;
         domain_config.write_origins(args.origins)?;
         domain_config.authority = args.authority;
         domain_config.bump = ctx.bumps.domain_config;

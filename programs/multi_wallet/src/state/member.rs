@@ -3,7 +3,7 @@ use bytemuck::{Pod, Zeroable};
 
 use crate::{
     error::MultisigError,
-    state::{KeyType, Permissions, UserMutArgs},
+    state::{DelegateMutArgs, KeyType, Permissions},
 };
 
 use super::{Secp256r1Pubkey, Secp256r1VerifyArgs, COMPRESSED_PUBKEY_SERIALIZED_SIZE};
@@ -122,21 +122,21 @@ pub enum DelegateOp {
 pub struct MemberWithAddPermissionsArgs {
     pub member: Member,
     pub verify_args: Option<Secp256r1VerifyArgs>,
-    pub user_args: UserMutArgs,
+    pub delegate_args: DelegateMutArgs,
     pub set_as_delegate: bool,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq)]
 pub struct MemberKeyWithRemovePermissionsArgs {
     pub member_key: MemberKey,
-    pub user_args: UserMutArgs,
+    pub delegate_args: DelegateMutArgs,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Debug)]
 pub struct MemberKeyWithEditPermissionsArgs {
     pub member_key: MemberKey,
     pub permissions: Permissions,
-    pub user_args: Option<UserMutArgs>,
+    pub delegate_args: Option<DelegateMutArgs>,
     pub delegate_operation: DelegateOp,
 }
 

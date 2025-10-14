@@ -1,4 +1,6 @@
-import { address } from "gill";
+import { address, getAddressEncoder, getU64Encoder } from "gill";
+import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
+import { nativeTransferIntent, tokenTransferIntent } from "../instructions";
 import {
   signMessage as signPasskeyMessage,
   signTransaction as signPasskeyTransaction,
@@ -12,8 +14,8 @@ import {
 import { Secp256r1Key } from "../types";
 import {
   createPopUp,
+  fetchDelegateData,
   fetchSettingsData,
-  fetchUserData,
   getFeePayer,
   getMultiWalletFromSettings,
   getSettingsFromIndex,
@@ -82,19 +84,19 @@ export function createRevibaseAdapter({
         !authResponse.additionalInfo?.walletAddress ||
         !authResponse.additionalInfo.settingsIndex
       ) {
-        const userData = await fetchUserData(
+        const delegateData = await fetchDelegateData(
           new Secp256r1Key(authResponse.signer)
         );
-        if (userData.settingsIndex.__option === "None") {
+        if (delegateData.settingsIndex.__option === "None") {
           throw Error("User has no delegated wallet");
         }
         const settings = await getSettingsFromIndex(
-          userData.settingsIndex.value
+          delegateData.settingsIndex.value
         );
         this.publicKey = (
           await getMultiWalletFromSettings(settings)
         ).toString();
-        this.index = Number(userData.settingsIndex.value);
+        this.index = Number(delegateData.settingsIndex.value);
       } else {
         this.publicKey = authResponse.additionalInfo.walletAddress;
         this.index = authResponse.additionalInfo.settingsIndex;
@@ -133,6 +135,111 @@ export function createRevibaseAdapter({
         response: input.authResponse,
       });
       return verified;
+    },
+    signAndSendNativeTransferIntent: async function (input) {
+      const signedTx = await signPasskeyTransaction({
+        transactionActionType: "transfer_intent",
+        transactionAddress: SYSTEM_PROGRAM_ADDRESS.toString(),
+        transactionMessageBytes: new Uint8Array([
+          ...getU64Encoder().encode(input.amount),
+          ...getAddressEncoder().encode(input.destination),
+          ...getAddressEncoder().encode(SYSTEM_PROGRAM_ADDRESS),
+        ]),
+        additionalInfo,
+      });
+      let index: number;
+      if (
+        !signedTx.additionalInfo?.walletAddress ||
+        !signedTx.additionalInfo.settingsIndex
+      ) {
+        const delegateData = await fetchDelegateData(
+          new Secp256r1Key(signedTx.signer)
+        );
+        if (delegateData.settingsIndex.__option === "None") {
+          throw Error("User has no delegated wallet");
+        }
+        index = Number(delegateData.settingsIndex.value);
+      } else {
+        index = signedTx.additionalInfo.settingsIndex;
+      }
+      const [settingsData, payer] = await Promise.all([
+        fetchSettingsData(index),
+        getFeePayer(),
+      ]);
+      const transactionManagerSigner = await resolveTransactionManagerSigner({
+        memberKey: signedTx.signer,
+        settingsData,
+        authorizedClients,
+      });
+      const ixs = await nativeTransferIntent({
+        index,
+        amount: input.amount,
+        signers: [
+          new Secp256r1Key(signedTx.signer, signedTx),
+          ...(transactionManagerSigner ? [transactionManagerSigner] : []),
+        ],
+        destination: input.destination,
+        compressed: settingsData.isCompressed,
+      });
+      return await sendNonBundleTransaction(
+        ixs,
+        payer,
+        ADDRESS_BY_LOOKUP_TABLE_ADDRESS
+      );
+    },
+    signAndSendTokenTransferIntent: async function (input) {
+      const signedTx = await signPasskeyTransaction({
+        transactionActionType: "transfer_intent",
+        transactionAddress: input.tokenProgram.toString(),
+        transactionMessageBytes: new Uint8Array([
+          ...getU64Encoder().encode(input.amount),
+          ...getAddressEncoder().encode(input.destination),
+          ...getAddressEncoder().encode(input.mint),
+        ]),
+        additionalInfo,
+      });
+      let index: number;
+      if (
+        !signedTx.additionalInfo?.walletAddress ||
+        !signedTx.additionalInfo.settingsIndex
+      ) {
+        const delegateData = await fetchDelegateData(
+          new Secp256r1Key(signedTx.signer)
+        );
+        if (delegateData.settingsIndex.__option === "None") {
+          throw Error("User has no delegated wallet");
+        }
+        index = Number(delegateData.settingsIndex.value);
+      } else {
+        index = signedTx.additionalInfo.settingsIndex;
+      }
+      const [settingsData, payer] = await Promise.all([
+        fetchSettingsData(index),
+        getFeePayer(),
+      ]);
+
+      const transactionManagerSigner = await resolveTransactionManagerSigner({
+        memberKey: signedTx.signer,
+        settingsData,
+        authorizedClients: authorizedClients,
+      });
+      const ixs = await tokenTransferIntent({
+        index,
+        amount: input.amount,
+        signers: [
+          new Secp256r1Key(signedTx.signer, signedTx),
+          ...(transactionManagerSigner ? [transactionManagerSigner] : []),
+        ],
+        destination: input.destination,
+        mint: input.mint,
+        tokenProgram: input.tokenProgram,
+        compressed: settingsData.isCompressed,
+      });
+      return await sendNonBundleTransaction(
+        ixs,
+        payer,
+        ADDRESS_BY_LOOKUP_TABLE_ADDRESS
+      );
     },
     signAndSendTransaction: async function (input) {
       if (!this.member || !this.index || !this.publicKey) {

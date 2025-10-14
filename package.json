@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
-    "@lightprotocol/stateless.js": "^0.22.0",
+    "@lightprotocol/stateless.js": "0.22.0",
     "@noble/curves": "1.9.7",
     "@noble/hashes": "1.8.0",
     "@revibase/wallet-sdk": "workspace:*",

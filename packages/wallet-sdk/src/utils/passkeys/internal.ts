@@ -19,6 +19,7 @@ import { convertSignatureDERtoRS, createPopUp } from "./helper";
 let activeMessageHandler: ((event: MessageEvent) => void) | null = null;
 const HEARTBEAT_INTERVAL = 2000;
 const TIMEOUT_BUFFER = 3000;
+const DEFAULT_TIMEOUT = 5 * 60 * 1000;
 
 export async function openAuthUrl({
   authUrl,
@@ -26,7 +27,7 @@ export async function openAuthUrl({
   hints,
   signer,
   popUp = null,
-  timeout = 2 * 60 * 1000, // 2 minutes default timeout
+  timeout = DEFAULT_TIMEOUT,
   debug = false,
   data,
 }: {
@@ -58,7 +59,7 @@ export async function openAuthUrl({
     }, 500);
 
     const globalTimeout = setTimeout(() => {
-      log("Global timeout reached.");
+      log("Authentication timeout.");
       cleanUp();
       reject(new Error("Authentication timed out"));
     }, timeout);
@@ -247,5 +248,6 @@ export async function parseAuthenticationResponse(
     domainConfig,
     authData,
     signature: convertedSignature,
+    additionalInfo: payload.additionalInfo,
   };
 }

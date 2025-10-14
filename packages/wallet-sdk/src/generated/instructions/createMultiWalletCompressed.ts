@@ -43,22 +43,22 @@ import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
+  getDelegateMutArgsDecoder,
+  getDelegateMutArgsEncoder,
   getProofArgsDecoder,
   getProofArgsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
   getSettingsCreationArgsDecoder,
   getSettingsCreationArgsEncoder,
-  getUserMutArgsDecoder,
-  getUserMutArgsEncoder,
+  type DelegateMutArgs,
+  type DelegateMutArgsArgs,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
   type SettingsCreationArgs,
   type SettingsCreationArgsArgs,
-  type UserMutArgs,
-  type UserMutArgsArgs,
 } from "../types";
 
 export const CREATE_MULTI_WALLET_COMPRESSED_DISCRIMINATOR = new Uint8Array([
@@ -123,7 +123,7 @@ export type CreateMultiWalletCompressedInstructionData = {
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
   compressedProofArgs: ProofArgs;
   settingsCreation: SettingsCreationArgs;
-  userMutArgs: UserMutArgs;
+  delegateMutArgs: DelegateMutArgs;
   settingsIndex: bigint;
   setAsDelegate: boolean;
 };
@@ -132,7 +132,7 @@ export type CreateMultiWalletCompressedInstructionDataArgs = {
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
   compressedProofArgs: ProofArgsArgs;
   settingsCreation: SettingsCreationArgsArgs;
-  userMutArgs: UserMutArgsArgs;
+  delegateMutArgs: DelegateMutArgsArgs;
   settingsIndex: number | bigint;
   setAsDelegate: boolean;
 };
@@ -147,7 +147,7 @@ export function getCreateMultiWalletCompressedInstructionDataEncoder(): Encoder<
       ],
       ["compressedProofArgs", getProofArgsEncoder()],
       ["settingsCreation", getSettingsCreationArgsEncoder()],
-      ["userMutArgs", getUserMutArgsEncoder()],
+      ["delegateMutArgs", getDelegateMutArgsEncoder()],
       ["settingsIndex", getU128Encoder()],
       ["setAsDelegate", getBooleanEncoder()],
     ]),
@@ -164,7 +164,7 @@ export function getCreateMultiWalletCompressedInstructionDataDecoder(): Decoder<
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
     ["compressedProofArgs", getProofArgsDecoder()],
     ["settingsCreation", getSettingsCreationArgsDecoder()],
-    ["userMutArgs", getUserMutArgsDecoder()],
+    ["delegateMutArgs", getDelegateMutArgsDecoder()],
     ["settingsIndex", getU128Decoder()],
     ["setAsDelegate", getBooleanDecoder()],
   ]);
@@ -203,7 +203,7 @@ export type CreateMultiWalletCompressedInput<
   secp256r1VerifyArgs: CreateMultiWalletCompressedInstructionDataArgs["secp256r1VerifyArgs"];
   compressedProofArgs: CreateMultiWalletCompressedInstructionDataArgs["compressedProofArgs"];
   settingsCreation: CreateMultiWalletCompressedInstructionDataArgs["settingsCreation"];
-  userMutArgs: CreateMultiWalletCompressedInstructionDataArgs["userMutArgs"];
+  delegateMutArgs: CreateMultiWalletCompressedInstructionDataArgs["delegateMutArgs"];
   settingsIndex: CreateMultiWalletCompressedInstructionDataArgs["settingsIndex"];
   setAsDelegate: CreateMultiWalletCompressedInstructionDataArgs["setAsDelegate"];
   remainingAccounts: CreateMultiWalletCompressedInstructionExtraArgs["remainingAccounts"];

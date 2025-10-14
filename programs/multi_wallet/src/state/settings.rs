@@ -4,8 +4,8 @@ use super::{
 use crate::error::MultisigError;
 use crate::state::member::{Member, MemberKey};
 use crate::state::{
-    ChallengeArgs, DomainConfig, KeyType, MemberKeyWithRemovePermissionsArgs, Permission,
-    PermissionCounts, UserExtensions, SEED_MULTISIG,
+    ChallengeArgs, DelegateExtensions, DomainConfig, KeyType, MemberKeyWithRemovePermissionsArgs,
+    Permission, PermissionCounts, SEED_MULTISIG,
 };
 use anchor_lang::prelude::*;
 use std::collections::{HashMap, HashSet};
@@ -240,7 +240,7 @@ pub trait MultisigSettings {
                 .has(Permission::IsTransactionManager);
 
             require!(
-                member.user_args.data.is_permanent_member == is_perm
+                member.delegate_args.data.is_permanent_member == is_perm
                     && (!is_perm || member.set_as_delegate),
                 MultisigError::PermanentMemberNotAllowed
             );
@@ -250,13 +250,13 @@ pub trait MultisigSettings {
                     !member.set_as_delegate,
                     MultisigError::TransactionManagerNotAllowed
                 );
-                let user_extension_loader = UserExtensions::extract_user_extension(
+                let delegate_extension_loader = DelegateExtensions::extract_delegate_extension(
                     member.member.pubkey,
                     remaining_accounts,
                 )?;
 
                 require!(
-                    user_extension_loader.load()?.api_url_len > 0,
+                    delegate_extension_loader.load()?.api_url_len > 0,
                     MultisigError::TransactionManagerNotAllowed
                 );
             }
@@ -273,7 +273,7 @@ pub trait MultisigSettings {
                 }
                 KeyType::Secp256r1 => {
                     let domain_config_key = member
-                        .user_args
+                        .delegate_args
                         .data
                         .domain_config
                         .ok_or(MultisigError::DomainConfigIsMissing)?;
@@ -375,9 +375,9 @@ pub trait MultisigSettings {
 
             match member.delegate_operation {
                 crate::state::DelegateOp::Add | crate::state::DelegateOp::Remove => {
-                    let user_args = member
-                        .user_args
-                        .ok_or(MultisigError::MissingUserDelegateArgs)?;
+                    let delegate_args = member
+                        .delegate_args
+                        .ok_or(MultisigError::MissingDelegateArgs)?;
 
                     if member.delegate_operation == crate::state::DelegateOp::Add {
                         members_to_create_delegate_account.push(MemberWithAddPermissionsArgs {
@@ -386,14 +386,14 @@ pub trait MultisigSettings {
                                 permissions: member.permissions,
                             },
                             verify_args: None,
-                            user_args,
+                            delegate_args,
                             set_as_delegate: true,
                         });
                     } else {
                         members_to_close_delegate_account.push(
                             MemberKeyWithRemovePermissionsArgs {
                                 member_key: pubkey,
-                                user_args,
+                                delegate_args,
                             },
                         );
                     }

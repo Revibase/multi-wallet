@@ -5,10 +5,10 @@ use anchor_lang::prelude::*;
 pub struct EditDomainConfigArgs {
     new_origins: Option<Vec<String>>,
     new_authority: Option<Pubkey>,
+    new_metadata_url: Option<String>,
 }
 
 #[derive(Accounts)]
-#[instruction(args: EditDomainConfigArgs)]
 pub struct EditDomainConfig<'info> {
     #[account(mut)]
     pub domain_config: AccountLoader<'info, DomainConfig>,
@@ -27,6 +27,9 @@ impl<'info> EditDomainConfig<'info> {
         }
         if args.new_authority.is_some() {
             domain_config.authority = args.new_authority.unwrap();
+        }
+        if args.new_metadata_url.is_some() {
+            domain_config.write_metadata_url(args.new_metadata_url.unwrap())?;
         }
 
         Ok(())

@@ -1,15 +1,18 @@
 use crate::{
     error::MultisigError,
     state::{
-        CompressedSettings, Ops, ProofArgs, Settings, SettingsMutArgs, User, SEED_MULTISIG,
+        CompressedSettings, Delegate, Ops, ProofArgs, Settings, SettingsMutArgs, SEED_MULTISIG,
         SEED_VAULT,
     },
     ConfigAction, LIGHT_CPI_SIGNER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::{
-    account::LightAccount,
-    cpi::{CpiAccounts, CpiInputs},
+    cpi::{
+        v1::{CpiAccounts, LightSystemProgramCpi},
+        InvokeLightSystemProgram, LightCpiInstruction,
+    },
+    LightAccount,
 };
 use std::vec;
 
@@ -107,15 +110,16 @@ impl<'info> ChangeConfigCompressed<'info> {
             LIGHT_CPI_SIGNER,
         );
 
-        let mut account_infos = User::handle_user_delegate_accounts(delegate_ops, settings_index)?;
-        account_infos.insert(0, settings.to_account_info().map_err(ProgramError::from)?);
+        let account_infos = Delegate::handle_delegate_accounts(delegate_ops, settings_index)?;
 
-        if account_infos.len() > 0 {
-            let cpi_inputs = CpiInputs::new(compressed_proof_args.proof, account_infos);
-            cpi_inputs
-                .invoke_light_system_program(light_cpi_accounts)
-                .map_err(ProgramError::from)?;
+        let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof)
+            .with_light_account(settings)?;
+
+        for f in account_infos {
+            cpi = cpi.with_light_account(f)?;
         }
+
+        cpi.invoke(light_cpi_accounts)?;
 
         Ok(())
     }

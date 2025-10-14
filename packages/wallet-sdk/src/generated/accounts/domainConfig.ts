@@ -59,7 +59,8 @@ export type DomainConfig = {
   rpIdLength: number;
   rpId: ReadonlyUint8Array;
   origins: ReadonlyUint8Array;
-  padding: ReadonlyUint8Array;
+  metadataUrlLength: number;
+  metadataUrl: ReadonlyUint8Array;
 };
 
 export type DomainConfigArgs = {
@@ -71,7 +72,8 @@ export type DomainConfigArgs = {
   rpIdLength: number;
   rpId: ReadonlyUint8Array;
   origins: ReadonlyUint8Array;
-  padding: ReadonlyUint8Array;
+  metadataUrlLength: number;
+  metadataUrl: ReadonlyUint8Array;
 };
 
 export function getDomainConfigEncoder(): FixedSizeEncoder<DomainConfigArgs> {
@@ -85,8 +87,9 @@ export function getDomainConfigEncoder(): FixedSizeEncoder<DomainConfigArgs> {
       ["isDisabled", getU8Encoder()],
       ["rpIdLength", getU8Encoder()],
       ["rpId", fixEncoderSize(getBytesEncoder(), 255)],
-      ["origins", fixEncoderSize(getBytesEncoder(), 512)],
-      ["padding", fixEncoderSize(getBytesEncoder(), 2)],
+      ["origins", fixEncoderSize(getBytesEncoder(), 413)],
+      ["metadataUrlLength", getU8Encoder()],
+      ["metadataUrl", fixEncoderSize(getBytesEncoder(), 100)],
     ]),
     (value) => ({ ...value, discriminator: DOMAIN_CONFIG_DISCRIMINATOR })
   );
@@ -102,8 +105,9 @@ export function getDomainConfigDecoder(): FixedSizeDecoder<DomainConfig> {
     ["isDisabled", getU8Decoder()],
     ["rpIdLength", getU8Decoder()],
     ["rpId", fixDecoderSize(getBytesDecoder(), 255)],
-    ["origins", fixDecoderSize(getBytesDecoder(), 512)],
-    ["padding", fixDecoderSize(getBytesDecoder(), 2)],
+    ["origins", fixDecoderSize(getBytesDecoder(), 413)],
+    ["metadataUrlLength", getU8Decoder()],
+    ["metadataUrl", fixDecoderSize(getBytesDecoder(), 100)],
   ]);
 }
 

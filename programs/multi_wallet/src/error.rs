@@ -59,11 +59,11 @@ pub enum MultisigError {
     #[msg("A required account is missing from the transaction context.")]
     MissingAccount,
 
-    #[msg("A user delegate mutation args is required when the initial member has requested delegate permissions.")]
-    MissingUserDelegateArgs,
+    #[msg("A delegate mutation args is required when the initial member has requested delegate permissions.")]
+    MissingDelegateArgs,
 
-    #[msg("A user is currently delegated to another wallet.")]
-    UserAlreadyDelegated,
+    #[msg("A member is currently delegated to another wallet.")]
+    AlreadyDelegated,
 
     #[msg("At least one signer must have execute permissions to proceed.")]
     InsufficientSignerWithExecutePermission,

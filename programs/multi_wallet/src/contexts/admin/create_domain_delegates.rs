@@ -1,34 +1,37 @@
 use crate::{
     error::MultisigError,
     state::{
-        CompressedSettings, CreateUserArgs, DomainConfig, Member, MemberKey, MultisigSettings,
-        Permission, Permissions, ProofArgs, Secp256r1Pubkey, SettingsMutArgs, User,
-        UserCreationArgs, UserExtensions,
+        CompressedSettings, Delegate, DelegateCreationArgs, DelegateExtensions, DomainConfig,
+        Member, MemberKey, MultisigSettings, Permission, Permissions, ProofArgs, Secp256r1Pubkey,
+        SettingsMutArgs,
     },
     LIGHT_CPI_SIGNER,
 };
 use anchor_lang::prelude::*;
 use light_sdk::{
-    account::LightAccount,
-    cpi::{CpiAccounts, CpiInputs},
+    cpi::{
+        v1::{CpiAccounts, LightSystemProgramCpi},
+        InvokeLightSystemProgram, LightCpiInstruction,
+    },
+    LightAccount,
 };
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct LinkWalletArgs {
     pub settings_mut_args: SettingsMutArgs,
-    pub user_extension_authority: Option<Pubkey>,
+    pub delegate_extension_authority: Option<Pubkey>,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct CreateDomainUserArgs {
+pub struct CreateDomainDelegateArg {
     pub member: Secp256r1Pubkey,
     pub is_permanent_member: bool,
-    pub user_creation_args: UserCreationArgs,
+    pub delegate_creation_args: DelegateCreationArgs,
     pub link_wallet_args: Option<LinkWalletArgs>,
 }
 
 #[derive(Accounts)]
-pub struct CreateDomainUsers<'info> {
+pub struct CreateDomainDelegates<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     pub domain_config: AccountLoader<'info, DomainConfig>,
@@ -38,11 +41,11 @@ pub struct CreateDomainUsers<'info> {
     pub authority: Signer<'info>,
 }
 
-impl<'info> CreateDomainUsers<'info> {
+impl<'info> CreateDomainDelegates<'info> {
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
         compressed_proof_args: ProofArgs,
-        create_user_args: Vec<CreateDomainUserArgs>,
+        create_delegate_args: Vec<CreateDomainDelegateArg>,
     ) -> Result<()> {
         let light_cpi_accounts = CpiAccounts::new(
             &ctx.accounts.payer,
@@ -51,12 +54,13 @@ impl<'info> CreateDomainUsers<'info> {
             LIGHT_CPI_SIGNER,
         );
 
-        let mut account_infos = vec![];
         let mut new_addressess = vec![];
 
-        for args in create_user_args {
+        let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof);
+
+        for args in create_delegate_args {
             let mut settings_index = None;
-            //allow domain authority to directly link domain user to a particular wallet owned by the domain authority
+            //allow domain authority to directly link domain delegate to a particular wallet owned by the domain authority
             if let Some(link_wallet_args) = args.link_wallet_args {
                 let mut settings_account = LightAccount::<'_, CompressedSettings>::new_mut(
                     &crate::ID,
@@ -93,14 +97,19 @@ impl<'info> CreateDomainUsers<'info> {
                     permissions.push(Permission::IsPermanentMember);
                 }
 
-                // If user_extensions is provided, ensure it has a valid API URL and add the authority as a transaction manager
-                if let Some(user_extension_authority) = link_wallet_args.user_extension_authority {
-                    let member_key = MemberKey::convert_ed25519(&user_extension_authority)?;
-                    let user_extension_account =
-                        UserExtensions::extract_user_extension(member_key, ctx.remaining_accounts)?;
-                    let user_extension = user_extension_account.load()?;
+                // If delegate_extensions is provided, ensure it has a valid API URL and add the authority as a transaction manager
+                if let Some(delegate_extension_authority) =
+                    link_wallet_args.delegate_extension_authority
+                {
+                    let member_key = MemberKey::convert_ed25519(&delegate_extension_authority)?;
+                    let delegate_extension_account =
+                        DelegateExtensions::extract_delegate_extension(
+                            member_key,
+                            ctx.remaining_accounts,
+                        )?;
+                    let delegate_extension = delegate_extension_account.load()?;
                     require!(
-                        user_extension.api_url_len > 0,
+                        delegate_extension.api_url_len > 0,
                         MultisigError::InvalidAccount
                     );
                     new_members.push(Member {
@@ -123,33 +132,26 @@ impl<'info> CreateDomainUsers<'info> {
 
                 settings_account.invariant()?;
 
-                account_infos.push(
-                    settings_account
-                        .to_account_info()
-                        .map_err(ProgramError::from)?,
-                );
+                cpi = cpi.with_light_account(settings_account)?;
             }
 
-            let (account_info, new_address_params) = User::create_user_account(
-                args.user_creation_args,
+            let (account_info, new_address_params) = Delegate::create_delegate_account(
+                args.delegate_creation_args,
                 &light_cpi_accounts,
-                CreateUserArgs {
+                Delegate {
                     member: MemberKey::convert_secp256r1(&args.member)?,
                     is_permanent_member: args.is_permanent_member,
+                    domain_config: Some(ctx.accounts.domain_config.key()),
+                    settings_index,
                 },
-                Some(ctx.accounts.domain_config.key()),
-                settings_index,
+                0,
             )?;
-            account_infos.push(account_info);
+            cpi = cpi.with_light_account(account_info)?;
             new_addressess.push(new_address_params);
         }
+        cpi.with_new_addresses(&new_addressess)
+            .invoke(light_cpi_accounts)?;
 
-        let cpi_inputs =
-            CpiInputs::new_with_address(compressed_proof_args.proof, account_infos, new_addressess);
-
-        cpi_inputs
-            .invoke_light_system_program(light_cpi_accounts)
-            .map_err(ProgramError::from)?;
         Ok(())
     }
 }

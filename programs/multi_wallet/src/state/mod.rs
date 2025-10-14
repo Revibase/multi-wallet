@@ -10,11 +10,11 @@ pub use seeds::*;
 pub mod transaction_buffer;
 pub use transaction_buffer::*;
 
-pub mod user;
-pub use user::*;
+pub mod delegate;
+pub use delegate::*;
 
-pub mod user_extensions;
-pub use user_extensions::*;
+pub mod delegate_extensions;
+pub use delegate_extensions::*;
 
 pub mod member;
 pub use member::*;

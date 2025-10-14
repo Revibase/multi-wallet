@@ -13,78 +13,78 @@ import {
 } from "gill";
 import {
   type CompressedSettingsData,
+  type Delegate,
   fetchMaybeSettings,
   getCompressedSettingsDecoder,
-  getUserDecoder,
+  getDelegateDecoder,
   MULTI_WALLET_PROGRAM_ADDRESS,
   Secp256r1Key,
-  type User,
 } from "../..";
+import { ADDRESS_TREE_VERSION } from "../consts";
 import { getSettingsFromIndex } from "../helper";
 import { getSolanaRpc } from "../initialize";
 import { getCompressedAccount } from "./internal";
 
-export function getUserAddress(member: Address | Secp256r1Key) {
-  const { tree } = getDefaultAddressTreeInfo();
-  if (member instanceof Secp256r1Key) {
-    const addressSeed = deriveAddressSeed(
-      [
-        new Uint8Array(getUtf8Encoder().encode("delegate")),
-        member.toTruncatedBuffer(),
-      ],
-      new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS)
-    );
-    return createBN254(deriveAddress(addressSeed, tree).toString(), "base58");
-  } else {
-    const addressSeed = deriveAddressSeed(
-      [
-        new Uint8Array(getUtf8Encoder().encode("delegate")),
-        new Uint8Array(getAddressEncoder().encode(member)),
-      ],
-      new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS)
-    );
-    return createBN254(deriveAddress(addressSeed, tree).toString(), "base58");
-  }
+export function getDelegateAddress(member: Address | Secp256r1Key) {
+  const addressSeed = deriveAddressSeed(
+    [
+      new Uint8Array(getUtf8Encoder().encode("delegate")),
+      member instanceof Secp256r1Key
+        ? member.toTruncatedBuffer()
+        : new Uint8Array(getAddressEncoder().encode(member)),
+      new Uint8Array(getUtf8Encoder().encode(ADDRESS_TREE_VERSION)),
+    ],
+    new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS.toString())
+  );
+  return createBN254(
+    deriveAddress(
+      addressSeed,
+      new PublicKey(getDefaultAddressTreeInfo().tree)
+    ).toString(),
+    "base58"
+  );
 }
 
-export async function fetchUserData(
+export async function fetchDelegateData(
   member: Address | Secp256r1Key,
   cachedCompressedAccounts?: Map<string, any>
-): Promise<User> {
-  const result = await fetchMaybeUserData(member, cachedCompressedAccounts);
+): Promise<Delegate> {
+  const result = await fetchMaybeDelegateData(member, cachedCompressedAccounts);
   if (!result) {
     throw new Error("User cannot be found.");
   }
   return result;
 }
 
-export async function fetchMaybeUserData(
+export async function fetchMaybeDelegateData(
   member: Address | Secp256r1Key,
   cachedCompressedAccounts?: Map<string, any>
-): Promise<User | null> {
-  const userAddress = getUserAddress(member);
+): Promise<Delegate | null> {
+  const delegateAddress = getDelegateAddress(member);
   const result = await getCompressedAccount(
-    userAddress,
+    delegateAddress,
     cachedCompressedAccounts
   );
   if (!result?.data?.data) {
     return null;
   }
-  return getUserDecoder().decode(result.data.data);
+  return getDelegateDecoder().decode(result.data.data);
 }
 
 export function getCompressedSettingsAddressFromIndex(index: number | bigint) {
-  const { tree } = getDefaultAddressTreeInfo();
-
   const addressSeed = deriveAddressSeed(
     [
       new Uint8Array(getUtf8Encoder().encode("multi_wallet")),
       new Uint8Array(getU128Encoder().encode(index)),
+      new Uint8Array(getUtf8Encoder().encode(ADDRESS_TREE_VERSION)),
     ],
     new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS)
   );
   return createBN254(
-    deriveAddress(addressSeed, new PublicKey(tree)).toString(),
+    deriveAddress(
+      addressSeed,
+      new PublicKey(getDefaultAddressTreeInfo().tree)
+    ).toString(),
     "base58"
   );
 }

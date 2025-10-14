@@ -30,31 +30,31 @@ import {
   type OptionOrNullable,
 } from "gill";
 import {
-  getUserCreationArgsDecoder,
-  getUserCreationArgsEncoder,
-  type UserCreationArgs,
-  type UserCreationArgsArgs,
+  getDelegateCreationArgsDecoder,
+  getDelegateCreationArgsEncoder,
+  type DelegateCreationArgs,
+  type DelegateCreationArgsArgs,
 } from ".";
 
-export type CreateGlobalUserArgs = {
+export type CreateDelegateArg = {
   member: Address;
   isPermanentMember: boolean;
-  userCreationArgs: UserCreationArgs;
+  delegateCreationArgs: DelegateCreationArgs;
   apiUrl: Option<string>;
 };
 
-export type CreateGlobalUserArgsArgs = {
+export type CreateDelegateArgArgs = {
   member: Address;
   isPermanentMember: boolean;
-  userCreationArgs: UserCreationArgsArgs;
+  delegateCreationArgs: DelegateCreationArgsArgs;
   apiUrl: OptionOrNullable<string>;
 };
 
-export function getCreateGlobalUserArgsEncoder(): Encoder<CreateGlobalUserArgsArgs> {
+export function getCreateDelegateArgEncoder(): Encoder<CreateDelegateArgArgs> {
   return getStructEncoder([
     ["member", getAddressEncoder()],
     ["isPermanentMember", getBooleanEncoder()],
-    ["userCreationArgs", getUserCreationArgsEncoder()],
+    ["delegateCreationArgs", getDelegateCreationArgsEncoder()],
     [
       "apiUrl",
       getOptionEncoder(addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())),
@@ -62,11 +62,11 @@ export function getCreateGlobalUserArgsEncoder(): Encoder<CreateGlobalUserArgsAr
   ]);
 }
 
-export function getCreateGlobalUserArgsDecoder(): Decoder<CreateGlobalUserArgs> {
+export function getCreateDelegateArgDecoder(): Decoder<CreateDelegateArg> {
   return getStructDecoder([
     ["member", getAddressDecoder()],
     ["isPermanentMember", getBooleanDecoder()],
-    ["userCreationArgs", getUserCreationArgsDecoder()],
+    ["delegateCreationArgs", getDelegateCreationArgsDecoder()],
     [
       "apiUrl",
       getOptionDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
@@ -74,12 +74,12 @@ export function getCreateGlobalUserArgsDecoder(): Decoder<CreateGlobalUserArgs> 
   ]);
 }
 
-export function getCreateGlobalUserArgsCodec(): Codec<
-  CreateGlobalUserArgsArgs,
-  CreateGlobalUserArgs
+export function getCreateDelegateArgCodec(): Codec<
+  CreateDelegateArgArgs,
+  CreateDelegateArg
 > {
   return combineCodec(
-    getCreateGlobalUserArgsEncoder(),
-    getCreateGlobalUserArgsDecoder()
+    getCreateDelegateArgEncoder(),
+    getCreateDelegateArgDecoder()
   );
 }

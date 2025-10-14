@@ -1,3 +1,5 @@
+import { featureFlags, VERSION } from "@lightprotocol/stateless.js";
+
 export const JITO_TIP_ACCOUNTS = [
   "HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe",
   "ADaUMid9yfUytqMBgopwjb2DTLSokTSzL1zt6iGPaS49",
@@ -9,4 +11,6 @@ export const JITO_TIP_ACCOUNTS = [
   "DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL",
 ];
 
-// featureFlags.version = VERSION.V2;
+featureFlags.version = VERSION.V2;
+
+export const ADDRESS_TREE_VERSION = "v1";

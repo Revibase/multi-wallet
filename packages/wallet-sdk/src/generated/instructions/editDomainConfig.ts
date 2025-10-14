@@ -86,11 +86,13 @@ export type EditDomainConfigInstructionData = {
   discriminator: ReadonlyUint8Array;
   newOrigins: Option<Array<string>>;
   newAuthority: Option<Address>;
+  newMetadataUrl: Option<string>;
 };
 
 export type EditDomainConfigInstructionDataArgs = {
   newOrigins: OptionOrNullable<Array<string>>;
   newAuthority: OptionOrNullable<Address>;
+  newMetadataUrl: OptionOrNullable<string>;
 };
 
 export function getEditDomainConfigInstructionDataEncoder(): Encoder<EditDomainConfigInstructionDataArgs> {
@@ -106,6 +108,12 @@ export function getEditDomainConfigInstructionDataEncoder(): Encoder<EditDomainC
         ),
       ],
       ["newAuthority", getOptionEncoder(getAddressEncoder())],
+      [
+        "newMetadataUrl",
+        getOptionEncoder(
+          addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())
+        ),
+      ],
     ]),
     (value) => ({ ...value, discriminator: EDIT_DOMAIN_CONFIG_DISCRIMINATOR })
   );
@@ -121,6 +129,10 @@ export function getEditDomainConfigInstructionDataDecoder(): Decoder<EditDomainC
       ),
     ],
     ["newAuthority", getOptionDecoder(getAddressDecoder())],
+    [
+      "newMetadataUrl",
+      getOptionDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
+    ],
   ]);
 }
 
@@ -148,6 +160,7 @@ export type EditDomainConfigInput<
   systemProgram?: Address<TAccountSystemProgram>;
   newOrigins: EditDomainConfigInstructionDataArgs["newOrigins"];
   newAuthority: EditDomainConfigInstructionDataArgs["newAuthority"];
+  newMetadataUrl: EditDomainConfigInstructionDataArgs["newMetadataUrl"];
   remainingAccounts: EditDomainConfigInstructionExtraArgs["remainingAccounts"];
 };
 

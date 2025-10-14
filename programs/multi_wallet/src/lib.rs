@@ -41,42 +41,45 @@ pub mod multi_wallet {
         EditDomainConfig::process(ctx, args)
     }
 
-    /// Deletes an existing domain configuration used for WebAuthn (secp256r1) verification.
-    #[instruction(discriminator = 2)]
-    pub fn delete_domain_config(ctx: Context<DeleteDomainConfig>) -> Result<()> {
-        DeleteDomainConfig::process(ctx)
-    }
-
     /// Enables or disables a domain configuration. Useful for temporary suspension.
-    #[instruction(discriminator = 3)]
+    #[instruction(discriminator = 2)]
     pub fn disable_domain_config(ctx: Context<DisableDomainConfig>, disable: bool) -> Result<()> {
         DisableDomainConfig::process(ctx, disable)
     }
 
     /// Create a global counter to index all multi wallets
-    #[instruction(discriminator = 4)]
+    #[instruction(discriminator = 3)]
     pub fn create_global_counter(ctx: Context<CreateGlobalCounter>) -> Result<()> {
         CreateGlobalCounter::process(ctx)
     }
 
-    /// Create User Account for WebAuthn
-    #[instruction(discriminator = 5)]
-    pub fn create_domain_users<'info>(
-        ctx: Context<'_, '_, 'info, 'info, CreateDomainUsers<'info>>,
+    /// Create Domain Delegate Account for WebAuthn
+    #[instruction(discriminator = 4)]
+    pub fn create_domain_delegates<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateDomainDelegates<'info>>,
         compressed_proof_args: ProofArgs,
-        create_user_args: Vec<CreateDomainUserArgs>,
+        create_delegate_args: Vec<CreateDomainDelegateArg>,
     ) -> Result<()> {
-        CreateDomainUsers::process(ctx, compressed_proof_args, create_user_args)
+        CreateDomainDelegates::process(ctx, compressed_proof_args, create_delegate_args)
     }
 
-    /// Create Global User Account (for linking a user to a multisig wallet)
-    #[instruction(discriminator = 6)]
-    pub fn create_global_users<'info>(
-        ctx: Context<'_, '_, 'info, 'info, CreateGlobalUsers<'info>>,
+    /// Create Delegate Account (for linking a pubkey to a multisig wallet)
+    #[instruction(discriminator = 5)]
+    pub fn create_delegates<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateDelegates<'info>>,
         compressed_proof_args: ProofArgs,
-        create_user_args: Vec<CreateGlobalUserArgs>,
+        create_delegate_args: Vec<CreateDelegateArg>,
     ) -> Result<()> {
-        CreateGlobalUsers::process(ctx, compressed_proof_args, create_user_args)
+        CreateDelegates::process(ctx, compressed_proof_args, create_delegate_args)
+    }
+
+    /// Edit Delegate extension
+    #[instruction(discriminator = 6)]
+    pub fn edit_delegate_extension<'info>(
+        ctx: Context<'_, '_, 'info, 'info, EditDelegateExtensions<'info>>,
+        args: EditDelegateExtensionsArgs,
+    ) -> Result<()> {
+        EditDelegateExtensions::process(ctx, args)
     }
 
     /// Creates a new multi-wallet with the specified permissions and ownership.
@@ -85,7 +88,7 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, CreateMultiWallet<'info>>,
         settings_index: u128,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        user_mut_args: UserMutArgs,
+        delegate_mut_args: DelegateMutArgs,
         compressed_proof_args: ProofArgs,
         set_as_delegate: bool,
     ) -> Result<()> {
@@ -94,7 +97,7 @@ pub mod multi_wallet {
             settings_index,
             secp256r1_verify_args,
             compressed_proof_args,
-            user_mut_args,
+            delegate_mut_args,
             set_as_delegate,
         )
     }
@@ -217,7 +220,7 @@ pub mod multi_wallet {
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         compressed_proof_args: ProofArgs,
         settings_creation: SettingsCreationArgs,
-        user_mut_args: UserMutArgs,
+        delegate_mut_args: DelegateMutArgs,
         settings_index: u128,
         set_as_delegate: bool,
     ) -> Result<()> {
@@ -226,7 +229,7 @@ pub mod multi_wallet {
             secp256r1_verify_args,
             compressed_proof_args,
             settings_creation,
-            user_mut_args,
+            delegate_mut_args,
             settings_index,
             set_as_delegate,
         )
@@ -346,12 +349,89 @@ pub mod multi_wallet {
         )
     }
 
-    /// Edit user extension
     #[instruction(discriminator = 27)]
-    pub fn edit_user_extension<'info>(
-        ctx: Context<'_, '_, 'info, 'info, EditUserExtensions<'info>>,
-        args: EditUserExtensionsArgs,
+    pub fn native_transfer_intent_compressed<'info>(
+        ctx: Context<'_, '_, 'info, 'info, NativeTransferIntentCompressed<'info>>,
+        amount: u64,
+        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
+        settings_readonly: SettingsReadonlyArgs,
+        compressed_proof_args: ProofArgs,
     ) -> Result<()> {
-        EditUserExtensions::process(ctx, args)
+        NativeTransferIntentCompressed::process(
+            ctx,
+            amount,
+            secp256r1_verify_args,
+            settings_readonly,
+            compressed_proof_args,
+        )
+    }
+
+    #[instruction(discriminator = 28)]
+    pub fn token_transfer_intent_compressed<'info>(
+        ctx: Context<'_, '_, 'info, 'info, TokenTransferIntentCompressed<'info>>,
+        amount: u64,
+        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
+        settings_readonly: SettingsReadonlyArgs,
+        compressed_proof_args: ProofArgs,
+    ) -> Result<()> {
+        TokenTransferIntentCompressed::process(
+            ctx,
+            amount,
+            secp256r1_verify_args,
+            settings_readonly,
+            compressed_proof_args,
+        )
+    }
+
+    #[instruction(discriminator = 29)]
+    pub fn native_transfer_intent<'info>(
+        ctx: Context<'_, '_, 'info, 'info, NativeTransferIntent<'info>>,
+        amount: u64,
+        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
+    ) -> Result<()> {
+        NativeTransferIntent::process(ctx, amount, secp256r1_verify_args)
+    }
+
+    #[instruction(discriminator = 30)]
+    pub fn token_transfer_intent<'info>(
+        ctx: Context<'_, '_, 'info, 'info, TokenTransferIntent<'info>>,
+        amount: u64,
+        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
+    ) -> Result<()> {
+        TokenTransferIntent::process(ctx, amount, secp256r1_verify_args)
+    }
+
+    #[instruction(discriminator = 31)]
+    pub fn migrate_compressed_delegates<'info>(
+        ctx: Context<'_, '_, 'info, 'info, MigrateCompressedDelegates<'info>>,
+        args: Delegate,
+        compressed_proof_args: ProofArgs,
+        delegate_creation_args: DelegateCreationArgs,
+    ) -> Result<()> {
+        MigrateCompressedDelegates::process(
+            ctx,
+            args,
+            compressed_proof_args,
+            delegate_creation_args,
+        )
+    }
+
+    #[instruction(discriminator = 32)]
+    pub fn migrate_compressed_settings<'info>(
+        ctx: Context<'_, '_, 'info, 'info, MigrateCompressedSettings<'info>>,
+        args: CompressedSettingsData,
+        compressed_proof_args: ProofArgs,
+        settings_creation_args: SettingsCreationArgs,
+    ) -> Result<()> {
+        MigrateCompressedSettings::process(ctx, args, compressed_proof_args, settings_creation_args)
+    }
+
+    #[instruction(discriminator = 33)]
+    pub fn migrate_delegate_extension<'info>(
+        ctx: Context<'_, '_, 'info, 'info, MigrateDelegateExtension<'info>>,
+        api_url: String,
+        member: Pubkey,
+    ) -> Result<()> {
+        MigrateDelegateExtension::process(ctx, api_url, member)
     }
 }

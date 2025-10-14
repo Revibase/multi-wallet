@@ -35,7 +35,7 @@ import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 
-export const DISABLE_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([3]);
+export const DISABLE_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([2]);
 
 export function getDisableDomainConfigDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(

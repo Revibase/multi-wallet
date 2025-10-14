@@ -83,12 +83,14 @@ export type CreateDomainConfigInstructionData = {
   rpId: string;
   origins: Array<string>;
   authority: Address;
+  metadataUrl: string;
 };
 
 export type CreateDomainConfigInstructionDataArgs = {
   rpId: string;
   origins: Array<string>;
   authority: Address;
+  metadataUrl: string;
 };
 
 export function getCreateDomainConfigInstructionDataEncoder(): Encoder<CreateDomainConfigInstructionDataArgs> {
@@ -103,6 +105,7 @@ export function getCreateDomainConfigInstructionDataEncoder(): Encoder<CreateDom
         ),
       ],
       ["authority", getAddressEncoder()],
+      ["metadataUrl", addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
     ]),
     (value) => ({ ...value, discriminator: CREATE_DOMAIN_CONFIG_DISCRIMINATOR })
   );
@@ -117,6 +120,7 @@ export function getCreateDomainConfigInstructionDataDecoder(): Decoder<CreateDom
       getArrayDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
     ],
     ["authority", getAddressDecoder()],
+    ["metadataUrl", addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
   ]);
 }
 
@@ -145,6 +149,7 @@ export type CreateDomainConfigInput<
   rpId: CreateDomainConfigInstructionDataArgs["rpId"];
   origins: CreateDomainConfigInstructionDataArgs["origins"];
   authority: CreateDomainConfigInstructionDataArgs["authority"];
+  metadataUrl: CreateDomainConfigInstructionDataArgs["metadataUrl"];
   remainingAccounts: CreateDomainConfigInstructionExtraArgs["remainingAccounts"];
 };
 

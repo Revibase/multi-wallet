@@ -2,8 +2,8 @@ import {
   changeConfig,
   convertMemberKeyToString,
   DelegateOp,
+  fetchDelegateData,
   fetchSettingsData,
-  fetchUserData,
   prepareTransactionBundle,
   prepareTransactionMessage,
   prepareTransactionSync,
@@ -66,7 +66,7 @@ export function runMemberManagementTests() {
 
       // Verify member was added
       const accountData = await fetchSettingsData(ctx.index);
-      const userData = await fetchUserData(ctx.payer.address);
+      const userData = await fetchDelegateData(ctx.payer.address);
       const settingsIndex =
         userData.settingsIndex.__option === "Some"
           ? userData.settingsIndex.value
@@ -117,7 +117,7 @@ export function runMemberManagementTests() {
         await sendTransaction(x.ixs, x.payer, x.addressLookupTableAccounts);
       }
       // Verify permissions were updated
-      const userData = await fetchUserData(ctx.payer.address);
+      const userData = await fetchDelegateData(ctx.payer.address);
       expect(userData.settingsIndex.__option).equal(
         "None",
         "Payer should be a delegate"
@@ -162,7 +162,7 @@ export function runMemberManagementTests() {
         await sendTransaction(x.ixs, x.payer, x.addressLookupTableAccounts);
       }
       // Verify permissions were updated
-      const userData = await fetchUserData(ctx.payer.address);
+      const userData = await fetchDelegateData(ctx.payer.address);
       const settingsIndex =
         userData.settingsIndex.__option === "Some"
           ? userData.settingsIndex.value
@@ -206,7 +206,7 @@ export function runMemberManagementTests() {
       }
       // Verify member was removed
       const accountData = await fetchSettingsData(ctx.index);
-      const userData = await fetchUserData(ctx.payer.address);
+      const userData = await fetchDelegateData(ctx.payer.address);
       const settingsIndex =
         userData.settingsIndex.__option === "Some"
           ? userData.settingsIndex.value

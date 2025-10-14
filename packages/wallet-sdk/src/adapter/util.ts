@@ -15,7 +15,6 @@ import {
   prependTransactionMessageInstructions,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
-  type SignaturesMap,
   signTransactionMessageWithSigners,
   type TransactionSigner,
 } from "gill";
@@ -23,7 +22,10 @@ import {
   getSetComputeUnitLimitInstruction,
   getSetComputeUnitPriceInstruction,
 } from "gill/programs";
-import { type CompressedSettingsData, fetchUserExtensions } from "../generated";
+import {
+  type CompressedSettingsData,
+  fetchDelegateExtensions,
+} from "../generated";
 import {
   type BundleResponse,
   Permission,
@@ -35,11 +37,11 @@ import {
   createTransactionManagerSigner,
   getComputeBudgetEstimate,
   getConfirmRecentTransaction,
+  getDelegateExtensionsAddress,
   getMedianPriorityFees,
   getSendAndConfirmTransaction,
   getSolanaRpc,
   getSolanaRpcEndpoint,
-  getUserExtensionsAddress,
   sendJitoBundle,
 } from "../utils";
 
@@ -63,18 +65,6 @@ export function arraysEqual<T>(a: Indexed<T>, b: Indexed<T>): boolean {
   }
 
   return true;
-}
-
-export function assertTransactionIsNotSigned(signatures: SignaturesMap) {
-  const missingSigs = [];
-  Object.entries(signatures).forEach(([address, signatureBytes]) => {
-    if (!signatureBytes) {
-      missingSigs.push(address);
-    }
-  });
-  if (missingSigs.length !== Object.entries(signatures).length) {
-    throw new Error("Transaction cannot be partially signed.");
-  }
 }
 
 export function createSignInMessageText(input: {
@@ -357,7 +347,7 @@ export async function resolveTransactionManagerSigner({
 }: {
   memberKey: string;
   settingsData: CompressedSettingsData;
-  transactionMessageBytes: Uint8Array;
+  transactionMessageBytes?: Uint8Array;
   authorizedClients?: {
     publicKey: string;
     url: string;
@@ -404,18 +394,18 @@ export async function resolveTransactionManagerSigner({
     convertMemberKeyToString(transactionManager.pubkey)
   );
 
-  const userExtensions = await fetchUserExtensions(
+  const delegateExtensions = await fetchDelegateExtensions(
     getSolanaRpc(),
-    await getUserExtensionsAddress(transactionManagerAddress)
+    await getDelegateExtensionsAddress(transactionManagerAddress)
   );
 
-  if (userExtensions.data.apiUrlLen === 0) {
+  if (delegateExtensions.data.apiUrlLen === 0) {
     throw new Error(
       "Transaction manager endpoint is missing for this account."
     );
   }
   const apiUrl = getUtf8Decoder().decode(
-    userExtensions.data.apiUrl.slice(0, userExtensions.data.apiUrlLen)
+    delegateExtensions.data.apiUrl.slice(0, delegateExtensions.data.apiUrlLen)
   );
 
   return createTransactionManagerSigner(

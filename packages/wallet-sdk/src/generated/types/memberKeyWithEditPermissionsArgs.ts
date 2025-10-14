@@ -19,35 +19,35 @@ import {
   type OptionOrNullable,
 } from "gill";
 import {
+  getDelegateMutArgsDecoder,
+  getDelegateMutArgsEncoder,
   getDelegateOpDecoder,
   getDelegateOpEncoder,
   getMemberKeyDecoder,
   getMemberKeyEncoder,
   getPermissionsDecoder,
   getPermissionsEncoder,
-  getUserMutArgsDecoder,
-  getUserMutArgsEncoder,
+  type DelegateMutArgs,
+  type DelegateMutArgsArgs,
   type DelegateOp,
   type DelegateOpArgs,
   type IPermissions,
   type MemberKey,
   type MemberKeyArgs,
   type PermissionsArgs,
-  type UserMutArgs,
-  type UserMutArgsArgs,
 } from ".";
 
 export type MemberKeyWithEditPermissionsArgs = {
   memberKey: MemberKey;
   permissions: IPermissions;
-  userArgs: Option<UserMutArgs>;
+  delegateArgs: Option<DelegateMutArgs>;
   delegateOperation: DelegateOp;
 };
 
 export type MemberKeyWithEditPermissionsArgsArgs = {
   memberKey: MemberKeyArgs;
   permissions: PermissionsArgs;
-  userArgs: OptionOrNullable<UserMutArgsArgs>;
+  delegateArgs: OptionOrNullable<DelegateMutArgsArgs>;
   delegateOperation: DelegateOpArgs;
 };
 
@@ -55,7 +55,7 @@ export function getMemberKeyWithEditPermissionsArgsEncoder(): Encoder<MemberKeyW
   return getStructEncoder([
     ["memberKey", getMemberKeyEncoder()],
     ["permissions", getPermissionsEncoder()],
-    ["userArgs", getOptionEncoder(getUserMutArgsEncoder())],
+    ["delegateArgs", getOptionEncoder(getDelegateMutArgsEncoder())],
     ["delegateOperation", getDelegateOpEncoder()],
   ]);
 }
@@ -64,7 +64,7 @@ export function getMemberKeyWithEditPermissionsArgsDecoder(): Decoder<MemberKeyW
   return getStructDecoder([
     ["memberKey", getMemberKeyDecoder()],
     ["permissions", getPermissionsDecoder()],
-    ["userArgs", getOptionDecoder(getUserMutArgsDecoder())],
+    ["delegateArgs", getOptionDecoder(getDelegateMutArgsDecoder())],
     ["delegateOperation", getDelegateOpDecoder()],
   ]);
 }

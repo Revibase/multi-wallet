@@ -1,12 +1,12 @@
 import {
   changeConfig,
   convertMemberKeyToString,
-  createGlobalUsers,
+  createDelegates,
+  fetchDelegateData,
+  fetchDelegateExtensions,
   fetchSettingsData,
-  fetchUserData,
-  fetchUserExtensions,
+  getDelegateExtensionsAddress,
   getSolanaRpc,
-  getUserExtensionsAddress,
   prepareTransactionMessage,
   prepareTransactionSync,
 } from "@revibase/wallet-sdk";
@@ -34,9 +34,9 @@ export function runTransactionManagerTests() {
       const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
         crypto.getRandomValues(new Uint8Array(32))
       );
-      const createGlobalUserIx = await createGlobalUsers({
+      const createGlobalUserIx = await createDelegates({
         payer: ctx.payer,
-        createUserArgs: [
+        createDelegateArgs: [
           {
             member: ephemeralKeypair,
             isPermanentMember: false,
@@ -88,12 +88,12 @@ export function runTransactionManagerTests() {
       await sendTransaction(ixs, payer, addressLookupTableAccounts);
 
       // Verify member was added
-      const userExtensions = await fetchUserExtensions(
+      const userExtensions = await fetchDelegateExtensions(
         getSolanaRpc(),
-        await getUserExtensionsAddress(ephemeralKeypair.address)
+        await getDelegateExtensionsAddress(ephemeralKeypair.address)
       );
       const accountData = await fetchSettingsData(ctx.index);
-      const userData = await fetchUserData(ephemeralKeypair.address);
+      const userData = await fetchDelegateData(ephemeralKeypair.address);
       const settingsIndex =
         userData.settingsIndex.__option === "Some"
           ? userData.settingsIndex.value

@@ -1,6 +1,6 @@
 import {
+  fetchDelegateData,
   fetchSettingsData,
-  fetchUserData,
   getMultiWalletFromSettings,
   getSettingsFromIndex,
   getSolanaRpc,
@@ -90,7 +90,7 @@ export function runTransactionTests() {
         const settings = await getSettingsFromIndex(ctx.index);
         // Verify transaction was successful
         const accountData = await fetchSettingsData(ctx.index);
-        const userData = await fetchUserData(ctx.wallet.address);
+        const userData = await fetchDelegateData(ctx.wallet.address);
         const settingsIndex =
           userData.settingsIndex.__option === "Some"
             ? userData.settingsIndex.value

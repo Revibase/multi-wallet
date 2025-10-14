@@ -1,10 +1,10 @@
 import {
-  createDomainUsers,
-  createGlobalUsers,
+  createDelegates,
+  createDomainDelegates,
   createWallet,
+  fetchDelegateData,
   fetchGlobalCounter,
   fetchSettingsData,
-  fetchUserData,
   getGlobalCounterAddress,
   getMultiWalletFromSettings,
   getSecp256r1VerifyInstruction,
@@ -38,9 +38,9 @@ export function runSecp256r1Tests() {
       const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
         crypto.getRandomValues(new Uint8Array(32))
       );
-      const createGlobalUserIx = await createGlobalUsers({
+      const createGlobalUserIx = await createDelegates({
         payer: ctx.payer,
-        createUserArgs: [
+        createDelegateArgs: [
           {
             member: ephemeralKeypair,
             isPermanentMember: false,
@@ -60,16 +60,16 @@ export function runSecp256r1Tests() {
 
       // Create Secp256r1Key
       const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey);
-      const createDomainUserIx = await createDomainUsers({
+      const createDomainUserIx = await createDomainDelegates({
         payer: ctx.payer,
         authority: ctx.wallet,
         domainConfig: ctx.domainConfig,
-        createUserArgs: [
+        createDelegateArgs: [
           {
             member: secp256r1Key,
             isPermanentMember: true,
             linkedWalletSettingsIndex: Number(ctx.index),
-            userExtensionsAuthority: ephemeralKeypair.address,
+            delegateExtensionsAuthority: ephemeralKeypair.address,
           },
         ],
       });
@@ -83,7 +83,7 @@ export function runSecp256r1Tests() {
       // Verify Secp256r1Key was added as member
       const accountData = await fetchSettingsData(ctx.index);
 
-      const userData = await fetchUserData(secp256r1Key);
+      const userData = await fetchDelegateData(secp256r1Key);
       const settingsIndex =
         userData.settingsIndex.__option === "Some"
           ? userData.settingsIndex.value
@@ -105,11 +105,11 @@ export function runSecp256r1Tests() {
     it("should create wallet using Secp256r1 key as initial member", async () => {
       const secp256r1Keys = generateSecp256r1KeyPair();
 
-      const createDomainUserIx = await createDomainUsers({
+      const createDomainUserIx = await createDomainDelegates({
         payer: ctx.payer,
         authority: ctx.wallet,
         domainConfig: ctx.domainConfig,
-        createUserArgs: [
+        createDelegateArgs: [
           {
             member: new Secp256r1Key(secp256r1Keys.publicKey),
             isPermanentMember: true,

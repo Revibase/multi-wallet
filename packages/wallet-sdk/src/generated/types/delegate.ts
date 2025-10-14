@@ -32,21 +32,21 @@ import {
   type MemberKeyArgs,
 } from ".";
 
-export type User = {
+export type Delegate = {
   member: MemberKey;
   domainConfig: Option<Address>;
   isPermanentMember: boolean;
   settingsIndex: Option<bigint>;
 };
 
-export type UserArgs = {
+export type DelegateArgs = {
   member: MemberKeyArgs;
   domainConfig: OptionOrNullable<Address>;
   isPermanentMember: boolean;
   settingsIndex: OptionOrNullable<number | bigint>;
 };
 
-export function getUserEncoder(): Encoder<UserArgs> {
+export function getDelegateEncoder(): Encoder<DelegateArgs> {
   return getStructEncoder([
     ["member", getMemberKeyEncoder()],
     ["domainConfig", getOptionEncoder(getAddressEncoder())],
@@ -55,7 +55,7 @@ export function getUserEncoder(): Encoder<UserArgs> {
   ]);
 }
 
-export function getUserDecoder(): Decoder<User> {
+export function getDelegateDecoder(): Decoder<Delegate> {
   return getStructDecoder([
     ["member", getMemberKeyDecoder()],
     ["domainConfig", getOptionDecoder(getAddressDecoder())],
@@ -64,6 +64,6 @@ export function getUserDecoder(): Decoder<User> {
   ]);
 }
 
-export function getUserCodec(): Codec<UserArgs, User> {
-  return combineCodec(getUserEncoder(), getUserDecoder());
+export function getDelegateCodec(): Codec<DelegateArgs, Delegate> {
+  return combineCodec(getDelegateEncoder(), getDelegateDecoder());
 }

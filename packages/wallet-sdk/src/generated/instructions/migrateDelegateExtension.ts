@@ -7,15 +7,21 @@
  */
 
 import {
+  addDecoderSizePrefix,
+  addEncoderSizePrefix,
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
-  getArrayDecoder,
-  getArrayEncoder,
+  getAddressDecoder,
+  getAddressEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getStructDecoder,
   getStructEncoder,
+  getU32Decoder,
+  getU32Encoder,
+  getUtf8Decoder,
+  getUtf8Encoder,
   transformEncoder,
   type AccountMeta,
   type AccountSignerMeta,
@@ -34,28 +40,20 @@ import {
 import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
-import {
-  getCreateGlobalUserArgsDecoder,
-  getCreateGlobalUserArgsEncoder,
-  getProofArgsDecoder,
-  getProofArgsEncoder,
-  type CreateGlobalUserArgs,
-  type CreateGlobalUserArgsArgs,
-  type ProofArgs,
-  type ProofArgsArgs,
-} from "../types";
 
-export const CREATE_GLOBAL_USERS_DISCRIMINATOR = new Uint8Array([6]);
+export const MIGRATE_DELEGATE_EXTENSION_DISCRIMINATOR = new Uint8Array([33]);
 
-export function getCreateGlobalUsersDiscriminatorBytes() {
+export function getMigrateDelegateExtensionDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    CREATE_GLOBAL_USERS_DISCRIMINATOR
+    MIGRATE_DELEGATE_EXTENSION_DISCRIMINATOR
   );
 }
 
-export type CreateGlobalUsersInstruction<
+export type MigrateDelegateExtensionInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountPayer extends string | AccountMeta<string> = string,
+  TAccountAuthority extends
+    | string
+    | AccountMeta<string> = "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ",
   TAccountSystemProgram extends
     | string
     | AccountMeta<string> = "11111111111111111111111111111111",
@@ -64,10 +62,10 @@ export type CreateGlobalUsersInstruction<
   InstructionWithData<ReadonlyUint8Array> &
   InstructionWithAccounts<
     [
-      TAccountPayer extends string
-        ? WritableSignerAccount<TAccountPayer> &
-            AccountSignerMeta<TAccountPayer>
-        : TAccountPayer,
+      TAccountAuthority extends string
+        ? WritableSignerAccount<TAccountAuthority> &
+            AccountSignerMeta<TAccountAuthority>
+        : TAccountAuthority,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
@@ -75,71 +73,77 @@ export type CreateGlobalUsersInstruction<
     ]
   >;
 
-export type CreateGlobalUsersInstructionData = {
+export type MigrateDelegateExtensionInstructionData = {
   discriminator: ReadonlyUint8Array;
-  compressedProofArgs: ProofArgs;
-  createUserArgs: Array<CreateGlobalUserArgs>;
+  apiUrl: string;
+  member: Address;
 };
 
-export type CreateGlobalUsersInstructionDataArgs = {
-  compressedProofArgs: ProofArgsArgs;
-  createUserArgs: Array<CreateGlobalUserArgsArgs>;
+export type MigrateDelegateExtensionInstructionDataArgs = {
+  apiUrl: string;
+  member: Address;
 };
 
-export function getCreateGlobalUsersInstructionDataEncoder(): Encoder<CreateGlobalUsersInstructionDataArgs> {
+export function getMigrateDelegateExtensionInstructionDataEncoder(): Encoder<MigrateDelegateExtensionInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["compressedProofArgs", getProofArgsEncoder()],
-      ["createUserArgs", getArrayEncoder(getCreateGlobalUserArgsEncoder())],
+      ["apiUrl", addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
+      ["member", getAddressEncoder()],
     ]),
-    (value) => ({ ...value, discriminator: CREATE_GLOBAL_USERS_DISCRIMINATOR })
+    (value) => ({
+      ...value,
+      discriminator: MIGRATE_DELEGATE_EXTENSION_DISCRIMINATOR,
+    })
   );
 }
 
-export function getCreateGlobalUsersInstructionDataDecoder(): Decoder<CreateGlobalUsersInstructionData> {
+export function getMigrateDelegateExtensionInstructionDataDecoder(): Decoder<MigrateDelegateExtensionInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["compressedProofArgs", getProofArgsDecoder()],
-    ["createUserArgs", getArrayDecoder(getCreateGlobalUserArgsDecoder())],
+    ["apiUrl", addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
+    ["member", getAddressDecoder()],
   ]);
 }
 
-export function getCreateGlobalUsersInstructionDataCodec(): Codec<
-  CreateGlobalUsersInstructionDataArgs,
-  CreateGlobalUsersInstructionData
+export function getMigrateDelegateExtensionInstructionDataCodec(): Codec<
+  MigrateDelegateExtensionInstructionDataArgs,
+  MigrateDelegateExtensionInstructionData
 > {
   return combineCodec(
-    getCreateGlobalUsersInstructionDataEncoder(),
-    getCreateGlobalUsersInstructionDataDecoder()
+    getMigrateDelegateExtensionInstructionDataEncoder(),
+    getMigrateDelegateExtensionInstructionDataDecoder()
   );
 }
 
-export type CreateGlobalUsersInstructionExtraArgs = {
+export type MigrateDelegateExtensionInstructionExtraArgs = {
   remainingAccounts: Array<{ address: Address; role: number }>;
 };
 
-export type CreateGlobalUsersInput<
-  TAccountPayer extends string = string,
+export type MigrateDelegateExtensionInput<
+  TAccountAuthority extends string = string,
   TAccountSystemProgram extends string = string,
 > = {
-  payer: TransactionSigner<TAccountPayer>;
+  authority?: TransactionSigner<TAccountAuthority>;
   systemProgram?: Address<TAccountSystemProgram>;
-  compressedProofArgs: CreateGlobalUsersInstructionDataArgs["compressedProofArgs"];
-  createUserArgs: CreateGlobalUsersInstructionDataArgs["createUserArgs"];
-  remainingAccounts: CreateGlobalUsersInstructionExtraArgs["remainingAccounts"];
+  apiUrl: MigrateDelegateExtensionInstructionDataArgs["apiUrl"];
+  member: MigrateDelegateExtensionInstructionDataArgs["member"];
+  remainingAccounts: MigrateDelegateExtensionInstructionExtraArgs["remainingAccounts"];
 };
 
-export function getCreateGlobalUsersInstruction<
-  TAccountPayer extends string,
+export function getMigrateDelegateExtensionInstruction<
+  TAccountAuthority extends string,
   TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
-  input: CreateGlobalUsersInput<TAccountPayer, TAccountSystemProgram>,
+  input: MigrateDelegateExtensionInput<
+    TAccountAuthority,
+    TAccountSystemProgram
+  >,
   config?: { programAddress?: TProgramAddress }
-): CreateGlobalUsersInstruction<
+): MigrateDelegateExtensionInstruction<
   TProgramAddress,
-  TAccountPayer,
+  TAccountAuthority,
   TAccountSystemProgram
 > {
   // Program address.
@@ -147,7 +151,7 @@ export function getCreateGlobalUsersInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    payer: { value: input.payer ?? null, isWritable: true },
+    authority: { value: input.authority ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
@@ -162,6 +166,10 @@ export function getCreateGlobalUsersInstruction<
   const resolverScope = { programAddress, accounts, args };
 
   // Resolve default values.
+  if (!accounts.authority.value) {
+    accounts.authority.value =
+      "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ" as Address<"AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ">;
+  }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
@@ -174,41 +182,41 @@ export function getCreateGlobalUsersInstruction<
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
-      getAccountMeta(accounts.payer),
+      getAccountMeta(accounts.authority),
       getAccountMeta(accounts.systemProgram),
       ...remainingAccounts,
     ],
-    data: getCreateGlobalUsersInstructionDataEncoder().encode(
-      args as CreateGlobalUsersInstructionDataArgs
+    data: getMigrateDelegateExtensionInstructionDataEncoder().encode(
+      args as MigrateDelegateExtensionInstructionDataArgs
     ),
     programAddress,
-  } as CreateGlobalUsersInstruction<
+  } as MigrateDelegateExtensionInstruction<
     TProgramAddress,
-    TAccountPayer,
+    TAccountAuthority,
     TAccountSystemProgram
   >);
 }
 
-export type ParsedCreateGlobalUsersInstruction<
+export type ParsedMigrateDelegateExtensionInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    payer: TAccountMetas[0];
+    authority: TAccountMetas[0];
     systemProgram: TAccountMetas[1];
   };
-  data: CreateGlobalUsersInstructionData;
+  data: MigrateDelegateExtensionInstructionData;
 };
 
-export function parseCreateGlobalUsersInstruction<
+export function parseMigrateDelegateExtensionInstruction<
   TProgram extends string,
   TAccountMetas extends readonly AccountMeta[],
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>
-): ParsedCreateGlobalUsersInstruction<TProgram, TAccountMetas> {
+): ParsedMigrateDelegateExtensionInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 2) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
@@ -221,7 +229,9 @@ export function parseCreateGlobalUsersInstruction<
   };
   return {
     programAddress: instruction.programAddress,
-    accounts: { payer: getNextAccount(), systemProgram: getNextAccount() },
-    data: getCreateGlobalUsersInstructionDataDecoder().decode(instruction.data),
+    accounts: { authority: getNextAccount(), systemProgram: getNextAccount() },
+    data: getMigrateDelegateExtensionInstructionDataDecoder().decode(
+      instruction.data
+    ),
   };
 }

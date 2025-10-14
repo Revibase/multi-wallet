@@ -1,10 +1,15 @@
 use crate::{
     error::MultisigError,
-    state::{Ops, ProofArgs, Settings, User, SEED_MULTISIG, SEED_VAULT},
+    state::{Ops, ProofArgs, Settings, Delegate, SEED_MULTISIG, SEED_VAULT},
     ConfigAction, LIGHT_CPI_SIGNER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use light_sdk::cpi::{CpiAccounts, CpiInputs};
+use light_sdk::{
+    cpi::{
+        v1::{CpiAccounts, LightSystemProgramCpi},
+        InvokeLightSystemProgram, LightCpiInstruction,
+    },
+};
 use std::vec;
 
 #[derive(Accounts)]
@@ -87,20 +92,23 @@ impl<'info> ChangeConfig<'info> {
         settings.invariant()?;
 
         if !delegate_ops.is_empty() {
-            let proof_args = compressed_proof_args.ok_or(MultisigError::MissingUserDelegateArgs)?;
+            let proof_args = compressed_proof_args.ok_or(MultisigError::MissingDelegateArgs)?;
             let light_cpi_accounts = CpiAccounts::new(
                 &payer,
                 &remaining_accounts[proof_args.light_cpi_accounts_start_index as usize..],
                 LIGHT_CPI_SIGNER,
             );
-            let account_infos = User::handle_user_delegate_accounts(delegate_ops, settings.index)?;
+            let account_infos = Delegate::handle_delegate_accounts(delegate_ops, settings.index)?;
 
-            if account_infos.len() > 0 {
-                let cpi_inputs = CpiInputs::new(proof_args.proof, account_infos);
-                cpi_inputs
-                    .invoke_light_system_program(light_cpi_accounts)
-                    .map_err(ProgramError::from)?;
+       
+            let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, proof_args.proof);
+
+            for f in account_infos {
+                cpi = cpi.with_light_account(f)?;
             }
+
+            cpi.invoke(light_cpi_accounts)?;
+
         }
 
         Ok(())

@@ -28,16 +28,15 @@ import { RevibaseWallet } from "../adapter/wallet";
 import type { JitoTipsConfig } from "../types";
 import { getRandomPayer } from "./internal";
 
-let globalSolanaRpcEndpoint: string | undefined;
+let globalSolanaRpcEndpoint: string | null = null;
 
-let lightProtocolRpc: LightProtocolRpc | undefined;
-let globalSolanaRpc: Rpc<SolanaRpcApi> | undefined;
+let lightProtocolRpc: LightProtocolRpc | null = null;
+let globalSolanaRpc: Rpc<SolanaRpcApi> | null = null;
 let globalSolanaRpcSubscription:
   | (RpcSubscriptions<SolanaRpcSubscriptionsApi> & string)
-  | undefined;
-let globalSendAndConfirmTransaction:
-  | SendAndConfirmTransactionWithSignersFunction
-  | undefined;
+  | null = null;
+let globalSendAndConfirmTransaction: SendAndConfirmTransactionWithSignersFunction | null =
+  null;
 
 let globalComputeBudgetEstimate:
   | ((
@@ -46,20 +45,22 @@ let globalComputeBudgetEstimate:
         | (TransactionMessage & TransactionMessageWithFeePayer),
       config?: any
     ) => Promise<number>)
-  | undefined;
+  | null = null;
 
-let globalConfirmRecentTransaction: (config: {
-  signature: Signature;
-  lastValidBlockHeight: bigint;
-  commitment: Commitment;
-}) => Promise<void>;
+let globalConfirmRecentTransaction:
+  | ((config: {
+      signature: Signature;
+      lastValidBlockHeight: bigint;
+      commitment: Commitment;
+    }) => Promise<void>)
+  | null = null;
 
-let globalFeePayer: TransactionSigner | undefined;
-let globalPayerEndpoint: string | undefined;
-let globalJitoTipsConfig: JitoTipsConfig | undefined;
-let globalAuthUrl: string | undefined;
-let globalExpectedOrigin: string | undefined;
-let globalExpectedRPID: string | undefined;
+let globalFeePayer: TransactionSigner | null = null;
+let globalPayerEndpoint: string | null = null;
+let globalJitoTipsConfig: JitoTipsConfig | null = null;
+let globalAuthUrl: string | null = null;
+let globalExpectedOrigin: string | null = null;
+let globalExpectedRPID: string | null = null;
 
 export function getSolanaRpcEndpoint() {
   if (!globalSolanaRpcEndpoint) throw new Error("Rpc is not initialized yet.");
@@ -127,15 +128,15 @@ export function getExpectedRPID() {
 }
 
 export function uninitializeMultiWallet() {
-  lightProtocolRpc = undefined;
-  globalSolanaRpc = undefined;
-  globalSolanaRpcEndpoint = undefined;
-  globalFeePayer = undefined;
-  globalPayerEndpoint = undefined;
-  globalJitoTipsConfig = undefined;
-  globalAuthUrl = undefined;
-  globalExpectedOrigin = undefined;
-  globalExpectedRPID = undefined;
+  lightProtocolRpc = null;
+  globalSolanaRpc = null;
+  globalSolanaRpcEndpoint = null;
+  globalFeePayer = null;
+  globalPayerEndpoint = null;
+  globalJitoTipsConfig = null;
+  globalAuthUrl = null;
+  globalExpectedOrigin = null;
+  globalExpectedRPID = null;
 }
 
 export function initializeMultiWallet({
@@ -212,11 +213,11 @@ export function initializeMultiWallet({
     }
   };
 
-  globalPayerEndpoint = payerEndpoint;
-  globalJitoTipsConfig = jitoTipsConfig;
-  globalAuthUrl = authUrl;
-  globalExpectedOrigin = expectedOrigin;
-  globalExpectedRPID = expectedRPID;
+  globalPayerEndpoint = payerEndpoint ?? null;
+  globalJitoTipsConfig = jitoTipsConfig ?? null;
+  globalAuthUrl = authUrl ?? null;
+  globalExpectedOrigin = expectedOrigin ?? null;
+  globalExpectedRPID = expectedRPID ?? null;
 
   if (typeof window !== "undefined") {
     registerWallet(

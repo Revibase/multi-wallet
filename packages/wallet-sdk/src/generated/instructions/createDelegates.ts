@@ -27,7 +27,6 @@ import {
   type InstructionWithAccounts,
   type InstructionWithData,
   type ReadonlyAccount,
-  type ReadonlySignerAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableSignerAccount,
@@ -36,29 +35,30 @@ import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
-  getCreateDomainUserArgsDecoder,
-  getCreateDomainUserArgsEncoder,
+  getCreateDelegateArgDecoder,
+  getCreateDelegateArgEncoder,
   getProofArgsDecoder,
   getProofArgsEncoder,
-  type CreateDomainUserArgs,
-  type CreateDomainUserArgsArgs,
+  type CreateDelegateArg,
+  type CreateDelegateArgArgs,
   type ProofArgs,
   type ProofArgsArgs,
 } from "../types";
 
-export const CREATE_DOMAIN_USERS_DISCRIMINATOR = new Uint8Array([5]);
+export const CREATE_DELEGATES_DISCRIMINATOR = new Uint8Array([5]);
 
-export function getCreateDomainUsersDiscriminatorBytes() {
+export function getCreateDelegatesDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    CREATE_DOMAIN_USERS_DISCRIMINATOR
+    CREATE_DELEGATES_DISCRIMINATOR
   );
 }
 
-export type CreateDomainUsersInstruction<
+export type CreateDelegatesInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountPayer extends string | AccountMeta<string> = string,
-  TAccountDomainConfig extends string | AccountMeta<string> = string,
-  TAccountAuthority extends string | AccountMeta<string> = string,
+  TAccountSystemProgram extends
+    | string
+    | AccountMeta<string> = "11111111111111111111111111111111",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -68,91 +68,79 @@ export type CreateDomainUsersInstruction<
         ? WritableSignerAccount<TAccountPayer> &
             AccountSignerMeta<TAccountPayer>
         : TAccountPayer,
-      TAccountDomainConfig extends string
-        ? ReadonlyAccount<TAccountDomainConfig>
-        : TAccountDomainConfig,
-      TAccountAuthority extends string
-        ? ReadonlySignerAccount<TAccountAuthority> &
-            AccountSignerMeta<TAccountAuthority>
-        : TAccountAuthority,
+      TAccountSystemProgram extends string
+        ? ReadonlyAccount<TAccountSystemProgram>
+        : TAccountSystemProgram,
       ...TRemainingAccounts,
     ]
   >;
 
-export type CreateDomainUsersInstructionData = {
+export type CreateDelegatesInstructionData = {
   discriminator: ReadonlyUint8Array;
   compressedProofArgs: ProofArgs;
-  createUserArgs: Array<CreateDomainUserArgs>;
+  createDelegateArgs: Array<CreateDelegateArg>;
 };
 
-export type CreateDomainUsersInstructionDataArgs = {
+export type CreateDelegatesInstructionDataArgs = {
   compressedProofArgs: ProofArgsArgs;
-  createUserArgs: Array<CreateDomainUserArgsArgs>;
+  createDelegateArgs: Array<CreateDelegateArgArgs>;
 };
 
-export function getCreateDomainUsersInstructionDataEncoder(): Encoder<CreateDomainUsersInstructionDataArgs> {
+export function getCreateDelegatesInstructionDataEncoder(): Encoder<CreateDelegatesInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["compressedProofArgs", getProofArgsEncoder()],
-      ["createUserArgs", getArrayEncoder(getCreateDomainUserArgsEncoder())],
+      ["createDelegateArgs", getArrayEncoder(getCreateDelegateArgEncoder())],
     ]),
-    (value) => ({ ...value, discriminator: CREATE_DOMAIN_USERS_DISCRIMINATOR })
+    (value) => ({ ...value, discriminator: CREATE_DELEGATES_DISCRIMINATOR })
   );
 }
 
-export function getCreateDomainUsersInstructionDataDecoder(): Decoder<CreateDomainUsersInstructionData> {
+export function getCreateDelegatesInstructionDataDecoder(): Decoder<CreateDelegatesInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["compressedProofArgs", getProofArgsDecoder()],
-    ["createUserArgs", getArrayDecoder(getCreateDomainUserArgsDecoder())],
+    ["createDelegateArgs", getArrayDecoder(getCreateDelegateArgDecoder())],
   ]);
 }
 
-export function getCreateDomainUsersInstructionDataCodec(): Codec<
-  CreateDomainUsersInstructionDataArgs,
-  CreateDomainUsersInstructionData
+export function getCreateDelegatesInstructionDataCodec(): Codec<
+  CreateDelegatesInstructionDataArgs,
+  CreateDelegatesInstructionData
 > {
   return combineCodec(
-    getCreateDomainUsersInstructionDataEncoder(),
-    getCreateDomainUsersInstructionDataDecoder()
+    getCreateDelegatesInstructionDataEncoder(),
+    getCreateDelegatesInstructionDataDecoder()
   );
 }
 
-export type CreateDomainUsersInstructionExtraArgs = {
+export type CreateDelegatesInstructionExtraArgs = {
   remainingAccounts: Array<{ address: Address; role: number }>;
 };
 
-export type CreateDomainUsersInput<
+export type CreateDelegatesInput<
   TAccountPayer extends string = string,
-  TAccountDomainConfig extends string = string,
-  TAccountAuthority extends string = string,
+  TAccountSystemProgram extends string = string,
 > = {
   payer: TransactionSigner<TAccountPayer>;
-  domainConfig: Address<TAccountDomainConfig>;
-  authority: TransactionSigner<TAccountAuthority>;
-  compressedProofArgs: CreateDomainUsersInstructionDataArgs["compressedProofArgs"];
-  createUserArgs: CreateDomainUsersInstructionDataArgs["createUserArgs"];
-  remainingAccounts: CreateDomainUsersInstructionExtraArgs["remainingAccounts"];
+  systemProgram?: Address<TAccountSystemProgram>;
+  compressedProofArgs: CreateDelegatesInstructionDataArgs["compressedProofArgs"];
+  createDelegateArgs: CreateDelegatesInstructionDataArgs["createDelegateArgs"];
+  remainingAccounts: CreateDelegatesInstructionExtraArgs["remainingAccounts"];
 };
 
-export function getCreateDomainUsersInstruction<
+export function getCreateDelegatesInstruction<
   TAccountPayer extends string,
-  TAccountDomainConfig extends string,
-  TAccountAuthority extends string,
+  TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
-  input: CreateDomainUsersInput<
-    TAccountPayer,
-    TAccountDomainConfig,
-    TAccountAuthority
-  >,
+  input: CreateDelegatesInput<TAccountPayer, TAccountSystemProgram>,
   config?: { programAddress?: TProgramAddress }
-): CreateDomainUsersInstruction<
+): CreateDelegatesInstruction<
   TProgramAddress,
   TAccountPayer,
-  TAccountDomainConfig,
-  TAccountAuthority
+  TAccountSystemProgram
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -160,8 +148,7 @@ export function getCreateDomainUsersInstruction<
   // Original accounts.
   const originalAccounts = {
     payer: { value: input.payer ?? null, isWritable: true },
-    domainConfig: { value: input.domainConfig ?? null, isWritable: false },
-    authority: { value: input.authority ?? null, isWritable: false },
+    systemProgram: { value: input.systemProgram ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -174,6 +161,12 @@ export function getCreateDomainUsersInstruction<
   // Resolver scope.
   const resolverScope = { programAddress, accounts, args };
 
+  // Resolve default values.
+  if (!accounts.systemProgram.value) {
+    accounts.systemProgram.value =
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
+
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
@@ -182,44 +175,41 @@ export function getCreateDomainUsersInstruction<
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.payer),
-      getAccountMeta(accounts.domainConfig),
-      getAccountMeta(accounts.authority),
+      getAccountMeta(accounts.systemProgram),
       ...remainingAccounts,
     ],
-    data: getCreateDomainUsersInstructionDataEncoder().encode(
-      args as CreateDomainUsersInstructionDataArgs
+    data: getCreateDelegatesInstructionDataEncoder().encode(
+      args as CreateDelegatesInstructionDataArgs
     ),
     programAddress,
-  } as CreateDomainUsersInstruction<
+  } as CreateDelegatesInstruction<
     TProgramAddress,
     TAccountPayer,
-    TAccountDomainConfig,
-    TAccountAuthority
+    TAccountSystemProgram
   >);
 }
 
-export type ParsedCreateDomainUsersInstruction<
+export type ParsedCreateDelegatesInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
     payer: TAccountMetas[0];
-    domainConfig: TAccountMetas[1];
-    authority: TAccountMetas[2];
+    systemProgram: TAccountMetas[1];
   };
-  data: CreateDomainUsersInstructionData;
+  data: CreateDelegatesInstructionData;
 };
 
-export function parseCreateDomainUsersInstruction<
+export function parseCreateDelegatesInstruction<
   TProgram extends string,
   TAccountMetas extends readonly AccountMeta[],
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>
-): ParsedCreateDomainUsersInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 3) {
+): ParsedCreateDelegatesInstruction<TProgram, TAccountMetas> {
+  if (instruction.accounts.length < 2) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -231,11 +221,7 @@ export function parseCreateDomainUsersInstruction<
   };
   return {
     programAddress: instruction.programAddress,
-    accounts: {
-      payer: getNextAccount(),
-      domainConfig: getNextAccount(),
-      authority: getNextAccount(),
-    },
-    data: getCreateDomainUsersInstructionDataDecoder().decode(instruction.data),
+    accounts: { payer: getNextAccount(), systemProgram: getNextAccount() },
+    data: getCreateDelegatesInstructionDataDecoder().decode(instruction.data),
   };
 }

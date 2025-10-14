@@ -1,6 +1,6 @@
 import { AccountRole, type TransactionSigner } from "gill";
-import { getCreateGlobalUsersInstruction } from "../../generated";
-import { getUserAddress, getUserExtensionsAddress } from "../../utils";
+import { getCreateDelegatesInstruction } from "../../generated";
+import { getDelegateAddress, getDelegateExtensionsAddress } from "../../utils";
 import {
   convertToCompressedProofArgs,
   getCompressedAccountInitArgs,
@@ -9,7 +9,7 @@ import {
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 
-type UserCreationArgs =
+type DelegateCreationArgs =
   | {
       member: TransactionSigner;
       isPermanentMember: boolean;
@@ -21,30 +21,30 @@ type UserCreationArgs =
       apiUrl: string;
     };
 
-export async function createGlobalUsers({
-  createUserArgs,
+export async function createDelegates({
+  createDelegateArgs,
   payer,
 }: {
   payer: TransactionSigner;
-  createUserArgs: UserCreationArgs[];
+  createDelegateArgs: DelegateCreationArgs[];
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
   packedAccounts.addPreAccounts(
-    createUserArgs.map((x) => ({
+    createDelegateArgs.map((x) => ({
       address: x.member.address,
       role: AccountRole.READONLY_SIGNER,
       signer: x.member,
     }))
   );
   const newAddressParams = getNewAddressesParams(
-    createUserArgs.map((x) => ({
-      pubkey: getUserAddress(x.member.address),
-      type: "User",
+    createDelegateArgs.map((x) => ({
+      pubkey: getDelegateAddress(x.member.address),
+      type: "Delegate",
     }))
   );
   const proof = await getValidityProofWithRetry([], newAddressParams);
-  const userCreationArgs = await getCompressedAccountInitArgs(
+  const delegateCreationArgs = await getCompressedAccountInitArgs(
     packedAccounts,
     proof.treeInfos,
     proof.roots,
@@ -54,10 +54,10 @@ export async function createGlobalUsers({
 
   packedAccounts.addPreAccounts(
     await Promise.all(
-      createUserArgs
+      createDelegateArgs
         .filter((x) => !!x.apiUrl)
         .map(async (x) => ({
-          address: await getUserExtensionsAddress(x.member.address),
+          address: await getDelegateExtensionsAddress(x.member.address),
           role: AccountRole.WRITABLE,
         }))
     )
@@ -67,13 +67,13 @@ export async function createGlobalUsers({
 
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
 
-  return getCreateGlobalUsersInstruction({
+  return getCreateDelegatesInstruction({
     compressedProofArgs,
     payer,
-    createUserArgs: createUserArgs.map((x, index) => ({
+    createDelegateArgs: createDelegateArgs.map((x, index) => ({
       member: x.member.address,
       isPermanentMember: x.isPermanentMember,
-      userCreationArgs: userCreationArgs[index],
+      delegateCreationArgs: delegateCreationArgs[index],
       apiUrl: x.apiUrl ?? null,
     })),
     remainingAccounts,

@@ -50,13 +50,13 @@ export class PackedAccounts {
     this.systemAccounts.push(
       ...[
         lightSystemProgram,
+        staticAccounts.accountCompressionProgram,
+        SYSTEM_PROGRAM_ADDRESS,
         await getLightCpiSigner(),
         staticAccounts.registeredProgramPda,
-        staticAccounts.noopProgram,
         staticAccounts.accountCompressionAuthority,
-        staticAccounts.accountCompressionProgram,
+        staticAccounts.noopProgram,
         MULTI_WALLET_PROGRAM_ADDRESS,
-        SYSTEM_PROGRAM_ADDRESS,
       ].map((x) => ({
         address: address(x.toString()),
         role: AccountRole.READONLY,

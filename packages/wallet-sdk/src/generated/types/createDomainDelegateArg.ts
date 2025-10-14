@@ -21,58 +21,58 @@ import {
   type OptionOrNullable,
 } from "gill";
 import {
+  getDelegateCreationArgsDecoder,
+  getDelegateCreationArgsEncoder,
   getLinkWalletArgsDecoder,
   getLinkWalletArgsEncoder,
   getSecp256r1PubkeyDecoder,
   getSecp256r1PubkeyEncoder,
-  getUserCreationArgsDecoder,
-  getUserCreationArgsEncoder,
+  type DelegateCreationArgs,
+  type DelegateCreationArgsArgs,
   type LinkWalletArgs,
   type LinkWalletArgsArgs,
   type Secp256r1Pubkey,
   type Secp256r1PubkeyArgs,
-  type UserCreationArgs,
-  type UserCreationArgsArgs,
 } from ".";
 
-export type CreateDomainUserArgs = {
+export type CreateDomainDelegateArg = {
   member: Secp256r1Pubkey;
   isPermanentMember: boolean;
-  userCreationArgs: UserCreationArgs;
+  delegateCreationArgs: DelegateCreationArgs;
   linkWalletArgs: Option<LinkWalletArgs>;
 };
 
-export type CreateDomainUserArgsArgs = {
+export type CreateDomainDelegateArgArgs = {
   member: Secp256r1PubkeyArgs;
   isPermanentMember: boolean;
-  userCreationArgs: UserCreationArgsArgs;
+  delegateCreationArgs: DelegateCreationArgsArgs;
   linkWalletArgs: OptionOrNullable<LinkWalletArgsArgs>;
 };
 
-export function getCreateDomainUserArgsEncoder(): Encoder<CreateDomainUserArgsArgs> {
+export function getCreateDomainDelegateArgEncoder(): Encoder<CreateDomainDelegateArgArgs> {
   return getStructEncoder([
     ["member", getSecp256r1PubkeyEncoder()],
     ["isPermanentMember", getBooleanEncoder()],
-    ["userCreationArgs", getUserCreationArgsEncoder()],
+    ["delegateCreationArgs", getDelegateCreationArgsEncoder()],
     ["linkWalletArgs", getOptionEncoder(getLinkWalletArgsEncoder())],
   ]);
 }
 
-export function getCreateDomainUserArgsDecoder(): Decoder<CreateDomainUserArgs> {
+export function getCreateDomainDelegateArgDecoder(): Decoder<CreateDomainDelegateArg> {
   return getStructDecoder([
     ["member", getSecp256r1PubkeyDecoder()],
     ["isPermanentMember", getBooleanDecoder()],
-    ["userCreationArgs", getUserCreationArgsDecoder()],
+    ["delegateCreationArgs", getDelegateCreationArgsDecoder()],
     ["linkWalletArgs", getOptionDecoder(getLinkWalletArgsDecoder())],
   ]);
 }
 
-export function getCreateDomainUserArgsCodec(): Codec<
-  CreateDomainUserArgsArgs,
-  CreateDomainUserArgs
+export function getCreateDomainDelegateArgCodec(): Codec<
+  CreateDomainDelegateArgArgs,
+  CreateDomainDelegateArg
 > {
   return combineCodec(
-    getCreateDomainUserArgsEncoder(),
-    getCreateDomainUserArgsDecoder()
+    getCreateDomainDelegateArgEncoder(),
+    getCreateDomainDelegateArgDecoder()
   );
 }

@@ -13,8 +13,11 @@ use anchor_lang::{
     solana_program::{hash, sysvar::SysvarId},
 };
 use light_sdk::{
-    account::LightAccount,
-    cpi::{CpiAccounts, CpiInputs},
+    cpi::{
+        v1::{CpiAccounts, LightSystemProgramCpi},
+        InvokeLightSystemProgram, LightCpiInstruction,
+    },
+    LightAccount,
 };
 use std::vec;
 
@@ -164,21 +167,15 @@ impl<'info> CompressSettingsAccount<'info> {
                         settings_creation_args,
                         data,
                         &light_cpi_accounts,
+                        0,
                     )?;
 
                 settings_account.invariant()?;
 
-                let cpi_inputs = CpiInputs::new_with_address(
-                    compressed_proof_args.proof,
-                    vec![settings_account
-                        .to_account_info()
-                        .map_err(ProgramError::from)?],
-                    vec![settings_new_address],
-                );
-
-                cpi_inputs
-                    .invoke_light_system_program(light_cpi_accounts)
-                    .map_err(ProgramError::from)?;
+                LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof)
+                    .with_light_account(settings_account)?
+                    .with_new_addresses(&[settings_new_address])
+                    .invoke(light_cpi_accounts)?;
             }
             SettingsCreateOrMutateArgs::Mutate(settings_mut_args) => {
                 let mut settings_account = LightAccount::<'_, CompressedSettings>::new_mut(
@@ -198,15 +195,9 @@ impl<'info> CompressSettingsAccount<'info> {
 
                 settings_account.invariant()?;
 
-                let settings_info = settings_account
-                    .to_account_info()
-                    .map_err(ProgramError::from)?;
-
-                let cpi_inputs = CpiInputs::new(compressed_proof_args.proof, vec![settings_info]);
-
-                cpi_inputs
-                    .invoke_light_system_program(light_cpi_accounts)
-                    .map_err(ProgramError::from)?;
+                LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof)
+                    .with_light_account(settings_account)?
+                    .invoke(light_cpi_accounts)?;
             }
         };
 

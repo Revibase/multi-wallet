@@ -15,37 +15,37 @@ import {
   type Encoder,
 } from "gill";
 import {
+  getDelegateMutArgsDecoder,
+  getDelegateMutArgsEncoder,
   getMemberKeyDecoder,
   getMemberKeyEncoder,
-  getUserMutArgsDecoder,
-  getUserMutArgsEncoder,
+  type DelegateMutArgs,
+  type DelegateMutArgsArgs,
   type MemberKey,
   type MemberKeyArgs,
-  type UserMutArgs,
-  type UserMutArgsArgs,
 } from ".";
 
 export type MemberKeyWithRemovePermissionsArgs = {
   memberKey: MemberKey;
-  userArgs: UserMutArgs;
+  delegateArgs: DelegateMutArgs;
 };
 
 export type MemberKeyWithRemovePermissionsArgsArgs = {
   memberKey: MemberKeyArgs;
-  userArgs: UserMutArgsArgs;
+  delegateArgs: DelegateMutArgsArgs;
 };
 
 export function getMemberKeyWithRemovePermissionsArgsEncoder(): Encoder<MemberKeyWithRemovePermissionsArgsArgs> {
   return getStructEncoder([
     ["memberKey", getMemberKeyEncoder()],
-    ["userArgs", getUserMutArgsEncoder()],
+    ["delegateArgs", getDelegateMutArgsEncoder()],
   ]);
 }
 
 export function getMemberKeyWithRemovePermissionsArgsDecoder(): Decoder<MemberKeyWithRemovePermissionsArgs> {
   return getStructDecoder([
     ["memberKey", getMemberKeyDecoder()],
-    ["userArgs", getUserMutArgsDecoder()],
+    ["delegateArgs", getDelegateMutArgsDecoder()],
   ]);
 }
 

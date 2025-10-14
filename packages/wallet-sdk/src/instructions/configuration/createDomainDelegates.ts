@@ -10,7 +10,7 @@ import {
 import {
   type CompressedSettings,
   getCompressedSettingsDecoder,
-  getCreateDomainUsersInstruction,
+  getCreateDomainDelegatesInstruction,
   getSecp256r1PubkeyDecoder,
   type LinkWalletArgs,
   type SettingsMutArgs,
@@ -18,8 +18,8 @@ import {
 import { Secp256r1Key } from "../../types";
 import {
   getCompressedSettingsAddressFromIndex,
-  getUserAddress,
-  getUserExtensionsAddress,
+  getDelegateAddress,
+  getDelegateExtensionsAddress,
 } from "../../utils";
 import {
   convertToCompressedProofArgs,
@@ -31,30 +31,30 @@ import {
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 
-interface UserCreationArgs {
+interface DelegateCreationArgs {
   member: Secp256r1Key;
   isPermanentMember: boolean;
   linkedWalletSettingsIndex?: number | bigint;
-  userExtensionsAuthority?: Address;
+  delegateExtensionsAuthority?: Address;
 }
 
-export async function createDomainUsers({
+export async function createDomainDelegates({
   authority,
   payer,
-  createUserArgs,
+  createDelegateArgs,
   domainConfig,
   cachedCompressedAccounts,
 }: {
   domainConfig: Address;
   authority: TransactionSigner;
   payer: TransactionSigner;
-  createUserArgs: UserCreationArgs[];
+  createDelegateArgs: DelegateCreationArgs[];
   cachedCompressedAccounts?: Map<string, any>;
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
 
-  const addresses = createUserArgs
+  const addresses = createDelegateArgs
     .filter((x) => !!x.linkedWalletSettingsIndex)
     .map((x) => ({
       address: getCompressedSettingsAddressFromIndex(
@@ -68,9 +68,9 @@ export async function createDomainUsers({
     : [];
 
   const newAddressParams = getNewAddressesParams(
-    createUserArgs.map((args) => ({
-      pubkey: getUserAddress(args.member),
-      type: "User",
+    createDelegateArgs.map((args) => ({
+      pubkey: getDelegateAddress(args.member),
+      type: "Delegate",
     }))
   );
 
@@ -93,7 +93,7 @@ export async function createDomainUsers({
     );
   }
 
-  const userCreationArgs = await getCompressedAccountInitArgs(
+  const delegateCreationArgs = await getCompressedAccountInitArgs(
     packedAccounts,
     proof.treeInfos.slice(hashesWithTree.length),
     proof.roots.slice(hashesWithTree.length),
@@ -102,33 +102,38 @@ export async function createDomainUsers({
   );
 
   const set = new Set();
-  for (const x of createUserArgs) {
-    if (x.userExtensionsAuthority && !set.has(x.userExtensionsAuthority)) {
+  for (const x of createDelegateArgs) {
+    if (
+      x.delegateExtensionsAuthority &&
+      !set.has(x.delegateExtensionsAuthority)
+    ) {
       packedAccounts.addPreAccounts([
         {
-          address: await getUserExtensionsAddress(x.userExtensionsAuthority),
+          address: await getDelegateExtensionsAddress(
+            x.delegateExtensionsAuthority
+          ),
           role: AccountRole.READONLY,
         },
       ]);
-      set.add(x.userExtensionsAuthority);
+      set.add(x.delegateExtensionsAuthority);
     }
   }
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
 
-  return getCreateDomainUsersInstruction({
+  return getCreateDomainDelegatesInstruction({
     payer,
     authority,
     compressedProofArgs,
-    createUserArgs: createUserArgs.map((x, index) => ({
+    createDelegateArgs: createDelegateArgs.map((x, index) => ({
       member: getSecp256r1PubkeyDecoder().decode(x.member.toBuffer()),
-      userCreationArgs: userCreationArgs[index],
+      delegateCreationArgs: delegateCreationArgs[index],
       isPermanentMember: x.isPermanentMember,
       linkWalletArgs: getLinkWalletArgs(
         x,
         settingsMutArgs,
-        x.userExtensionsAuthority
+        x.delegateExtensionsAuthority
       ),
     })),
     domainConfig,
@@ -137,9 +142,9 @@ export async function createDomainUsers({
 }
 
 function getLinkWalletArgs(
-  x: UserCreationArgs,
+  x: DelegateCreationArgs,
   settingsMutArgs: SettingsMutArgs[],
-  userExtensionsAuthority?: Address
+  delegateExtensionsAuthority?: Address
 ): OptionOrNullable<LinkWalletArgs> {
   const result = x.linkedWalletSettingsIndex
     ? settingsMutArgs.find((y) =>
@@ -152,8 +157,8 @@ function getLinkWalletArgs(
   return result
     ? some({
         settingsMutArgs: result,
-        userExtensionAuthority: userExtensionsAuthority
-          ? some(userExtensionsAuthority)
+        delegateExtensionAuthority: delegateExtensionsAuthority
+          ? some(delegateExtensionsAuthority)
           : none(),
       })
     : none();

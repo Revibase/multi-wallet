@@ -6,8 +6,8 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from './delegateExtensions';
 export * from './domainConfig';
 export * from './globalCounter';
 export * from './settings';
 export * from './transactionBuffer';
-export * from './userExtensions';

@@ -37,17 +37,17 @@ import {
   type ReadonlyUint8Array,
 } from "gill";
 
-export const USER_EXTENSIONS_DISCRIMINATOR = new Uint8Array([
-  196, 137, 210, 202, 156, 145, 89, 41,
+export const DELEGATE_EXTENSIONS_DISCRIMINATOR = new Uint8Array([
+  216, 97, 236, 77, 232, 40, 207, 158,
 ]);
 
-export function getUserExtensionsDiscriminatorBytes() {
+export function getDelegateExtensionsDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 8).encode(
-    USER_EXTENSIONS_DISCRIMINATOR
+    DELEGATE_EXTENSIONS_DISCRIMINATOR
   );
 }
 
-export type UserExtensions = {
+export type DelegateExtensions = {
   discriminator: ReadonlyUint8Array;
   authority: Address;
   apiUrlLen: number;
@@ -55,14 +55,14 @@ export type UserExtensions = {
   reserved: ReadonlyUint8Array;
 };
 
-export type UserExtensionsArgs = {
+export type DelegateExtensionsArgs = {
   authority: Address;
   apiUrlLen: number;
   apiUrl: ReadonlyUint8Array;
   reserved: ReadonlyUint8Array;
 };
 
-export function getUserExtensionsEncoder(): FixedSizeEncoder<UserExtensionsArgs> {
+export function getDelegateExtensionsEncoder(): FixedSizeEncoder<DelegateExtensionsArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
@@ -71,11 +71,11 @@ export function getUserExtensionsEncoder(): FixedSizeEncoder<UserExtensionsArgs>
       ["apiUrl", fixEncoderSize(getBytesEncoder(), 512)],
       ["reserved", fixEncoderSize(getBytesEncoder(), 512)],
     ]),
-    (value) => ({ ...value, discriminator: USER_EXTENSIONS_DISCRIMINATOR })
+    (value) => ({ ...value, discriminator: DELEGATE_EXTENSIONS_DISCRIMINATOR })
   );
 }
 
-export function getUserExtensionsDecoder(): FixedSizeDecoder<UserExtensions> {
+export function getDelegateExtensionsDecoder(): FixedSizeDecoder<DelegateExtensions> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
     ["authority", getAddressDecoder()],
@@ -85,55 +85,60 @@ export function getUserExtensionsDecoder(): FixedSizeDecoder<UserExtensions> {
   ]);
 }
 
-export function getUserExtensionsCodec(): FixedSizeCodec<
-  UserExtensionsArgs,
-  UserExtensions
+export function getDelegateExtensionsCodec(): FixedSizeCodec<
+  DelegateExtensionsArgs,
+  DelegateExtensions
 > {
-  return combineCodec(getUserExtensionsEncoder(), getUserExtensionsDecoder());
-}
-
-export function decodeUserExtensions<TAddress extends string = string>(
-  encodedAccount: EncodedAccount<TAddress>
-): Account<UserExtensions, TAddress>;
-export function decodeUserExtensions<TAddress extends string = string>(
-  encodedAccount: MaybeEncodedAccount<TAddress>
-): MaybeAccount<UserExtensions, TAddress>;
-export function decodeUserExtensions<TAddress extends string = string>(
-  encodedAccount: EncodedAccount<TAddress> | MaybeEncodedAccount<TAddress>
-): Account<UserExtensions, TAddress> | MaybeAccount<UserExtensions, TAddress> {
-  return decodeAccount(
-    encodedAccount as MaybeEncodedAccount<TAddress>,
-    getUserExtensionsDecoder()
+  return combineCodec(
+    getDelegateExtensionsEncoder(),
+    getDelegateExtensionsDecoder()
   );
 }
 
-export async function fetchUserExtensions<TAddress extends string = string>(
+export function decodeDelegateExtensions<TAddress extends string = string>(
+  encodedAccount: EncodedAccount<TAddress>
+): Account<DelegateExtensions, TAddress>;
+export function decodeDelegateExtensions<TAddress extends string = string>(
+  encodedAccount: MaybeEncodedAccount<TAddress>
+): MaybeAccount<DelegateExtensions, TAddress>;
+export function decodeDelegateExtensions<TAddress extends string = string>(
+  encodedAccount: EncodedAccount<TAddress> | MaybeEncodedAccount<TAddress>
+):
+  | Account<DelegateExtensions, TAddress>
+  | MaybeAccount<DelegateExtensions, TAddress> {
+  return decodeAccount(
+    encodedAccount as MaybeEncodedAccount<TAddress>,
+    getDelegateExtensionsDecoder()
+  );
+}
+
+export async function fetchDelegateExtensions<TAddress extends string = string>(
   rpc: Parameters<typeof fetchEncodedAccount>[0],
   address: Address<TAddress>,
   config?: FetchAccountConfig
-): Promise<Account<UserExtensions, TAddress>> {
-  const maybeAccount = await fetchMaybeUserExtensions(rpc, address, config);
+): Promise<Account<DelegateExtensions, TAddress>> {
+  const maybeAccount = await fetchMaybeDelegateExtensions(rpc, address, config);
   assertAccountExists(maybeAccount);
   return maybeAccount;
 }
 
-export async function fetchMaybeUserExtensions<
+export async function fetchMaybeDelegateExtensions<
   TAddress extends string = string,
 >(
   rpc: Parameters<typeof fetchEncodedAccount>[0],
   address: Address<TAddress>,
   config?: FetchAccountConfig
-): Promise<MaybeAccount<UserExtensions, TAddress>> {
+): Promise<MaybeAccount<DelegateExtensions, TAddress>> {
   const maybeAccount = await fetchEncodedAccount(rpc, address, config);
-  return decodeUserExtensions(maybeAccount);
+  return decodeDelegateExtensions(maybeAccount);
 }
 
-export async function fetchAllUserExtensions(
+export async function fetchAllDelegateExtensions(
   rpc: Parameters<typeof fetchEncodedAccounts>[0],
   addresses: Array<Address>,
   config?: FetchAccountsConfig
-): Promise<Account<UserExtensions>[]> {
-  const maybeAccounts = await fetchAllMaybeUserExtensions(
+): Promise<Account<DelegateExtensions>[]> {
+  const maybeAccounts = await fetchAllMaybeDelegateExtensions(
     rpc,
     addresses,
     config
@@ -142,17 +147,17 @@ export async function fetchAllUserExtensions(
   return maybeAccounts;
 }
 
-export async function fetchAllMaybeUserExtensions(
+export async function fetchAllMaybeDelegateExtensions(
   rpc: Parameters<typeof fetchEncodedAccounts>[0],
   addresses: Array<Address>,
   config?: FetchAccountsConfig
-): Promise<MaybeAccount<UserExtensions>[]> {
+): Promise<MaybeAccount<DelegateExtensions>[]> {
   const maybeAccounts = await fetchEncodedAccounts(rpc, addresses, config);
   return maybeAccounts.map((maybeAccount) =>
-    decodeUserExtensions(maybeAccount)
+    decodeDelegateExtensions(maybeAccount)
   );
 }
 
-export function getUserExtensionsSize(): number {
+export function getDelegateExtensionsSize(): number {
   return 1066;
 }

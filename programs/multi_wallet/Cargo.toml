@@ -9,9 +9,8 @@ crate-type = ["cdylib", "lib"]
 name = "multi_wallet"
 
 [features]
-default = ["v2"]
+default = []
 mainnet = []
-v2 = []
 cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
@@ -24,7 +23,7 @@ anchor-spl = "0.31.1"
 bytemuck = {version = "1.23.0",  features = ["min_const_generics"]}
 base64 = "0.22.1"
 serde_json = "1.0.140"
-light-sdk = {version = "0.13.0", features = ["anchor"] }
-light-hasher = {version = "3.1.0",  features = ["solana"]}
-light-sdk-types = {version = "0.13.0"}
-light-compressed-account = {version = "*"}
+light-sdk = {version = "0.15.0", features = ["anchor", "v2"] }
+light-hasher = {version = "4.0.0",  features = ["solana"]}
+light-sdk-types = {version = "0.15.0"}
+light-compressed-account = {version = "0.5.0"}

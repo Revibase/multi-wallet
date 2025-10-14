@@ -30,25 +30,25 @@ import {
 
 export type LinkWalletArgs = {
   settingsMutArgs: SettingsMutArgs;
-  userExtensionAuthority: Option<Address>;
+  delegateExtensionAuthority: Option<Address>;
 };
 
 export type LinkWalletArgsArgs = {
   settingsMutArgs: SettingsMutArgsArgs;
-  userExtensionAuthority: OptionOrNullable<Address>;
+  delegateExtensionAuthority: OptionOrNullable<Address>;
 };
 
 export function getLinkWalletArgsEncoder(): Encoder<LinkWalletArgsArgs> {
   return getStructEncoder([
     ["settingsMutArgs", getSettingsMutArgsEncoder()],
-    ["userExtensionAuthority", getOptionEncoder(getAddressEncoder())],
+    ["delegateExtensionAuthority", getOptionEncoder(getAddressEncoder())],
   ]);
 }
 
 export function getLinkWalletArgsDecoder(): Decoder<LinkWalletArgs> {
   return getStructDecoder([
     ["settingsMutArgs", getSettingsMutArgsDecoder()],
-    ["userExtensionAuthority", getOptionDecoder(getAddressDecoder())],
+    ["delegateExtensionAuthority", getOptionDecoder(getAddressDecoder())],
   ]);
 }
 

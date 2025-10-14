@@ -27,3 +27,6 @@ pub use compress_settings::*;
 
 pub mod create_multi_wallet;
 pub use create_multi_wallet::*;
+
+pub mod intents;
+pub use intents::*;

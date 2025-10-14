@@ -21,7 +21,7 @@ import { getCompressedSettingsAddressFromIndex } from "./helper";
 import { PackedAccounts } from "./packedAccounts";
 
 export function getNewAddressesParams(
-  addresses: { pubkey: BN254; type: "Settings" | "User" }[]
+  addresses: { pubkey: BN254; type: "Settings" | "Delegate" }[]
 ) {
   const { tree, queue } = getDefaultAddressTreeInfo();
 
@@ -52,7 +52,7 @@ export async function getCompressedAccount(
 }
 
 export async function getCompressedAccountHashes(
-  addresses: { address: BN254; type: "Settings" | "User" }[],
+  addresses: { address: BN254; type: "Settings" | "Delegate" }[],
   cachedCompressedAccounts?: Map<string, any>
 ) {
   const compressedAccounts = await Promise.all(
@@ -98,7 +98,7 @@ export async function getCompressedAccountInitArgs(
   treeInfos: TreeInfo[],
   roots: BN[],
   rootIndices: number[],
-  newAddresses: (AddressWithTree & { type: "User" | "Settings" })[]
+  newAddresses: (AddressWithTree & { type: "Delegate" | "Settings" })[]
 ) {
   if (newAddresses.length === 0) return [];
   const newAddressProofInputs = newAddresses.map((x, index) => ({

@@ -64,6 +64,7 @@ pub enum TransactionActionType {
     AddNewMember,
     Compress,
     Decompress,
+    TransferIntent,
 }
 
 impl TransactionActionType {
@@ -80,6 +81,7 @@ impl TransactionActionType {
             TransactionActionType::AddNewMember => b"add_new_member",
             TransactionActionType::Compress => b"compress",
             TransactionActionType::Decompress => b"decompress",
+            TransactionActionType::TransferIntent => b"transfer_intent",
         }
     }
 }

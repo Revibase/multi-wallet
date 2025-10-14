@@ -1,4 +1,5 @@
 import type {
+  Address,
   AddressesByLookupTableAddress,
   Instruction,
   TransactionSigner,
@@ -71,5 +72,43 @@ export type RevibaseVerifySignedMessageFeature = {
      * @return boolean
      */
     readonly verify: RevibaseVerifySignedMessageMethod;
+  };
+};
+
+export const RevibaseSignAndSendTokenTransferIntent =
+  "revibase:SignAndSendTokenTransferIntent";
+
+export type RevibaseSignAndSendTokenTransferIntentMethod = (input: {
+  destination: Address;
+  mint: Address;
+  amount: number;
+  tokenProgram: Address;
+}) => Promise<string>;
+
+export type RevibaseSignAndSendTokenTransferIntentFeature = {
+  /** Name of the feature. */
+  readonly [RevibaseSignAndSendTokenTransferIntent]: {
+    /** Version of the feature API. */
+    readonly version: "1.0.0";
+
+    readonly signAndSendTokenTransferIntent: RevibaseSignAndSendTokenTransferIntentMethod;
+  };
+};
+
+export const RevibaseSignAndSendNativeTransferIntent =
+  "revibase:SignAndSendNativeTransferIntent";
+
+export type RevibaseSignAndSendNativeTransferIntentMethod = (input: {
+  destination: Address;
+  amount: number;
+}) => Promise<string>;
+
+export type RevibaseSignAndSendNativeTransferIntentFeature = {
+  /** Name of the feature. */
+  readonly [RevibaseSignAndSendNativeTransferIntent]: {
+    /** Version of the feature API. */
+    readonly version: "1.0.0";
+
+    readonly signAndSendNativeTransferIntent: RevibaseSignAndSendNativeTransferIntentMethod;
   };
 };

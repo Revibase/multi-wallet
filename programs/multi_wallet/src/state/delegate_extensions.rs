@@ -1,6 +1,6 @@
 use crate::{
     error::MultisigError,
-    state::{MemberKey, SEED_USER_EXTENSION},
+    state::{MemberKey, SEED_DELEGATE_EXTENSION},
     ID,
 };
 use anchor_lang::{
@@ -9,14 +9,14 @@ use anchor_lang::{
 };
 
 #[account(zero_copy)]
-pub struct UserExtensions {
+pub struct DelegateExtensions {
     pub authority: Pubkey,
     pub api_url_len: u16,
     pub api_url: [u8; 512],
     pub _reserved: [u8; 512],
 }
 
-impl UserExtensions {
+impl DelegateExtensions {
     pub fn size() -> usize {
         return 8 + 32 + 2 + 512 + 512;
     }
@@ -31,33 +31,33 @@ impl UserExtensions {
         let member_key = MemberKey::convert_ed25519(&member)?;
         let member_key = member_key;
         let member_seed = member_key.get_seed()?;
-        let (user_extension_key, bump) =
-            Pubkey::find_program_address(&[SEED_USER_EXTENSION, member_seed.as_ref()], &ID);
-        let user_extension_account = remaining_accounts
+        let (delegate_extension_key, bump) =
+            Pubkey::find_program_address(&[SEED_DELEGATE_EXTENSION, member_seed.as_ref()], &ID);
+        let delegate_extension_account = remaining_accounts
             .iter()
-            .find(|f| f.key.eq(&user_extension_key))
+            .find(|f| f.key.eq(&delegate_extension_key))
             .ok_or(MultisigError::MissingAccount)?;
-        let signer_seed: &[&[u8]] = &[SEED_USER_EXTENSION, member_seed.as_ref(), &[bump]];
+        let signer_seed: &[&[u8]] = &[SEED_DELEGATE_EXTENSION, member_seed.as_ref(), &[bump]];
 
         create_account(
             CpiContext::new_with_signer(
                 system_program.to_account_info(),
                 CreateAccount {
                     from: payer.to_account_info(),
-                    to: user_extension_account.to_account_info(),
+                    to: delegate_extension_account.to_account_info(),
                 },
                 &[signer_seed],
             ),
-            Rent::get()?.minimum_balance(UserExtensions::size()),
-            UserExtensions::size().try_into().unwrap(),
+            Rent::get()?.minimum_balance(DelegateExtensions::size()),
+            DelegateExtensions::size().try_into().unwrap(),
             &ID,
         )?;
-        let mut data = user_extension_account.try_borrow_mut_data()?;
+        let mut data = delegate_extension_account.try_borrow_mut_data()?;
 
         let mut cursor = 0;
-        data[cursor..cursor + UserExtensions::DISCRIMINATOR.len()]
-            .copy_from_slice(UserExtensions::DISCRIMINATOR);
-        cursor += UserExtensions::DISCRIMINATOR.len();
+        data[cursor..cursor + DelegateExtensions::DISCRIMINATOR.len()]
+            .copy_from_slice(DelegateExtensions::DISCRIMINATOR);
+        cursor += DelegateExtensions::DISCRIMINATOR.len();
 
         data[cursor..cursor + 32].copy_from_slice(&member.to_bytes());
         cursor += 32;
@@ -92,22 +92,22 @@ impl UserExtensions {
         Ok(())
     }
 
-    pub fn extract_user_extension<'a>(
+    pub fn extract_delegate_extension<'a>(
         member_key: MemberKey,
         remaining_accounts: &'a [AccountInfo<'a>],
-    ) -> Result<AccountLoader<'a, UserExtensions>> {
-        let (user_extension_key, _) = Pubkey::find_program_address(
-            &[SEED_USER_EXTENSION, member_key.get_seed()?.as_ref()],
+    ) -> Result<AccountLoader<'a, DelegateExtensions>> {
+        let (delegate_extension_key, _) = Pubkey::find_program_address(
+            &[SEED_DELEGATE_EXTENSION, member_key.get_seed()?.as_ref()],
             &ID,
         );
 
-        let user_extension = remaining_accounts
+        let delegate_extension = remaining_accounts
             .iter()
-            .find(|f| f.key.eq(&user_extension_key))
+            .find(|f| f.key.eq(&delegate_extension_key))
             .ok_or(MultisigError::MissingAccount)?;
 
-        let user_extension_loader: AccountLoader<'_, UserExtensions> =
-            AccountLoader::<UserExtensions>::try_from(&user_extension)?;
-        Ok(user_extension_loader)
+        let delegate_extension_loader: AccountLoader<'_, DelegateExtensions> =
+            AccountLoader::<DelegateExtensions>::try_from(&delegate_extension)?;
+        Ok(delegate_extension_loader)
     }
 }

@@ -2,8 +2,9 @@ use crate::error::MultisigError;
 use anchor_lang::prelude::*;
 use std::str::from_utf8;
 
-const MAX_ORIGIN_LEN: usize = 512;
-pub const MAX_RP_ID_LEN: usize = u8::MAX as usize;
+const MAX_METADATA_URL_LEN: usize = 100;
+const MAX_ORIGINS_LEN: usize = 413;
+const MAX_RP_ID_LEN: usize = u8::MAX as usize;
 
 #[account(zero_copy)]
 pub struct DomainConfig {
@@ -14,13 +15,66 @@ pub struct DomainConfig {
     pub is_disabled: u8,
     pub rp_id_length: u8,
     pub rp_id: [u8; MAX_RP_ID_LEN],
-    pub origins: [u8; MAX_ORIGIN_LEN], // [origin_len, origin..., origin_len, origin...]
-    pub padding: [u8; 2],
+    pub origins: [u8; MAX_ORIGINS_LEN], // [origin_len, origin..., origin_len, origin...]
+    pub metadata_url_length: u8,
+    pub metadata_url: [u8; MAX_METADATA_URL_LEN],
 }
 
 impl DomainConfig {
     pub fn size() -> usize {
-        return 8 + 2 + 32 + 32 + 1 + 1 + 1 + MAX_RP_ID_LEN + MAX_ORIGIN_LEN + 2;
+        return 8
+            + 2
+            + 32
+            + 32
+            + 1
+            + 1
+            + 1
+            + MAX_RP_ID_LEN
+            + MAX_ORIGINS_LEN
+            + 1
+            + MAX_METADATA_URL_LEN;
+    }
+
+    pub fn write_rp_id(&mut self, rp_id: String) -> Result<()> {
+        let rp_id = rp_id.as_bytes();
+
+        require!(
+            rp_id.len() <= MAX_RP_ID_LEN,
+            MultisigError::MaxLengthExceeded
+        );
+
+        self.rp_id_length = rp_id.len().try_into()?;
+
+        for i in 0..MAX_RP_ID_LEN {
+            if i < rp_id.len() {
+                self.rp_id[i] = *rp_id.get(i).ok_or(MultisigError::MaxLengthExceeded)?;
+            } else {
+                self.rp_id[i] = 0;
+            }
+        }
+        Ok(())
+    }
+
+    pub fn write_metadata_url(&mut self, metadata_url: String) -> Result<()> {
+        let metadata_url = metadata_url.as_bytes();
+
+        require!(
+            metadata_url.len() <= MAX_METADATA_URL_LEN,
+            MultisigError::MaxLengthExceeded
+        );
+
+        self.metadata_url_length = metadata_url.len().try_into()?;
+
+        for i in 0..MAX_METADATA_URL_LEN {
+            if i < metadata_url.len() {
+                self.metadata_url[i] = *metadata_url
+                    .get(i)
+                    .ok_or(MultisigError::MaxLengthExceeded)?;
+            } else {
+                self.metadata_url[i] = 0;
+            }
+        }
+        Ok(())
     }
 
     pub fn write_origins(&mut self, origins: Vec<String>) -> Result<()> {
@@ -33,7 +87,7 @@ impl DomainConfig {
 
             // Total required space for this entry (2 bytes for length + string bytes)
             let entry_size = 2 + origin_len;
-            if cursor + entry_size > MAX_ORIGIN_LEN {
+            if cursor + entry_size > MAX_ORIGINS_LEN {
                 return err!(MultisigError::MaxLengthExceeded);
             }
 
@@ -51,7 +105,7 @@ impl DomainConfig {
         }
 
         // Zero the remaining buffer to preserve consistency
-        for i in cursor..MAX_ORIGIN_LEN {
+        for i in cursor..MAX_ORIGINS_LEN {
             self.origins[i] = 0;
         }
 

@@ -28,6 +28,7 @@ export type ParsedAuthenticationResponse = {
   domainConfig: Address;
   authData: Uint8Array;
   signature: Uint8Array;
+  additionalInfo?: any;
 };
 
 export type TransactionActionType =
@@ -39,7 +40,8 @@ export type TransactionActionType =
   | "close"
   | "add_new_member"
   | "compress"
-  | "decompress";
+  | "decompress"
+  | "transfer_intent";
 
 export type TransactionPayload = {
   transactionActionType: TransactionActionType;
