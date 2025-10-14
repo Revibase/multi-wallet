@@ -24,7 +24,7 @@ struct Secp256r1SignatureOffsets {
 
 #[derive(AnchorDeserialize, AnchorSerialize, PartialEq)]
 pub struct Secp256r1VerifyArgs {
-    pub index: u8,
+    pub signed_message_index: u8,
     pub slot_number: u64,
     pub client_data_json: Vec<u8>,
 }
@@ -141,12 +141,12 @@ impl Secp256r1VerifyArgs {
         let num_signatures = instruction.data[0];
 
         require!(
-            self.index < num_signatures,
+            self.signed_message_index < num_signatures,
             MultisigError::InvalidSignedMessage
         );
 
         let start: u8 = self
-            .index
+            .signed_message_index
             .saturating_mul(SIGNATURE_OFFSETS_SERIALIZED_SIZE as u8)
             .saturating_add(SIGNATURE_OFFSETS_START as u8);
 
@@ -188,12 +188,12 @@ impl Secp256r1VerifyArgs {
         let num_signatures = instruction.data[0];
 
         require!(
-            self.index < num_signatures,
+            self.signed_message_index < num_signatures,
             MultisigError::InvalidSignedMessage
         );
 
         let start: u8 = self
-            .index
+            .signed_message_index
             .saturating_mul(SIGNATURE_OFFSETS_SERIALIZED_SIZE as u8)
             .saturating_add(SIGNATURE_OFFSETS_START as u8);
 
