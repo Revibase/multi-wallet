@@ -27,12 +27,8 @@ impl<'info> MigrateCompressedDelegates<'info> {
             LIGHT_CPI_SIGNER,
         );
 
-        let (account_info, new_address_params) = Delegate::create_delegate_account(
-            delegate_creation_args,
-            &light_cpi_accounts,
-            args,
-            0,
-        )?;
+        let (account_info, new_address_params) =
+            Delegate::create_delegate_account(delegate_creation_args, &light_cpi_accounts, args)?;
 
         LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof)
             .with_light_account(account_info)?

@@ -51,7 +51,7 @@ export async function fetchDelegateData(
 ): Promise<Delegate> {
   const result = await fetchMaybeDelegateData(member, cachedCompressedAccounts);
   if (!result) {
-    throw new Error("User cannot be found.");
+    throw new Error("Delegate cannot be found.");
   }
   return result;
 }

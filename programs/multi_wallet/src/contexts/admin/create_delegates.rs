@@ -68,7 +68,6 @@ impl<'info> CreateDelegates<'info> {
                     settings_index: None,
                     domain_config: None,
                 },
-                0,
             )?;
             cpi = cpi.with_light_account(account_info)?;
             new_addressess.push(new_address_params);

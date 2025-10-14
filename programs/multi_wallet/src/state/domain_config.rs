@@ -67,7 +67,7 @@ impl DomainConfig {
 
         for i in 0..MAX_METADATA_URL_LEN {
             if i < metadata_url.len() {
-                self.metadata_url[i] = metadata_url[i]
+                self.metadata_url[i] = metadata_url[i];
             } else {
                 self.metadata_url[i] = 0;
             }

@@ -34,7 +34,7 @@ export function runTransactionManagerTests() {
       const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
         crypto.getRandomValues(new Uint8Array(32))
       );
-      const createGlobalUserIx = await createDelegates({
+      const createDelegatesIx = await createDelegates({
         payer: ctx.payer,
         createDelegateArgs: [
           {
@@ -46,7 +46,7 @@ export function runTransactionManagerTests() {
       });
 
       await sendTransaction(
-        [createGlobalUserIx],
+        [createDelegatesIx],
         ctx.payer,
         ctx.addressLookUpTable
       );
@@ -88,19 +88,22 @@ export function runTransactionManagerTests() {
       await sendTransaction(ixs, payer, addressLookupTableAccounts);
 
       // Verify member was added
-      const userExtensions = await fetchDelegateExtensions(
+      const delegateExtensions = await fetchDelegateExtensions(
         getSolanaRpc(),
         await getDelegateExtensionsAddress(ephemeralKeypair.address)
       );
       const accountData = await fetchSettingsData(ctx.index);
-      const userData = await fetchDelegateData(ephemeralKeypair.address);
+      const delegateData = await fetchDelegateData(ephemeralKeypair.address);
       const settingsIndex =
-        userData.settingsIndex.__option === "Some"
-          ? userData.settingsIndex.value
+        delegateData.settingsIndex.__option === "Some"
+          ? delegateData.settingsIndex.value
           : null;
       expect(
         getUtf8Decoder().decode(
-          userExtensions.data.apiUrl.slice(0, userExtensions.data.apiUrlLen)
+          delegateExtensions.data.apiUrl.slice(
+            0,
+            delegateExtensions.data.apiUrlLen
+          )
         )
       ).equal("https://xyz.com", "Api Url is different");
       expect(settingsIndex).equal(null, "Payer should not be a delegate");

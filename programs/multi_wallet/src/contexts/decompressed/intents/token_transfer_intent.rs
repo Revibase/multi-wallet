@@ -101,7 +101,8 @@ impl<'info> TokenTransferIntent<'info> {
         let mut execute = false;
         let mut vote_count = 0;
 
-        let threshold = settings.load()?.threshold as usize;
+        let settings_data = settings.load()?;
+        let threshold = settings_data.threshold as usize;
         let secp256r1_member_keys: Vec<(MemberKey, &Secp256r1VerifyArgsWithDomainAddress)> =
             secp256r1_verify_args
                 .iter()
@@ -117,7 +118,7 @@ impl<'info> TokenTransferIntent<'info> {
                 })
                 .collect();
 
-        for member in &settings.load()?.members {
+        for member in &settings_data.members {
             let has_permission = |perm| member.permissions.has(perm);
 
             let secp256r1_signer = secp256r1_member_keys

@@ -140,7 +140,6 @@ impl<'info> CreateDomainDelegates<'info> {
                     domain_config: Some(ctx.accounts.domain_config.key()),
                     settings_index,
                 },
-                0,
             )?;
             cpi = cpi.with_light_account(account_info)?;
             new_addressess.push(new_address_params);

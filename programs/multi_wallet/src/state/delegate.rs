@@ -50,7 +50,6 @@ impl Delegate {
         delegate_creation_args: DelegateCreationArgs,
         light_cpi_accounts: &CpiAccounts,
         delegate: Delegate,
-        _index: u8,
     ) -> Result<(LightAccount<'info, Delegate>, NewAddressParamsPacked)> {
         let member_seed = delegate.member.get_seed()?;
         let (address, address_seed) = derive_address(

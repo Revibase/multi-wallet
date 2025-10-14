@@ -178,7 +178,7 @@ export async function createMultiWallet(
 
   await sendTransaction([setDomainIx], ctx.payer);
 
-  const createGlobalUserIxs = await createDelegates({
+  const createDelegateIxs = await createDelegates({
     createDelegateArgs: [
       { member: ctx.wallet, isPermanentMember: false, apiUrl: undefined },
       { member: ctx.payer, isPermanentMember: false, apiUrl: undefined },
@@ -186,7 +186,7 @@ export async function createMultiWallet(
     payer: ctx.payer,
   });
 
-  await sendTransaction([createGlobalUserIxs], ctx.payer);
+  await sendTransaction([createDelegateIxs], ctx.payer);
 
   const settings = await getSettingsFromIndex(createIndex);
   const multiWallet = await getMultiWalletFromSettings(settings);

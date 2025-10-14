@@ -38,7 +38,7 @@ export function runSecp256r1Tests() {
       const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
         crypto.getRandomValues(new Uint8Array(32))
       );
-      const createGlobalUserIx = await createDelegates({
+      const createDelegatesIx = await createDelegates({
         payer: ctx.payer,
         createDelegateArgs: [
           {
@@ -50,7 +50,7 @@ export function runSecp256r1Tests() {
       });
 
       await sendTransaction(
-        [createGlobalUserIx],
+        [createDelegatesIx],
         ctx.payer,
         ctx.addressLookUpTable
       );
@@ -60,7 +60,7 @@ export function runSecp256r1Tests() {
 
       // Create Secp256r1Key
       const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey);
-      const createDomainUserIx = await createDomainDelegates({
+      const createDomainDelegatesIx = await createDomainDelegates({
         payer: ctx.payer,
         authority: ctx.wallet,
         domainConfig: ctx.domainConfig,
@@ -75,7 +75,7 @@ export function runSecp256r1Tests() {
       });
 
       await sendTransaction(
-        [createDomainUserIx],
+        [createDomainDelegatesIx],
         ctx.payer,
         ctx.addressLookUpTable
       );
@@ -83,10 +83,10 @@ export function runSecp256r1Tests() {
       // Verify Secp256r1Key was added as member
       const accountData = await fetchSettingsData(ctx.index);
 
-      const userData = await fetchDelegateData(secp256r1Key);
+      const delegateData = await fetchDelegateData(secp256r1Key);
       const settingsIndex =
-        userData.settingsIndex.__option === "Some"
-          ? userData.settingsIndex.value
+        delegateData.settingsIndex.__option === "Some"
+          ? delegateData.settingsIndex.value
           : null;
       expect(settingsIndex).to.equal(
         ctx.index,
@@ -105,7 +105,7 @@ export function runSecp256r1Tests() {
     it("should create wallet using Secp256r1 key as initial member", async () => {
       const secp256r1Keys = generateSecp256r1KeyPair();
 
-      const createDomainUserIx = await createDomainDelegates({
+      const createDomainDelegatesIx = await createDomainDelegates({
         payer: ctx.payer,
         authority: ctx.wallet,
         domainConfig: ctx.domainConfig,
@@ -118,7 +118,7 @@ export function runSecp256r1Tests() {
       });
 
       await sendTransaction(
-        [createDomainUserIx],
+        [createDomainDelegatesIx],
         ctx.payer,
         ctx.addressLookUpTable
       );

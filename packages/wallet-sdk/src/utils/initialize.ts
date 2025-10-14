@@ -137,6 +137,10 @@ export function uninitializeMultiWallet() {
   globalAuthUrl = null;
   globalExpectedOrigin = null;
   globalExpectedRPID = null;
+  globalSolanaRpcSubscription = null;
+  globalSendAndConfirmTransaction = null;
+  globalComputeBudgetEstimate = null;
+  globalConfirmRecentTransaction = null;
 }
 
 export function initializeMultiWallet({
