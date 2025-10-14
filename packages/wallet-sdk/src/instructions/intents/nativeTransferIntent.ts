@@ -35,7 +35,7 @@ export async function nativeTransferIntent({
 }: {
   index: number | bigint;
   destination: Address;
-  amount: number;
+  amount: number | bigint;
   signers: (TransactionSigner | Secp256r1Key)[];
   payer?: TransactionSigner;
   compressed?: boolean;

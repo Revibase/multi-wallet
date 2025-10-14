@@ -39,7 +39,7 @@ export async function tokenTransferIntent({
   index: number | bigint;
   destination: Address;
   mint: Address;
-  amount: number;
+  amount: number | bigint;
   signers: (TransactionSigner | Secp256r1Key)[];
   tokenProgram: Address;
   payer?: TransactionSigner;

@@ -163,7 +163,6 @@ impl<'info> CompressSettingsAccount<'info> {
                         settings_creation_args,
                         data,
                         &light_cpi_accounts,
-                        0,
                     )?;
 
                 settings_account.invariant()?;

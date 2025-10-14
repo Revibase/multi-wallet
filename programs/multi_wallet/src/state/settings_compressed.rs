@@ -111,7 +111,6 @@ impl CompressedSettings {
         settings_creation: SettingsCreationArgs,
         data: CompressedSettingsData,
         light_cpi_accounts: &CpiAccounts,
-        _index: u8,
     ) -> Result<(
         LightAccount<'info, CompressedSettings>,
         NewAddressParamsPacked,

@@ -349,6 +349,8 @@ pub mod multi_wallet {
         )
     }
 
+    /// Creates a native SOL transfer intent with compressed settings verification.
+    /// Intents are one-step transfers that bypass the transaction buffer flow.
     #[instruction(discriminator = 27)]
     pub fn native_transfer_intent_compressed<'info>(
         ctx: Context<'_, '_, 'info, 'info, NativeTransferIntentCompressed<'info>>,
@@ -366,6 +368,8 @@ pub mod multi_wallet {
         )
     }
 
+    /// Creates a token transfer intent with compressed settings verification.
+    /// Intents are one-step transfers that bypass the transaction buffer flow.
     #[instruction(discriminator = 28)]
     pub fn token_transfer_intent_compressed<'info>(
         ctx: Context<'_, '_, 'info, 'info, TokenTransferIntentCompressed<'info>>,
@@ -383,6 +387,8 @@ pub mod multi_wallet {
         )
     }
 
+    /// Creates a native SOL transfer intent with on chain settings.
+    /// Intents are one-step transfers that bypass the transaction buffer flow.
     #[instruction(discriminator = 29)]
     pub fn native_transfer_intent<'info>(
         ctx: Context<'_, '_, 'info, 'info, NativeTransferIntent<'info>>,
@@ -392,6 +398,8 @@ pub mod multi_wallet {
         NativeTransferIntent::process(ctx, amount, secp256r1_verify_args)
     }
 
+    /// Creates a token transfer intent with on chain settings.
+    /// Intents are one-step transfers that bypass the transaction buffer flow.
     #[instruction(discriminator = 30)]
     pub fn token_transfer_intent<'info>(
         ctx: Context<'_, '_, 'info, 'info, TokenTransferIntent<'info>>,

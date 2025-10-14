@@ -31,7 +31,6 @@ impl<'info> MigrateCompressedSettings<'info> {
             settings_creation_args,
             args,
             &light_cpi_accounts,
-            0,
         )?;
 
         settings_account.invariant()?;

@@ -82,7 +82,6 @@ impl<'info> CreateMultiWalletCompressed<'info> {
                 settings_creation,
                 data,
                 &light_cpi_accounts,
-                0,
             )?;
 
         let mut permissions: Vec<Permission> = Vec::new();
