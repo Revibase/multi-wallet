@@ -8,7 +8,7 @@ pub enum DelegateOp {
     Ignore,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug)]
 pub struct MemberWithAddPermissionsArgs {
     pub member: Member,
     pub verify_args: Option<Secp256r1VerifyArgs>,
@@ -16,13 +16,13 @@ pub struct MemberWithAddPermissionsArgs {
     pub set_as_delegate: bool,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug)]
 pub struct MemberKeyWithRemovePermissionsArgs {
     pub member_key: MemberKey,
     pub delegate_args: DelegateMutArgs,
 }
 
-#[derive(AnchorSerialize, AnchorDeserialize, Debug)]
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug)]
 pub struct MemberKeyWithEditPermissionsArgs {
     pub member_key: MemberKey,
     pub permissions: Permissions,

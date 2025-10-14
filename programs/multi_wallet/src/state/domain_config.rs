@@ -47,7 +47,7 @@ impl DomainConfig {
 
         for i in 0..MAX_RP_ID_LEN {
             if i < rp_id.len() {
-                self.rp_id[i] = *rp_id.get(i).ok_or(MultisigError::MaxLengthExceeded)?;
+                self.rp_id[i] = rp_id[i];
             } else {
                 self.rp_id[i] = 0;
             }
@@ -67,9 +67,7 @@ impl DomainConfig {
 
         for i in 0..MAX_METADATA_URL_LEN {
             if i < metadata_url.len() {
-                self.metadata_url[i] = *metadata_url
-                    .get(i)
-                    .ok_or(MultisigError::MaxLengthExceeded)?;
+                self.metadata_url[i] = metadata_url[i]
             } else {
                 self.metadata_url[i] = 0;
             }

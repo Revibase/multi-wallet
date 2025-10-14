@@ -1,8 +1,7 @@
 use crate::{
     durable_nonce_check, ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig,
-    MemberKey, MultisigError, Permission, ProofArgs, Secp256r1VerifyArgs,
-    Secp256r1VerifyArgsWithDomainAddress, SettingsReadonlyArgs, TransactionActionType,
-    SEED_MULTISIG, SEED_VAULT,
+    MemberKey, MultisigError, Permission, ProofArgs, Secp256r1VerifyArgsWithDomainAddress,
+    SettingsReadonlyArgs, TransactionActionType, SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{
     prelude::*,
@@ -19,7 +18,6 @@ use anchor_spl::{
 };
 
 #[derive(Accounts)]
-#[instruction(amount: u64, secp256r1_verify_args: Option<Secp256r1VerifyArgs>, settings_readonly: SettingsReadonlyArgs,)]
 pub struct TokenTransferIntentCompressed<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -51,7 +49,16 @@ pub struct TokenTransferIntentCompressed<'info> {
     /// CHECK:
     pub destination: UncheckedAccount<'info>,
     /// CHECK:
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [
+            &destination.key().to_bytes(),
+            &token_program.key().to_bytes(),
+            &mint.key().to_bytes(),
+        ],
+        bump,
+        seeds::program = AssociatedToken::id()
+    )]
     pub destination_token_account: UncheckedAccount<'info>,
     /// CHECK:
     #[account(
@@ -197,6 +204,13 @@ impl<'info> TokenTransferIntentCompressed<'info> {
             SEED_VAULT,
             &[settings.multi_wallet_bump],
         ];
+
+        let multi_wallet = Pubkey::create_program_address(signer_seeds, &crate::id())
+            .map_err(ProgramError::from)?;
+        require!(
+            ctx.accounts.source.key().eq(&multi_wallet),
+            MultisigError::InvalidAccount
+        );
 
         let ata_ix = create_associated_token_account_idempotent(
             ctx.accounts.source.key,

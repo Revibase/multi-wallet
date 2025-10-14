@@ -15,7 +15,7 @@ pub struct CreateMultiWalletCompressed<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     pub initial_member: Option<Signer<'info>>,
-    pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
+    pub system_program: Program<'info, System>,
     /// CHECK:
     #[account(
         address = SlotHashes::id(),
@@ -26,9 +26,9 @@ pub struct CreateMultiWalletCompressed<'info> {
         address = Instructions::id(),
     )]
     pub instructions_sysvar: Option<UncheckedAccount<'info>>,
+    pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
     #[account(mut)]
     pub global_counter: AccountLoader<'info, GlobalCounter>,
-    pub system_program: Program<'info, System>,
 }
 
 impl<'info> CreateMultiWalletCompressed<'info> {

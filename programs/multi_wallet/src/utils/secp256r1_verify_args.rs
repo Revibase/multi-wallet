@@ -22,7 +22,7 @@ struct Secp256r1SignatureOffsets {
     pub message_instruction_index: u16,
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, PartialEq)]
+#[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug)]
 pub struct Secp256r1VerifyArgs {
     pub signed_message_index: u8,
     pub slot_number: u64,

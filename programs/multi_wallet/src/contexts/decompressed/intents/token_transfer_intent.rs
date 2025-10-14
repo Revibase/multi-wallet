@@ -56,7 +56,16 @@ pub struct TokenTransferIntent<'info> {
     /// CHECK:
     pub destination: UncheckedAccount<'info>,
     /// CHECK:
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [
+            &destination.key().to_bytes(),
+            &token_program.key().to_bytes(),
+            &mint.key().to_bytes(),
+        ],
+        bump,
+        seeds::program = AssociatedToken::id()
+    )]
     pub destination_token_account: UncheckedAccount<'info>,
     /// CHECK:
     #[account(

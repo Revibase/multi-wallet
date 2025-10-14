@@ -1,8 +1,7 @@
 use crate::{
     durable_nonce_check, ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig,
-    MemberKey, MultisigError, Permission, ProofArgs, Secp256r1VerifyArgs,
-    Secp256r1VerifyArgsWithDomainAddress, SettingsReadonlyArgs, TransactionActionType,
-    SEED_MULTISIG, SEED_VAULT,
+    MemberKey, MultisigError, Permission, ProofArgs, Secp256r1VerifyArgsWithDomainAddress,
+    SettingsReadonlyArgs, TransactionActionType, SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{
     prelude::*,
@@ -11,7 +10,6 @@ use anchor_lang::{
 };
 
 #[derive(Accounts)]
-#[instruction(amount: u64,secp256r1_verify_args: Option<Secp256r1VerifyArgs>,settings_readonly: SettingsReadonlyArgs,)]
 pub struct NativeTransferIntentCompressed<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -170,7 +168,8 @@ impl<'info> NativeTransferIntentCompressed<'info> {
             &[settings.multi_wallet_bump],
         ];
 
-        let multi_wallet = Pubkey::create_program_address(signer_seeds, &crate::id()).unwrap();
+        let multi_wallet = Pubkey::create_program_address(signer_seeds, &crate::id())
+            .map_err(ProgramError::from)?;
         require!(
             ctx.accounts.source.key().eq(&multi_wallet),
             MultisigError::InvalidAccount

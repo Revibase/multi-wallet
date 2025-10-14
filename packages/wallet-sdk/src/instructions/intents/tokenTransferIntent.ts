@@ -36,7 +36,7 @@ export async function tokenTransferIntent({
   tokenProgram,
   compressed = false,
 }: {
-  index: number;
+  index: number | bigint;
   destination: Address;
   mint: Address;
   amount: number;
@@ -61,29 +61,31 @@ export async function tokenTransferIntent({
       cachedCompressedAccounts
     );
 
-  const secp256r1Signers = dedupSigners.filter(
-    (x) => x instanceof Secp256r1Key
-  );
-
   const secp256r1VerifyInput: Secp256r1VerifyInput = [];
   const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];
-  for (const x of secp256r1Signers) {
-    const index = secp256r1VerifyInput.length;
-    const { domainConfig, verifyArgs, signature, publicKey, message } =
-      extractSecp256r1VerificationArgs(x, index);
-    if (message && signature && publicKey) {
-      secp256r1VerifyInput.push({ message, signature, publicKey });
-    }
-    if (domainConfig) {
-      packedAccounts.addPreAccounts([
-        { address: domainConfig, role: AccountRole.READONLY },
-      ]);
-      if (verifyArgs?.__option === "Some") {
-        secp256r1VerifyArgs.push({
-          domainConfigKey: domainConfig,
-          verifyArgs: verifyArgs.value,
-        });
+  for (const x of dedupSigners) {
+    if (x instanceof Secp256r1Key) {
+      const index = secp256r1VerifyInput.length;
+      const { domainConfig, verifyArgs, signature, publicKey, message } =
+        extractSecp256r1VerificationArgs(x, index);
+      if (message && signature && publicKey) {
+        secp256r1VerifyInput.push({ message, signature, publicKey });
       }
+      if (domainConfig) {
+        packedAccounts.addPreAccounts([
+          { address: domainConfig, role: AccountRole.READONLY },
+        ]);
+        if (verifyArgs?.__option === "Some") {
+          secp256r1VerifyArgs.push({
+            domainConfigKey: domainConfig,
+            verifyArgs: verifyArgs.value,
+          });
+        }
+      }
+    } else {
+      packedAccounts.addPreAccounts([
+        { address: x.address, role: AccountRole.READONLY_SIGNER, signer: x },
+      ]);
     }
   }
 
