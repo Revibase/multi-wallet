@@ -36,16 +36,16 @@ export function getNewAddressesParams(
 
 export async function getCompressedAccount(
   address: BN,
-  cachedCompressedAccounts?: Map<string, any>
+  cachedAccounts?: Map<string, any>
 ): Promise<CompressedAccount | null> {
-  let result = cachedCompressedAccounts?.get(address.toString());
+  let result = cachedAccounts?.get(address.toString());
   if (result) {
     return result;
   } else {
     const compressedAccount =
       await getLightProtocolRpc().getCompressedAccount(address);
     if (compressedAccount) {
-      cachedCompressedAccounts?.set(address.toString(), compressedAccount);
+      cachedAccounts?.set(address.toString(), compressedAccount);
     }
     return compressedAccount;
   }
@@ -53,12 +53,10 @@ export async function getCompressedAccount(
 
 export async function getCompressedAccountHashes(
   addresses: { address: BN254; type: "Settings" | "Delegate" }[],
-  cachedCompressedAccounts?: Map<string, any>
+  cachedAccounts?: Map<string, any>
 ) {
   const compressedAccounts = await Promise.all(
-    addresses.map(async (x) =>
-      getCompressedAccount(x.address, cachedCompressedAccounts)
-    )
+    addresses.map(async (x) => getCompressedAccount(x.address, cachedAccounts))
   );
 
   const filtered = compressedAccounts
@@ -176,7 +174,7 @@ export async function constructSettingsProofArgs(
   compressed: boolean,
   index: bigint | number,
   simulateProof?: boolean,
-  cachedCompressedAccounts?: Map<string, any>
+  cachedAccounts?: Map<string, any>
 ) {
   let settingsReadonlyArgs: SettingsReadonlyArgs | null = null;
   let proof: ValidityProofWithContext | null = null;
@@ -187,7 +185,7 @@ export async function constructSettingsProofArgs(
     const settings = (
       await getCompressedAccountHashes(
         [{ address: settingsAddress, type: "Settings" }],
-        cachedCompressedAccounts
+        cachedAccounts
       )
     )[0];
     if (simulateProof) {

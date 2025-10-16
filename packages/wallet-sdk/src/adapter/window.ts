@@ -4,7 +4,6 @@ import {
   type WalletAccount,
 } from "@wallet-standard/core";
 import type {
-  Address,
   AddressesByLookupTableAddress,
   Instruction,
   TransactionSigner,
@@ -40,19 +39,9 @@ export interface Revibase extends RevibaseEventEmitter {
     instructions: Instruction[];
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
     additionalSigners?: TransactionSigner[];
-    cachedCompressedAccounts?: Map<string, any>;
+    cachedAccounts?: Map<string, any>;
   }): Promise<string>;
   signMessage(input: string): Promise<MessageAuthenticationResponse>;
-  signAndSendTokenTransferIntent(input: {
-    destination: Address;
-    mint: Address;
-    amount: number;
-    tokenProgram: Address;
-  }): Promise<string>;
-  signAndSendNativeTransferIntent(input: {
-    destination: Address;
-    amount: number;
-  }): Promise<string>;
   verify(input: {
     message: string;
     authResponse: MessageAuthenticationResponse;

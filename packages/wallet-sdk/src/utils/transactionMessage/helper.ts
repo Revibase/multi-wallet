@@ -53,7 +53,7 @@ export async function estimateTransactionSizeExceedLimit({
   addressesByLookupTableAddress,
   memo,
   secp256r1VerifyInput,
-  cachedCompressedAccounts,
+  cachedAccounts,
 }: {
   payer: TransactionSigner;
   transactionMessageBytes: Uint8Array;
@@ -63,7 +63,7 @@ export async function estimateTransactionSizeExceedLimit({
   signers: (TransactionSigner | Secp256r1Key)[];
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   memo?: string | null;
-  cachedCompressedAccounts?: Map<string, any>;
+  cachedAccounts?: Map<string, any>;
 }) {
   const result = await prepareTransactionSync({
     payer,
@@ -74,7 +74,7 @@ export async function estimateTransactionSizeExceedLimit({
     compressed,
     simulateProof: true,
     addressesByLookupTableAddress,
-    cachedCompressedAccounts,
+    cachedAccounts,
   });
 
   const tx = pipe(

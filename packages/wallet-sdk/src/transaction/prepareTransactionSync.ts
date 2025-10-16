@@ -14,7 +14,7 @@ interface CreateTransactionSyncArgs {
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   compressed?: boolean;
   simulateProof?: boolean;
-  cachedCompressedAccounts?: Map<string, any>;
+  cachedAccounts?: Map<string, any>;
 }
 
 export async function prepareTransactionSync({
@@ -24,7 +24,7 @@ export async function prepareTransactionSync({
   signers,
   secp256r1VerifyInput,
   addressesByLookupTableAddress,
-  cachedCompressedAccounts,
+  cachedAccounts,
   compressed = false,
   simulateProof = false,
 }: CreateTransactionSyncArgs): Promise<BundleResponse> {
@@ -38,7 +38,7 @@ export async function prepareTransactionSync({
       compressed,
       addressesByLookupTableAddress,
       simulateProof,
-      cachedCompressedAccounts,
+      cachedAccounts,
     });
 
   return {

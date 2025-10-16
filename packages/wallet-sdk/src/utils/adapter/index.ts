@@ -1,6 +1,8 @@
 import {
-  address,
   type AddressesByLookupTableAddress,
+  type Instruction,
+  type TransactionSigner,
+  address,
   appendTransactionMessageInstructions,
   assertIsTransactionWithinSizeLimit,
   compileTransaction,
@@ -10,13 +12,11 @@ import {
   getBlockhashDecoder,
   getSignatureFromTransaction,
   getUtf8Decoder,
-  type Instruction,
   pipe,
   prependTransactionMessageInstructions,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
   signTransactionMessageWithSigners,
-  type TransactionSigner,
 } from "gill";
 import {
   getSetComputeUnitLimitInstruction,
@@ -25,30 +25,31 @@ import {
 import {
   type CompressedSettingsData,
   fetchDelegateExtensions,
-} from "../generated";
+} from "../../generated";
 import {
   type BundleResponse,
   Permission,
   Permissions,
   TransactionManagerPermission,
-} from "../types";
+} from "../../types";
 import {
   convertMemberKeyToString,
   createTransactionManagerSigner,
+  getDelegateExtensionsAddress,
+} from "../helper";
+import {
   getComputeBudgetEstimate,
   getConfirmRecentTransaction,
-  getDelegateExtensionsAddress,
-  getMedianPriorityFees,
+  getGlobalAuthorizedClient,
   getSendAndConfirmTransaction,
   getSolanaRpc,
   getSolanaRpcEndpoint,
-  sendJitoBundle,
-} from "../utils";
+} from "../initialize";
+import { getMedianPriorityFees, sendJitoBundle } from "../transactionMessage";
 
 export function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
   return arraysEqual(a, b);
 }
-
 interface Indexed<T> {
   length: number;
   [index: number]: T;
@@ -318,8 +319,8 @@ async function createEncodedBundle(
             : tx,
         async (tx) => {
           const computeUnits =
-            Math.ceil((x.unitsConsumed ?? 0) * 1.1) || 800_000;
-          return computeUnits > 200_000
+            Math.ceil((x.unitsConsumed ?? 0) * 1.1) || 800000;
+          return computeUnits > 200000
             ? prependTransactionMessageInstructions(
                 [
                   getSetComputeUnitLimitInstruction({
@@ -343,15 +344,17 @@ export async function resolveTransactionManagerSigner({
   memberKey,
   settingsData,
   transactionMessageBytes,
-  authorizedClients,
+  authorizedClient = getGlobalAuthorizedClient(),
+  cachedAccounts,
 }: {
   memberKey: string;
   settingsData: CompressedSettingsData;
   transactionMessageBytes?: Uint8Array;
-  authorizedClients?: {
+  authorizedClient?: {
     publicKey: string;
     url: string;
-  };
+  } | null;
+  cachedAccounts?: Map<string, any>;
 }) {
   if (settingsData.threshold > 1) {
     throw new Error(
@@ -394,10 +397,13 @@ export async function resolveTransactionManagerSigner({
     convertMemberKeyToString(transactionManager.pubkey)
   );
 
-  const delegateExtensions = await fetchDelegateExtensions(
-    getSolanaRpc(),
-    await getDelegateExtensionsAddress(transactionManagerAddress)
+  const delegateExtensionAddress = await getDelegateExtensionsAddress(
+    transactionManagerAddress
   );
+
+  const delegateExtensions =
+    cachedAccounts?.get(delegateExtensionAddress.toString()) ??
+    (await fetchDelegateExtensions(getSolanaRpc(), delegateExtensionAddress));
 
   if (delegateExtensions.data.apiUrlLen === 0) {
     throw new Error(
@@ -412,6 +418,6 @@ export async function resolveTransactionManagerSigner({
     transactionManagerAddress,
     apiUrl,
     transactionMessageBytes,
-    authorizedClients
+    authorizedClient
   );
 }

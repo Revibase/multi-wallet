@@ -28,7 +28,7 @@ type CreateWalletArgs = {
   index: bigint | number;
   payer: TransactionSigner;
   compressed?: boolean;
-  cachedCompressedAccounts?: Map<string, any>;
+  cachedAccounts?: Map<string, any>;
   initialMember: TransactionSigner | Secp256r1Key;
   setAsDelegate: boolean;
 };
@@ -38,7 +38,7 @@ export async function createWallet({
   initialMember,
   setAsDelegate,
   compressed = false,
-  cachedCompressedAccounts,
+  cachedAccounts,
 }: CreateWalletArgs) {
   const globalCounter = await getGlobalCounterAddress();
   const {
@@ -76,7 +76,7 @@ export async function createWallet({
           type: "Delegate" as const,
         },
       ],
-      cachedCompressedAccounts
+      cachedAccounts
     ))
   );
 

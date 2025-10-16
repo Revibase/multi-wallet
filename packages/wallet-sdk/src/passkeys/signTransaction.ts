@@ -3,7 +3,7 @@ import type {
   TransactionAuthenticationResponse,
   TransactionPayload,
 } from "../types";
-import { getAuthUrl } from "../utils";
+import { getAuthUrl, getGlobalAdditonalInfo } from "../utils";
 import {
   convertTransactionPayload,
   openAuthUrl,
@@ -15,7 +15,7 @@ export async function signTransaction({
   transactionActionType,
   transactionAddress,
   transactionMessageBytes,
-  additionalInfo,
+  additionalInfo = getGlobalAdditonalInfo(),
   hints,
   signer,
   popUp,

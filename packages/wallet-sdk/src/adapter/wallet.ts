@@ -10,11 +10,8 @@ import type {
   Wallet,
 } from "@wallet-standard/core";
 import { address, getAddressEncoder } from "gill";
+import { bytesEqual } from "../utils/adapter/index.js";
 import type {
-  RevibaseSignAndSendNativeTransferIntentFeature,
-  RevibaseSignAndSendNativeTransferIntentMethod,
-  RevibaseSignAndSendTokenTransferIntentFeature,
-  RevibaseSignAndSendTokenTransferIntentMethod,
   RevibaseSignAndSendTransactionFeature,
   RevibaseSignAndSendTransactionMethod,
   RevibaseSignMessageFeature,
@@ -23,7 +20,6 @@ import type {
   RevibaseVerifySignedMessageMethod,
 } from "./features.js";
 import { icon } from "./icon.js";
-import { bytesEqual } from "./util.js";
 import { type Revibase, RevibaseWalletAccount } from "./window.js";
 
 export const RevibaseNamespace = "revibase:";
@@ -65,8 +61,6 @@ export class RevibaseWallet implements Wallet {
     RevibaseSignMessageFeature &
     RevibaseVerifySignedMessageFeature &
     RevibaseSignAndSendTransactionFeature &
-    RevibaseSignAndSendTokenTransferIntentFeature &
-    RevibaseSignAndSendNativeTransferIntentFeature &
     RevibaseFeature {
     return {
       "standard:connect": {
@@ -92,14 +86,6 @@ export class RevibaseWallet implements Wallet {
       "revibase:VerifySignedMessage": {
         version: "1.0.0",
         verify: this.#verify,
-      },
-      "revibase:SignAndSendTokenTransferIntent": {
-        version: "1.0.0",
-        signAndSendTokenTransferIntent: this.#signAndSendTokenTransferIntent,
-      },
-      "revibase:SignAndSendNativeTransferIntent": {
-        version: "1.0.0",
-        signAndSendNativeTransferIntent: this.#signAndSendNativeTransferIntent,
       },
       "revibase:": {
         revibase: this.#revibase,
@@ -219,14 +205,4 @@ export class RevibaseWallet implements Wallet {
   #verify: RevibaseVerifySignedMessageMethod = (input) => {
     return this.#revibase.verify(input);
   };
-
-  #signAndSendTokenTransferIntent: RevibaseSignAndSendTokenTransferIntentMethod =
-    (input) => {
-      return this.#revibase.signAndSendTokenTransferIntent(input);
-    };
-
-  #signAndSendNativeTransferIntent: RevibaseSignAndSendNativeTransferIntentMethod =
-    (input) => {
-      return this.#revibase.signAndSendNativeTransferIntent(input);
-    };
 }

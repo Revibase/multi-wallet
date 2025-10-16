@@ -28,7 +28,7 @@ export async function nativeTransferIntent({
   index,
   destination,
   signers,
-  cachedCompressedAccounts,
+  cachedAccounts,
   amount,
   payer,
   compressed = false,
@@ -39,18 +39,13 @@ export async function nativeTransferIntent({
   signers: (TransactionSigner | Secp256r1Key)[];
   payer?: TransactionSigner;
   compressed?: boolean;
-  cachedCompressedAccounts?: Map<string, any>;
+  cachedAccounts?: Map<string, any>;
 }) {
   const dedupSigners = getDeduplicatedSigners(signers);
   const settings = await getSettingsFromIndex(index);
   const multiWallet = await getMultiWalletFromSettings(settings);
   const { settingsReadonlyArgs, proof, packedAccounts } =
-    await constructSettingsProofArgs(
-      compressed,
-      index,
-      false,
-      cachedCompressedAccounts
-    );
+    await constructSettingsProofArgs(compressed, index, false, cachedAccounts);
 
   const secp256r1VerifyInput: Secp256r1VerifyInput = [];
   const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];

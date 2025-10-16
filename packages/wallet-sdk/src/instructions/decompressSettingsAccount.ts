@@ -34,12 +34,12 @@ export async function decompressSettingsAccount({
   index,
   payer,
   signers,
-  cachedCompressedAccounts,
+  cachedAccounts,
 }: {
   index: number | bigint;
   payer: TransactionSigner;
   signers: (Secp256r1Key | TransactionSigner)[];
-  cachedCompressedAccounts?: Map<string, any>;
+  cachedAccounts?: Map<string, any>;
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
@@ -51,7 +51,7 @@ export async function decompressSettingsAccount({
         type: "Settings" as const,
       },
     ],
-    cachedCompressedAccounts
+    cachedAccounts
   );
   const proof = await getValidityProofWithRetry(hashesWithTree, []);
   const settingsMutArgs = getCompressedAccountMutArgs<CompressedSettings>(

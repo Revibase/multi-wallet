@@ -34,7 +34,7 @@ export async function executeTransactionSync({
   secp256r1VerifyInput = [],
   compressed = false,
   simulateProof = false,
-  cachedCompressedAccounts,
+  cachedAccounts,
 }: {
   index: bigint | number;
   signers: (TransactionSigner | Secp256r1Key)[];
@@ -44,7 +44,7 @@ export async function executeTransactionSync({
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   payer?: TransactionSigner;
   simulateProof?: boolean;
-  cachedCompressedAccounts?: Map<string, any>;
+  cachedAccounts?: Map<string, any>;
 }) {
   const dedupSigners = getDeduplicatedSigners(signers);
   const settings = await getSettingsFromIndex(index);
@@ -65,7 +65,7 @@ export async function executeTransactionSync({
       compressed,
       index,
       simulateProof,
-      cachedCompressedAccounts
+      cachedAccounts
     ),
   ]);
 

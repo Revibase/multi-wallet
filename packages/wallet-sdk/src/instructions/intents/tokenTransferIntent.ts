@@ -30,7 +30,7 @@ export async function tokenTransferIntent({
   destination,
   mint,
   signers,
-  cachedCompressedAccounts,
+  cachedAccounts,
   amount,
   payer,
   tokenProgram,
@@ -44,7 +44,7 @@ export async function tokenTransferIntent({
   tokenProgram: Address;
   payer?: TransactionSigner;
   compressed?: boolean;
-  cachedCompressedAccounts?: Map<string, any>;
+  cachedAccounts?: Map<string, any>;
 }) {
   const dedupSigners = getDeduplicatedSigners(signers);
   const settings = await getSettingsFromIndex(index);
@@ -54,12 +54,7 @@ export async function tokenTransferIntent({
     getAssociatedTokenAccountAddress(mint, destination, tokenProgram),
   ]);
   const { settingsReadonlyArgs, proof, packedAccounts } =
-    await constructSettingsProofArgs(
-      compressed,
-      index,
-      false,
-      cachedCompressedAccounts
-    );
+    await constructSettingsProofArgs(compressed, index, false, cachedAccounts);
 
   const secp256r1VerifyInput: Secp256r1VerifyInput = [];
   const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];

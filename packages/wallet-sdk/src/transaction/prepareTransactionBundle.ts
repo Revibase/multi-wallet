@@ -34,7 +34,7 @@ interface CreateTransactionBundleArgs {
   chunkSize?: number;
   compressed?: boolean;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
-  cachedCompressedAccounts?: Map<string, any>;
+  cachedAccounts?: Map<string, any>;
 }
 
 export async function prepareTransactionBundle({
@@ -51,7 +51,7 @@ export async function prepareTransactionBundle({
   additionalSigners = [],
   compressed = false,
   chunkSize = Math.ceil(transactionMessageBytes.length / 2),
-  cachedCompressedAccounts,
+  cachedAccounts,
 }: CreateTransactionBundleArgs) {
   // --- Stage 1: Setup Addresses ---
   const [settings, transactionBufferAddress] = await Promise.all([
@@ -75,12 +75,7 @@ export async function prepareTransactionBundle({
 
   // --- Stage 3: Derive readonly compressed proof args if necessary---
   const { settingsReadonlyArgs, proof, packedAccounts } =
-    await constructSettingsProofArgs(
-      compressed,
-      index,
-      false,
-      cachedCompressedAccounts
-    );
+    await constructSettingsProofArgs(compressed, index, false, cachedAccounts);
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const compressedArgs = settingsReadonlyArgs
     ? {

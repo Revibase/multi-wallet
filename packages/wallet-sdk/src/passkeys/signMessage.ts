@@ -3,7 +3,7 @@ import type {
   MessageAuthenticationResponse,
   MessagePayload,
 } from "../types";
-import { getAuthUrl } from "../utils";
+import { getAuthUrl, getGlobalAdditonalInfo } from "../utils";
 import { openAuthUrl } from "../utils/passkeys/internal";
 
 export async function signMessage({
@@ -13,7 +13,7 @@ export async function signMessage({
   popUp,
   hints,
   debug,
-  additionalInfo,
+  additionalInfo = getGlobalAdditonalInfo(),
 }: MessagePayload & BasePayload) {
   return (await openAuthUrl({
     authUrl: `${authUrl}/?redirectUrl=${encodeURIComponent(window.origin)}`,

@@ -1,6 +1,4 @@
-import { address, getAddressEncoder, getU64Encoder } from "gill";
-import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
-import { nativeTransferIntent, tokenTransferIntent } from "../instructions";
+import { address } from "gill";
 import {
   signMessage as signPasskeyMessage,
   signTransaction as signPasskeyTransaction,
@@ -22,26 +20,20 @@ import {
   getTransactionBufferAddress,
 } from "../utils";
 import {
-  estimateJitoTips,
-  estimateTransactionSizeExceedLimit,
-  simulateSecp256r1Signer,
-} from "../utils/transactionMessage/helper";
-import {
   ADDRESS_BY_LOOKUP_TABLE_ADDRESS,
   createSignInMessageText,
   resolveTransactionManagerSigner,
   sendBundleTransaction,
   sendNonBundleTransaction,
-} from "./util";
+} from "../utils/adapter";
+import {
+  estimateJitoTips,
+  estimateTransactionSizeExceedLimit,
+  simulateSecp256r1Signer,
+} from "../utils/transactionMessage/helper";
 import type { Revibase, RevibaseEvent } from "./window";
 
-export function createRevibaseAdapter({
-  additionalInfo,
-  authorizedClients,
-}: {
-  additionalInfo?: any;
-  authorizedClients?: { publicKey: string; url: string };
-}): Revibase {
+export function createRevibaseAdapter(): Revibase {
   // 👇 Event listener map
   const listeners: {
     [E in keyof RevibaseEvent]?: Array<{ fn: RevibaseEvent[E]; ctx?: any }>;
@@ -125,7 +117,6 @@ export function createRevibaseAdapter({
       const response = await signPasskeyMessage({
         signer: this.member ?? undefined,
         message: input,
-        additionalInfo,
       });
       return response;
     },
@@ -135,111 +126,6 @@ export function createRevibaseAdapter({
         response: input.authResponse,
       });
       return verified;
-    },
-    signAndSendNativeTransferIntent: async function (input) {
-      const signedTx = await signPasskeyTransaction({
-        transactionActionType: "transfer_intent",
-        transactionAddress: SYSTEM_PROGRAM_ADDRESS.toString(),
-        transactionMessageBytes: new Uint8Array([
-          ...getU64Encoder().encode(input.amount),
-          ...getAddressEncoder().encode(input.destination),
-          ...getAddressEncoder().encode(SYSTEM_PROGRAM_ADDRESS),
-        ]),
-        additionalInfo,
-      });
-      let index: number;
-      if (
-        !signedTx.additionalInfo?.walletAddress ||
-        !signedTx.additionalInfo.settingsIndex
-      ) {
-        const delegateData = await fetchDelegateData(
-          new Secp256r1Key(signedTx.signer)
-        );
-        if (delegateData.settingsIndex.__option === "None") {
-          throw Error("User has no delegated wallet");
-        }
-        index = Number(delegateData.settingsIndex.value);
-      } else {
-        index = signedTx.additionalInfo.settingsIndex;
-      }
-      const [settingsData, payer] = await Promise.all([
-        fetchSettingsData(index),
-        getFeePayer(),
-      ]);
-      const transactionManagerSigner = await resolveTransactionManagerSigner({
-        memberKey: signedTx.signer,
-        settingsData,
-        authorizedClients,
-      });
-      const ixs = await nativeTransferIntent({
-        index,
-        amount: input.amount,
-        signers: [
-          new Secp256r1Key(signedTx.signer, signedTx),
-          ...(transactionManagerSigner ? [transactionManagerSigner] : []),
-        ],
-        destination: input.destination,
-        compressed: settingsData.isCompressed,
-      });
-      return await sendNonBundleTransaction(
-        ixs,
-        payer,
-        ADDRESS_BY_LOOKUP_TABLE_ADDRESS
-      );
-    },
-    signAndSendTokenTransferIntent: async function (input) {
-      const signedTx = await signPasskeyTransaction({
-        transactionActionType: "transfer_intent",
-        transactionAddress: input.tokenProgram.toString(),
-        transactionMessageBytes: new Uint8Array([
-          ...getU64Encoder().encode(input.amount),
-          ...getAddressEncoder().encode(input.destination),
-          ...getAddressEncoder().encode(input.mint),
-        ]),
-        additionalInfo,
-      });
-      let index: number;
-      if (
-        !signedTx.additionalInfo?.walletAddress ||
-        !signedTx.additionalInfo.settingsIndex
-      ) {
-        const delegateData = await fetchDelegateData(
-          new Secp256r1Key(signedTx.signer)
-        );
-        if (delegateData.settingsIndex.__option === "None") {
-          throw Error("User has no delegated wallet");
-        }
-        index = Number(delegateData.settingsIndex.value);
-      } else {
-        index = signedTx.additionalInfo.settingsIndex;
-      }
-      const [settingsData, payer] = await Promise.all([
-        fetchSettingsData(index),
-        getFeePayer(),
-      ]);
-
-      const transactionManagerSigner = await resolveTransactionManagerSigner({
-        memberKey: signedTx.signer,
-        settingsData,
-        authorizedClients: authorizedClients,
-      });
-      const ixs = await tokenTransferIntent({
-        index,
-        amount: input.amount,
-        signers: [
-          new Secp256r1Key(signedTx.signer, signedTx),
-          ...(transactionManagerSigner ? [transactionManagerSigner] : []),
-        ],
-        destination: input.destination,
-        mint: input.mint,
-        tokenProgram: input.tokenProgram,
-        compressed: settingsData.isCompressed,
-      });
-      return await sendNonBundleTransaction(
-        ixs,
-        payer,
-        ADDRESS_BY_LOOKUP_TABLE_ADDRESS
-      );
     },
     signAndSendTransaction: async function (input) {
       if (!this.member || !this.index || !this.publicKey) {
@@ -253,7 +139,7 @@ export function createRevibaseAdapter({
         addressesByLookupTableAddress,
         instructions,
         additionalSigners,
-        cachedCompressedAccounts = new Map(),
+        cachedAccounts = new Map(),
       } = input;
 
       addressesByLookupTableAddress = {
@@ -263,7 +149,7 @@ export function createRevibaseAdapter({
 
       const [settingsData, settings, payer, transactionMessageBytes] =
         await Promise.all([
-          fetchSettingsData(this.index, cachedCompressedAccounts),
+          fetchSettingsData(this.index, cachedAccounts),
           getSettingsFromIndex(this.index),
           getFeePayer(),
           prepareTransactionMessage({
@@ -277,7 +163,7 @@ export function createRevibaseAdapter({
         memberKey: this.member,
         settingsData,
         transactionMessageBytes,
-        authorizedClients: authorizedClients,
+        cachedAccounts,
       });
 
       const useBundle = await estimateTransactionSizeExceedLimit({
@@ -291,7 +177,7 @@ export function createRevibaseAdapter({
         settingsIndex: this.index,
         transactionMessageBytes,
         addressesByLookupTableAddress,
-        cachedCompressedAccounts,
+        cachedAccounts,
       });
       if (useBundle) {
         const bufferIndex = Math.round(Math.random() * 255);
@@ -310,7 +196,6 @@ export function createRevibaseAdapter({
               : "create_with_permissionless_execution",
             transactionAddress: transactionBufferAddress,
             transactionMessageBytes,
-            additionalInfo,
             popUp,
           }),
           estimateJitoTips(),
@@ -330,7 +215,7 @@ export function createRevibaseAdapter({
           payer,
           additionalSigners,
           addressesByLookupTableAddress,
-          cachedCompressedAccounts,
+          cachedAccounts,
         });
         return await sendBundleTransaction(result);
       } else {
@@ -339,7 +224,6 @@ export function createRevibaseAdapter({
           transactionActionType: "sync",
           transactionAddress: settings.toString(),
           transactionMessageBytes,
-          additionalInfo,
           popUp,
         });
         const result = await prepareTransactionSync({
@@ -353,7 +237,7 @@ export function createRevibaseAdapter({
           transactionMessageBytes,
           index: this.index,
           addressesByLookupTableAddress,
-          cachedCompressedAccounts,
+          cachedAccounts,
         });
         return await sendNonBundleTransaction(
           result.ixs,

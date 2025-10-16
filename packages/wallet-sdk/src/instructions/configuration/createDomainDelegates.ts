@@ -43,13 +43,13 @@ export async function createDomainDelegates({
   payer,
   createDelegateArgs,
   domainConfig,
-  cachedCompressedAccounts,
+  cachedAccounts,
 }: {
   domainConfig: Address;
   authority: TransactionSigner;
   payer: TransactionSigner;
   createDelegateArgs: DelegateCreationArgs[];
-  cachedCompressedAccounts?: Map<string, any>;
+  cachedAccounts?: Map<string, any>;
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
@@ -64,7 +64,7 @@ export async function createDomainDelegates({
     }));
 
   const hashesWithTree = addresses.length
-    ? await getCompressedAccountHashes(addresses, cachedCompressedAccounts)
+    ? await getCompressedAccountHashes(addresses, cachedAccounts)
     : [];
 
   const newAddressParams = getNewAddressesParams(

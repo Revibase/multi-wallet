@@ -37,7 +37,6 @@ let globalSolanaRpcSubscription:
   | null = null;
 let globalSendAndConfirmTransaction: SendAndConfirmTransactionWithSignersFunction | null =
   null;
-
 let globalComputeBudgetEstimate:
   | ((
       transactionMessage:
@@ -46,7 +45,6 @@ let globalComputeBudgetEstimate:
       config?: any
     ) => Promise<number>)
   | null = null;
-
 let globalConfirmRecentTransaction:
   | ((config: {
       signature: Signature;
@@ -61,6 +59,8 @@ let globalJitoTipsConfig: JitoTipsConfig | null = null;
 let globalAuthUrl: string | null = null;
 let globalExpectedOrigin: string | null = null;
 let globalExpectedRPID: string | null = null;
+let globalAuthorizedClient: { publicKey: string; url: string } | null = null;
+let globalAdditionalInfo: any | null = null;
 
 export function getSolanaRpcEndpoint() {
   if (!globalSolanaRpcEndpoint) throw new Error("Rpc is not initialized yet.");
@@ -127,6 +127,14 @@ export function getExpectedRPID() {
   return globalExpectedRPID ?? "revibase.com";
 }
 
+export function getGlobalAuthorizedClient() {
+  return globalAuthorizedClient;
+}
+
+export function getGlobalAdditonalInfo() {
+  return globalAdditionalInfo;
+}
+
 export function uninitializeMultiWallet() {
   lightProtocolRpc = null;
   globalSolanaRpc = null;
@@ -141,6 +149,7 @@ export function uninitializeMultiWallet() {
   globalSendAndConfirmTransaction = null;
   globalComputeBudgetEstimate = null;
   globalConfirmRecentTransaction = null;
+  globalAuthorizedClient = null;
 }
 
 export function initializeMultiWallet({
@@ -222,12 +231,10 @@ export function initializeMultiWallet({
   globalAuthUrl = authUrl ?? null;
   globalExpectedOrigin = expectedOrigin ?? null;
   globalExpectedRPID = expectedRPID ?? null;
+  globalAuthorizedClient = authorizedClients ?? null;
+  globalAdditionalInfo = additionalInfo ?? null;
 
   if (typeof window !== "undefined") {
-    registerWallet(
-      new RevibaseWallet(
-        createRevibaseAdapter({ authorizedClients, additionalInfo })
-      )
-    );
+    registerWallet(new RevibaseWallet(createRevibaseAdapter()));
   }
 }

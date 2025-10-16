@@ -47,9 +47,9 @@ export function getDelegateAddress(member: Address | Secp256r1Key) {
 
 export async function fetchDelegateData(
   member: Address | Secp256r1Key,
-  cachedCompressedAccounts?: Map<string, any>
+  cachedAccounts?: Map<string, any>
 ): Promise<Delegate> {
-  const result = await fetchMaybeDelegateData(member, cachedCompressedAccounts);
+  const result = await fetchMaybeDelegateData(member, cachedAccounts);
   if (!result) {
     throw new Error("Delegate cannot be found.");
   }
@@ -58,13 +58,10 @@ export async function fetchDelegateData(
 
 export async function fetchMaybeDelegateData(
   member: Address | Secp256r1Key,
-  cachedCompressedAccounts?: Map<string, any>
+  cachedAccounts?: Map<string, any>
 ): Promise<Delegate | null> {
   const delegateAddress = getDelegateAddress(member);
-  const result = await getCompressedAccount(
-    delegateAddress,
-    cachedCompressedAccounts
-  );
+  const result = await getCompressedAccount(delegateAddress, cachedAccounts);
   if (!result?.data?.data) {
     return null;
   }
@@ -91,14 +88,11 @@ export function getCompressedSettingsAddressFromIndex(index: number | bigint) {
 
 export async function fetchSettingsData(
   index: number | bigint,
-  cachedCompressedAccounts?: Map<string, any>
+  cachedAccounts?: Map<string, any>
 ): Promise<CompressedSettingsData & { isCompressed: boolean }> {
   try {
     const address = getCompressedSettingsAddressFromIndex(index);
-    const result = await getCompressedAccount(
-      address,
-      cachedCompressedAccounts
-    );
+    const result = await getCompressedAccount(address, cachedAccounts);
     if (!result?.data?.data) {
       throw new Error("Settings account does not exist.");
     }

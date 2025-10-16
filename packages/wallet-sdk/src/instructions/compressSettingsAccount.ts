@@ -39,22 +39,19 @@ export async function compressSettingsAccount({
   index,
   payer,
   signers,
-  cachedCompressedAccounts,
+  cachedAccounts,
 }: {
   index: number | bigint;
   payer: TransactionSigner;
   signers: (Secp256r1Key | TransactionSigner)[];
-  cachedCompressedAccounts?: Map<string, any>;
+  cachedAccounts?: Map<string, any>;
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
 
   const settings = await getSettingsFromIndex(index);
   const settingsAddress = getCompressedSettingsAddressFromIndex(index);
-  const result = await getCompressedAccount(
-    settingsAddress,
-    cachedCompressedAccounts
-  );
+  const result = await getCompressedAccount(settingsAddress, cachedAccounts);
 
   let settingsArg: SettingsCreateOrMutateArgs;
   let proof: ValidityProofWithContext;
@@ -82,7 +79,7 @@ export async function compressSettingsAccount({
     if (data.data.__option === "None") {
       const hashesWithTree = await getCompressedAccountHashes(
         [{ address: settingsAddress, type: "Settings" }],
-        cachedCompressedAccounts
+        cachedAccounts
       );
 
       proof = await getValidityProofWithRetry(hashesWithTree, []);

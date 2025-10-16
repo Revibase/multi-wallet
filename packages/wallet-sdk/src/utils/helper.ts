@@ -159,10 +159,10 @@ export function createTransactionManagerSigner(
   address: Address,
   url: string,
   transactionMessageBytes?: Uint8Array,
-  authorizedClients?: {
+  authorizedClient?: {
     publicKey: string;
     url: string;
-  }
+  } | null
 ): TransactionSigner {
   return {
     address,
@@ -181,8 +181,8 @@ export function createTransactionManagerSigner(
         );
       }
 
-      if (authorizedClients) {
-        const { url, publicKey } = authorizedClients;
+      if (authorizedClient) {
+        const { url, publicKey } = authorizedClient;
         const response = await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -197,7 +197,7 @@ export function createTransactionManagerSigner(
         if ("error" in data) {
           throw new Error(data.error);
         }
-        payload.authorizedClients = {
+        payload.authorizedClient = {
           publicKey,
           signatures: data.signatures,
         };
