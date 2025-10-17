@@ -39,11 +39,11 @@ impl VaultTransactionMessage {
 
         for instruction in &self.instructions {
             require!(
-                usize::from(instruction.program_id_index) < num_all_account_keys,
+                usize::from(instruction.program_address_index) < num_all_account_keys,
                 MultisigError::InvalidTransactionMessage
             );
 
-            for account_index in &instruction.account_indexes {
+            for account_index in &instruction.account_indices {
                 require!(
                     usize::from(*account_index) < num_all_account_keys,
                     MultisigError::InvalidTransactionMessage
@@ -93,14 +93,14 @@ impl VaultTransactionMessage {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct CompiledInstruction {
-    pub program_id_index: u8,
-    pub account_indexes: Vec<u8>,
+    pub program_address_index: u8,
+    pub account_indices: Vec<u8>,
     pub data: Vec<u8>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Debug)]
 pub struct MessageAddressTableLookup {
-    pub account_key: Pubkey,
+    pub lookup_table_address: Pubkey,
     pub writable_indexes: Vec<u8>,
     pub readonly_indexes: Vec<u8>,
 }

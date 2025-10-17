@@ -1,0 +1,64 @@
+{
+  "name": "@revibase/wallet",
+  "version": "0.0.1",
+  "scripts": {
+    "build": "rimraf dist & tsup",
+    "clean": "rimraf dist",
+    "generate": "node ./src/utils/codama.ts"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    "import": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "require": {
+      "types": "./dist/index.d.cts",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "types"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Revibase/multi-wallet.git"
+  },
+  "author": "jychab",
+  "bugs": {
+    "url": "https://github.com/Revibase/multi-wallet/issues"
+  },
+  "homepage": "https://github.com/Revibase/multi-wallet#readme",
+  "description": "",
+  "dependencies": {
+    "@levischuck/tiny-cbor": "0.3.1",
+    "@noble/curves": "1.9.7",
+    "@noble/hashes": "1.8.0",
+    "@simplewebauthn/server": "13.1.2",
+    "@solana/promises": "4.0.0",
+    "@solana/transaction-confirmation": "4.0.0",
+    "@wallet-standard/core": "^1.1.1",
+    "bn.js": "^5.2.2",
+    "gill": "^0.12.0"
+  },
+  "peerDependencies": {
+    "@lightprotocol/stateless.js": "0.22.0",
+    "@solana/web3.js": "^1.98.4"
+  },
+  "devDependencies": {
+    "@codama/nodes-from-anchor": "1.2.9",
+    "@codama/renderers-js": "1.4.2",
+    "@types/bn.js": "^5.2.0",
+    "@types/node": "24.3.1",
+    "codama": "1.3.7",
+    "prettier": "^3.6.2",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.4.0",
+    "typescript": "5.9.2"
+  }
+}

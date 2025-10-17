@@ -50,6 +50,7 @@ impl<'info> CreateDelegates<'info> {
             );
 
             if let Some(api_url) = args.api_url {
+                require!(!args.is_permanent_member, MultisigError::InvalidArguments);
                 DelegateExtensions::initialize(
                     api_url,
                     &args.member,

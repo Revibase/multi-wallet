@@ -16,7 +16,7 @@ pub struct TransactionMessage {
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone)]
 pub struct TransactionMessageAddressTableLookup {
-    pub account_key_index: u8,
+    pub lookup_table_address_index: u8,
     pub writable_indexes: Vec<u8>,
     pub readonly_indexes: Vec<u8>,
 }
@@ -39,8 +39,8 @@ impl TransactionMessage {
             .address_table_lookups
             .iter()
             .map(|f| MessageAddressTableLookup {
-                account_key: remaining_accounts
-                    .get(f.account_key_index as usize)
+                lookup_table_address: remaining_accounts
+                    .get(f.lookup_table_address_index as usize)
                     .ok_or(MultisigError::InvalidNumberOfAccounts)
                     .unwrap()
                     .key(),

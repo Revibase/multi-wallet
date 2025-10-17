@@ -11,7 +11,7 @@ import {
   getSettingsFromIndex,
   getSolanaRpc,
   Secp256r1Key,
-} from "@revibase/wallet-sdk";
+} from "@revibase/wallet";
 import { expect } from "chai";
 import { createKeyPairSignerFromPrivateKeyBytes } from "gill";
 import {
@@ -33,16 +33,16 @@ export function runSecp256r1Tests() {
       ctx = await createMultiWallet(ctx);
     });
 
-    it("should add a Secp256r1 key as a member", async () => {
+    it("should initialize a wallet for Secp256r1 with a transaction manager", async () => {
       if (!ctx.index || !ctx.multiWalletVault) return;
-      const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
+      const transactionManager = await createKeyPairSignerFromPrivateKeyBytes(
         crypto.getRandomValues(new Uint8Array(32))
       );
       const createDelegatesIx = await createDelegates({
         payer: ctx.payer,
         createDelegateArgs: [
           {
-            member: ephemeralKeypair,
+            member: transactionManager,
             isPermanentMember: false,
             apiUrl: "https://xyz.com",
           },
@@ -69,7 +69,7 @@ export function runSecp256r1Tests() {
             member: secp256r1Key,
             isPermanentMember: true,
             linkedWalletSettingsIndex: Number(ctx.index),
-            delegateExtensionsAuthority: ephemeralKeypair.address,
+            delegateExtensionsAuthority: transactionManager.address,
           },
         ],
       });

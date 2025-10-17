@@ -1,7 +1,4 @@
-import {
-  getSendAndConfirmTransaction,
-  getSolanaRpc,
-} from "@revibase/wallet-sdk";
+import { getSendAndConfirmTransaction, getSolanaRpc } from "@revibase/wallet";
 import {
   address,
   type AddressesByLookupTableAddress,

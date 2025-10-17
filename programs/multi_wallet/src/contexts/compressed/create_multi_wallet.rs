@@ -78,7 +78,7 @@ impl<'info> CreateMultiWalletCompressed<'info> {
         };
 
         let (mut settings_account, settings_new_address) =
-            CompressedSettings::create_settings_account(
+            CompressedSettings::create_compressed_settings_account(
                 settings_creation,
                 data,
                 &light_cpi_accounts,
@@ -113,7 +113,7 @@ impl<'info> CreateMultiWalletCompressed<'info> {
         settings_account.invariant()?;
 
         let delegate_account_info = Delegate::handle_delegate_accounts(
-            delegate_ops.into_iter().map(Ops::Create).collect(),
+            delegate_ops.into_iter().map(Ops::Add).collect(),
             settings_index,
         )?;
 

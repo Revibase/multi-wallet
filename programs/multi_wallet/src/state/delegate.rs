@@ -41,8 +41,8 @@ pub struct DelegateMutArgs {
 
 #[derive(PartialEq)]
 pub enum Ops {
-    Create(MemberWithAddPermissionsArgs),
-    Close(MemberKeyWithRemovePermissionsArgs),
+    Add(MemberWithAddPermissionsArgs),
+    Remove(MemberKeyWithRemovePermissionsArgs),
 }
 
 impl Delegate {
@@ -79,7 +79,6 @@ impl Delegate {
         Ok((delegate_account, new_address_params))
     }
 
-    #[inline(never)]
     pub fn handle_delegate_accounts<'info>(
         delegate_ops: Vec<Ops>,
         settings_index: u128,
@@ -88,14 +87,12 @@ impl Delegate {
 
         for action in delegate_ops.into_iter() {
             match action {
-                Ops::Close(pk) => {
-                    final_account_infos.push(Delegate::remove_delegate_account(
-                        pk.delegate_args,
-                        settings_index,
-                    )?);
+                Ops::Remove(pk) => {
+                    final_account_infos
+                        .push(Delegate::remove_delegate(pk.delegate_args, settings_index)?);
                 }
-                Ops::Create(pk) => {
-                    final_account_infos.push(Delegate::handle_set_delegate(
+                Ops::Add(pk) => {
+                    final_account_infos.push(Delegate::handle_add_delegate(
                         pk.delegate_args,
                         settings_index,
                         pk.set_as_delegate,
@@ -107,8 +104,7 @@ impl Delegate {
         Ok(final_account_infos)
     }
 
-    #[inline(never)]
-    pub fn handle_set_delegate<'info>(
+    pub fn handle_add_delegate<'info>(
         delegate_mut_args: DelegateMutArgs,
         settings_index: u128,
         set_as_delegate: bool,
@@ -134,8 +130,7 @@ impl Delegate {
         Ok(delegate_account)
     }
 
-    #[inline(never)]
-    fn remove_delegate_account<'info>(
+    fn remove_delegate<'info>(
         delegate_mut_args: DelegateMutArgs,
         settings_index: u128,
     ) -> Result<LightAccount<'info, Delegate>> {

@@ -1,7 +1,7 @@
 #[derive(PartialEq)]
 pub enum TransactionActionType {
     Create,
-    CreateWithPermissionlessExecution,
+    CreateWithPreauthorizedExecution,
     Execute,
     Vote,
     Sync,
@@ -16,8 +16,8 @@ impl TransactionActionType {
     pub fn to_bytes(&self) -> &[u8] {
         match &self {
             TransactionActionType::Create => b"create",
-            TransactionActionType::CreateWithPermissionlessExecution => {
-                b"create_with_permissionless_execution"
+            TransactionActionType::CreateWithPreauthorizedExecution => {
+                b"create_with_preauthorized_execution"
             }
             TransactionActionType::Execute => b"execute",
             TransactionActionType::Vote => b"vote",

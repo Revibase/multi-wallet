@@ -58,6 +58,14 @@ impl Settings {
         MultisigSettings::remove_members(self, member_pubkeys)
     }
 
+    pub fn set_threshold(&mut self, value: u8) -> Result<()> {
+        MultisigSettings::set_threshold(self, value)
+    }
+
+    pub fn set_members(&mut self, members: Vec<Member>) -> Result<()> {
+        MultisigSettings::set_members(self, members)
+    }
+
     pub fn invariant(&mut self) -> Result<()> {
         MultisigSettings::invariant(self)
     }
@@ -68,14 +76,6 @@ impl Settings {
         let pubkey =
             Pubkey::create_program_address(signer_seeds, &crate::ID).map_err(ProgramError::from)?;
         Ok(pubkey)
-    }
-
-    pub fn set_threshold(&mut self, value: u8) -> Result<()> {
-        MultisigSettings::set_threshold(self, value)
-    }
-
-    pub fn set_members(&mut self, members: Vec<Member>) -> Result<()> {
-        MultisigSettings::set_members(self, members)
     }
 }
 

@@ -159,7 +159,7 @@ impl<'info> CompressSettingsAccount<'info> {
                     members: settings_data.get_members()?,
                 };
                 let (settings_account, settings_new_address) =
-                    CompressedSettings::create_settings_account(
+                    CompressedSettings::create_compressed_settings_account(
                         settings_creation_args,
                         data,
                         &light_cpi_accounts,

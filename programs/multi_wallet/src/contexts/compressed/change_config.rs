@@ -78,8 +78,8 @@ impl<'info> ChangeConfigCompressed<'info> {
             match action {
                 ConfigAction::EditPermissions(members) => {
                     let ops = settings.edit_permissions(members)?;
-                    delegate_ops.extend(ops.0.into_iter().map(Ops::Create));
-                    delegate_ops.extend(ops.1.into_iter().map(Ops::Close));
+                    delegate_ops.extend(ops.0.into_iter().map(Ops::Add));
+                    delegate_ops.extend(ops.1.into_iter().map(Ops::Remove));
                 }
                 ConfigAction::AddMembers(members) => {
                     let ops = settings.add_members(
@@ -89,11 +89,11 @@ impl<'info> ChangeConfigCompressed<'info> {
                         slot_hash_sysvar,
                         ctx.accounts.instructions_sysvar.as_ref(),
                     )?;
-                    delegate_ops.extend(ops.into_iter().map(Ops::Create));
+                    delegate_ops.extend(ops.into_iter().map(Ops::Add));
                 }
                 ConfigAction::RemoveMembers(members) => {
                     let ops = settings.remove_members(members)?;
-                    delegate_ops.extend(ops.into_iter().map(Ops::Close));
+                    delegate_ops.extend(ops.into_iter().map(Ops::Remove));
                 }
                 ConfigAction::SetThreshold(new_threshold) => {
                     settings.set_threshold(new_threshold)?;

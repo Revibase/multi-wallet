@@ -101,7 +101,7 @@ impl<'info> CreateMultiWallet<'info> {
             CpiAccounts::new(&ctx.accounts.payer, &ctx.remaining_accounts[compressed_proof_args.light_cpi_accounts_start_index as usize..], LIGHT_CPI_SIGNER);
     
         let account_infos = Delegate::handle_delegate_accounts(
-            delegate_ops.into_iter().map(Ops::Create).collect(),
+            delegate_ops.into_iter().map(Ops::Add).collect(),
             settings.index,
         )?;
 

@@ -27,7 +27,7 @@ pub struct TransactionBuffer {
     pub multi_wallet_bump: u8,
     /// Flag to allow transaction to be executed
     pub can_execute: bool,
-    /// Flag to authorize execution before sufficient threshold is met
+    /// Flag to preauthorize execution before sufficient threshold is met
     pub preauthorize_execution: bool,
     // Transaction valid till
     pub valid_till: u64,
@@ -89,7 +89,7 @@ impl TransactionBuffer {
             32 +  // multisig
             1  +  // multi_wallet_bump
             1  +  // can execute
-            1  +  // permissionless execute
+            1  +  // preauthorize_execution
             8  +  // transaction expiry
             32 +  // rent_payer
             1  +  // bump

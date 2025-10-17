@@ -6,7 +6,7 @@ import {
   getSolanaRpc,
   prepareTransactionMessage,
   prepareTransactionSync,
-} from "@revibase/wallet-sdk";
+} from "@revibase/wallet";
 import { expect } from "chai";
 import {
   address,

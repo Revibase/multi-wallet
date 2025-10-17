@@ -100,7 +100,7 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
                     account: transaction_buffer.key(),
                     message_hash: args.final_buffer_hash,
                     action_type: if args.preauthorize_execution {
-                        TransactionActionType::CreateWithPermissionlessExecution
+                        TransactionActionType::CreateWithPreauthorizedExecution
                     } else {
                         TransactionActionType::Create
                     },

@@ -17,7 +17,7 @@ import {
   getSolanaRpc,
   initializeMultiWallet,
   MULTI_WALLET_PROGRAM_ADDRESS,
-} from "@revibase/wallet-sdk";
+} from "@revibase/wallet";
 import {
   address,
   createKeyPairSignerFromPrivateKeyBytes,

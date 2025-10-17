@@ -9,7 +9,7 @@ import {
   getSolanaRpc,
   prepareTransactionMessage,
   prepareTransactionSync,
-} from "@revibase/wallet-sdk";
+} from "@revibase/wallet";
 import { expect } from "chai";
 import { createKeyPairSignerFromPrivateKeyBytes, getUtf8Decoder } from "gill";
 import {

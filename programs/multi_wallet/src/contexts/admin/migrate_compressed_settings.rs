@@ -27,11 +27,12 @@ impl<'info> MigrateCompressedSettings<'info> {
             LIGHT_CPI_SIGNER,
         );
 
-        let (settings_account, settings_new_address) = CompressedSettings::create_settings_account(
-            settings_creation_args,
-            args,
-            &light_cpi_accounts,
-        )?;
+        let (settings_account, settings_new_address) =
+            CompressedSettings::create_compressed_settings_account(
+                settings_creation_args,
+                args,
+                &light_cpi_accounts,
+            )?;
 
         settings_account.invariant()?;
 

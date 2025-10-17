@@ -3,7 +3,7 @@ import { sha256 } from "@noble/hashes/sha256";
 import type {
   ParsedAuthenticationResponse,
   TransactionPayload,
-} from "@revibase/wallet-sdk";
+} from "@revibase/wallet";
 import {
   address,
   type GetAccountInfoApi,

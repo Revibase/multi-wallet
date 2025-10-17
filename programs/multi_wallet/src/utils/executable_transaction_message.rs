@@ -38,7 +38,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                     message
                         .address_table_lookups
                         .get(index)
-                        .map(|lookup| &lookup.account_key)
+                        .map(|lookup| &lookup.lookup_table_address)
                         == Some(maybe_lookup_table.key),
                     MultisigError::InvalidAccount
                 );
@@ -79,7 +79,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
         let mut message_indexes_cursor = message.account_keys.len();
         for lookup in message.address_table_lookups.iter() {
             let lookup_table_data = &lookup_tables
-                .get(&lookup.account_key)
+                .get(&lookup.lookup_table_address)
                 .unwrap()
                 .data
                 .borrow()[..];
@@ -202,7 +202,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
 
         for ms_compiled_instruction in core::mem::take(&mut self.message.instructions) {
             let ix_accounts: Vec<(AccountInfo<'info>, AccountMeta)> = ms_compiled_instruction
-                .account_indexes
+                .account_indices
                 .iter()
                 .map(|account_index| {
                     let account_index = usize::from(*account_index);
@@ -220,7 +220,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 .collect();
 
             let ix_program_account_info = self
-                .get_account_by_index(usize::from(ms_compiled_instruction.program_id_index))
+                .get_account_by_index(usize::from(ms_compiled_instruction.program_address_index))
                 .unwrap();
 
             let ix = Instruction {

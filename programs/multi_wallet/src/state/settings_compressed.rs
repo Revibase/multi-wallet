@@ -107,7 +107,15 @@ impl CompressedSettings {
         MultisigSettings::remove_members(self, member_pubkeys)
     }
 
-    pub fn create_settings_account<'info>(
+    pub fn set_threshold(&mut self, value: u8) -> Result<()> {
+        MultisigSettings::set_threshold(self, value)
+    }
+
+    pub fn invariant(&self) -> Result<()> {
+        MultisigSettings::invariant(self)
+    }
+
+    pub fn create_compressed_settings_account<'info>(
         settings_creation: SettingsCreationArgs,
         data: CompressedSettingsData,
         light_cpi_accounts: &CpiAccounts,
@@ -142,14 +150,6 @@ impl CompressedSettings {
         settings_account.data = Some(data);
 
         Ok((settings_account, new_address_params))
-    }
-
-    pub fn set_threshold(&mut self, value: u8) -> Result<()> {
-        MultisigSettings::set_threshold(self, value)
-    }
-
-    pub fn invariant(&self) -> Result<()> {
-        MultisigSettings::invariant(self)
     }
 
     pub fn verify_compressed_settings<'info>(
