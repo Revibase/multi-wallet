@@ -21,7 +21,6 @@ import {
 } from "../utils";
 import {
   createSignInMessageText,
-  getAddressByLookUpTable,
   resolveTransactionManagerSigner,
   sendBundleTransaction,
   sendNonBundleTransaction,
@@ -141,10 +140,6 @@ export function createRevibaseAdapter(): Revibase {
         additionalSigners,
         cachedAccounts = new Map(),
       } = input;
-      addressesByLookupTableAddress = {
-        ...getAddressByLookUpTable(),
-        ...(addressesByLookupTableAddress ?? {}),
-      };
 
       const [settingsData, settings, payer, transactionMessageBytes] =
         await Promise.all([

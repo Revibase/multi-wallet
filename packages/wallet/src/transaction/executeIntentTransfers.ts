@@ -1,4 +1,9 @@
-import { getAddressEncoder, getU64Encoder, type Address } from "gill";
+import {
+  getAddressEncoder,
+  getU64Encoder,
+  type Address,
+  type AddressesByLookupTableAddress,
+} from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 import { nativeTransferIntent } from "../instructions/intents/nativeTransferIntent";
 import { tokenTransferIntent } from "../instructions/intents/tokenTransferIntent";
@@ -6,7 +11,6 @@ import { signTransaction } from "../passkeys";
 import { Secp256r1Key, type BasePayload } from "../types";
 import { fetchDelegateData, fetchSettingsData, getFeePayer } from "../utils";
 import {
-  getAddressByLookUpTable,
   resolveTransactionManagerSigner,
   sendNonBundleTransaction,
 } from "../utils/adapter";
@@ -18,6 +22,7 @@ interface TransferIntentArgs extends BasePayload {
   mint?: Address;
   tokenProgram?: Address;
   cachedAccounts?: Map<string, any>;
+  addressByLookUpTableAddress?: AddressesByLookupTableAddress;
 }
 
 /**
@@ -33,6 +38,7 @@ export async function executeIntentTransfers({
   hints,
   signer,
   popUp,
+  addressByLookUpTableAddress,
   cachedAccounts = new Map<string, any>(),
 }: TransferIntentArgs) {
   const signedTx = await signTransaction({
@@ -97,5 +103,9 @@ export async function executeIntentTransfers({
         cachedAccounts,
       });
 
-  return await sendNonBundleTransaction(ixs, payer, getAddressByLookUpTable());
+  return await sendNonBundleTransaction(
+    ixs,
+    payer,
+    addressByLookUpTableAddress
+  );
 }

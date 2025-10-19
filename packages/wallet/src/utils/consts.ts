@@ -14,21 +14,6 @@ export const JITO_TIP_ACCOUNTS = [
 featureFlags.version = VERSION.V2;
 
 export const ADDRESS_TREE_VERSION = "v1";
-
 export const REVIBASE_RP_ID = "revibase.com";
 export const REVIBASE_AUTH_DOMAIN = "https://auth.revibase.com";
 export const REVIBASE_API_ENDPOINT = "https://api.revibase.com";
-export const DEVNET_RPC_ENDPOINT = "https://devnet.revibase.com";
-
-/**
- * Mainnet Addresses Look Up Table
- */
-
-export const REVIBASE_LOOKUP_TABLE_ADDRESS =
-  "3XSDsD3YPrU6UfZVGzoUra63tqhLSysWK9bR3YWPQmiw";
-
-/**
- * Devnet Addresses Look Up Table
- */
-export const DEVNET_REVIBASE_LOOKUP_TABLE_ADDRESS =
-  "Gq6VZLi2aNSxB4Ag7L1NKDfuCgNZgUuxy1B8yW28PdEp";
