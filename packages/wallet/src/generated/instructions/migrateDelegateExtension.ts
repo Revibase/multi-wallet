@@ -51,9 +51,10 @@ export function getMigrateDelegateExtensionDiscriminatorBytes() {
 
 export type MigrateDelegateExtensionInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountAuthority extends
+  TAccountAuthority extends string | AccountMeta<string> = string,
+  TAccountAdminDomainConfig extends
     | string
-    | AccountMeta<string> = "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ",
+    | AccountMeta<string> = "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg",
   TAccountSystemProgram extends
     | string
     | AccountMeta<string> = "11111111111111111111111111111111",
@@ -66,6 +67,9 @@ export type MigrateDelegateExtensionInstruction<
         ? WritableSignerAccount<TAccountAuthority> &
             AccountSignerMeta<TAccountAuthority>
         : TAccountAuthority,
+      TAccountAdminDomainConfig extends string
+        ? ReadonlyAccount<TAccountAdminDomainConfig>
+        : TAccountAdminDomainConfig,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
@@ -122,9 +126,11 @@ export type MigrateDelegateExtensionInstructionExtraArgs = {
 
 export type MigrateDelegateExtensionInput<
   TAccountAuthority extends string = string,
+  TAccountAdminDomainConfig extends string = string,
   TAccountSystemProgram extends string = string,
 > = {
-  authority?: TransactionSigner<TAccountAuthority>;
+  authority: TransactionSigner<TAccountAuthority>;
+  adminDomainConfig?: Address<TAccountAdminDomainConfig>;
   systemProgram?: Address<TAccountSystemProgram>;
   apiUrl: MigrateDelegateExtensionInstructionDataArgs["apiUrl"];
   member: MigrateDelegateExtensionInstructionDataArgs["member"];
@@ -133,17 +139,20 @@ export type MigrateDelegateExtensionInput<
 
 export function getMigrateDelegateExtensionInstruction<
   TAccountAuthority extends string,
+  TAccountAdminDomainConfig extends string,
   TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
   input: MigrateDelegateExtensionInput<
     TAccountAuthority,
+    TAccountAdminDomainConfig,
     TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress }
 ): MigrateDelegateExtensionInstruction<
   TProgramAddress,
   TAccountAuthority,
+  TAccountAdminDomainConfig,
   TAccountSystemProgram
 > {
   // Program address.
@@ -152,6 +161,10 @@ export function getMigrateDelegateExtensionInstruction<
   // Original accounts.
   const originalAccounts = {
     authority: { value: input.authority ?? null, isWritable: true },
+    adminDomainConfig: {
+      value: input.adminDomainConfig ?? null,
+      isWritable: false,
+    },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
@@ -166,9 +179,9 @@ export function getMigrateDelegateExtensionInstruction<
   const resolverScope = { programAddress, accounts, args };
 
   // Resolve default values.
-  if (!accounts.authority.value) {
-    accounts.authority.value =
-      "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ" as Address<"AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ">;
+  if (!accounts.adminDomainConfig.value) {
+    accounts.adminDomainConfig.value =
+      "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg" as Address<"5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg">;
   }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
@@ -183,6 +196,7 @@ export function getMigrateDelegateExtensionInstruction<
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.authority),
+      getAccountMeta(accounts.adminDomainConfig),
       getAccountMeta(accounts.systemProgram),
       ...remainingAccounts,
     ],
@@ -193,6 +207,7 @@ export function getMigrateDelegateExtensionInstruction<
   } as MigrateDelegateExtensionInstruction<
     TProgramAddress,
     TAccountAuthority,
+    TAccountAdminDomainConfig,
     TAccountSystemProgram
   >);
 }
@@ -204,7 +219,8 @@ export type ParsedMigrateDelegateExtensionInstruction<
   programAddress: Address<TProgram>;
   accounts: {
     authority: TAccountMetas[0];
-    systemProgram: TAccountMetas[1];
+    adminDomainConfig: TAccountMetas[1];
+    systemProgram: TAccountMetas[2];
   };
   data: MigrateDelegateExtensionInstructionData;
 };
@@ -217,7 +233,7 @@ export function parseMigrateDelegateExtensionInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>
 ): ParsedMigrateDelegateExtensionInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 2) {
+  if (instruction.accounts.length < 3) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -229,7 +245,11 @@ export function parseMigrateDelegateExtensionInstruction<
   };
   return {
     programAddress: instruction.programAddress,
-    accounts: { authority: getNextAccount(), systemProgram: getNextAccount() },
+    accounts: {
+      authority: getNextAccount(),
+      adminDomainConfig: getNextAccount(),
+      systemProgram: getNextAccount(),
+    },
     data: getMigrateDelegateExtensionInstructionDataDecoder().decode(
       instruction.data
     ),

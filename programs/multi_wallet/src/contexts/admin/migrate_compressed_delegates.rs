@@ -1,5 +1,5 @@
-use crate::state::{Delegate, DelegateCreationArgs, ProofArgs};
-use crate::{ADMIN, LIGHT_CPI_SIGNER};
+use crate::state::{Delegate, DelegateCreationArgs, DomainConfig, ProofArgs};
+use crate::{ADMIN_DOMAIN_CONFIG, LIGHT_CPI_SIGNER};
 use anchor_lang::prelude::*;
 use light_sdk::cpi::v1::{CpiAccounts, LightSystemProgramCpi};
 use light_sdk::cpi::{InvokeLightSystemProgram, LightCpiInstruction};
@@ -8,9 +8,13 @@ use light_sdk::cpi::{InvokeLightSystemProgram, LightCpiInstruction};
 pub struct MigrateCompressedDelegates<'info> {
     #[account(
         mut,
-        address = ADMIN,
+        address = admin_domain_config.load()?.authority,
     )]
     pub authority: Signer<'info>,
+    #[account(
+        address = ADMIN_DOMAIN_CONFIG
+    )]
+    pub admin_domain_config: AccountLoader<'info, DomainConfig>,
 }
 
 impl<'info> MigrateCompressedDelegates<'info> {

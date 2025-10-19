@@ -20,8 +20,8 @@ import {
   getTransactionBufferAddress,
 } from "../utils";
 import {
-  ADDRESS_BY_LOOKUP_TABLE_ADDRESS,
   createSignInMessageText,
+  getAddressByLookUpTable,
   resolveTransactionManagerSigner,
   sendBundleTransaction,
   sendNonBundleTransaction,
@@ -141,10 +141,9 @@ export function createRevibaseAdapter(): Revibase {
         additionalSigners,
         cachedAccounts = new Map(),
       } = input;
-
       addressesByLookupTableAddress = {
+        ...getAddressByLookUpTable(),
         ...(addressesByLookupTableAddress ?? {}),
-        ...ADDRESS_BY_LOOKUP_TABLE_ADDRESS,
       };
 
       const [settingsData, settings, payer, transactionMessageBytes] =

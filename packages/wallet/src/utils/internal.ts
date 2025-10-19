@@ -13,7 +13,8 @@ import {
 import { getTransferSolInstruction } from "gill/programs";
 import type { Secp256r1VerifyArgs } from "../generated";
 import { Secp256r1Key } from "../types";
-import { JITO_TIP_ACCOUNTS } from "./consts";
+import { DEVNET_RPC_ENDPOINT, JITO_TIP_ACCOUNTS } from "./consts";
+import { getSolanaRpcEndpoint } from "./initialize";
 
 export function extractSecp256r1VerificationArgs(
   signer?: Secp256r1Key | TransactionSigner,
@@ -108,7 +109,13 @@ export function addJitoTip({
 export async function getRandomPayer(
   payerEndpoint: string
 ): Promise<TransactionSigner> {
-  const response = await fetch(`${payerEndpoint}/getRandomPayer`);
+  const network =
+    getSolanaRpcEndpoint() === DEVNET_RPC_ENDPOINT
+      ? "solana:devnet"
+      : "solana:mainnet";
+  const response = await fetch(
+    `${payerEndpoint}/getRandomPayer?network=${network}`
+  );
   const { randomPayer } = (await response.json()) as { randomPayer: string };
 
   return {

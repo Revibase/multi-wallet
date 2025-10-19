@@ -1,9 +1,9 @@
 use crate::instruction::{ChangeConfig, ChangeConfigCompressed};
 use crate::{MultisigError, VaultTransactionMessage};
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::address_lookup_table::{program::ID, state::AddressLookupTable};
 use anchor_lang::solana_program::instruction::Instruction;
 use anchor_lang::solana_program::program::invoke_signed;
+use solana_address_lookup_table_interface::state::AddressLookupTable;
 use std::collections::HashMap;
 use std::convert::From;
 
@@ -31,7 +31,10 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
             .enumerate()
             .map(|(index, maybe_lookup_table)| {
                 require!(
-                    maybe_lookup_table.owner == &ID,
+                    maybe_lookup_table
+                        .owner
+                        .to_bytes()
+                        .eq(&solana_address_lookup_table_interface::program::ID.to_bytes()),
                     MultisigError::InvalidAccount
                 );
                 require!(
@@ -100,9 +103,11 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                     .addresses
                     .get(usize::from(*index_in_lookup_table))
                     .ok_or(MultisigError::InvalidAccount)?;
-                require_keys_eq!(
-                    *loaded_account_info.key,
-                    *pubkey_from_lookup_table,
+                require!(
+                    loaded_account_info
+                        .key
+                        .to_bytes()
+                        .eq(&pubkey_from_lookup_table.to_bytes()),
                     MultisigError::InvalidAccount
                 );
 
@@ -119,9 +124,11 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                     .addresses
                     .get(usize::from(*index_in_lookup_table))
                     .ok_or(MultisigError::InvalidAccount)?;
-                require_keys_eq!(
-                    *loaded_account_info.key,
-                    *pubkey_from_lookup_table,
+                require!(
+                    loaded_account_info
+                        .key
+                        .to_bytes()
+                        .eq(&pubkey_from_lookup_table.to_bytes()),
                     MultisigError::InvalidAccount
                 );
 

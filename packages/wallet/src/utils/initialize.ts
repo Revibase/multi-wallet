@@ -26,10 +26,14 @@ import { estimateComputeUnitLimitFactory } from "gill/programs";
 import { createRevibaseAdapter } from "../adapter/core";
 import { RevibaseWallet } from "../adapter/wallet";
 import type { JitoTipsConfig } from "../types";
+import {
+  REVIBASE_API_ENDPOINT,
+  REVIBASE_AUTH_DOMAIN,
+  REVIBASE_RP_ID,
+} from "./consts";
 import { getRandomPayer } from "./internal";
 
 let globalSolanaRpcEndpoint: string | null = null;
-
 let lightProtocolRpc: LightProtocolRpc | null = null;
 let globalSolanaRpc: Rpc<SolanaRpcApi> | null = null;
 let globalSolanaRpcSubscription:
@@ -104,7 +108,7 @@ export function getConfirmRecentTransaction() {
 export async function getFeePayer() {
   if (!globalFeePayer) {
     globalFeePayer = await getRandomPayer(
-      globalPayerEndpoint ?? "https://api.revibase.com"
+      globalPayerEndpoint ?? REVIBASE_API_ENDPOINT
     );
   }
   return globalFeePayer;
@@ -116,15 +120,15 @@ export function getJitoTipsConfig() {
 }
 
 export function getAuthUrl() {
-  return globalAuthUrl ?? "https://auth.revibase.com";
+  return globalAuthUrl ?? REVIBASE_AUTH_DOMAIN;
 }
 
 export function getExpectedOrigin() {
-  return globalExpectedOrigin ?? "https://auth.revibase.com";
+  return globalExpectedOrigin ?? REVIBASE_AUTH_DOMAIN;
 }
 
 export function getExpectedRPID() {
-  return globalExpectedRPID ?? "revibase.com";
+  return globalExpectedRPID ?? REVIBASE_RP_ID;
 }
 
 export function getGlobalAuthorizedClient() {

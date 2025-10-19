@@ -5,7 +5,7 @@ use crate::{
 };
 use anchor_lang::{
     prelude::*,
-    solana_program::{hash::hash, program::invoke_signed, sysvar::SysvarId},
+    solana_program::{program::invoke_signed, sysvar::SysvarId},
 };
 use anchor_spl::{
     associated_token::{
@@ -16,6 +16,7 @@ use anchor_spl::{
     token_2022::Token2022,
     token_interface::{transfer_checked, Mint, TransferChecked},
 };
+use light_hasher::{Hasher, Sha256};
 
 #[derive(Accounts)]
 pub struct TokenTransferIntentCompressed<'info> {
@@ -146,7 +147,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
                 buffer.extend_from_slice(amount.to_le_bytes().as_ref());
                 buffer.extend_from_slice(destination.key().as_ref());
                 buffer.extend_from_slice(mint.key().as_ref());
-                let message_hash = hash(&buffer).to_bytes();
+                let message_hash = Sha256::hash(&buffer).unwrap();
 
                 secp256r1_verify_data.verify_args.verify_webauthn(
                     slot_hash_sysvar,

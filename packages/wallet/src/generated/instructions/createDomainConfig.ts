@@ -59,6 +59,9 @@ export type CreateDomainConfigInstruction<
   TAccountSystemProgram extends
     | string
     | AccountMeta<string> = "11111111111111111111111111111111",
+  TAccountAdminDomainConfig extends
+    | string
+    | AccountMeta<string> = "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -74,6 +77,9 @@ export type CreateDomainConfigInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountAdminDomainConfig extends string
+        ? ReadonlyAccount<TAccountAdminDomainConfig>
+        : TAccountAdminDomainConfig,
       ...TRemainingAccounts,
     ]
   >;
@@ -142,10 +148,12 @@ export type CreateDomainConfigInput<
   TAccountDomainConfig extends string = string,
   TAccountPayer extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountAdminDomainConfig extends string = string,
 > = {
   domainConfig: Address<TAccountDomainConfig>;
   payer: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
+  adminDomainConfig?: Address<TAccountAdminDomainConfig>;
   rpId: CreateDomainConfigInstructionDataArgs["rpId"];
   origins: CreateDomainConfigInstructionDataArgs["origins"];
   authority: CreateDomainConfigInstructionDataArgs["authority"];
@@ -157,19 +165,22 @@ export function getCreateDomainConfigInstruction<
   TAccountDomainConfig extends string,
   TAccountPayer extends string,
   TAccountSystemProgram extends string,
+  TAccountAdminDomainConfig extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
   input: CreateDomainConfigInput<
     TAccountDomainConfig,
     TAccountPayer,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountAdminDomainConfig
   >,
   config?: { programAddress?: TProgramAddress }
 ): CreateDomainConfigInstruction<
   TProgramAddress,
   TAccountDomainConfig,
   TAccountPayer,
-  TAccountSystemProgram
+  TAccountSystemProgram,
+  TAccountAdminDomainConfig
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -179,6 +190,10 @@ export function getCreateDomainConfigInstruction<
     domainConfig: { value: input.domainConfig ?? null, isWritable: true },
     payer: { value: input.payer ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    adminDomainConfig: {
+      value: input.adminDomainConfig ?? null,
+      isWritable: false,
+    },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -196,6 +211,10 @@ export function getCreateDomainConfigInstruction<
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
+  if (!accounts.adminDomainConfig.value) {
+    accounts.adminDomainConfig.value =
+      "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg" as Address<"5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg">;
+  }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
@@ -207,6 +226,7 @@ export function getCreateDomainConfigInstruction<
       getAccountMeta(accounts.domainConfig),
       getAccountMeta(accounts.payer),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.adminDomainConfig),
       ...remainingAccounts,
     ],
     data: getCreateDomainConfigInstructionDataEncoder().encode(
@@ -217,7 +237,8 @@ export function getCreateDomainConfigInstruction<
     TProgramAddress,
     TAccountDomainConfig,
     TAccountPayer,
-    TAccountSystemProgram
+    TAccountSystemProgram,
+    TAccountAdminDomainConfig
   >);
 }
 
@@ -230,6 +251,7 @@ export type ParsedCreateDomainConfigInstruction<
     domainConfig: TAccountMetas[0];
     payer: TAccountMetas[1];
     systemProgram: TAccountMetas[2];
+    adminDomainConfig: TAccountMetas[3];
   };
   data: CreateDomainConfigInstructionData;
 };
@@ -242,7 +264,7 @@ export function parseCreateDomainConfigInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>
 ): ParsedCreateDomainConfigInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 3) {
+  if (instruction.accounts.length < 4) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -258,6 +280,7 @@ export function parseCreateDomainConfigInstruction<
       domainConfig: getNextAccount(),
       payer: getNextAccount(),
       systemProgram: getNextAccount(),
+      adminDomainConfig: getNextAccount(),
     },
     data: getCreateDomainConfigInstructionDataDecoder().decode(
       instruction.data

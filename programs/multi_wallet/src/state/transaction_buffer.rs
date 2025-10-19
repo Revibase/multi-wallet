@@ -1,6 +1,6 @@
 use crate::{MemberKey, MultisigError, MAXIMUM_AMOUNT_OF_MEMBERS};
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::hash::hash;
+use light_hasher::{Hasher, Sha256};
 
 // Maximum PDA allocation size in an inner ix is 10240 bytes.
 // 10240 - account contents = 10128 bytes
@@ -104,9 +104,9 @@ impl TransactionBuffer {
     }
 
     pub fn validate_hash(&self) -> Result<()> {
-        let message_buffer_hash = hash(&self.buffer);
+        let message_buffer_hash = Sha256::hash(&self.buffer).unwrap();
         require!(
-            message_buffer_hash.to_bytes() == self.final_buffer_hash,
+            message_buffer_hash == self.final_buffer_hash,
             MultisigError::FinalBufferHashMismatch
         );
         Ok(())

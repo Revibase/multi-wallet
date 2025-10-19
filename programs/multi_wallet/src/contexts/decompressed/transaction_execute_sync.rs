@@ -3,8 +3,8 @@ use crate::{
     MultisigError, Permission, Secp256r1VerifyArgsWithDomainAddress, Settings,
     TransactionActionType, TransactionMessage, SEED_MULTISIG, SEED_VAULT,
 };
-use anchor_lang::solana_program::hash::hash;
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
+use light_hasher::{Hasher, Sha256};
 
 #[derive(Accounts)]
 pub struct TransactionExecuteSync<'info> {
@@ -90,7 +90,7 @@ impl<'info> TransactionExecuteSync<'info> {
 
                 let mut writer = Vec::new();
                 vault_transaction_message.serialize(&mut writer)?;
-                let transaction_message_hash = hash(&writer);
+                let transaction_message_hash = Sha256::hash(&writer).unwrap();
 
                 let account_loader = DomainConfig::extract_domain_config_account(
                     ctx.remaining_accounts,
@@ -103,7 +103,7 @@ impl<'info> TransactionExecuteSync<'info> {
                     instructions_sysvar,
                     ChallengeArgs {
                         account: ctx.accounts.settings.key(),
-                        message_hash: transaction_message_hash.to_bytes(),
+                        message_hash: transaction_message_hash,
                         action_type: TransactionActionType::Sync,
                     },
                 )?;

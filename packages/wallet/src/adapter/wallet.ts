@@ -52,7 +52,7 @@ export class RevibaseWallet implements Wallet {
   }
 
   get chains(): readonly `${string}:${string}`[] {
-    return ["solana:mainnet"];
+    return ["solana:mainnet", "solana:devnet"];
   }
 
   get features(): StandardConnectFeature &

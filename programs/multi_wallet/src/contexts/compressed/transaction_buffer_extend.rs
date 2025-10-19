@@ -1,5 +1,6 @@
 use crate::{MultisigError, TransactionBuffer};
-use anchor_lang::{prelude::*, solana_program::hash::hash};
+use anchor_lang::prelude::*;
+use light_hasher::{Hasher, Sha256};
 
 #[derive(Accounts)]
 pub struct TransactionBufferExtendCompressed<'info> {
@@ -33,7 +34,7 @@ impl<'info> TransactionBufferExtendCompressed<'info> {
             .get(0)
             .ok_or(MultisigError::InvalidBuffer)?;
 
-        let current_buffer_hash = hash(&buffer).to_bytes();
+        let current_buffer_hash = Sha256::hash(&buffer).unwrap();
 
         require!(
             required_buffer_hash.eq(&current_buffer_hash),

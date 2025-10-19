@@ -1,5 +1,6 @@
-use crate::{state::DomainConfig, utils::SEED_DOMAIN_CONFIG};
-use anchor_lang::{prelude::*, solana_program::hash};
+use crate::{state::DomainConfig, utils::SEED_DOMAIN_CONFIG, ADMIN_DOMAIN_CONFIG};
+use anchor_lang::prelude::*;
+use light_hasher::{Hasher, Sha256};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateDomainConfigArgs {
@@ -17,7 +18,7 @@ pub struct CreateDomainConfig<'info> {
         payer = payer,
         space = DomainConfig::size(),
         seeds = [SEED_DOMAIN_CONFIG, {
-            hash::hash(args.rp_id.as_bytes()).to_bytes().as_ref()
+            Sha256::hash(args.rp_id.as_bytes()).unwrap().as_ref()
         }],
         bump,
     )]
@@ -25,18 +26,25 @@ pub struct CreateDomainConfig<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
+    #[account(
+        // address = ADMIN_DOMAIN_CONFIG
+    )]
+    pub admin_domain_config: AccountLoader<'info, DomainConfig>,
 }
 
 impl<'info> CreateDomainConfig<'info> {
     pub fn process(ctx: Context<Self>, args: CreateDomainConfigArgs) -> Result<()> {
         #[cfg(feature = "mainnet")]
         require!(
-            ctx.accounts.payer.key.eq(&crate::ADMIN),
+            ctx.accounts
+                .payer
+                .key
+                .eq(&ctx.accounts.admin_domain_config.load()?.authority),
             crate::error::MultisigError::InvalidAccount
         );
 
         let domain_config = &mut ctx.accounts.domain_config.load_init()?;
-        domain_config.rp_id_hash = hash::hash(args.rp_id.as_bytes()).to_bytes();
+        domain_config.rp_id_hash = Sha256::hash(args.rp_id.as_bytes()).unwrap();
 
         domain_config.write_metadata_url(args.metadata_url)?;
         domain_config.write_rp_id(args.rp_id)?;

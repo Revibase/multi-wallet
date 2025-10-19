@@ -26,6 +26,7 @@ import {
   type Instruction,
   type InstructionWithAccounts,
   type InstructionWithData,
+  type ReadonlyAccount,
   type ReadonlySignerAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
@@ -46,9 +47,10 @@ export function getDisableDomainConfigDiscriminatorBytes() {
 export type DisableDomainConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountDomainConfig extends string | AccountMeta<string> = string,
-  TAccountAdmin extends
+  TAccountAdmin extends string | AccountMeta<string> = string,
+  TAccountAdminDomainConfig extends
     | string
-    | AccountMeta<string> = "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ",
+    | AccountMeta<string> = "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -61,6 +63,9 @@ export type DisableDomainConfigInstruction<
         ? ReadonlySignerAccount<TAccountAdmin> &
             AccountSignerMeta<TAccountAdmin>
         : TAccountAdmin,
+      TAccountAdminDomainConfig extends string
+        ? ReadonlyAccount<TAccountAdminDomainConfig>
+        : TAccountAdminDomainConfig,
       ...TRemainingAccounts,
     ]
   >;
@@ -109,9 +114,11 @@ export type DisableDomainConfigInstructionExtraArgs = {
 export type DisableDomainConfigInput<
   TAccountDomainConfig extends string = string,
   TAccountAdmin extends string = string,
+  TAccountAdminDomainConfig extends string = string,
 > = {
   domainConfig: Address<TAccountDomainConfig>;
-  admin?: TransactionSigner<TAccountAdmin>;
+  admin: TransactionSigner<TAccountAdmin>;
+  adminDomainConfig?: Address<TAccountAdminDomainConfig>;
   disable: DisableDomainConfigInstructionDataArgs["disable"];
   remainingAccounts: DisableDomainConfigInstructionExtraArgs["remainingAccounts"];
 };
@@ -119,14 +126,20 @@ export type DisableDomainConfigInput<
 export function getDisableDomainConfigInstruction<
   TAccountDomainConfig extends string,
   TAccountAdmin extends string,
+  TAccountAdminDomainConfig extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
-  input: DisableDomainConfigInput<TAccountDomainConfig, TAccountAdmin>,
+  input: DisableDomainConfigInput<
+    TAccountDomainConfig,
+    TAccountAdmin,
+    TAccountAdminDomainConfig
+  >,
   config?: { programAddress?: TProgramAddress }
 ): DisableDomainConfigInstruction<
   TProgramAddress,
   TAccountDomainConfig,
-  TAccountAdmin
+  TAccountAdmin,
+  TAccountAdminDomainConfig
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -135,6 +148,10 @@ export function getDisableDomainConfigInstruction<
   const originalAccounts = {
     domainConfig: { value: input.domainConfig ?? null, isWritable: true },
     admin: { value: input.admin ?? null, isWritable: false },
+    adminDomainConfig: {
+      value: input.adminDomainConfig ?? null,
+      isWritable: false,
+    },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -148,9 +165,9 @@ export function getDisableDomainConfigInstruction<
   const resolverScope = { programAddress, accounts, args };
 
   // Resolve default values.
-  if (!accounts.admin.value) {
-    accounts.admin.value =
-      "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ" as Address<"AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ">;
+  if (!accounts.adminDomainConfig.value) {
+    accounts.adminDomainConfig.value =
+      "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg" as Address<"5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg">;
   }
 
   // Remaining accounts.
@@ -162,6 +179,7 @@ export function getDisableDomainConfigInstruction<
     accounts: [
       getAccountMeta(accounts.domainConfig),
       getAccountMeta(accounts.admin),
+      getAccountMeta(accounts.adminDomainConfig),
       ...remainingAccounts,
     ],
     data: getDisableDomainConfigInstructionDataEncoder().encode(
@@ -171,7 +189,8 @@ export function getDisableDomainConfigInstruction<
   } as DisableDomainConfigInstruction<
     TProgramAddress,
     TAccountDomainConfig,
-    TAccountAdmin
+    TAccountAdmin,
+    TAccountAdminDomainConfig
   >);
 }
 
@@ -183,6 +202,7 @@ export type ParsedDisableDomainConfigInstruction<
   accounts: {
     domainConfig: TAccountMetas[0];
     admin: TAccountMetas[1];
+    adminDomainConfig: TAccountMetas[2];
   };
   data: DisableDomainConfigInstructionData;
 };
@@ -195,7 +215,7 @@ export function parseDisableDomainConfigInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>
 ): ParsedDisableDomainConfigInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 2) {
+  if (instruction.accounts.length < 3) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -207,7 +227,11 @@ export function parseDisableDomainConfigInstruction<
   };
   return {
     programAddress: instruction.programAddress,
-    accounts: { domainConfig: getNextAccount(), admin: getNextAccount() },
+    accounts: {
+      domainConfig: getNextAccount(),
+      admin: getNextAccount(),
+      adminDomainConfig: getNextAccount(),
+    },
     data: getDisableDomainConfigInstructionDataDecoder().decode(
       instruction.data
     ),

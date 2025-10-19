@@ -5,9 +5,10 @@ use crate::{
 };
 use anchor_lang::{
     prelude::*,
-    solana_program::{hash::hash, sysvar::SysvarId},
+    solana_program::sysvar::SysvarId,
     system_program::{transfer, Transfer},
 };
+use light_hasher::{Hasher, Sha256};
 
 #[derive(Accounts)]
 pub struct NativeTransferIntent<'info> {
@@ -117,7 +118,7 @@ impl<'info> NativeTransferIntent<'info> {
                 buffer.extend_from_slice(amount.to_le_bytes().as_ref());
                 buffer.extend_from_slice(destination.key().as_ref());
                 buffer.extend_from_slice(system_program.key().as_ref());
-                let message_hash = hash(&buffer).to_bytes();
+                let message_hash = Sha256::hash(&buffer).unwrap();
 
                 secp256r1_verify_data.verify_args.verify_webauthn(
                     slot_hash_sysvar,

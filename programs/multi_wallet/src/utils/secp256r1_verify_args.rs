@@ -3,11 +3,9 @@ use crate::{
     COMPRESSED_PUBKEY_SERIALIZED_SIZE, SECP256R1_PROGRAM_ID, SIGNATURE_OFFSETS_SERIALIZED_SIZE,
     SIGNATURE_OFFSETS_START,
 };
-use anchor_lang::{
-    prelude::*,
-    solana_program::{hash::hash, sysvar::instructions},
-};
+use anchor_lang::{prelude::*, solana_program::sysvar::instructions};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
+use light_hasher::{Hasher, Sha256};
 use serde_json::Value;
 use std::str::from_utf8;
 
@@ -250,7 +248,7 @@ impl Secp256r1VerifyArgs {
         buffer.extend_from_slice(&challenge_args.message_hash);
         buffer.extend_from_slice(&slot_hash);
 
-        let expected_challenge = hash(&buffer).to_bytes();
+        let expected_challenge = Sha256::hash(&buffer).unwrap();
 
         require!(
             Self::decode_base64url(&challenge)?.eq(&expected_challenge),
@@ -265,7 +263,7 @@ impl Secp256r1VerifyArgs {
             MultisigError::RpIdHashMismatch
         );
 
-        let expected_client_data_hash = hash(&self.client_data_json).to_bytes();
+        let expected_client_data_hash = Sha256::hash(&self.client_data_json).unwrap();
         require!(
             client_data_hash.eq(&expected_client_data_hash),
             MultisigError::InvalidSignedMessage

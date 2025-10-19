@@ -270,6 +270,10 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "admin_domain_config",
+          "address": "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg"
         }
       ],
       "args": [
@@ -618,8 +622,11 @@
         },
         {
           "name": "admin",
-          "signer": true,
-          "address": "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ"
+          "signer": true
+        },
+        {
+          "name": "admin_domain_config",
+          "address": "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg"
         }
       ],
       "args": [
@@ -692,8 +699,11 @@
         {
           "name": "authority",
           "writable": true,
-          "signer": true,
-          "address": "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ"
+          "signer": true
+        },
+        {
+          "name": "admin_domain_config",
+          "address": "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg"
         }
       ],
       "args": [
@@ -730,8 +740,11 @@
         {
           "name": "authority",
           "writable": true,
-          "signer": true,
-          "address": "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ"
+          "signer": true
+        },
+        {
+          "name": "admin_domain_config",
+          "address": "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg"
         }
       ],
       "args": [
@@ -768,8 +781,11 @@
         {
           "name": "authority",
           "writable": true,
-          "signer": true,
-          "address": "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ"
+          "signer": true
+        },
+        {
+          "name": "admin_domain_config",
+          "address": "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg"
         },
         {
           "name": "system_program",

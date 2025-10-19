@@ -8,7 +8,7 @@
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w"
   },
   "dependencies": {
-    "@coral-xyz/anchor": "^0.31.1",
+    "@coral-xyz/anchor": "0.32.1",
     "@lightprotocol/stateless.js": "0.22.0",
     "@noble/curves": "1.9.7",
     "@noble/hashes": "1.8.0",

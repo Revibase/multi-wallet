@@ -13,7 +13,7 @@ use utils::*;
 
 declare_id!("reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT");
 
-pub const ADMIN: Pubkey = pubkey!("AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ");
+pub const ADMIN_DOMAIN_CONFIG: Pubkey = pubkey!("5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg");
 
 pub const LIGHT_CPI_SIGNER: CpiSigner =
     derive_light_cpi_signer!("reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT");

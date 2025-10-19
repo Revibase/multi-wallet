@@ -1,14 +1,20 @@
-use crate::state::DelegateExtensions;
-use crate::ADMIN;
+use crate::{
+    state::{DelegateExtensions, DomainConfig},
+    ADMIN_DOMAIN_CONFIG,
+};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
 pub struct MigrateDelegateExtension<'info> {
     #[account(
         mut,
-        address = ADMIN,
+        address = admin_domain_config.load()?.authority,
     )]
     pub authority: Signer<'info>,
+    #[account(
+        address = ADMIN_DOMAIN_CONFIG
+    )]
+    pub admin_domain_config: AccountLoader<'info, DomainConfig>,
     pub system_program: Program<'info, System>,
 }
 

@@ -1,4 +1,4 @@
-use crate::{state::DomainConfig, ADMIN};
+use crate::{state::DomainConfig, ADMIN_DOMAIN_CONFIG};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -6,9 +6,13 @@ pub struct DisableDomainConfig<'info> {
     #[account(mut)]
     pub domain_config: AccountLoader<'info, DomainConfig>,
     #[account(
-        address = ADMIN
+        address = admin_domain_config.load()?.authority,
     )]
     pub admin: Signer<'info>,
+    #[account(
+        address = ADMIN_DOMAIN_CONFIG
+    )]
+    pub admin_domain_config: AccountLoader<'info, DomainConfig>,
 }
 
 impl<'info> DisableDomainConfig<'info> {

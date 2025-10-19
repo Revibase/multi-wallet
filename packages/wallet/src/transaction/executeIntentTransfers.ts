@@ -6,7 +6,7 @@ import { signTransaction } from "../passkeys";
 import { Secp256r1Key, type BasePayload } from "../types";
 import { fetchDelegateData, fetchSettingsData, getFeePayer } from "../utils";
 import {
-  ADDRESS_BY_LOOKUP_TABLE_ADDRESS,
+  getAddressByLookUpTable,
   resolveTransactionManagerSigner,
   sendNonBundleTransaction,
 } from "../utils/adapter";
@@ -14,6 +14,7 @@ import {
 interface TransferIntentArgs extends BasePayload {
   amount: number | bigint;
   destination: Address;
+  network?: "mainnet" | "devnet";
   mint?: Address;
   tokenProgram?: Address;
   cachedAccounts?: Map<string, any>;
@@ -96,9 +97,5 @@ export async function executeIntentTransfers({
         cachedAccounts,
       });
 
-  return await sendNonBundleTransaction(
-    ixs,
-    payer,
-    ADDRESS_BY_LOOKUP_TABLE_ADDRESS
-  );
+  return await sendNonBundleTransaction(ixs, payer, getAddressByLookUpTable());
 }

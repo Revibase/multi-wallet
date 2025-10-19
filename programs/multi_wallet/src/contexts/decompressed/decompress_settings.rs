@@ -3,7 +3,8 @@ use crate::{
     durable_nonce_check,SEED_MULTISIG, 
     LIGHT_CPI_SIGNER
 };
-use anchor_lang::{prelude::*, solana_program::{hash, sysvar::SysvarId}};
+use anchor_lang::{prelude::*, solana_program::{sysvar::SysvarId}};
+use light_hasher::{Hasher, Sha256};
 use light_sdk::{
     cpi::{
         v1::{CpiAccounts, LightSystemProgramCpi},
@@ -115,7 +116,7 @@ impl<'info> DecompressSettingsAccount<'info> {
                     instructions_sysvar,
                     ChallengeArgs {
                         account: settings.key(),
-                        message_hash: hash::hash(&payer.key().to_bytes()).to_bytes(),
+                        message_hash: Sha256::hash(&payer.key().to_bytes()).unwrap(),
                         action_type: TransactionActionType::Decompress,
                     },
                 )?;
