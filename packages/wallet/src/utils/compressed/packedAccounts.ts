@@ -1,7 +1,9 @@
 import {
   type AccountProofInput,
   defaultStaticAccountsStruct,
+  isLocalTest,
   lightSystemProgram,
+  localTestActiveStateTreeInfos,
   type NewAddressProofInput,
   type PackedAddressTreeInfo,
   type PackedStateTreeInfo,
@@ -18,7 +20,7 @@ import {
 } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
-import { getLightProtocolRpc } from "../initialize";
+import { getLightProtocolRpc, getSolanaRpcEndpoint } from "../initialize";
 import { getLightCpiSigner } from "./internal";
 
 interface MapData {
@@ -93,7 +95,12 @@ export class PackedAccounts {
     if (this.outputTreeIndex !== -1) {
       return this.outputTreeIndex;
     }
-    const stateTreeInfos = await getLightProtocolRpc().getStateTreeInfos();
+
+    const stateTreeInfos =
+      getSolanaRpcEndpoint().includes("devnet") ||
+      isLocalTest(getSolanaRpcEndpoint())
+        ? localTestActiveStateTreeInfos()
+        : await getLightProtocolRpc().getStateTreeInfos();
     const outputStateTreeIndex = this.packOutputTreeIndex(
       selectStateTreeInfo(stateTreeInfos)
     );
