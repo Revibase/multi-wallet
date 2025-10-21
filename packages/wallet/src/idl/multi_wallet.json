@@ -273,6 +273,7 @@
         },
         {
           "name": "admin_domain_config",
+          "optional": true,
           "address": "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg"
         }
       ],

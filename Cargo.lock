@@ -1307,9 +1307,9 @@ dependencies = [
 
 [[package]]
 name = "light-sdk"
-version = "0.15.0"
+version = "0.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41a2dfba0f29b02c33831a1c61070610dcb53e5b3a9403a8b7a6bb4292ce6fb7"
+checksum = "15f36a1a313fe97c7f9e954e7399ab0cc7a35db0cf683532c1bbfacea625c50d"
 dependencies = [
  "anchor-lang 0.31.1",
  "borsh 0.10.4",

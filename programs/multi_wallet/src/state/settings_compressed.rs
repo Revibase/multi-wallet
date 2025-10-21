@@ -10,9 +10,10 @@ use light_compressed_account::{
     compressed_account::PackedReadOnlyCompressedAccount,
     instruction_data::with_readonly::InstructionDataInvokeCpiWithReadOnly,
 };
-use light_hasher::{DataHasher, Sha256};
+use light_hasher::{Hasher, Sha256};
 use light_sdk::cpi::{invoke::invoke_light_system_program, v1::CpiAccounts};
-use light_sdk::LightHasherSha;
+use light_sdk::error::LightSdkError;
+use light_sdk::instruction::PackedMerkleContext;
 use light_sdk::{
     account::LightAccount,
     cpi::CpiAccountsTrait,
@@ -21,20 +22,12 @@ use light_sdk::{
 };
 use light_sdk_types::{address::v1::derive_address, LIGHT_SYSTEM_PROGRAM_ID};
 
-#[derive(
-    AnchorDeserialize,
-    AnchorSerialize,
-    LightDiscriminator,
-    LightHasherSha,
-    PartialEq,
-    Default,
-    Debug,
-)]
+#[derive(AnchorDeserialize, AnchorSerialize, LightDiscriminator, PartialEq, Default, Debug)]
 pub struct CompressedSettings {
     pub data: Option<CompressedSettingsData>,
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, LightHasherSha, PartialEq, Debug, Clone)]
+#[derive(AnchorDeserialize, AnchorSerialize, PartialEq, Debug, Clone)]
 pub struct CompressedSettingsData {
     pub threshold: u8,
     pub bump: u8,
@@ -173,12 +166,23 @@ impl CompressedSettings {
             LIGHT_CPI_SIGNER,
         );
 
+        let data = settings_readonly
+            .data
+            .try_to_vec()
+            .map_err(|_| LightSdkError::Borsh)
+            .map_err(ProgramError::from)?;
+
+        let mut input_data_hash = Sha256::hash(data.as_slice())
+            .map_err(LightSdkError::from)
+            .map_err(ProgramError::from)?;
+        input_data_hash[0] = 0;
+
         let compressed_account = CompressedAccount {
             address: Some(settings_readonly.account_meta.address),
             owner: crate::ID.to_bytes().into(),
             data: Some(CompressedAccountData {
                 data: vec![],
-                data_hash: settings_readonly.data.hash::<Sha256>().unwrap(),
+                data_hash: input_data_hash,
                 discriminator: CompressedSettings::discriminator(),
             }),
             lamports: 0,
@@ -205,7 +209,7 @@ impl CompressedSettings {
         let instruction_data = InstructionDataInvokeCpiWithReadOnly {
             read_only_accounts: vec![PackedReadOnlyCompressedAccount {
                 root_index: settings_readonly.account_meta.tree_info.root_index,
-                merkle_context: light_sdk::instruction::PackedMerkleContext {
+                merkle_context: PackedMerkleContext {
                     merkle_tree_pubkey_index: settings_readonly
                         .account_meta
                         .tree_info

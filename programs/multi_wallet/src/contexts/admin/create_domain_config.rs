@@ -1,4 +1,6 @@
-use crate::{state::DomainConfig, utils::SEED_DOMAIN_CONFIG, ADMIN_DOMAIN_CONFIG};
+use crate::{
+    error::MultisigError, state::DomainConfig, utils::SEED_DOMAIN_CONFIG, ADMIN_DOMAIN_CONFIG,
+};
 use anchor_lang::prelude::*;
 use light_hasher::{Hasher, Sha256};
 
@@ -29,20 +31,23 @@ pub struct CreateDomainConfig<'info> {
     #[account(
         address = ADMIN_DOMAIN_CONFIG
     )]
-    pub admin_domain_config: AccountLoader<'info, DomainConfig>,
+    pub admin_domain_config: Option<AccountLoader<'info, DomainConfig>>,
 }
 
 impl<'info> CreateDomainConfig<'info> {
     pub fn process(ctx: Context<Self>, args: CreateDomainConfigArgs) -> Result<()> {
         #[cfg(feature = "mainnet")]
-        require!(
-            ctx.accounts
-                .payer
-                .key
-                .eq(&ctx.accounts.admin_domain_config.load()?.authority),
-            crate::error::MultisigError::InvalidAccount
-        );
-
+        {
+            if let Some(admin_domain_config) = &ctx.accounts.admin_domain_config {
+                let authority = &admin_domain_config.load()?.authority;
+                require!(
+                    ctx.accounts.payer.key.eq(authority),
+                    crate::error::MultisigError::InvalidAccount
+                );
+            } else {
+                return err!(MultisigError::InvalidAccount);
+            }
+        }
         let domain_config = &mut ctx.accounts.domain_config.load_init()?;
         domain_config.rp_id_hash = Sha256::hash(args.rp_id.as_bytes()).unwrap();
 

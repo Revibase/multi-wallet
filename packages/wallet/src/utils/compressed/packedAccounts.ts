@@ -18,7 +18,8 @@ import {
 } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
-import { getInternalStateTrees, getLightCpiSigner } from "./internal";
+import { getLightProtocolRpc } from "../initialize";
+import { getLightCpiSigner } from "./internal";
 
 interface MapData {
   index: number;
@@ -93,7 +94,7 @@ export class PackedAccounts {
       return this.outputTreeIndex;
     }
 
-    const stateTreeInfos = await getInternalStateTrees();
+    const stateTreeInfos = await getLightProtocolRpc().getStateTreeInfos();
     const outputStateTreeIndex = this.packOutputTreeIndex(
       selectStateTreeInfo(stateTreeInfos)
     );

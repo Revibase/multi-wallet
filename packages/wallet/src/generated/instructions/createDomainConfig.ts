@@ -211,10 +211,6 @@ export function getCreateDomainConfigInstruction<
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
-  if (!accounts.adminDomainConfig.value) {
-    accounts.adminDomainConfig.value =
-      "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg" as Address<"5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg">;
-  }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
@@ -251,7 +247,7 @@ export type ParsedCreateDomainConfigInstruction<
     domainConfig: TAccountMetas[0];
     payer: TAccountMetas[1];
     systemProgram: TAccountMetas[2];
-    adminDomainConfig: TAccountMetas[3];
+    adminDomainConfig?: TAccountMetas[3] | undefined;
   };
   data: CreateDomainConfigInstructionData;
 };
@@ -274,13 +270,19 @@ export function parseCreateDomainConfigInstruction<
     accountIndex += 1;
     return accountMeta;
   };
+  const getNextOptionalAccount = () => {
+    const accountMeta = getNextAccount();
+    return accountMeta.address === MULTI_WALLET_PROGRAM_ADDRESS
+      ? undefined
+      : accountMeta;
+  };
   return {
     programAddress: instruction.programAddress,
     accounts: {
       domainConfig: getNextAccount(),
       payer: getNextAccount(),
       systemProgram: getNextAccount(),
-      adminDomainConfig: getNextAccount(),
+      adminDomainConfig: getNextOptionalAccount(),
     },
     data: getCreateDomainConfigInstructionDataDecoder().decode(
       instruction.data

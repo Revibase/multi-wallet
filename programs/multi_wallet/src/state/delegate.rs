@@ -8,18 +8,10 @@ use light_sdk::{
     address::v1::derive_address,
     cpi::v1::CpiAccounts,
     instruction::{account_meta::CompressedAccountMeta, PackedAddressTreeInfo},
-    LightAccount, LightDiscriminator, LightHasherSha,
+    LightAccount, LightDiscriminator,
 };
 
-#[derive(
-    Default,
-    AnchorDeserialize,
-    AnchorSerialize,
-    LightDiscriminator,
-    LightHasherSha,
-    PartialEq,
-    Debug,
-)]
+#[derive(Default, AnchorDeserialize, AnchorSerialize, LightDiscriminator, PartialEq, Debug)]
 pub struct Delegate {
     pub member: MemberKey,
     pub domain_config: Option<Pubkey>,

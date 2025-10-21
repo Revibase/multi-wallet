@@ -3,21 +3,11 @@ import {
   type AddressWithTree,
   type BN254,
   type CompressedAccount,
-  cpiContext2Pubkey,
-  cpiContextPubkey,
-  featureFlags,
   getDefaultAddressTreeInfo,
   type HashWithTree,
-  isLocalTest,
-  merkleTree2Pubkey,
-  merkletreePubkey,
-  nullifierQueue2Pubkey,
-  nullifierQueuePubkey,
   type TreeInfo,
-  TreeType,
   type ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
-import { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
 import { type Decoder, getProgramDerivedAddress, getUtf8Encoder } from "gill";
 import {
@@ -26,7 +16,7 @@ import {
   type SettingsReadonlyArgs,
   type ValidityProofArgs,
 } from "../../generated";
-import { getLightProtocolRpc, getSolanaRpcEndpoint } from "../initialize";
+import { getLightProtocolRpc } from "../initialize";
 import { getCompressedSettingsAddressFromIndex } from "./helper";
 import { PackedAccounts } from "./packedAccounts";
 
@@ -271,111 +261,4 @@ export async function getValidityProofWithRetry(
     }
   }
   throw new Error(`Failed to get validity proof after ${retry} attempts`);
-}
-
-// V2 testing - State Trees (5 triples)
-const batchMerkleTree1 = "bmt1LryLZUMmF7ZtqESaw7wifBXLfXHQYoE4GAmrahU";
-const batchQueue1 = "oq1na8gojfdUhsfCpyjNt6h4JaDWtHf1yQj4koBWfto";
-const batchCpiContext1 = "cpi15BoVPKgEPw5o8wc2T816GE7b378nMXnhH3Xbq4y";
-
-const batchMerkleTree2 = "bmt2UxoBxB9xWev4BkLvkGdapsz6sZGkzViPNph7VFi";
-const batchQueue2 = "oq2UkeMsJLfXt2QHzim242SUi3nvjJs8Pn7Eac9H9vg";
-const batchCpiContext2 = "cpi2yGapXUR3As5SjnHBAVvmApNiLsbeZpF3euWnW6B";
-
-const batchMerkleTree3 = "bmt3ccLd4bqSVZVeCJnH1F6C8jNygAhaDfxDwePyyGb";
-const batchQueue3 = "oq3AxjekBWgo64gpauB6QtuZNesuv19xrhaC1ZM1THQ";
-const batchCpiContext3 = "cpi3mbwMpSX8FAGMZVP85AwxqCaQMfEk9Em1v8QK9Rf";
-
-const batchMerkleTree4 = "bmt4d3p1a4YQgk9PeZv5s4DBUmbF5NxqYpk9HGjQsd8";
-const batchQueue4 = "oq4ypwvVGzCUMoiKKHWh4S1SgZJ9vCvKpcz6RT6A8dq";
-const batchCpiContext4 = "cpi4yyPDc4bCgHAnsenunGA8Y77j3XEDyjgfyCKgcoc";
-
-const batchMerkleTree5 = "bmt5yU97jC88YXTuSukYHa8Z5Bi2ZDUtmzfkDTA2mG2";
-const batchQueue5 = "oq5oh5ZR3yGomuQgFduNDzjtGvVWfDRGLuDVjv9a96P";
-const batchCpiContext5 = "cpi5ZTjdgYpZ1Xr7B1cMLLUE81oTtJbNNAyKary2nV6";
-
-// V2 Address Trees
-const batchAddressTree = "amt2kaJA14v3urZbZvnc5v2np8jqvc4Z8zDep5wbtzx"; // v2 address tree (queue is part of the tree account)
-const testBatchAddressTree = "EzKE84aVTkCUhDHLELqyJaq1Y7UVVmqxXqZjVHwHY3rK"; // v2 address tree (queue is part of the tree account)
-
-/**
- * @internal
- */
-const localTestActiveStateTreeInfos = (): TreeInfo[] => {
-  return [
-    {
-      tree: new PublicKey(merkletreePubkey),
-      queue: new PublicKey(nullifierQueuePubkey),
-      cpiContext: new PublicKey(cpiContextPubkey),
-      treeType: TreeType.StateV1,
-      nextTreeInfo: null,
-    },
-    {
-      tree: new PublicKey(merkleTree2Pubkey),
-      queue: new PublicKey(nullifierQueue2Pubkey),
-      cpiContext: new PublicKey(cpiContext2Pubkey),
-      treeType: TreeType.StateV1,
-      nextTreeInfo: null,
-    },
-    {
-      tree: new PublicKey(batchMerkleTree1),
-      queue: new PublicKey(batchQueue1),
-      cpiContext: new PublicKey(batchCpiContext1),
-      treeType: TreeType.StateV2,
-      nextTreeInfo: null,
-    },
-    {
-      tree: new PublicKey(batchMerkleTree2),
-      queue: new PublicKey(batchQueue2),
-      cpiContext: new PublicKey(batchCpiContext2),
-      treeType: TreeType.StateV2,
-      nextTreeInfo: null,
-    },
-    {
-      tree: new PublicKey(batchMerkleTree3),
-      queue: new PublicKey(batchQueue3),
-      cpiContext: new PublicKey(batchCpiContext3),
-      treeType: TreeType.StateV2,
-      nextTreeInfo: null,
-    },
-    {
-      tree: new PublicKey(batchMerkleTree4),
-      queue: new PublicKey(batchQueue4),
-      cpiContext: new PublicKey(batchCpiContext4),
-      treeType: TreeType.StateV2,
-      nextTreeInfo: null,
-    },
-    {
-      tree: new PublicKey(batchMerkleTree5),
-      queue: new PublicKey(batchQueue5),
-      cpiContext: new PublicKey(batchCpiContext5),
-      treeType: TreeType.StateV2,
-      nextTreeInfo: null,
-    },
-    {
-      tree: new PublicKey(batchAddressTree),
-      queue: new PublicKey(batchAddressTree), // v2 address queue is part of the tree account.
-      cpiContext: PublicKey.default,
-      treeType: TreeType.AddressV2,
-      nextTreeInfo: null,
-    },
-    {
-      tree: new PublicKey(testBatchAddressTree),
-      queue: new PublicKey(testBatchAddressTree), // v2 address queue is part of the tree account.
-      cpiContext: PublicKey.default,
-      treeType: TreeType.AddressV2,
-      nextTreeInfo: null,
-    },
-  ].filter((info) =>
-    featureFlags.isV2() ? true : info.treeType === TreeType.StateV1
-  );
-};
-
-export async function getInternalStateTrees() {
-  const stateTreeInfos =
-    getSolanaRpcEndpoint().includes("devnet") ||
-    isLocalTest(getSolanaRpcEndpoint())
-      ? localTestActiveStateTreeInfos()
-      : await getLightProtocolRpc().getStateTreeInfos();
-  return stateTreeInfos;
 }
