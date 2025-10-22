@@ -8,6 +8,7 @@ import { PublicKey } from "@solana/web3.js";
 import {
   type Address,
   getAddressEncoder,
+  getProgramDerivedAddress,
   getU128Encoder,
   getUtf8Encoder,
 } from "gill";
@@ -21,7 +22,6 @@ import {
   type User,
 } from "../..";
 import { ADDRESS_TREE_VERSION } from "../consts";
-import { getSettingsFromIndex } from "../helper";
 import { getSolanaRpc } from "../initialize";
 import { getCompressedAccount } from "./internal";
 
@@ -115,4 +115,32 @@ export async function fetchSettingsData(
       isCompressed: false,
     };
   }
+}
+export async function getWalletAddressFromSettings(settings: Address) {
+  const [address] = await getProgramDerivedAddress({
+    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
+    seeds: [
+      getUtf8Encoder().encode("multi_wallet"),
+      getAddressEncoder().encode(settings),
+      getUtf8Encoder().encode("vault"),
+    ],
+  });
+
+  return address;
+}
+export async function getSettingsFromIndex(index: number | bigint) {
+  const [settings] = await getProgramDerivedAddress({
+    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
+    seeds: [
+      getUtf8Encoder().encode("multi_wallet"),
+      getU128Encoder().encode(index),
+    ],
+  });
+
+  return settings;
+}
+export async function getWalletAddressFromIndex(index: number | bigint) {
+  const settings = await getSettingsFromIndex(index);
+  const address = await getWalletAddressFromSettings(settings);
+  return address;
 }

@@ -1,9 +1,8 @@
 import {
   fetchSettingsData,
   fetchUserAccountData,
-  getMultiWalletFromSettings,
-  getSettingsFromIndex,
   getSolanaRpc,
+  getWalletAddressFromIndex,
   prepareTransactionMessage,
   prepareTransactionSync,
 } from "@revibase/wallet";
@@ -87,7 +86,6 @@ export function runTransactionTests() {
           ctx.payer,
           result.addressLookupTableAccounts
         );
-        const settings = await getSettingsFromIndex(ctx.index);
         // Verify transaction was successful
         const accountData = await fetchSettingsData(ctx.index);
         const userAccountData = await fetchUserAccountData(ctx.wallet.address);
@@ -99,8 +97,8 @@ export function runTransactionTests() {
           null,
           "User should be associated with the correct settings"
         );
-        const multiWallet = await getMultiWalletFromSettings(settings);
-        expect(multiWallet.toString()).to.equal(
+        const walletAddress = await getWalletAddressFromIndex(ctx.index);
+        expect(walletAddress.toString()).to.equal(
           ctx.multiWalletVault.toString(),
           "User should be associated with the correct vault"
         );

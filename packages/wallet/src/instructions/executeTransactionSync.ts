@@ -13,7 +13,7 @@ import {
   type Secp256r1VerifyArgsWithDomainAddressArgs,
 } from "../generated";
 import { Secp256r1Key } from "../types";
-import { getMultiWalletFromSettings, getSettingsFromIndex } from "../utils";
+import { getSettingsFromIndex, getWalletAddressFromSettings } from "../utils";
 import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
@@ -51,14 +51,14 @@ export async function executeTransactionSync({
 }) {
   const dedupSigners = getDeduplicatedSigners(signers);
   const settings = await getSettingsFromIndex(index);
-  const multiWallet = await getMultiWalletFromSettings(settings);
+  const walletAddress = await getWalletAddressFromSettings(settings);
   const [
     { accountMetas, addressLookupTableAccounts, transactionMessage },
     { settingsReadonlyArgs, proof, packedAccounts },
   ] = await Promise.all([
     accountsForTransactionExecute({
       transactionMessageBytes,
-      multiWallet,
+      walletAddress,
       additionalSigners: dedupSigners.filter(
         (x) => !(x instanceof Secp256r1Key)
       ) as TransactionSigner[],
@@ -124,7 +124,7 @@ export async function executeTransactionSync({
       getTransactionExecuteSyncCompressedInstruction({
         secp256r1VerifyArgs,
         transactionMessage: customTransactionMessage,
-        settingsReadonlyArgs: settingsReadonlyArgs,
+        settingsReadonlyArgs,
         compressedProofArgs,
         payer,
         remainingAccounts,

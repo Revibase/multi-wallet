@@ -13,7 +13,8 @@ export const JITO_TIP_ACCOUNTS = [
 
 featureFlags.version = VERSION.V2;
 
-export const ADDRESS_TREE_VERSION = "v1";
 export const REVIBASE_RP_ID = "revibase.com";
 export const REVIBASE_AUTH_DOMAIN = "https://auth.revibase.com";
 export const REVIBASE_API_ENDPOINT = "https://api.revibase.com";
+
+export const ADDRESS_TREE_VERSION = "v1";

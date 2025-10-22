@@ -10,7 +10,10 @@ import {
   type Secp256r1VerifyArgsWithDomainAddressArgs,
 } from "../../generated";
 import { Secp256r1Key } from "../../types";
-import { getMultiWalletFromSettings, getSettingsFromIndex } from "../../utils";
+import {
+  getSettingsFromIndex,
+  getWalletAddressFromSettings,
+} from "../../utils";
 import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
@@ -43,7 +46,7 @@ export async function nativeTransferIntent({
 }) {
   const dedupSigners = getDeduplicatedSigners(signers);
   const settings = await getSettingsFromIndex(index);
-  const multiWallet = await getMultiWalletFromSettings(settings);
+  const walletAddress = await getWalletAddressFromSettings(settings);
   const { settingsReadonlyArgs, proof, packedAccounts } =
     await constructSettingsProofArgs(compressed, index, false, cachedAccounts);
 
@@ -98,7 +101,7 @@ export async function nativeTransferIntent({
         compressedProofArgs,
         payer,
         secp256r1VerifyArgs,
-        source: multiWallet,
+        source: walletAddress,
         destination,
         remainingAccounts,
       })
@@ -108,7 +111,7 @@ export async function nativeTransferIntent({
       getNativeTransferIntentInstruction({
         amount,
         secp256r1VerifyArgs,
-        source: multiWallet,
+        source: walletAddress,
         destination,
         settings,
         remainingAccounts,

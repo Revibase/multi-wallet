@@ -69,13 +69,13 @@ function isSignerIndex(message: CompiledTransactionMessage, index: number) {
 /** Populate remaining accounts required for execution of the transaction. */
 
 export async function accountsForTransactionExecute({
-  multiWallet,
+  walletAddress,
   transactionMessageBytes,
   addressesByLookupTableAddress,
   additionalSigners,
 }: {
   transactionMessageBytes: ReadonlyUint8Array;
-  multiWallet: Address;
+  walletAddress: Address;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   additionalSigners?: TransactionSigner[];
 }) {
@@ -122,7 +122,7 @@ export async function accountsForTransactionExecute({
         transactionMessage,
         accountIndex,
         accountKey,
-        multiWallet
+        walletAddress
       ),
     });
   }
@@ -167,7 +167,7 @@ export async function accountsForTransactionExecute({
   }
 
   for (const signer of additionalSigners?.filter(
-    (x) => x.address !== multiWallet
+    (x) => x.address !== walletAddress
   ) ?? []) {
     const index = accountMetas.findIndex(
       (meta) => meta.address === signer.address

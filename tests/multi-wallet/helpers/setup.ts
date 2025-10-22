@@ -12,9 +12,8 @@ import {
   fetchGlobalCounter,
   fetchMaybeGlobalCounter,
   getGlobalCounterAddress,
-  getMultiWalletFromSettings,
-  getSettingsFromIndex,
   getSolanaRpc,
+  getWalletAddressFromIndex,
   initializeMultiWallet,
   MULTI_WALLET_PROGRAM_ADDRESS,
 } from "@revibase/wallet";
@@ -194,8 +193,7 @@ export async function createMultiWallet(
 
   await sendTransaction([createUserAccountIxs], ctx.payer);
 
-  const settings = await getSettingsFromIndex(createIndex);
-  const multiWallet = await getMultiWalletFromSettings(settings);
+  const multiWalletVault = await getWalletAddressFromIndex(createIndex);
 
   // Create wallet
   const { instructions } = await createWallet({
@@ -212,6 +210,6 @@ export async function createMultiWallet(
   return {
     ...ctx,
     index: createIndex,
-    multiWalletVault: multiWallet,
+    multiWalletVault,
   };
 }

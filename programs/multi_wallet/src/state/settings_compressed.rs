@@ -141,11 +141,11 @@ impl CompressedSettings {
 
     pub fn verify_compressed_settings_account<'info>(
         payer: &AccountInfo<'info>,
-        settings_readonly_args_args: &SettingsMutArgs,
+        settings_readonly_args: &SettingsMutArgs,
         remaining_accounts: &[AccountInfo<'info>],
         compressed_proof_args: &ProofArgs,
     ) -> Result<(CompressedSettingsData, Pubkey)> {
-        let settings_data = settings_readonly_args_args
+        let settings_data = settings_readonly_args
             .data
             .data
             .as_ref()
@@ -160,7 +160,7 @@ impl CompressedSettings {
             LIGHT_CPI_SIGNER,
         );
 
-        let data = settings_readonly_args_args
+        let data = settings_readonly_args
             .data
             .try_to_vec()
             .map_err(|_| LightSdkError::Borsh)
@@ -172,7 +172,7 @@ impl CompressedSettings {
         input_data_hash[0] = 0;
 
         let compressed_account = CompressedAccount {
-            address: Some(settings_readonly_args_args.account_meta.address),
+            address: Some(settings_readonly_args.account_meta.address),
             owner: crate::ID.to_bytes().into(),
             data: Some(CompressedAccountData {
                 data: vec![],
@@ -183,7 +183,7 @@ impl CompressedSettings {
         };
         let merkle_tree_pubkey = light_cpi_accounts
             .get_tree_account_info(
-                settings_readonly_args_args
+                settings_readonly_args
                     .account_meta
                     .tree_info
                     .merkle_tree_pubkey_index as usize,
@@ -195,37 +195,25 @@ impl CompressedSettings {
         let account_hash = compressed_account
             .hash(
                 &merkle_tree_pubkey,
-                &settings_readonly_args_args
-                    .account_meta
-                    .tree_info
-                    .leaf_index,
+                &settings_readonly_args.account_meta.tree_info.leaf_index,
                 true,
             )
             .unwrap();
 
         let instruction_data = InstructionDataInvokeCpiWithReadOnly {
             read_only_accounts: vec![PackedReadOnlyCompressedAccount {
-                root_index: settings_readonly_args_args
-                    .account_meta
-                    .tree_info
-                    .root_index,
+                root_index: settings_readonly_args.account_meta.tree_info.root_index,
                 merkle_context: PackedMerkleContext {
-                    merkle_tree_pubkey_index: settings_readonly_args_args
+                    merkle_tree_pubkey_index: settings_readonly_args
                         .account_meta
                         .tree_info
                         .merkle_tree_pubkey_index,
-                    queue_pubkey_index: settings_readonly_args_args
+                    queue_pubkey_index: settings_readonly_args
                         .account_meta
                         .tree_info
                         .queue_pubkey_index,
-                    leaf_index: settings_readonly_args_args
-                        .account_meta
-                        .tree_info
-                        .leaf_index,
-                    prove_by_index: settings_readonly_args_args
-                        .account_meta
-                        .tree_info
-                        .prove_by_index,
+                    leaf_index: settings_readonly_args.account_meta.tree_info.leaf_index,
+                    prove_by_index: settings_readonly_args.account_meta.tree_info.prove_by_index,
                 },
                 account_hash,
             }],

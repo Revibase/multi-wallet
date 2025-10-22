@@ -15,9 +15,9 @@ import {
   fetchSettingsData,
   fetchUserAccountData,
   getFeePayer,
-  getMultiWalletFromSettings,
   getSettingsFromIndex,
   getTransactionBufferAddress,
+  getWalletAddressFromIndex,
 } from "../utils";
 import {
   createSignInMessageText,
@@ -81,11 +81,8 @@ export function createRevibaseAdapter(): Revibase {
         if (userAccountData.settingsIndex.__option === "None") {
           throw Error("User has no delegated wallet");
         }
-        const settings = await getSettingsFromIndex(
-          userAccountData.settingsIndex.value
-        );
         this.publicKey = (
-          await getMultiWalletFromSettings(settings)
+          await getWalletAddressFromIndex(userAccountData.settingsIndex.value)
         ).toString();
         this.index = Number(userAccountData.settingsIndex.value);
       } else {

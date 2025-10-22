@@ -6,10 +6,10 @@ import {
   fetchSettingsData,
   fetchUserAccountData,
   getGlobalCounterAddress,
-  getMultiWalletFromSettings,
   getSecp256r1VerifyInstruction,
   getSettingsFromIndex,
   getSolanaRpc,
+  getWalletAddressFromIndex,
   Secp256r1Key,
 } from "@revibase/wallet";
 import { expect } from "chai";
@@ -55,8 +55,6 @@ export function runSecp256r1Tests() {
         ctx.addressLookUpTable
       );
 
-      const settings = await getSettingsFromIndex(ctx.index);
-
       const secp256r1Keys = generateSecp256r1KeyPair();
 
       // Create Secp256r1Key
@@ -91,8 +89,8 @@ export function runSecp256r1Tests() {
         ctx.index,
         "User should be associated with the correct settings"
       );
-      const multiWallet = await getMultiWalletFromSettings(settings);
-      expect(multiWallet.toString()).to.equal(
+      const walletAddress = await getWalletAddressFromIndex(ctx.index);
+      expect(walletAddress.toString()).to.equal(
         ctx.multiWalletVault.toString(),
         "User should be associated with the correct vault"
       );

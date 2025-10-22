@@ -16,7 +16,7 @@ import {
   DelegateOp,
   type DelegateOpArgs,
   getChangeConfigCompressedInstruction,
-  getChangeConfigInstruction,
+  getChangeConfigInstructionAsync,
   getCompressedSettingsDecoder,
   getUserDecoder,
   type MemberKey,
@@ -40,9 +40,8 @@ import {
   convertMemberKeyToString,
   fetchSettingsData,
   getCompressedSettingsAddressFromIndex,
-  getMultiWalletFromSettings,
-  getSettingsFromIndex,
   getUserAccountAddress,
+  getWalletAddressFromIndex,
 } from "../utils";
 import {
   convertToCompressedProofArgs,
@@ -69,8 +68,7 @@ export async function changeConfig({
   cachedAccounts?: Map<string, any>;
 }) {
   // --- Stage 1: Setup Addresses---
-  const settings = await getSettingsFromIndex(index);
-  const multiWallet = await getMultiWalletFromSettings(settings);
+  const authority = await getWalletAddressFromIndex(index);
 
   const addDelegates: (Address<string> | Secp256r1Key)[] = [];
   const removeDelegates: (Address<string> | Secp256r1Key)[] = [];
@@ -301,19 +299,17 @@ export async function changeConfig({
         getChangeConfigCompressedInstruction({
           configActions,
           payer,
-          authority: createNoopSigner(multiWallet),
+          authority: createNoopSigner(authority),
           compressedProofArgs,
           settingsMut: settingsMutArgs!,
           remainingAccounts,
         }),
       ]
     : [
-        getChangeConfigInstruction({
+        await getChangeConfigInstructionAsync({
           settingsIndex: index,
           configActions,
-          settings,
           payer,
-          authority: createNoopSigner(multiWallet),
           compressedProofArgs,
           remainingAccounts,
         }),

@@ -9,7 +9,7 @@ import {
   getTransactionExecuteCompressedInstruction,
   getTransactionExecuteInstruction,
 } from "../generated";
-import { getMultiWalletFromSettings } from "../utils";
+import { getWalletAddressFromSettings } from "../utils";
 import { addJitoTip } from "../utils/internal";
 import { accountsForTransactionExecute } from "../utils/transactionMessage/internal";
 import {
@@ -38,12 +38,12 @@ export async function executeTransaction({
   jitoBundlesTipAmount?: number;
   compressed?: boolean;
 }) {
-  const multiWallet = await getMultiWalletFromSettings(settings);
+  const walletAddress = await getWalletAddressFromSettings(settings);
 
   const { accountMetas, addressLookupTableAccounts } =
     await accountsForTransactionExecute({
       transactionMessageBytes,
-      multiWallet,
+      walletAddress,
       additionalSigners,
       addressesByLookupTableAddress,
     });

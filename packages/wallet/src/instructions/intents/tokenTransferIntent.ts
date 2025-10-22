@@ -11,7 +11,10 @@ import {
   type Secp256r1VerifyArgsWithDomainAddressArgs,
 } from "../../generated";
 import { Secp256r1Key } from "../../types";
-import { getMultiWalletFromSettings, getSettingsFromIndex } from "../../utils";
+import {
+  getSettingsFromIndex,
+  getWalletAddressFromSettings,
+} from "../../utils";
 import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
@@ -48,9 +51,9 @@ export async function tokenTransferIntent({
 }) {
   const dedupSigners = getDeduplicatedSigners(signers);
   const settings = await getSettingsFromIndex(index);
-  const multiWallet = await getMultiWalletFromSettings(settings);
+  const walletAddress = await getWalletAddressFromSettings(settings);
   const [sourceTokenAccount, destinationTokenAccount] = await Promise.all([
-    getAssociatedTokenAccountAddress(mint, multiWallet, tokenProgram),
+    getAssociatedTokenAccountAddress(mint, walletAddress, tokenProgram),
     getAssociatedTokenAccountAddress(mint, destination, tokenProgram),
   ]);
   const { settingsReadonlyArgs, proof, packedAccounts } =
@@ -107,7 +110,7 @@ export async function tokenTransferIntent({
         compressedProofArgs,
         payer,
         secp256r1VerifyArgs,
-        source: multiWallet,
+        source: walletAddress,
         sourceTokenAccount,
         destination,
         destinationTokenAccount,
@@ -121,7 +124,7 @@ export async function tokenTransferIntent({
       getTokenTransferIntentInstruction({
         amount,
         secp256r1VerifyArgs,
-        source: multiWallet,
+        source: walletAddress,
         sourceTokenAccount,
         destination,
         destinationTokenAccount,

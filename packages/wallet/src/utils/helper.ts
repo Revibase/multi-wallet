@@ -7,7 +7,6 @@ import {
   getBase64Decoder,
   getBase64EncodedWireTransaction,
   getProgramDerivedAddress,
-  getU128Encoder,
   getU8Encoder,
   getUtf8Encoder,
   type ReadonlyUint8Array,
@@ -64,31 +63,6 @@ export async function getGlobalCounterAddress() {
   return globalCounter;
 }
 
-export async function getSettingsFromIndex(index: number | bigint) {
-  const [settings] = await getProgramDerivedAddress({
-    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-    seeds: [
-      getUtf8Encoder().encode("multi_wallet"),
-      getU128Encoder().encode(index),
-    ],
-  });
-
-  return settings;
-}
-
-export async function getMultiWalletFromSettings(settings: Address) {
-  const [multiWallet] = await getProgramDerivedAddress({
-    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-    seeds: [
-      getUtf8Encoder().encode("multi_wallet"),
-      getAddressEncoder().encode(settings),
-      getUtf8Encoder().encode("vault"),
-    ],
-  });
-
-  return multiWallet;
-}
-
 export async function getTransactionBufferAddress(
   settings: Address,
   creator: Address | Secp256r1Key,
@@ -97,50 +71,27 @@ export async function getTransactionBufferAddress(
   if (buffer_index > 255) {
     throw new Error("Index cannot be greater than 255.");
   }
-  if (creator instanceof Secp256r1Key) {
-    const [transactionBuffer] = await getProgramDerivedAddress({
-      programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-      seeds: [
-        getUtf8Encoder().encode("multi_wallet"),
-        getAddressEncoder().encode(settings),
-        getUtf8Encoder().encode("transaction_buffer"),
-        creator.toTruncatedBuffer(),
-        getU8Encoder().encode(buffer_index),
-      ],
-    });
+  const [transactionBuffer] = await getProgramDerivedAddress({
+    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
+    seeds: [
+      getUtf8Encoder().encode("multi_wallet"),
+      getAddressEncoder().encode(settings),
+      getUtf8Encoder().encode("transaction_buffer"),
+      creator instanceof Secp256r1Key
+        ? creator.toTruncatedBuffer()
+        : getAddressEncoder().encode(creator),
+      getU8Encoder().encode(buffer_index),
+    ],
+  });
 
-    return transactionBuffer;
-  } else {
-    const [transactionBuffer] = await getProgramDerivedAddress({
-      programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-      seeds: [
-        getUtf8Encoder().encode("multi_wallet"),
-        getAddressEncoder().encode(settings),
-        getUtf8Encoder().encode("transaction_buffer"),
-        getAddressEncoder().encode(creator),
-        getU8Encoder().encode(buffer_index),
-      ],
-    });
-
-    return transactionBuffer;
-  }
-}
-
-function normalizeKey(key: any) {
-  if (key instanceof Uint8Array) return key;
-  if (Array.isArray(key)) return new Uint8Array(key);
-  if (typeof key === "object" && key !== null)
-    return new Uint8Array(Object.values(key));
-  throw new Error("Invalid key format");
+  return transactionBuffer;
 }
 
 export function convertMemberKeyToString(memberKey: MemberKey) {
   if (memberKey.keyType === KeyType.Ed25519) {
-    return getBase58Decoder().decode(
-      normalizeKey(memberKey.key).subarray(1, 33)
-    );
+    return getBase58Decoder().decode(memberKey.key.subarray(1, 33));
   } else {
-    return getBase58Decoder().decode(normalizeKey(memberKey.key));
+    return getBase58Decoder().decode(memberKey.key);
   }
 }
 
