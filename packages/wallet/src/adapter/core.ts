@@ -21,15 +21,13 @@ import {
 } from "../utils";
 import {
   createSignInMessageText,
-  resolveTransactionManagerSigner,
-  sendBundleTransaction,
-  sendNonBundleTransaction,
-} from "../utils/adapter";
-import {
   estimateJitoTips,
   estimateTransactionSizeExceedLimit,
+  sendBundleTransaction,
+  sendNonBundleTransaction,
   simulateSecp256r1Signer,
-} from "../utils/transactionMessage/helper";
+} from "../utils/adapter";
+import { resolveTransactionManagerSigner } from "../utils/helper";
 import type { Revibase, RevibaseEvent } from "./window";
 
 export function createRevibaseAdapter(): Revibase {
@@ -151,8 +149,8 @@ export function createRevibaseAdapter(): Revibase {
         ]);
 
       const transactionManagerSigner = await resolveTransactionManagerSigner({
-        memberKey: this.member,
-        settingsData,
+        member: this.member,
+        index: this.index,
         transactionMessageBytes,
         cachedAccounts,
       });

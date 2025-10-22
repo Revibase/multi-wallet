@@ -1,206 +1,208 @@
 import {
   type AccountMeta,
   AccountRole,
+  type AccountSignerMeta,
+  type Address,
   type AddressesByLookupTableAddress,
+  type CompiledTransactionMessage,
+  fetchAddressesForLookupTables,
   type ReadonlyUint8Array,
-  type Rpc,
-  type SolanaRpcApi,
   type TransactionSigner,
-  appendTransactionMessageInstructions,
-  compileTransaction,
-  compressTransactionMessageUsingAddressLookupTables,
-  createTransactionMessage,
-  getAddressDecoder,
-  getBase64EncodedWireTransaction,
-  getBlockhashDecoder,
-  pipe,
-  prependTransactionMessageInstructions,
-  setTransactionMessageFeePayerSigner,
-  setTransactionMessageLifetimeUsingBlockhash,
 } from "gill";
-import {
-  getAddMemoInstruction,
-  getSetComputeUnitLimitInstruction,
-  getSetComputeUnitPriceInstruction,
-} from "gill/programs";
-import type { Secp256r1VerifyInput } from "../../instructions";
-import { prepareTransactionSync } from "../../transaction";
-import { Secp256r1Key } from "../../types";
-import { getJitoTipsConfig } from "../initialize";
+import { getSolanaRpc, vaultTransactionMessageDeserialize } from "..";
 
-export function simulateSecp256r1Signer() {
-  const randomPubkey = crypto.getRandomValues(new Uint8Array(33));
-  const signer = new Secp256r1Key(randomPubkey, {
-    authData: crypto.getRandomValues(new Uint8Array(37)),
-    domainConfig: getAddressDecoder().decode(
-      crypto.getRandomValues(new Uint8Array(32))
-    ),
-    signature: crypto.getRandomValues(new Uint8Array(64)),
-    verifyArgs: {
-      slotHash: crypto.getRandomValues(new Uint8Array(32)),
-      slotNumber: BigInt(0),
-      clientDataJson: crypto.getRandomValues(new Uint8Array(150)),
-    },
-  });
-  return signer;
-}
-
-export async function estimateTransactionSizeExceedLimit({
-  payer,
-  settingsIndex,
-  transactionMessageBytes,
-  signers,
-  compressed,
-  addressesByLookupTableAddress,
-  memo,
-  secp256r1VerifyInput,
-  cachedAccounts,
-}: {
-  payer: TransactionSigner;
-  transactionMessageBytes: ReadonlyUint8Array;
-  settingsIndex: number;
-  compressed: boolean;
-  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
-  signers: (TransactionSigner | Secp256r1Key)[];
-  secp256r1VerifyInput?: Secp256r1VerifyInput;
-  memo?: string | null;
-  cachedAccounts?: Map<string, any>;
-}) {
-  const result = await prepareTransactionSync({
-    payer,
-    index: settingsIndex,
-    transactionMessageBytes,
-    signers,
-    secp256r1VerifyInput,
-    compressed,
-    simulateProof: true,
-    addressesByLookupTableAddress,
-    cachedAccounts,
-  });
-
-  const tx = pipe(
-    createTransactionMessage({ version: 0 }),
-    (tx) =>
-      appendTransactionMessageInstructions(
-        memo
-          ? [getAddMemoInstruction({ memo }), ...result.ixs]
-          : [...result.ixs],
-        tx
-      ),
-    (tx) => setTransactionMessageFeePayerSigner(result.payer, tx),
-    (tx) =>
-      setTransactionMessageLifetimeUsingBlockhash(
-        {
-          blockhash: getBlockhashDecoder().decode(
-            crypto.getRandomValues(new Uint8Array(32))
-          ),
-          lastValidBlockHeight: BigInt(Number.MAX_SAFE_INTEGER),
-        },
-        tx
-      ),
-    (tx) =>
-      result.addressLookupTableAccounts
-        ? compressTransactionMessageUsingAddressLookupTables(
-            tx,
-            result.addressLookupTableAccounts
-          )
-        : tx,
-    (tx) =>
-      prependTransactionMessageInstructions(
-        [
-          getSetComputeUnitLimitInstruction({
-            units: 800_000,
-          }),
-          getSetComputeUnitPriceInstruction({
-            microLamports: 1000,
-          }),
-        ],
-        tx
-      ),
-
-    (tx) => compileTransaction(tx)
-  );
-  const txSize = getBase64EncodedWireTransaction(tx).length;
-  console.log("Estimated Tx Size: ", txSize);
-  return txSize > 1644;
-}
-export async function estimateJitoTips(jitoTipsConfig = getJitoTipsConfig()) {
-  const { estimateJitoTipsEndpoint, priority } = jitoTipsConfig;
-  const response = await fetch(estimateJitoTipsEndpoint);
-  const result = await response.json();
-  const tipAmount = Math.round(result[0][priority] * 10 ** 9) as number;
-  return tipAmount;
-}
-
-export async function getMedianPriorityFees(
-  connection: Rpc<SolanaRpcApi>,
-  accounts: AccountMeta[]
+function getAccountRole(
+  message: CompiledTransactionMessage,
+  index: number,
+  accountKey: Address,
+  vaultPda: Address
 ) {
-  const recentFees = await connection
-    .getRecentPrioritizationFees(
-      accounts
-        .filter(
-          (x) =>
-            x.role === AccountRole.WRITABLE ||
-            x.role === AccountRole.WRITABLE_SIGNER
-        )
-        .map((x) => x.address)
-    )
-    .send();
-  const fees = recentFees.map((f) => Number(f.prioritizationFee));
-  fees.sort((a, b) => a - b);
-  const mid = Math.floor(fees.length / 2);
-
-  if (fees.length % 2 === 0) {
-    return Math.round((fees[mid - 1] + fees[mid]) / 2);
+  const isWritable = isStaticWritableIndex(message, index);
+  const isSigner = isSignerIndex(message, index) && accountKey !== vaultPda;
+  if (isWritable && isSigner) {
+    return AccountRole.WRITABLE_SIGNER;
+  } else if (isWritable && !isSigner) {
+    return AccountRole.WRITABLE;
+  } else if (!isWritable && isSigner) {
+    return AccountRole.READONLY_SIGNER;
   } else {
-    return fees[mid];
+    return AccountRole.READONLY;
   }
 }
+function isStaticWritableIndex(
+  message: CompiledTransactionMessage,
+  index: number
+) {
+  const numAccountKeys = message.staticAccounts.length;
+  const {
+    numSignerAccounts,
+    numReadonlySignerAccounts,
+    numReadonlyNonSignerAccounts,
+  } = message.header;
 
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  const numWritableSigners = numSignerAccounts - numReadonlySignerAccounts;
+  const numWritableNonSigners =
+    numAccountKeys - numSignerAccounts - numReadonlyNonSignerAccounts;
+
+  if (index >= numAccountKeys) {
+    // `index` is not a part of static `accountKeys`.
+    return false;
+  }
+
+  if (index < numWritableSigners) {
+    // `index` is within the range of writable signer keys.
+    return true;
+  }
+
+  if (index >= numSignerAccounts) {
+    // `index` is within the range of non-signer keys.
+    const indexIntoNonSigners = index - numSignerAccounts;
+    // Whether `index` is within the range of writable non-signer keys.
+    return indexIntoNonSigners < numWritableNonSigners;
+  }
+
+  return false;
 }
-export async function sendJitoBundle(
-  serializedTransactions: string[],
-  maxRetries = 10,
-  delayMs = 1000
-): Promise<string> {
-  const { jitoBlockEngineUrl } = getJitoTipsConfig();
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const response = await fetch(`${jitoBlockEngineUrl}/bundles`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "sendBundle",
-        params: [
-          serializedTransactions,
-          {
-            encoding: "base64",
-          },
-        ],
-      }),
-    });
+function isSignerIndex(message: CompiledTransactionMessage, index: number) {
+  return index < message.header.numSignerAccounts;
+}
+/** Populate remaining accounts required for execution of the transaction. */
 
-    if (response.status === 429) {
-      if (attempt < maxRetries) {
-        await delay(delayMs);
-        continue;
+export async function accountsForTransactionExecute({
+  walletAddress,
+  transactionMessageBytes,
+  addressesByLookupTableAddress,
+  additionalSigners,
+}: {
+  transactionMessageBytes: ReadonlyUint8Array;
+  walletAddress: Address;
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
+  additionalSigners?: TransactionSigner[];
+}) {
+  const transactionMessage = vaultTransactionMessageDeserialize(
+    transactionMessageBytes
+  );
+
+  if (transactionMessage.version === "legacy") {
+    throw new Error("Only versioned transaction is allowed.");
+  }
+
+  const addressLookupTableAccounts =
+    addressesByLookupTableAddress ??
+    (transactionMessage.addressTableLookups
+      ? await fetchAddressesForLookupTables(
+          transactionMessage.addressTableLookups.map(
+            (x) => x.lookupTableAddress
+          ),
+          getSolanaRpc()
+        )
+      : {});
+
+  // Populate account metas required for execution of the transaction.
+  const accountMetas: (AccountMeta | AccountSignerMeta)[] = [];
+  // First add the lookup table accounts used by the transaction. They are needed for on-chain validation.
+
+  accountMetas.push(
+    ...(transactionMessage.addressTableLookups?.map((lookup) => {
+      return {
+        role: AccountRole.READONLY,
+        address: lookup.lookupTableAddress,
+      };
+    }) ?? [])
+  );
+
+  // Then add static account keys included into the message.
+  for (const [
+    accountIndex,
+    accountKey,
+  ] of transactionMessage.staticAccounts.entries()) {
+    accountMetas.push({
+      address: accountKey,
+      role: getAccountRole(
+        transactionMessage,
+        accountIndex,
+        accountKey,
+        walletAddress
+      ),
+    });
+  }
+
+  // Then add accounts that will be loaded with address lookup tables.
+  if (transactionMessage.addressTableLookups) {
+    for (const lookup of transactionMessage.addressTableLookups) {
+      const lookupTableAccount =
+        addressLookupTableAccounts[lookup.lookupTableAddress];
+      if (!lookupTableAccount) {
+        throw new Error(
+          `Address lookup table account ${lookup.lookupTableAddress} not found`
+        );
+      }
+
+      for (const accountIndex of lookup.writableIndexes) {
+        const address = lookupTableAccount[accountIndex];
+        if (!address) {
+          throw new Error(
+            `Address lookup table account ${lookup.lookupTableAddress} does not contain address at index ${accountIndex}`
+          );
+        }
+
+        accountMetas.push({
+          address,
+          role: AccountRole.WRITABLE,
+        });
+      }
+      for (const accountIndex of lookup.readonlyIndexes) {
+        const address = lookupTableAccount[accountIndex];
+        if (!address) {
+          throw new Error(
+            `Address lookup table account ${lookup.lookupTableAddress} does not contain address at index ${accountIndex}`
+          );
+        }
+        accountMetas.push({
+          address,
+          role: AccountRole.READONLY,
+        });
       }
     }
-
-    const data = await response.json();
-
-    if (data.error) {
-      throw new Error(
-        `Error sending bundles: ${JSON.stringify(data.error, null, 2)}`
-      );
-    }
-
-    return data.result as string;
   }
 
-  throw new Error("Failed to send bundle after retries.");
+  for (const signer of additionalSigners?.filter(
+    (x) => x.address !== walletAddress
+  ) ?? []) {
+    const index = accountMetas.findIndex(
+      (meta) => meta.address === signer.address
+    );
+    if (index === -1) {
+      accountMetas.push({
+        address: signer.address,
+        role: AccountRole.READONLY_SIGNER,
+        signer,
+      });
+    } else {
+      if (
+        accountMetas[index].role === AccountRole.READONLY ||
+        accountMetas[index].role === AccountRole.READONLY_SIGNER
+      ) {
+        accountMetas[index] = {
+          address: signer.address,
+          role: AccountRole.READONLY_SIGNER,
+          signer,
+        };
+      } else if (
+        accountMetas[index].role === AccountRole.WRITABLE ||
+        accountMetas[index].role === AccountRole.WRITABLE_SIGNER
+      ) {
+        accountMetas[index] = {
+          address: signer.address,
+          role: AccountRole.WRITABLE_SIGNER,
+          signer,
+        };
+      }
+    }
+  }
+  return {
+    accountMetas,
+    addressLookupTableAccounts,
+    transactionMessage,
+  };
 }

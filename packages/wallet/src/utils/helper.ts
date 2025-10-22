@@ -1,5 +1,6 @@
 import { sha256 } from "@noble/hashes/sha256";
 import {
+  address,
   type Address,
   getAddressEncoder,
   getBase58Decoder,
@@ -28,6 +29,8 @@ import {
   Secp256r1Key,
   TransactionManagerPermission,
 } from "../types";
+import { fetchSettingsData, fetchUserAccountData } from "./compressed";
+import { getGlobalAuthorizedClient } from "./initialize";
 
 export async function getDomainConfigAddress({
   rpIdHash,
@@ -95,7 +98,98 @@ export function convertMemberKeyToString(memberKey: MemberKey) {
   }
 }
 
-export function createTransactionManagerSigner(
+export function convertPermissions(
+  p: PermissionArgs,
+  isPermanentMember = false,
+  isTransactionManager = false
+): IPermissions {
+  const perms: IPermission[] = [];
+  if (p.initiate) perms.push(Permission.InitiateTransaction);
+  if (p.vote) perms.push(Permission.VoteTransaction);
+  if (p.execute) perms.push(Permission.ExecuteTransaction);
+  if (isPermanentMember) perms.push(PermanentMemberPermission);
+  if (isTransactionManager) perms.push(TransactionManagerPermission);
+
+  return Permissions.fromPermissions(perms);
+}
+export async function resolveTransactionManagerSigner({
+  member,
+  index,
+  transactionMessageBytes,
+  authorizedClient = getGlobalAuthorizedClient(),
+  cachedAccounts,
+}: {
+  member: string;
+  index: number | bigint;
+  transactionMessageBytes?: ReadonlyUint8Array;
+  authorizedClient?: {
+    publicKey: string;
+    url: string;
+  } | null;
+  cachedAccounts?: Map<string, any>;
+}) {
+  const settingsData = await fetchSettingsData(index, cachedAccounts);
+  if (settingsData.threshold > 1) {
+    throw new Error(
+      "Multi-signature transactions with threshold > 1 are not supported yet."
+    );
+  }
+  const { permissions } =
+    settingsData.members.find(
+      (m) => convertMemberKeyToString(m.pubkey) === member
+    ) ?? {};
+  if (!permissions) {
+    throw new Error("No permissions found for the current member.");
+  }
+  const hasInitiate = Permissions.has(
+    permissions,
+    Permission.InitiateTransaction
+  );
+  const hasVote = Permissions.has(permissions, Permission.VoteTransaction);
+  const hasExecute = Permissions.has(
+    permissions,
+    Permission.ExecuteTransaction
+  );
+  // If member has full signing rights, no transaction manager is needed
+  if (hasInitiate && hasVote && hasExecute) {
+    return null;
+  }
+
+  // Otherwise, require a transaction manager + vote + execute rights
+  const transactionManager = settingsData.members.find((m) =>
+    Permissions.has(m.permissions, TransactionManagerPermission)
+  );
+  if (!transactionManager) {
+    throw new Error("No transaction manager available in wallet.");
+  }
+  if (!hasVote || !hasExecute) {
+    throw new Error("Member lacks the required Vote/Execute permissions.");
+  }
+
+  const transactionManagerAddress = address(
+    convertMemberKeyToString(transactionManager.pubkey)
+  );
+
+  const userAccountData = await fetchUserAccountData(
+    transactionManagerAddress,
+    cachedAccounts
+  );
+
+  if (userAccountData.transactionManagerUrl.__option === "None") {
+    throw new Error(
+      "Transaction manager endpoint is missing for this account."
+    );
+  }
+
+  return createTransactionManagerSigner(
+    transactionManagerAddress,
+    userAccountData.transactionManagerUrl.value,
+    transactionMessageBytes,
+    authorizedClient
+  );
+}
+
+function createTransactionManagerSigner(
   address: Address,
   url: string,
   transactionMessageBytes?: ReadonlyUint8Array,
@@ -162,18 +256,4 @@ export function createTransactionManagerSigner(
       }));
     },
   };
-}
-export function convertPermissions(
-  p: PermissionArgs,
-  isPermanentMember = false,
-  isTransactionManager = false
-): IPermissions {
-  const perms: IPermission[] = [];
-  if (p.initiate) perms.push(Permission.InitiateTransaction);
-  if (p.vote) perms.push(Permission.VoteTransaction);
-  if (p.execute) perms.push(Permission.ExecuteTransaction);
-  if (isPermanentMember) perms.push(PermanentMemberPermission);
-  if (isTransactionManager) perms.push(TransactionManagerPermission);
-
-  return Permissions.fromPermissions(perms);
 }

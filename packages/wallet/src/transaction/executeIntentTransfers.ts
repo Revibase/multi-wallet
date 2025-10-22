@@ -10,10 +10,8 @@ import { tokenTransferIntent } from "../instructions/intents/tokenTransferIntent
 import { signTransaction } from "../passkeys";
 import { Secp256r1Key, type BasePayload } from "../types";
 import { fetchSettingsData, fetchUserAccountData, getFeePayer } from "../utils";
-import {
-  resolveTransactionManagerSigner,
-  sendNonBundleTransaction,
-} from "../utils/adapter";
+import { sendNonBundleTransaction } from "../utils/adapter";
+import { resolveTransactionManagerSigner } from "../utils/helper";
 
 interface TransferIntentArgs extends BasePayload {
   amount: number | bigint;
@@ -74,8 +72,8 @@ export async function executeIntentTransfers({
     getFeePayer(),
   ]);
   const transactionManagerSigner = await resolveTransactionManagerSigner({
-    memberKey: signedTx.signer,
-    settingsData,
+    member: signedTx.signer,
+    index,
     cachedAccounts,
   });
   const primarySigner = new Secp256r1Key(signedTx.signer, signedTx);

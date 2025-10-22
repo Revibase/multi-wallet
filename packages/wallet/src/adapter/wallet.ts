@@ -10,7 +10,7 @@ import type {
   Wallet,
 } from "@wallet-standard/core";
 import { address, getAddressEncoder } from "gill";
-import { bytesEqual } from "../utils/adapter/index.js";
+import { bytesEqual } from "../utils/adapter/helper.js";
 import type {
   RevibaseSignAndSendTransactionFeature,
   RevibaseSignAndSendTransactionMethod,
