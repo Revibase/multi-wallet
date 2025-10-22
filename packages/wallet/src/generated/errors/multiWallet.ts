@@ -48,9 +48,9 @@ export const MULTI_WALLET_ERROR__INVALID_ACCOUNT = 0x177e; // 6014
 export const MULTI_WALLET_ERROR__INVALID_ARGUMENTS = 0x177f; // 6015
 /** MissingAccount: A required account is missing from the transaction context. */
 export const MULTI_WALLET_ERROR__MISSING_ACCOUNT = 0x1780; // 6016
-/** MissingDelegateArgs: Delegate mutation args are required when the initial member has requested delegate permissions. */
-export const MULTI_WALLET_ERROR__MISSING_DELEGATE_ARGS = 0x1781; // 6017
-/** AlreadyDelegated: A member is currently delegated to another wallet. */
+/** MissingUserArgs: User mutation args are required when the delegate operation is add or remove. */
+export const MULTI_WALLET_ERROR__MISSING_USER_ARGS = 0x1781; // 6017
+/** AlreadyDelegated: Current member is currently delegated to another wallet. */
 export const MULTI_WALLET_ERROR__ALREADY_DELEGATED = 0x1782; // 6018
 /** InsufficientSignerWithExecutePermission: At least one signer must have execute permissions to proceed. */
 export const MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_EXECUTE_PERMISSION = 0x1783; // 6019
@@ -137,10 +137,10 @@ export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG
   | typeof MULTI_WALLET_ERROR__MISSING_ACCOUNT
   | typeof MULTI_WALLET_ERROR__MISSING_CHALLENGE
-  | typeof MULTI_WALLET_ERROR__MISSING_DELEGATE_ARGS
   | typeof MULTI_WALLET_ERROR__MISSING_ORIGIN
   | typeof MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY
   | typeof MULTI_WALLET_ERROR__MISSING_TYPE
+  | typeof MULTI_WALLET_ERROR__MISSING_USER_ARGS
   | typeof MULTI_WALLET_ERROR__NO_SIGNER_FOUND
   | typeof MULTI_WALLET_ERROR__ONLY_ONE_PERMANENT_MEMBER_ALLOWED
   | typeof MULTI_WALLET_ERROR__ONLY_ONE_TRANSACTION_MANAGER_ALLOWED
@@ -158,7 +158,7 @@ export type MultiWalletError =
 let multiWalletErrorMessages: Record<MultiWalletError, string> | undefined;
 if (process.env.NODE_ENV !== "production") {
   multiWalletErrorMessages = {
-    [MULTI_WALLET_ERROR__ALREADY_DELEGATED]: `A member is currently delegated to another wallet.`,
+    [MULTI_WALLET_ERROR__ALREADY_DELEGATED]: `Current member is currently delegated to another wallet.`,
     [MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_DISABLED]: `The domain configuration account is currently disabled. Contact support or try again later.`,
     [MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_MISSING]: `Missing domain configuration account. Ensure it's passed in the instruction.`,
     [MULTI_WALLET_ERROR__DUPLICATE_MEMBER]: `Duplicate public keys detected in the member list. Each member must have a unique key.`,
@@ -187,10 +187,10 @@ if (process.env.NODE_ENV !== "production") {
     [MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG]: `This member is not registered in the provided domain configuration.`,
     [MULTI_WALLET_ERROR__MISSING_ACCOUNT]: `A required account is missing from the transaction context.`,
     [MULTI_WALLET_ERROR__MISSING_CHALLENGE]: `Missing challenge field in clientDataJSON. This is required for validating the authentication request.`,
-    [MULTI_WALLET_ERROR__MISSING_DELEGATE_ARGS]: `Delegate mutation args are required when the initial member has requested delegate permissions.`,
     [MULTI_WALLET_ERROR__MISSING_ORIGIN]: `Missing origin field in clientDataJSON. This field is required for WebAuthn validation.`,
     [MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY]: `The Slot History sysvar account is missing. It must be included as an account in this instruction.`,
     [MULTI_WALLET_ERROR__MISSING_TYPE]: `Missing type field in clientDataJSON. This field is required for WebAuthn validation.`,
+    [MULTI_WALLET_ERROR__MISSING_USER_ARGS]: `User mutation args are required when the delegate operation is add or remove.`,
     [MULTI_WALLET_ERROR__NO_SIGNER_FOUND]: `No valid signer was found in this transaction.`,
     [MULTI_WALLET_ERROR__ONLY_ONE_PERMANENT_MEMBER_ALLOWED]: `Only one permanent member can exist per wallet.`,
     [MULTI_WALLET_ERROR__ONLY_ONE_TRANSACTION_MANAGER_ALLOWED]: `Only one transaction manager can exist per wallet.`,

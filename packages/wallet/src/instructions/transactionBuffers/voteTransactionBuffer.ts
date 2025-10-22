@@ -8,7 +8,7 @@ import {
   getTransactionBufferVoteCompressedInstruction,
   getTransactionBufferVoteInstruction,
   type ProofArgsArgs,
-  type SettingsReadonlyArgs,
+  type SettingsMutArgs,
 } from "../../generated";
 import { Secp256r1Key } from "../../types";
 import { extractSecp256r1VerificationArgs } from "../../utils/internal";
@@ -24,7 +24,7 @@ export function voteTransactionBuffer({
   voter: TransactionSigner | Secp256r1Key;
   transactionBufferAddress: Address;
   compressedArgs: {
-    settingsReadonlyArgs: SettingsReadonlyArgs;
+    settingsReadonlyArgs: SettingsMutArgs;
     compressedProofArgs: ProofArgsArgs;
     remainingAccounts: AccountMeta[];
     payer: TransactionSigner;
@@ -61,7 +61,7 @@ export function voteTransactionBuffer({
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
         voter: voter instanceof Secp256r1Key ? undefined : voter,
-        settingsReadonly: compressedArgs.settingsReadonlyArgs,
+        settingsReadonlyArgs: compressedArgs.settingsReadonlyArgs,
         payer: compressedArgs.payer,
         compressedProofArgs: compressedArgs.compressedProofArgs,
         remainingAccounts: compressedArgs.remainingAccounts,

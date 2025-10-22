@@ -12,8 +12,8 @@ import {
 import { Secp256r1Key } from "../types";
 import {
   createPopUp,
-  fetchDelegateData,
   fetchSettingsData,
+  fetchUserAccountData,
   getFeePayer,
   getMultiWalletFromSettings,
   getSettingsFromIndex,
@@ -75,19 +75,19 @@ export function createRevibaseAdapter(): Revibase {
         !authResponse.additionalInfo?.walletAddress ||
         !authResponse.additionalInfo.settingsIndex
       ) {
-        const delegateData = await fetchDelegateData(
+        const userAccountData = await fetchUserAccountData(
           new Secp256r1Key(authResponse.signer)
         );
-        if (delegateData.settingsIndex.__option === "None") {
+        if (userAccountData.settingsIndex.__option === "None") {
           throw Error("User has no delegated wallet");
         }
         const settings = await getSettingsFromIndex(
-          delegateData.settingsIndex.value
+          userAccountData.settingsIndex.value
         );
         this.publicKey = (
           await getMultiWalletFromSettings(settings)
         ).toString();
-        this.index = Number(delegateData.settingsIndex.value);
+        this.index = Number(userAccountData.settingsIndex.value);
       } else {
         this.publicKey = authResponse.additionalInfo.walletAddress;
         this.index = authResponse.additionalInfo.settingsIndex;

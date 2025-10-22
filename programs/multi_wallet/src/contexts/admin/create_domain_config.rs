@@ -1,6 +1,4 @@
-use crate::{
-    error::MultisigError, state::DomainConfig, utils::SEED_DOMAIN_CONFIG, ADMIN_DOMAIN_CONFIG,
-};
+use crate::{state::DomainConfig, utils::SEED_DOMAIN_CONFIG, ADMIN_DOMAIN_CONFIG};
 use anchor_lang::prelude::*;
 use light_hasher::{Hasher, Sha256};
 
@@ -44,8 +42,8 @@ impl<'info> CreateDomainConfig<'info> {
                     ctx.accounts.payer.key.eq(authority),
                     crate::error::MultisigError::InvalidAccount
                 );
-            } else {
-                return err!(MultisigError::InvalidAccount);
+            } else if ctx.accounts.domain_config.key().ne(&ADMIN_DOMAIN_CONFIG) {
+                return err!(crate::error::MultisigError::InvalidAccount);
             }
         }
         let domain_config = &mut ctx.accounts.domain_config.load_init()?;

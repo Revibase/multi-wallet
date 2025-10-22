@@ -1,7 +1,7 @@
 use crate::{
     durable_nonce_check, ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig,
     MemberKey, MultisigError, Permission, ProofArgs, Secp256r1VerifyArgsWithDomainAddress,
-    SettingsReadonlyArgs, TransactionActionType, SEED_MULTISIG, SEED_VAULT,
+    SettingsMutArgs, TransactionActionType, SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{
     prelude::*,
@@ -182,12 +182,12 @@ impl<'info> TokenTransferIntentCompressed<'info> {
         ctx: Context<'_, '_, 'info, 'info, Self>,
         amount: u64,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
-        settings_readonly: SettingsReadonlyArgs,
+        settings_readonly_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
-        let (settings, settings_key) = CompressedSettings::verify_compressed_settings(
+        let (settings, settings_key) = CompressedSettings::verify_compressed_settings_account(
             &ctx.accounts.payer.to_account_info(),
-            &settings_readonly,
+            &settings_readonly_args,
             ctx.remaining_accounts,
             &compressed_proof_args,
         )?;

@@ -2,8 +2,8 @@ import {
   changeConfig,
   convertMemberKeyToString,
   DelegateOp,
-  fetchDelegateData,
   fetchSettingsData,
+  fetchUserAccountData,
   prepareTransactionBundle,
   prepareTransactionMessage,
   prepareTransactionSync,
@@ -66,10 +66,10 @@ export function runMemberManagementTests() {
 
       // Verify member was added
       const accountData = await fetchSettingsData(ctx.index);
-      const delegateData = await fetchDelegateData(ctx.payer.address);
+      const userAccountData = await fetchUserAccountData(ctx.payer.address);
       const settingsIndex =
-        delegateData.settingsIndex.__option === "Some"
-          ? delegateData.settingsIndex.value
+        userAccountData.settingsIndex.__option === "Some"
+          ? userAccountData.settingsIndex.value
           : null;
       expect(settingsIndex).equal(ctx.index, "Payer should be a delegate");
       expect(accountData.members.length).to.equal(2, "Should have two members");
@@ -117,8 +117,8 @@ export function runMemberManagementTests() {
         await sendTransaction(x.ixs, x.payer, x.addressLookupTableAccounts);
       }
       // Verify permissions were updated
-      const delegateData = await fetchDelegateData(ctx.payer.address);
-      expect(delegateData.settingsIndex.__option).equal(
+      const userAccountData = await fetchUserAccountData(ctx.payer.address);
+      expect(userAccountData.settingsIndex.__option).equal(
         "None",
         "Payer should be a delegate"
       );
@@ -162,10 +162,10 @@ export function runMemberManagementTests() {
         await sendTransaction(x.ixs, x.payer, x.addressLookupTableAccounts);
       }
       // Verify permissions were updated
-      const delegateData = await fetchDelegateData(ctx.payer.address);
+      const userAccountData = await fetchUserAccountData(ctx.payer.address);
       const settingsIndex =
-        delegateData.settingsIndex.__option === "Some"
-          ? delegateData.settingsIndex.value
+        userAccountData.settingsIndex.__option === "Some"
+          ? userAccountData.settingsIndex.value
           : null;
       expect(settingsIndex).equal(ctx.index, "Payer should be a delegate");
     });
@@ -206,10 +206,10 @@ export function runMemberManagementTests() {
       }
       // Verify member was removed
       const accountData = await fetchSettingsData(ctx.index);
-      const delegateData = await fetchDelegateData(ctx.payer.address);
+      const userAccountData = await fetchUserAccountData(ctx.payer.address);
       const settingsIndex =
-        delegateData.settingsIndex.__option === "Some"
-          ? delegateData.settingsIndex.value
+        userAccountData.settingsIndex.__option === "Some"
+          ? userAccountData.settingsIndex.value
           : null;
       expect(settingsIndex).equal(null, "Payer should not be a delegate");
       expect(accountData.members.length).to.equal(1, "Should have one member");

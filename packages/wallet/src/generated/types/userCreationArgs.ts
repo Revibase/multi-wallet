@@ -23,36 +23,36 @@ import {
   type PackedAddressTreeInfoArgs,
 } from ".";
 
-export type DelegateCreationArgs = {
+export type UserCreationArgs = {
   addressTreeInfo: PackedAddressTreeInfo;
   outputStateTreeIndex: number;
 };
 
-export type DelegateCreationArgsArgs = {
+export type UserCreationArgsArgs = {
   addressTreeInfo: PackedAddressTreeInfoArgs;
   outputStateTreeIndex: number;
 };
 
-export function getDelegateCreationArgsEncoder(): FixedSizeEncoder<DelegateCreationArgsArgs> {
+export function getUserCreationArgsEncoder(): FixedSizeEncoder<UserCreationArgsArgs> {
   return getStructEncoder([
     ["addressTreeInfo", getPackedAddressTreeInfoEncoder()],
     ["outputStateTreeIndex", getU8Encoder()],
   ]);
 }
 
-export function getDelegateCreationArgsDecoder(): FixedSizeDecoder<DelegateCreationArgs> {
+export function getUserCreationArgsDecoder(): FixedSizeDecoder<UserCreationArgs> {
   return getStructDecoder([
     ["addressTreeInfo", getPackedAddressTreeInfoDecoder()],
     ["outputStateTreeIndex", getU8Decoder()],
   ]);
 }
 
-export function getDelegateCreationArgsCodec(): FixedSizeCodec<
-  DelegateCreationArgsArgs,
-  DelegateCreationArgs
+export function getUserCreationArgsCodec(): FixedSizeCodec<
+  UserCreationArgsArgs,
+  UserCreationArgs
 > {
   return combineCodec(
-    getDelegateCreationArgsEncoder(),
-    getDelegateCreationArgsDecoder()
+    getUserCreationArgsEncoder(),
+    getUserCreationArgsDecoder()
   );
 }

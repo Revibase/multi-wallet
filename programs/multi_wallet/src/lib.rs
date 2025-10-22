@@ -53,33 +53,40 @@ pub mod multi_wallet {
         CreateGlobalCounter::process(ctx)
     }
 
-    /// Create Domain Delegate Account for WebAuthn
+    /// Create Domain User Account for WebAuthn
     #[instruction(discriminator = 4)]
-    pub fn create_domain_delegates<'info>(
-        ctx: Context<'_, '_, 'info, 'info, CreateDomainDelegates<'info>>,
+    pub fn create_domain_user_account<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateDomainUserAccount<'info>>,
         compressed_proof_args: ProofArgs,
-        create_delegate_args: Vec<CreateDomainDelegateArg>,
+        create_user_args: CreateDomainUserAccountArgs,
     ) -> Result<()> {
-        CreateDomainDelegates::process(ctx, compressed_proof_args, create_delegate_args)
+        CreateDomainUserAccount::process(ctx, compressed_proof_args, create_user_args)
     }
 
-    /// Create Delegate Account (for linking a pubkey to a multisig wallet)
+    /// Create User Account (for linking a pubkey to a multisig wallet)
     #[instruction(discriminator = 5)]
-    pub fn create_delegates<'info>(
-        ctx: Context<'_, '_, 'info, 'info, CreateDelegates<'info>>,
+    pub fn create_user_accounts<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateUserAccounts<'info>>,
         compressed_proof_args: ProofArgs,
-        create_delegate_args: Vec<CreateDelegateArg>,
+        create_user_args: Vec<CreateUserAccountArgs>,
     ) -> Result<()> {
-        CreateDelegates::process(ctx, compressed_proof_args, create_delegate_args)
+        CreateUserAccounts::process(ctx, compressed_proof_args, create_user_args)
     }
 
-    /// Edit Delegate extension
+    /// Edit Transaction Manager Url
     #[instruction(discriminator = 6)]
-    pub fn edit_delegate_extension<'info>(
-        ctx: Context<'_, '_, 'info, 'info, EditDelegateExtensions<'info>>,
-        args: EditDelegateExtensionsArgs,
+    pub fn edit_transaction_manager_url<'info>(
+        ctx: Context<'_, '_, 'info, 'info, EditTransactionManagerUrl<'info>>,
+        user_mut_args: UserMutArgs,
+        transaction_manager_url: String,
+        compressed_proof_args: ProofArgs,
     ) -> Result<()> {
-        EditDelegateExtensions::process(ctx, args)
+        EditTransactionManagerUrl::process(
+            ctx,
+            user_mut_args,
+            transaction_manager_url,
+            compressed_proof_args,
+        )
     }
 
     /// Creates a new multi-wallet with the specified permissions and ownership.
@@ -88,7 +95,7 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, CreateMultiWallet<'info>>,
         settings_index: u128,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        delegate_mut_args: DelegateMutArgs,
+        user_mut_args: UserMutArgs,
         compressed_proof_args: ProofArgs,
         set_as_delegate: bool,
     ) -> Result<()> {
@@ -97,7 +104,7 @@ pub mod multi_wallet {
             settings_index,
             secp256r1_verify_args,
             compressed_proof_args,
-            delegate_mut_args,
+            user_mut_args,
             set_as_delegate,
         )
     }
@@ -220,7 +227,7 @@ pub mod multi_wallet {
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         compressed_proof_args: ProofArgs,
         settings_creation: SettingsCreationArgs,
-        delegate_mut_args: DelegateMutArgs,
+        user_mut_args: UserMutArgs,
         settings_index: u128,
         set_as_delegate: bool,
     ) -> Result<()> {
@@ -229,7 +236,7 @@ pub mod multi_wallet {
             secp256r1_verify_args,
             compressed_proof_args,
             settings_creation,
-            delegate_mut_args,
+            user_mut_args,
             settings_index,
             set_as_delegate,
         )
@@ -252,14 +259,14 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, '_, 'info, TransactionBufferCreateCompressed<'info>>,
         args: TransactionBufferCreateArgs,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly: SettingsReadonlyArgs,
+        settings_readonly_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TransactionBufferCreateCompressed::process(
             ctx,
             args,
             secp256r1_verify_args,
-            settings_readonly,
+            settings_readonly_args,
             compressed_proof_args,
         )
     }
@@ -269,13 +276,13 @@ pub mod multi_wallet {
     pub fn transaction_buffer_vote_compressed<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferVoteCompressed<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly: SettingsReadonlyArgs,
+        settings_readonly_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TransactionBufferVoteCompressed::process(
             ctx,
             secp256r1_verify_args,
-            settings_readonly,
+            settings_readonly_args,
             compressed_proof_args,
         )
     }
@@ -295,13 +302,13 @@ pub mod multi_wallet {
     pub fn transaction_buffer_close_compressed<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferCloseCompressed<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly: SettingsReadonlyArgs,
+        settings_readonly_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TransactionBufferCloseCompressed::process(
             ctx,
             secp256r1_verify_args,
-            settings_readonly,
+            settings_readonly_args,
             compressed_proof_args,
         )
     }
@@ -311,13 +318,13 @@ pub mod multi_wallet {
     pub fn transaction_buffer_execute_compressed<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferExecuteCompressed<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly: SettingsReadonlyArgs,
+        settings_readonly_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TransactionBufferExecuteCompressed::process(
             ctx,
             secp256r1_verify_args,
-            settings_readonly,
+            settings_readonly_args,
             compressed_proof_args,
         )
     }
@@ -337,14 +344,14 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, TransactionExecuteSyncCompressed<'info>>,
         transaction_message: TransactionMessage,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
-        settings_readonly: SettingsReadonlyArgs,
+        settings_readonly_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TransactionExecuteSyncCompressed::process(
             ctx,
             transaction_message,
             secp256r1_verify_args,
-            settings_readonly,
+            settings_readonly_args,
             compressed_proof_args,
         )
     }
@@ -356,14 +363,14 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, NativeTransferIntentCompressed<'info>>,
         amount: u64,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
-        settings_readonly: SettingsReadonlyArgs,
+        settings_readonly_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         NativeTransferIntentCompressed::process(
             ctx,
             amount,
             secp256r1_verify_args,
-            settings_readonly,
+            settings_readonly_args,
             compressed_proof_args,
         )
     }
@@ -375,14 +382,14 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, TokenTransferIntentCompressed<'info>>,
         amount: u64,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
-        settings_readonly: SettingsReadonlyArgs,
+        settings_readonly_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TokenTransferIntentCompressed::process(
             ctx,
             amount,
             secp256r1_verify_args,
-            settings_readonly,
+            settings_readonly_args,
             compressed_proof_args,
         )
     }
@@ -410,18 +417,13 @@ pub mod multi_wallet {
     }
 
     #[instruction(discriminator = 31)]
-    pub fn migrate_compressed_delegates<'info>(
-        ctx: Context<'_, '_, 'info, 'info, MigrateCompressedDelegates<'info>>,
-        args: Delegate,
+    pub fn migrate_compressed_users<'info>(
+        ctx: Context<'_, '_, 'info, 'info, MigrateCompressedUser<'info>>,
+        args: User,
         compressed_proof_args: ProofArgs,
-        delegate_creation_args: DelegateCreationArgs,
+        user_creation_args: UserCreationArgs,
     ) -> Result<()> {
-        MigrateCompressedDelegates::process(
-            ctx,
-            args,
-            compressed_proof_args,
-            delegate_creation_args,
-        )
+        MigrateCompressedUser::process(ctx, args, compressed_proof_args, user_creation_args)
     }
 
     #[instruction(discriminator = 32)]
@@ -432,14 +434,5 @@ pub mod multi_wallet {
         settings_creation_args: SettingsCreationArgs,
     ) -> Result<()> {
         MigrateCompressedSettings::process(ctx, args, compressed_proof_args, settings_creation_args)
-    }
-
-    #[instruction(discriminator = 33)]
-    pub fn migrate_delegate_extension<'info>(
-        ctx: Context<'_, '_, 'info, 'info, MigrateDelegateExtension<'info>>,
-        api_url: String,
-        member: Pubkey,
-    ) -> Result<()> {
-        MigrateDelegateExtension::process(ctx, api_url, member)
     }
 }

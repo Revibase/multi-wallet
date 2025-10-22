@@ -1,6 +1,6 @@
 import {
-  createDelegates,
-  createDomainDelegates,
+  createDomainUserAccounts,
+  createUserAccounts,
   getSolanaRpc,
   Secp256r1Key,
   tokenTransferIntent,
@@ -86,19 +86,19 @@ export function runTokenTransferTest() {
       const transactionManager = await createKeyPairSignerFromPrivateKeyBytes(
         crypto.getRandomValues(new Uint8Array(32))
       );
-      const createDelegatesIx = await createDelegates({
+      const createUserAccountIx = await createUserAccounts({
         payer: ctx.payer,
-        createDelegateArgs: [
+        createUserArgs: [
           {
             member: transactionManager,
             isPermanentMember: false,
-            apiUrl: "https://xyz.com",
+            transactionManagerUrl: "https://xyz.com",
           },
         ],
       });
 
       await sendTransaction(
-        [createDelegatesIx],
+        [createUserAccountIx],
         ctx.payer,
         ctx.addressLookUpTable
       );
@@ -107,22 +107,20 @@ export function runTokenTransferTest() {
 
       // Create Secp256r1Key and add member to an existing wallet owned by the authority together with a transaction manager
       const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey);
-      const createDomainDelegatesIx = await createDomainDelegates({
+      const createDomainUserAccountIx = await createDomainUserAccounts({
         payer: ctx.payer,
         authority: ctx.wallet,
         domainConfig: ctx.domainConfig,
-        createDelegateArgs: [
-          {
-            member: secp256r1Key,
-            isPermanentMember: true,
-            linkedWalletSettingsIndex: Number(ctx.index),
-            delegateExtensionsAuthority: transactionManager.address,
-          },
-        ],
+        createUserArgs: {
+          member: secp256r1Key,
+          isPermanentMember: true,
+          settingsIndex: Number(ctx.index),
+          transactionManager: transactionManager.address,
+        },
       });
 
       await sendTransaction(
-        [createDomainDelegatesIx],
+        [createDomainUserAccountIx],
         ctx.payer,
         ctx.addressLookUpTable
       );

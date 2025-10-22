@@ -9,7 +9,7 @@ import { nativeTransferIntent } from "../instructions/intents/nativeTransferInte
 import { tokenTransferIntent } from "../instructions/intents/tokenTransferIntent";
 import { signTransaction } from "../passkeys";
 import { Secp256r1Key, type BasePayload } from "../types";
-import { fetchDelegateData, fetchSettingsData, getFeePayer } from "../utils";
+import { fetchSettingsData, fetchUserAccountData, getFeePayer } from "../utils";
 import {
   resolveTransactionManagerSigner,
   sendNonBundleTransaction,
@@ -58,14 +58,14 @@ export async function executeIntentTransfers({
     !signedTx.additionalInfo?.walletAddress ||
     !signedTx.additionalInfo.settingsIndex
   ) {
-    const delegateData = await fetchDelegateData(
+    const userAccountData = await fetchUserAccountData(
       new Secp256r1Key(signedTx.signer),
       cachedAccounts
     );
-    if (delegateData.settingsIndex.__option === "None") {
+    if (userAccountData.settingsIndex.__option === "None") {
       throw Error("User has no delegated wallet");
     }
-    index = Number(delegateData.settingsIndex.value);
+    index = Number(userAccountData.settingsIndex.value);
   } else {
     index = signedTx.additionalInfo.settingsIndex;
   }

@@ -1,10 +1,10 @@
 import { address, type TransactionSigner } from "gill";
 import {
-  getMigrateCompressedDelegatesInstruction,
-  type DelegateArgs,
+  getMigrateCompressedUsersInstruction,
+  type UserArgs,
 } from "../../generated";
 import { KeyType, Secp256r1Key } from "../../types";
-import { convertMemberKeyToString, getDelegateAddress } from "../../utils";
+import { convertMemberKeyToString, getUserAccountAddress } from "../../utils";
 import {
   convertToCompressedProofArgs,
   getCompressedAccountInitArgs,
@@ -13,28 +13,28 @@ import {
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 
-export async function migrateDelegates({
+export async function migrateUsers({
   args,
   authority,
 }: {
   authority: TransactionSigner;
-  args: DelegateArgs;
+  args: UserArgs;
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
 
   const newAddressParams = getNewAddressesParams([
     {
-      pubkey: getDelegateAddress(
+      pubkey: getUserAccountAddress(
         args.member.keyType === KeyType.Ed25519
           ? address(convertMemberKeyToString(args.member))
           : new Secp256r1Key(convertMemberKeyToString(args.member))
       ),
-      type: "Delegate",
+      type: "User",
     },
   ]);
   const proof = await getValidityProofWithRetry([], newAddressParams);
-  const delegateCreationArgs = (
+  const userCreationArgs = (
     await getCompressedAccountInitArgs(
       packedAccounts,
       proof.treeInfos,
@@ -48,11 +48,11 @@ export async function migrateDelegates({
 
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
 
-  return getMigrateCompressedDelegatesInstruction({
+  return getMigrateCompressedUsersInstruction({
     compressedProofArgs,
     args,
     authority,
-    delegateCreationArgs,
+    userCreationArgs,
     remainingAccounts,
   });
 }

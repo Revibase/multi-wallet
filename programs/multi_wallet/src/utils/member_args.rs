@@ -1,4 +1,4 @@
-use crate::{DelegateMutArgs, Member, MemberKey, Permissions, Secp256r1VerifyArgs};
+use crate::{Member, MemberKey, Permissions, Secp256r1VerifyArgs, UserMutArgs};
 use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug)]
@@ -12,21 +12,21 @@ pub enum DelegateOp {
 pub struct MemberWithAddPermissionsArgs {
     pub member: Member,
     pub verify_args: Option<Secp256r1VerifyArgs>,
-    pub delegate_args: DelegateMutArgs,
+    pub user_mut_args: UserMutArgs,
     pub set_as_delegate: bool,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug)]
 pub struct MemberKeyWithRemovePermissionsArgs {
     pub member_key: MemberKey,
-    pub delegate_args: DelegateMutArgs,
+    pub user_mut_args: UserMutArgs,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug)]
 pub struct MemberKeyWithEditPermissionsArgs {
     pub member_key: MemberKey,
     pub permissions: Permissions,
-    pub delegate_args: Option<DelegateMutArgs>,
+    pub user_mut_args: Option<UserMutArgs>,
     pub delegate_operation: DelegateOp,
 }
 

@@ -13,7 +13,7 @@ import { type Decoder, getProgramDerivedAddress, getUtf8Encoder } from "gill";
 import {
   getCompressedSettingsDecoder,
   MULTI_WALLET_PROGRAM_ADDRESS,
-  type SettingsReadonlyArgs,
+  type SettingsMutArgs,
   type ValidityProofArgs,
 } from "../../generated";
 import { getLightProtocolRpc } from "../initialize";
@@ -21,7 +21,7 @@ import { getCompressedSettingsAddressFromIndex } from "./helper";
 import { PackedAccounts } from "./packedAccounts";
 
 export function getNewAddressesParams(
-  addresses: { pubkey: BN254; type: "Settings" | "Delegate" }[]
+  addresses: { pubkey: BN254; type: "Settings" | "User" }[]
 ) {
   const { tree, queue } = getDefaultAddressTreeInfo();
 
@@ -52,7 +52,7 @@ export async function getCompressedAccount(
 }
 
 export async function getCompressedAccountHashes(
-  addresses: { address: BN254; type: "Settings" | "Delegate" }[],
+  addresses: { address: BN254; type: "Settings" | "User" }[],
   cachedAccounts?: Map<string, any>
 ) {
   const compressedAccounts = await Promise.all(
@@ -96,7 +96,7 @@ export async function getCompressedAccountInitArgs(
   treeInfos: TreeInfo[],
   roots: BN[],
   rootIndices: number[],
-  newAddresses: (AddressWithTree & { type: "Delegate" | "Settings" })[]
+  newAddresses: (AddressWithTree & { type: "User" | "Settings" })[]
 ) {
   if (newAddresses.length === 0) return [];
   const newAddressProofInputs = newAddresses.map((x, index) => ({
@@ -176,7 +176,7 @@ export async function constructSettingsProofArgs(
   simulateProof?: boolean,
   cachedAccounts?: Map<string, any>
 ) {
-  let settingsReadonlyArgs: SettingsReadonlyArgs | null = null;
+  let settingsReadonlyArgs: SettingsMutArgs | null = null;
   let proof: ValidityProofWithContext | null = null;
   const packedAccounts = new PackedAccounts();
   if (compressed) {

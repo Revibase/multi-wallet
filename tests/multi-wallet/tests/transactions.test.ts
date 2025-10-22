@@ -1,6 +1,6 @@
 import {
-  fetchDelegateData,
   fetchSettingsData,
+  fetchUserAccountData,
   getMultiWalletFromSettings,
   getSettingsFromIndex,
   getSolanaRpc,
@@ -90,19 +90,19 @@ export function runTransactionTests() {
         const settings = await getSettingsFromIndex(ctx.index);
         // Verify transaction was successful
         const accountData = await fetchSettingsData(ctx.index);
-        const delegateData = await fetchDelegateData(ctx.wallet.address);
+        const userAccountData = await fetchUserAccountData(ctx.wallet.address);
         const settingsIndex =
-          delegateData.settingsIndex.__option === "Some"
-            ? delegateData.settingsIndex.value
+          userAccountData.settingsIndex.__option === "Some"
+            ? userAccountData.settingsIndex.value
             : null;
         expect(settingsIndex).to.equal(
           null,
-          "Delegate should be associated with the correct settings"
+          "User should be associated with the correct settings"
         );
         const multiWallet = await getMultiWalletFromSettings(settings);
         expect(multiWallet.toString()).to.equal(
           ctx.multiWalletVault.toString(),
-          "Delegate should be associated with the correct vault"
+          "User should be associated with the correct vault"
         );
 
         expect(accountData.members.length).to.be.greaterThan(

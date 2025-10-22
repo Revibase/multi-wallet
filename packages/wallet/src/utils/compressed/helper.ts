@@ -13,22 +13,22 @@ import {
 } from "gill";
 import {
   type CompressedSettingsData,
-  type Delegate,
   fetchMaybeSettings,
   getCompressedSettingsDecoder,
-  getDelegateDecoder,
+  getUserDecoder,
   MULTI_WALLET_PROGRAM_ADDRESS,
   Secp256r1Key,
+  type User,
 } from "../..";
 import { ADDRESS_TREE_VERSION } from "../consts";
 import { getSettingsFromIndex } from "../helper";
 import { getSolanaRpc } from "../initialize";
 import { getCompressedAccount } from "./internal";
 
-export function getDelegateAddress(member: Address | Secp256r1Key) {
+export function getUserAccountAddress(member: Address | Secp256r1Key) {
   const addressSeed = deriveAddressSeed(
     [
-      new Uint8Array(getUtf8Encoder().encode("delegate")),
+      new Uint8Array(getUtf8Encoder().encode("user")),
       member instanceof Secp256r1Key
         ? member.toTruncatedBuffer()
         : new Uint8Array(getAddressEncoder().encode(member)),
@@ -45,27 +45,27 @@ export function getDelegateAddress(member: Address | Secp256r1Key) {
   );
 }
 
-export async function fetchDelegateData(
+export async function fetchUserAccountData(
   member: Address | Secp256r1Key,
   cachedAccounts?: Map<string, any>
-): Promise<Delegate> {
-  const result = await fetchMaybeDelegateData(member, cachedAccounts);
+): Promise<User> {
+  const result = await fetchMaybeUserAccountData(member, cachedAccounts);
   if (!result) {
-    throw new Error("Delegate cannot be found.");
+    throw new Error("User cannot be found.");
   }
   return result;
 }
 
-export async function fetchMaybeDelegateData(
+export async function fetchMaybeUserAccountData(
   member: Address | Secp256r1Key,
   cachedAccounts?: Map<string, any>
-): Promise<Delegate | null> {
-  const delegateAddress = getDelegateAddress(member);
-  const result = await getCompressedAccount(delegateAddress, cachedAccounts);
+): Promise<User | null> {
+  const address = getUserAccountAddress(member);
+  const result = await getCompressedAccount(address, cachedAccounts);
   if (!result?.data?.data) {
     return null;
   }
-  return getDelegateDecoder().decode(result.data.data);
+  return getUserDecoder().decode(result.data.data);
 }
 
 export function getCompressedSettingsAddressFromIndex(index: number | bigint) {

@@ -214,44 +214,6 @@
       ]
     },
     {
-      "name": "create_delegates",
-      "docs": [
-        "Create Delegate Account (for linking a pubkey to a multisig wallet)"
-      ],
-      "discriminator": [5],
-      "accounts": [
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        }
-      ],
-      "args": [
-        {
-          "name": "compressed_proof_args",
-          "type": {
-            "defined": {
-              "name": "ProofArgs"
-            }
-          }
-        },
-        {
-          "name": "create_delegate_args",
-          "type": {
-            "vec": {
-              "defined": {
-                "name": "CreateDelegateArg"
-              }
-            }
-          }
-        }
-      ]
-    },
-    {
       "name": "create_domain_config",
       "docs": [
         "Initializes a new domain configuration used for WebAuthn (secp256r1) verification."
@@ -289,8 +251,8 @@
       ]
     },
     {
-      "name": "create_domain_delegates",
-      "docs": ["Create Domain Delegate Account for WebAuthn"],
+      "name": "create_domain_user_account",
+      "docs": ["Create Domain User Account for WebAuthn"],
       "discriminator": [4],
       "accounts": [
         {
@@ -316,12 +278,10 @@
           }
         },
         {
-          "name": "create_delegate_args",
+          "name": "create_user_args",
           "type": {
-            "vec": {
-              "defined": {
-                "name": "CreateDomainDelegateArg"
-              }
+            "defined": {
+              "name": "CreateDomainUserAccountArgs"
             }
           }
         }
@@ -433,10 +393,10 @@
           }
         },
         {
-          "name": "delegate_mut_args",
+          "name": "user_mut_args",
           "type": {
             "defined": {
-              "name": "DelegateMutArgs"
+              "name": "UserMutArgs"
             }
           }
         },
@@ -522,10 +482,10 @@
           }
         },
         {
-          "name": "delegate_mut_args",
+          "name": "user_mut_args",
           "type": {
             "defined": {
-              "name": "DelegateMutArgs"
+              "name": "UserMutArgs"
             }
           }
         },
@@ -536,6 +496,44 @@
         {
           "name": "set_as_delegate",
           "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "create_user_accounts",
+      "docs": [
+        "Create User Account (for linking a pubkey to a multisig wallet)"
+      ],
+      "discriminator": [5],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
+            }
+          }
+        },
+        {
+          "name": "create_user_args",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "CreateUserAccountArgs"
+              }
+            }
+          }
         }
       ]
     },
@@ -638,31 +636,6 @@
       ]
     },
     {
-      "name": "edit_delegate_extension",
-      "docs": ["Edit Delegate extension"],
-      "discriminator": [6],
-      "accounts": [
-        {
-          "name": "authority",
-          "signer": true
-        },
-        {
-          "name": "delegate_extensions",
-          "writable": true
-        }
-      ],
-      "args": [
-        {
-          "name": "args",
-          "type": {
-            "defined": {
-              "name": "EditDelegateExtensionsArgs"
-            }
-          }
-        }
-      ]
-    },
-    {
       "name": "edit_domain_config",
       "docs": [
         "Updates an existing domain configuration used for WebAuthn (secp256r1) verification."
@@ -694,41 +667,33 @@
       ]
     },
     {
-      "name": "migrate_compressed_delegates",
-      "discriminator": [31],
+      "name": "edit_transaction_manager_url",
+      "docs": ["Edit Transaction Manager Url"],
+      "discriminator": [6],
       "accounts": [
         {
           "name": "authority",
-          "writable": true,
           "signer": true
-        },
-        {
-          "name": "admin_domain_config",
-          "address": "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg"
         }
       ],
       "args": [
         {
-          "name": "args",
+          "name": "user_mut_args",
           "type": {
             "defined": {
-              "name": "Delegate"
+              "name": "UserMutArgs"
             }
           }
+        },
+        {
+          "name": "transaction_manager_url",
+          "type": "string"
         },
         {
           "name": "compressed_proof_args",
           "type": {
             "defined": {
               "name": "ProofArgs"
-            }
-          }
-        },
-        {
-          "name": "delegate_creation_args",
-          "type": {
-            "defined": {
-              "name": "DelegateCreationArgs"
             }
           }
         }
@@ -776,8 +741,8 @@
       ]
     },
     {
-      "name": "migrate_delegate_extension",
-      "discriminator": [33],
+      "name": "migrate_compressed_users",
+      "discriminator": [31],
       "accounts": [
         {
           "name": "authority",
@@ -787,20 +752,32 @@
         {
           "name": "admin_domain_config",
           "address": "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "api_url",
-          "type": "string"
+          "name": "args",
+          "type": {
+            "defined": {
+              "name": "User"
+            }
+          }
         },
         {
-          "name": "member",
-          "type": "pubkey"
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
+            }
+          }
+        },
+        {
+          "name": "user_creation_args",
+          "type": {
+            "defined": {
+              "name": "UserCreationArgs"
+            }
+          }
         }
       ]
     },
@@ -923,10 +900,10 @@
           }
         },
         {
-          "name": "settings_readonly",
+          "name": "settings_readonly_args",
           "type": {
             "defined": {
-              "name": "SettingsReadonlyArgs"
+              "name": "SettingsMutArgs"
             }
           }
         },
@@ -1189,10 +1166,10 @@
           }
         },
         {
-          "name": "settings_readonly",
+          "name": "settings_readonly_args",
           "type": {
             "defined": {
-              "name": "SettingsReadonlyArgs"
+              "name": "SettingsMutArgs"
             }
           }
         },
@@ -1305,10 +1282,10 @@
           }
         },
         {
-          "name": "settings_readonly",
+          "name": "settings_readonly_args",
           "type": {
             "defined": {
-              "name": "SettingsReadonlyArgs"
+              "name": "SettingsMutArgs"
             }
           }
         },
@@ -1444,10 +1421,10 @@
           }
         },
         {
-          "name": "settings_readonly",
+          "name": "settings_readonly_args",
           "type": {
             "defined": {
-              "name": "SettingsReadonlyArgs"
+              "name": "SettingsMutArgs"
             }
           }
         },
@@ -1552,10 +1529,10 @@
           }
         },
         {
-          "name": "settings_readonly",
+          "name": "settings_readonly_args",
           "type": {
             "defined": {
-              "name": "SettingsReadonlyArgs"
+              "name": "SettingsMutArgs"
             }
           }
         },
@@ -1713,10 +1690,10 @@
           }
         },
         {
-          "name": "settings_readonly",
+          "name": "settings_readonly_args",
           "type": {
             "defined": {
-              "name": "SettingsReadonlyArgs"
+              "name": "SettingsMutArgs"
             }
           }
         },
@@ -1855,10 +1832,10 @@
           }
         },
         {
-          "name": "settings_readonly",
+          "name": "settings_readonly_args",
           "type": {
             "defined": {
-              "name": "SettingsReadonlyArgs"
+              "name": "SettingsMutArgs"
             }
           }
         },
@@ -1874,10 +1851,6 @@
     }
   ],
   "accounts": [
-    {
-      "name": "DelegateExtensions",
-      "discriminator": [216, 97, 236, 77, 232, 40, 207, 158]
-    },
     {
       "name": "DomainConfig",
       "discriminator": [201, 232, 212, 229, 59, 241, 106, 197]
@@ -1983,13 +1956,13 @@
     },
     {
       "code": 6017,
-      "name": "MissingDelegateArgs",
-      "msg": "Delegate mutation args are required when the initial member has requested delegate permissions."
+      "name": "MissingUserArgs",
+      "msg": "User mutation args are required when the delegate operation is add or remove."
     },
     {
       "code": 6018,
       "name": "AlreadyDelegated",
-      "msg": "A member is currently delegated to another wallet."
+      "msg": "Current member is currently delegated to another wallet."
     },
     {
       "code": 6019,
@@ -2307,36 +2280,6 @@
       }
     },
     {
-      "name": "CreateDelegateArg",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "member",
-            "type": "pubkey"
-          },
-          {
-            "name": "is_permanent_member",
-            "type": "bool"
-          },
-          {
-            "name": "delegate_creation_args",
-            "type": {
-              "defined": {
-                "name": "DelegateCreationArgs"
-              }
-            }
-          },
-          {
-            "name": "api_url",
-            "type": {
-              "option": "string"
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "CreateDomainConfigArgs",
       "type": {
         "kind": "struct",
@@ -2363,7 +2306,7 @@
       }
     },
     {
-      "name": "CreateDomainDelegateArg",
+      "name": "CreateDomainUserAccountArgs",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2380,10 +2323,10 @@
             "type": "bool"
           },
           {
-            "name": "delegate_creation_args",
+            "name": "user_account_creation_args",
             "type": {
               "defined": {
-                "name": "DelegateCreationArgs"
+                "name": "UserCreationArgs"
               }
             }
           },
@@ -2401,107 +2344,29 @@
       }
     },
     {
-      "name": "Delegate",
+      "name": "CreateUserAccountArgs",
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "member",
-            "type": {
-              "defined": {
-                "name": "MemberKey"
-              }
-            }
-          },
-          {
-            "name": "domain_config",
-            "type": {
-              "option": "pubkey"
-            }
+            "type": "pubkey"
           },
           {
             "name": "is_permanent_member",
             "type": "bool"
           },
           {
-            "name": "settings_index",
+            "name": "transaction_manager_url",
             "type": {
-              "option": "u128"
+              "option": "string"
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "DelegateCreationArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
+          },
           {
-            "name": "address_tree_info",
+            "name": "user_creation_args",
             "type": {
               "defined": {
-                "name": "PackedAddressTreeInfo"
-              }
-            }
-          },
-          {
-            "name": "output_state_tree_index",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "DelegateExtensions",
-      "serialization": "bytemuck",
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "authority",
-            "type": "pubkey"
-          },
-          {
-            "name": "api_url_len",
-            "type": "u16"
-          },
-          {
-            "name": "api_url",
-            "type": {
-              "array": ["u8", 512]
-            }
-          },
-          {
-            "name": "_reserved",
-            "type": {
-              "array": ["u8", 512]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "DelegateMutArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "account_meta",
-            "type": {
-              "defined": {
-                "name": "CompressedAccountMeta"
-              }
-            }
-          },
-          {
-            "name": "data",
-            "type": {
-              "defined": {
-                "name": "Delegate"
+                "name": "UserCreationArgs"
               }
             }
           }
@@ -2586,18 +2451,6 @@
       }
     },
     {
-      "name": "EditDelegateExtensionsArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "api_url",
-            "type": "string"
-          }
-        ]
-      }
-    },
-    {
       "name": "EditDomainConfigArgs",
       "type": {
         "kind": "struct",
@@ -2655,9 +2508,13 @@
             }
           },
           {
-            "name": "delegate_extension_authority",
+            "name": "transaction_manager",
             "type": {
-              "option": "pubkey"
+              "option": {
+                "defined": {
+                  "name": "UserMutArgs"
+                }
+              }
             }
           }
         ]
@@ -2733,11 +2590,11 @@
             }
           },
           {
-            "name": "delegate_args",
+            "name": "user_mut_args",
             "type": {
               "option": {
                 "defined": {
-                  "name": "DelegateMutArgs"
+                  "name": "UserMutArgs"
                 }
               }
             }
@@ -2767,10 +2624,10 @@
             }
           },
           {
-            "name": "delegate_args",
+            "name": "user_mut_args",
             "type": {
               "defined": {
-                "name": "DelegateMutArgs"
+                "name": "UserMutArgs"
               }
             }
           }
@@ -2801,10 +2658,10 @@
             }
           },
           {
-            "name": "delegate_args",
+            "name": "user_mut_args",
             "type": {
               "defined": {
-                "name": "DelegateMutArgs"
+                "name": "UserMutArgs"
               }
             }
           },
@@ -3068,30 +2925,6 @@
       }
     },
     {
-      "name": "SettingsReadonlyArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "account_meta",
-            "type": {
-              "defined": {
-                "name": "CompressedAccountMeta"
-              }
-            }
-          },
-          {
-            "name": "data",
-            "type": {
-              "defined": {
-                "name": "CompressedSettings"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "TransactionBuffer",
       "type": {
         "kind": "struct",
@@ -3282,6 +3115,88 @@
           {
             "name": "readonly_indexes",
             "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "User",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "member",
+            "type": {
+              "defined": {
+                "name": "MemberKey"
+              }
+            }
+          },
+          {
+            "name": "domain_config",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "is_permanent_member",
+            "type": "bool"
+          },
+          {
+            "name": "settings_index",
+            "type": {
+              "option": "u128"
+            }
+          },
+          {
+            "name": "transaction_manager_url",
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserCreationArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "address_tree_info",
+            "type": {
+              "defined": {
+                "name": "PackedAddressTreeInfo"
+              }
+            }
+          },
+          {
+            "name": "output_state_tree_index",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserMutArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account_meta",
+            "type": {
+              "defined": {
+                "name": "CompressedAccountMeta"
+              }
+            }
+          },
+          {
+            "name": "data",
+            "type": {
+              "defined": {
+                "name": "User"
+              }
+            }
           }
         ]
       }

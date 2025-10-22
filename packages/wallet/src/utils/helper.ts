@@ -64,18 +64,6 @@ export async function getGlobalCounterAddress() {
   return globalCounter;
 }
 
-export async function getDelegateExtensionsAddress(member: Address) {
-  const [delegateExtensions] = await getProgramDerivedAddress({
-    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-    seeds: [
-      getUtf8Encoder().encode("delegate_extension"),
-      getAddressEncoder().encode(member),
-    ],
-  });
-
-  return delegateExtensions;
-}
-
 export async function getSettingsFromIndex(index: number | bigint) {
   const [settings] = await getProgramDerivedAddress({
     programAddress: MULTI_WALLET_PROGRAM_ADDRESS,

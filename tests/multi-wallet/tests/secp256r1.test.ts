@@ -1,10 +1,10 @@
 import {
-  createDelegates,
-  createDomainDelegates,
+  createDomainUserAccounts,
+  createUserAccounts,
   createWallet,
-  fetchDelegateData,
   fetchGlobalCounter,
   fetchSettingsData,
+  fetchUserAccountData,
   getGlobalCounterAddress,
   getMultiWalletFromSettings,
   getSecp256r1VerifyInstruction,
@@ -38,44 +38,43 @@ export function runSecp256r1Tests() {
       const transactionManager = await createKeyPairSignerFromPrivateKeyBytes(
         crypto.getRandomValues(new Uint8Array(32))
       );
-      const createDelegatesIx = await createDelegates({
+      const createUserAccountIx = await createUserAccounts({
         payer: ctx.payer,
-        createDelegateArgs: [
+        createUserArgs: [
           {
             member: transactionManager,
             isPermanentMember: false,
-            apiUrl: "https://xyz.com",
+            transactionManagerUrl: "https://xyz.com",
           },
         ],
       });
 
       await sendTransaction(
-        [createDelegatesIx],
+        [createUserAccountIx],
         ctx.payer,
         ctx.addressLookUpTable
       );
+
       const settings = await getSettingsFromIndex(ctx.index);
 
       const secp256r1Keys = generateSecp256r1KeyPair();
 
       // Create Secp256r1Key
       const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey);
-      const createDomainDelegatesIx = await createDomainDelegates({
+      const createDomainUserAccountDataIx = await createDomainUserAccounts({
         payer: ctx.payer,
         authority: ctx.wallet,
         domainConfig: ctx.domainConfig,
-        createDelegateArgs: [
-          {
-            member: secp256r1Key,
-            isPermanentMember: true,
-            linkedWalletSettingsIndex: Number(ctx.index),
-            delegateExtensionsAuthority: transactionManager.address,
-          },
-        ],
+        createUserArgs: {
+          member: secp256r1Key,
+          isPermanentMember: true,
+          settingsIndex: Number(ctx.index),
+          transactionManager: transactionManager.address,
+        },
       });
 
       await sendTransaction(
-        [createDomainDelegatesIx],
+        [createDomainUserAccountDataIx],
         ctx.payer,
         ctx.addressLookUpTable
       );
@@ -83,19 +82,19 @@ export function runSecp256r1Tests() {
       // Verify Secp256r1Key was added as member
       const accountData = await fetchSettingsData(ctx.index);
 
-      const delegateData = await fetchDelegateData(secp256r1Key);
+      const userAccountData = await fetchUserAccountData(secp256r1Key);
       const settingsIndex =
-        delegateData.settingsIndex.__option === "Some"
-          ? delegateData.settingsIndex.value
+        userAccountData.settingsIndex.__option === "Some"
+          ? userAccountData.settingsIndex.value
           : null;
       expect(settingsIndex).to.equal(
         ctx.index,
-        "Delegate should be associated with the correct settings"
+        "User should be associated with the correct settings"
       );
       const multiWallet = await getMultiWalletFromSettings(settings);
       expect(multiWallet.toString()).to.equal(
         ctx.multiWalletVault.toString(),
-        "Delegate should be associated with the correct vault"
+        "User should be associated with the correct vault"
       );
 
       expect(accountData.members.length).to.equal(2, "Should have two members");
@@ -105,20 +104,18 @@ export function runSecp256r1Tests() {
     it("should create wallet using Secp256r1 key as initial member", async () => {
       const secp256r1Keys = generateSecp256r1KeyPair();
 
-      const createDomainDelegatesIx = await createDomainDelegates({
+      const createDomainUserAccountIx = await createDomainUserAccounts({
         payer: ctx.payer,
         authority: ctx.wallet,
         domainConfig: ctx.domainConfig,
-        createDelegateArgs: [
-          {
-            member: new Secp256r1Key(secp256r1Keys.publicKey),
-            isPermanentMember: true,
-          },
-        ],
+        createUserArgs: {
+          member: new Secp256r1Key(secp256r1Keys.publicKey),
+          isPermanentMember: true,
+        },
       });
 
       await sendTransaction(
-        [createDomainDelegatesIx],
+        [createDomainUserAccountIx],
         ctx.payer,
         ctx.addressLookUpTable
       );

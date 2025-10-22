@@ -17,19 +17,18 @@ import {
   type ParsedChangeConfigCompressedInstruction,
   type ParsedChangeConfigInstruction,
   type ParsedCompressSettingsAccountInstruction,
-  type ParsedCreateDelegatesInstruction,
   type ParsedCreateDomainConfigInstruction,
-  type ParsedCreateDomainDelegatesInstruction,
+  type ParsedCreateDomainUserAccountInstruction,
   type ParsedCreateGlobalCounterInstruction,
   type ParsedCreateMultiWalletCompressedInstruction,
   type ParsedCreateMultiWalletInstruction,
+  type ParsedCreateUserAccountsInstruction,
   type ParsedDecompressSettingsAccountInstruction,
   type ParsedDisableDomainConfigInstruction,
-  type ParsedEditDelegateExtensionInstruction,
   type ParsedEditDomainConfigInstruction,
-  type ParsedMigrateCompressedDelegatesInstruction,
+  type ParsedEditTransactionManagerUrlInstruction,
   type ParsedMigrateCompressedSettingsInstruction,
-  type ParsedMigrateDelegateExtensionInstruction,
+  type ParsedMigrateCompressedUsersInstruction,
   type ParsedNativeTransferIntentCompressedInstruction,
   type ParsedNativeTransferIntentInstruction,
   type ParsedTokenTransferIntentCompressedInstruction,
@@ -54,7 +53,6 @@ export const MULTI_WALLET_PROGRAM_ADDRESS =
   "reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT" as Address<"reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT">;
 
 export enum MultiWalletAccount {
-  DelegateExtensions,
   DomainConfig,
   GlobalCounter,
   Settings,
@@ -65,17 +63,6 @@ export function identifyMultiWalletAccount(
   account: { data: ReadonlyUint8Array } | ReadonlyUint8Array
 ): MultiWalletAccount {
   const data = "data" in account ? account.data : account;
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 8).encode(
-        new Uint8Array([216, 97, 236, 77, 232, 40, 207, 158])
-      ),
-      0
-    )
-  ) {
-    return MultiWalletAccount.DelegateExtensions;
-  }
   if (
     containsBytes(
       data,
@@ -129,19 +116,18 @@ export enum MultiWalletInstruction {
   ChangeConfig,
   ChangeConfigCompressed,
   CompressSettingsAccount,
-  CreateDelegates,
   CreateDomainConfig,
-  CreateDomainDelegates,
+  CreateDomainUserAccount,
   CreateGlobalCounter,
   CreateMultiWallet,
   CreateMultiWalletCompressed,
+  CreateUserAccounts,
   DecompressSettingsAccount,
   DisableDomainConfig,
-  EditDelegateExtension,
   EditDomainConfig,
-  MigrateCompressedDelegates,
+  EditTransactionManagerUrl,
   MigrateCompressedSettings,
-  MigrateDelegateExtension,
+  MigrateCompressedUsers,
   NativeTransferIntent,
   NativeTransferIntentCompressed,
   TokenTransferIntent,
@@ -196,15 +182,6 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([5])),
-      0
-    )
-  ) {
-    return MultiWalletInstruction.CreateDelegates;
-  }
-  if (
-    containsBytes(
-      data,
       fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([0])),
       0
     )
@@ -218,7 +195,7 @@ export function identifyMultiWalletInstruction(
       0
     )
   ) {
-    return MultiWalletInstruction.CreateDomainDelegates;
+    return MultiWalletInstruction.CreateDomainUserAccount;
   }
   if (
     containsBytes(
@@ -250,6 +227,15 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([5])),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.CreateUserAccounts;
+  }
+  if (
+    containsBytes(
+      data,
       fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([17])),
       0
     )
@@ -268,15 +254,6 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([6])),
-      0
-    )
-  ) {
-    return MultiWalletInstruction.EditDelegateExtension;
-  }
-  if (
-    containsBytes(
-      data,
       fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([1])),
       0
     )
@@ -286,11 +263,11 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([31])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([6])),
       0
     )
   ) {
-    return MultiWalletInstruction.MigrateCompressedDelegates;
+    return MultiWalletInstruction.EditTransactionManagerUrl;
   }
   if (
     containsBytes(
@@ -304,11 +281,11 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([33])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([31])),
       0
     )
   ) {
-    return MultiWalletInstruction.MigrateDelegateExtension;
+    return MultiWalletInstruction.MigrateCompressedUsers;
   }
   if (
     containsBytes(
@@ -490,14 +467,11 @@ export type ParsedMultiWalletInstruction<
       instructionType: MultiWalletInstruction.CompressSettingsAccount;
     } & ParsedCompressSettingsAccountInstruction<TProgram>)
   | ({
-      instructionType: MultiWalletInstruction.CreateDelegates;
-    } & ParsedCreateDelegatesInstruction<TProgram>)
-  | ({
       instructionType: MultiWalletInstruction.CreateDomainConfig;
     } & ParsedCreateDomainConfigInstruction<TProgram>)
   | ({
-      instructionType: MultiWalletInstruction.CreateDomainDelegates;
-    } & ParsedCreateDomainDelegatesInstruction<TProgram>)
+      instructionType: MultiWalletInstruction.CreateDomainUserAccount;
+    } & ParsedCreateDomainUserAccountInstruction<TProgram>)
   | ({
       instructionType: MultiWalletInstruction.CreateGlobalCounter;
     } & ParsedCreateGlobalCounterInstruction<TProgram>)
@@ -508,26 +482,26 @@ export type ParsedMultiWalletInstruction<
       instructionType: MultiWalletInstruction.CreateMultiWalletCompressed;
     } & ParsedCreateMultiWalletCompressedInstruction<TProgram>)
   | ({
+      instructionType: MultiWalletInstruction.CreateUserAccounts;
+    } & ParsedCreateUserAccountsInstruction<TProgram>)
+  | ({
       instructionType: MultiWalletInstruction.DecompressSettingsAccount;
     } & ParsedDecompressSettingsAccountInstruction<TProgram>)
   | ({
       instructionType: MultiWalletInstruction.DisableDomainConfig;
     } & ParsedDisableDomainConfigInstruction<TProgram>)
   | ({
-      instructionType: MultiWalletInstruction.EditDelegateExtension;
-    } & ParsedEditDelegateExtensionInstruction<TProgram>)
-  | ({
       instructionType: MultiWalletInstruction.EditDomainConfig;
     } & ParsedEditDomainConfigInstruction<TProgram>)
   | ({
-      instructionType: MultiWalletInstruction.MigrateCompressedDelegates;
-    } & ParsedMigrateCompressedDelegatesInstruction<TProgram>)
+      instructionType: MultiWalletInstruction.EditTransactionManagerUrl;
+    } & ParsedEditTransactionManagerUrlInstruction<TProgram>)
   | ({
       instructionType: MultiWalletInstruction.MigrateCompressedSettings;
     } & ParsedMigrateCompressedSettingsInstruction<TProgram>)
   | ({
-      instructionType: MultiWalletInstruction.MigrateDelegateExtension;
-    } & ParsedMigrateDelegateExtensionInstruction<TProgram>)
+      instructionType: MultiWalletInstruction.MigrateCompressedUsers;
+    } & ParsedMigrateCompressedUsersInstruction<TProgram>)
   | ({
       instructionType: MultiWalletInstruction.NativeTransferIntent;
     } & ParsedNativeTransferIntentInstruction<TProgram>)

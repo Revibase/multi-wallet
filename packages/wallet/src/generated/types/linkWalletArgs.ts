@@ -8,13 +8,10 @@
 
 import {
   combineCodec,
-  getAddressDecoder,
-  getAddressEncoder,
   getOptionDecoder,
   getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
-  type Address,
   type Codec,
   type Decoder,
   type Encoder,
@@ -24,31 +21,35 @@ import {
 import {
   getSettingsMutArgsDecoder,
   getSettingsMutArgsEncoder,
+  getUserMutArgsDecoder,
+  getUserMutArgsEncoder,
   type SettingsMutArgs,
   type SettingsMutArgsArgs,
+  type UserMutArgs,
+  type UserMutArgsArgs,
 } from ".";
 
 export type LinkWalletArgs = {
   settingsMutArgs: SettingsMutArgs;
-  delegateExtensionAuthority: Option<Address>;
+  transactionManager: Option<UserMutArgs>;
 };
 
 export type LinkWalletArgsArgs = {
   settingsMutArgs: SettingsMutArgsArgs;
-  delegateExtensionAuthority: OptionOrNullable<Address>;
+  transactionManager: OptionOrNullable<UserMutArgsArgs>;
 };
 
 export function getLinkWalletArgsEncoder(): Encoder<LinkWalletArgsArgs> {
   return getStructEncoder([
     ["settingsMutArgs", getSettingsMutArgsEncoder()],
-    ["delegateExtensionAuthority", getOptionEncoder(getAddressEncoder())],
+    ["transactionManager", getOptionEncoder(getUserMutArgsEncoder())],
   ]);
 }
 
 export function getLinkWalletArgsDecoder(): Decoder<LinkWalletArgs> {
   return getStructDecoder([
     ["settingsMutArgs", getSettingsMutArgsDecoder()],
-    ["delegateExtensionAuthority", getOptionDecoder(getAddressDecoder())],
+    ["transactionManager", getOptionDecoder(getUserMutArgsDecoder())],
   ]);
 }
 

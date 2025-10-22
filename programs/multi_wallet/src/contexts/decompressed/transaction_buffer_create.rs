@@ -116,11 +116,8 @@ impl TransactionBufferCreate<'_> {
     ) -> Result<()> {
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
         let settings = &ctx.accounts.settings.load()?;
-        let creator = &ctx.accounts.creator;
-        let payer = &ctx.accounts.payer;
-        let buffer_index = args.buffer_index;
         let signer: MemberKey = MemberKey::get_signer(
-            creator,
+            &ctx.accounts.creator,
             &secp256r1_verify_args,
             Some(&ctx.accounts.instructions_sysvar),
         )?;
@@ -135,8 +132,7 @@ impl TransactionBufferCreate<'_> {
             ctx.accounts.settings.key(),
             settings.multi_wallet_bump,
             member.pubkey,
-            payer.key(),
-            buffer_index,
+            ctx.accounts.payer.key(),
             &args,
             ctx.bumps.transaction_buffer,
         )?;

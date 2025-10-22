@@ -5,7 +5,7 @@ use light_sdk::{
         InvokeLightSystemProgram, LightCpiInstruction,
     },
 };
-use crate::{MultisigError, id, Delegate, DelegateMutArgs, DomainConfig, GlobalCounter, Member, MemberKey, MemberWithAddPermissionsArgs, Ops, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs, Settings,SEED_MULTISIG, SEED_VAULT, LIGHT_CPI_SIGNER};
+use crate::{MultisigError, id, User, UserMutArgs, DomainConfig, GlobalCounter, Member, MemberKey, MemberWithAddPermissionsArgs, Ops, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs, Settings,SEED_MULTISIG, SEED_VAULT, LIGHT_CPI_SIGNER};
 
 #[derive(Accounts)]
 #[instruction(settings_index: u128)]
@@ -46,7 +46,7 @@ impl<'info> CreateMultiWallet<'info> {
         settings_index:u128,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         compressed_proof_args: ProofArgs,
-        delegate_mut_args: DelegateMutArgs,
+        user_mut_args: UserMutArgs,
         set_as_delegate: bool,
     ) -> Result<()> {
         let signer: MemberKey = MemberKey::get_signer(&ctx.accounts.initial_member, &secp256r1_verify_args, ctx.accounts.instructions_sysvar.as_ref())?;
@@ -76,7 +76,7 @@ impl<'info> CreateMultiWallet<'info> {
             Permission::VoteTransaction,
             Permission::ExecuteTransaction,
         ]);
-        if delegate_mut_args.data.is_permanent_member {
+        if user_mut_args.data.is_permanent_member {
             permissions.push(Permission::IsPermanentMember);
         }
 
@@ -87,7 +87,7 @@ impl<'info> CreateMultiWallet<'info> {
                     permissions: Permissions::from_permissions(permissions),
                 },
                 verify_args: secp256r1_verify_args,
-                delegate_args: delegate_mut_args,
+                user_mut_args: user_mut_args,
                 set_as_delegate,
             }], 
             ctx.remaining_accounts, 
@@ -100,15 +100,15 @@ impl<'info> CreateMultiWallet<'info> {
         let light_cpi_accounts =
             CpiAccounts::new(&ctx.accounts.payer, &ctx.remaining_accounts[compressed_proof_args.light_cpi_accounts_start_index as usize..], LIGHT_CPI_SIGNER);
     
-        let account_infos = Delegate::handle_delegate_accounts(
+        let user_account_info = User::handle_user_delegates(
             delegate_ops.into_iter().map(Ops::Add).collect(),
             settings.index,
         )?;
 
         let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof);
 
-        for f in account_infos {
-            cpi = cpi.with_light_account(f)?;
+        for account_info in user_account_info {
+            cpi = cpi.with_light_account(account_info)?;
         }
 
         cpi.invoke(light_cpi_accounts)?;

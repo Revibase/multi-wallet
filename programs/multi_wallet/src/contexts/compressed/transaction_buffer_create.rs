@@ -1,13 +1,13 @@
 use crate::{
     durable_nonce_check, ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig,
     KeyType, MemberKey, MultisigError, Permission, ProofArgs, Secp256r1VerifyArgs, Settings,
-    SettingsReadonlyArgs, TransactionActionType, TransactionBuffer, TransactionBufferCreateArgs,
+    SettingsMutArgs, TransactionActionType, TransactionBuffer, TransactionBufferCreateArgs,
     MAX_BUFFER_SIZE, SEED_MULTISIG, SEED_TRANSACTION_BUFFER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
 #[derive(Accounts)]
-#[instruction(args: TransactionBufferCreateArgs, secp256r1_verify_args: Option<Secp256r1VerifyArgs>, settings_readonly: SettingsReadonlyArgs)]
+#[instruction(args: TransactionBufferCreateArgs, secp256r1_verify_args: Option<Secp256r1VerifyArgs>, settings_readonly_args: SettingsMutArgs)]
 pub struct TransactionBufferCreateCompressed<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -19,7 +19,7 @@ pub struct TransactionBufferCreateCompressed<'info> {
         seeds = [
             SEED_MULTISIG,
             {
-                let settings = settings_readonly.data.data.as_ref().ok_or(MultisigError::InvalidArguments)?;
+                let settings = settings_readonly_args.data.data.as_ref().ok_or(MultisigError::InvalidArguments)?;
                 Settings::get_settings_key_from_index(settings.index, settings.bump)?.as_ref()
             },
             SEED_TRANSACTION_BUFFER,
@@ -115,21 +115,19 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
         ctx: Context<'_, '_, '_, 'info, Self>,
         args: TransactionBufferCreateArgs,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly: SettingsReadonlyArgs,
+        settings_readonly_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
-        let creator = &ctx.accounts.creator;
         let payer = &ctx.accounts.payer;
-        let buffer_index = args.buffer_index;
         let signer = MemberKey::get_signer(
-            creator,
+            &ctx.accounts.creator,
             &secp256r1_verify_args,
             Some(&ctx.accounts.instructions_sysvar),
         )?;
 
-        let (settings, settings_key) = CompressedSettings::verify_compressed_settings(
+        let (settings, settings_key) = CompressedSettings::verify_compressed_settings_account(
             &payer.to_account_info(),
-            &settings_readonly,
+            &settings_readonly_args,
             ctx.remaining_accounts,
             &compressed_proof_args,
         )?;
@@ -149,7 +147,6 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
             settings.multi_wallet_bump,
             member.pubkey,
             payer.key(),
-            buffer_index,
             &args,
             ctx.bumps.transaction_buffer,
         )?;

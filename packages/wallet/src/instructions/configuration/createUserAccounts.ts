@@ -1,6 +1,6 @@
 import { AccountRole, type TransactionSigner } from "gill";
-import { getCreateDelegatesInstruction } from "../../generated";
-import { getDelegateAddress, getDelegateExtensionsAddress } from "../../utils";
+import { getCreateUserAccountsInstruction } from "../../generated";
+import { getUserAccountAddress } from "../../utils";
 import {
   convertToCompressedProofArgs,
   getCompressedAccountInitArgs,
@@ -9,42 +9,42 @@ import {
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 
-type DelegateCreationArgs =
+type UserCreationArgs =
   | {
       member: TransactionSigner;
-      isPermanentMember: boolean;
-      apiUrl: undefined;
+      isPermanentMember: true;
+      transactionManagerUrl: undefined;
     }
   | {
       member: TransactionSigner;
       isPermanentMember: false;
-      apiUrl: string;
+      transactionManagerUrl?: string;
     };
 
-export async function createDelegates({
-  createDelegateArgs,
+export async function createUserAccounts({
+  createUserArgs,
   payer,
 }: {
   payer: TransactionSigner;
-  createDelegateArgs: DelegateCreationArgs[];
+  createUserArgs: UserCreationArgs[];
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
   packedAccounts.addPreAccounts(
-    createDelegateArgs.map((x) => ({
+    createUserArgs.map((x) => ({
       address: x.member.address,
       role: AccountRole.READONLY_SIGNER,
       signer: x.member,
     }))
   );
   const newAddressParams = getNewAddressesParams(
-    createDelegateArgs.map((x) => ({
-      pubkey: getDelegateAddress(x.member.address),
-      type: "Delegate",
+    createUserArgs.map((x) => ({
+      pubkey: getUserAccountAddress(x.member.address),
+      type: "User",
     }))
   );
   const proof = await getValidityProofWithRetry([], newAddressParams);
-  const delegateCreationArgs = await getCompressedAccountInitArgs(
+  const userCreationArgs = await getCompressedAccountInitArgs(
     packedAccounts,
     proof.treeInfos,
     proof.roots,
@@ -52,29 +52,18 @@ export async function createDelegates({
     newAddressParams
   );
 
-  packedAccounts.addPreAccounts(
-    await Promise.all(
-      createDelegateArgs
-        .filter((x) => !!x.apiUrl)
-        .map(async (x) => ({
-          address: await getDelegateExtensionsAddress(x.member.address),
-          role: AccountRole.WRITABLE,
-        }))
-    )
-  );
-
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
 
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
 
-  return getCreateDelegatesInstruction({
+  return getCreateUserAccountsInstruction({
     compressedProofArgs,
     payer,
-    createDelegateArgs: createDelegateArgs.map((x, index) => ({
+    createUserArgs: createUserArgs.map((x, index) => ({
       member: x.member.address,
       isPermanentMember: x.isPermanentMember,
-      delegateCreationArgs: delegateCreationArgs[index],
-      apiUrl: x.apiUrl ?? null,
+      userCreationArgs: userCreationArgs[index],
+      transactionManagerUrl: x.transactionManagerUrl ?? null,
     })),
     remainingAccounts,
   });

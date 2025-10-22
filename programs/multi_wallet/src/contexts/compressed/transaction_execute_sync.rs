@@ -1,7 +1,7 @@
 use crate::{
     durable_nonce_check, id, ChallengeArgs, CompressedSettings, CompressedSettingsData,
     DomainConfig, ExecutableTransactionMessage, MemberKey, MultisigError, Permission, ProofArgs,
-    Secp256r1VerifyArgsWithDomainAddress, SettingsReadonlyArgs, TransactionActionType,
+    Secp256r1VerifyArgsWithDomainAddress, SettingsMutArgs, TransactionActionType,
     TransactionMessage, SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
@@ -131,7 +131,7 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
         ctx: Context<'_, '_, 'info, 'info, TransactionExecuteSyncCompressed<'info>>,
         transaction_message: TransactionMessage,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
-        settings_readonly: SettingsReadonlyArgs,
+        settings_readonly_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         let vault_transaction_message =
@@ -150,9 +150,9 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
             .get(num_lookups..message_end_index)
             .ok_or(MultisigError::InvalidNumberOfAccounts)?;
 
-        let (settings, settings_key) = CompressedSettings::verify_compressed_settings(
+        let (settings, settings_key) = CompressedSettings::verify_compressed_settings_account(
             &ctx.accounts.payer.to_account_info(),
-            &settings_readonly,
+            &settings_readonly_args,
             ctx.remaining_accounts,
             &compressed_proof_args,
         )?;

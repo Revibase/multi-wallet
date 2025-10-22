@@ -4,11 +4,8 @@ pub use settings_decompressed::*;
 pub mod transaction_buffer;
 pub use transaction_buffer::*;
 
-pub mod delegate;
-pub use delegate::*;
-
-pub mod delegate_extensions;
-pub use delegate_extensions::*;
+pub mod user;
+pub use user::*;
 
 pub mod domain_config;
 pub use domain_config::*;

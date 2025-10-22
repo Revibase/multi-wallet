@@ -1,6 +1,6 @@
 use crate::{
     ChallengeArgs, CompressedSettings, DomainConfig, KeyType, MemberKey, MultisigError, ProofArgs,
-    Secp256r1VerifyArgs, SettingsReadonlyArgs, TransactionActionType, TransactionBuffer,
+    Secp256r1VerifyArgs, SettingsMutArgs, TransactionActionType, TransactionBuffer,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
@@ -38,7 +38,7 @@ impl<'info> TransactionBufferCloseCompressed<'info> {
         &self,
         remaining_accounts: &[AccountInfo<'info>],
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
-        settings_readonly: &SettingsReadonlyArgs,
+        settings_readonly_args: &SettingsMutArgs,
         compressed_proof_args: &ProofArgs,
     ) -> Result<()> {
         let Self {
@@ -51,9 +51,9 @@ impl<'info> TransactionBufferCloseCompressed<'info> {
             ..
         } = self;
 
-        let (_, settings_key) = CompressedSettings::verify_compressed_settings(
+        let (_, settings_key) = CompressedSettings::verify_compressed_settings_account(
             &payer.to_account_info(),
-            settings_readonly,
+            settings_readonly_args,
             remaining_accounts,
             compressed_proof_args,
         )?;
@@ -104,13 +104,13 @@ impl<'info> TransactionBufferCloseCompressed<'info> {
     pub fn process(
         ctx: Context<'_, '_, '_, 'info, Self>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly: SettingsReadonlyArgs,
+        settings_readonly_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         ctx.accounts.validate(
             ctx.remaining_accounts,
             &secp256r1_verify_args,
-            &settings_readonly,
+            &settings_readonly_args,
             &compressed_proof_args,
         )?;
         Ok(())

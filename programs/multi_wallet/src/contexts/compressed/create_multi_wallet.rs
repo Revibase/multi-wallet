@@ -1,8 +1,8 @@
 use crate::{
-    id, CompressedSettings, CompressedSettingsData, Delegate, DelegateMutArgs, DomainConfig,
-    GlobalCounter, Member, MemberKey, MemberWithAddPermissionsArgs, MultisigError, Ops, Permission,
-    Permissions, ProofArgs, Secp256r1VerifyArgs, SettingsCreationArgs, LIGHT_CPI_SIGNER,
-    SEED_MULTISIG, SEED_VAULT,
+    id, CompressedSettings, CompressedSettingsData, DomainConfig, GlobalCounter, Member, MemberKey,
+    MemberWithAddPermissionsArgs, MultisigError, Ops, Permission, Permissions, ProofArgs,
+    Secp256r1VerifyArgs, SettingsCreationArgs, User, UserMutArgs, LIGHT_CPI_SIGNER, SEED_MULTISIG,
+    SEED_VAULT,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::cpi::{
@@ -37,7 +37,7 @@ impl<'info> CreateMultiWalletCompressed<'info> {
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         compressed_proof_args: ProofArgs,
         settings_creation: SettingsCreationArgs,
-        delegate_mut_args: DelegateMutArgs,
+        user_mut_args: UserMutArgs,
         settings_index: u128,
         set_as_delegate: bool,
     ) -> Result<()> {
@@ -90,7 +90,7 @@ impl<'info> CreateMultiWalletCompressed<'info> {
             Permission::VoteTransaction,
             Permission::ExecuteTransaction,
         ]);
-        if delegate_mut_args.data.is_permanent_member {
+        if user_mut_args.data.is_permanent_member {
             permissions.push(Permission::IsPermanentMember);
         }
 
@@ -102,7 +102,7 @@ impl<'info> CreateMultiWalletCompressed<'info> {
                     permissions: Permissions::from_permissions(permissions),
                 },
                 verify_args: secp256r1_verify_args,
-                delegate_args: delegate_mut_args,
+                user_mut_args,
                 set_as_delegate,
             }],
             ctx.remaining_accounts,
@@ -112,7 +112,7 @@ impl<'info> CreateMultiWalletCompressed<'info> {
 
         settings_account.invariant()?;
 
-        let delegate_account_info = Delegate::handle_delegate_accounts(
+        let user_account_info = User::handle_user_delegates(
             delegate_ops.into_iter().map(Ops::Add).collect(),
             settings_index,
         )?;
@@ -121,8 +121,8 @@ impl<'info> CreateMultiWalletCompressed<'info> {
             .with_light_account(settings_account)?
             .with_new_addresses(&[settings_new_address]);
 
-        for f in delegate_account_info {
-            cpi = cpi.with_light_account(f)?;
+        for account_info in user_account_info {
+            cpi = cpi.with_light_account(account_info)?;
         }
 
         cpi.invoke(light_cpi_accounts)?;

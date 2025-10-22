@@ -30,56 +30,56 @@ import {
   type OptionOrNullable,
 } from "gill";
 import {
-  getDelegateCreationArgsDecoder,
-  getDelegateCreationArgsEncoder,
-  type DelegateCreationArgs,
-  type DelegateCreationArgsArgs,
+  getUserCreationArgsDecoder,
+  getUserCreationArgsEncoder,
+  type UserCreationArgs,
+  type UserCreationArgsArgs,
 } from ".";
 
-export type CreateDelegateArg = {
+export type CreateUserAccountArgs = {
   member: Address;
   isPermanentMember: boolean;
-  delegateCreationArgs: DelegateCreationArgs;
-  apiUrl: Option<string>;
+  transactionManagerUrl: Option<string>;
+  userCreationArgs: UserCreationArgs;
 };
 
-export type CreateDelegateArgArgs = {
+export type CreateUserAccountArgsArgs = {
   member: Address;
   isPermanentMember: boolean;
-  delegateCreationArgs: DelegateCreationArgsArgs;
-  apiUrl: OptionOrNullable<string>;
+  transactionManagerUrl: OptionOrNullable<string>;
+  userCreationArgs: UserCreationArgsArgs;
 };
 
-export function getCreateDelegateArgEncoder(): Encoder<CreateDelegateArgArgs> {
+export function getCreateUserAccountArgsEncoder(): Encoder<CreateUserAccountArgsArgs> {
   return getStructEncoder([
     ["member", getAddressEncoder()],
     ["isPermanentMember", getBooleanEncoder()],
-    ["delegateCreationArgs", getDelegateCreationArgsEncoder()],
     [
-      "apiUrl",
+      "transactionManagerUrl",
       getOptionEncoder(addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())),
     ],
+    ["userCreationArgs", getUserCreationArgsEncoder()],
   ]);
 }
 
-export function getCreateDelegateArgDecoder(): Decoder<CreateDelegateArg> {
+export function getCreateUserAccountArgsDecoder(): Decoder<CreateUserAccountArgs> {
   return getStructDecoder([
     ["member", getAddressDecoder()],
     ["isPermanentMember", getBooleanDecoder()],
-    ["delegateCreationArgs", getDelegateCreationArgsDecoder()],
     [
-      "apiUrl",
+      "transactionManagerUrl",
       getOptionDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
     ],
+    ["userCreationArgs", getUserCreationArgsDecoder()],
   ]);
 }
 
-export function getCreateDelegateArgCodec(): Codec<
-  CreateDelegateArgArgs,
-  CreateDelegateArg
+export function getCreateUserAccountArgsCodec(): Codec<
+  CreateUserAccountArgsArgs,
+  CreateUserAccountArgs
 > {
   return combineCodec(
-    getCreateDelegateArgEncoder(),
-    getCreateDelegateArgDecoder()
+    getCreateUserAccountArgsEncoder(),
+    getCreateUserAccountArgsDecoder()
   );
 }

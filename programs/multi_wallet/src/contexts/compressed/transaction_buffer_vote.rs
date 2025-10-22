@@ -1,6 +1,6 @@
 use crate::{
     ChallengeArgs, CompressedSettings, DomainConfig, KeyType, MemberKey, MultisigError, Permission,
-    ProofArgs, Secp256r1VerifyArgs, SettingsReadonlyArgs, TransactionActionType, TransactionBuffer,
+    ProofArgs, Secp256r1VerifyArgs, SettingsMutArgs, TransactionActionType, TransactionBuffer,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
@@ -33,7 +33,7 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
         &self,
         remaining_accounts: &[AccountInfo<'info>],
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
-        settings_readonly: &SettingsReadonlyArgs,
+        settings_readonly_args: &SettingsMutArgs,
         compressed_proof_args: &ProofArgs,
     ) -> Result<()> {
         let Self {
@@ -51,9 +51,9 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
 
         let signer =
             MemberKey::get_signer(voter, secp256r1_verify_args, instructions_sysvar.as_ref())?;
-        let (settings, settings_key) = CompressedSettings::verify_compressed_settings(
+        let (settings, settings_key) = CompressedSettings::verify_compressed_settings_account(
             &payer.to_account_info(),
-            settings_readonly,
+            settings_readonly_args,
             &remaining_accounts,
             compressed_proof_args,
         )?;
@@ -100,13 +100,13 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
     pub fn process(
         ctx: Context<'_, '_, '_, 'info, Self>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly: SettingsReadonlyArgs,
+        settings_readonly_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         ctx.accounts.validate(
             ctx.remaining_accounts,
             &secp256r1_verify_args,
-            &settings_readonly,
+            &settings_readonly_args,
             &compressed_proof_args,
         )?;
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;

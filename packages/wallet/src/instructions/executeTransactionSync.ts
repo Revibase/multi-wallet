@@ -124,7 +124,7 @@ export async function executeTransactionSync({
       getTransactionExecuteSyncCompressedInstruction({
         secp256r1VerifyArgs,
         transactionMessage: customTransactionMessage,
-        settingsReadonly: settingsReadonlyArgs,
+        settingsReadonlyArgs: settingsReadonlyArgs,
         compressedProofArgs,
         payer,
         remainingAccounts,

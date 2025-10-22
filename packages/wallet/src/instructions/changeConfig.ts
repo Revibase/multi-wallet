@@ -13,19 +13,19 @@ import {
 import {
   type CompressedSettings,
   type ConfigAction,
-  type Delegate,
-  type DelegateMutArgs,
   DelegateOp,
   type DelegateOpArgs,
   getChangeConfigCompressedInstruction,
   getChangeConfigInstruction,
   getCompressedSettingsDecoder,
-  getDelegateDecoder,
+  getUserDecoder,
   type MemberKey,
   type MemberKeyWithEditPermissionsArgs,
   type MemberKeyWithRemovePermissionsArgs,
   type MemberWithAddPermissionsArgs,
   type SettingsMutArgs,
+  type User,
+  type UserMutArgs,
 } from "../generated";
 import {
   type ConfigurationArgs,
@@ -40,9 +40,9 @@ import {
   convertMemberKeyToString,
   fetchSettingsData,
   getCompressedSettingsAddressFromIndex,
-  getDelegateAddress,
   getMultiWalletFromSettings,
   getSettingsFromIndex,
+  getUserAccountAddress,
 } from "../utils";
 import {
   convertToCompressedProofArgs,
@@ -51,10 +51,7 @@ import {
   getValidityProofWithRetry,
 } from "../utils/compressed/internal";
 import { PackedAccounts } from "../utils/compressed/packedAccounts";
-import {
-  convertPermissions,
-  getDelegateExtensionsAddress,
-} from "../utils/helper";
+import { convertPermissions } from "../utils/helper";
 import { extractSecp256r1VerificationArgs } from "../utils/internal";
 import type { Secp256r1VerifyInput } from "./secp256r1Verify";
 
@@ -107,7 +104,7 @@ export async function changeConfig({
   const packedAccounts = new PackedAccounts();
   let proof: ValidityProofWithContext | null = null;
   let settingsMutArgs: SettingsMutArgs | null = null;
-  let delegateMutArgs: DelegateMutArgs[] = [];
+  let userMutArgs: UserMutArgs[] = [];
 
   if (addDelegates.length || removeDelegates.length || compressed) {
     await packedAccounts.addSystemAccounts();
@@ -122,12 +119,12 @@ export async function changeConfig({
           ]
         : []),
       ...removeDelegates.map((m) => ({
-        address: getDelegateAddress(m),
-        type: "Delegate" as const,
+        address: getUserAccountAddress(m),
+        type: "User" as const,
       })),
       ...addDelegates.map((m) => ({
-        address: getDelegateAddress(m),
-        type: "Delegate" as const,
+        address: getUserAccountAddress(m),
+        type: "User" as const,
       })),
     ];
 
@@ -141,9 +138,7 @@ export async function changeConfig({
       const settingsHashes = hashesWithTree.filter(
         (x) => x.type === "Settings"
       );
-      const delegateHashes = hashesWithTree.filter(
-        (x) => x.type === "Delegate"
-      );
+      const userHashes = hashesWithTree.filter((x) => x.type === "User");
 
       if (compressed && proof) {
         settingsMutArgs = getCompressedAccountMutArgs<CompressedSettings>(
@@ -157,15 +152,15 @@ export async function changeConfig({
         )[0];
       }
 
-      if (delegateHashes.length && proof) {
-        delegateMutArgs = getCompressedAccountMutArgs<Delegate>(
+      if (userHashes.length && proof) {
+        userMutArgs = getCompressedAccountMutArgs<User>(
           packedAccounts,
           proof.treeInfos.slice(compressed ? 1 : 0),
           proof.leafIndices.slice(compressed ? 1 : 0),
           proof.rootIndices.slice(compressed ? 1 : 0),
           proof.proveByIndices.slice(compressed ? 1 : 0),
-          delegateHashes,
-          getDelegateDecoder()
+          userHashes,
+          getUserDecoder()
         );
       }
     }
@@ -194,17 +189,14 @@ export async function changeConfig({
               ]);
             }
 
-            const delegateArgs = await getDelegateArgs(
-              m.pubkey,
-              delegateMutArgs
-            );
-            if (delegateArgs) {
+            const userArgs = await getUserArgs(m.pubkey, userMutArgs);
+            if (userArgs) {
               field.push(
                 convertAddMember({
                   ...m,
                   permissionArgs: m.permissions,
                   index,
-                  delegateArgs,
+                  userMutArgs: userArgs,
                 })
               );
             }
@@ -217,26 +209,19 @@ export async function changeConfig({
                   signer: m.pubkey,
                 } as AccountSignerMeta,
               ]);
-            } else if (m.isTransactionManager) {
-              packedAccounts.addPreAccounts([
-                {
-                  address: await getDelegateExtensionsAddress(m.pubkey),
-                  role: AccountRole.READONLY,
-                },
-              ]);
             }
 
-            const delegateArgs = await getDelegateArgs(
+            const userArgs = await getUserArgs(
               m.setAsDelegate ? m.pubkey.address : m.pubkey,
-              delegateMutArgs
+              userMutArgs
             );
-            if (delegateArgs) {
+            if (userArgs) {
               field.push(
                 convertAddMember({
                   ...m,
                   permissionArgs: m.permissions,
                   index: -1,
-                  delegateArgs,
+                  userMutArgs: userArgs,
                 })
               );
             }
@@ -249,12 +234,9 @@ export async function changeConfig({
       case "RemoveMembers": {
         const field = await Promise.all(
           action.members.map(async (m) => {
-            const delegateArgs = await getDelegateArgs(
-              m.pubkey,
-              delegateMutArgs
-            );
-            if (!delegateArgs) throw new Error("delegate account not found");
-            return convertRemoveMember({ ...m, delegateArgs });
+            const userArgs = await getUserArgs(m.pubkey, userMutArgs);
+            if (!userArgs) throw new Error("User account not found");
+            return convertRemoveMember({ ...m, userMutArgs: userArgs });
           })
         );
         configActions.push({
@@ -289,16 +271,16 @@ export async function changeConfig({
               );
             }
 
-            const delegateArgs =
+            const userArgs =
               m.delegateOperation !== DelegateOp.Ignore
-                ? await getDelegateArgs(m.pubkey, delegateMutArgs)
+                ? await getUserArgs(m.pubkey, userMutArgs)
                 : undefined;
 
             return convertEditMember({
               ...m,
               permissionArgs: m.permissions,
               isPermanentMember,
-              delegateArgs,
+              userMutArgs: userArgs,
             });
           })
         );
@@ -340,13 +322,13 @@ export async function changeConfig({
   return { instructions, secp256r1VerifyInput };
 }
 
-async function getDelegateArgs(
+async function getUserArgs(
   pubkey: Address | Secp256r1Key,
-  delegateMutArgs: DelegateMutArgs[]
-): Promise<DelegateMutArgs | undefined> {
-  const delegateAddress = getDelegateAddress(pubkey);
-  const mutArg = delegateMutArgs.find((arg) =>
-    new BN(new Uint8Array(arg.accountMeta.address)).eq(delegateAddress)
+  userMutArgs: UserMutArgs[]
+): Promise<UserMutArgs | undefined> {
+  const address = getUserAccountAddress(pubkey);
+  const mutArg = userMutArgs.find((arg) =>
+    new BN(new Uint8Array(arg.accountMeta.address)).eq(address)
   );
   return mutArg;
 }
@@ -354,21 +336,19 @@ async function getDelegateArgs(
 function convertEditMember({
   pubkey,
   permissionArgs,
-  delegateArgs,
+  userMutArgs,
   delegateOperation,
   isPermanentMember,
 }: {
   pubkey: Address | Secp256r1Key;
   permissionArgs: PermissionArgs;
   isPermanentMember: boolean;
-  delegateArgs?: DelegateMutArgs;
+  userMutArgs?: UserMutArgs;
   delegateOperation: DelegateOpArgs;
 }): MemberKeyWithEditPermissionsArgs {
   if (isPermanentMember) {
-    if (delegateArgs || delegateOperation !== DelegateOp.Ignore) {
-      throw new Error(
-        "Delegation cannot be modified for a permanent member. Permanent members must always remain delegates."
-      );
+    if (userMutArgs || delegateOperation !== DelegateOp.Ignore) {
+      throw new Error("Delegation cannot be modified for a permanent member.");
     }
   }
   const permissions = convertPermissions(permissionArgs, isPermanentMember);
@@ -376,26 +356,26 @@ function convertEditMember({
   return {
     memberKey: convertPubkeyToMemberkey(pubkey),
     permissions,
-    delegateArgs: delegateArgs ? some(delegateArgs) : none(),
+    userMutArgs: userMutArgs ? some(userMutArgs) : none(),
     delegateOperation,
   };
 }
 
 function convertRemoveMember({
   pubkey,
-  delegateArgs,
+  userMutArgs,
 }: {
   pubkey: Address | Secp256r1Key;
-  delegateArgs: DelegateMutArgs;
+  userMutArgs: UserMutArgs;
 }): MemberKeyWithRemovePermissionsArgs {
-  const delegateData = delegateArgs.data;
-  const isPermanentMember = delegateData.isPermanentMember;
+  const userAccountData = userMutArgs.data;
+  const isPermanentMember = userAccountData.isPermanentMember;
   if (isPermanentMember) {
     throw new Error("Permanent Member cannot be removed from the wallet.");
   }
   return {
     memberKey: convertPubkeyToMemberkey(pubkey),
-    delegateArgs: delegateArgs,
+    userMutArgs,
   };
 }
 
@@ -403,19 +383,19 @@ function convertAddMember({
   pubkey,
   permissionArgs,
   index,
-  delegateArgs,
+  userMutArgs,
   setAsDelegate,
   isTransactionManager,
 }: {
   pubkey: TransactionSigner | Secp256r1Key | Address;
   permissionArgs: PermissionArgs;
   index: number;
-  delegateArgs: DelegateMutArgs;
+  userMutArgs: UserMutArgs;
   setAsDelegate: boolean;
   isTransactionManager: boolean;
 }): MemberWithAddPermissionsArgs {
   const permissions = getAddMemberPermission(
-    delegateArgs,
+    userMutArgs,
     setAsDelegate,
     permissionArgs,
     isTransactionManager
@@ -439,7 +419,7 @@ function convertAddMember({
             signedMessageIndex: index,
           })
         : none(),
-    delegateArgs: delegateArgs,
+    userMutArgs,
     setAsDelegate,
   };
 }
@@ -459,22 +439,22 @@ function convertPubkeyToMemberkey(pubkey: Address | Secp256r1Key): MemberKey {
 }
 
 function getAddMemberPermission(
-  delegateMutArgs: DelegateMutArgs,
+  userMutArgs: UserMutArgs,
   setAsDelegate: boolean,
   permissionArgs: PermissionArgs,
   isTransactionManager: boolean
 ) {
-  const delegateData = delegateMutArgs.data;
-  const isPermanentMember = delegateData.isPermanentMember;
+  const userAccountData = userMutArgs.data;
+  const isPermanentMember = userAccountData.isPermanentMember;
   if (isPermanentMember) {
     if (!setAsDelegate) {
       throw new Error(
         "Permanent members must also be delegates. Please set `setAsDelegate = true`."
       );
     }
-    if (delegateData.settingsIndex.__option === "Some") {
+    if (userAccountData.settingsIndex.__option === "Some") {
       throw new Error(
-        "This delegate is already registered as a permanent member in another wallet. A permanent member can only belong to one wallet."
+        "This user is already registered as a permanent member in another wallet. A permanent member can only belong to one wallet."
       );
     }
   }

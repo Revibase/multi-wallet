@@ -11,7 +11,6 @@ import {
   getBase64EncodedWireTransaction,
   getBlockhashDecoder,
   getSignatureFromTransaction,
-  getUtf8Decoder,
   pipe,
   prependTransactionMessageInstructions,
   setTransactionMessageFeePayerSigner,
@@ -22,20 +21,17 @@ import {
   getSetComputeUnitLimitInstruction,
   getSetComputeUnitPriceInstruction,
 } from "gill/programs";
-import {
-  type CompressedSettingsData,
-  fetchDelegateExtensions,
-} from "../../generated";
+import { type CompressedSettingsData } from "../../generated";
 import {
   type BundleResponse,
   Permission,
   Permissions,
   TransactionManagerPermission,
 } from "../../types";
+import { fetchUserAccountData } from "../compressed";
 import {
   convertMemberKeyToString,
   createTransactionManagerSigner,
-  getDelegateExtensionsAddress,
 } from "../helper";
 import {
   getComputeBudgetEstimate,
@@ -348,26 +344,20 @@ export async function resolveTransactionManagerSigner({
     convertMemberKeyToString(transactionManager.pubkey)
   );
 
-  const delegateExtensionAddress = await getDelegateExtensionsAddress(
-    transactionManagerAddress
+  const userAccountData = await fetchUserAccountData(
+    transactionManagerAddress,
+    cachedAccounts
   );
 
-  const delegateExtensions =
-    cachedAccounts?.get(delegateExtensionAddress.toString()) ??
-    (await fetchDelegateExtensions(getSolanaRpc(), delegateExtensionAddress));
-
-  if (delegateExtensions.data.apiUrlLen === 0) {
+  if (userAccountData.transactionManagerUrl.__option === "None") {
     throw new Error(
       "Transaction manager endpoint is missing for this account."
     );
   }
-  const apiUrl = getUtf8Decoder().decode(
-    delegateExtensions.data.apiUrl.slice(0, delegateExtensions.data.apiUrlLen)
-  );
 
   return createTransactionManagerSigner(
     transactionManagerAddress,
-    apiUrl,
+    userAccountData.transactionManagerUrl.value,
     transactionMessageBytes,
     authorizedClient
   );

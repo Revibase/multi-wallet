@@ -21,31 +21,31 @@ import {
   type OptionOrNullable,
 } from "gill";
 import {
-  getDelegateMutArgsDecoder,
-  getDelegateMutArgsEncoder,
   getMemberDecoder,
   getMemberEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  type DelegateMutArgs,
-  type DelegateMutArgsArgs,
+  getUserMutArgsDecoder,
+  getUserMutArgsEncoder,
   type Member,
   type MemberArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
+  type UserMutArgs,
+  type UserMutArgsArgs,
 } from ".";
 
 export type MemberWithAddPermissionsArgs = {
   member: Member;
   verifyArgs: Option<Secp256r1VerifyArgs>;
-  delegateArgs: DelegateMutArgs;
+  userMutArgs: UserMutArgs;
   setAsDelegate: boolean;
 };
 
 export type MemberWithAddPermissionsArgsArgs = {
   member: MemberArgs;
   verifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  delegateArgs: DelegateMutArgsArgs;
+  userMutArgs: UserMutArgsArgs;
   setAsDelegate: boolean;
 };
 
@@ -53,7 +53,7 @@ export function getMemberWithAddPermissionsArgsEncoder(): Encoder<MemberWithAddP
   return getStructEncoder([
     ["member", getMemberEncoder()],
     ["verifyArgs", getOptionEncoder(getSecp256r1VerifyArgsEncoder())],
-    ["delegateArgs", getDelegateMutArgsEncoder()],
+    ["userMutArgs", getUserMutArgsEncoder()],
     ["setAsDelegate", getBooleanEncoder()],
   ]);
 }
@@ -62,7 +62,7 @@ export function getMemberWithAddPermissionsArgsDecoder(): Decoder<MemberWithAddP
   return getStructDecoder([
     ["member", getMemberDecoder()],
     ["verifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ["delegateArgs", getDelegateMutArgsDecoder()],
+    ["userMutArgs", getUserMutArgsDecoder()],
     ["setAsDelegate", getBooleanDecoder()],
   ]);
 }

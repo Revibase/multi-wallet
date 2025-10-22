@@ -1,6 +1,6 @@
 use crate::{
     error::MultisigError,
-    state::{CompressedSettings, Delegate, Ops, ProofArgs, Settings, SettingsMutArgs},
+    state::{CompressedSettings, Ops, ProofArgs, Settings, SettingsMutArgs, User},
     utils::{SEED_MULTISIG, SEED_VAULT},
     ConfigAction, LIGHT_CPI_SIGNER,
 };
@@ -108,7 +108,7 @@ impl<'info> ChangeConfigCompressed<'info> {
             LIGHT_CPI_SIGNER,
         );
 
-        let account_infos = Delegate::handle_delegate_accounts(delegate_ops, settings_index)?;
+        let account_infos = User::handle_user_delegates(delegate_ops, settings_index)?;
 
         let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof)
             .with_light_account(settings)?;

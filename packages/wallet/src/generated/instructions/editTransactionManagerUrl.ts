@@ -33,24 +33,32 @@ import {
   type ReadonlySignerAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
-  type WritableAccount,
 } from "gill";
 import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+import {
+  getProofArgsDecoder,
+  getProofArgsEncoder,
+  getUserMutArgsDecoder,
+  getUserMutArgsEncoder,
+  type ProofArgs,
+  type ProofArgsArgs,
+  type UserMutArgs,
+  type UserMutArgsArgs,
+} from "../types";
 
-export const EDIT_DELEGATE_EXTENSION_DISCRIMINATOR = new Uint8Array([6]);
+export const EDIT_TRANSACTION_MANAGER_URL_DISCRIMINATOR = new Uint8Array([6]);
 
-export function getEditDelegateExtensionDiscriminatorBytes() {
+export function getEditTransactionManagerUrlDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    EDIT_DELEGATE_EXTENSION_DISCRIMINATOR
+    EDIT_TRANSACTION_MANAGER_URL_DISCRIMINATOR
   );
 }
 
-export type EditDelegateExtensionInstruction<
+export type EditTransactionManagerUrlInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountAuthority extends string | AccountMeta<string> = string,
-  TAccountDelegateExtensions extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -60,89 +68,90 @@ export type EditDelegateExtensionInstruction<
         ? ReadonlySignerAccount<TAccountAuthority> &
             AccountSignerMeta<TAccountAuthority>
         : TAccountAuthority,
-      TAccountDelegateExtensions extends string
-        ? WritableAccount<TAccountDelegateExtensions>
-        : TAccountDelegateExtensions,
       ...TRemainingAccounts,
     ]
   >;
 
-export type EditDelegateExtensionInstructionData = {
+export type EditTransactionManagerUrlInstructionData = {
   discriminator: ReadonlyUint8Array;
-  apiUrl: string;
+  userMutArgs: UserMutArgs;
+  transactionManagerUrl: string;
+  compressedProofArgs: ProofArgs;
 };
 
-export type EditDelegateExtensionInstructionDataArgs = { apiUrl: string };
+export type EditTransactionManagerUrlInstructionDataArgs = {
+  userMutArgs: UserMutArgsArgs;
+  transactionManagerUrl: string;
+  compressedProofArgs: ProofArgsArgs;
+};
 
-export function getEditDelegateExtensionInstructionDataEncoder(): Encoder<EditDelegateExtensionInstructionDataArgs> {
+export function getEditTransactionManagerUrlInstructionDataEncoder(): Encoder<EditTransactionManagerUrlInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["apiUrl", addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
+      ["userMutArgs", getUserMutArgsEncoder()],
+      [
+        "transactionManagerUrl",
+        addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder()),
+      ],
+      ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
       ...value,
-      discriminator: EDIT_DELEGATE_EXTENSION_DISCRIMINATOR,
+      discriminator: EDIT_TRANSACTION_MANAGER_URL_DISCRIMINATOR,
     })
   );
 }
 
-export function getEditDelegateExtensionInstructionDataDecoder(): Decoder<EditDelegateExtensionInstructionData> {
+export function getEditTransactionManagerUrlInstructionDataDecoder(): Decoder<EditTransactionManagerUrlInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["apiUrl", addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
+    ["userMutArgs", getUserMutArgsDecoder()],
+    [
+      "transactionManagerUrl",
+      addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder()),
+    ],
+    ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }
 
-export function getEditDelegateExtensionInstructionDataCodec(): Codec<
-  EditDelegateExtensionInstructionDataArgs,
-  EditDelegateExtensionInstructionData
+export function getEditTransactionManagerUrlInstructionDataCodec(): Codec<
+  EditTransactionManagerUrlInstructionDataArgs,
+  EditTransactionManagerUrlInstructionData
 > {
   return combineCodec(
-    getEditDelegateExtensionInstructionDataEncoder(),
-    getEditDelegateExtensionInstructionDataDecoder()
+    getEditTransactionManagerUrlInstructionDataEncoder(),
+    getEditTransactionManagerUrlInstructionDataDecoder()
   );
 }
 
-export type EditDelegateExtensionInstructionExtraArgs = {
+export type EditTransactionManagerUrlInstructionExtraArgs = {
   remainingAccounts: Array<{ address: Address; role: number }>;
 };
 
-export type EditDelegateExtensionInput<
+export type EditTransactionManagerUrlInput<
   TAccountAuthority extends string = string,
-  TAccountDelegateExtensions extends string = string,
 > = {
   authority: TransactionSigner<TAccountAuthority>;
-  delegateExtensions: Address<TAccountDelegateExtensions>;
-  apiUrl: EditDelegateExtensionInstructionDataArgs["apiUrl"];
-  remainingAccounts: EditDelegateExtensionInstructionExtraArgs["remainingAccounts"];
+  userMutArgs: EditTransactionManagerUrlInstructionDataArgs["userMutArgs"];
+  transactionManagerUrl: EditTransactionManagerUrlInstructionDataArgs["transactionManagerUrl"];
+  compressedProofArgs: EditTransactionManagerUrlInstructionDataArgs["compressedProofArgs"];
+  remainingAccounts: EditTransactionManagerUrlInstructionExtraArgs["remainingAccounts"];
 };
 
-export function getEditDelegateExtensionInstruction<
+export function getEditTransactionManagerUrlInstruction<
   TAccountAuthority extends string,
-  TAccountDelegateExtensions extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
-  input: EditDelegateExtensionInput<
-    TAccountAuthority,
-    TAccountDelegateExtensions
-  >,
+  input: EditTransactionManagerUrlInput<TAccountAuthority>,
   config?: { programAddress?: TProgramAddress }
-): EditDelegateExtensionInstruction<
-  TProgramAddress,
-  TAccountAuthority,
-  TAccountDelegateExtensions
-> {
+): EditTransactionManagerUrlInstruction<TProgramAddress, TAccountAuthority> {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
     authority: { value: input.authority ?? null, isWritable: false },
-    delegateExtensions: {
-      value: input.delegateExtensions ?? null,
-      isWritable: true,
-    },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -161,43 +170,37 @@ export function getEditDelegateExtensionInstruction<
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
-    accounts: [
-      getAccountMeta(accounts.authority),
-      getAccountMeta(accounts.delegateExtensions),
-      ...remainingAccounts,
-    ],
-    data: getEditDelegateExtensionInstructionDataEncoder().encode(
-      args as EditDelegateExtensionInstructionDataArgs
+    accounts: [getAccountMeta(accounts.authority), ...remainingAccounts],
+    data: getEditTransactionManagerUrlInstructionDataEncoder().encode(
+      args as EditTransactionManagerUrlInstructionDataArgs
     ),
     programAddress,
-  } as EditDelegateExtensionInstruction<
+  } as EditTransactionManagerUrlInstruction<
     TProgramAddress,
-    TAccountAuthority,
-    TAccountDelegateExtensions
+    TAccountAuthority
   >);
 }
 
-export type ParsedEditDelegateExtensionInstruction<
+export type ParsedEditTransactionManagerUrlInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
     authority: TAccountMetas[0];
-    delegateExtensions: TAccountMetas[1];
   };
-  data: EditDelegateExtensionInstructionData;
+  data: EditTransactionManagerUrlInstructionData;
 };
 
-export function parseEditDelegateExtensionInstruction<
+export function parseEditTransactionManagerUrlInstruction<
   TProgram extends string,
   TAccountMetas extends readonly AccountMeta[],
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>
-): ParsedEditDelegateExtensionInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 2) {
+): ParsedEditTransactionManagerUrlInstruction<TProgram, TAccountMetas> {
+  if (instruction.accounts.length < 1) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -209,11 +212,8 @@ export function parseEditDelegateExtensionInstruction<
   };
   return {
     programAddress: instruction.programAddress,
-    accounts: {
-      authority: getNextAccount(),
-      delegateExtensions: getNextAccount(),
-    },
-    data: getEditDelegateExtensionInstructionDataDecoder().decode(
+    accounts: { authority: getNextAccount() },
+    data: getEditTransactionManagerUrlInstructionDataDecoder().decode(
       instruction.data
     ),
   };

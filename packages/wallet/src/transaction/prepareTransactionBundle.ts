@@ -25,10 +25,10 @@ interface CreateTransactionBundleArgs {
   payer: TransactionSigner;
   index: bigint | number;
   transactionMessageBytes: ReadonlyUint8Array;
-  creator: TransactionSigner | Secp256r1Key;
   bufferIndex?: number;
-  executor?: TransactionSigner | Secp256r1Key;
+  creator: TransactionSigner | Secp256r1Key;
   additionalVoters?: (TransactionSigner | Secp256r1Key)[];
+  executor?: TransactionSigner | Secp256r1Key;
   additionalSigners?: TransactionSigner[];
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   jitoBundlesTipAmount?: number;

@@ -1,5 +1,5 @@
 use crate::{
-    ChallengeArgs, DelegateExtensions, DelegateOp, DomainConfig, KeyType, Member, MemberKey,
+    ChallengeArgs, DelegateOp, DomainConfig, KeyType, Member, MemberKey,
     MemberKeyWithEditPermissionsArgs, MemberKeyWithRemovePermissionsArgs,
     MemberWithAddPermissionsArgs, MultisigError, Permission, PermissionCounts,
     TransactionActionType,
@@ -111,26 +111,16 @@ pub trait MultisigSettings {
                 .has(Permission::IsTransactionManager);
 
             require!(
-                member.delegate_args.data.is_permanent_member == is_perm
+                member.user_mut_args.data.is_permanent_member == is_perm
                     && (!is_perm || member.set_as_delegate),
                 MultisigError::PermanentMemberNotAllowed
             );
 
-            if is_tx_manager {
-                require!(
-                    !member.set_as_delegate,
-                    MultisigError::TransactionManagerNotAllowed
-                );
-                let delegate_extension_loader = DelegateExtensions::extract_delegate_extension(
-                    member.member.pubkey,
-                    remaining_accounts,
-                )?;
-
-                require!(
-                    delegate_extension_loader.load()?.api_url_len > 0,
-                    MultisigError::TransactionManagerNotAllowed
-                );
-            }
+            require!(
+                member.user_mut_args.data.transaction_manager_url.is_some() == is_tx_manager
+                    && (!is_tx_manager || !member.set_as_delegate),
+                MultisigError::TransactionManagerNotAllowed
+            );
 
             match member.member.pubkey.get_type() {
                 KeyType::Ed25519 => {
@@ -144,7 +134,7 @@ pub trait MultisigSettings {
                 }
                 KeyType::Secp256r1 => {
                     let domain_config_key = member
-                        .delegate_args
+                        .user_mut_args
                         .data
                         .domain_config
                         .ok_or(MultisigError::DomainConfigIsMissing)?;
@@ -211,8 +201,8 @@ pub trait MultisigSettings {
         Vec<MemberWithAddPermissionsArgs>,
         Vec<MemberKeyWithRemovePermissionsArgs>,
     )> {
-        let mut members_to_close_delegate_account = Vec::new();
-        let mut members_to_create_delegate_account = Vec::new();
+        let mut members_to_remove_delegate = Vec::new();
+        let mut members_to_add_delegate = Vec::new();
 
         let mut current_members_map: HashMap<MemberKey, Member> = self
             .get_members()?
@@ -246,27 +236,24 @@ pub trait MultisigSettings {
 
             match member.delegate_operation {
                 DelegateOp::Add | DelegateOp::Remove => {
-                    let delegate_args = member
-                        .delegate_args
-                        .ok_or(MultisigError::MissingDelegateArgs)?;
+                    let user_mut_args =
+                        member.user_mut_args.ok_or(MultisigError::MissingUserArgs)?;
 
                     if member.delegate_operation == DelegateOp::Add {
-                        members_to_create_delegate_account.push(MemberWithAddPermissionsArgs {
+                        members_to_add_delegate.push(MemberWithAddPermissionsArgs {
                             member: Member {
                                 pubkey,
                                 permissions: member.permissions,
                             },
                             verify_args: None,
-                            delegate_args,
+                            user_mut_args,
                             set_as_delegate: true,
                         });
                     } else {
-                        members_to_close_delegate_account.push(
-                            MemberKeyWithRemovePermissionsArgs {
-                                member_key: pubkey,
-                                delegate_args,
-                            },
-                        );
+                        members_to_remove_delegate.push(MemberKeyWithRemovePermissionsArgs {
+                            member_key: pubkey,
+                            user_mut_args,
+                        });
                     }
                 }
                 DelegateOp::Ignore => {}
@@ -275,9 +262,6 @@ pub trait MultisigSettings {
 
         self.set_members(current_members_map.into_values().collect())?;
 
-        Ok((
-            members_to_create_delegate_account,
-            members_to_close_delegate_account,
-        ))
+        Ok((members_to_add_delegate, members_to_remove_delegate))
     }
 }

@@ -58,7 +58,6 @@ impl TransactionBuffer {
         multi_wallet_bump: u8,
         creator: MemberKey,
         payer: Pubkey,
-        buffer_index: u8,
         args: &TransactionBufferCreateArgs,
         bump: u8,
     ) -> Result<()> {
@@ -69,7 +68,7 @@ impl TransactionBuffer {
         self.buffer_extend_hashes = args.buffer_extend_hashes.to_vec();
         self.creator = creator;
         self.payer = payer;
-        self.buffer_index = buffer_index;
+        self.buffer_index = args.buffer_index;
         self.final_buffer_hash = args.final_buffer_hash;
         self.final_buffer_size = args.final_buffer_size;
         self.buffer = Vec::new();
@@ -133,12 +132,6 @@ impl TransactionBuffer {
             self.buffer.len() <= self.final_buffer_size as usize,
             MultisigError::FinalBufferSizeMismatch
         );
-        let mut seen = std::collections::HashSet::new();
-        for member in &self.voters {
-            if !seen.insert(member) {
-                return Err(MultisigError::DuplicateMember.into());
-            }
-        }
 
         Ok(())
     }

@@ -10,20 +10,17 @@ pub use disable_domain_config::*;
 pub mod create_global_counter;
 pub use create_global_counter::*;
 
-pub mod create_domain_delegates;
-pub use create_domain_delegates::*;
+pub mod create_domain_user_accounts;
+pub use create_domain_user_accounts::*;
 
-pub mod create_delegates;
-pub use create_delegates::*;
+pub mod create_user_accounts;
+pub use create_user_accounts::*;
 
-pub mod edit_delegate_extension;
-pub use edit_delegate_extension::*;
+pub mod edit_transaction_manager_url;
+pub use edit_transaction_manager_url::*;
 
 pub mod migrate_compressed_settings;
 pub use migrate_compressed_settings::*;
 
-pub mod migrate_compressed_delegates;
-pub use migrate_compressed_delegates::*;
-
-pub mod migrate_delegate_extension;
-pub use migrate_delegate_extension::*;
+pub mod migrate_compressed_user;
+pub use migrate_compressed_user::*;

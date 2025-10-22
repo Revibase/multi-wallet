@@ -1,17 +1,14 @@
 import {
   changeConfig,
   convertMemberKeyToString,
-  createDelegates,
-  fetchDelegateData,
-  fetchDelegateExtensions,
+  createUserAccounts,
   fetchSettingsData,
-  getDelegateExtensionsAddress,
-  getSolanaRpc,
+  fetchUserAccountData,
   prepareTransactionMessage,
   prepareTransactionSync,
 } from "@revibase/wallet";
 import { expect } from "chai";
-import { createKeyPairSignerFromPrivateKeyBytes, getUtf8Decoder } from "gill";
+import { createKeyPairSignerFromPrivateKeyBytes } from "gill";
 import {
   createMultiWallet,
   sendTransaction,
@@ -34,19 +31,19 @@ export function runTransactionManagerTests() {
       const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
         crypto.getRandomValues(new Uint8Array(32))
       );
-      const createDelegatesIx = await createDelegates({
+      const createUserAccountIx = await createUserAccounts({
         payer: ctx.payer,
-        createDelegateArgs: [
+        createUserArgs: [
           {
             member: ephemeralKeypair,
             isPermanentMember: false,
-            apiUrl: "https://xyz.com",
+            transactionManagerUrl: "https://xyz.com",
           },
         ],
       });
 
       await sendTransaction(
-        [createDelegatesIx],
+        [createUserAccountIx],
         ctx.payer,
         ctx.addressLookUpTable
       );
@@ -88,24 +85,21 @@ export function runTransactionManagerTests() {
       await sendTransaction(ixs, payer, addressLookupTableAccounts);
 
       // Verify member was added
-      const delegateExtensions = await fetchDelegateExtensions(
-        getSolanaRpc(),
-        await getDelegateExtensionsAddress(ephemeralKeypair.address)
+      const userAccountData = await fetchUserAccountData(
+        ephemeralKeypair.address
       );
       const accountData = await fetchSettingsData(ctx.index);
-      const delegateData = await fetchDelegateData(ephemeralKeypair.address);
       const settingsIndex =
-        delegateData.settingsIndex.__option === "Some"
-          ? delegateData.settingsIndex.value
+        userAccountData.settingsIndex.__option === "Some"
+          ? userAccountData.settingsIndex.value
           : null;
-      expect(
-        getUtf8Decoder().decode(
-          delegateExtensions.data.apiUrl.slice(
-            0,
-            delegateExtensions.data.apiUrlLen
-          )
-        )
-      ).equal("https://xyz.com", "Api Url is different");
+      if (userAccountData.transactionManagerUrl.__option === "None") {
+        throw new Error("No transaction manager url found.");
+      }
+      expect(userAccountData.transactionManagerUrl.value).equal(
+        "https://xyz.com",
+        "Transaction Manager Url not found"
+      );
       expect(settingsIndex).equal(null, "Payer should not be a delegate");
       expect(accountData.members.length).to.equal(2, "Should have two members");
       expect(convertMemberKeyToString(accountData.members[1].pubkey)).to.equal(

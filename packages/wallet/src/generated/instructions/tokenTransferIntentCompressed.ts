@@ -48,14 +48,14 @@ import {
   getProofArgsEncoder,
   getSecp256r1VerifyArgsWithDomainAddressDecoder,
   getSecp256r1VerifyArgsWithDomainAddressEncoder,
-  getSettingsReadonlyArgsDecoder,
-  getSettingsReadonlyArgsEncoder,
+  getSettingsMutArgsDecoder,
+  getSettingsMutArgsEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgsWithDomainAddress,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
-  type SettingsReadonlyArgs,
-  type SettingsReadonlyArgsArgs,
+  type SettingsMutArgs,
+  type SettingsMutArgsArgs,
 } from "../types";
 
 export const TOKEN_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR = new Uint8Array([
@@ -138,14 +138,14 @@ export type TokenTransferIntentCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   amount: bigint;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
-  settingsReadonly: SettingsReadonlyArgs;
+  settingsReadonlyArgs: SettingsMutArgs;
   compressedProofArgs: ProofArgs;
 };
 
 export type TokenTransferIntentCompressedInstructionDataArgs = {
   amount: number | bigint;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
-  settingsReadonly: SettingsReadonlyArgsArgs;
+  settingsReadonlyArgs: SettingsMutArgsArgs;
   compressedProofArgs: ProofArgsArgs;
 };
 
@@ -158,7 +158,7 @@ export function getTokenTransferIntentCompressedInstructionDataEncoder(): Encode
         "secp256r1VerifyArgs",
         getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
       ],
-      ["settingsReadonly", getSettingsReadonlyArgsEncoder()],
+      ["settingsReadonlyArgs", getSettingsMutArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
@@ -176,7 +176,7 @@ export function getTokenTransferIntentCompressedInstructionDataDecoder(): Decode
       "secp256r1VerifyArgs",
       getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
     ],
-    ["settingsReadonly", getSettingsReadonlyArgsDecoder()],
+    ["settingsReadonlyArgs", getSettingsMutArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }
@@ -221,7 +221,7 @@ export type TokenTransferIntentCompressedAsyncInput<
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   amount: TokenTransferIntentCompressedInstructionDataArgs["amount"];
   secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs["secp256r1VerifyArgs"];
-  settingsReadonly: TokenTransferIntentCompressedInstructionDataArgs["settingsReadonly"];
+  settingsReadonlyArgs: TokenTransferIntentCompressedInstructionDataArgs["settingsReadonlyArgs"];
   compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: TokenTransferIntentCompressedInstructionExtraArgs["remainingAccounts"];
 };
@@ -420,7 +420,7 @@ export type TokenTransferIntentCompressedInput<
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   amount: TokenTransferIntentCompressedInstructionDataArgs["amount"];
   secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs["secp256r1VerifyArgs"];
-  settingsReadonly: TokenTransferIntentCompressedInstructionDataArgs["settingsReadonly"];
+  settingsReadonlyArgs: TokenTransferIntentCompressedInstructionDataArgs["settingsReadonlyArgs"];
   compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: TokenTransferIntentCompressedInstructionExtraArgs["remainingAccounts"];
 };

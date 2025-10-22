@@ -48,18 +48,18 @@ import {
   type ResolvedAccount,
 } from "../shared";
 import {
-  getDelegateMutArgsDecoder,
-  getDelegateMutArgsEncoder,
   getProofArgsDecoder,
   getProofArgsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  type DelegateMutArgs,
-  type DelegateMutArgsArgs,
+  getUserMutArgsDecoder,
+  getUserMutArgsEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
+  type UserMutArgs,
+  type UserMutArgsArgs,
 } from "../types";
 
 export const CREATE_MULTI_WALLET_DISCRIMINATOR = new Uint8Array([7]);
@@ -125,7 +125,7 @@ export type CreateMultiWalletInstructionData = {
   discriminator: ReadonlyUint8Array;
   settingsIndex: bigint;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
-  delegateMutArgs: DelegateMutArgs;
+  userMutArgs: UserMutArgs;
   compressedProofArgs: ProofArgs;
   setAsDelegate: boolean;
 };
@@ -133,7 +133,7 @@ export type CreateMultiWalletInstructionData = {
 export type CreateMultiWalletInstructionDataArgs = {
   settingsIndex: number | bigint;
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  delegateMutArgs: DelegateMutArgsArgs;
+  userMutArgs: UserMutArgsArgs;
   compressedProofArgs: ProofArgsArgs;
   setAsDelegate: boolean;
 };
@@ -147,7 +147,7 @@ export function getCreateMultiWalletInstructionDataEncoder(): Encoder<CreateMult
         "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
-      ["delegateMutArgs", getDelegateMutArgsEncoder()],
+      ["userMutArgs", getUserMutArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
       ["setAsDelegate", getBooleanEncoder()],
     ]),
@@ -160,7 +160,7 @@ export function getCreateMultiWalletInstructionDataDecoder(): Decoder<CreateMult
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["settingsIndex", getU128Decoder()],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ["delegateMutArgs", getDelegateMutArgsDecoder()],
+    ["userMutArgs", getUserMutArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
     ["setAsDelegate", getBooleanDecoder()],
   ]);
@@ -200,7 +200,7 @@ export type CreateMultiWalletAsyncInput<
   globalCounter: Address<TAccountGlobalCounter>;
   settingsIndex: CreateMultiWalletInstructionDataArgs["settingsIndex"];
   secp256r1VerifyArgs: CreateMultiWalletInstructionDataArgs["secp256r1VerifyArgs"];
-  delegateMutArgs: CreateMultiWalletInstructionDataArgs["delegateMutArgs"];
+  userMutArgs: CreateMultiWalletInstructionDataArgs["userMutArgs"];
   compressedProofArgs: CreateMultiWalletInstructionDataArgs["compressedProofArgs"];
   setAsDelegate: CreateMultiWalletInstructionDataArgs["setAsDelegate"];
   remainingAccounts: CreateMultiWalletInstructionExtraArgs["remainingAccounts"];
@@ -350,7 +350,7 @@ export type CreateMultiWalletInput<
   globalCounter: Address<TAccountGlobalCounter>;
   settingsIndex: CreateMultiWalletInstructionDataArgs["settingsIndex"];
   secp256r1VerifyArgs: CreateMultiWalletInstructionDataArgs["secp256r1VerifyArgs"];
-  delegateMutArgs: CreateMultiWalletInstructionDataArgs["delegateMutArgs"];
+  userMutArgs: CreateMultiWalletInstructionDataArgs["userMutArgs"];
   compressedProofArgs: CreateMultiWalletInstructionDataArgs["compressedProofArgs"];
   setAsDelegate: CreateMultiWalletInstructionDataArgs["setAsDelegate"];
   remainingAccounts: CreateMultiWalletInstructionExtraArgs["remainingAccounts"];

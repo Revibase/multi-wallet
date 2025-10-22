@@ -76,6 +76,14 @@ impl MemberKey {
         Err(error!(MultisigError::NoSignerFound))
     }
 
+    pub fn to_pubkey(self) -> Result<Pubkey> {
+        require!(
+            self.get_type() == KeyType::Ed25519,
+            MultisigError::InvalidArguments
+        );
+        Ok(Pubkey::new_from_array(self.key[1..].try_into().unwrap()))
+    }
+
     pub fn convert_ed25519(pubkey: &Pubkey) -> Result<MemberKey> {
         let mut padded = [0u8; COMPRESSED_PUBKEY_SERIALIZED_SIZE];
         padded[1..COMPRESSED_PUBKEY_SERIALIZED_SIZE].copy_from_slice(pubkey.as_ref());

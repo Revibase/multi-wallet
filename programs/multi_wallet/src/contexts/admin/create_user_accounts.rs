@@ -1,7 +1,4 @@
-use crate::{
-    Delegate, DelegateCreationArgs, DelegateExtensions, MemberKey, MultisigError, ProofArgs,
-    LIGHT_CPI_SIGNER,
-};
+use crate::{MemberKey, MultisigError, ProofArgs, User, UserCreationArgs, LIGHT_CPI_SIGNER};
 use anchor_lang::prelude::*;
 use light_sdk::cpi::{
     v1::{CpiAccounts, LightSystemProgramCpi},
@@ -9,25 +6,25 @@ use light_sdk::cpi::{
 };
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
-pub struct CreateDelegateArg {
+pub struct CreateUserAccountArgs {
     pub member: Pubkey,
     pub is_permanent_member: bool,
-    pub delegate_creation_args: DelegateCreationArgs,
-    pub api_url: Option<String>,
+    pub transaction_manager_url: Option<String>,
+    pub user_creation_args: UserCreationArgs,
 }
 
 #[derive(Accounts)]
-pub struct CreateDelegates<'info> {
+pub struct CreateUserAccounts<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
 
-impl<'info> CreateDelegates<'info> {
+impl<'info> CreateUserAccounts<'info> {
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
         compressed_proof_args: ProofArgs,
-        create_delegate_args: Vec<CreateDelegateArg>,
+        args: Vec<CreateUserAccountArgs>,
     ) -> Result<()> {
         let light_cpi_accounts = CpiAccounts::new(
             &ctx.accounts.payer,
@@ -38,7 +35,7 @@ impl<'info> CreateDelegates<'info> {
 
         let mut new_addressess = vec![];
         let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof);
-        for args in create_delegate_args {
+        for args in args {
             let signer = ctx
                 .remaining_accounts
                 .iter()
@@ -49,25 +46,20 @@ impl<'info> CreateDelegates<'info> {
                 MultisigError::NoSignerFound
             );
 
-            if let Some(api_url) = args.api_url {
-                require!(!args.is_permanent_member, MultisigError::InvalidArguments);
-                DelegateExtensions::initialize(
-                    api_url,
-                    &args.member,
-                    ctx.remaining_accounts,
-                    &ctx.accounts.payer,
-                    &ctx.accounts.system_program,
-                )?;
-            }
+            require!(
+                (args.transaction_manager_url.is_none() || !args.is_permanent_member),
+                MultisigError::InvalidArguments
+            );
 
-            let (account_info, new_address_params) = Delegate::create_delegate_account(
-                args.delegate_creation_args,
+            let (account_info, new_address_params) = User::create_user_account(
+                args.user_creation_args,
                 &light_cpi_accounts,
-                Delegate {
+                User {
                     member: MemberKey::convert_ed25519(&args.member)?,
                     is_permanent_member: args.is_permanent_member,
                     settings_index: None,
                     domain_config: None,
+                    transaction_manager_url: args.transaction_manager_url,
                 },
             )?;
             cpi = cpi.with_light_account(account_info)?;

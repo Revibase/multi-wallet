@@ -2,15 +2,15 @@ import { AccountRole, type Instruction, type TransactionSigner } from "gill";
 import {
   getCreateMultiWalletCompressedInstruction,
   getCreateMultiWalletInstruction,
-  getDelegateDecoder,
-  type Delegate,
+  getUserDecoder,
+  type User,
 } from "../generated";
 import { Secp256r1Key } from "../types";
 import {
   getCompressedSettingsAddressFromIndex,
-  getDelegateAddress,
   getGlobalCounterAddress,
   getSettingsFromIndex,
+  getUserAccountAddress,
 } from "../utils";
 import {
   convertToCompressedProofArgs,
@@ -70,10 +70,10 @@ export async function createWallet({
     ...(await getCompressedAccountHashes(
       [
         {
-          address: getDelegateAddress(
+          address: getUserAccountAddress(
             "address" in initialMember ? initialMember.address : initialMember
           ),
-          type: "Delegate" as const,
+          type: "User" as const,
         },
       ],
       cachedAccounts
@@ -98,14 +98,14 @@ export async function createWallet({
     newAddressParams
   );
 
-  const delegateMutArgs = getCompressedAccountMutArgs<Delegate>(
+  const userMutArgs = getCompressedAccountMutArgs<User>(
     packedAccounts,
     proof.treeInfos.slice(0, hashesWithTreeEndIndex),
     proof.leafIndices.slice(0, hashesWithTreeEndIndex),
     proof.rootIndices.slice(0, hashesWithTreeEndIndex),
     proof.proveByIndices.slice(0, hashesWithTreeEndIndex),
-    hashesWithTree.filter((x) => x.type === "Delegate"),
-    getDelegateDecoder()
+    hashesWithTree.filter((x) => x.type === "User"),
+    getUserDecoder()
   )[0];
 
   const initArgs = await getCompressedAccountInitArgs(
@@ -153,7 +153,7 @@ export async function createWallet({
           initialMember instanceof Secp256r1Key ? undefined : initialMember,
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
-        delegateMutArgs: delegateMutArgs,
+        userMutArgs,
         globalCounter,
         compressedProofArgs,
         settingsCreation: settingsCreationArgs,
@@ -174,7 +174,7 @@ export async function createWallet({
           initialMember instanceof Secp256r1Key ? undefined : initialMember,
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
-        delegateMutArgs: delegateMutArgs,
+        userMutArgs,
         globalCounter,
         compressedProofArgs,
         setAsDelegate,

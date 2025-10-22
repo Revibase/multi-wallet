@@ -1,10 +1,10 @@
-export * from "./createDelegates";
 export * from "./createDomainConfig";
-export * from "./createDomainDelegates";
+export * from "./createDomainUserAccounts";
 export * from "./createGlobalCounter";
+export * from "./createUserAccounts";
 export * from "./disableDomainConfig";
-export * from "./editDelegateExtensions";
 export * from "./editDomainConfig";
+export * from "./editTransactionManagerUrl";
 // export * from "./migrateCompressedDelegates";
 // export * from "./migrateCompressedSettings";
 // export * from "./migrateDelegateExtension";

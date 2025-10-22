@@ -5,9 +5,9 @@ import {
   localTestActiveStateTreeInfos,
 } from "@lightprotocol/stateless.js";
 import {
-  createDelegates,
   createDomainConfig,
   createGlobalCounter,
+  createUserAccounts,
   createWallet,
   fetchGlobalCounter,
   fetchMaybeGlobalCounter,
@@ -178,15 +178,21 @@ export async function createMultiWallet(
 
   await sendTransaction([setDomainIx], ctx.payer);
 
-  const createDelegateIxs = await createDelegates({
-    createDelegateArgs: [
-      { member: ctx.wallet, isPermanentMember: false, apiUrl: undefined },
-      { member: ctx.payer, isPermanentMember: false, apiUrl: undefined },
+  const createUserAccountIxs = await createUserAccounts({
+    createUserArgs: [
+      {
+        member: ctx.wallet,
+        isPermanentMember: false,
+      },
+      {
+        member: ctx.payer,
+        isPermanentMember: false,
+      },
     ],
     payer: ctx.payer,
   });
 
-  await sendTransaction([createDelegateIxs], ctx.payer);
+  await sendTransaction([createUserAccountIxs], ctx.payer);
 
   const settings = await getSettingsFromIndex(createIndex);
   const multiWallet = await getMultiWalletFromSettings(settings);

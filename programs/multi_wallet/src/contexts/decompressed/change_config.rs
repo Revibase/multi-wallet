@@ -1,6 +1,6 @@
 use crate::{
     error::MultisigError,
-    state::{Ops, ProofArgs, Settings, Delegate},
+    state::{Ops, ProofArgs, Settings, User},
     ConfigAction, LIGHT_CPI_SIGNER,
     utils::{SEED_MULTISIG, SEED_VAULT}
 };
@@ -93,13 +93,13 @@ impl<'info> ChangeConfig<'info> {
         settings.invariant()?;
 
         if !delegate_ops.is_empty() {
-            let proof_args = compressed_proof_args.ok_or(MultisigError::MissingDelegateArgs)?;
+            let proof_args = compressed_proof_args.ok_or(MultisigError::InvalidArguments)?;
             let light_cpi_accounts = CpiAccounts::new(
                 &payer,
                 &remaining_accounts[proof_args.light_cpi_accounts_start_index as usize..],
                 LIGHT_CPI_SIGNER,
             );
-            let account_infos = Delegate::handle_delegate_accounts(delegate_ops, settings.index)?;
+            let account_infos = User::handle_user_delegates(delegate_ops, settings.index)?;
 
        
             let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, proof_args.proof);

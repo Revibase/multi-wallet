@@ -7,6 +7,8 @@
  */
 
 import {
+  addDecoderSizePrefix,
+  addEncoderSizePrefix,
   combineCodec,
   getAddressDecoder,
   getAddressEncoder,
@@ -18,6 +20,10 @@ import {
   getStructEncoder,
   getU128Decoder,
   getU128Encoder,
+  getU32Decoder,
+  getU32Encoder,
+  getUtf8Decoder,
+  getUtf8Encoder,
   type Address,
   type Codec,
   type Decoder,
@@ -32,38 +38,48 @@ import {
   type MemberKeyArgs,
 } from ".";
 
-export type Delegate = {
+export type User = {
   member: MemberKey;
   domainConfig: Option<Address>;
   isPermanentMember: boolean;
   settingsIndex: Option<bigint>;
+  transactionManagerUrl: Option<string>;
 };
 
-export type DelegateArgs = {
+export type UserArgs = {
   member: MemberKeyArgs;
   domainConfig: OptionOrNullable<Address>;
   isPermanentMember: boolean;
   settingsIndex: OptionOrNullable<number | bigint>;
+  transactionManagerUrl: OptionOrNullable<string>;
 };
 
-export function getDelegateEncoder(): Encoder<DelegateArgs> {
+export function getUserEncoder(): Encoder<UserArgs> {
   return getStructEncoder([
     ["member", getMemberKeyEncoder()],
     ["domainConfig", getOptionEncoder(getAddressEncoder())],
     ["isPermanentMember", getBooleanEncoder()],
     ["settingsIndex", getOptionEncoder(getU128Encoder())],
+    [
+      "transactionManagerUrl",
+      getOptionEncoder(addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())),
+    ],
   ]);
 }
 
-export function getDelegateDecoder(): Decoder<Delegate> {
+export function getUserDecoder(): Decoder<User> {
   return getStructDecoder([
     ["member", getMemberKeyDecoder()],
     ["domainConfig", getOptionDecoder(getAddressDecoder())],
     ["isPermanentMember", getBooleanDecoder()],
     ["settingsIndex", getOptionDecoder(getU128Decoder())],
+    [
+      "transactionManagerUrl",
+      getOptionDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
+    ],
   ]);
 }
 
-export function getDelegateCodec(): Codec<DelegateArgs, Delegate> {
-  return combineCodec(getDelegateEncoder(), getDelegateDecoder());
+export function getUserCodec(): Codec<UserArgs, User> {
+  return combineCodec(getUserEncoder(), getUserDecoder());
 }
