@@ -1,5 +1,6 @@
 // tsup.config.ts
 import { defineConfig } from "tsup";
+import pkg from "./package.json" assert { type: "json" };
 
 export default defineConfig({
   entry: ["src/index.ts"],
@@ -9,5 +10,8 @@ export default defineConfig({
   treeshake: true,
   splitting: true,
   minify: true,
-  external: ["@solana/web3.js", "@lightprotocol/stateless.js"],
+  external: [
+    ...Object.keys(pkg.peerDependencies || {}),
+    ...Object.keys(pkg.devDependencies || {}),
+  ],
 });

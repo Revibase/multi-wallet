@@ -45,6 +45,8 @@ export interface Revibase extends RevibaseEventEmitter {
   verify(input: {
     message: string;
     authResponse: MessageAuthenticationResponse;
+    expectedOrigin?: string;
+    expectedRPID?: string;
   }): Promise<boolean>;
 }
 

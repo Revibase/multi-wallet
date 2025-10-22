@@ -26,11 +26,7 @@ import { estimateComputeUnitLimitFactory } from "gill/programs";
 import { createRevibaseAdapter } from "../adapter/core";
 import { RevibaseWallet } from "../adapter/wallet";
 import type { JitoTipsConfig } from "../types";
-import {
-  REVIBASE_API_ENDPOINT,
-  REVIBASE_AUTH_DOMAIN,
-  REVIBASE_RP_ID,
-} from "./consts";
+import { REVIBASE_API_ENDPOINT, REVIBASE_AUTH_DOMAIN } from "./consts";
 import { getRandomPayer } from "./internal";
 
 let globalSolanaRpcEndpoint: string | null = null;
@@ -61,8 +57,6 @@ let globalFeePayer: TransactionSigner | null = null;
 let globalPayerEndpoint: string | null = null;
 let globalJitoTipsConfig: JitoTipsConfig | null = null;
 let globalAuthUrl: string | null = null;
-let globalExpectedOrigin: string | null = null;
-let globalExpectedRPID: string | null = null;
 let globalAuthorizedClient: { publicKey: string; url: string } | null = null;
 let globalAdditionalInfo: any | null = null;
 
@@ -123,14 +117,6 @@ export function getAuthUrl() {
   return globalAuthUrl ?? REVIBASE_AUTH_DOMAIN;
 }
 
-export function getExpectedOrigin() {
-  return globalExpectedOrigin ?? REVIBASE_AUTH_DOMAIN;
-}
-
-export function getExpectedRPID() {
-  return globalExpectedRPID ?? REVIBASE_RP_ID;
-}
-
 export function getGlobalAuthorizedClient() {
   return globalAuthorizedClient;
 }
@@ -147,8 +133,6 @@ export function uninitializeMultiWallet() {
   globalPayerEndpoint = null;
   globalJitoTipsConfig = null;
   globalAuthUrl = null;
-  globalExpectedOrigin = null;
-  globalExpectedRPID = null;
   globalSolanaRpcSubscription = null;
   globalSendAndConfirmTransaction = null;
   globalComputeBudgetEstimate = null;
@@ -163,8 +147,6 @@ export function initializeMultiWallet({
   compressionApiEndpoint,
   proverEndpoint,
   authUrl,
-  expectedOrigin,
-  expectedRPID,
   authorizedClients,
   additionalInfo,
 }: {
@@ -174,8 +156,6 @@ export function initializeMultiWallet({
   compressionApiEndpoint?: string;
   proverEndpoint?: string;
   authUrl?: string;
-  expectedOrigin?: string;
-  expectedRPID?: string;
   authorizedClients?: { publicKey: string; url: string };
   additionalInfo?: any;
 }) {
@@ -233,8 +213,6 @@ export function initializeMultiWallet({
   globalPayerEndpoint = payerEndpoint ?? null;
   globalJitoTipsConfig = jitoTipsConfig ?? null;
   globalAuthUrl = authUrl ?? null;
-  globalExpectedOrigin = expectedOrigin ?? null;
-  globalExpectedRPID = expectedRPID ?? null;
   globalAuthorizedClient = authorizedClients ?? null;
   globalAdditionalInfo = additionalInfo ?? null;
 

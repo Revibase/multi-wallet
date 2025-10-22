@@ -2,11 +2,7 @@ import type {
   AuthenticationResponseJSON,
   PublicKeyCredentialHint,
 } from "@simplewebauthn/server";
-import {
-  getBase58Encoder,
-  getProgramDerivedAddress,
-  type ReadonlyUint8Array,
-} from "gill";
+import { getBase58Encoder, getProgramDerivedAddress } from "gill";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
 import type {
   MessageAuthenticationResponse,
@@ -166,10 +162,9 @@ export function convertTransactionPayload(payload: TransactionPayload) {
     ),
   });
 }
-export function bufferToBase64URLString(buffer: ReadonlyUint8Array) {
-  const bytes = new Uint8Array(buffer);
+export function bufferToBase64URLString(buffer: Uint8Array) {
   let str = "";
-  for (const charCode of bytes) {
+  for (const charCode of buffer) {
     str += String.fromCharCode(charCode);
   }
   const base64String = btoa(str);

@@ -36,10 +36,10 @@
   "homepage": "https://github.com/Revibase/multi-wallet#readme",
   "description": "",
   "dependencies": {
-    "@levischuck/tiny-cbor": "0.3.1",
+    "@levischuck/tiny-cbor": "0.3.2",
     "@noble/curves": "1.9.7",
     "@noble/hashes": "1.8.0",
-    "@simplewebauthn/server": "13.1.2",
+    "@simplewebauthn/server": "13.2.2",
     "@solana/promises": "4.0.0",
     "@solana/transaction-confirmation": "4.0.0",
     "@wallet-standard/core": "^1.1.1",
@@ -52,13 +52,13 @@
   },
   "devDependencies": {
     "@codama/nodes-from-anchor": "1.2.9",
-    "@codama/renderers-js": "1.4.2",
+    "@codama/renderers-js": "1.4.3",
     "@types/bn.js": "^5.2.0",
     "@types/node": "24.3.1",
     "codama": "1.3.7",
     "prettier": "^3.6.2",
     "rimraf": "^6.0.1",
-    "tsup": "^8.4.0",
-    "typescript": "5.9.2"
+    "tsup": "8.5.0",
+    "typescript": "5.9.3"
   }
 }

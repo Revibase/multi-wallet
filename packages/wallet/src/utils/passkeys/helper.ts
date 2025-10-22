@@ -74,7 +74,9 @@ export function convertPubkeyCoseToCompressed(
   return compressedPubKey;
 }
 
-export function convertPubkeyCompressedToCose(publicKey: string) {
+export function convertPubkeyCompressedToCose(
+  publicKey: string
+): Uint8Array<ArrayBuffer> {
   const compressedPublicKey = p256.Point.fromBytes(
     new Uint8Array(getBase58Encoder().encode(publicKey))
   );
@@ -87,7 +89,7 @@ export function convertPubkeyCompressedToCose(publicKey: string) {
   coseDecodedPublicKey.set(-2, uncompressedPublicKey.slice(1, 33));
   coseDecodedPublicKey.set(-3, uncompressedPublicKey.slice(33, 65));
 
-  return encodeCBOR(coseDecodedPublicKey);
+  return new Uint8Array(encodeCBOR(coseDecodedPublicKey));
 }
 
 export function convertSignatureDERtoRS(derSig: Uint8Array): Uint8Array {
