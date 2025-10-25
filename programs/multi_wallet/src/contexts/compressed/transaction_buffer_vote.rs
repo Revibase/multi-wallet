@@ -1,6 +1,7 @@
 use crate::{
-    ChallengeArgs, CompressedSettings, DomainConfig, KeyType, MemberKey, MultisigError, Permission,
-    ProofArgs, Secp256r1VerifyArgs, SettingsMutArgs, TransactionActionType, TransactionBuffer,
+    state::SettingsReadonlyArgs, ChallengeArgs, CompressedSettings, DomainConfig, KeyType,
+    MemberKey, MultisigError, Permission, ProofArgs, Secp256r1VerifyArgs, TransactionActionType,
+    TransactionBuffer,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
@@ -33,7 +34,7 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
         &self,
         remaining_accounts: &[AccountInfo<'info>],
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
-        settings_readonly_args: &SettingsMutArgs,
+        settings_readonly_args: &SettingsReadonlyArgs,
         compressed_proof_args: &ProofArgs,
     ) -> Result<()> {
         let Self {
@@ -100,7 +101,7 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
     pub fn process(
         ctx: Context<'_, '_, '_, 'info, Self>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly_args: SettingsMutArgs,
+        settings_readonly_args: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         ctx.accounts.validate(

@@ -15,11 +15,9 @@ import {
   setTransactionMessageLifetimeUsingBlockhash,
 } from "gill";
 import {
-  getAddMemoInstruction,
   getSetComputeUnitLimitInstruction,
   getSetComputeUnitPriceInstruction,
 } from "gill/programs";
-import type { Secp256r1VerifyInput } from "../../instructions";
 import { prepareTransactionSync } from "../../transaction";
 import { Secp256r1Key } from "../../types";
 
@@ -73,7 +71,7 @@ export function simulateSecp256r1Signer() {
     verifyArgs: {
       slotHash: crypto.getRandomValues(new Uint8Array(32)),
       slotNumber: BigInt(0),
-      clientDataJson: crypto.getRandomValues(new Uint8Array(150)),
+      clientDataJson: crypto.getRandomValues(new Uint8Array(250)), // can range from 137 up to 247 (just set it as 250 to be safe)
     },
   });
   return signer;
@@ -86,8 +84,6 @@ export async function estimateTransactionSizeExceedLimit({
   signers,
   compressed,
   addressesByLookupTableAddress,
-  memo,
-  secp256r1VerifyInput,
   cachedAccounts,
 }: {
   payer: TransactionSigner;
@@ -96,8 +92,6 @@ export async function estimateTransactionSizeExceedLimit({
   compressed: boolean;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   signers: (TransactionSigner | Secp256r1Key)[];
-  secp256r1VerifyInput?: Secp256r1VerifyInput;
-  memo?: string | null;
   cachedAccounts?: Map<string, any>;
 }) {
   const result = await prepareTransactionSync({
@@ -105,7 +99,6 @@ export async function estimateTransactionSizeExceedLimit({
     index: settingsIndex,
     transactionMessageBytes,
     signers,
-    secp256r1VerifyInput,
     compressed,
     simulateProof: true,
     addressesByLookupTableAddress,
@@ -114,13 +107,7 @@ export async function estimateTransactionSizeExceedLimit({
 
   const tx = pipe(
     createTransactionMessage({ version: 0 }),
-    (tx) =>
-      appendTransactionMessageInstructions(
-        memo
-          ? [getAddMemoInstruction({ memo }), ...result.ixs]
-          : [...result.ixs],
-        tx
-      ),
+    (tx) => appendTransactionMessageInstructions(result.ixs, tx),
     (tx) => setTransactionMessageFeePayerSigner(result.payer, tx),
     (tx) =>
       setTransactionMessageLifetimeUsingBlockhash(

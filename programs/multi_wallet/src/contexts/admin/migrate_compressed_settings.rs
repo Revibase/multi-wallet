@@ -3,7 +3,7 @@ use crate::state::{
 };
 use crate::{ADMIN_DOMAIN_CONFIG, LIGHT_CPI_SIGNER};
 use anchor_lang::prelude::*;
-use light_sdk::cpi::v1::{CpiAccounts, LightSystemProgramCpi};
+use light_sdk::cpi::v2::{CpiAccounts, LightSystemProgramCpi};
 use light_sdk::cpi::{InvokeLightSystemProgram, LightCpiInstruction};
 
 #[derive(Accounts)]
@@ -38,6 +38,7 @@ impl<'info> MigrateCompressedSettings<'info> {
                 settings_creation_args,
                 args,
                 &light_cpi_accounts,
+                Some(0),
             )?;
 
         settings_account.invariant()?;

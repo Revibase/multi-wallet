@@ -1,12 +1,12 @@
 use crate::{
-    id, CompressedSettings, CompressedSettingsData, DomainConfig, GlobalCounter, Member, MemberKey,
-    MemberWithAddPermissionsArgs, MultisigError, Ops, Permission, Permissions, ProofArgs,
-    Secp256r1VerifyArgs, SettingsCreationArgs, User, UserMutArgs, LIGHT_CPI_SIGNER, SEED_MULTISIG,
-    SEED_VAULT,
+    id, state::UserReadOnlyOrMutateArgs, AddMemberArgs, CompressedSettings,
+    CompressedSettingsData, DomainConfig, GlobalCounter, Member, MemberKey, MultisigError, Ops,
+    Permission, Permissions, ProofArgs, Secp256r1VerifyArgs, SettingsCreationArgs, User,
+    UserMutArgs, LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::cpi::{
-    v1::{CpiAccounts, LightSystemProgramCpi},
+    v2::{CpiAccounts, LightSystemProgramCpi},
     InvokeLightSystemProgram, LightCpiInstruction,
 };
 
@@ -82,6 +82,7 @@ impl<'info> CreateMultiWalletCompressed<'info> {
                 settings_creation,
                 data,
                 &light_cpi_accounts,
+                Some(0),
             )?;
 
         let mut permissions: Vec<Permission> = Vec::new();
@@ -96,13 +97,13 @@ impl<'info> CreateMultiWalletCompressed<'info> {
 
         let delegate_ops = settings_account.add_members(
             &settings_key,
-            vec![MemberWithAddPermissionsArgs {
+            vec![AddMemberArgs {
                 member: Member {
                     pubkey: signer,
                     permissions: Permissions::from_permissions(permissions),
                 },
                 verify_args: secp256r1_verify_args,
-                user_mut_args,
+                user_args: UserReadOnlyOrMutateArgs::Mutate(user_mut_args),
                 set_as_delegate,
             }],
             ctx.remaining_accounts,
@@ -115,6 +116,7 @@ impl<'info> CreateMultiWalletCompressed<'info> {
         let user_account_info = User::handle_user_delegates(
             delegate_ops.into_iter().map(Ops::Add).collect(),
             settings_index,
+            &light_cpi_accounts,
         )?;
 
         let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof)

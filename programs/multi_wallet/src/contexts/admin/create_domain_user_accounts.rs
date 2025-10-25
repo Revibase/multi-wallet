@@ -6,7 +6,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use light_sdk::{
     cpi::{
-        v1::{CpiAccounts, LightSystemProgramCpi},
+        v2::{CpiAccounts, LightSystemProgramCpi},
         InvokeLightSystemProgram, LightCpiInstruction,
     },
     LightAccount,
@@ -55,7 +55,7 @@ impl<'info> CreateDomainUserAccount<'info> {
         let mut transaction_manager_url = None;
         //allow domain authority to directly link user to a particular wallet owned by the domain authority
         if let Some(link_wallet_args) = args.link_wallet_args {
-            let mut settings_account = LightAccount::<'_, CompressedSettings>::new_mut(
+            let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
                 &crate::ID,
                 &link_wallet_args.settings_mut_args.account_meta,
                 link_wallet_args.settings_mut_args.data,
@@ -91,7 +91,7 @@ impl<'info> CreateDomainUserAccount<'info> {
 
             // If transaction manager is provided, ensure it has a valid API URL and add the authority as a transaction manager
             if let Some(transaction_manger) = link_wallet_args.transaction_manager {
-                let transaction_manager_account = LightAccount::<'_, User>::new_mut(
+                let transaction_manager_account = LightAccount::<User>::new_mut(
                     &crate::ID,
                     &transaction_manger.account_meta,
                     transaction_manger.data,
@@ -142,10 +142,11 @@ impl<'info> CreateDomainUserAccount<'info> {
                 settings_index,
                 transaction_manager_url,
             },
+            Some(cpi.account_infos.len() as u8),
         )?;
-        cpi = cpi.with_light_account(account_info)?;
 
-        cpi.with_new_addresses(&[new_address_params])
+        cpi.with_light_account(account_info)?
+            .with_new_addresses(&[new_address_params])
             .invoke(light_cpi_accounts)?;
 
         Ok(())

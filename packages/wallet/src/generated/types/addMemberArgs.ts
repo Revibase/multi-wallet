@@ -25,54 +25,51 @@ import {
   getMemberEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  getUserMutArgsDecoder,
-  getUserMutArgsEncoder,
+  getUserReadOnlyOrMutateArgsDecoder,
+  getUserReadOnlyOrMutateArgsEncoder,
   type Member,
   type MemberArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-  type UserMutArgs,
-  type UserMutArgsArgs,
+  type UserReadOnlyOrMutateArgs,
+  type UserReadOnlyOrMutateArgsArgs,
 } from ".";
 
-export type MemberWithAddPermissionsArgs = {
+export type AddMemberArgs = {
   member: Member;
   verifyArgs: Option<Secp256r1VerifyArgs>;
-  userMutArgs: UserMutArgs;
+  userArgs: UserReadOnlyOrMutateArgs;
   setAsDelegate: boolean;
 };
 
-export type MemberWithAddPermissionsArgsArgs = {
+export type AddMemberArgsArgs = {
   member: MemberArgs;
   verifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  userMutArgs: UserMutArgsArgs;
+  userArgs: UserReadOnlyOrMutateArgsArgs;
   setAsDelegate: boolean;
 };
 
-export function getMemberWithAddPermissionsArgsEncoder(): Encoder<MemberWithAddPermissionsArgsArgs> {
+export function getAddMemberArgsEncoder(): Encoder<AddMemberArgsArgs> {
   return getStructEncoder([
     ["member", getMemberEncoder()],
     ["verifyArgs", getOptionEncoder(getSecp256r1VerifyArgsEncoder())],
-    ["userMutArgs", getUserMutArgsEncoder()],
+    ["userArgs", getUserReadOnlyOrMutateArgsEncoder()],
     ["setAsDelegate", getBooleanEncoder()],
   ]);
 }
 
-export function getMemberWithAddPermissionsArgsDecoder(): Decoder<MemberWithAddPermissionsArgs> {
+export function getAddMemberArgsDecoder(): Decoder<AddMemberArgs> {
   return getStructDecoder([
     ["member", getMemberDecoder()],
     ["verifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ["userMutArgs", getUserMutArgsDecoder()],
+    ["userArgs", getUserReadOnlyOrMutateArgsDecoder()],
     ["setAsDelegate", getBooleanDecoder()],
   ]);
 }
 
-export function getMemberWithAddPermissionsArgsCodec(): Codec<
-  MemberWithAddPermissionsArgsArgs,
-  MemberWithAddPermissionsArgs
+export function getAddMemberArgsCodec(): Codec<
+  AddMemberArgsArgs,
+  AddMemberArgs
 > {
-  return combineCodec(
-    getMemberWithAddPermissionsArgsEncoder(),
-    getMemberWithAddPermissionsArgsDecoder()
-  );
+  return combineCodec(getAddMemberArgsEncoder(), getAddMemberArgsDecoder());
 }

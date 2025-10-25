@@ -1,11 +1,11 @@
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::{
     cpi::{
-        v1::{CpiAccounts, LightSystemProgramCpi},
+        v2::{CpiAccounts, LightSystemProgramCpi},
         InvokeLightSystemProgram, LightCpiInstruction,
     },
 };
-use crate::{MultisigError, id, User, UserMutArgs, DomainConfig, GlobalCounter, Member, MemberKey, MemberWithAddPermissionsArgs, Ops, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs, Settings,SEED_MULTISIG, SEED_VAULT, LIGHT_CPI_SIGNER};
+use crate::{id, state::UserReadOnlyOrMutateArgs, DomainConfig, GlobalCounter, Member, MemberKey, AddMemberArgs, MultisigError, Ops, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs, Settings, User, UserMutArgs, LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT};
 
 #[derive(Accounts)]
 #[instruction(settings_index: u128)]
@@ -81,13 +81,13 @@ impl<'info> CreateMultiWallet<'info> {
         }
 
         let delegate_ops = settings.add_members(&ctx.accounts.settings.key(), 
-        vec![MemberWithAddPermissionsArgs {
+        vec![AddMemberArgs {
                 member: Member {
                     pubkey: signer,
                     permissions: Permissions::from_permissions(permissions),
                 },
                 verify_args: secp256r1_verify_args,
-                user_mut_args: user_mut_args,
+                user_args: UserReadOnlyOrMutateArgs::Mutate(user_mut_args),
                 set_as_delegate,
             }], 
             ctx.remaining_accounts, 
@@ -103,6 +103,7 @@ impl<'info> CreateMultiWallet<'info> {
         let user_account_info = User::handle_user_delegates(
             delegate_ops.into_iter().map(Ops::Add).collect(),
             settings.index,
+            &light_cpi_accounts
         )?;
 
         let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof);

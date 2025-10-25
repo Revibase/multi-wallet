@@ -39,16 +39,16 @@ import {
   getProofArgsEncoder,
   getSecp256r1VerifyArgsWithDomainAddressDecoder,
   getSecp256r1VerifyArgsWithDomainAddressEncoder,
-  getSettingsMutArgsDecoder,
-  getSettingsMutArgsEncoder,
+  getSettingsReadonlyArgsDecoder,
+  getSettingsReadonlyArgsEncoder,
   getTransactionMessageDecoder,
   getTransactionMessageEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgsWithDomainAddress,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
-  type SettingsMutArgs,
-  type SettingsMutArgsArgs,
+  type SettingsReadonlyArgs,
+  type SettingsReadonlyArgsArgs,
   type TransactionMessage,
   type TransactionMessageArgs,
 } from "../types";
@@ -95,14 +95,14 @@ export type TransactionExecuteSyncCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   transactionMessage: TransactionMessage;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
-  settingsReadonlyArgs: SettingsMutArgs;
+  settingsReadonlyArgs: SettingsReadonlyArgs;
   compressedProofArgs: ProofArgs;
 };
 
 export type TransactionExecuteSyncCompressedInstructionDataArgs = {
   transactionMessage: TransactionMessageArgs;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
-  settingsReadonlyArgs: SettingsMutArgsArgs;
+  settingsReadonlyArgs: SettingsReadonlyArgsArgs;
   compressedProofArgs: ProofArgsArgs;
 };
 
@@ -115,7 +115,7 @@ export function getTransactionExecuteSyncCompressedInstructionDataEncoder(): Enc
         "secp256r1VerifyArgs",
         getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
       ],
-      ["settingsReadonlyArgs", getSettingsMutArgsEncoder()],
+      ["settingsReadonlyArgs", getSettingsReadonlyArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
@@ -133,7 +133,7 @@ export function getTransactionExecuteSyncCompressedInstructionDataDecoder(): Dec
       "secp256r1VerifyArgs",
       getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
     ],
-    ["settingsReadonlyArgs", getSettingsMutArgsDecoder()],
+    ["settingsReadonlyArgs", getSettingsReadonlyArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }

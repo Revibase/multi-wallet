@@ -1,7 +1,7 @@
 use crate::state::{DomainConfig, ProofArgs, User, UserCreationArgs};
 use crate::{ADMIN_DOMAIN_CONFIG, LIGHT_CPI_SIGNER};
 use anchor_lang::prelude::*;
-use light_sdk::cpi::v1::{CpiAccounts, LightSystemProgramCpi};
+use light_sdk::cpi::v2::{CpiAccounts, LightSystemProgramCpi};
 use light_sdk::cpi::{InvokeLightSystemProgram, LightCpiInstruction};
 
 #[derive(Accounts)]
@@ -32,7 +32,7 @@ impl<'info> MigrateCompressedUser<'info> {
         );
 
         let (account_info, new_address_params) =
-            User::create_user_account(user_creation_args, &light_cpi_accounts, args)?;
+            User::create_user_account(user_creation_args, &light_cpi_accounts, args, Some(0))?;
 
         LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof)
             .with_light_account(account_info)?

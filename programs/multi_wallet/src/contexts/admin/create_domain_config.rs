@@ -1,4 +1,4 @@
-use crate::{state::DomainConfig, utils::SEED_DOMAIN_CONFIG, ADMIN_DOMAIN_CONFIG};
+use crate::{state::DomainConfig, utils::SEED_DOMAIN_CONFIG};
 use anchor_lang::prelude::*;
 use light_hasher::{Hasher, Sha256};
 
@@ -26,9 +26,6 @@ pub struct CreateDomainConfig<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
-    #[account(
-        address = ADMIN_DOMAIN_CONFIG
-    )]
     pub admin_domain_config: Option<AccountLoader<'info, DomainConfig>>,
 }
 
@@ -37,12 +34,21 @@ impl<'info> CreateDomainConfig<'info> {
         #[cfg(feature = "mainnet")]
         {
             if let Some(admin_domain_config) = &ctx.accounts.admin_domain_config {
+                require!(
+                    admin_domain_config.key().eq(&crate::ADMIN_DOMAIN_CONFIG),
+                    crate::error::MultisigError::InvalidAccount
+                );
                 let authority = &admin_domain_config.load()?.authority;
                 require!(
                     ctx.accounts.payer.key.eq(authority),
                     crate::error::MultisigError::InvalidAccount
                 );
-            } else if ctx.accounts.domain_config.key().ne(&ADMIN_DOMAIN_CONFIG) {
+            } else if ctx
+                .accounts
+                .domain_config
+                .key()
+                .ne(&crate::ADMIN_DOMAIN_CONFIG)
+            {
                 return err!(crate::error::MultisigError::InvalidAccount);
             }
         }

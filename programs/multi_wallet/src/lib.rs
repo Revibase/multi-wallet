@@ -259,7 +259,7 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, '_, 'info, TransactionBufferCreateCompressed<'info>>,
         args: TransactionBufferCreateArgs,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly_args: SettingsMutArgs,
+        settings_readonly_args: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TransactionBufferCreateCompressed::process(
@@ -276,7 +276,7 @@ pub mod multi_wallet {
     pub fn transaction_buffer_vote_compressed<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferVoteCompressed<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly_args: SettingsMutArgs,
+        settings_readonly_args: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TransactionBufferVoteCompressed::process(
@@ -302,7 +302,7 @@ pub mod multi_wallet {
     pub fn transaction_buffer_close_compressed<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferCloseCompressed<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly_args: SettingsMutArgs,
+        settings_readonly_args: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TransactionBufferCloseCompressed::process(
@@ -318,7 +318,7 @@ pub mod multi_wallet {
     pub fn transaction_buffer_execute_compressed<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferExecuteCompressed<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly_args: SettingsMutArgs,
+        settings_readonly_args: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TransactionBufferExecuteCompressed::process(
@@ -344,7 +344,7 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, TransactionExecuteSyncCompressed<'info>>,
         transaction_message: TransactionMessage,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
-        settings_readonly_args: SettingsMutArgs,
+        settings_readonly_args: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TransactionExecuteSyncCompressed::process(
@@ -363,7 +363,7 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, NativeTransferIntentCompressed<'info>>,
         amount: u64,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
-        settings_readonly_args: SettingsMutArgs,
+        settings_readonly_args: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         NativeTransferIntentCompressed::process(
@@ -382,7 +382,7 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, TokenTransferIntentCompressed<'info>>,
         amount: u64,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
-        settings_readonly_args: SettingsMutArgs,
+        settings_readonly_args: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TokenTransferIntentCompressed::process(

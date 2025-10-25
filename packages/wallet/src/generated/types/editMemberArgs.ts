@@ -37,44 +37,41 @@ import {
   type UserMutArgsArgs,
 } from ".";
 
-export type MemberKeyWithEditPermissionsArgs = {
+export type EditMemberArgs = {
   memberKey: MemberKey;
   permissions: IPermissions;
-  userMutArgs: Option<UserMutArgs>;
+  userArgs: Option<UserMutArgs>;
   delegateOperation: DelegateOp;
 };
 
-export type MemberKeyWithEditPermissionsArgsArgs = {
+export type EditMemberArgsArgs = {
   memberKey: MemberKeyArgs;
   permissions: PermissionsArgs;
-  userMutArgs: OptionOrNullable<UserMutArgsArgs>;
+  userArgs: OptionOrNullable<UserMutArgsArgs>;
   delegateOperation: DelegateOpArgs;
 };
 
-export function getMemberKeyWithEditPermissionsArgsEncoder(): Encoder<MemberKeyWithEditPermissionsArgsArgs> {
+export function getEditMemberArgsEncoder(): Encoder<EditMemberArgsArgs> {
   return getStructEncoder([
     ["memberKey", getMemberKeyEncoder()],
     ["permissions", getPermissionsEncoder()],
-    ["userMutArgs", getOptionEncoder(getUserMutArgsEncoder())],
+    ["userArgs", getOptionEncoder(getUserMutArgsEncoder())],
     ["delegateOperation", getDelegateOpEncoder()],
   ]);
 }
 
-export function getMemberKeyWithEditPermissionsArgsDecoder(): Decoder<MemberKeyWithEditPermissionsArgs> {
+export function getEditMemberArgsDecoder(): Decoder<EditMemberArgs> {
   return getStructDecoder([
     ["memberKey", getMemberKeyDecoder()],
     ["permissions", getPermissionsDecoder()],
-    ["userMutArgs", getOptionDecoder(getUserMutArgsDecoder())],
+    ["userArgs", getOptionDecoder(getUserMutArgsDecoder())],
     ["delegateOperation", getDelegateOpDecoder()],
   ]);
 }
 
-export function getMemberKeyWithEditPermissionsArgsCodec(): Codec<
-  MemberKeyWithEditPermissionsArgsArgs,
-  MemberKeyWithEditPermissionsArgs
+export function getEditMemberArgsCodec(): Codec<
+  EditMemberArgsArgs,
+  EditMemberArgs
 > {
-  return combineCodec(
-    getMemberKeyWithEditPermissionsArgsEncoder(),
-    getMemberKeyWithEditPermissionsArgsDecoder()
-  );
+  return combineCodec(getEditMemberArgsEncoder(), getEditMemberArgsDecoder());
 }

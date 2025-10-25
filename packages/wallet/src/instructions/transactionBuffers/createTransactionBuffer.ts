@@ -3,7 +3,7 @@ import {
   getTransactionBufferCreateCompressedInstruction,
   getTransactionBufferCreateInstruction,
   type ProofArgsArgs,
-  type SettingsMutArgs,
+  type SettingsReadonlyArgs,
 } from "../../generated";
 import { Secp256r1Key } from "../../types";
 import { extractSecp256r1VerificationArgs } from "../../utils/internal";
@@ -31,7 +31,7 @@ export function createTransactionBuffer({
   preauthorizeExecution: boolean;
   bufferExtendHashes: Uint8Array[];
   compressedArgs: {
-    settingsReadonlyArgs: SettingsMutArgs;
+    settingsReadonlyArgs: SettingsReadonlyArgs;
     compressedProofArgs: ProofArgsArgs;
     remainingAccounts: AccountMeta[];
   } | null;

@@ -7,7 +7,7 @@ use crate::{
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::{
     cpi::{
-        v1::{CpiAccounts, LightSystemProgramCpi},
+        v2::{CpiAccounts, LightSystemProgramCpi},
         InvokeLightSystemProgram, LightCpiInstruction,
     },
 };
@@ -99,7 +99,7 @@ impl<'info> ChangeConfig<'info> {
                 &remaining_accounts[proof_args.light_cpi_accounts_start_index as usize..],
                 LIGHT_CPI_SIGNER,
             );
-            let account_infos = User::handle_user_delegates(delegate_ops, settings.index)?;
+            let account_infos = User::handle_user_delegates(delegate_ops, settings.index,&light_cpi_accounts)?;
 
        
             let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, proof_args.proof);

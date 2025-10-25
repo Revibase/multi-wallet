@@ -235,8 +235,7 @@
         },
         {
           "name": "admin_domain_config",
-          "optional": true,
-          "address": "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg"
+          "optional": true
         }
       ],
       "args": [
@@ -903,7 +902,7 @@
           "name": "settings_readonly_args",
           "type": {
             "defined": {
-              "name": "SettingsMutArgs"
+              "name": "SettingsReadonlyArgs"
             }
           }
         },
@@ -1169,7 +1168,7 @@
           "name": "settings_readonly_args",
           "type": {
             "defined": {
-              "name": "SettingsMutArgs"
+              "name": "SettingsReadonlyArgs"
             }
           }
         },
@@ -1285,7 +1284,7 @@
           "name": "settings_readonly_args",
           "type": {
             "defined": {
-              "name": "SettingsMutArgs"
+              "name": "SettingsReadonlyArgs"
             }
           }
         },
@@ -1424,7 +1423,7 @@
           "name": "settings_readonly_args",
           "type": {
             "defined": {
-              "name": "SettingsMutArgs"
+              "name": "SettingsReadonlyArgs"
             }
           }
         },
@@ -1532,7 +1531,7 @@
           "name": "settings_readonly_args",
           "type": {
             "defined": {
-              "name": "SettingsMutArgs"
+              "name": "SettingsReadonlyArgs"
             }
           }
         },
@@ -1693,7 +1692,7 @@
           "name": "settings_readonly_args",
           "type": {
             "defined": {
-              "name": "SettingsMutArgs"
+              "name": "SettingsReadonlyArgs"
             }
           }
         },
@@ -1835,7 +1834,7 @@
           "name": "settings_readonly_args",
           "type": {
             "defined": {
-              "name": "SettingsMutArgs"
+              "name": "SettingsReadonlyArgs"
             }
           }
         },
@@ -1872,152 +1871,152 @@
     {
       "code": 6000,
       "name": "InvalidSignedMessage",
-      "msg": "The provided signature doesn't match the expected message. Make sure you're signing the correct payload."
+      "msg": "Invalid signature: the provided signature does not match the expected message payload."
     },
     {
       "code": 6001,
       "name": "InvalidSecp256r1VerifyArg",
-      "msg": "Missing or incorrectly formatted WebAuthn verification arguments. Please check the secp256r1 signature input."
+      "msg": "Malformed or missing WebAuthn verification parameters. Please provide valid secp256r1 signature arguments."
     },
     {
       "code": 6002,
       "name": "DurableNonceDetected",
-      "msg": "This transaction includes a durable nonce, which is not supported by this program."
+      "msg": "Durable nonce detected: this program does not support transactions using a durable nonce."
     },
     {
       "code": 6003,
       "name": "DuplicateMember",
-      "msg": "Duplicate public keys detected in the member list. Each member must have a unique key."
+      "msg": "Duplicate public keys detected among members. Each member must have a unique key."
     },
     {
       "code": 6004,
       "name": "PermanentMember",
-      "msg": "Permanent members cannot be removed from the wallet."
+      "msg": "Permanent members cannot be removed from a wallet."
     },
     {
       "code": 6005,
       "name": "PermanentMemberNotAllowed",
-      "msg": "Unable to set permanent member for this operation."
+      "msg": "This operation cannot assign a permanent member."
     },
     {
       "code": 6006,
       "name": "OnlyOnePermanentMemberAllowed",
-      "msg": "Only one permanent member can exist per wallet."
+      "msg": "Only one permanent member is allowed per wallet."
     },
     {
       "code": 6007,
       "name": "OnlyOneTransactionManagerAllowed",
-      "msg": "Only one transaction manager can exist per wallet."
+      "msg": "Only one transaction manager is allowed per wallet."
     },
     {
       "code": 6008,
       "name": "TransactionManagerNotAllowed",
-      "msg": "Unable to set transaction manager for this operation."
+      "msg": "This operation cannot assign a transaction manager."
     },
     {
       "code": 6009,
       "name": "EmptyMembers",
-      "msg": "No members were provided. A multisig must have at least one member."
+      "msg": "No members provided. A multisig wallet must contain at least one member."
     },
     {
       "code": 6010,
       "name": "TooManyMembers",
-      "msg": "The number of members exceeds the supported maximum 4."
+      "msg": "Too many members: a maximum of 4 members are supported."
     },
     {
       "code": 6011,
       "name": "InvalidThreshold",
-      "msg": "Invalid threshold value. It must be at least 1 and not exceed the number of voting-eligible members."
+      "msg": "Invalid threshold: must be at least 1 and cannot exceed the number of voting-eligible members."
     },
     {
       "code": 6012,
       "name": "InvalidTransactionMessage",
-      "msg": "The transaction message structure is malformed or does not follow expected formatting."
+      "msg": "Malformed transaction message: structure or formatting does not match the expected layout."
     },
     {
       "code": 6013,
       "name": "InvalidNumberOfAccounts",
-      "msg": "The number of provided accounts does not match what was expected for this instruction."
+      "msg": "Unexpected number of accounts provided for this instruction."
     },
     {
       "code": 6014,
       "name": "InvalidAccount",
-      "msg": "One or more accounts provided failed validation. Ensure all required accounts are included and correct."
+      "msg": "One or more provided accounts failed validation. Verify that all required accounts are included and correct."
     },
     {
       "code": 6015,
       "name": "InvalidArguments",
-      "msg": "One or more arguments provided failed validation. Ensure all required arguments are included and correct."
+      "msg": "Invalid or missing instruction arguments. Ensure all required arguments are correctly provided."
     },
     {
       "code": 6016,
       "name": "MissingAccount",
-      "msg": "A required account is missing from the transaction context."
+      "msg": "A required account is missing from the instruction context."
     },
     {
       "code": 6017,
       "name": "MissingUserArgs",
-      "msg": "User mutation args are required when the delegate operation is add or remove."
+      "msg": "User mutation arguments are required when performing add or remove delegate operations."
     },
     {
       "code": 6018,
       "name": "AlreadyDelegated",
-      "msg": "Current member is currently delegated to another wallet."
+      "msg": "This member is already delegated to another wallet."
     },
     {
       "code": 6019,
       "name": "InsufficientSignerWithExecutePermission",
-      "msg": "At least one signer must have execute permissions to proceed."
+      "msg": "At least one signer with execute permission is required to proceed."
     },
     {
       "code": 6020,
       "name": "InsufficientSignerWithInitiatePermission",
-      "msg": "At least one signer must have initiate permissions to perform this action."
+      "msg": "At least one signer with initiate permission is required to perform this action."
     },
     {
       "code": 6021,
       "name": "InsufficientSignersWithVotePermission",
-      "msg": "The approval threshold cannot be met because there aren't enough voters with the vote permission."
+      "msg": "Not enough members with vote permission to meet the approval threshold."
     },
     {
       "code": 6022,
       "name": "NoSignerFound",
-      "msg": "No valid signer was found in this transaction."
+      "msg": "No valid signer found in this transaction."
     },
     {
       "code": 6023,
       "name": "UnauthorisedToCloseTransactionBuffer",
-      "msg": "Only the transaction's creator or rent payer is allowed to close the transaction buffer."
+      "msg": "Only the transaction creator or rent payer may close this transaction buffer."
     },
     {
       "code": 6024,
       "name": "InvalidBuffer",
-      "msg": "The contents of the buffer do not match the expected hash. It may have been tampered with."
+      "msg": "Buffer validation failed: contents do not match the expected hash (possible tampering detected)."
     },
     {
       "code": 6025,
       "name": "FinalBufferHashMismatch",
-      "msg": "The final hash of the buffer doesn't match what was expected. The buffer might be corrupted or altered."
+      "msg": "Final buffer hash mismatch: the serialized data may be corrupted or altered."
     },
     {
       "code": 6026,
       "name": "FinalBufferSizeExceeded",
-      "msg": "The serialized transaction buffer exceeds the maximum allowed size of 10,128 bytes."
+      "msg": "The serialized transaction buffer exceeds the maximum size of 10,128 bytes."
     },
     {
       "code": 6027,
       "name": "FinalBufferSizeMismatch",
-      "msg": "The declared size of the buffer does not match its actual size."
+      "msg": "Declared buffer size does not match the actual serialized size."
     },
     {
       "code": 6028,
       "name": "TransactionHasExpired",
-      "msg": "The transaction has expired. It must be executed within 3 minutes of approval."
+      "msg": "This transaction has expired. It must be executed within 3 minutes of approval."
     },
     {
       "code": 6029,
       "name": "TransactionNotApproved",
-      "msg": "The transaction hasn't received enough approvals yet to be executed."
+      "msg": "This transaction has not yet reached the required approval threshold."
     },
     {
       "code": 6030,
@@ -2027,80 +2026,118 @@
     {
       "code": 6031,
       "name": "MaxLengthExceeded",
-      "msg": "One of the input strings exceeds the maximum allowed character limit."
+      "msg": "An input string exceeds the maximum allowed character length."
     },
     {
       "code": 6032,
       "name": "MissingSysvarSlotHistory",
-      "msg": "The Slot History sysvar account is missing. It must be included as an account in this instruction."
+      "msg": "Missing required sysvar: Slot History must be included as an account in this instruction."
     },
     {
       "code": 6033,
       "name": "InvalidSysvarDataFormat",
-      "msg": "Failed to parse sysvar: slot history format is invalid or corrupted."
+      "msg": "Failed to parse the Slot History sysvar: data format is invalid or corrupted."
     },
     {
       "code": 6034,
       "name": "SlotNumberNotFound",
-      "msg": "The specified slot number is not present in the provided slot history."
+      "msg": "The specified slot number was not found in the provided slot history."
     },
     {
       "code": 6035,
       "name": "DomainConfigIsDisabled",
-      "msg": "The domain configuration account is currently disabled. Contact support or try again later."
+      "msg": "The domain configuration account is disabled. Please contact support or try again later."
     },
     {
       "code": 6036,
       "name": "DomainConfigIsMissing",
-      "msg": "Missing domain configuration account. Ensure it's passed in the instruction."
+      "msg": "Missing domain configuration account. Include it as a required account in this instruction."
     },
     {
       "code": 6037,
       "name": "MemberDoesNotBelongToDomainConfig",
-      "msg": "This member is not registered in the provided domain configuration."
+      "msg": "This member is not registered under the provided domain configuration."
     },
     {
       "code": 6038,
       "name": "RpIdHashMismatch",
-      "msg": "The relying party ID hash does not match the one specified in the domain configuration."
+      "msg": "The relying party ID hash does not match the one defined in the domain configuration."
     },
     {
       "code": 6039,
       "name": "InvalidJson",
-      "msg": "Failed to parse the client data JSON. The format may be invalid."
+      "msg": "Failed to parse clientDataJSON: the JSON format is invalid."
     },
     {
       "code": 6040,
       "name": "MissingOrigin",
-      "msg": "Missing origin field in clientDataJSON. This field is required for WebAuthn validation."
+      "msg": "Missing 'origin' field in clientDataJSON. This field is required for WebAuthn validation."
     },
     {
       "code": 6041,
       "name": "InvalidOrigin",
-      "msg": "The origin value in clientDataJSON does not match the expected domain."
+      "msg": "The 'origin' value in clientDataJSON does not match the expected domain."
     },
     {
       "code": 6042,
       "name": "MissingType",
-      "msg": "Missing type field in clientDataJSON. This field is required for WebAuthn validation."
+      "msg": "Missing 'type' field in clientDataJSON. This field is required for WebAuthn validation."
     },
     {
       "code": 6043,
       "name": "InvalidType",
-      "msg": "The type field in clientDataJSON is invalid. Expected value: webauthn.get."
+      "msg": "Invalid 'type' field in clientDataJSON. Expected value: 'webauthn.get'."
     },
     {
       "code": 6044,
       "name": "MissingChallenge",
-      "msg": "Missing challenge field in clientDataJSON. This is required for validating the authentication request."
+      "msg": "Missing 'challenge' field in clientDataJSON. This field is required for WebAuthn validation."
     },
     {
       "code": 6045,
       "name": "InvalidChallenge",
-      "msg": "The challenge value in clientDataJSON is missing or doesn't match the expected challenge."
+      "msg": "Invalid or mismatched 'challenge' value in clientDataJSON."
     }
   ],
   "types": [
+    {
+      "name": "AddMemberArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "member",
+            "type": {
+              "defined": {
+                "name": "Member"
+              }
+            }
+          },
+          {
+            "name": "verify_args",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "Secp256r1VerifyArgs"
+                }
+              }
+            }
+          },
+          {
+            "name": "user_args",
+            "type": {
+              "defined": {
+                "name": "UserReadOnlyOrMutateArgs"
+              }
+            }
+          },
+          {
+            "name": "set_as_delegate",
+            "type": "bool"
+          }
+        ]
+      }
+    },
     {
       "name": "CompiledInstruction",
       "type": {
@@ -2146,6 +2183,30 @@
             "name": "output_state_tree_index",
             "docs": ["Output merkle tree index."],
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompressedAccountMetaReadOnly",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "tree_info",
+            "docs": ["State Merkle tree context."],
+            "type": {
+              "defined": {
+                "name": "PackedStateTreeInfo"
+              }
+            }
+          },
+          {
+            "name": "address",
+            "docs": ["Address."],
+            "type": {
+              "array": ["u8", 32]
+            }
           }
         ]
       }
@@ -2242,7 +2303,7 @@
               {
                 "vec": {
                   "defined": {
-                    "name": "MemberKeyWithEditPermissionsArgs"
+                    "name": "EditMemberArgs"
                   }
                 }
               }
@@ -2254,7 +2315,7 @@
               {
                 "vec": {
                   "defined": {
-                    "name": "MemberWithAddPermissionsArgs"
+                    "name": "AddMemberArgs"
                   }
                 }
               }
@@ -2266,7 +2327,7 @@
               {
                 "vec": {
                   "defined": {
-                    "name": "MemberKeyWithRemovePermissionsArgs"
+                    "name": "RemoveMemberArgs"
                   }
                 }
               }
@@ -2479,6 +2540,48 @@
       }
     },
     {
+      "name": "EditMemberArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "member_key",
+            "type": {
+              "defined": {
+                "name": "MemberKey"
+              }
+            }
+          },
+          {
+            "name": "permissions",
+            "type": {
+              "defined": {
+                "name": "Permissions"
+              }
+            }
+          },
+          {
+            "name": "user_args",
+            "type": {
+              "option": {
+                "defined": {
+                  "name": "UserMutArgs"
+                }
+              }
+            }
+          },
+          {
+            "name": "delegate_operation",
+            "type": {
+              "defined": {
+                "name": "DelegateOp"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "GlobalCounter",
       "serialization": "bytemuck",
       "repr": {
@@ -2569,110 +2672,6 @@
       }
     },
     {
-      "name": "MemberKeyWithEditPermissionsArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "member_key",
-            "type": {
-              "defined": {
-                "name": "MemberKey"
-              }
-            }
-          },
-          {
-            "name": "permissions",
-            "type": {
-              "defined": {
-                "name": "Permissions"
-              }
-            }
-          },
-          {
-            "name": "user_mut_args",
-            "type": {
-              "option": {
-                "defined": {
-                  "name": "UserMutArgs"
-                }
-              }
-            }
-          },
-          {
-            "name": "delegate_operation",
-            "type": {
-              "defined": {
-                "name": "DelegateOp"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "MemberKeyWithRemovePermissionsArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "member_key",
-            "type": {
-              "defined": {
-                "name": "MemberKey"
-              }
-            }
-          },
-          {
-            "name": "user_mut_args",
-            "type": {
-              "defined": {
-                "name": "UserMutArgs"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "MemberWithAddPermissionsArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "member",
-            "type": {
-              "defined": {
-                "name": "Member"
-              }
-            }
-          },
-          {
-            "name": "verify_args",
-            "type": {
-              "option": {
-                "defined": {
-                  "name": "Secp256r1VerifyArgs"
-                }
-              }
-            }
-          },
-          {
-            "name": "user_mut_args",
-            "type": {
-              "defined": {
-                "name": "UserMutArgs"
-              }
-            }
-          },
-          {
-            "name": "set_as_delegate",
-            "type": "bool"
-          }
-        ]
-      }
-    },
-    {
       "name": "PackedAddressTreeInfo",
       "type": {
         "kind": "struct",
@@ -2752,6 +2751,30 @@
           {
             "name": "light_cpi_accounts_start_index",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RemoveMemberArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "member_key",
+            "type": {
+              "defined": {
+                "name": "MemberKey"
+              }
+            }
+          },
+          {
+            "name": "user_args",
+            "type": {
+              "defined": {
+                "name": "UserReadOnlyOrMutateArgs"
+              }
+            }
           }
         ]
       }
@@ -2910,6 +2933,30 @@
             "type": {
               "defined": {
                 "name": "CompressedAccountMeta"
+              }
+            }
+          },
+          {
+            "name": "data",
+            "type": {
+              "defined": {
+                "name": "CompressedSettings"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SettingsReadonlyArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account_meta",
+            "type": {
+              "defined": {
+                "name": "CompressedAccountMetaReadOnly"
               }
             }
           },
@@ -3197,6 +3244,58 @@
                 "name": "User"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserReadOnlyArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account_meta",
+            "type": {
+              "defined": {
+                "name": "CompressedAccountMetaReadOnly"
+              }
+            }
+          },
+          {
+            "name": "data",
+            "type": {
+              "defined": {
+                "name": "User"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserReadOnlyOrMutateArgs",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Read",
+            "fields": [
+              {
+                "defined": {
+                  "name": "UserReadOnlyArgs"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Mutate",
+            "fields": [
+              {
+                "defined": {
+                  "name": "UserMutArgs"
+                }
+              }
+            ]
           }
         ]
       }

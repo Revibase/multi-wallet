@@ -13,8 +13,8 @@ pub use settings::*;
 pub mod member;
 pub use member::*;
 
-pub mod member_args;
-pub use member_args::*;
+pub mod configuration_args;
+pub use configuration_args::*;
 
 pub mod secp256r1_pubkey;
 pub use secp256r1_pubkey::*;

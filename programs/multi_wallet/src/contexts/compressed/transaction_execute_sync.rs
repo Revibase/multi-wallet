@@ -1,7 +1,7 @@
 use crate::{
-    durable_nonce_check, id, ChallengeArgs, CompressedSettings, CompressedSettingsData,
-    DomainConfig, ExecutableTransactionMessage, MemberKey, MultisigError, Permission, ProofArgs,
-    Secp256r1VerifyArgsWithDomainAddress, SettingsMutArgs, TransactionActionType,
+    durable_nonce_check, id, state::SettingsReadonlyArgs, ChallengeArgs, CompressedSettings,
+    CompressedSettingsData, DomainConfig, ExecutableTransactionMessage, MemberKey, MultisigError,
+    Permission, ProofArgs, Secp256r1VerifyArgsWithDomainAddress, TransactionActionType,
     TransactionMessage, SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
@@ -131,7 +131,7 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
         ctx: Context<'_, '_, 'info, 'info, TransactionExecuteSyncCompressed<'info>>,
         transaction_message: TransactionMessage,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
-        settings_readonly_args: SettingsMutArgs,
+        settings_readonly_args: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         let vault_transaction_message =

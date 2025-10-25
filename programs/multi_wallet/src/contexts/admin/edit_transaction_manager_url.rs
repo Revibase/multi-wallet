@@ -6,7 +6,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use light_sdk::{
     cpi::{
-        v1::{CpiAccounts, LightSystemProgramCpi},
+        v2::{CpiAccounts, LightSystemProgramCpi},
         InvokeLightSystemProgram, LightCpiInstruction,
     },
     LightAccount,
@@ -34,7 +34,7 @@ impl<'info> EditTransactionManagerUrl<'info> {
                 [compressed_proof_args.light_cpi_accounts_start_index as usize..],
             LIGHT_CPI_SIGNER,
         );
-        let mut user_account = LightAccount::<'_, User>::new_mut(
+        let mut user_account = LightAccount::<User>::new_mut(
             &crate::ID,
             &user_mut_args.account_meta,
             user_mut_args.data,

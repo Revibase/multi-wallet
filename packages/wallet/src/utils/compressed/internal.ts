@@ -13,7 +13,7 @@ import { type Decoder, getProgramDerivedAddress, getUtf8Encoder } from "gill";
 import {
   getCompressedSettingsDecoder,
   MULTI_WALLET_PROGRAM_ADDRESS,
-  type SettingsMutArgs,
+  type SettingsReadonlyArgs,
   type ValidityProofArgs,
 } from "../../generated";
 import { getLightProtocolRpc } from "../initialize";
@@ -176,7 +176,7 @@ export async function constructSettingsProofArgs(
   simulateProof?: boolean,
   cachedAccounts?: Map<string, any>
 ) {
-  let settingsReadonlyArgs: SettingsMutArgs | null = null;
+  let settingsReadonlyArgs: SettingsReadonlyArgs | null = null;
   let proof: ValidityProofWithContext | null = null;
   const packedAccounts = new PackedAccounts();
   if (compressed) {
@@ -227,7 +227,6 @@ export async function constructSettingsProofArgs(
       accountMeta: {
         address: new Uint8Array(settings.address!),
         treeInfo: stateTreeInfo.packedTreeInfos[0],
-        outputStateTreeIndex: stateTreeInfo.outputTreeIndex,
       },
       data: getCompressedSettingsDecoder().decode(settings.data?.data!),
     };

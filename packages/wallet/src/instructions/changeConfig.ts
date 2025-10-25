@@ -11,18 +11,18 @@ import {
   type TransactionSigner,
 } from "gill";
 import {
+  type AddMemberArgs,
   type CompressedSettings,
   type ConfigAction,
   DelegateOp,
   type DelegateOpArgs,
+  type EditMemberArgs,
   getChangeConfigCompressedInstruction,
   getChangeConfigInstructionAsync,
   getCompressedSettingsDecoder,
   getUserDecoder,
   type MemberKey,
-  type MemberKeyWithEditPermissionsArgs,
-  type MemberKeyWithRemovePermissionsArgs,
-  type MemberWithAddPermissionsArgs,
+  type RemoveMemberArgs,
   type SettingsMutArgs,
   type User,
   type UserMutArgs,
@@ -170,7 +170,7 @@ export async function changeConfig({
   for (const action of configActionsArgs) {
     switch (action.type) {
       case "AddMembers": {
-        const field: MemberWithAddPermissionsArgs[] = [];
+        const field: AddMemberArgs[] = [];
         for (const m of action.members) {
           if (m.pubkey instanceof Secp256r1Key) {
             const index = secp256r1VerifyInput.length;
@@ -341,7 +341,7 @@ function convertEditMember({
   isPermanentMember: boolean;
   userMutArgs?: UserMutArgs;
   delegateOperation: DelegateOpArgs;
-}): MemberKeyWithEditPermissionsArgs {
+}): EditMemberArgs {
   if (isPermanentMember) {
     if (userMutArgs || delegateOperation !== DelegateOp.Ignore) {
       throw new Error("Delegation cannot be modified for a permanent member.");
@@ -352,7 +352,7 @@ function convertEditMember({
   return {
     memberKey: convertPubkeyToMemberkey(pubkey),
     permissions,
-    userMutArgs: userMutArgs ? some(userMutArgs) : none(),
+    userArgs: userMutArgs ? some(userMutArgs) : none(),
     delegateOperation,
   };
 }
@@ -363,7 +363,7 @@ function convertRemoveMember({
 }: {
   pubkey: Address | Secp256r1Key;
   userMutArgs: UserMutArgs;
-}): MemberKeyWithRemovePermissionsArgs {
+}): RemoveMemberArgs {
   const userAccountData = userMutArgs.data;
   const isPermanentMember = userAccountData.isPermanentMember;
   if (isPermanentMember) {
@@ -371,7 +371,10 @@ function convertRemoveMember({
   }
   return {
     memberKey: convertPubkeyToMemberkey(pubkey),
-    userMutArgs,
+    userArgs:
+      userMutArgs.data.settingsIndex.__option === "Some"
+        ? { __kind: "Mutate", fields: [userMutArgs] }
+        : { __kind: "Read", fields: [userMutArgs] },
   };
 }
 
@@ -389,7 +392,7 @@ function convertAddMember({
   userMutArgs: UserMutArgs;
   setAsDelegate: boolean;
   isTransactionManager: boolean;
-}): MemberWithAddPermissionsArgs {
+}): AddMemberArgs {
   const permissions = getAddMemberPermission(
     userMutArgs,
     setAsDelegate,
@@ -415,7 +418,9 @@ function convertAddMember({
             signedMessageIndex: index,
           })
         : none(),
-    userMutArgs,
+    userArgs: setAsDelegate
+      ? { __kind: "Mutate", fields: [userMutArgs] }
+      : { __kind: "Read", fields: [userMutArgs] },
     setAsDelegate,
   };
 }

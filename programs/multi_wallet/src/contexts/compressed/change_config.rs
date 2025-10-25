@@ -5,13 +5,8 @@ use crate::{
     ConfigAction, LIGHT_CPI_SIGNER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use light_sdk::{
-    cpi::{
-        v1::{CpiAccounts, LightSystemProgramCpi},
-        InvokeLightSystemProgram, LightCpiInstruction,
-    },
-    LightAccount,
-};
+use light_sdk::cpi::{v2::LightSystemProgramCpi, InvokeLightSystemProgram, LightCpiInstruction};
+use light_sdk::{account::LightAccount, cpi::v2::CpiAccounts};
 use std::vec;
 
 #[derive(Accounts)]
@@ -39,8 +34,8 @@ impl<'info> ChangeConfigCompressed<'info> {
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         let slot_hash_sysvar = &ctx.accounts.slot_hash_sysvar;
-        let mut settings: LightAccount<'_, CompressedSettings> =
-            LightAccount::<'_, CompressedSettings>::new_mut(
+        let mut settings: LightAccount<CompressedSettings> =
+            LightAccount::<CompressedSettings>::new_mut(
                 &crate::ID,
                 &settings_mut_args.account_meta,
                 settings_mut_args.data,
@@ -108,7 +103,8 @@ impl<'info> ChangeConfigCompressed<'info> {
             LIGHT_CPI_SIGNER,
         );
 
-        let account_infos = User::handle_user_delegates(delegate_ops, settings_index)?;
+        let account_infos =
+            User::handle_user_delegates(delegate_ops, settings_index, &light_cpi_accounts)?;
 
         let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof)
             .with_light_account(settings)?;

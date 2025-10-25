@@ -1,8 +1,7 @@
 use crate::{
-    ChallengeArgs, DelegateOp, DomainConfig, KeyType, Member, MemberKey,
-    MemberKeyWithEditPermissionsArgs, MemberKeyWithRemovePermissionsArgs,
-    MemberWithAddPermissionsArgs, MultisigError, Permission, PermissionCounts,
-    TransactionActionType,
+    state::UserReadOnlyOrMutateArgs, AddMemberArgs, ChallengeArgs, DelegateOp, DomainConfig,
+    EditMemberArgs, KeyType, Member, MemberKey, MultisigError, Permission,
+    PermissionCounts, RemoveMemberArgs, TransactionActionType,
 };
 use anchor_lang::prelude::*;
 use std::collections::{HashMap, HashSet};
@@ -98,26 +97,41 @@ pub trait MultisigSettings {
     fn add_members<'a>(
         &mut self,
         settings: &Pubkey,
-        new_members: Vec<MemberWithAddPermissionsArgs>,
+        new_members: Vec<AddMemberArgs>,
         remaining_accounts: &'a [AccountInfo<'a>],
         sysvar_slot_history: &Option<UncheckedAccount<'a>>,
         instructions_sysvar: Option<&UncheckedAccount<'a>>,
-    ) -> Result<Vec<MemberWithAddPermissionsArgs>> {
+    ) -> Result<Vec<AddMemberArgs>> {
         for member in &new_members {
             let is_perm = member.member.permissions.has(Permission::IsPermanentMember);
             let is_tx_manager = member
                 .member
                 .permissions
                 .has(Permission::IsTransactionManager);
+            let is_permanent_member = match &member.user_args {
+                UserReadOnlyOrMutateArgs::Mutate(user_mut_args) => {
+                    user_mut_args.data.is_permanent_member
+                }
+                UserReadOnlyOrMutateArgs::Read(user_readonly_args) => {
+                    user_readonly_args.data.is_permanent_member
+                }
+            };
+            let is_transaction_manager = match &member.user_args {
+                UserReadOnlyOrMutateArgs::Mutate(user_mut_args) => {
+                    user_mut_args.data.transaction_manager_url.is_some()
+                }
+                UserReadOnlyOrMutateArgs::Read(user_readonly_args) => {
+                    user_readonly_args.data.transaction_manager_url.is_some()
+                }
+            };
 
             require!(
-                member.user_mut_args.data.is_permanent_member == is_perm
-                    && (!is_perm || member.set_as_delegate),
+                is_permanent_member == is_perm && (!is_perm || member.set_as_delegate),
                 MultisigError::PermanentMemberNotAllowed
             );
 
             require!(
-                member.user_mut_args.data.transaction_manager_url.is_some() == is_tx_manager
+                is_transaction_manager == is_tx_manager
                     && (!is_tx_manager || !member.set_as_delegate),
                 MultisigError::TransactionManagerNotAllowed
             );
@@ -133,11 +147,16 @@ pub trait MultisigSettings {
                     }
                 }
                 KeyType::Secp256r1 => {
-                    let domain_config_key = member
-                        .user_mut_args
-                        .data
-                        .domain_config
-                        .ok_or(MultisigError::DomainConfigIsMissing)?;
+                    let domain_config_key = match &member.user_args {
+                        UserReadOnlyOrMutateArgs::Mutate(user_mut_args) => user_mut_args
+                            .data
+                            .domain_config
+                            .ok_or(MultisigError::DomainConfigIsMissing)?,
+                        UserReadOnlyOrMutateArgs::Read(user_readonly_args) => user_readonly_args
+                            .data
+                            .domain_config
+                            .ok_or(MultisigError::DomainConfigIsMissing)?,
+                    };
                     let domain_config = DomainConfig::extract_domain_config_account(
                         remaining_accounts,
                         domain_config_key,
@@ -171,8 +190,8 @@ pub trait MultisigSettings {
 
     fn remove_members(
         &mut self,
-        member_pubkeys: Vec<MemberKeyWithRemovePermissionsArgs>,
-    ) -> Result<Vec<MemberKeyWithRemovePermissionsArgs>> {
+        member_pubkeys: Vec<RemoveMemberArgs>,
+    ) -> Result<Vec<RemoveMemberArgs>> {
         let members = self.get_members()?;
 
         if let Some(existing_perm_member) = members
@@ -196,11 +215,8 @@ pub trait MultisigSettings {
 
     fn edit_permissions(
         &mut self,
-        new_members: Vec<MemberKeyWithEditPermissionsArgs>,
-    ) -> Result<(
-        Vec<MemberWithAddPermissionsArgs>,
-        Vec<MemberKeyWithRemovePermissionsArgs>,
-    )> {
+        new_members: Vec<EditMemberArgs>,
+    ) -> Result<(Vec<AddMemberArgs>, Vec<RemoveMemberArgs>)> {
         let mut members_to_remove_delegate = Vec::new();
         let mut members_to_add_delegate = Vec::new();
 
@@ -236,23 +252,22 @@ pub trait MultisigSettings {
 
             match member.delegate_operation {
                 DelegateOp::Add | DelegateOp::Remove => {
-                    let user_mut_args =
-                        member.user_mut_args.ok_or(MultisigError::MissingUserArgs)?;
+                    let user_mut_args = member.user_args.ok_or(MultisigError::MissingUserArgs)?;
 
                     if member.delegate_operation == DelegateOp::Add {
-                        members_to_add_delegate.push(MemberWithAddPermissionsArgs {
+                        members_to_add_delegate.push(AddMemberArgs {
                             member: Member {
                                 pubkey,
                                 permissions: member.permissions,
                             },
                             verify_args: None,
-                            user_mut_args,
+                            user_args: UserReadOnlyOrMutateArgs::Mutate(user_mut_args),
                             set_as_delegate: true,
                         });
                     } else {
-                        members_to_remove_delegate.push(MemberKeyWithRemovePermissionsArgs {
+                        members_to_remove_delegate.push(RemoveMemberArgs {
                             member_key: pubkey,
-                            user_mut_args,
+                            user_args: UserReadOnlyOrMutateArgs::Mutate(user_mut_args),
                         });
                     }
                 }

@@ -106,7 +106,7 @@ export async function tokenTransferIntent({
     instructions.push(
       getTokenTransferIntentCompressedInstruction({
         amount,
-        settingsReadonlyArgs: settingsReadonlyArgs,
+        settingsReadonlyArgs,
         compressedProofArgs,
         payer,
         secp256r1VerifyArgs,

@@ -1,6 +1,6 @@
 use crate::{
-    Member, MemberKey, MemberKeyWithEditPermissionsArgs, MemberKeyWithRemovePermissionsArgs,
-    MemberWithAddPermissionsArgs, MultisigSettings, MAXIMUM_AMOUNT_OF_MEMBERS, SEED_MULTISIG,
+    AddMemberArgs, EditMemberArgs, Member, MemberKey, MultisigSettings, RemoveMemberArgs,
+    MAXIMUM_AMOUNT_OF_MEMBERS, SEED_MULTISIG,
 };
 use anchor_lang::prelude::*;
 
@@ -26,21 +26,18 @@ impl Settings {
     }
     pub fn edit_permissions(
         &mut self,
-        members: Vec<MemberKeyWithEditPermissionsArgs>,
-    ) -> Result<(
-        Vec<MemberWithAddPermissionsArgs>,
-        Vec<MemberKeyWithRemovePermissionsArgs>,
-    )> {
+        members: Vec<EditMemberArgs>,
+    ) -> Result<(Vec<AddMemberArgs>, Vec<RemoveMemberArgs>)> {
         MultisigSettings::edit_permissions(self, members)
     }
     pub fn add_members<'a>(
         &mut self,
         settings: &Pubkey,
-        new_members: Vec<MemberWithAddPermissionsArgs>,
+        new_members: Vec<AddMemberArgs>,
         remaining_accounts: &'a [AccountInfo<'a>],
         sysvar_slot_history: &Option<UncheckedAccount<'a>>,
         instructions_sysvar: Option<&UncheckedAccount<'a>>,
-    ) -> Result<Vec<MemberWithAddPermissionsArgs>> {
+    ) -> Result<Vec<AddMemberArgs>> {
         MultisigSettings::add_members(
             self,
             settings,
@@ -53,8 +50,8 @@ impl Settings {
 
     pub fn remove_members(
         &mut self,
-        member_pubkeys: Vec<MemberKeyWithRemovePermissionsArgs>,
-    ) -> Result<Vec<MemberKeyWithRemovePermissionsArgs>> {
+        member_pubkeys: Vec<RemoveMemberArgs>,
+    ) -> Result<Vec<RemoveMemberArgs>> {
         MultisigSettings::remove_members(self, member_pubkeys)
     }
 

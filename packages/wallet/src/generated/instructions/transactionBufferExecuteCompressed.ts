@@ -43,14 +43,14 @@ import {
   getProofArgsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  getSettingsMutArgsDecoder,
-  getSettingsMutArgsEncoder,
+  getSettingsReadonlyArgsDecoder,
+  getSettingsReadonlyArgsEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-  type SettingsMutArgs,
-  type SettingsMutArgsArgs,
+  type SettingsReadonlyArgs,
+  type SettingsReadonlyArgsArgs,
 } from "../types";
 
 export const TRANSACTION_BUFFER_EXECUTE_COMPRESSED_DISCRIMINATOR =
@@ -106,13 +106,13 @@ export type TransactionBufferExecuteCompressedInstruction<
 export type TransactionBufferExecuteCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
-  settingsReadonlyArgs: SettingsMutArgs;
+  settingsReadonlyArgs: SettingsReadonlyArgs;
   compressedProofArgs: ProofArgs;
 };
 
 export type TransactionBufferExecuteCompressedInstructionDataArgs = {
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  settingsReadonlyArgs: SettingsMutArgsArgs;
+  settingsReadonlyArgs: SettingsReadonlyArgsArgs;
   compressedProofArgs: ProofArgsArgs;
 };
 
@@ -124,7 +124,7 @@ export function getTransactionBufferExecuteCompressedInstructionDataEncoder(): E
         "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
-      ["settingsReadonlyArgs", getSettingsMutArgsEncoder()],
+      ["settingsReadonlyArgs", getSettingsReadonlyArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
@@ -138,7 +138,7 @@ export function getTransactionBufferExecuteCompressedInstructionDataDecoder(): D
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ["settingsReadonlyArgs", getSettingsMutArgsDecoder()],
+    ["settingsReadonlyArgs", getSettingsReadonlyArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }

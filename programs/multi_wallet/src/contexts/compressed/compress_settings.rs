@@ -6,13 +6,8 @@ use crate::{
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_hasher::{Hasher, Sha256};
-use light_sdk::{
-    cpi::{
-        v1::{CpiAccounts, LightSystemProgramCpi},
-        InvokeLightSystemProgram, LightCpiInstruction,
-    },
-    LightAccount,
-};
+use light_sdk::cpi::{v2::LightSystemProgramCpi, InvokeLightSystemProgram, LightCpiInstruction};
+use light_sdk::{account::LightAccount, cpi::v2::CpiAccounts};
 use std::vec;
 
 #[derive(Accounts)]
@@ -161,6 +156,7 @@ impl<'info> CompressSettingsAccount<'info> {
                         settings_creation_args,
                         data,
                         &light_cpi_accounts,
+                        Some(0),
                     )?;
 
                 settings_account.invariant()?;
@@ -171,7 +167,7 @@ impl<'info> CompressSettingsAccount<'info> {
                     .invoke(light_cpi_accounts)?;
             }
             SettingsCreateOrMutateArgs::Mutate(settings_mut_args) => {
-                let mut settings_account = LightAccount::<'_, CompressedSettings>::new_mut(
+                let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
                     &crate::ID,
                     &settings_mut_args.account_meta,
                     settings_mut_args.data,

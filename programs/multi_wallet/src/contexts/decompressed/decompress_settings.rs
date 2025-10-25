@@ -7,7 +7,7 @@ use anchor_lang::{prelude::*, solana_program::{sysvar::SysvarId}};
 use light_hasher::{Hasher, Sha256};
 use light_sdk::{
     cpi::{
-        v1::{CpiAccounts, LightSystemProgramCpi},
+        v2::{CpiAccounts, LightSystemProgramCpi},
         InvokeLightSystemProgram, LightCpiInstruction,
     }, LightAccount,
 };
@@ -154,7 +154,7 @@ impl<'info> DecompressSettingsAccount<'info> {
             LIGHT_CPI_SIGNER,
         );
 
-         let mut settings_account = LightAccount::<'_, CompressedSettings>::new_mut(
+         let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
             &crate::ID,
             &settings_mut.account_meta,
             settings_mut.data,

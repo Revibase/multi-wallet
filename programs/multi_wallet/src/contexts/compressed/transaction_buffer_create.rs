@@ -1,8 +1,8 @@
 use crate::{
-    durable_nonce_check, ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig,
-    KeyType, MemberKey, MultisigError, Permission, ProofArgs, Secp256r1VerifyArgs, Settings,
-    SettingsMutArgs, TransactionActionType, TransactionBuffer, TransactionBufferCreateArgs,
-    MAX_BUFFER_SIZE, SEED_MULTISIG, SEED_TRANSACTION_BUFFER,
+    durable_nonce_check, state::SettingsReadonlyArgs, ChallengeArgs, CompressedSettings,
+    CompressedSettingsData, DomainConfig, KeyType, MemberKey, MultisigError, Permission, ProofArgs,
+    Secp256r1VerifyArgs, Settings, SettingsMutArgs, TransactionActionType, TransactionBuffer,
+    TransactionBufferCreateArgs, MAX_BUFFER_SIZE, SEED_MULTISIG, SEED_TRANSACTION_BUFFER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
@@ -115,7 +115,7 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
         ctx: Context<'_, '_, '_, 'info, Self>,
         args: TransactionBufferCreateArgs,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly_args: SettingsMutArgs,
+        settings_readonly_args: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         let payer = &ctx.accounts.payer;

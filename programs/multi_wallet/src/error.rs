@@ -2,155 +2,155 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum MultisigError {
-    #[msg("The provided signature doesn't match the expected message. Make sure you're signing the correct payload.")]
+    #[msg(
+        "Invalid signature: the provided signature does not match the expected message payload."
+    )]
     InvalidSignedMessage,
 
-    #[msg("Missing or incorrectly formatted WebAuthn verification arguments. Please check the secp256r1 signature input.")]
+    #[msg("Malformed or missing WebAuthn verification parameters. Please provide valid secp256r1 signature arguments.")]
     InvalidSecp256r1VerifyArg,
 
-    #[msg("This transaction includes a durable nonce, which is not supported by this program.")]
+    #[msg(
+        "Durable nonce detected: this program does not support transactions using a durable nonce."
+    )]
     DurableNonceDetected,
 
-    #[msg(
-        "Duplicate public keys detected in the member list. Each member must have a unique key."
-    )]
+    #[msg("Duplicate public keys detected among members. Each member must have a unique key.")]
     DuplicateMember,
 
-    #[msg("Permanent members cannot be removed from the wallet.")]
+    #[msg("Permanent members cannot be removed from a wallet.")]
     PermanentMember,
 
-    #[msg("Unable to set permanent member for this operation.")]
+    #[msg("This operation cannot assign a permanent member.")]
     PermanentMemberNotAllowed,
 
-    #[msg("Only one permanent member can exist per wallet.")]
+    #[msg("Only one permanent member is allowed per wallet.")]
     OnlyOnePermanentMemberAllowed,
 
-    #[msg("Only one transaction manager can exist per wallet.")]
+    #[msg("Only one transaction manager is allowed per wallet.")]
     OnlyOneTransactionManagerAllowed,
 
-    #[msg("Unable to set transaction manager for this operation.")]
+    #[msg("This operation cannot assign a transaction manager.")]
     TransactionManagerNotAllowed,
 
-    #[msg("No members were provided. A multisig must have at least one member.")]
+    #[msg("No members provided. A multisig wallet must contain at least one member.")]
     EmptyMembers,
 
-    #[msg("The number of members exceeds the supported maximum 4.")]
+    #[msg("Too many members: a maximum of 4 members are supported.")]
     TooManyMembers,
 
-    #[msg("Invalid threshold value. It must be at least 1 and not exceed the number of voting-eligible members.")]
+    #[msg("Invalid threshold: must be at least 1 and cannot exceed the number of voting-eligible members.")]
     InvalidThreshold,
 
-    #[msg(
-        "The transaction message structure is malformed or does not follow expected formatting."
-    )]
+    #[msg("Malformed transaction message: structure or formatting does not match the expected layout.")]
     InvalidTransactionMessage,
 
-    #[msg(
-        "The number of provided accounts does not match what was expected for this instruction."
-    )]
+    #[msg("Unexpected number of accounts provided for this instruction.")]
     InvalidNumberOfAccounts,
 
-    #[msg("One or more accounts provided failed validation. Ensure all required accounts are included and correct.")]
+    #[msg("One or more provided accounts failed validation. Verify that all required accounts are included and correct.")]
     InvalidAccount,
 
-    #[msg("One or more arguments provided failed validation. Ensure all required arguments are included and correct.")]
+    #[msg("Invalid or missing instruction arguments. Ensure all required arguments are correctly provided.")]
     InvalidArguments,
 
-    #[msg("A required account is missing from the transaction context.")]
+    #[msg("A required account is missing from the instruction context.")]
     MissingAccount,
 
-    #[msg("User mutation args are required when the delegate operation is add or remove.")]
+    #[msg(
+        "User mutation arguments are required when performing add or remove delegate operations."
+    )]
     MissingUserArgs,
 
-    #[msg("Current member is currently delegated to another wallet.")]
+    #[msg("This member is already delegated to another wallet.")]
     AlreadyDelegated,
 
-    #[msg("At least one signer must have execute permissions to proceed.")]
+    #[msg("At least one signer with execute permission is required to proceed.")]
     InsufficientSignerWithExecutePermission,
 
-    #[msg("At least one signer must have initiate permissions to perform this action.")]
+    #[msg("At least one signer with initiate permission is required to perform this action.")]
     InsufficientSignerWithInitiatePermission,
 
-    #[msg("The approval threshold cannot be met because there aren't enough voters with the vote permission.")]
+    #[msg("Not enough members with vote permission to meet the approval threshold.")]
     InsufficientSignersWithVotePermission,
 
-    #[msg("No valid signer was found in this transaction.")]
+    #[msg("No valid signer found in this transaction.")]
     NoSignerFound,
 
-    #[msg(
-        "Only the transaction's creator or rent payer is allowed to close the transaction buffer."
-    )]
+    #[msg("Only the transaction creator or rent payer may close this transaction buffer.")]
     UnauthorisedToCloseTransactionBuffer,
 
-    #[msg("The contents of the buffer do not match the expected hash. It may have been tampered with.")]
+    #[msg("Buffer validation failed: contents do not match the expected hash (possible tampering detected).")]
     InvalidBuffer,
 
-    #[msg("The final hash of the buffer doesn't match what was expected. The buffer might be corrupted or altered.")]
+    #[msg("Final buffer hash mismatch: the serialized data may be corrupted or altered.")]
     FinalBufferHashMismatch,
 
-    #[msg("The serialized transaction buffer exceeds the maximum allowed size of 10,128 bytes.")]
+    #[msg("The serialized transaction buffer exceeds the maximum size of 10,128 bytes.")]
     FinalBufferSizeExceeded,
 
-    #[msg("The declared size of the buffer does not match its actual size.")]
+    #[msg("Declared buffer size does not match the actual serialized size.")]
     FinalBufferSizeMismatch,
 
-    #[msg("The transaction has expired. It must be executed within 3 minutes of approval.")]
+    #[msg("This transaction has expired. It must be executed within 3 minutes of approval.")]
     TransactionHasExpired,
 
-    #[msg("The transaction hasn't received enough approvals yet to be executed.")]
+    #[msg("This transaction has not yet reached the required approval threshold.")]
     TransactionNotApproved,
 
     #[msg("Writable CPI calls to protected accounts are not permitted.")]
     ProtectedAccount,
 
-    #[msg("One of the input strings exceeds the maximum allowed character limit.")]
+    #[msg("An input string exceeds the maximum allowed character length.")]
     MaxLengthExceeded,
 
-    #[msg("The Slot History sysvar account is missing. It must be included as an account in this instruction.")]
+    #[msg(
+        "Missing required sysvar: Slot History must be included as an account in this instruction."
+    )]
     MissingSysvarSlotHistory,
 
-    #[msg("Failed to parse sysvar: slot history format is invalid or corrupted.")]
+    #[msg("Failed to parse the Slot History sysvar: data format is invalid or corrupted.")]
     InvalidSysvarDataFormat,
 
-    #[msg("The specified slot number is not present in the provided slot history.")]
+    #[msg("The specified slot number was not found in the provided slot history.")]
     SlotNumberNotFound,
 
-    #[msg("The domain configuration account is currently disabled. Contact support or try again later.")]
+    #[msg(
+        "The domain configuration account is disabled. Please contact support or try again later."
+    )]
     DomainConfigIsDisabled,
 
-    #[msg("Missing domain configuration account. Ensure it's passed in the instruction.")]
+    #[msg("Missing domain configuration account. Include it as a required account in this instruction.")]
     DomainConfigIsMissing,
 
-    #[msg("This member is not registered in the provided domain configuration.")]
+    #[msg("This member is not registered under the provided domain configuration.")]
     MemberDoesNotBelongToDomainConfig,
 
-    #[msg(
-        "The relying party ID hash does not match the one specified in the domain configuration."
-    )]
+    #[msg("The relying party ID hash does not match the one defined in the domain configuration.")]
     RpIdHashMismatch,
 
-    #[msg("Failed to parse the client data JSON. The format may be invalid.")]
+    #[msg("Failed to parse clientDataJSON: the JSON format is invalid.")]
     InvalidJson,
 
     #[msg(
-        "Missing origin field in clientDataJSON. This field is required for WebAuthn validation."
+        "Missing 'origin' field in clientDataJSON. This field is required for WebAuthn validation."
     )]
     MissingOrigin,
 
-    #[msg("The origin value in clientDataJSON does not match the expected domain.")]
+    #[msg("The 'origin' value in clientDataJSON does not match the expected domain.")]
     InvalidOrigin,
 
-    #[msg("Missing type field in clientDataJSON. This field is required for WebAuthn validation.")]
+    #[msg(
+        "Missing 'type' field in clientDataJSON. This field is required for WebAuthn validation."
+    )]
     MissingType,
 
-    #[msg("The type field in clientDataJSON is invalid. Expected value: webauthn.get.")]
+    #[msg("Invalid 'type' field in clientDataJSON. Expected value: 'webauthn.get'.")]
     InvalidType,
 
-    #[msg("Missing challenge field in clientDataJSON. This is required for validating the authentication request.")]
+    #[msg("Missing 'challenge' field in clientDataJSON. This field is required for WebAuthn validation.")]
     MissingChallenge,
 
-    #[msg(
-        "The challenge value in clientDataJSON is missing or doesn't match the expected challenge."
-    )]
+    #[msg("Invalid or mismatched 'challenge' value in clientDataJSON.")]
     InvalidChallenge,
 }

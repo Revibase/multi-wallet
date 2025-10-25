@@ -78,7 +78,7 @@ export async function closeTransactionBuffer({
         closer: closer instanceof Secp256r1Key ? undefined : closer,
         rentCollector: transactionBuffer.data.payer,
         secp256r1VerifyArgs: verifyArgs,
-        settingsReadonlyArgs: settingsReadonlyArgs,
+        settingsReadonlyArgs,
         payer,
         compressedProofArgs,
         remainingAccounts,

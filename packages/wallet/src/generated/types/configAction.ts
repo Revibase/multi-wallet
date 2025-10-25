@@ -25,48 +25,30 @@ import {
   type GetDiscriminatedUnionVariantContent,
 } from "gill";
 import {
-  getMemberKeyWithEditPermissionsArgsDecoder,
-  getMemberKeyWithEditPermissionsArgsEncoder,
-  getMemberKeyWithRemovePermissionsArgsDecoder,
-  getMemberKeyWithRemovePermissionsArgsEncoder,
-  getMemberWithAddPermissionsArgsDecoder,
-  getMemberWithAddPermissionsArgsEncoder,
-  type MemberKeyWithEditPermissionsArgs,
-  type MemberKeyWithEditPermissionsArgsArgs,
-  type MemberKeyWithRemovePermissionsArgs,
-  type MemberKeyWithRemovePermissionsArgsArgs,
-  type MemberWithAddPermissionsArgs,
-  type MemberWithAddPermissionsArgsArgs,
+  getAddMemberArgsDecoder,
+  getAddMemberArgsEncoder,
+  getEditMemberArgsDecoder,
+  getEditMemberArgsEncoder,
+  getRemoveMemberArgsDecoder,
+  getRemoveMemberArgsEncoder,
+  type AddMemberArgs,
+  type AddMemberArgsArgs,
+  type EditMemberArgs,
+  type EditMemberArgsArgs,
+  type RemoveMemberArgs,
+  type RemoveMemberArgsArgs,
 } from ".";
 
 export type ConfigAction =
-  | {
-      __kind: "EditPermissions";
-      fields: readonly [Array<MemberKeyWithEditPermissionsArgs>];
-    }
-  | {
-      __kind: "AddMembers";
-      fields: readonly [Array<MemberWithAddPermissionsArgs>];
-    }
-  | {
-      __kind: "RemoveMembers";
-      fields: readonly [Array<MemberKeyWithRemovePermissionsArgs>];
-    }
+  | { __kind: "EditPermissions"; fields: readonly [Array<EditMemberArgs>] }
+  | { __kind: "AddMembers"; fields: readonly [Array<AddMemberArgs>] }
+  | { __kind: "RemoveMembers"; fields: readonly [Array<RemoveMemberArgs>] }
   | { __kind: "SetThreshold"; fields: readonly [number] };
 
 export type ConfigActionArgs =
-  | {
-      __kind: "EditPermissions";
-      fields: readonly [Array<MemberKeyWithEditPermissionsArgsArgs>];
-    }
-  | {
-      __kind: "AddMembers";
-      fields: readonly [Array<MemberWithAddPermissionsArgsArgs>];
-    }
-  | {
-      __kind: "RemoveMembers";
-      fields: readonly [Array<MemberKeyWithRemovePermissionsArgsArgs>];
-    }
+  | { __kind: "EditPermissions"; fields: readonly [Array<EditMemberArgsArgs>] }
+  | { __kind: "AddMembers"; fields: readonly [Array<AddMemberArgsArgs>] }
+  | { __kind: "RemoveMembers"; fields: readonly [Array<RemoveMemberArgsArgs>] }
   | { __kind: "SetThreshold"; fields: readonly [number] };
 
 export function getConfigActionEncoder(): Encoder<ConfigActionArgs> {
@@ -76,9 +58,7 @@ export function getConfigActionEncoder(): Encoder<ConfigActionArgs> {
       getStructEncoder([
         [
           "fields",
-          getTupleEncoder([
-            getArrayEncoder(getMemberKeyWithEditPermissionsArgsEncoder()),
-          ]),
+          getTupleEncoder([getArrayEncoder(getEditMemberArgsEncoder())]),
         ],
       ]),
     ],
@@ -87,9 +67,7 @@ export function getConfigActionEncoder(): Encoder<ConfigActionArgs> {
       getStructEncoder([
         [
           "fields",
-          getTupleEncoder([
-            getArrayEncoder(getMemberWithAddPermissionsArgsEncoder()),
-          ]),
+          getTupleEncoder([getArrayEncoder(getAddMemberArgsEncoder())]),
         ],
       ]),
     ],
@@ -98,9 +76,7 @@ export function getConfigActionEncoder(): Encoder<ConfigActionArgs> {
       getStructEncoder([
         [
           "fields",
-          getTupleEncoder([
-            getArrayEncoder(getMemberKeyWithRemovePermissionsArgsEncoder()),
-          ]),
+          getTupleEncoder([getArrayEncoder(getRemoveMemberArgsEncoder())]),
         ],
       ]),
     ],
@@ -118,9 +94,7 @@ export function getConfigActionDecoder(): Decoder<ConfigAction> {
       getStructDecoder([
         [
           "fields",
-          getTupleDecoder([
-            getArrayDecoder(getMemberKeyWithEditPermissionsArgsDecoder()),
-          ]),
+          getTupleDecoder([getArrayDecoder(getEditMemberArgsDecoder())]),
         ],
       ]),
     ],
@@ -129,9 +103,7 @@ export function getConfigActionDecoder(): Decoder<ConfigAction> {
       getStructDecoder([
         [
           "fields",
-          getTupleDecoder([
-            getArrayDecoder(getMemberWithAddPermissionsArgsDecoder()),
-          ]),
+          getTupleDecoder([getArrayDecoder(getAddMemberArgsDecoder())]),
         ],
       ]),
     ],
@@ -140,9 +112,7 @@ export function getConfigActionDecoder(): Decoder<ConfigAction> {
       getStructDecoder([
         [
           "fields",
-          getTupleDecoder([
-            getArrayDecoder(getMemberKeyWithRemovePermissionsArgsDecoder()),
-          ]),
+          getTupleDecoder([getArrayDecoder(getRemoveMemberArgsDecoder())]),
         ],
       ]),
     ],

@@ -48,14 +48,14 @@ import {
   getProofArgsEncoder,
   getSecp256r1VerifyArgsWithDomainAddressDecoder,
   getSecp256r1VerifyArgsWithDomainAddressEncoder,
-  getSettingsMutArgsDecoder,
-  getSettingsMutArgsEncoder,
+  getSettingsReadonlyArgsDecoder,
+  getSettingsReadonlyArgsEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgsWithDomainAddress,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
-  type SettingsMutArgs,
-  type SettingsMutArgsArgs,
+  type SettingsReadonlyArgs,
+  type SettingsReadonlyArgsArgs,
 } from "../types";
 
 export const TOKEN_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR = new Uint8Array([
@@ -138,14 +138,14 @@ export type TokenTransferIntentCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   amount: bigint;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
-  settingsReadonlyArgs: SettingsMutArgs;
+  settingsReadonlyArgs: SettingsReadonlyArgs;
   compressedProofArgs: ProofArgs;
 };
 
 export type TokenTransferIntentCompressedInstructionDataArgs = {
   amount: number | bigint;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
-  settingsReadonlyArgs: SettingsMutArgsArgs;
+  settingsReadonlyArgs: SettingsReadonlyArgsArgs;
   compressedProofArgs: ProofArgsArgs;
 };
 
@@ -158,7 +158,7 @@ export function getTokenTransferIntentCompressedInstructionDataEncoder(): Encode
         "secp256r1VerifyArgs",
         getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
       ],
-      ["settingsReadonlyArgs", getSettingsMutArgsEncoder()],
+      ["settingsReadonlyArgs", getSettingsReadonlyArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
@@ -176,7 +176,7 @@ export function getTokenTransferIntentCompressedInstructionDataDecoder(): Decode
       "secp256r1VerifyArgs",
       getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
     ],
-    ["settingsReadonlyArgs", getSettingsMutArgsDecoder()],
+    ["settingsReadonlyArgs", getSettingsReadonlyArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }

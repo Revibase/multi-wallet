@@ -43,16 +43,16 @@ import {
   getProofArgsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  getSettingsMutArgsDecoder,
-  getSettingsMutArgsEncoder,
+  getSettingsReadonlyArgsDecoder,
+  getSettingsReadonlyArgsEncoder,
   getTransactionBufferCreateArgsDecoder,
   getTransactionBufferCreateArgsEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-  type SettingsMutArgs,
-  type SettingsMutArgsArgs,
+  type SettingsReadonlyArgs,
+  type SettingsReadonlyArgsArgs,
   type TransactionBufferCreateArgs,
   type TransactionBufferCreateArgsArgs,
 } from "../types";
@@ -117,14 +117,14 @@ export type TransactionBufferCreateCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   args: TransactionBufferCreateArgs;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
-  settingsReadonlyArgs: SettingsMutArgs;
+  settingsReadonlyArgs: SettingsReadonlyArgs;
   compressedProofArgs: ProofArgs;
 };
 
 export type TransactionBufferCreateCompressedInstructionDataArgs = {
   args: TransactionBufferCreateArgsArgs;
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  settingsReadonlyArgs: SettingsMutArgsArgs;
+  settingsReadonlyArgs: SettingsReadonlyArgsArgs;
   compressedProofArgs: ProofArgsArgs;
 };
 
@@ -137,7 +137,7 @@ export function getTransactionBufferCreateCompressedInstructionDataEncoder(): En
         "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
-      ["settingsReadonlyArgs", getSettingsMutArgsEncoder()],
+      ["settingsReadonlyArgs", getSettingsReadonlyArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
@@ -152,7 +152,7 @@ export function getTransactionBufferCreateCompressedInstructionDataDecoder(): De
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["args", getTransactionBufferCreateArgsDecoder()],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ["settingsReadonlyArgs", getSettingsMutArgsDecoder()],
+    ["settingsReadonlyArgs", getSettingsReadonlyArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }

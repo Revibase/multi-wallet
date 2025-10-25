@@ -97,7 +97,7 @@ export async function nativeTransferIntent({
     instructions.push(
       getNativeTransferIntentCompressedInstruction({
         amount,
-        settingsReadonlyArgs: settingsReadonlyArgs,
+        settingsReadonlyArgs,
         compressedProofArgs,
         payer,
         secp256r1VerifyArgs,
