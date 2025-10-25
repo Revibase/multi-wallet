@@ -112,7 +112,7 @@ export function runNativeTransferTest() {
       );
 
       try {
-        const mockResult = await mockAuthenticationResponse(
+        const signedSigner = await mockAuthenticationResponse(
           getSolanaRpc(),
           {
             transactionActionType: "transfer_intent",
@@ -126,13 +126,11 @@ export function runNativeTransferTest() {
           secp256r1Keys.privateKey,
           ctx
         );
-        const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey, {
-          ...mockResult,
-        });
+
         const nativeTransfer = await nativeTransferIntent({
           index: ctx.index,
           payer: ctx.payer,
-          signers: [secp256r1Key, transactionManager],
+          signers: [signedSigner, transactionManager],
           destination: ctx.wallet.address,
           amount: 10 ** 6,
           compressed: ctx.compressed,

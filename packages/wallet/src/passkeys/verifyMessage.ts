@@ -25,7 +25,7 @@ export async function verifyMessage({
     requireUserVerification: false,
     credential: {
       id: response.authResponse.id,
-      publicKey: convertPubkeyCompressedToCose(response.signer),
+      publicKey: convertPubkeyCompressedToCose(response.signer.toString()),
       counter: 0,
     },
   });

@@ -1,5 +1,5 @@
 import type { Address, TransactionSigner } from "gill";
-import { Secp256r1Key } from ".";
+import { Secp256r1Key, SignedSecp256r1Key } from ".";
 import type { DelegateOpArgs } from "../generated";
 
 export type PermissionArgs = {
@@ -11,7 +11,7 @@ export type PermissionArgs = {
 type AddMemberArgs =
   | {
       setAsDelegate: true;
-      pubkey: TransactionSigner | Secp256r1Key;
+      pubkey: TransactionSigner | SignedSecp256r1Key;
       permissions: PermissionArgs;
       isTransactionManager: false;
     }
@@ -23,7 +23,7 @@ type AddMemberArgs =
     }
   | {
       setAsDelegate: false;
-      pubkey: Address | Secp256r1Key;
+      pubkey: Address | SignedSecp256r1Key;
       permissions: PermissionArgs;
       isTransactionManager: false;
     };

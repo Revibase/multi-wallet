@@ -7,13 +7,14 @@ import {
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 import { nativeTransferIntent } from "../instructions/intents/nativeTransferIntent";
 import { tokenTransferIntent } from "../instructions/intents/tokenTransferIntent";
-import { signTransaction } from "../passkeys";
+import { signTransactionWithPasskey } from "../passkeys";
+import { type BasePayload, type TransactionDetails } from "../types";
 import {
-  Secp256r1Key,
-  type BasePayload,
-  type TransactionDetails,
-} from "../types";
-import { fetchSettingsData, fetchUserAccountData, getFeePayer } from "../utils";
+  fetchSettingsData,
+  fetchUserAccountData,
+  getFeePayer,
+  getSignedSecp256r1Key,
+} from "../utils";
 import { resolveTransactionManagerSigner } from "../utils/helper";
 
 interface TransferIntentArgs extends BasePayload {
@@ -23,7 +24,7 @@ interface TransferIntentArgs extends BasePayload {
   mint?: Address;
   tokenProgram?: Address;
   cachedAccounts?: Map<string, any>;
-  addressByLookUpTableAddress?: AddressesByLookupTableAddress;
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
 }
 
 /**
@@ -39,10 +40,10 @@ export async function prepareIntentTransfer({
   hints,
   signer,
   popUp,
-  addressByLookUpTableAddress,
+  addressesByLookupTableAddress,
   cachedAccounts = new Map<string, any>(),
-}: TransferIntentArgs) {
-  const signedTx = await signTransaction({
+}: TransferIntentArgs): Promise<TransactionDetails> {
+  const authResponse = await signTransactionWithPasskey({
     transactionActionType: "transfer_intent",
     transactionAddress: mint ? tokenProgram : SYSTEM_PROGRAM_ADDRESS,
     transactionMessageBytes: new Uint8Array([
@@ -54,13 +55,14 @@ export async function prepareIntentTransfer({
     signer,
     popUp,
   });
+  const signedSigner = await getSignedSecp256r1Key(authResponse);
   let index: number;
   if (
-    !signedTx.additionalInfo?.walletAddress ||
-    !signedTx.additionalInfo.settingsIndex
+    !authResponse.additionalInfo?.walletAddress ||
+    !authResponse.additionalInfo.settingsIndex
   ) {
     const userAccountData = await fetchUserAccountData(
-      new Secp256r1Key(signedTx.signer),
+      signedSigner,
       cachedAccounts
     );
     if (userAccountData.settingsIndex.__option === "None") {
@@ -68,21 +70,20 @@ export async function prepareIntentTransfer({
     }
     index = Number(userAccountData.settingsIndex.value);
   } else {
-    index = signedTx.additionalInfo.settingsIndex;
+    index = authResponse.additionalInfo.settingsIndex;
   }
   const [settingsData, payer] = await Promise.all([
     fetchSettingsData(index, cachedAccounts),
     getFeePayer(),
   ]);
   const transactionManagerSigner = await resolveTransactionManagerSigner({
-    member: signedTx.signer,
+    signer: signedSigner,
     index,
     cachedAccounts,
   });
-  const primarySigner = new Secp256r1Key(signedTx.signer, signedTx);
   const signers = transactionManagerSigner
-    ? [primarySigner, transactionManagerSigner]
-    : [primarySigner];
+    ? [signedSigner, transactionManagerSigner]
+    : [signedSigner];
 
   const instructions = mint
     ? await tokenTransferIntent({
@@ -107,6 +108,6 @@ export async function prepareIntentTransfer({
   return {
     instructions,
     payer,
-    addressByLookUpTableAddress,
-  } as TransactionDetails;
+    addressesByLookupTableAddress,
+  };
 }

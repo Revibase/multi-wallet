@@ -2,11 +2,11 @@ import type {
   AuthenticationResponseJSON,
   PublicKeyCredentialHint,
 } from "@simplewebauthn/server";
-import type { Address } from "gill";
+import type { Secp256r1Key } from "./secp256r1";
 
 export type TransactionAuthenticationResponse = {
   authResponse: AuthenticationResponseJSON;
-  signer: string;
+  signer: Secp256r1Key;
   slotNumber: string;
   slotHash: string;
   additionalInfo?: any;
@@ -14,20 +14,7 @@ export type TransactionAuthenticationResponse = {
 
 export type MessageAuthenticationResponse = {
   authResponse: AuthenticationResponseJSON;
-  signer: string;
-  additionalInfo?: any;
-};
-
-export type ParsedAuthenticationResponse = {
-  verifyArgs: {
-    clientDataJson: Uint8Array;
-    slotNumber: bigint;
-    slotHash: Uint8Array;
-  };
-  signer: string;
-  domainConfig: Address;
-  authData: Uint8Array;
-  signature: Uint8Array;
+  signer: Secp256r1Key;
   additionalInfo?: any;
 };
 
@@ -56,7 +43,7 @@ export type MessagePayload = {
 export type BasePayload = {
   hints?: PublicKeyCredentialHint[];
   authUrl?: string;
-  signer?: string;
+  signer?: Secp256r1Key;
   popUp?: Window | null;
   debug?: boolean;
   additionalInfo?: any;

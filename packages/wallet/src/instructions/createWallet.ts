@@ -5,7 +5,7 @@ import {
   getUserDecoder,
   type User,
 } from "../generated";
-import { Secp256r1Key } from "../types";
+import { SignedSecp256r1Key } from "../types";
 import {
   getCompressedSettingsAddressFromIndex,
   getGlobalCounterAddress,
@@ -29,7 +29,7 @@ type CreateWalletArgs = {
   payer: TransactionSigner;
   compressed?: boolean;
   cachedAccounts?: Map<string, any>;
-  initialMember: TransactionSigner | Secp256r1Key;
+  initialMember: TransactionSigner | SignedSecp256r1Key;
   setAsDelegate: boolean;
 };
 export async function createWallet({
@@ -150,7 +150,9 @@ export async function createWallet({
         slotHashSysvar,
         payer: payer,
         initialMember:
-          initialMember instanceof Secp256r1Key ? undefined : initialMember,
+          initialMember instanceof SignedSecp256r1Key
+            ? undefined
+            : initialMember,
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
         userMutArgs,
@@ -171,7 +173,9 @@ export async function createWallet({
         slotHashSysvar,
         payer,
         initialMember:
-          initialMember instanceof Secp256r1Key ? undefined : initialMember,
+          initialMember instanceof SignedSecp256r1Key
+            ? undefined
+            : initialMember,
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
         userMutArgs,

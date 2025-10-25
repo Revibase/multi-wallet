@@ -7,13 +7,13 @@ import {
   executeTransactionSync,
   type Secp256r1VerifyInput,
 } from "../instructions";
-import { Secp256r1Key, type TransactionDetails } from "../types";
+import { SignedSecp256r1Key, type TransactionDetails } from "../types";
 
 interface CreateTransactionSyncArgs {
   payer: TransactionSigner;
   index: number | bigint;
   transactionMessageBytes: ReadonlyUint8Array;
-  signers: (TransactionSigner | Secp256r1Key)[];
+  signers: (TransactionSigner | SignedSecp256r1Key)[];
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   compressed?: boolean;

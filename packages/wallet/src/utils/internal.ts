@@ -12,15 +12,15 @@ import {
 } from "gill";
 import { getTransferSolInstruction } from "gill/programs";
 import type { Secp256r1VerifyArgs } from "../generated";
-import { Secp256r1Key } from "../types";
+import { SignedSecp256r1Key } from "../types";
 import { JITO_TIP_ACCOUNTS } from "./consts";
 
 export function extractSecp256r1VerificationArgs(
-  signer?: Secp256r1Key | TransactionSigner,
+  signer?: SignedSecp256r1Key | TransactionSigner,
   index = 0
 ) {
   const secp256r1PublicKey =
-    signer instanceof Secp256r1Key ? signer : undefined;
+    signer instanceof SignedSecp256r1Key ? signer : undefined;
   const verifyArgs: OptionOrNullable<Secp256r1VerifyArgs> =
     secp256r1PublicKey?.verifyArgs && index !== -1
       ? some({
@@ -30,7 +30,7 @@ export function extractSecp256r1VerificationArgs(
         })
       : null;
   const instructionsSysvar =
-    signer instanceof Secp256r1Key
+    signer instanceof SignedSecp256r1Key
       ? address("Sysvar1nstructions1111111111111111111111111")
       : undefined;
   const slotHashSysvar = secp256r1PublicKey?.verifyArgs
@@ -63,10 +63,10 @@ export function extractSecp256r1VerificationArgs(
   };
 }
 export function getDeduplicatedSigners(
-  signers: (Secp256r1Key | TransactionSigner)[]
+  signers: (SignedSecp256r1Key | TransactionSigner)[]
 ) {
   const hashSet = new Set();
-  const dedupSigners: (Secp256r1Key | TransactionSigner)[] = [];
+  const dedupSigners: (SignedSecp256r1Key | TransactionSigner)[] = [];
   for (const signer of signers) {
     if (!hashSet.has(getPubkeyString(signer))) {
       dedupSigners.push(signer);
@@ -75,15 +75,15 @@ export function getDeduplicatedSigners(
   }
 
   // due to current tx size limit (can be removed once tx size limit increases)
-  if (dedupSigners.filter((x) => x instanceof Secp256r1Key).length > 1) {
+  if (dedupSigners.filter((x) => x instanceof SignedSecp256r1Key).length > 1) {
     throw new Error(
       "More than 1 Secp256r1 signers in an instruction is not supported."
     );
   }
   return dedupSigners;
 }
-function getPubkeyString(pubkey: TransactionSigner | Secp256r1Key) {
-  if (pubkey instanceof Secp256r1Key) {
+function getPubkeyString(pubkey: TransactionSigner | SignedSecp256r1Key) {
+  if (pubkey instanceof SignedSecp256r1Key) {
     return pubkey.toString();
   } else {
     return pubkey.address.toString();

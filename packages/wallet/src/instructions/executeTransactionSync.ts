@@ -12,7 +12,7 @@ import {
   getTransactionExecuteSyncInstruction,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
 } from "../generated";
-import { Secp256r1Key } from "../types";
+import { SignedSecp256r1Key } from "../types";
 import { getSettingsFromIndex, getWalletAddressFromSettings } from "../utils";
 import {
   constructSettingsProofArgs,
@@ -40,7 +40,7 @@ export async function executeTransactionSync({
   cachedAccounts,
 }: {
   index: bigint | number;
-  signers: (TransactionSigner | Secp256r1Key)[];
+  signers: (TransactionSigner | SignedSecp256r1Key)[];
   transactionMessageBytes: ReadonlyUint8Array;
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   compressed?: boolean;
@@ -60,7 +60,7 @@ export async function executeTransactionSync({
       transactionMessageBytes,
       walletAddress,
       additionalSigners: dedupSigners.filter(
-        (x) => !(x instanceof Secp256r1Key)
+        (x) => !(x instanceof SignedSecp256r1Key)
       ) as TransactionSigner[],
       addressesByLookupTableAddress,
     }),
@@ -75,7 +75,7 @@ export async function executeTransactionSync({
   packedAccounts.addPreAccounts(accountMetas);
 
   const secp256r1Signers = dedupSigners.filter(
-    (x) => x instanceof Secp256r1Key
+    (x) => x instanceof SignedSecp256r1Key
   );
 
   const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];

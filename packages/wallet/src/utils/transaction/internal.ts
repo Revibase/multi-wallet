@@ -24,7 +24,7 @@ import {
   getSetComputeUnitPriceInstruction,
 } from "gill/programs";
 import { prepareTransactionSync } from "../../transaction";
-import { Secp256r1Key, type TransactionDetails } from "../../types";
+import { SignedSecp256r1Key, type TransactionDetails } from "../../types";
 import { getJitoTipsConfig, getSolanaRpc } from "../initialize";
 
 export async function createEncodedBundle(
@@ -209,7 +209,7 @@ export function createSignInMessageText(input: {
 
 export function simulateSecp256r1Signer() {
   const randomPubkey = crypto.getRandomValues(new Uint8Array(33));
-  const signer = new Secp256r1Key(randomPubkey, {
+  const signer = new SignedSecp256r1Key(randomPubkey, {
     authData: crypto.getRandomValues(new Uint8Array(37)),
     domainConfig: getAddressDecoder().decode(
       crypto.getRandomValues(new Uint8Array(32))
@@ -238,7 +238,7 @@ export async function estimateTransactionSizeExceedLimit({
   settingsIndex: number;
   compressed: boolean;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
-  signers: (TransactionSigner | Secp256r1Key)[];
+  signers: (TransactionSigner | SignedSecp256r1Key)[];
   cachedAccounts?: Map<string, any>;
 }) {
   const result = await prepareTransactionSync({

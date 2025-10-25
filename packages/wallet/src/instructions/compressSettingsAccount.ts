@@ -11,7 +11,7 @@ import {
   type Secp256r1VerifyArgsWithDomainAddressArgs,
   type SettingsCreateOrMutateArgs,
 } from "../generated";
-import { Secp256r1Key } from "../types";
+import { SignedSecp256r1Key } from "../types";
 import {
   getCompressedSettingsAddressFromIndex,
   getSettingsFromIndex,
@@ -43,7 +43,7 @@ export async function compressSettingsAccount({
 }: {
   index: number | bigint;
   payer: TransactionSigner;
-  signers: (Secp256r1Key | TransactionSigner)[];
+  signers: (SignedSecp256r1Key | TransactionSigner)[];
   cachedAccounts?: Map<string, any>;
 }) {
   const packedAccounts = new PackedAccounts();
@@ -104,7 +104,7 @@ export async function compressSettingsAccount({
   const dedupSigners = getDeduplicatedSigners(signers);
 
   const secp256r1Signers = dedupSigners.filter(
-    (x) => x instanceof Secp256r1Key
+    (x) => x instanceof SignedSecp256r1Key
   );
 
   const secp256r1VerifyInput: Secp256r1VerifyInput = [];

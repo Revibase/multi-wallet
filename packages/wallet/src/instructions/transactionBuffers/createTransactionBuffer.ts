@@ -5,7 +5,7 @@ import {
   type ProofArgsArgs,
   type SettingsReadonlyArgs,
 } from "../../generated";
-import { Secp256r1Key } from "../../types";
+import { SignedSecp256r1Key } from "../../types";
 import { extractSecp256r1VerificationArgs } from "../../utils/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
@@ -24,7 +24,7 @@ export function createTransactionBuffer({
   finalBufferHash: Uint8Array;
   finalBufferSize: number;
   payer: TransactionSigner;
-  creator: TransactionSigner | Secp256r1Key;
+  creator: TransactionSigner | SignedSecp256r1Key;
   settings: Address;
   bufferIndex: number;
   transactionBufferAddress: Address;
@@ -66,7 +66,7 @@ export function createTransactionBuffer({
         transactionBuffer: transactionBufferAddress,
         payer,
         secp256r1VerifyArgs: verifyArgs,
-        creator: creator instanceof Secp256r1Key ? undefined : creator,
+        creator: creator instanceof SignedSecp256r1Key ? undefined : creator,
         domainConfig,
         args: {
           bufferIndex,
@@ -89,7 +89,7 @@ export function createTransactionBuffer({
         transactionBuffer: transactionBufferAddress,
         payer,
         secp256r1VerifyArgs: verifyArgs,
-        creator: creator instanceof Secp256r1Key ? undefined : creator,
+        creator: creator instanceof SignedSecp256r1Key ? undefined : creator,
         domainConfig,
         args: {
           bufferIndex,

@@ -34,6 +34,7 @@ import {
   type PermissionArgs,
   Permissions,
   Secp256r1Key,
+  SignedSecp256r1Key,
   TransactionManagerPermission,
 } from "../types";
 import {
@@ -70,29 +71,46 @@ export async function changeConfig({
   // --- Stage 1: Setup Addresses---
   const authority = await getWalletAddressFromIndex(index);
 
-  const addDelegates: (Address<string> | Secp256r1Key)[] = [];
-  const removeDelegates: (Address<string> | Secp256r1Key)[] = [];
+  const addDelegates: { address: BN; type: "User" }[] = [];
+  const removeDelegates: { address: BN; type: "User" }[] = [];
 
   for (const action of configActionsArgs) {
     if (action.type === "AddMembers") {
       addDelegates.push(
         ...action.members.map((m) =>
-          m.pubkey instanceof Secp256r1Key
-            ? m.pubkey
+          m.pubkey instanceof SignedSecp256r1Key
+            ? {
+                address: getUserAccountAddress(m.pubkey),
+                type: "User" as const,
+              }
             : m.setAsDelegate
-              ? m.pubkey.address
-              : m.pubkey
+              ? {
+                  address: getUserAccountAddress(m.pubkey.address),
+                  type: "User" as const,
+                }
+              : {
+                  address: getUserAccountAddress(m.pubkey),
+                  type: "User" as const,
+                }
         )
       );
     } else if (action.type === "RemoveMembers") {
-      removeDelegates.push(...action.members.map((m) => m.pubkey));
+      removeDelegates.push(
+        ...action.members.map((m) => ({
+          address: getUserAccountAddress(m.pubkey),
+          type: "User" as const,
+        }))
+      );
     } else if (action.type === "EditPermissions") {
       for (const m of action.members) {
         if (m.delegateOperation !== DelegateOp.Ignore) {
           (m.delegateOperation === DelegateOp.Add
             ? addDelegates
             : removeDelegates
-          ).push(m.pubkey);
+          ).push({
+            address: getUserAccountAddress(m.pubkey),
+            type: "User" as const,
+          });
         }
       }
     }
@@ -116,14 +134,8 @@ export async function changeConfig({
             },
           ]
         : []),
-      ...removeDelegates.map((m) => ({
-        address: getUserAccountAddress(m),
-        type: "User" as const,
-      })),
-      ...addDelegates.map((m) => ({
-        address: getUserAccountAddress(m),
-        type: "User" as const,
-      })),
+      ...removeDelegates,
+      ...addDelegates,
     ];
 
     const hashesWithTree = addresses.length
@@ -172,7 +184,7 @@ export async function changeConfig({
       case "AddMembers": {
         const field: AddMemberArgs[] = [];
         for (const m of action.members) {
-          if (m.pubkey instanceof Secp256r1Key) {
+          if (m.pubkey instanceof SignedSecp256r1Key) {
             const index = secp256r1VerifyInput.length;
             const { message, signature, publicKey, domainConfig } =
               extractSecp256r1VerificationArgs(m.pubkey, index);
@@ -386,7 +398,7 @@ function convertAddMember({
   setAsDelegate,
   isTransactionManager,
 }: {
-  pubkey: TransactionSigner | Secp256r1Key | Address;
+  pubkey: TransactionSigner | SignedSecp256r1Key | Address;
   permissionArgs: PermissionArgs;
   index: number;
   userMutArgs: UserMutArgs;
@@ -403,7 +415,7 @@ function convertAddMember({
     member: {
       permissions,
       pubkey: convertPubkeyToMemberkey(
-        pubkey instanceof Secp256r1Key
+        pubkey instanceof SignedSecp256r1Key
           ? pubkey
           : setAsDelegate
             ? (pubkey as TransactionSigner).address
@@ -411,7 +423,7 @@ function convertAddMember({
       ),
     },
     verifyArgs:
-      pubkey instanceof Secp256r1Key && pubkey.verifyArgs && index !== -1
+      pubkey instanceof SignedSecp256r1Key && pubkey.verifyArgs && index !== -1
         ? some({
             clientDataJson: pubkey.verifyArgs.clientDataJson,
             slotNumber: pubkey.verifyArgs.slotNumber,

@@ -113,13 +113,13 @@ export function convertPermissions(
   return Permissions.fromPermissions(perms);
 }
 export async function resolveTransactionManagerSigner({
-  member,
+  signer,
   index,
   transactionMessageBytes,
   authorizedClient = getGlobalAuthorizedClient(),
   cachedAccounts,
 }: {
-  member: string;
+  signer: Secp256r1Key | Address;
   index: number | bigint;
   transactionMessageBytes?: ReadonlyUint8Array;
   authorizedClient?: {
@@ -136,7 +136,7 @@ export async function resolveTransactionManagerSigner({
   }
   const { permissions } =
     settingsData.members.find(
-      (m) => convertMemberKeyToString(m.pubkey) === member
+      (m) => convertMemberKeyToString(m.pubkey) === signer.toString()
     ) ?? {};
   if (!permissions) {
     throw new Error("No permissions found for the current member.");
@@ -150,9 +150,12 @@ export async function resolveTransactionManagerSigner({
     permissions,
     Permission.ExecuteTransaction
   );
-  // If member has full signing rights, no transaction manager is needed
+  // If signer has full signing rights, no transaction manager is needed
   if (hasInitiate && hasVote && hasExecute) {
     return null;
+  }
+  if (!hasVote || !hasExecute) {
+    throw new Error("Signer lacks the required Vote/Execute permissions.");
   }
 
   // Otherwise, require a transaction manager + vote + execute rights
@@ -161,9 +164,6 @@ export async function resolveTransactionManagerSigner({
   );
   if (!transactionManager) {
     throw new Error("No transaction manager available in wallet.");
-  }
-  if (!hasVote || !hasExecute) {
-    throw new Error("Member lacks the required Vote/Execute permissions.");
   }
 
   const transactionManagerAddress = address(

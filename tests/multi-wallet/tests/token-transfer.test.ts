@@ -128,7 +128,7 @@ export function runTokenTransferTest() {
       await fundMultiWalletVault(ctx, BigInt(10 ** 8));
 
       try {
-        const mockResult = await mockAuthenticationResponse(
+        const signedSigner = await mockAuthenticationResponse(
           getSolanaRpc(),
           {
             transactionActionType: "transfer_intent",
@@ -142,13 +142,11 @@ export function runTokenTransferTest() {
           secp256r1Keys.privateKey,
           ctx
         );
-        const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey, {
-          ...mockResult,
-        });
+
         const tokenTransfer = await tokenTransferIntent({
           index: ctx.index,
           payer: ctx.payer,
-          signers: [secp256r1Key, transactionManager],
+          signers: [signedSigner, transactionManager],
           destination: ctx.wallet.address,
           amount: 10 ** 5,
           compressed: ctx.compressed,

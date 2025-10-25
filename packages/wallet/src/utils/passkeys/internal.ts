@@ -1,16 +1,6 @@
-import type {
-  AuthenticationResponseJSON,
-  PublicKeyCredentialHint,
-} from "@simplewebauthn/server";
-import { getBase58Encoder, getProgramDerivedAddress } from "gill";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
-import type {
-  MessageAuthenticationResponse,
-  ParsedAuthenticationResponse,
-  TransactionAuthenticationResponse,
-  TransactionPayload,
-} from "../../types";
-import { convertSignatureDERtoRS, createPopUp } from "./helper";
+import type { PublicKeyCredentialHint } from "@simplewebauthn/server";
+import { Secp256r1Key, type TransactionPayload } from "../../types";
+import { createPopUp } from "./helper";
 
 let activeMessageHandler: ((event: MessageEvent) => void) | null = null;
 const HEARTBEAT_INTERVAL = 2000;
@@ -33,12 +23,12 @@ export async function openAuthUrl({
     type: "transaction" | "message";
     payload: string;
   };
-  signer?: string;
+  signer?: Secp256r1Key;
   hints?: PublicKeyCredentialHint[];
   popUp?: Window | null;
   timeout?: number;
   debug?: boolean;
-}): Promise<TransactionAuthenticationResponse | MessageAuthenticationResponse> {
+}) {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }
@@ -100,7 +90,7 @@ export async function openAuthUrl({
             {
               type: "popup-init",
               payload: {
-                signer,
+                signer: signer?.toString(),
                 hints,
                 data,
                 additionalInfo,
@@ -206,43 +196,4 @@ export function hexToUint8Array(hex: string): Uint8Array {
     bytes[i] = parseInt(hex.slice(i * 2, i * 2 + 2), 16);
   }
   return bytes;
-}
-
-export async function parseAuthenticationResponse(
-  payload: TransactionAuthenticationResponse
-): Promise<ParsedAuthenticationResponse> {
-  const { authenticatorData, clientDataJSON, signature } = (
-    payload.authResponse as AuthenticationResponseJSON
-  ).response;
-
-  const authData = new Uint8Array(base64URLStringToBuffer(authenticatorData));
-
-  const clientDataJson = new Uint8Array(
-    base64URLStringToBuffer(clientDataJSON)
-  );
-
-  const convertedSignature = convertSignatureDERtoRS(
-    new Uint8Array(base64URLStringToBuffer(signature))
-  );
-
-  const [domainConfig] = await getProgramDerivedAddress({
-    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-    seeds: [
-      new TextEncoder().encode("domain_config"),
-      authData.subarray(0, 32),
-    ],
-  });
-
-  return {
-    signer: payload.signer,
-    verifyArgs: {
-      clientDataJson,
-      slotNumber: BigInt(payload.slotNumber),
-      slotHash: new Uint8Array(getBase58Encoder().encode(payload.slotHash)),
-    },
-    domainConfig,
-    authData,
-    signature: convertedSignature,
-    additionalInfo: payload.additionalInfo,
-  };
 }

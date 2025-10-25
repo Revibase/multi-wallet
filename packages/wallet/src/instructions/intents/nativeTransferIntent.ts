@@ -9,7 +9,7 @@ import {
   getNativeTransferIntentInstruction,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
 } from "../../generated";
-import { Secp256r1Key } from "../../types";
+import { SignedSecp256r1Key } from "../../types";
 import {
   getSettingsFromIndex,
   getWalletAddressFromSettings,
@@ -39,7 +39,7 @@ export async function nativeTransferIntent({
   index: number | bigint;
   destination: Address;
   amount: number | bigint;
-  signers: (TransactionSigner | Secp256r1Key)[];
+  signers: (TransactionSigner | SignedSecp256r1Key)[];
   payer?: TransactionSigner;
   compressed?: boolean;
   cachedAccounts?: Map<string, any>;
@@ -53,7 +53,7 @@ export async function nativeTransferIntent({
   const secp256r1VerifyInput: Secp256r1VerifyInput = [];
   const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];
   for (const x of dedupSigners) {
-    if (x instanceof Secp256r1Key) {
+    if (x instanceof SignedSecp256r1Key) {
       const index = secp256r1VerifyInput.length;
       const { domainConfig, verifyArgs, signature, publicKey, message } =
         extractSecp256r1VerificationArgs(x, index);

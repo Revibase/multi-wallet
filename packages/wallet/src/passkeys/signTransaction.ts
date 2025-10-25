@@ -1,16 +1,16 @@
-import type {
-  BasePayload,
-  TransactionAuthenticationResponse,
-  TransactionPayload,
+import {
+  Secp256r1Key,
+  type BasePayload,
+  type TransactionAuthenticationResponse,
+  type TransactionPayload,
 } from "../types";
 import { getAuthUrl, getGlobalAdditonalInfo } from "../utils";
 import {
   convertTransactionPayload,
   openAuthUrl,
-  parseAuthenticationResponse,
 } from "../utils/passkeys/internal";
 
-export async function signTransaction({
+export async function signTransactionWithPasskey({
   authUrl = getAuthUrl(),
   transactionActionType,
   transactionAddress,
@@ -36,6 +36,9 @@ export async function signTransaction({
     popUp,
     debug,
     hints,
-  })) as TransactionAuthenticationResponse;
-  return await parseAuthenticationResponse(authResponse);
+  })) as any;
+  return {
+    ...authResponse,
+    signer: new Secp256r1Key(authResponse.signer),
+  } as TransactionAuthenticationResponse;
 }

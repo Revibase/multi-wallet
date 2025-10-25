@@ -1,8 +1,18 @@
 import { type CBORType, decodeCBOR, encodeCBOR } from "@levischuck/tiny-cbor";
 import { p256 } from "@noble/curves/p256";
+import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import { getBase58Decoder, getBase58Encoder } from "gill";
+import {
+  type TransactionAuthenticationResponse,
+  SignedSecp256r1Key,
+} from "../../types";
+import { getDomainConfigAddress } from "../helper";
 import { getAuthUrl } from "../initialize";
-import { hexToUint8Array, uint8ArrayToHex } from "./internal";
+import {
+  base64URLStringToBuffer,
+  hexToUint8Array,
+  uint8ArrayToHex,
+} from "./internal";
 
 export function createPopUp(url = `${getAuthUrl()}/loading`) {
   if (typeof window === "undefined") {
@@ -135,4 +145,36 @@ export function convertSignatureDERtoRS(derSig: Uint8Array): Uint8Array {
   const sPad = hexToUint8Array(sHex);
 
   return new Uint8Array([...rPad, ...sPad]);
+}
+export async function getSignedSecp256r1Key(
+  payload: TransactionAuthenticationResponse
+): Promise<SignedSecp256r1Key> {
+  const { authenticatorData, clientDataJSON, signature } = (
+    payload.authResponse as AuthenticationResponseJSON
+  ).response;
+
+  const authData = new Uint8Array(base64URLStringToBuffer(authenticatorData));
+
+  const clientDataJson = new Uint8Array(
+    base64URLStringToBuffer(clientDataJSON)
+  );
+
+  const convertedSignature = convertSignatureDERtoRS(
+    new Uint8Array(base64URLStringToBuffer(signature))
+  );
+
+  const domainConfig = await getDomainConfigAddress({
+    rpIdHash: authData.subarray(0, 32),
+  });
+
+  return new SignedSecp256r1Key(payload.signer.toString(), {
+    verifyArgs: {
+      clientDataJson,
+      slotNumber: BigInt(payload.slotNumber),
+      slotHash: new Uint8Array(getBase58Encoder().encode(payload.slotHash)),
+    },
+    domainConfig,
+    authData,
+    signature: convertedSignature,
+  });
 }

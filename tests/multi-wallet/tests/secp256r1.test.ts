@@ -124,7 +124,7 @@ export function runSecp256r1Tests() {
       );
 
       const settings = await getSettingsFromIndex(globalCounter.data.index);
-      const mockResult = await mockAuthenticationResponse(
+      const signedSigner = await mockAuthenticationResponse(
         getSolanaRpc(),
         {
           transactionActionType: "add_new_member",
@@ -135,13 +135,9 @@ export function runSecp256r1Tests() {
         ctx
       );
 
-      const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey, {
-        ...mockResult,
-      });
-
       const { instructions, secp256r1VerifyInput } = await createWallet({
         payer: ctx.payer,
-        initialMember: secp256r1Key,
+        initialMember: signedSigner,
         index: globalCounter.data.index,
         compressed: true,
         setAsDelegate: true,

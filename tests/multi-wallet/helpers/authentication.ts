@@ -1,9 +1,6 @@
 import { p256 } from "@noble/curves/p256";
 import { sha256 } from "@noble/hashes/sha256";
-import type {
-  ParsedAuthenticationResponse,
-  TransactionPayload,
-} from "@revibase/wallet";
+import { SignedSecp256r1Key, type TransactionPayload } from "@revibase/wallet";
 import {
   address,
   type GetAccountInfoApi,
@@ -70,7 +67,7 @@ export async function mockAuthenticationResponse(
   transaction: TransactionPayload,
   privateKey: Uint8Array,
   ctx: TestContext
-): Promise<ParsedAuthenticationResponse> {
+): Promise<SignedSecp256r1Key> {
   const flags = new Uint8Array([0x01]); // User present
   const signCount = new Uint8Array([0, 0, 0, 1]); // Sign counter
   const mockAuthenticatorData = new Uint8Array([
@@ -116,17 +113,17 @@ export async function mockAuthenticationResponse(
     })
     .toBytes("compact");
 
-  return {
-    verifyArgs: {
-      clientDataJson: clientDataJSONBytes,
-      slotNumber: BigInt(slotNumber ?? 0),
-      slotHash: new Uint8Array(getBase58Encoder().encode(slotHash)),
-    },
-    signer: getBase58Decoder().decode(
-      crypto.getRandomValues(new Uint8Array(32))
-    ),
-    authData: mockAuthenticatorData,
-    domainConfig: ctx.domainConfig,
-    signature,
-  };
+  return new SignedSecp256r1Key(
+    getBase58Decoder().decode(crypto.getRandomValues(new Uint8Array(32))),
+    {
+      verifyArgs: {
+        clientDataJson: clientDataJSONBytes,
+        slotNumber: BigInt(slotNumber ?? 0),
+        slotHash: new Uint8Array(getBase58Encoder().encode(slotHash)),
+      },
+      authData: mockAuthenticatorData,
+      domainConfig: ctx.domainConfig,
+      signature,
+    }
+  );
 }

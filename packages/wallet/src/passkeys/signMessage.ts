@@ -1,12 +1,13 @@
-import type {
-  BasePayload,
-  MessageAuthenticationResponse,
-  MessagePayload,
+import {
+  Secp256r1Key,
+  type BasePayload,
+  type MessageAuthenticationResponse,
+  type MessagePayload,
 } from "../types";
 import { getAuthUrl, getGlobalAdditonalInfo } from "../utils";
 import { openAuthUrl } from "../utils/passkeys/internal";
 
-export async function signMessage({
+export async function signMessageWithPasskey({
   authUrl = getAuthUrl(),
   message,
   signer,
@@ -15,7 +16,7 @@ export async function signMessage({
   debug,
   additionalInfo = getGlobalAdditonalInfo(),
 }: MessagePayload & BasePayload) {
-  return (await openAuthUrl({
+  const authResponse = (await openAuthUrl({
     authUrl: `${authUrl}/?redirectUrl=${encodeURIComponent(window.origin)}`,
     data: { type: "message", payload: message },
     signer,
@@ -23,5 +24,9 @@ export async function signMessage({
     debug,
     hints,
     additionalInfo,
-  })) as MessageAuthenticationResponse;
+  })) as any;
+  return {
+    ...authResponse,
+    signer: new Secp256r1Key(authResponse.signer),
+  } as MessageAuthenticationResponse;
 }

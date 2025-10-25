@@ -1,7 +1,7 @@
 import { address } from "gill";
 import {
-  signMessage as signPasskeyMessage,
-  signTransaction as signPasskeyTransaction,
+  signMessageWithPasskey,
+  signTransactionWithPasskey,
   verifyMessage,
 } from "../passkeys";
 import {
@@ -16,6 +16,7 @@ import {
   fetchUserAccountData,
   getFeePayer,
   getSettingsFromIndex,
+  getSignedSecp256r1Key,
   getTransactionBufferAddress,
   getWalletAddressFromIndex,
 } from "../utils";
@@ -71,9 +72,7 @@ export function createRevibaseAdapter(): Revibase {
         !authResponse.additionalInfo?.walletAddress ||
         !authResponse.additionalInfo.settingsIndex
       ) {
-        const userAccountData = await fetchUserAccountData(
-          new Secp256r1Key(authResponse.signer)
-        );
+        const userAccountData = await fetchUserAccountData(authResponse.signer);
         if (userAccountData.settingsIndex.__option === "None") {
           throw Error("User has no delegated wallet");
         }
@@ -86,7 +85,7 @@ export function createRevibaseAdapter(): Revibase {
         this.index = authResponse.additionalInfo.settingsIndex;
       }
 
-      this.member = authResponse.signer;
+      this.member = authResponse.signer.toString();
       window.localStorage.setItem(
         "Revibase:account",
         JSON.stringify({
@@ -106,8 +105,8 @@ export function createRevibaseAdapter(): Revibase {
       emit("disconnect");
     },
     signMessage: async function (input) {
-      const response = await signPasskeyMessage({
-        signer: this.member ?? undefined,
+      const response = await signMessageWithPasskey({
+        signer: this.member ? new Secp256r1Key(this.member) : undefined,
         message: input,
       });
       return response;
@@ -148,9 +147,10 @@ export function createRevibaseAdapter(): Revibase {
             addressesByLookupTableAddress,
           }),
         ]);
+      const signer = new Secp256r1Key(this.member);
 
       const transactionManagerSigner = await resolveTransactionManagerSigner({
-        member: this.member,
+        signer,
         index: this.index,
         transactionMessageBytes,
         cachedAccounts,
@@ -173,14 +173,12 @@ export function createRevibaseAdapter(): Revibase {
         const bufferIndex = Math.round(Math.random() * 255);
         const transactionBufferAddress = await getTransactionBufferAddress(
           settings,
-          transactionManagerSigner
-            ? transactionManagerSigner.address
-            : new Secp256r1Key(this.member),
+          transactionManagerSigner ? transactionManagerSigner.address : signer,
           bufferIndex
         );
-        const [signedTx, jitoBundlesTipAmount] = await Promise.all([
-          signPasskeyTransaction({
-            signer: this.member,
+        const [authResponse, jitoBundlesTipAmount] = await Promise.all([
+          signTransactionWithPasskey({
+            signer,
             transactionActionType: transactionManagerSigner
               ? "execute"
               : "create_with_preauthorized_execution",
@@ -190,17 +188,14 @@ export function createRevibaseAdapter(): Revibase {
           }),
           estimateJitoTips(jitoTipsConfig),
         ]);
+        const signedSigner = await getSignedSecp256r1Key(authResponse);
         const result = await prepareTransactionBundle({
           compressed: settingsData.isCompressed,
           index: this.index,
           bufferIndex,
           transactionMessageBytes,
-          creator:
-            transactionManagerSigner ??
-            new Secp256r1Key(signedTx.signer, signedTx),
-          executor: transactionManagerSigner
-            ? new Secp256r1Key(signedTx.signer, signedTx)
-            : undefined,
+          creator: transactionManagerSigner ?? signedSigner,
+          executor: transactionManagerSigner ? signedSigner : undefined,
           jitoBundlesTipAmount,
           payer,
           additionalSigners,
@@ -210,17 +205,18 @@ export function createRevibaseAdapter(): Revibase {
 
         return result;
       } else {
-        const signedTx = await signPasskeyTransaction({
-          signer: this.member,
+        const authResponse = await signTransactionWithPasskey({
+          signer,
           transactionActionType: "sync",
           transactionAddress: settings.toString(),
           transactionMessageBytes: new Uint8Array(transactionMessageBytes),
           popUp,
         });
+        const signedSigner = await getSignedSecp256r1Key(authResponse);
         const result = await prepareTransactionSync({
           compressed: settingsData.isCompressed,
           signers: [
-            new Secp256r1Key(signedTx.signer, signedTx),
+            signedSigner,
             ...(additionalSigners ?? []),
             ...(transactionManagerSigner ? [transactionManagerSigner] : []),
           ],

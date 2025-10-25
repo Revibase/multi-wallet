@@ -4,7 +4,7 @@ import {
   getTransactionBufferCloseCompressedInstruction,
   getTransactionBufferCloseInstruction,
 } from "../../generated";
-import { Secp256r1Key } from "../../types";
+import { SignedSecp256r1Key } from "../../types";
 import { getSolanaRpc } from "../../utils";
 import {
   constructSettingsProofArgs,
@@ -22,7 +22,7 @@ export async function closeTransactionBuffer({
   cachedAccounts,
 }: {
   index: bigint | number;
-  closer: TransactionSigner | Secp256r1Key;
+  closer: TransactionSigner | SignedSecp256r1Key;
   transactionBufferAddress: Address;
   payer?: TransactionSigner;
   compressed?: boolean;
@@ -75,7 +75,7 @@ export async function closeTransactionBuffer({
         slotHashSysvar,
         transactionBuffer: transactionBufferAddress,
         domainConfig,
-        closer: closer instanceof Secp256r1Key ? undefined : closer,
+        closer: closer instanceof SignedSecp256r1Key ? undefined : closer,
         rentCollector: transactionBuffer.data.payer,
         secp256r1VerifyArgs: verifyArgs,
         settingsReadonlyArgs,
@@ -91,7 +91,7 @@ export async function closeTransactionBuffer({
         slotHashSysvar,
         transactionBuffer: transactionBufferAddress,
         domainConfig,
-        closer: closer instanceof Secp256r1Key ? undefined : closer,
+        closer: closer instanceof SignedSecp256r1Key ? undefined : closer,
         settings,
         payer: transactionBuffer.data.payer,
         secp256r1VerifyArgs: verifyArgs,

@@ -13,7 +13,7 @@ import {
   type Secp256r1VerifyInput,
   voteTransactionBuffer,
 } from "../instructions";
-import { Secp256r1Key } from "../types";
+import { SignedSecp256r1Key } from "../types";
 import type { TransactionDetails } from "../types/transaction";
 import { getSettingsFromIndex, getTransactionBufferAddress } from "../utils";
 import {
@@ -26,9 +26,9 @@ interface CreateTransactionBundleArgs {
   index: bigint | number;
   transactionMessageBytes: ReadonlyUint8Array;
   bufferIndex?: number;
-  creator: TransactionSigner | Secp256r1Key;
-  additionalVoters?: (TransactionSigner | Secp256r1Key)[];
-  executor?: TransactionSigner | Secp256r1Key;
+  creator: TransactionSigner | SignedSecp256r1Key;
+  additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
+  executor?: TransactionSigner | SignedSecp256r1Key;
   additionalSigners?: TransactionSigner[];
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   jitoBundlesTipAmount?: number;
@@ -53,13 +53,13 @@ export async function prepareTransactionBundle({
   compressed = false,
   chunkSize = Math.ceil(transactionMessageBytes.length / 2),
   cachedAccounts,
-}: CreateTransactionBundleArgs) {
+}: CreateTransactionBundleArgs): Promise<TransactionDetails[]> {
   // --- Stage 1: Setup Addresses ---
   const [settings, transactionBufferAddress] = await Promise.all([
     getSettingsFromIndex(index),
     getTransactionBufferAddress(
       await getSettingsFromIndex(index),
-      creator instanceof Secp256r1Key ? creator : creator.address,
+      creator instanceof SignedSecp256r1Key ? creator : creator.address,
       bufferIndex
     ),
   ]);
