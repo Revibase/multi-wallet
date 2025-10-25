@@ -7,7 +7,7 @@ import {
   executeTransactionSync,
   type Secp256r1VerifyInput,
 } from "../instructions";
-import { type BundleResponse, Secp256r1Key } from "../types";
+import { Secp256r1Key, type TransactionDetails } from "../types";
 
 interface CreateTransactionSyncArgs {
   payer: TransactionSigner;
@@ -31,7 +31,7 @@ export async function prepareTransactionSync({
   cachedAccounts,
   compressed = false,
   simulateProof = false,
-}: CreateTransactionSyncArgs): Promise<BundleResponse> {
+}: CreateTransactionSyncArgs): Promise<TransactionDetails> {
   const { instructions, addressLookupTableAccounts } =
     await executeTransactionSync({
       index,
@@ -46,9 +46,8 @@ export async function prepareTransactionSync({
     });
 
   return {
-    id: "Execute Transaction Sync",
     payer,
-    ixs: instructions,
-    addressLookupTableAccounts,
+    instructions,
+    addressesByLookupTableAddress: addressLookupTableAccounts,
   };
 }

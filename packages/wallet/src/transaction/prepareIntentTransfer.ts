@@ -8,9 +8,12 @@ import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 import { nativeTransferIntent } from "../instructions/intents/nativeTransferIntent";
 import { tokenTransferIntent } from "../instructions/intents/tokenTransferIntent";
 import { signTransaction } from "../passkeys";
-import { Secp256r1Key, type BasePayload } from "../types";
+import {
+  Secp256r1Key,
+  type BasePayload,
+  type TransactionDetails,
+} from "../types";
 import { fetchSettingsData, fetchUserAccountData, getFeePayer } from "../utils";
-import { sendNonBundleTransaction } from "../utils/adapter";
 import { resolveTransactionManagerSigner } from "../utils/helper";
 
 interface TransferIntentArgs extends BasePayload {
@@ -28,7 +31,7 @@ interface TransferIntentArgs extends BasePayload {
  * @param mint If no mint is provided, Native SOL will be used for the transfer
  * @returns
  */
-export async function executeIntentTransfers({
+export async function prepareIntentTransfer({
   destination,
   amount,
   mint,
@@ -81,7 +84,7 @@ export async function executeIntentTransfers({
     ? [primarySigner, transactionManagerSigner]
     : [primarySigner];
 
-  const ixs = mint
+  const instructions = mint
     ? await tokenTransferIntent({
         index,
         amount,
@@ -101,9 +104,9 @@ export async function executeIntentTransfers({
         cachedAccounts,
       });
 
-  return await sendNonBundleTransaction(
-    ixs,
+  return {
+    instructions,
     payer,
-    addressByLookUpTableAddress
-  );
+    addressByLookUpTableAddress,
+  } as TransactionDetails;
 }

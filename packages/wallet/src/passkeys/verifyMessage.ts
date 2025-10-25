@@ -8,12 +8,12 @@ export async function verifyMessage({
   message,
   response,
   expectedOrigin = getAuthUrl(),
-  expectedRPID = REVIBASE_RP_ID,
+  expectedRpId = REVIBASE_RP_ID,
 }: {
   message: string;
   response: MessageAuthenticationResponse;
   expectedOrigin?: string;
-  expectedRPID?: string;
+  expectedRpId?: string;
 }): Promise<boolean> {
   const { verified } = await verifyAuthenticationResponse({
     response: response.authResponse,
@@ -21,7 +21,7 @@ export async function verifyMessage({
       new TextEncoder().encode(message)
     ),
     expectedOrigin,
-    expectedRPID,
+    expectedRPID: expectedRpId,
     requireUserVerification: false,
     credential: {
       id: response.authResponse.id,

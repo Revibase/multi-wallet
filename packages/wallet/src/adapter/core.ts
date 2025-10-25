@@ -19,15 +19,13 @@ import {
   getTransactionBufferAddress,
   getWalletAddressFromIndex,
 } from "../utils";
+import { resolveTransactionManagerSigner } from "../utils/helper";
 import {
   createSignInMessageText,
   estimateJitoTips,
   estimateTransactionSizeExceedLimit,
-  sendBundleTransaction,
-  sendNonBundleTransaction,
   simulateSecp256r1Signer,
-} from "../utils/adapter";
-import { resolveTransactionManagerSigner } from "../utils/helper";
+} from "../utils/transaction/internal";
 import type { Revibase, RevibaseEvent } from "./window";
 
 export function createRevibaseAdapter(): Revibase {
@@ -119,11 +117,11 @@ export function createRevibaseAdapter(): Revibase {
         message: input.message,
         response: input.authResponse,
         expectedOrigin: input.expectedOrigin,
-        expectedRPID: input.expectedRPID,
+        expectedRpId: input.expectedRpId,
       });
       return verified;
     },
-    signAndSendTransaction: async function (input) {
+    signTransaction: async function (input) {
       if (!this.member || !this.index || !this.publicKey) {
         throw new Error(
           "Wallet is not connected or missing member/index/public key."
@@ -136,6 +134,7 @@ export function createRevibaseAdapter(): Revibase {
         instructions,
         additionalSigners,
         cachedAccounts = new Map(),
+        jitoTipsConfig,
       } = input;
 
       const [settingsData, settings, payer, transactionMessageBytes] =
@@ -189,7 +188,7 @@ export function createRevibaseAdapter(): Revibase {
             transactionMessageBytes: new Uint8Array(transactionMessageBytes),
             popUp,
           }),
-          estimateJitoTips(),
+          estimateJitoTips(jitoTipsConfig),
         ]);
         const result = await prepareTransactionBundle({
           compressed: settingsData.isCompressed,
@@ -208,7 +207,8 @@ export function createRevibaseAdapter(): Revibase {
           addressesByLookupTableAddress,
           cachedAccounts,
         });
-        return await sendBundleTransaction(result);
+
+        return result;
       } else {
         const signedTx = await signPasskeyTransaction({
           signer: this.member,
@@ -230,11 +230,7 @@ export function createRevibaseAdapter(): Revibase {
           addressesByLookupTableAddress,
           cachedAccounts,
         });
-        return await sendNonBundleTransaction(
-          result.ixs,
-          result.payer,
-          result.addressLookupTableAccounts
-        );
+        return [result];
       }
     },
 

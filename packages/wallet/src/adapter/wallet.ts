@@ -10,12 +10,12 @@ import type {
   Wallet,
 } from "@wallet-standard/core";
 import { address, getAddressEncoder } from "gill";
-import { bytesEqual } from "../utils/adapter/helper.js";
+import { bytesEqual } from "../utils/transaction/internal";
 import type {
-  RevibaseSignAndSendTransactionFeature,
-  RevibaseSignAndSendTransactionMethod,
   RevibaseSignMessageFeature,
   RevibaseSignMessageMethod,
+  RevibaseSignTransactionFeature,
+  RevibaseSignTransactionMethod,
   RevibaseVerifySignedMessageFeature,
   RevibaseVerifySignedMessageMethod,
 } from "./features.js";
@@ -60,7 +60,7 @@ export class RevibaseWallet implements Wallet {
     StandardEventsFeature &
     RevibaseSignMessageFeature &
     RevibaseVerifySignedMessageFeature &
-    RevibaseSignAndSendTransactionFeature &
+    RevibaseSignTransactionFeature &
     RevibaseFeature {
     return {
       "standard:connect": {
@@ -75,9 +75,9 @@ export class RevibaseWallet implements Wallet {
         version: "1.0.0",
         on: this.#on,
       },
-      "revibase:SignAndSendTransaction": {
+      "revibase:SignTransaction": {
         version: "1.0.0",
-        signAndSendTransaction: this.#signAndSendTransaction,
+        signAndSendTransaction: this.#signTransaction,
       },
       "revibase:SignMessage": {
         version: "1.0.0",
@@ -194,8 +194,8 @@ export class RevibaseWallet implements Wallet {
     await this.#revibase.disconnect();
   };
 
-  #signAndSendTransaction: RevibaseSignAndSendTransactionMethod = (input) => {
-    return this.#revibase.signAndSendTransaction(input);
+  #signTransaction: RevibaseSignTransactionMethod = (input) => {
+    return this.#revibase.signTransaction(input);
   };
 
   #signMessage: RevibaseSignMessageMethod = (input) => {

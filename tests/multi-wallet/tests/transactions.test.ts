@@ -82,9 +82,9 @@ export function runTransactionTests() {
         });
 
         await sendTransaction(
-          [...result.ixs],
+          [...result.instructions],
           ctx.payer,
-          result.addressLookupTableAccounts
+          result.addressesByLookupTableAddress
         );
         // Verify transaction was successful
         const accountData = await fetchSettingsData(ctx.index);

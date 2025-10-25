@@ -3,18 +3,23 @@ import type {
   Instruction,
   TransactionSigner,
 } from "gill";
-import type { MessageAuthenticationResponse } from "../types";
+import type {
+  JitoTipsConfig,
+  MessageAuthenticationResponse,
+  TransactionDetails,
+} from "../types";
 
-export const RevibaseSignAndSendTransaction = "revibase:SignAndSendTransaction";
-export type RevibaseSignAndSendTransactionMethod = (input: {
+export const RevibaseSignTransaction = "revibase:SignTransaction";
+export type RevibaseSignTransactionMethod = (input: {
   instructions: Instruction[];
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   additionalSigners?: TransactionSigner[];
   cachedAccounts?: Map<string, any>;
-}) => Promise<string>;
-export type RevibaseSignAndSendTransactionFeature = {
+  jitoTipsConfig?: JitoTipsConfig;
+}) => Promise<TransactionDetails[]>;
+export type RevibaseSignTransactionFeature = {
   /** Name of the feature. */
-  readonly [RevibaseSignAndSendTransaction]: {
+  readonly [RevibaseSignTransaction]: {
     /** Version of the feature API. */
     readonly version: "1.0.0";
 
@@ -27,7 +32,7 @@ export type RevibaseSignAndSendTransactionFeature = {
      *
      * @return Transaction Signature.
      */
-    readonly signAndSendTransaction: RevibaseSignAndSendTransactionMethod;
+    readonly signAndSendTransaction: RevibaseSignTransactionMethod;
   };
 };
 
@@ -56,6 +61,8 @@ export const RevibaseVerifySignedMessage = "revibase:VerifySignedMessage";
 export type RevibaseVerifySignedMessageMethod = (input: {
   message: string;
   authResponse: MessageAuthenticationResponse;
+  expectedOrigin?: string;
+  expectedRpId?: string;
 }) => Promise<boolean>;
 export type RevibaseVerifySignedMessageFeature = {
   /** Name of the feature. */

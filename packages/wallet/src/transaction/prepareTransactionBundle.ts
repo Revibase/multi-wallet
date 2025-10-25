@@ -14,7 +14,7 @@ import {
   voteTransactionBuffer,
 } from "../instructions";
 import { Secp256r1Key } from "../types";
-import type { BundleResponse } from "../types/bundle";
+import type { TransactionDetails } from "../types/transaction";
 import { getSettingsFromIndex, getTransactionBufferAddress } from "../utils";
 import {
   constructSettingsProofArgs,
@@ -140,22 +140,18 @@ export async function prepareTransactionBundle({
     });
 
   // --- Stage 5: Assemble transactions ---
-  const buildTx = (
-    id: BundleResponse["id"],
-    ixs: Instruction[]
-  ): BundleResponse => ({
-    id,
+  const buildTx = (instructions: Instruction[]): TransactionDetails => ({
     payer,
-    ixs,
-    addressLookupTableAccounts,
+    instructions,
+    addressesByLookupTableAddress: addressLookupTableAccounts,
   });
 
   const txs = [
-    buildTx("Create Transaction Buffer", createIxs),
-    ...extendIxs.map((ix) => buildTx("Extend Transaction Buffer", [ix])),
-    ...(voteIxs.length ? [buildTx("Vote Transaction", voteIxs.flat())] : []),
-    buildTx("Execute Transaction Approval", executeApprovalIxs),
-    buildTx("Execute Transaction", executeIxs),
+    buildTx(createIxs),
+    ...extendIxs.map((ix) => buildTx([ix])),
+    ...(voteIxs.length ? [buildTx(voteIxs.flat())] : []),
+    buildTx(executeApprovalIxs),
+    buildTx(executeIxs),
   ];
 
   return txs;

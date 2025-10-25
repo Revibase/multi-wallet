@@ -4,11 +4,10 @@ import {
   type WalletAccount,
 } from "@wallet-standard/core";
 import type {
-  AddressesByLookupTableAddress,
-  Instruction,
-  TransactionSigner,
-} from "gill";
-import type { MessageAuthenticationResponse } from "../types";
+  RevibaseSignMessageMethod,
+  RevibaseSignTransactionMethod,
+  RevibaseVerifySignedMessageMethod,
+} from "./features";
 
 export interface RevibaseEvent {
   connect(...args: unknown[]): unknown;
@@ -35,19 +34,9 @@ export interface Revibase extends RevibaseEventEmitter {
   index: number | null;
   connect(input: StandardConnectInput | undefined): Promise<void>;
   disconnect(): Promise<void>;
-  signAndSendTransaction(input: {
-    instructions: Instruction[];
-    addressesByLookupTableAddress?: AddressesByLookupTableAddress;
-    additionalSigners?: TransactionSigner[];
-    cachedAccounts?: Map<string, any>;
-  }): Promise<string>;
-  signMessage(input: string): Promise<MessageAuthenticationResponse>;
-  verify(input: {
-    message: string;
-    authResponse: MessageAuthenticationResponse;
-    expectedOrigin?: string;
-    expectedRPID?: string;
-  }): Promise<boolean>;
+  signTransaction: RevibaseSignTransactionMethod;
+  signMessage: RevibaseSignMessageMethod;
+  verify: RevibaseVerifySignedMessageMethod;
 }
 
 export class RevibaseWalletAccount extends ReadonlyWalletAccount {

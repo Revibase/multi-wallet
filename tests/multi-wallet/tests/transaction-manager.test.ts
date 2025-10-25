@@ -72,17 +72,20 @@ export function runTransactionManagerTests() {
         instructions,
         addressesByLookupTableAddress: ctx.addressLookUpTable,
       });
-      const { ixs, payer, addressLookupTableAccounts } =
-        await prepareTransactionSync({
-          compressed: ctx.compressed,
-          payer: ctx.payer,
-          index: ctx.index,
-          signers: [ctx.wallet],
-          transactionMessageBytes,
-          secp256r1VerifyInput,
-        });
+      const {
+        instructions: ixs,
+        payer,
+        addressesByLookupTableAddress,
+      } = await prepareTransactionSync({
+        compressed: ctx.compressed,
+        payer: ctx.payer,
+        index: ctx.index,
+        signers: [ctx.wallet],
+        transactionMessageBytes,
+        secp256r1VerifyInput,
+      });
 
-      await sendTransaction(ixs, payer, addressLookupTableAccounts);
+      await sendTransaction(ixs, payer, addressesByLookupTableAddress);
 
       // Verify member was added
       const userAccountData = await fetchUserAccountData(

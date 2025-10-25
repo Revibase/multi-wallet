@@ -52,17 +52,20 @@ export function runMemberManagementTests() {
         instructions,
         addressesByLookupTableAddress: ctx.addressLookUpTable,
       });
-      const { ixs, payer, addressLookupTableAccounts } =
-        await prepareTransactionSync({
-          compressed: ctx.compressed,
-          payer: ctx.payer,
-          index: ctx.index,
-          signers: [ctx.wallet],
-          transactionMessageBytes,
-          secp256r1VerifyInput,
-        });
+      const {
+        instructions: ixs,
+        payer,
+        addressesByLookupTableAddress,
+      } = await prepareTransactionSync({
+        compressed: ctx.compressed,
+        payer: ctx.payer,
+        index: ctx.index,
+        signers: [ctx.wallet],
+        transactionMessageBytes,
+        secp256r1VerifyInput,
+      });
 
-      await sendTransaction(ixs, payer, addressLookupTableAccounts);
+      await sendTransaction(ixs, payer, addressesByLookupTableAddress);
 
       // Verify member was added
       const accountData = await fetchSettingsData(ctx.index);
@@ -114,7 +117,11 @@ export function runMemberManagementTests() {
         secp256r1VerifyInput,
       });
       for (const x of result) {
-        await sendTransaction(x.ixs, x.payer, x.addressLookupTableAccounts);
+        await sendTransaction(
+          x.instructions,
+          x.payer,
+          x.addressesByLookupTableAddress
+        );
       }
       // Verify permissions were updated
       const userAccountData = await fetchUserAccountData(ctx.payer.address);
@@ -159,7 +166,11 @@ export function runMemberManagementTests() {
         secp256r1VerifyInput,
       });
       for (const x of result) {
-        await sendTransaction(x.ixs, x.payer, x.addressLookupTableAccounts);
+        await sendTransaction(
+          x.instructions,
+          x.payer,
+          x.addressesByLookupTableAddress
+        );
       }
       // Verify permissions were updated
       const userAccountData = await fetchUserAccountData(ctx.payer.address);
@@ -202,7 +213,11 @@ export function runMemberManagementTests() {
         secp256r1VerifyInput,
       });
       for (const x of result) {
-        await sendTransaction(x.ixs, x.payer, x.addressLookupTableAccounts);
+        await sendTransaction(
+          x.instructions,
+          x.payer,
+          x.addressesByLookupTableAddress
+        );
       }
       // Verify member was removed
       const accountData = await fetchSettingsData(ctx.index);
