@@ -114,7 +114,7 @@ export function initializeMultiWallet({
   compressionApiEndpoint,
   proverEndpoint,
   authUrl,
-  authorizedClients,
+  authorizedClient,
   additionalInfo,
 }: {
   rpcEndpoint: string;
@@ -123,7 +123,7 @@ export function initializeMultiWallet({
   compressionApiEndpoint?: string;
   proverEndpoint?: string;
   authUrl?: string;
-  authorizedClients?: { publicKey: string; url: string };
+  authorizedClient?: { publicKey: string; url: string };
   additionalInfo?: any;
 }) {
   globalSolanaRpcEndpoint = rpcEndpoint;
@@ -144,7 +144,7 @@ export function initializeMultiWallet({
   globalPayerEndpoint = payerEndpoint ?? null;
   globalJitoTipsConfig = jitoTipsConfig ?? null;
   globalAuthUrl = authUrl ?? null;
-  globalAuthorizedClient = authorizedClients ?? null;
+  globalAuthorizedClient = authorizedClient ?? null;
   globalAdditionalInfo = additionalInfo ?? null;
 
   if (typeof window !== "undefined") {

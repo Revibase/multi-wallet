@@ -210,6 +210,8 @@ export function createSignInMessageText(input: {
 export function simulateSecp256r1Signer() {
   const randomPubkey = crypto.getRandomValues(new Uint8Array(33));
   const signer = new SignedSecp256r1Key(randomPubkey, {
+    originIndex: 0,
+    crossOrigin: false,
     authData: crypto.getRandomValues(new Uint8Array(37)),
     domainConfig: getAddressDecoder().decode(
       crypto.getRandomValues(new Uint8Array(32))
@@ -218,7 +220,8 @@ export function simulateSecp256r1Signer() {
     verifyArgs: {
       slotHash: crypto.getRandomValues(new Uint8Array(32)),
       slotNumber: BigInt(0),
-      truncatedClientDataJson: crypto.getRandomValues(new Uint8Array(250)), // can range from 137 up to 247 (just set it as 250 to be safe)
+      truncatedClientDataJson: crypto.getRandomValues(new Uint8Array(100)),
+      clientDataJson: crypto.getRandomValues(new Uint8Array(250)),
     },
   });
   return signer;

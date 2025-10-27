@@ -2,20 +2,19 @@ import {
   getAddressEncoder,
   getU64Encoder,
   type Address,
-  type AddressesByLookupTableAddress,
+  type Instruction,
 } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
-import { nativeTransferIntent } from "../instructions/intents/nativeTransferIntent";
-import { tokenTransferIntent } from "../instructions/intents/tokenTransferIntent";
-import { signTransactionWithPasskey } from "../passkeys";
-import { type BasePayload, type TransactionDetails } from "../types";
+import { signTransactionWithPasskey } from "../../passkeys";
+import { type BasePayload } from "../../types";
 import {
   fetchSettingsData,
   fetchUserAccountData,
-  getFeePayer,
   getSignedSecp256r1Key,
-} from "../utils";
-import { resolveTransactionManagerSigner } from "../utils/helper";
+} from "../../utils";
+import { resolveTransactionManagerSigner } from "../../utils/helper";
+import { nativeTransferIntent } from "./nativeTransferIntent";
+import { tokenTransferIntent } from "./tokenTransferIntent";
 
 interface TransferIntentArgs extends BasePayload {
   amount: number | bigint;
@@ -23,7 +22,6 @@ interface TransferIntentArgs extends BasePayload {
   mint?: Address;
   tokenProgram?: Address;
   cachedAccounts?: Map<string, any>;
-  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
 }
 
 /**
@@ -31,19 +29,18 @@ interface TransferIntentArgs extends BasePayload {
  * @param mint If no mint is provided, Native SOL will be used for the transfer
  * @returns
  */
-export async function prepareIntentTransfer({
-  destination,
+export async function transferIntent({
   amount,
+  destination,
   mint,
   tokenProgram = TOKEN_PROGRAM_ADDRESS,
+  cachedAccounts = new Map<string, any>(),
   signer,
   popUp,
   authUrl,
   additionalInfo,
-  addressesByLookupTableAddress,
-  cachedAccounts = new Map<string, any>(),
   debug,
-}: TransferIntentArgs): Promise<TransactionDetails> {
+}: TransferIntentArgs): Promise<Instruction[]> {
   const authResponse = await signTransactionWithPasskey({
     transactionActionType: "transfer_intent",
     transactionAddress: mint ? tokenProgram : SYSTEM_PROGRAM_ADDRESS,
@@ -72,10 +69,8 @@ export async function prepareIntentTransfer({
   } else {
     index = authResponse.additionalInfo.settingsIndex;
   }
-  const [settingsData, payer] = await Promise.all([
-    fetchSettingsData(index, cachedAccounts),
-    getFeePayer(),
-  ]);
+  const settingsData = await fetchSettingsData(index, cachedAccounts);
+
   const transactionManagerSigner = await resolveTransactionManagerSigner({
     signer: signedSigner,
     index,
@@ -105,9 +100,5 @@ export async function prepareIntentTransfer({
         cachedAccounts,
       });
 
-  return {
-    instructions,
-    payer,
-    addressesByLookupTableAddress,
-  };
+  return instructions;
 }
