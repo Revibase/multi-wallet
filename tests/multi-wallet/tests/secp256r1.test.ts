@@ -132,6 +132,7 @@ export function runSecp256r1Tests() {
           transactionMessageBytes: new TextEncoder().encode(ctx.rpId),
         },
         secp256r1Keys.privateKey,
+        secp256r1Keys.publicKey,
         ctx
       );
 

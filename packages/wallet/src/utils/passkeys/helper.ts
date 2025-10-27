@@ -1,19 +1,34 @@
 import { type CBORType, decodeCBOR, encodeCBOR } from "@levischuck/tiny-cbor";
 import { p256 } from "@noble/curves/p256";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
-import { getBase58Decoder, getBase58Encoder } from "gill";
+import { type Address, getBase58Decoder, getBase58Encoder } from "gill";
+import { fetchDomainConfig } from "../../generated";
 import {
   type TransactionAuthenticationResponse,
   SignedSecp256r1Key,
 } from "../../types";
 import { getDomainConfigAddress } from "../helper";
-import { getAuthUrl } from "../initialize";
+import { getAuthUrl, getSolanaRpc } from "../initialize";
 import {
   base64URLStringToBuffer,
-  hexToUint8Array,
+  convertSignatureDERtoRS,
+  extractAdditionalFields,
+  parseOrigins,
   uint8ArrayToHex,
 } from "./internal";
 
+/**
+ * Opens a popup window for WebAuthn or authentication workflows.
+ *
+ * This helper creates a centered, resizable popup on desktop, and a full-screen view on mobile.
+ * It defaults to the `/loading` route of your configured authentication origin.
+ *
+ * @param url - The URL to load in the popup. Defaults to `${getAuthUrl()}/loading`.
+ * @returns A reference to the newly created popup window, or `null` if blocked by the browser.
+ *
+ * @throws {Error} If called outside a browser environment.
+ *
+ */
 export function createPopUp(url = `${getAuthUrl()}/loading`) {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
@@ -70,6 +85,18 @@ export function createPopUp(url = `${getAuthUrl()}/loading`) {
   return passKeyPopup;
 }
 
+/**
+ * Converts a COSE-encoded P-256 public key (from WebAuthn) into a compressed 33-byte key.
+ *
+ * The COSE format (RFC 8152) includes separate `x` and `y` coordinates. This function decodes
+ * those coordinates, reconstructs the elliptic curve point, and re-encodes it into compressed format.
+ *
+ * @param publicKey - The COSE-encoded public key as a `Uint8Array` buffer.
+ * @returns The compressed public key as a Base58-decoded `Uint8Array`.
+ *
+ * @example
+ * const compressed = convertPubkeyCoseToCompressed(coseKey);
+ */
 export function convertPubkeyCoseToCompressed(
   publicKey: Uint8Array<ArrayBufferLike>
 ) {
@@ -84,6 +111,18 @@ export function convertPubkeyCoseToCompressed(
   return compressedPubKey;
 }
 
+/**
+ * Converts a compressed P-256 public key into COSE format for WebAuthn compatibility.
+ *
+ * This function decompresses the 33-byte public key, extracts `x` and `y` coordinates,
+ * and encodes them into a COSE-structured CBOR map.
+ *
+ * @param publicKey - The compressed public key as a Base58 string.
+ * @returns The COSE-encoded public key as a `Uint8Array`.
+ *
+ * @example
+ * const coseKey = convertPubkeyCompressedToCose("2vMsnB7P5E7EwXj1LbcfLp...");
+ */
 export function convertPubkeyCompressedToCose(
   publicKey: string
 ): Uint8Array<ArrayBuffer> {
@@ -102,52 +141,29 @@ export function convertPubkeyCompressedToCose(
   return new Uint8Array(encodeCBOR(coseDecodedPublicKey));
 }
 
-export function convertSignatureDERtoRS(derSig: Uint8Array): Uint8Array {
-  if (derSig[0] !== 0x30) throw new Error("Invalid DER sequence");
-
-  const totalLength = derSig[1];
-  let offset = 2;
-
-  // Handle long-form length (uncommon, but DER allows it)
-  if (totalLength > 0x80) {
-    const lengthBytes = totalLength & 0x7f;
-    offset += lengthBytes;
-  }
-
-  if (derSig[offset] !== 0x02) throw new Error("Expected INTEGER for r");
-  const rLen = derSig[offset + 1];
-  const rStart = offset + 2;
-  const r = derSig.slice(rStart, rStart + rLen);
-
-  offset = rStart + rLen;
-  if (derSig[offset] !== 0x02) throw new Error("Expected INTEGER for s");
-  const sLen = derSig[offset + 1];
-  const sStart = offset + 2;
-  const s = derSig.slice(sStart, sStart + sLen);
-
-  // Strip any leading 0x00 padding from r/s if necessary
-  const rStripped = r[0] === 0x00 && r.length > 32 ? r.slice(1) : r;
-  const sStripped = s[0] === 0x00 && s.length > 32 ? s.slice(1) : s;
-
-  if (rStripped.length > 32 || sStripped.length > 32) {
-    throw new Error("r or s length > 32 bytes");
-  }
-
-  // Pad to 32 bytes
-  const rPad = new Uint8Array(32);
-  rPad.set(rStripped, 32 - rStripped.length);
-
-  // Convert s to low-s
-  const HALF_ORDER = p256.Point.CURVE().n >> 1n;
-  const sBig = BigInt("0x" + uint8ArrayToHex(sStripped));
-  const sLow = sBig > HALF_ORDER ? p256.Point.CURVE().n - sBig : sBig;
-  const sHex = sLow.toString(16).padStart(64, "0");
-  const sPad = hexToUint8Array(sHex);
-
-  return new Uint8Array([...rPad, ...sPad]);
-}
+/**
+ * Constructs a `SignedSecp256r1Key` object from a WebAuthn authentication response.
+ *
+ * This function extracts, validates, and converts all fields required for on-chain
+ * secp256r1 signature verification, including:
+ * - Converting signature format (DER → r||s)
+ * - Extracting and truncating `clientDataJSON` to ensure deterministic hashing
+ * - Computing the domain configuration address (via RP ID hash)
+ *
+ * Used as the main transformation step before submitting to Solana programs.
+ *
+ * @param payload - A `TransactionAuthenticationResponse` containing WebAuthn response data.
+ * @param originIndex - The index of the origin that initiated the request (retrievable via `getOriginIndex`).
+ * @param crossOrigin - Indicates whether the request originated from a different origin (per WebAuthn spec).
+ * @returns A `SignedSecp256r1Key` ready for Solana transaction verification.
+ *
+ * @example
+ * const signedKey = await getSignedSecp256r1Key(response, originIndex);
+ */
 export async function getSignedSecp256r1Key(
-  payload: TransactionAuthenticationResponse
+  payload: TransactionAuthenticationResponse,
+  originIndex = 0,
+  crossOrigin = false
 ): Promise<SignedSecp256r1Key> {
   const { authenticatorData, clientDataJSON, signature } = (
     payload.authResponse as AuthenticationResponseJSON
@@ -155,9 +171,11 @@ export async function getSignedSecp256r1Key(
 
   const authData = new Uint8Array(base64URLStringToBuffer(authenticatorData));
 
-  const clientDataJson = new Uint8Array(
-    base64URLStringToBuffer(clientDataJSON)
-  );
+  const clientDataJsonParsed = JSON.parse(
+    new TextDecoder().decode(base64URLStringToBuffer(clientDataJSON))
+  ) as Record<string, any>;
+
+  const truncatedClientDataJson = extractAdditionalFields(clientDataJsonParsed);
 
   const convertedSignature = convertSignatureDERtoRS(
     new Uint8Array(base64URLStringToBuffer(signature))
@@ -169,12 +187,40 @@ export async function getSignedSecp256r1Key(
 
   return new SignedSecp256r1Key(payload.signer.toString(), {
     verifyArgs: {
-      clientDataJson,
+      clientDataJson: new Uint8Array(base64URLStringToBuffer(clientDataJSON)),
+      truncatedClientDataJson,
       slotNumber: BigInt(payload.slotNumber),
       slotHash: new Uint8Array(getBase58Encoder().encode(payload.slotHash)),
     },
     domainConfig,
     authData,
     signature: convertedSignature,
+    originIndex,
+    crossOrigin,
   });
+}
+
+/**
+ * Retrieves the index of a given origin within a domain configuration account.
+ *
+ * This index is used on-chain to verify that a WebAuthn request originated from
+ * an authorized origin associated with a specific domain configuration.
+ *
+ * @param domainConfig - The on-chain address of the domain configuration (see `getDomainConfigAddress`).
+ * @param origin - The full origin URL (e.g., "https://auth.example.com").
+ * @returns The 0-based index of the origin within the domain config.
+ *
+ * @throws {Error} If the origin is not found in the configuration.
+ *
+ * @example
+ * const index = await getOriginIndex(domainConfigAddress, "https://auth.example.com");
+ */
+export async function getOriginIndex(domainConfig: Address, origin: string) {
+  const { data } = await fetchDomainConfig(getSolanaRpc(), domainConfig);
+  const origins = parseOrigins(new Uint8Array(data.origins), data.numOrigins);
+  const index = origins.findIndex((x) => x === origin);
+  if (index === -1) {
+    throw new Error("Origin not found in domain config");
+  }
+  return index;
 }

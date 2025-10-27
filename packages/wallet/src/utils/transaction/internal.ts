@@ -218,7 +218,7 @@ export function simulateSecp256r1Signer() {
     verifyArgs: {
       slotHash: crypto.getRandomValues(new Uint8Array(32)),
       slotNumber: BigInt(0),
-      clientDataJson: crypto.getRandomValues(new Uint8Array(250)), // can range from 137 up to 247 (just set it as 250 to be safe)
+      truncatedClientDataJson: crypto.getRandomValues(new Uint8Array(250)), // can range from 137 up to 247 (just set it as 250 to be safe)
     },
   });
   return signer;

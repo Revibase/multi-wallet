@@ -1046,7 +1046,6 @@ dependencies = [
  "base64 0.22.1",
  "bytemuck",
  "light-sdk",
- "serde_json",
  "solana-address-lookup-table-interface 3.0.0",
  "spl-associated-token-account",
  "spl-token-2022 9.0.0",

@@ -6,8 +6,6 @@ use crate::{
 use anchor_lang::{prelude::*, solana_program::sysvar::instructions};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use light_sdk::light_hasher::{Hasher, Sha256};
-use serde_json::Value;
-use std::str::from_utf8;
 
 #[allow(dead_code)]
 struct Secp256r1SignatureOffsets {
@@ -24,7 +22,9 @@ struct Secp256r1SignatureOffsets {
 pub struct Secp256r1VerifyArgs {
     pub signed_message_index: u8,
     pub slot_number: u64,
-    pub client_data_json: Vec<u8>,
+    pub origin_index: u8,
+    pub cross_origin: bool,
+    pub truncated_client_data_json: Vec<u8>,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, PartialEq)]
@@ -40,38 +40,78 @@ pub struct ChallengeArgs {
 }
 
 impl Secp256r1VerifyArgs {
-    fn decode_base64url(input: &str) -> Result<Vec<u8>> {
-        Ok(URL_SAFE_NO_PAD
-            .decode(input)
-            .map_err(|_| MultisigError::InvalidJson)?)
+    // Taken from Webauthn Spec: https://w3c.github.io/webauthn/#ccdtostring
+    fn ccd_to_string(value: &str, output: &mut Vec<u8>) {
+        output.push(b'"');
+
+        for ch in value.chars() {
+            match ch {
+                // Printable safe range (except " and \)
+                '\u{0020}'..='\u{0021}' | '\u{0023}'..='\u{005B}' | '\u{005D}'..='\u{10FFFF}' => {
+                    let mut buf = [0u8; 4];
+                    let s = ch.encode_utf8(&mut buf);
+                    output.extend_from_slice(s.as_bytes());
+                }
+                '"' => output.extend_from_slice(br#"\""#),
+                '\\' => output.extend_from_slice(br#"\\"#),
+                _ => {
+                    // Write \uXXXX manually without format!
+                    output.extend_from_slice(b"\\u");
+                    let code = ch as u32;
+                    let hex = [
+                        Self::hex_digit((code >> 12) & 0xF),
+                        Self::hex_digit((code >> 8) & 0xF),
+                        Self::hex_digit((code >> 4) & 0xF),
+                        Self::hex_digit(code & 0xF),
+                    ];
+                    output.extend_from_slice(&hex);
+                }
+            }
+        }
+
+        output.push(b'"');
     }
 
-    fn parse_client_data_json(&self) -> Result<(String, String, String)> {
-        let client_data_json_str =
-            from_utf8(&self.client_data_json).map_err(|_| MultisigError::InvalidJson)?;
+    /// Converts 0..=15 to lowercase ASCII hex
+    #[inline]
+    fn hex_digit(n: u32) -> u8 {
+        match n {
+            0..=9 => b'0' + (n as u8),
+            10..=15 => b'a' + ((n as u8) - 10),
+            _ => unreachable!(),
+        }
+    }
 
-        let parsed: Value =
-            serde_json::from_str(client_data_json_str).map_err(|_| MultisigError::InvalidJson)?;
+    /// Taken from Webauthn Spec: https://w3c.github.io/webauthn/#clientdatajson-verification
+    fn generate_client_data_json(
+        &self,
+        expected_origin: &String,
+        expected_challenge: &[u8; 32],
+    ) -> Result<Vec<u8>> {
+        let mut result = Vec::new();
+        // {"type":"webauthn.get"
+        result.extend_from_slice(br#"{"type":"webauthn.get""#);
+        // ,"challenge":...
+        result.extend_from_slice(br#","challenge":"#);
+        Self::ccd_to_string(&URL_SAFE_NO_PAD.encode(expected_challenge), &mut result);
+        // ,"origin":...
+        result.extend_from_slice(br#","origin":"#);
+        Self::ccd_to_string(expected_origin, &mut result);
+        // ,"crossOrigin":...
+        if self.cross_origin {
+            result.extend_from_slice(br#","crossOrigin":true"#);
+        } else {
+            result.extend_from_slice(br#","crossOrigin":false"#);
+        }
+        // add any additional fields
+        if !self.truncated_client_data_json.is_empty() {
+            result.push(b',');
+            result.extend_from_slice(&self.truncated_client_data_json);
+        }
+        // close json
+        result.push(b'}');
 
-        let origin = parsed
-            .get("origin")
-            .and_then(Value::as_str)
-            .ok_or(MultisigError::MissingOrigin)?
-            .to_string();
-
-        let challenge = parsed
-            .get("challenge")
-            .and_then(Value::as_str)
-            .ok_or(MultisigError::MissingChallenge)?
-            .to_string();
-
-        let webauthn_type = parsed
-            .get("type")
-            .and_then(Value::as_str)
-            .ok_or(MultisigError::MissingType)?
-            .to_string();
-
-        Ok((origin, challenge, webauthn_type))
+        Ok(result)
     }
 
     fn fetch_slot_hash<'info>(
@@ -231,16 +271,10 @@ impl Secp256r1VerifyArgs {
 
         let slot_hash = self.fetch_slot_hash(sysvar_slot_history)?;
 
-        let (origin, challenge, webauthn_type) = self.parse_client_data_json()?;
-
         let whitelisted_origins = domain_data.parse_origins()?;
-
-        require!(
-            whitelisted_origins.contains(&origin),
-            MultisigError::InvalidOrigin
-        );
-
-        require!(webauthn_type.eq("webauthn.get"), MultisigError::InvalidType);
+        let expected_origin = whitelisted_origins
+            .get(self.origin_index as usize)
+            .ok_or(MultisigError::OriginIndexOutOfBounds)?;
 
         let mut buffer = vec![];
         buffer.extend_from_slice(challenge_args.action_type.to_bytes());
@@ -250,11 +284,6 @@ impl Secp256r1VerifyArgs {
 
         let expected_challenge = Sha256::hash(&buffer).unwrap();
 
-        require!(
-            Self::decode_base64url(&challenge)?.eq(&expected_challenge),
-            MultisigError::InvalidChallenge
-        );
-
         let (rp_id_hash, client_data_hash) =
             self.extract_webauthn_signed_message_from_instruction(instructions_sysvar)?;
 
@@ -263,11 +292,18 @@ impl Secp256r1VerifyArgs {
             MultisigError::RpIdHashMismatch
         );
 
-        let expected_client_data_hash = Sha256::hash(&self.client_data_json).unwrap();
-        require!(
-            client_data_hash.eq(&expected_client_data_hash),
-            MultisigError::InvalidSignedMessage
-        );
+        let generated_client_data_json =
+            Self::generate_client_data_json(&self, expected_origin, &expected_challenge)?;
+        let expected_client_data_hash = Sha256::hash(&generated_client_data_json).unwrap();
+
+        if client_data_hash.ne(&expected_client_data_hash) {
+            msg!(
+                "Generated clientDataJSON ({} bytes): {:?}",
+                generated_client_data_json.len(),
+                &generated_client_data_json
+            );
+            return err!(MultisigError::InvalidSignedMessage);
+        }
 
         Ok(())
     }

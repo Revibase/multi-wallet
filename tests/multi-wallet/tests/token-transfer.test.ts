@@ -140,6 +140,7 @@ export function runTokenTransferTest() {
             ]),
           },
           secp256r1Keys.privateKey,
+          secp256r1Keys.publicKey,
           ctx
         );
 

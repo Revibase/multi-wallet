@@ -129,28 +129,6 @@ pub enum MultisigError {
     #[msg("The relying party ID hash does not match the one defined in the domain configuration.")]
     RpIdHashMismatch,
 
-    #[msg("Failed to parse clientDataJSON: the JSON format is invalid.")]
-    InvalidJson,
-
-    #[msg(
-        "Missing 'origin' field in clientDataJSON. This field is required for WebAuthn validation."
-    )]
-    MissingOrigin,
-
-    #[msg("The 'origin' value in clientDataJSON does not match the expected domain.")]
-    InvalidOrigin,
-
-    #[msg(
-        "Missing 'type' field in clientDataJSON. This field is required for WebAuthn validation."
-    )]
-    MissingType,
-
-    #[msg("Invalid 'type' field in clientDataJSON. Expected value: 'webauthn.get'.")]
-    InvalidType,
-
-    #[msg("Missing 'challenge' field in clientDataJSON. This field is required for WebAuthn validation.")]
-    MissingChallenge,
-
-    #[msg("Invalid or mismatched 'challenge' value in clientDataJSON.")]
-    InvalidChallenge,
+    #[msg("The given origin index is not in the whitelisted origins.")]
+    OriginIndexOutOfBounds,
 }

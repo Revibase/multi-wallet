@@ -425,9 +425,11 @@ function convertAddMember({
     verifyArgs:
       pubkey instanceof SignedSecp256r1Key && pubkey.verifyArgs && index !== -1
         ? some({
-            clientDataJson: pubkey.verifyArgs.clientDataJson,
+            truncatedClientDataJson: pubkey.verifyArgs.truncatedClientDataJson,
             slotNumber: pubkey.verifyArgs.slotNumber,
             signedMessageIndex: index,
+            originIndex: pubkey.originIndex,
+            crossOrigin: pubkey.crossOrigin,
           })
         : none(),
     userArgs: setAsDelegate

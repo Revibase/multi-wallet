@@ -4,15 +4,10 @@ import {
   type Address,
   getAddressEncoder,
   getBase58Decoder,
-  getBase58Encoder,
-  getBase64Decoder,
-  getBase64EncodedWireTransaction,
   getProgramDerivedAddress,
   getU8Encoder,
   getUtf8Encoder,
   type ReadonlyUint8Array,
-  type SignatureBytes,
-  type TransactionSigner,
 } from "gill";
 import {
   type IPermissions,
@@ -31,6 +26,7 @@ import {
 } from "../types";
 import { fetchSettingsData, fetchUserAccountData } from "./compressed";
 import { getGlobalAuthorizedClient } from "./initialize";
+import { createTransactionManagerSigner } from "./internal";
 
 export async function getDomainConfigAddress({
   rpIdHash,
@@ -112,6 +108,7 @@ export function convertPermissions(
 
   return Permissions.fromPermissions(perms);
 }
+
 export async function resolveTransactionManagerSigner({
   signer,
   index,
@@ -187,73 +184,4 @@ export async function resolveTransactionManagerSigner({
     transactionMessageBytes,
     authorizedClient
   );
-}
-
-function createTransactionManagerSigner(
-  address: Address,
-  url: string,
-  transactionMessageBytes?: ReadonlyUint8Array,
-  authorizedClient?: {
-    publicKey: string;
-    url: string;
-  } | null
-): TransactionSigner {
-  return {
-    address,
-    async signTransactions(transactions) {
-      const payload: Record<
-        string,
-        string | string[] | { publicKey: string; signatures: string[] }
-      > = {
-        publicKey: address.toString(),
-        transactions: transactions.map(getBase64EncodedWireTransaction),
-      };
-
-      if (transactionMessageBytes) {
-        payload.transactionMessageBytes = getBase64Decoder().decode(
-          transactionMessageBytes
-        );
-      }
-
-      if (authorizedClient) {
-        const { url, publicKey } = authorizedClient;
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            transactions: payload.transactions,
-            publicKey,
-          }),
-        });
-        const data = (await response.json()) as
-          | { signatures: string[] }
-          | { error: string };
-        if ("error" in data) {
-          throw new Error(data.error);
-        }
-        payload.authorizedClient = {
-          publicKey,
-          signatures: data.signatures,
-        };
-      }
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = (await response.json()) as
-        | { signatures: string[] }
-        | { error: string };
-
-      if ("error" in data) {
-        throw new Error(data.error);
-      }
-
-      return data.signatures.map((sig) => ({
-        [address]: getBase58Encoder().encode(sig) as SignatureBytes,
-      }));
-    },
-  };
 }

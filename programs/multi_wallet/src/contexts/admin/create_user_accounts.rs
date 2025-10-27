@@ -61,7 +61,7 @@ impl<'info> CreateUserAccounts<'info> {
                     domain_config: None,
                     transaction_manager_url: args.transaction_manager_url,
                 },
-                Some(cpi.account_infos.len() as u8),
+                None,
             )?;
             cpi = cpi.with_light_account(account_info)?;
             new_addressess.push(new_address_params);

@@ -92,20 +92,8 @@ export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_MISSING = 0x1794; // 6036
 export const MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG = 0x1795; // 6037
 /** RpIdHashMismatch: The relying party ID hash does not match the one defined in the domain configuration. */
 export const MULTI_WALLET_ERROR__RP_ID_HASH_MISMATCH = 0x1796; // 6038
-/** InvalidJson: Failed to parse clientDataJSON: the JSON format is invalid. */
-export const MULTI_WALLET_ERROR__INVALID_JSON = 0x1797; // 6039
-/** MissingOrigin: Missing 'origin' field in clientDataJSON. This field is required for WebAuthn validation. */
-export const MULTI_WALLET_ERROR__MISSING_ORIGIN = 0x1798; // 6040
-/** InvalidOrigin: The 'origin' value in clientDataJSON does not match the expected domain. */
-export const MULTI_WALLET_ERROR__INVALID_ORIGIN = 0x1799; // 6041
-/** MissingType: Missing 'type' field in clientDataJSON. This field is required for WebAuthn validation. */
-export const MULTI_WALLET_ERROR__MISSING_TYPE = 0x179a; // 6042
-/** InvalidType: Invalid 'type' field in clientDataJSON. Expected value: 'webauthn.get'. */
-export const MULTI_WALLET_ERROR__INVALID_TYPE = 0x179b; // 6043
-/** MissingChallenge: Missing 'challenge' field in clientDataJSON. This field is required for WebAuthn validation. */
-export const MULTI_WALLET_ERROR__MISSING_CHALLENGE = 0x179c; // 6044
-/** InvalidChallenge: Invalid or mismatched 'challenge' value in clientDataJSON. */
-export const MULTI_WALLET_ERROR__INVALID_CHALLENGE = 0x179d; // 6045
+/** OriginIndexOutOfBounds: The given origin index is not in the whitelisted origins. */
+export const MULTI_WALLET_ERROR__ORIGIN_INDEX_OUT_OF_BOUNDS = 0x1797; // 6039
 
 export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__ALREADY_DELEGATED
@@ -123,27 +111,21 @@ export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__INVALID_ACCOUNT
   | typeof MULTI_WALLET_ERROR__INVALID_ARGUMENTS
   | typeof MULTI_WALLET_ERROR__INVALID_BUFFER
-  | typeof MULTI_WALLET_ERROR__INVALID_CHALLENGE
-  | typeof MULTI_WALLET_ERROR__INVALID_JSON
   | typeof MULTI_WALLET_ERROR__INVALID_NUMBER_OF_ACCOUNTS
-  | typeof MULTI_WALLET_ERROR__INVALID_ORIGIN
   | typeof MULTI_WALLET_ERROR__INVALID_SECP256R1_VERIFY_ARG
   | typeof MULTI_WALLET_ERROR__INVALID_SIGNED_MESSAGE
   | typeof MULTI_WALLET_ERROR__INVALID_SYSVAR_DATA_FORMAT
   | typeof MULTI_WALLET_ERROR__INVALID_THRESHOLD
   | typeof MULTI_WALLET_ERROR__INVALID_TRANSACTION_MESSAGE
-  | typeof MULTI_WALLET_ERROR__INVALID_TYPE
   | typeof MULTI_WALLET_ERROR__MAX_LENGTH_EXCEEDED
   | typeof MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG
   | typeof MULTI_WALLET_ERROR__MISSING_ACCOUNT
-  | typeof MULTI_WALLET_ERROR__MISSING_CHALLENGE
-  | typeof MULTI_WALLET_ERROR__MISSING_ORIGIN
   | typeof MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY
-  | typeof MULTI_WALLET_ERROR__MISSING_TYPE
   | typeof MULTI_WALLET_ERROR__MISSING_USER_ARGS
   | typeof MULTI_WALLET_ERROR__NO_SIGNER_FOUND
   | typeof MULTI_WALLET_ERROR__ONLY_ONE_PERMANENT_MEMBER_ALLOWED
   | typeof MULTI_WALLET_ERROR__ONLY_ONE_TRANSACTION_MANAGER_ALLOWED
+  | typeof MULTI_WALLET_ERROR__ORIGIN_INDEX_OUT_OF_BOUNDS
   | typeof MULTI_WALLET_ERROR__PERMANENT_MEMBER
   | typeof MULTI_WALLET_ERROR__PERMANENT_MEMBER_NOT_ALLOWED
   | typeof MULTI_WALLET_ERROR__PROTECTED_ACCOUNT
@@ -173,27 +155,21 @@ if (process.env.NODE_ENV !== "production") {
     [MULTI_WALLET_ERROR__INVALID_ACCOUNT]: `One or more provided accounts failed validation. Verify that all required accounts are included and correct.`,
     [MULTI_WALLET_ERROR__INVALID_ARGUMENTS]: `Invalid or missing instruction arguments. Ensure all required arguments are correctly provided.`,
     [MULTI_WALLET_ERROR__INVALID_BUFFER]: `Buffer validation failed: contents do not match the expected hash (possible tampering detected).`,
-    [MULTI_WALLET_ERROR__INVALID_CHALLENGE]: `Invalid or mismatched 'challenge' value in clientDataJSON.`,
-    [MULTI_WALLET_ERROR__INVALID_JSON]: `Failed to parse clientDataJSON: the JSON format is invalid.`,
     [MULTI_WALLET_ERROR__INVALID_NUMBER_OF_ACCOUNTS]: `Unexpected number of accounts provided for this instruction.`,
-    [MULTI_WALLET_ERROR__INVALID_ORIGIN]: `The 'origin' value in clientDataJSON does not match the expected domain.`,
     [MULTI_WALLET_ERROR__INVALID_SECP256R1_VERIFY_ARG]: `Malformed or missing WebAuthn verification parameters. Please provide valid secp256r1 signature arguments.`,
     [MULTI_WALLET_ERROR__INVALID_SIGNED_MESSAGE]: `Invalid signature: the provided signature does not match the expected message payload.`,
     [MULTI_WALLET_ERROR__INVALID_SYSVAR_DATA_FORMAT]: `Failed to parse the Slot History sysvar: data format is invalid or corrupted.`,
     [MULTI_WALLET_ERROR__INVALID_THRESHOLD]: `Invalid threshold: must be at least 1 and cannot exceed the number of voting-eligible members.`,
     [MULTI_WALLET_ERROR__INVALID_TRANSACTION_MESSAGE]: `Malformed transaction message: structure or formatting does not match the expected layout.`,
-    [MULTI_WALLET_ERROR__INVALID_TYPE]: `Invalid 'type' field in clientDataJSON. Expected value: 'webauthn.get'.`,
     [MULTI_WALLET_ERROR__MAX_LENGTH_EXCEEDED]: `An input string exceeds the maximum allowed character length.`,
     [MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG]: `This member is not registered under the provided domain configuration.`,
     [MULTI_WALLET_ERROR__MISSING_ACCOUNT]: `A required account is missing from the instruction context.`,
-    [MULTI_WALLET_ERROR__MISSING_CHALLENGE]: `Missing 'challenge' field in clientDataJSON. This field is required for WebAuthn validation.`,
-    [MULTI_WALLET_ERROR__MISSING_ORIGIN]: `Missing 'origin' field in clientDataJSON. This field is required for WebAuthn validation.`,
     [MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY]: `Missing required sysvar: Slot History must be included as an account in this instruction.`,
-    [MULTI_WALLET_ERROR__MISSING_TYPE]: `Missing 'type' field in clientDataJSON. This field is required for WebAuthn validation.`,
     [MULTI_WALLET_ERROR__MISSING_USER_ARGS]: `User mutation arguments are required when performing add or remove delegate operations.`,
     [MULTI_WALLET_ERROR__NO_SIGNER_FOUND]: `No valid signer found in this transaction.`,
     [MULTI_WALLET_ERROR__ONLY_ONE_PERMANENT_MEMBER_ALLOWED]: `Only one permanent member is allowed per wallet.`,
     [MULTI_WALLET_ERROR__ONLY_ONE_TRANSACTION_MANAGER_ALLOWED]: `Only one transaction manager is allowed per wallet.`,
+    [MULTI_WALLET_ERROR__ORIGIN_INDEX_OUT_OF_BOUNDS]: `The given origin index is not in the whitelisted origins.`,
     [MULTI_WALLET_ERROR__PERMANENT_MEMBER]: `Permanent members cannot be removed from a wallet.`,
     [MULTI_WALLET_ERROR__PERMANENT_MEMBER_NOT_ALLOWED]: `This operation cannot assign a permanent member.`,
     [MULTI_WALLET_ERROR__PROTECTED_ACCOUNT]: `Writable CPI calls to protected accounts are not permitted.`,

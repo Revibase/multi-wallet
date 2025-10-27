@@ -2065,38 +2065,8 @@
     },
     {
       "code": 6039,
-      "name": "InvalidJson",
-      "msg": "Failed to parse clientDataJSON: the JSON format is invalid."
-    },
-    {
-      "code": 6040,
-      "name": "MissingOrigin",
-      "msg": "Missing 'origin' field in clientDataJSON. This field is required for WebAuthn validation."
-    },
-    {
-      "code": 6041,
-      "name": "InvalidOrigin",
-      "msg": "The 'origin' value in clientDataJSON does not match the expected domain."
-    },
-    {
-      "code": 6042,
-      "name": "MissingType",
-      "msg": "Missing 'type' field in clientDataJSON. This field is required for WebAuthn validation."
-    },
-    {
-      "code": 6043,
-      "name": "InvalidType",
-      "msg": "Invalid 'type' field in clientDataJSON. Expected value: 'webauthn.get'."
-    },
-    {
-      "code": 6044,
-      "name": "MissingChallenge",
-      "msg": "Missing 'challenge' field in clientDataJSON. This field is required for WebAuthn validation."
-    },
-    {
-      "code": 6045,
-      "name": "InvalidChallenge",
-      "msg": "Invalid or mismatched 'challenge' value in clientDataJSON."
+      "name": "OriginIndexOutOfBounds",
+      "msg": "The given origin index is not in the whitelisted origins."
     }
   ],
   "types": [
@@ -2804,7 +2774,15 @@
             "type": "u64"
           },
           {
-            "name": "client_data_json",
+            "name": "origin_index",
+            "type": "u8"
+          },
+          {
+            "name": "cross_origin",
+            "type": "bool"
+          },
+          {
+            "name": "truncated_client_data_json",
             "type": "bytes"
           }
         ]

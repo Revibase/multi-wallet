@@ -5,12 +5,15 @@ type Secp256r1KeyInitData = string | Uint8Array | Array<number>;
 type SignedMessageDetails = {
   verifyArgs: {
     clientDataJson: Uint8Array;
+    truncatedClientDataJson: Uint8Array;
     slotNumber: bigint;
     slotHash: Uint8Array;
   };
   domainConfig: Address;
   authData: Uint8Array;
   signature: Uint8Array;
+  originIndex: number;
+  crossOrigin: boolean;
 };
 
 export class Secp256r1Key {
@@ -73,6 +76,8 @@ export class SignedSecp256r1Key extends Secp256r1Key {
   domainConfig: SignedMessageDetails["domainConfig"];
   authData: SignedMessageDetails["authData"];
   signature: SignedMessageDetails["signature"];
+  originIndex: SignedMessageDetails["originIndex"];
+  crossOrigin: SignedMessageDetails["crossOrigin"];
 
   constructor(value: Secp256r1KeyInitData, signed: SignedMessageDetails) {
     super(value);
@@ -80,5 +85,7 @@ export class SignedSecp256r1Key extends Secp256r1Key {
     this.domainConfig = signed.domainConfig;
     this.authData = signed.authData;
     this.signature = signed.signature;
+    this.originIndex = signed.originIndex;
+    this.crossOrigin = signed.crossOrigin;
   }
 }

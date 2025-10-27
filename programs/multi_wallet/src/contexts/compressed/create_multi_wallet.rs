@@ -1,8 +1,8 @@
 use crate::{
-    id, state::UserReadOnlyOrMutateArgs, AddMemberArgs, CompressedSettings,
-    CompressedSettingsData, DomainConfig, GlobalCounter, Member, MemberKey, MultisigError, Ops,
-    Permission, Permissions, ProofArgs, Secp256r1VerifyArgs, SettingsCreationArgs, User,
-    UserMutArgs, LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
+    id, state::UserReadOnlyOrMutateArgs, AddMemberArgs, CompressedSettings, CompressedSettingsData,
+    DomainConfig, GlobalCounter, Member, MemberKey, MultisigError, Ops, Permission, Permissions,
+    ProofArgs, Secp256r1VerifyArgs, SettingsCreationArgs, User, UserMutArgs, LIGHT_CPI_SIGNER,
+    SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::cpi::{

@@ -1,6 +1,13 @@
 import { p256 } from "@noble/curves/p256";
 import { sha256 } from "@noble/hashes/sha256";
-import { SignedSecp256r1Key, type TransactionPayload } from "@revibase/wallet";
+import {
+  getDomainConfigAddress,
+  getOriginIndex,
+  getSignedSecp256r1Key,
+  Secp256r1Key,
+  SignedSecp256r1Key,
+  type TransactionPayload,
+} from "@revibase/wallet";
 import {
   address,
   type GetAccountInfoApi,
@@ -66,6 +73,7 @@ export async function mockAuthenticationResponse(
   connection: Rpc<GetAccountInfoApi>,
   transaction: TransactionPayload,
   privateKey: Uint8Array,
+  publicKey: Uint8Array,
   ctx: TestContext
 ): Promise<SignedSecp256r1Key> {
   const flags = new Uint8Array([0x01]); // User present
@@ -85,16 +93,16 @@ export async function mockAuthenticationResponse(
     transaction
   ));
 
+  const origin = "happy";
+
   const clientDataJSON = JSON.stringify({
     type: "webauthn.get",
     challenge: bufferToBase64URLString(challenge.buffer as ArrayBuffer),
-    origin: "happy",
-    message: "Google chrome may append additional information here.",
+    origin,
+    crossOrigin: false,
   });
 
   const clientDataJSONBytes = new TextEncoder().encode(clientDataJSON);
-
-  console.log("Client Data JSON:", clientDataJSON.length);
 
   // Hash clientDataJSON
   const clientDataHash = await crypto.subtle.digest(
@@ -109,24 +117,39 @@ export async function mockAuthenticationResponse(
 
   const webauthnMessageHash = sha256(messageBuffer);
 
-  const signature = p256
-    .sign(new Uint8Array(webauthnMessageHash), privateKey, {
-      format: "compact",
-      lowS: true,
-    })
-    .toBytes("compact");
+  const signature = new Uint8Array(
+    p256
+      .sign(new Uint8Array(webauthnMessageHash), privateKey, {
+        format: "compact",
+        lowS: true,
+      })
+      .toBytes("compact")
+  );
 
-  return new SignedSecp256r1Key(
-    getBase58Decoder().decode(crypto.getRandomValues(new Uint8Array(32))),
+  const originIndex = await getOriginIndex(
+    await getDomainConfigAddress({ rpId: ctx.rpId }),
+    origin
+  );
+
+  return await getSignedSecp256r1Key(
     {
-      verifyArgs: {
-        clientDataJson: clientDataJSONBytes,
-        slotNumber: BigInt(slotNumber ?? 0),
-        slotHash: new Uint8Array(getBase58Encoder().encode(slotHash)),
+      slotNumber,
+      slotHash,
+      signer: new Secp256r1Key(publicKey),
+      authResponse: {
+        id: "",
+        rawId: "",
+        type: "public-key",
+        clientExtensionResults: {},
+        response: {
+          authenticatorData: bufferToBase64URLString(
+            mockAuthenticatorData.buffer
+          ),
+          clientDataJSON: bufferToBase64URLString(clientDataJSONBytes.buffer),
+          signature: bufferToBase64URLString(signature.buffer),
+        },
       },
-      authData: mockAuthenticatorData,
-      domainConfig: ctx.domainConfig,
-      signature,
-    }
+    },
+    originIndex
   );
 }
