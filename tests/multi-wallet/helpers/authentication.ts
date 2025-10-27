@@ -94,12 +94,13 @@ export async function mockAuthenticationResponse(
   ));
 
   const origin = "happy";
+  const crossOrigin = false;
 
   const clientDataJSON = JSON.stringify({
     type: "webauthn.get",
     challenge: bufferToBase64URLString(challenge.buffer as ArrayBuffer),
     origin,
-    crossOrigin: false,
+    crossOrigin,
   });
 
   const clientDataJSONBytes = new TextEncoder().encode(clientDataJSON);
@@ -150,6 +151,7 @@ export async function mockAuthenticationResponse(
         },
       },
     },
-    originIndex
+    originIndex,
+    crossOrigin
   );
 }
