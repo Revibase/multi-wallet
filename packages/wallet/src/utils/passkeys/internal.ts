@@ -1,5 +1,4 @@
-import type { PublicKeyCredentialHint } from "@simplewebauthn/server";
-import { Secp256r1Key, type TransactionPayload } from "../../types";
+import { Secp256r1Key } from "../../types";
 import { createPopUp } from "./helper";
 
 let activeMessageHandler: ((event: MessageEvent) => void) | null = null;
@@ -10,7 +9,6 @@ const DEFAULT_TIMEOUT = 5 * 60 * 1000;
 export async function openAuthUrl({
   authUrl,
   additionalInfo,
-  hints,
   signer,
   popUp = null,
   timeout = DEFAULT_TIMEOUT,
@@ -24,7 +22,6 @@ export async function openAuthUrl({
     payload: string;
   };
   signer?: Secp256r1Key;
-  hints?: PublicKeyCredentialHint[];
   popUp?: Window | null;
   timeout?: number;
   debug?: boolean;
@@ -91,7 +88,6 @@ export async function openAuthUrl({
               type: "popup-init",
               payload: {
                 signer: signer?.toString(),
-                hints,
                 data,
                 additionalInfo,
               },
@@ -143,15 +139,6 @@ export async function openAuthUrl({
   });
 }
 
-export function convertTransactionPayload(payload: TransactionPayload) {
-  return JSON.stringify({
-    transactionActionType: payload.transactionActionType,
-    transactionAddress: payload.transactionAddress.toString(),
-    transactionMessageBytes: bufferToBase64URLString(
-      payload.transactionMessageBytes
-    ),
-  });
-}
 export function bufferToBase64URLString(buffer: Uint8Array) {
   let str = "";
   for (const charCode of buffer) {

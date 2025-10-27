@@ -5,7 +5,7 @@ use crate::{
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::instructions};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-use light_hasher::{Hasher, Sha256};
+use light_sdk::light_hasher::{Hasher, Sha256};
 use serde_json::Value;
 use std::str::from_utf8;
 

@@ -20,7 +20,6 @@ import { resolveTransactionManagerSigner } from "../utils/helper";
 interface TransferIntentArgs extends BasePayload {
   amount: number | bigint;
   destination: Address;
-  network?: "mainnet" | "devnet";
   mint?: Address;
   tokenProgram?: Address;
   cachedAccounts?: Map<string, any>;
@@ -37,11 +36,13 @@ export async function prepareIntentTransfer({
   amount,
   mint,
   tokenProgram = TOKEN_PROGRAM_ADDRESS,
-  hints,
   signer,
   popUp,
+  authUrl,
+  additionalInfo,
   addressesByLookupTableAddress,
   cachedAccounts = new Map<string, any>(),
+  debug,
 }: TransferIntentArgs): Promise<TransactionDetails> {
   const authResponse = await signTransactionWithPasskey({
     transactionActionType: "transfer_intent",
@@ -51,16 +52,15 @@ export async function prepareIntentTransfer({
       ...getAddressEncoder().encode(destination),
       ...getAddressEncoder().encode(mint ?? SYSTEM_PROGRAM_ADDRESS),
     ]),
-    hints,
     signer,
     popUp,
+    authUrl,
+    additionalInfo,
+    debug,
   });
   const signedSigner = await getSignedSecp256r1Key(authResponse);
   let index: number;
-  if (
-    !authResponse.additionalInfo?.walletAddress ||
-    !authResponse.additionalInfo.settingsIndex
-  ) {
+  if (!authResponse.additionalInfo.settingsIndex) {
     const userAccountData = await fetchUserAccountData(
       signedSigner,
       cachedAccounts

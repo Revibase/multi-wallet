@@ -1,7 +1,4 @@
-import type {
-  AuthenticationResponseJSON,
-  PublicKeyCredentialHint,
-} from "@simplewebauthn/server";
+import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import type { Secp256r1Key } from "./secp256r1";
 
 export type TransactionAuthenticationResponse = {
@@ -41,7 +38,6 @@ export type MessagePayload = {
 };
 
 export type BasePayload = {
-  hints?: PublicKeyCredentialHint[];
   authUrl?: string;
   signer?: Secp256r1Key;
   popUp?: Window | null;

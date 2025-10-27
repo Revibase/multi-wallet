@@ -6,7 +6,7 @@ import {
 } from "../types";
 import { getAuthUrl, getGlobalAdditonalInfo } from "../utils";
 import {
-  convertTransactionPayload,
+  bufferToBase64URLString,
   openAuthUrl,
 } from "../utils/passkeys/internal";
 
@@ -16,7 +16,6 @@ export async function signTransactionWithPasskey({
   transactionAddress,
   transactionMessageBytes,
   additionalInfo = getGlobalAdditonalInfo(),
-  hints,
   signer,
   popUp,
   debug,
@@ -25,17 +24,18 @@ export async function signTransactionWithPasskey({
     authUrl: `${authUrl}/?redirectUrl=${encodeURIComponent(window.origin)}`,
     data: {
       type: "transaction",
-      payload: convertTransactionPayload({
+      payload: JSON.stringify({
         transactionActionType,
         transactionAddress,
-        transactionMessageBytes,
+        transactionMessageBytes: bufferToBase64URLString(
+          transactionMessageBytes
+        ),
       }),
     },
     additionalInfo,
     signer,
     popUp,
     debug,
-    hints,
   })) as any;
   return {
     ...authResponse,

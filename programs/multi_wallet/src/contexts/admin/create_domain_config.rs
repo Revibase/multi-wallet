@@ -1,6 +1,6 @@
 use crate::{state::DomainConfig, utils::SEED_DOMAIN_CONFIG};
 use anchor_lang::prelude::*;
-use light_hasher::{Hasher, Sha256};
+use light_sdk::light_hasher::{Hasher, Sha256};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateDomainConfigArgs {

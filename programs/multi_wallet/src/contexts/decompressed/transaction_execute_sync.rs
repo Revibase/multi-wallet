@@ -4,7 +4,7 @@ use crate::{
     TransactionActionType, TransactionMessage, SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use light_hasher::{Hasher, Sha256};
+use light_sdk::light_hasher::{Hasher, Sha256};
 
 #[derive(Accounts)]
 pub struct TransactionExecuteSync<'info> {

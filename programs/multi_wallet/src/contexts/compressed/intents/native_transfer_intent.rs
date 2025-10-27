@@ -8,7 +8,7 @@ use anchor_lang::{
     solana_program::sysvar::SysvarId,
     system_program::{transfer, Transfer},
 };
-use light_hasher::{Hasher, Sha256};
+use light_sdk::light_hasher::{Hasher, Sha256};
 
 #[derive(Accounts)]
 pub struct NativeTransferIntentCompressed<'info> {

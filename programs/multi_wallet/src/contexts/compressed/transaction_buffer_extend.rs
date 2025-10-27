@@ -1,6 +1,6 @@
 use crate::{MultisigError, TransactionBuffer};
 use anchor_lang::prelude::*;
-use light_hasher::{Hasher, Sha256};
+use light_sdk::light_hasher::{Hasher, Sha256};
 
 #[derive(Accounts)]
 pub struct TransactionBufferExtendCompressed<'info> {

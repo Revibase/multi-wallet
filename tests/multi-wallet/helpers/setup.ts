@@ -97,6 +97,15 @@ export async function setupTestEnvironment(
       "smt2rJAFdyJJupwMKAqTNAJwvjhmiZ4JYGZmbVRw1Ho",
       "nfq2hgS7NYemXsFaFUCe3EMXSDSfnZnAe27jC6aPP1X",
       "smt3AFtReRGVcrP11D6bSLEaKdUmrGfaTNowMVccJeu",
+    ].map(address),
+  });
+  await sendTransaction([extendIx], payer);
+
+  const extendIx2 = getExtendLookupTableInstruction({
+    address: lut,
+    authority: payer,
+    payer: payer,
+    addresses: [
       "nfq3de4qt9d3wHxXWy1wcge3EXhid25mCr12bNWFdtV",
       "smt4vjXvdjDFzvRMUxwTWnSy4c7cKkMaHuPrGsdDH7V",
       "nfq4Ncp1vk3mFnCQ9cvwidp9k2L6fxEyCo2nerYD25A",
@@ -116,7 +125,7 @@ export async function setupTestEnvironment(
       "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg",
     ].map(address),
   });
-  await sendTransaction([extendIx], payer);
+  await sendTransaction([extendIx2], payer);
 
   const addressLookUpTable = await fetchAddressesForLookupTables(
     [lut],

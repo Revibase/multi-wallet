@@ -4,7 +4,7 @@ use crate::{
     LIGHT_CPI_SIGNER
 };
 use anchor_lang::{prelude::*, solana_program::{sysvar::SysvarId}};
-use light_hasher::{Hasher, Sha256};
+use light_sdk::light_hasher::{Hasher, Sha256};
 use light_sdk::{
     cpi::{
         v2::{CpiAccounts, LightSystemProgramCpi},

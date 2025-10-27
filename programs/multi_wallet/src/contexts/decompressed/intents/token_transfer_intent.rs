@@ -5,18 +5,11 @@ use crate::{
 };
 use anchor_lang::{
     prelude::*,
-    solana_program::{program::invoke_signed, sysvar::SysvarId},
+    solana_program::{program::invoke_signed, program_pack::Pack, sysvar::SysvarId},
 };
-use anchor_spl::{
-    associated_token::{
-        spl_associated_token_account::instruction::create_associated_token_account_idempotent,
-        AssociatedToken,
-    },
-    token::Token,
-    token_2022::Token2022,
-    token_interface::{transfer_checked, Mint, TransferChecked},
-};
-use light_hasher::{Hasher, Sha256};
+use light_sdk::light_hasher::{Hasher, Sha256};
+use spl_associated_token_account::instruction::create_associated_token_account_idempotent;
+use spl_token_2022::state::Mint;
 
 #[derive(Accounts)]
 pub struct TokenTransferIntent<'info> {
@@ -51,7 +44,7 @@ pub struct TokenTransferIntent<'info> {
             &mint.key().to_bytes(),
         ],
         bump,
-        seeds::program = AssociatedToken::id()
+        seeds::program = spl_associated_token_account::id()
     )]
     pub source_token_account: UncheckedAccount<'info>,
     /// CHECK:
@@ -65,18 +58,19 @@ pub struct TokenTransferIntent<'info> {
             &mint.key().to_bytes(),
         ],
         bump,
-        seeds::program = AssociatedToken::id()
+        seeds::program = spl_associated_token_account::id()
     )]
     pub destination_token_account: UncheckedAccount<'info>,
     /// CHECK:
-    #[account(
-        constraint = (token_program.key() == Token::id() || token_program.key() == Token2022::id())
-    )]
     pub token_program: UncheckedAccount<'info>,
     /// CHECK:
     pub mint: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
+    /// CHECK:
+    #[account(
+        address = spl_associated_token_account::id()
+    )]
+    pub associated_token_program: UncheckedAccount<'info>,
 }
 
 impl<'info> TokenTransferIntent<'info> {
@@ -221,21 +215,27 @@ impl<'info> TokenTransferIntent<'info> {
             signer_seeds,
         )?;
 
-        let mint = Mint::try_deserialize(&mut ctx.accounts.mint.data.borrow_mut().as_ref())?;
+        let mint = Mint::unpack(&mut ctx.accounts.mint.data.borrow_mut().as_ref())?;
 
-        transfer_checked(
-            CpiContext::new(
-                ctx.accounts.token_program.to_account_info(),
-                TransferChecked {
-                    from: ctx.accounts.source_token_account.to_account_info(),
-                    mint: ctx.accounts.mint.to_account_info(),
-                    to: ctx.accounts.destination_token_account.to_account_info(),
-                    authority: ctx.accounts.source.to_account_info(),
-                },
-            )
-            .with_signer(signer_seeds),
+        let ix = spl_token_2022::instruction::transfer_checked(
+            ctx.accounts.token_program.key,
+            ctx.accounts.source_token_account.key,
+            ctx.accounts.mint.key,
+            ctx.accounts.destination_token_account.key,
+            ctx.accounts.source.key,
+            &[],
             amount,
             mint.decimals,
+        )?;
+        invoke_signed(
+            &ix,
+            &[
+                ctx.accounts.source_token_account.to_account_info(),
+                ctx.accounts.mint.to_account_info(),
+                ctx.accounts.destination_token_account.to_account_info(),
+                ctx.accounts.source.to_account_info(),
+            ],
+            signer_seeds,
         )?;
 
         Ok(())

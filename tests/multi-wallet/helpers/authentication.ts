@@ -89,9 +89,12 @@ export async function mockAuthenticationResponse(
     type: "webauthn.get",
     challenge: bufferToBase64URLString(challenge.buffer as ArrayBuffer),
     origin: "happy",
+    message: "Google chrome may append additional information here.",
   });
 
   const clientDataJSONBytes = new TextEncoder().encode(clientDataJSON);
+
+  console.log("Client Data JSON:", clientDataJSON.length);
 
   // Hash clientDataJSON
   const clientDataHash = await crypto.subtle.digest(

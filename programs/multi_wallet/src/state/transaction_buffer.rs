@@ -1,6 +1,6 @@
 use crate::{MemberKey, MultisigError, MAXIMUM_AMOUNT_OF_MEMBERS};
 use anchor_lang::prelude::*;
-use light_hasher::{Hasher, Sha256};
+use light_sdk::light_hasher::{Hasher, Sha256};
 
 // Maximum PDA allocation size in an inner ix is 10240 bytes.
 // 10240 - account contents = 10128 bytes

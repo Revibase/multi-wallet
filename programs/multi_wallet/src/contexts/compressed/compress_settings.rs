@@ -5,8 +5,8 @@ use crate::{
     TransactionActionType, LIGHT_CPI_SIGNER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use light_hasher::{Hasher, Sha256};
 use light_sdk::cpi::{v2::LightSystemProgramCpi, InvokeLightSystemProgram, LightCpiInstruction};
+use light_sdk::light_hasher::{Hasher, Sha256};
 use light_sdk::{account::LightAccount, cpi::v2::CpiAccounts};
 use std::vec;
 

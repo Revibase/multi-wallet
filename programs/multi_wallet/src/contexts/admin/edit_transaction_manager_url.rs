@@ -43,7 +43,7 @@ impl<'info> EditTransactionManagerUrl<'info> {
 
         require!(
             user_account.transaction_manager_url.is_some(),
-            MultisigError::InvalidArguments
+            MultisigError::TransactionManagerNotAllowed
         );
         user_account.transaction_manager_url = Some(transaction_manager_url);
 

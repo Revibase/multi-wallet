@@ -12,7 +12,6 @@ export async function signMessageWithPasskey({
   message,
   signer,
   popUp,
-  hints,
   debug,
   additionalInfo = getGlobalAdditonalInfo(),
 }: MessagePayload & BasePayload) {
@@ -22,7 +21,6 @@ export async function signMessageWithPasskey({
     signer,
     popUp,
     debug,
-    hints,
     additionalInfo,
   })) as any;
   return {
