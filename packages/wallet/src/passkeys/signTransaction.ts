@@ -4,24 +4,21 @@ import {
   type TransactionAuthenticationResponse,
   type TransactionPayload,
 } from "../types";
-import { getAuthUrl, getGlobalAdditonalInfo } from "../utils";
+import { getAuthEndpoint, getGlobalAdditonalInfo } from "../utils";
 import {
   bufferToBase64URLString,
   openAuthUrl,
 } from "../utils/passkeys/internal";
 
 export async function signTransactionWithPasskey({
-  authUrl = getAuthUrl(),
   transactionActionType,
   transactionAddress,
   transactionMessageBytes,
-  additionalInfo = getGlobalAdditonalInfo(),
   signer,
   popUp,
-  debug,
 }: TransactionPayload & BasePayload) {
   const authResponse = (await openAuthUrl({
-    authUrl: `${authUrl}/?redirectUrl=${encodeURIComponent(window.origin)}`,
+    authUrl: `${getAuthEndpoint()}/?redirectUrl=${encodeURIComponent(window.origin)}`,
     data: {
       type: "transaction",
       payload: JSON.stringify({
@@ -32,10 +29,9 @@ export async function signTransactionWithPasskey({
         ),
       }),
     },
-    additionalInfo,
+    additionalInfo: getGlobalAdditonalInfo(),
     signer,
     popUp,
-    debug,
   })) as any;
   return {
     ...authResponse,

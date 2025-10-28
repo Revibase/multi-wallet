@@ -10,7 +10,7 @@ import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
 } from "../../utils/compressed/internal";
-import { extractSecp256r1VerificationArgs } from "../../utils/internal";
+import { extractSecp256r1VerificationArgs } from "../../utils/transaction/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
 export async function closeTransactionBuffer({

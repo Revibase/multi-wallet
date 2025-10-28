@@ -1,7 +1,9 @@
 import {
+  address,
   appendTransactionMessageInstructions,
   compressTransactionMessageUsingAddressLookupTables,
   createTransactionMessage,
+  getBase58Decoder,
   getBase64EncodedWireTransaction,
   getSignatureFromTransaction,
   pipe,
@@ -9,12 +11,23 @@ import {
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
   signTransactionMessageWithSigners,
+  type Address,
+  type ReadonlyUint8Array,
 } from "gill";
 import {
   getSetComputeUnitLimitInstruction,
   getSetComputeUnitPriceInstruction,
 } from "gill/programs";
-import type { TransactionDetails } from "../../types";
+import type { MemberKey } from "../../generated";
+import {
+  KeyType,
+  Permission,
+  Permissions,
+  Secp256r1Key,
+  TransactionManagerPermission,
+  type TransactionDetails,
+} from "../../types";
+import { fetchSettingsData, fetchUserAccountData } from "../compressed";
 import {
   getComputeBudgetEstimate,
   getJitoTipsConfig,
@@ -24,6 +37,7 @@ import {
 } from "../initialize";
 import {
   createEncodedBundle,
+  createTransactionManagerSigner,
   getMedianPriorityFees,
   simulateBundle,
 } from "./internal";
@@ -217,4 +231,81 @@ export async function pollJitoBundleConfirmation(
   }
 
   throw new Error("Failed to get bundle status after retries.");
+}
+export async function resolveTransactionManagerSigner({
+  signer,
+  index,
+  transactionMessageBytes,
+  cachedAccounts,
+}: {
+  signer: Secp256r1Key | Address;
+  index: number | bigint;
+  transactionMessageBytes?: ReadonlyUint8Array;
+  cachedAccounts?: Map<string, any>;
+}) {
+  const settingsData = await fetchSettingsData(index, cachedAccounts);
+  if (settingsData.threshold > 1) {
+    throw new Error(
+      "Multi-signature transactions with threshold > 1 are not supported yet."
+    );
+  }
+  const { permissions } =
+    settingsData.members.find(
+      (m) => convertMemberKeyToString(m.pubkey) === signer.toString()
+    ) ?? {};
+  if (!permissions) {
+    throw new Error("No permissions found for the current member.");
+  }
+  const hasInitiate = Permissions.has(
+    permissions,
+    Permission.InitiateTransaction
+  );
+  const hasVote = Permissions.has(permissions, Permission.VoteTransaction);
+  const hasExecute = Permissions.has(
+    permissions,
+    Permission.ExecuteTransaction
+  );
+  // If signer has full signing rights, no transaction manager is needed
+  if (hasInitiate && hasVote && hasExecute) {
+    return null;
+  }
+  if (!hasVote || !hasExecute) {
+    throw new Error("Signer lacks the required Vote/Execute permissions.");
+  }
+
+  // Otherwise, require a transaction manager + vote + execute rights
+  const transactionManager = settingsData.members.find((m) =>
+    Permissions.has(m.permissions, TransactionManagerPermission)
+  );
+  if (!transactionManager) {
+    throw new Error("No transaction manager available in wallet.");
+  }
+
+  const transactionManagerAddress = address(
+    convertMemberKeyToString(transactionManager.pubkey)
+  );
+
+  const userAccountData = await fetchUserAccountData(
+    transactionManagerAddress,
+    cachedAccounts
+  );
+
+  if (userAccountData.transactionManagerUrl.__option === "None") {
+    throw new Error(
+      "Transaction manager endpoint is missing for this account."
+    );
+  }
+
+  return createTransactionManagerSigner(
+    transactionManagerAddress,
+    userAccountData.transactionManagerUrl.value,
+    transactionMessageBytes
+  );
+}
+export function convertMemberKeyToString(memberKey: MemberKey) {
+  if (memberKey.keyType === KeyType.Ed25519) {
+    return getBase58Decoder().decode(memberKey.key.subarray(1, 33));
+  } else {
+    return getBase58Decoder().decode(memberKey.key);
+  }
 }

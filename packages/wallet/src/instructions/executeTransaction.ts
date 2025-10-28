@@ -10,8 +10,8 @@ import {
   getTransactionExecuteInstruction,
 } from "../generated";
 import { getWalletAddressFromSettings } from "../utils";
-import { addJitoTip } from "../utils/internal";
-import { accountsForTransactionExecute } from "../utils/transactionMessage/helper";
+import { addJitoTip } from "../utils/transaction/internal";
+import { accountsForTransactionExecute } from "../utils/transactionMessage/internal";
 import {
   getSecp256r1VerifyInstruction,
   type Secp256r1VerifyInput,

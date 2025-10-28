@@ -86,7 +86,7 @@ impl Secp256r1VerifyArgs {
     fn generate_client_data_json(
         &self,
         expected_origin: &String,
-        expected_challenge: &[u8; 32],
+        expected_challenge: [u8; 32],
     ) -> Result<Vec<u8>> {
         let mut result = Vec::new();
         // {"type":"webauthn.get"
@@ -269,6 +269,14 @@ impl Secp256r1VerifyArgs {
             MultisigError::DomainConfigIsDisabled
         );
 
+        let (rp_id_hash, client_data_hash) =
+            self.extract_webauthn_signed_message_from_instruction(instructions_sysvar)?;
+
+        require!(
+            domain_data.rp_id_hash.eq(&rp_id_hash),
+            MultisigError::RpIdHashMismatch
+        );
+
         let slot_hash = self.fetch_slot_hash(sysvar_slot_history)?;
 
         let whitelisted_origins = domain_data.parse_origins()?;
@@ -284,16 +292,9 @@ impl Secp256r1VerifyArgs {
 
         let expected_challenge = Sha256::hash(&buffer).unwrap();
 
-        let (rp_id_hash, client_data_hash) =
-            self.extract_webauthn_signed_message_from_instruction(instructions_sysvar)?;
-
-        require!(
-            domain_data.rp_id_hash.eq(&rp_id_hash),
-            MultisigError::RpIdHashMismatch
-        );
-
         let generated_client_data_json =
-            Self::generate_client_data_json(&self, expected_origin, &expected_challenge)?;
+            self.generate_client_data_json(expected_origin, expected_challenge)?;
+
         let expected_client_data_hash = Sha256::hash(&generated_client_data_json).unwrap();
 
         if client_data_hash.ne(&expected_client_data_hash) {

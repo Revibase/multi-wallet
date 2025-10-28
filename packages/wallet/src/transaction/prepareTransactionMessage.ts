@@ -4,7 +4,7 @@ import {
   type Instruction,
 } from "gill";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../generated";
-import { vaultTransactionMessageSerialize } from "../utils";
+import { vaultTransactionMessageSerialize } from "../types";
 import { compileToWrappedMessageV0 } from "../utils/transactionMessage/compileToWrappedMessageV0";
 interface PrepareTransactionMessageArgs {
   instructions: Instruction[];

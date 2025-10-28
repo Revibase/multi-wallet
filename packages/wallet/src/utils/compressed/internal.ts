@@ -16,8 +16,8 @@ import {
   type SettingsReadonlyArgs,
   type ValidityProofArgs,
 } from "../../generated";
+import { getCompressedSettingsAddressFromIndex } from "../addresses";
 import { getLightProtocolRpc } from "../initialize";
-import { getCompressedSettingsAddressFromIndex } from "./helper";
 import { PackedAccounts } from "./packedAccounts";
 
 export function getNewAddressesParams(

@@ -6,7 +6,7 @@ import {
   type SettingsReadonlyArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
-import { extractSecp256r1VerificationArgs } from "../../utils/internal";
+import { extractSecp256r1VerificationArgs } from "../../utils/transaction/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
 export function createTransactionBuffer({

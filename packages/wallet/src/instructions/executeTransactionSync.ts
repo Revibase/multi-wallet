@@ -21,8 +21,8 @@ import {
 import {
   extractSecp256r1VerificationArgs,
   getDeduplicatedSigners,
-} from "../utils/internal";
-import { accountsForTransactionExecute } from "../utils/transactionMessage/helper";
+} from "../utils/transaction/internal";
+import { accountsForTransactionExecute } from "../utils/transactionMessage/internal";
 import {
   getSecp256r1VerifyInstruction,
   type Secp256r1VerifyInput,

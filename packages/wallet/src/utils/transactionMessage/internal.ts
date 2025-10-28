@@ -9,7 +9,8 @@ import {
   type ReadonlyUint8Array,
   type TransactionSigner,
 } from "gill";
-import { getSolanaRpc, vaultTransactionMessageDeserialize } from "..";
+import { getSolanaRpc } from "..";
+import { vaultTransactionMessageDeserialize } from "../../types";
 
 function getAccountRole(
   message: CompiledTransactionMessage,

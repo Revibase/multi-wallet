@@ -21,6 +21,7 @@ import {
   getChangeConfigInstructionAsync,
   getCompressedSettingsDecoder,
   getUserDecoder,
+  type IPermissions,
   type MemberKey,
   type RemoveMemberArgs,
   type SettingsMutArgs,
@@ -29,8 +30,10 @@ import {
 } from "../generated";
 import {
   type ConfigurationArgs,
+  type IPermission,
   KeyType,
   PermanentMemberPermission,
+  Permission,
   type PermissionArgs,
   Permissions,
   Secp256r1Key,
@@ -51,8 +54,7 @@ import {
   getValidityProofWithRetry,
 } from "../utils/compressed/internal";
 import { PackedAccounts } from "../utils/compressed/packedAccounts";
-import { convertPermissions } from "../utils/helper";
-import { extractSecp256r1VerificationArgs } from "../utils/internal";
+import { extractSecp256r1VerificationArgs } from "../utils/transaction/internal";
 import type { Secp256r1VerifyInput } from "./secp256r1Verify";
 
 export async function changeConfig({
@@ -491,4 +493,19 @@ function getAddMemberPermission(
     isTransactionManager
   );
   return permissions;
+}
+
+function convertPermissions(
+  p: PermissionArgs,
+  isPermanentMember = false,
+  isTransactionManager = false
+): IPermissions {
+  const perms: IPermission[] = [];
+  if (p.initiate) perms.push(Permission.InitiateTransaction);
+  if (p.vote) perms.push(Permission.VoteTransaction);
+  if (p.execute) perms.push(Permission.ExecuteTransaction);
+  if (isPermanentMember) perms.push(PermanentMemberPermission);
+  if (isTransactionManager) perms.push(TransactionManagerPermission);
+
+  return Permissions.fromPermissions(perms);
 }

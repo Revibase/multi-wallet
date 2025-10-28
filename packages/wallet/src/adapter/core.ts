@@ -20,13 +20,13 @@ import {
   getTransactionBufferAddress,
   getWalletAddressFromIndex,
 } from "../utils";
-import { resolveTransactionManagerSigner } from "../utils/helper";
+import { resolveTransactionManagerSigner } from "../utils/transaction/helper";
 import {
-  createSignInMessageText,
   estimateJitoTips,
   estimateTransactionSizeExceedLimit,
   simulateSecp256r1Signer,
 } from "../utils/transaction/internal";
+import { createSignInMessageText } from "./utils";
 import type { Revibase, RevibaseEvent } from "./window";
 
 export function createRevibaseAdapter(): Revibase {
@@ -116,7 +116,6 @@ export function createRevibaseAdapter(): Revibase {
         message: input.message,
         response: input.authResponse,
         expectedOrigin: input.expectedOrigin,
-        expectedRpId: input.expectedRpId,
       });
       return verified;
     },

@@ -21,7 +21,7 @@ import {
   getValidityProofWithRetry,
 } from "../utils/compressed/internal";
 import { PackedAccounts } from "../utils/compressed/packedAccounts";
-import { extractSecp256r1VerificationArgs } from "../utils/internal";
+import { extractSecp256r1VerificationArgs } from "../utils/transaction/internal";
 import type { Secp256r1VerifyInput } from "./secp256r1Verify";
 
 type CreateWalletArgs = {

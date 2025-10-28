@@ -21,7 +21,7 @@ import {
 import {
   extractSecp256r1VerificationArgs,
   getDeduplicatedSigners,
-} from "../../utils/internal";
+} from "../../utils/transaction/internal";
 import {
   getSecp256r1VerifyInstruction,
   type Secp256r1VerifyInput,

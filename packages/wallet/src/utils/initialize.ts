@@ -17,8 +17,8 @@ import { estimateComputeUnitLimitFactory } from "gill/programs";
 import { createRevibaseAdapter } from "../adapter/core";
 import { RevibaseWallet } from "../adapter/wallet";
 import type { JitoTipsConfig } from "../types";
-import { REVIBASE_API_ENDPOINT, REVIBASE_AUTH_DOMAIN } from "./consts";
-import { getRandomPayer } from "./internal";
+import { REVIBASE_API_ENDPOINT, REVIBASE_AUTH_ENDPOINT } from "./consts";
+import { getRandomPayer } from "./transaction/internal";
 
 let globalSolanaRpcEndpoint: string | null = null;
 let lightProtocolRpc: LightProtocolRpc | null = null;
@@ -35,9 +35,9 @@ let globalComputeBudgetEstimate:
   | null = null;
 
 let globalFeePayer: TransactionSigner | null = null;
-let globalPayerEndpoint: string | null = null;
+let globalApiEndpoint: string | null = null;
 let globalJitoTipsConfig: JitoTipsConfig | null = null;
-let globalAuthUrl: string | null = null;
+let globalAuthEndpoint: string | null = null;
 let globalAuthorizedClient: { publicKey: string; url: string } | null = null;
 let globalAdditionalInfo: any | null = null;
 
@@ -71,7 +71,7 @@ export function getComputeBudgetEstimate() {
 export async function getFeePayer() {
   if (!globalFeePayer) {
     globalFeePayer = await getRandomPayer(
-      globalPayerEndpoint ?? REVIBASE_API_ENDPOINT
+      globalApiEndpoint ?? REVIBASE_API_ENDPOINT
     );
   }
   return globalFeePayer;
@@ -82,8 +82,8 @@ export function getJitoTipsConfig() {
   return globalJitoTipsConfig;
 }
 
-export function getAuthUrl() {
-  return globalAuthUrl ?? REVIBASE_AUTH_DOMAIN;
+export function getAuthEndpoint() {
+  return globalAuthEndpoint ?? REVIBASE_AUTH_ENDPOINT;
 }
 
 export function getGlobalAuthorizedClient() {
@@ -94,35 +94,35 @@ export function getGlobalAdditonalInfo() {
   return globalAdditionalInfo;
 }
 
-export function uninitializeMultiWallet() {
+export function uninitialize() {
   lightProtocolRpc = null;
   globalSolanaRpc = null;
   globalSolanaRpcEndpoint = null;
   globalFeePayer = null;
-  globalPayerEndpoint = null;
+  globalApiEndpoint = null;
   globalJitoTipsConfig = null;
-  globalAuthUrl = null;
+  globalAuthEndpoint = null;
   globalSendAndConfirmTransaction = null;
   globalComputeBudgetEstimate = null;
   globalAuthorizedClient = null;
 }
 
-export function initializeMultiWallet({
+export function initialize({
   rpcEndpoint,
-  payerEndpoint,
-  jitoTipsConfig,
-  compressionApiEndpoint,
   proverEndpoint,
-  authUrl,
+  compressionApiEndpoint,
+  jitoTipsConfig,
+  apiEndpoint,
+  authEndpoint,
   authorizedClient,
   additionalInfo,
 }: {
   rpcEndpoint: string;
-  payerEndpoint?: string;
-  jitoTipsConfig?: JitoTipsConfig;
-  compressionApiEndpoint?: string;
   proverEndpoint?: string;
-  authUrl?: string;
+  compressionApiEndpoint?: string;
+  jitoTipsConfig?: JitoTipsConfig;
+  apiEndpoint?: string;
+  authEndpoint?: string;
   authorizedClient?: { publicKey: string; url: string };
   additionalInfo?: any;
 }) {
@@ -141,9 +141,9 @@ export function initializeMultiWallet({
     rpc,
   });
 
-  globalPayerEndpoint = payerEndpoint ?? null;
+  globalApiEndpoint = apiEndpoint ?? null;
   globalJitoTipsConfig = jitoTipsConfig ?? null;
-  globalAuthUrl = authUrl ?? null;
+  globalAuthEndpoint = authEndpoint ?? null;
   globalAuthorizedClient = authorizedClient ?? null;
   globalAdditionalInfo = additionalInfo ?? null;
 

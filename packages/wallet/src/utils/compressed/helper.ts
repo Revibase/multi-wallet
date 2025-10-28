@@ -1,49 +1,17 @@
-import {
-  createBN254,
-  deriveAddress,
-  deriveAddressSeed,
-  getDefaultAddressTreeInfo,
-} from "@lightprotocol/stateless.js";
-import { PublicKey } from "@solana/web3.js";
-import {
-  type Address,
-  getAddressEncoder,
-  getProgramDerivedAddress,
-  getU128Encoder,
-  getUtf8Encoder,
-} from "gill";
+import { type Address } from "gill";
 import {
   type CompressedSettingsData,
   fetchMaybeSettings,
+  getCompressedSettingsAddressFromIndex,
   getCompressedSettingsDecoder,
+  getUserAccountAddress,
   getUserDecoder,
-  MULTI_WALLET_PROGRAM_ADDRESS,
   Secp256r1Key,
   type User,
 } from "../..";
-import { ADDRESS_TREE_VERSION } from "../consts";
+import { getSettingsFromIndex } from "../addresses";
 import { getSolanaRpc } from "../initialize";
 import { getCompressedAccount } from "./internal";
-
-export function getUserAccountAddress(member: Address | Secp256r1Key) {
-  const addressSeed = deriveAddressSeed(
-    [
-      new Uint8Array(getUtf8Encoder().encode("user")),
-      member instanceof Secp256r1Key
-        ? member.toTruncatedBuffer()
-        : new Uint8Array(getAddressEncoder().encode(member)),
-      new Uint8Array(getUtf8Encoder().encode(ADDRESS_TREE_VERSION)),
-    ],
-    new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS.toString())
-  );
-  return createBN254(
-    deriveAddress(
-      addressSeed,
-      new PublicKey(getDefaultAddressTreeInfo().tree)
-    ).toString(),
-    "base58"
-  );
-}
 
 export async function fetchUserAccountData(
   member: Address | Secp256r1Key,
@@ -66,24 +34,6 @@ export async function fetchMaybeUserAccountData(
     return null;
   }
   return getUserDecoder().decode(result.data.data);
-}
-
-export function getCompressedSettingsAddressFromIndex(index: number | bigint) {
-  const addressSeed = deriveAddressSeed(
-    [
-      new Uint8Array(getUtf8Encoder().encode("multi_wallet")),
-      new Uint8Array(getU128Encoder().encode(index)),
-      new Uint8Array(getUtf8Encoder().encode(ADDRESS_TREE_VERSION)),
-    ],
-    new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS)
-  );
-  return createBN254(
-    deriveAddress(
-      addressSeed,
-      new PublicKey(getDefaultAddressTreeInfo().tree)
-    ).toString(),
-    "base58"
-  );
 }
 
 export async function fetchSettingsData(
@@ -115,32 +65,4 @@ export async function fetchSettingsData(
       isCompressed: false,
     };
   }
-}
-export async function getWalletAddressFromSettings(settings: Address) {
-  const [address] = await getProgramDerivedAddress({
-    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-    seeds: [
-      getUtf8Encoder().encode("multi_wallet"),
-      getAddressEncoder().encode(settings),
-      getUtf8Encoder().encode("vault"),
-    ],
-  });
-
-  return address;
-}
-export async function getSettingsFromIndex(index: number | bigint) {
-  const [settings] = await getProgramDerivedAddress({
-    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-    seeds: [
-      getUtf8Encoder().encode("multi_wallet"),
-      getU128Encoder().encode(index),
-    ],
-  });
-
-  return settings;
-}
-export async function getWalletAddressFromIndex(index: number | bigint) {
-  const settings = await getSettingsFromIndex(index);
-  const address = await getWalletAddressFromSettings(settings);
-  return address;
 }

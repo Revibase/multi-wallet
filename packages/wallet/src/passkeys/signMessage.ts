@@ -4,24 +4,20 @@ import {
   type MessageAuthenticationResponse,
   type MessagePayload,
 } from "../types";
-import { getAuthUrl, getGlobalAdditonalInfo } from "../utils";
+import { getAuthEndpoint, getGlobalAdditonalInfo } from "../utils";
 import { openAuthUrl } from "../utils/passkeys/internal";
 
 export async function signMessageWithPasskey({
-  authUrl = getAuthUrl(),
   message,
   signer,
   popUp,
-  debug,
-  additionalInfo = getGlobalAdditonalInfo(),
 }: MessagePayload & BasePayload) {
   const authResponse = (await openAuthUrl({
-    authUrl: `${authUrl}/?redirectUrl=${encodeURIComponent(window.origin)}`,
+    authUrl: `${getAuthEndpoint()}/?redirectUrl=${encodeURIComponent(window.origin)}`,
     data: { type: "message", payload: message },
     signer,
     popUp,
-    debug,
-    additionalInfo,
+    additionalInfo: getGlobalAdditonalInfo(),
   })) as any;
   return {
     ...authResponse,

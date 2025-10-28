@@ -38,9 +38,6 @@ export type MessagePayload = {
 };
 
 export type BasePayload = {
-  authUrl?: string;
   signer?: Secp256r1Key;
   popUp?: Window | null;
-  debug?: boolean;
-  additionalInfo?: any;
 };

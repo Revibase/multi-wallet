@@ -12,8 +12,6 @@ export async function openAuthUrl({
   additionalInfo,
   signer,
   popUp = null,
-  timeout = DEFAULT_TIMEOUT,
-  debug = false,
   data,
 }: {
   authUrl: string;
@@ -24,8 +22,6 @@ export async function openAuthUrl({
   };
   signer?: Secp256r1Key;
   popUp?: Window | null;
-  timeout?: number;
-  debug?: boolean;
 }) {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
@@ -46,7 +42,7 @@ export async function openAuthUrl({
       log("Authentication timeout.");
       cleanUp();
       reject(new Error("Authentication timed out"));
-    }, timeout);
+    }, DEFAULT_TIMEOUT);
 
     function cleanUp() {
       clearInterval(closeCheckInterval);
@@ -69,7 +65,7 @@ export async function openAuthUrl({
     }
 
     function log(...args: any[]) {
-      if (debug) console.debug("[Popup]", ...args);
+      if (additionalInfo?.debug) console.debug("[Popup]", ...args);
     }
 
     const messageReceivedHandler = (event: MessageEvent) => {

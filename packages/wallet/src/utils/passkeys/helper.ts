@@ -7,8 +7,8 @@ import {
   type TransactionAuthenticationResponse,
   SignedSecp256r1Key,
 } from "../../types";
-import { getDomainConfigAddress } from "../helper";
-import { getAuthUrl, getSolanaRpc } from "../initialize";
+import { getDomainConfigAddress } from "../addresses";
+import { getAuthEndpoint, getSolanaRpc } from "../initialize";
 import {
   base64URLStringToBuffer,
   convertSignatureDERtoRS,
@@ -23,13 +23,13 @@ import {
  * This helper creates a centered, resizable popup on desktop, and a full-screen view on mobile.
  * It defaults to the `/loading` route of your configured authentication origin.
  *
- * @param url - The URL to load in the popup. Defaults to `${getAuthUrl()}/loading`.
+ * @param url - The URL to load in the popup. Defaults to `https://auth.revibase.com/loading`.
  * @returns A reference to the newly created popup window, or `null` if blocked by the browser.
  *
  * @throws {Error} If called outside a browser environment.
  *
  */
-export function createPopUp(url = `${getAuthUrl()}/loading`) {
+export function createPopUp(url = `${getAuthEndpoint()}/loading`) {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }

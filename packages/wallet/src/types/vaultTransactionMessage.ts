@@ -6,7 +6,7 @@ import {
   getU8Codec,
   type ReadonlyUint8Array,
 } from "gill";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../generated";
 
 function getCompiledInstructionCodec() {
   return getStructCodec([

@@ -62,7 +62,6 @@ export type RevibaseVerifySignedMessageMethod = (input: {
   message: string;
   authResponse: MessageAuthenticationResponse;
   expectedOrigin?: string;
-  expectedRpId?: string;
 }) => Promise<boolean>;
 export type RevibaseVerifySignedMessageFeature = {
   /** Name of the feature. */

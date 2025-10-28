@@ -12,7 +12,7 @@ import {
   fetchUserAccountData,
   getSignedSecp256r1Key,
 } from "../../utils";
-import { resolveTransactionManagerSigner } from "../../utils/helper";
+import { resolveTransactionManagerSigner } from "../../utils/transaction/helper";
 import { nativeTransferIntent } from "./nativeTransferIntent";
 import { tokenTransferIntent } from "./tokenTransferIntent";
 
@@ -37,9 +37,6 @@ export async function transferIntent({
   cachedAccounts = new Map<string, any>(),
   signer,
   popUp,
-  authUrl,
-  additionalInfo,
-  debug,
 }: TransferIntentArgs): Promise<Instruction[]> {
   const authResponse = await signTransactionWithPasskey({
     transactionActionType: "transfer_intent",
@@ -51,9 +48,6 @@ export async function transferIntent({
     ]),
     signer,
     popUp,
-    authUrl,
-    additionalInfo,
-    debug,
   });
   const signedSigner = await getSignedSecp256r1Key(authResponse);
   let index: number;

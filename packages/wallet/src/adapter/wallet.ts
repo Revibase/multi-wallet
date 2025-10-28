@@ -10,7 +10,6 @@ import type {
   Wallet,
 } from "@wallet-standard/core";
 import { address, getAddressEncoder } from "gill";
-import { bytesEqual } from "../utils/transaction/internal";
 import type {
   RevibaseSignMessageFeature,
   RevibaseSignMessageMethod,
@@ -20,6 +19,7 @@ import type {
   RevibaseVerifySignedMessageMethod,
 } from "./features.js";
 import { icon } from "./icon.js";
+import { bytesEqual } from "./utils.js";
 import { type Revibase, RevibaseWalletAccount } from "./window.js";
 
 export const RevibaseNamespace = "revibase:";
