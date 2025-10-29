@@ -1,27 +1,27 @@
-import {
-  getAddressEncoder,
-  getU64Encoder,
-  type Address,
-  type Instruction,
-} from "gill";
-import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
-import { signTransactionWithPasskey } from "../../passkeys";
-import { type BasePayload } from "../../types";
+import type { TransactionDetails } from "@revibase/core";
 import {
   fetchSettingsAccountData,
   fetchUserAccountData,
+  getFeePayer,
   getSignedSecp256r1Key,
-} from "../../utils";
-import { resolveTransactionManagerSigner } from "../../utils/transaction/helper";
-import { nativeTransferIntent } from "./nativeTransferIntent";
-import { tokenTransferIntent } from "./tokenTransferIntent";
+  nativeTransferIntent,
+  resolveTransactionManagerSigner,
+  sendAndConfirmTransaction,
+  signTransactionWithPasskey,
+  tokenTransferIntent,
+  type BasePayload,
+} from "@revibase/core";
+import type { AddressesByLookupTableAddress } from "gill";
+import { getAddressEncoder, getU64Encoder, type Address } from "gill";
+import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 
-interface TransferIntentArgs extends BasePayload {
+interface TokenTransferArgs extends BasePayload {
   amount: number | bigint;
   destination: Address;
   mint?: Address;
   tokenProgram?: Address;
   cachedAccounts?: Map<string, any>;
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
 }
 
 /**
@@ -29,15 +29,31 @@ interface TransferIntentArgs extends BasePayload {
  * @param mint If no mint is provided, Native SOL will be used for the transfer
  * @returns
  */
-export async function transferIntent({
-  amount,
-  destination,
-  mint,
-  tokenProgram = TOKEN_PROGRAM_ADDRESS,
-  cachedAccounts = new Map<string, any>(),
-  signer,
-  popUp,
-}: TransferIntentArgs): Promise<Instruction[]> {
+export async function signAndSendTokenTransfer(
+  input: TokenTransferArgs
+): Promise<string> {
+  const transactionDetails = await buildTokenTransferInstruction(input);
+  return sendAndConfirmTransaction(transactionDetails);
+}
+
+/**
+ *
+ * @param mint If no mint is provided, Native SOL will be used for the transfer
+ * @returns
+ */
+export async function buildTokenTransferInstruction(
+  input: TokenTransferArgs
+): Promise<TransactionDetails> {
+  const {
+    amount,
+    destination,
+    mint,
+    addressesByLookupTableAddress,
+    tokenProgram = TOKEN_PROGRAM_ADDRESS,
+    cachedAccounts = new Map<string, any>(),
+    signer,
+    popUp,
+  } = input;
   const authResponse = await signTransactionWithPasskey({
     transactionActionType: "transfer_intent",
     transactionAddress: mint ? tokenProgram : SYSTEM_PROGRAM_ADDRESS,
@@ -63,7 +79,10 @@ export async function transferIntent({
   } else {
     index = authResponse.additionalInfo.settingsIndex;
   }
-  const settingsData = await fetchSettingsAccountData(index, cachedAccounts);
+  const [settingsData, payer] = await Promise.all([
+    fetchSettingsAccountData(index, cachedAccounts),
+    getFeePayer(),
+  ]);
 
   const transactionManagerSigner = await resolveTransactionManagerSigner({
     signer: signedSigner,
@@ -94,5 +113,5 @@ export async function transferIntent({
         cachedAccounts,
       });
 
-  return instructions;
+  return { instructions, payer, addressesByLookupTableAddress };
 }
