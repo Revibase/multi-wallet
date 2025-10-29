@@ -3,7 +3,6 @@ import {
   type AccountMeta,
   AccountRole,
   address,
-  type Address,
   type AddressesByLookupTableAddress,
   appendTransactionMessageInstructions,
   compileTransaction,
@@ -37,12 +36,7 @@ import {
 import type { Secp256r1VerifyArgs } from "../../generated";
 import { prepareTransactionSync } from "../../transaction";
 import { SignedSecp256r1Key, type TransactionDetails } from "../../types";
-import { JITO_TIP_ACCOUNTS } from "../consts";
-import {
-  getGlobalAuthorizedClient,
-  getJitoTipsConfig,
-  getSolanaRpc,
-} from "../initialize";
+import { getJitoTipsConfig, getSolanaRpc } from "../initialize";
 
 export async function createEncodedBundle(
   bundle: (TransactionDetails & { unitsConsumed?: number })[],
@@ -274,7 +268,7 @@ export async function estimateTransactionSizeExceedLimit({
   return txSize > 1644;
 }
 export async function estimateJitoTips(jitoTipsConfig = getJitoTipsConfig()) {
-  const { estimateJitoTipsEndpoint, priority } = jitoTipsConfig;
+  const { getJitoTipsUrl: estimateJitoTipsEndpoint, priority } = jitoTipsConfig;
   const response = await fetch(estimateJitoTipsEndpoint);
   const result = await response.json();
   const tipAmount = Math.round(result[0][priority] * 10 ** 9) as number;
@@ -365,6 +359,16 @@ export function addJitoTip({
   payer: TransactionSigner;
   tipAmount: number;
 }): Instruction {
+  const JITO_TIP_ACCOUNTS = [
+    "HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe",
+    "ADaUMid9yfUytqMBgopwjb2DTLSokTSzL1zt6iGPaS49",
+    "96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5",
+    "Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY",
+    "DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh",
+    "ADuUkR4vqLUMWXxW9gh6D6L8pMSawimctcNZ5pGwDcEt",
+    "3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT",
+    "DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL",
+  ];
   const tipAccount =
     JITO_TIP_ACCOUNTS[Math.floor(Math.random() * JITO_TIP_ACCOUNTS.length)];
   return getTransferSolInstruction({
@@ -407,70 +411,6 @@ export async function getRandomPayer(
         [address(randomPayer)]: getBase58Encoder().encode(
           sig
         ) as SignatureBytes,
-      }));
-    },
-  };
-}
-export function createTransactionManagerSigner(
-  address: Address,
-  url: string,
-  transactionMessageBytes?: ReadonlyUint8Array
-): TransactionSigner {
-  return {
-    address,
-    async signTransactions(transactions) {
-      const payload: Record<
-        string,
-        string | string[] | { publicKey: string; signatures: string[] }
-      > = {
-        publicKey: address.toString(),
-        transactions: transactions.map(getBase64EncodedWireTransaction),
-      };
-
-      if (transactionMessageBytes) {
-        payload.transactionMessageBytes = getBase64Decoder().decode(
-          transactionMessageBytes
-        );
-      }
-      const authorizedClient = getGlobalAuthorizedClient();
-      if (authorizedClient) {
-        const { url, publicKey } = authorizedClient;
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            transactions: payload.transactions,
-            publicKey,
-          }),
-        });
-        const data = (await response.json()) as
-          | { signatures: string[] }
-          | { error: string };
-        if ("error" in data) {
-          throw new Error(data.error);
-        }
-        payload.authorizedClient = {
-          publicKey,
-          signatures: data.signatures,
-        };
-      }
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = (await response.json()) as
-        | { signatures: string[] }
-        | { error: string };
-
-      if ("error" in data) {
-        throw new Error(data.error);
-      }
-
-      return data.signatures.map((sig) => ({
-        [address]: getBase58Encoder().encode(sig) as SignatureBytes,
       }));
     },
   };

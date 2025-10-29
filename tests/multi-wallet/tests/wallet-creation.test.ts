@@ -1,4 +1,4 @@
-import { fetchSettingsData, getSolanaRpc } from "@revibase/wallet";
+import { fetchSettingsAccountData, getSolanaRpc } from "@revibase/wallet";
 import { expect } from "chai";
 import { address } from "gill";
 import { WALLET_TRANSFER_AMOUNT } from "../constants.ts";
@@ -23,7 +23,7 @@ export function runWalletCreationTests() {
       ctx = await createMultiWallet(ctx);
       if (!ctx.index || !ctx.multiWalletVault) return;
       // Verify wallet settings
-      const accountData = await fetchSettingsData(ctx.index);
+      const accountData = await fetchSettingsAccountData(ctx.index);
 
       expect(accountData.members.length).to.equal(
         1,

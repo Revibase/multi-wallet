@@ -18,6 +18,43 @@ import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
 import { Secp256r1Key } from "../../types";
 import { ADDRESS_TREE_VERSION } from "../consts";
 
+export function getCompressedSettingsAddressFromIndex(index: number | bigint) {
+  const addressSeed = deriveAddressSeed(
+    [
+      new Uint8Array(getUtf8Encoder().encode("multi_wallet")),
+      new Uint8Array(getU128Encoder().encode(index)),
+      new Uint8Array(getUtf8Encoder().encode(ADDRESS_TREE_VERSION)),
+    ],
+    new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS)
+  );
+  return createBN254(
+    deriveAddress(
+      addressSeed,
+      new PublicKey(getDefaultAddressTreeInfo().tree)
+    ).toString(),
+    "base58"
+  );
+}
+export function getUserAccountAddress(member: Address | Secp256r1Key) {
+  const addressSeed = deriveAddressSeed(
+    [
+      new Uint8Array(getUtf8Encoder().encode("user")),
+      member instanceof Secp256r1Key
+        ? member.toTruncatedBuffer()
+        : new Uint8Array(getAddressEncoder().encode(member)),
+      new Uint8Array(getUtf8Encoder().encode(ADDRESS_TREE_VERSION)),
+    ],
+    new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS.toString())
+  );
+  return createBN254(
+    deriveAddress(
+      addressSeed,
+      new PublicKey(getDefaultAddressTreeInfo().tree)
+    ).toString(),
+    "base58"
+  );
+}
+
 export async function getDomainConfigAddress({
   rpIdHash,
   rpId,
@@ -27,7 +64,7 @@ export async function getDomainConfigAddress({
 }) {
   if (!rpIdHash) {
     if (rpId) {
-      rpIdHash = sha256(new TextEncoder().encode(rpId));
+      rpIdHash = sha256(new Uint8Array(getUtf8Encoder().encode(rpId)));
     } else {
       throw new Error("RpId not found.");
     }
@@ -74,42 +111,6 @@ export async function getTransactionBufferAddress(
 
   return transactionBuffer;
 }
-export function getCompressedSettingsAddressFromIndex(index: number | bigint) {
-  const addressSeed = deriveAddressSeed(
-    [
-      new Uint8Array(getUtf8Encoder().encode("multi_wallet")),
-      new Uint8Array(getU128Encoder().encode(index)),
-      new Uint8Array(getUtf8Encoder().encode(ADDRESS_TREE_VERSION)),
-    ],
-    new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS)
-  );
-  return createBN254(
-    deriveAddress(
-      addressSeed,
-      new PublicKey(getDefaultAddressTreeInfo().tree)
-    ).toString(),
-    "base58"
-  );
-}
-export function getUserAccountAddress(member: Address | Secp256r1Key) {
-  const addressSeed = deriveAddressSeed(
-    [
-      new Uint8Array(getUtf8Encoder().encode("user")),
-      member instanceof Secp256r1Key
-        ? member.toTruncatedBuffer()
-        : new Uint8Array(getAddressEncoder().encode(member)),
-      new Uint8Array(getUtf8Encoder().encode(ADDRESS_TREE_VERSION)),
-    ],
-    new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS.toString())
-  );
-  return createBN254(
-    deriveAddress(
-      addressSeed,
-      new PublicKey(getDefaultAddressTreeInfo().tree)
-    ).toString(),
-    "base58"
-  );
-}
 export async function getWalletAddressFromSettings(settings: Address) {
   const [address] = await getProgramDerivedAddress({
     programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
@@ -137,4 +138,12 @@ export async function getWalletAddressFromIndex(index: number | bigint) {
   const settings = await getSettingsFromIndex(index);
   const address = await getWalletAddressFromSettings(settings);
   return address;
+}
+
+export async function getLightCpiSigner() {
+  const [lightCpiSigner] = await getProgramDerivedAddress({
+    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
+    seeds: [getUtf8Encoder().encode("cpi_authority")],
+  });
+  return lightCpiSigner;
 }

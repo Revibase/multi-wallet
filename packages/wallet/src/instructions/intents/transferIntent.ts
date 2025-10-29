@@ -8,7 +8,7 @@ import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 import { signTransactionWithPasskey } from "../../passkeys";
 import { type BasePayload } from "../../types";
 import {
-  fetchSettingsData,
+  fetchSettingsAccountData,
   fetchUserAccountData,
   getSignedSecp256r1Key,
 } from "../../utils";
@@ -63,7 +63,7 @@ export async function transferIntent({
   } else {
     index = authResponse.additionalInfo.settingsIndex;
   }
-  const settingsData = await fetchSettingsData(index, cachedAccounts);
+  const settingsData = await fetchSettingsAccountData(index, cachedAccounts);
 
   const transactionManagerSigner = await resolveTransactionManagerSigner({
     signer: signedSigner,

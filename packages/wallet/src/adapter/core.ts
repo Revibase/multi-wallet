@@ -12,7 +12,7 @@ import {
 import { Secp256r1Key } from "../types";
 import {
   createPopUp,
-  fetchSettingsData,
+  fetchSettingsAccountData,
   fetchUserAccountData,
   getFeePayer,
   getSettingsFromIndex,
@@ -105,25 +105,21 @@ export function createRevibaseAdapter(): Revibase {
       emit("disconnect");
     },
     signMessage: async function (input) {
-      const response = await signMessageWithPasskey({
+      return await signMessageWithPasskey({
         signer: this.member ? new Secp256r1Key(this.member) : undefined,
         message: input,
       });
-      return response;
     },
     verify: async function (input) {
-      const verified = await verifyMessage({
+      return await verifyMessage({
         message: input.message,
         response: input.authResponse,
         expectedOrigin: input.expectedOrigin,
       });
-      return verified;
     },
     signTransaction: async function (input) {
       if (!this.member || !this.index || !this.publicKey) {
-        throw new Error(
-          "Wallet is not connected or missing member/index/public key."
-        );
+        throw new Error("Wallet is not connected");
       }
       // open popup first so that browser won't prompt user for permission
       const popUp = createPopUp();
@@ -137,7 +133,7 @@ export function createRevibaseAdapter(): Revibase {
 
       const [settingsData, settings, payer, transactionMessageBytes] =
         await Promise.all([
-          fetchSettingsData(this.index, cachedAccounts),
+          fetchSettingsAccountData(this.index, cachedAccounts),
           getSettingsFromIndex(this.index),
           getFeePayer(),
           prepareTransactionMessage({
@@ -188,7 +184,7 @@ export function createRevibaseAdapter(): Revibase {
           estimateJitoTips(jitoTipsConfig),
         ]);
         const signedSigner = await getSignedSecp256r1Key(authResponse);
-        const result = await prepareTransactionBundle({
+        return await prepareTransactionBundle({
           compressed: settingsData.isCompressed,
           index: this.index,
           bufferIndex,
@@ -201,8 +197,6 @@ export function createRevibaseAdapter(): Revibase {
           addressesByLookupTableAddress,
           cachedAccounts,
         });
-
-        return result;
       } else {
         const authResponse = await signTransactionWithPasskey({
           signer,
@@ -212,20 +206,21 @@ export function createRevibaseAdapter(): Revibase {
           popUp,
         });
         const signedSigner = await getSignedSecp256r1Key(authResponse);
-        const result = await prepareTransactionSync({
-          compressed: settingsData.isCompressed,
-          signers: [
-            signedSigner,
-            ...(additionalSigners ?? []),
-            ...(transactionManagerSigner ? [transactionManagerSigner] : []),
-          ],
-          payer,
-          transactionMessageBytes,
-          index: this.index,
-          addressesByLookupTableAddress,
-          cachedAccounts,
-        });
-        return [result];
+        return [
+          await prepareTransactionSync({
+            compressed: settingsData.isCompressed,
+            signers: [
+              signedSigner,
+              ...(additionalSigners ?? []),
+              ...(transactionManagerSigner ? [transactionManagerSigner] : []),
+            ],
+            payer,
+            transactionMessageBytes,
+            index: this.index,
+            addressesByLookupTableAddress,
+            cachedAccounts,
+          }),
+        ];
       }
     },
 

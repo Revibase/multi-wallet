@@ -2,7 +2,7 @@ import {
   compressSettingsAccount,
   decompressSettingsAccount,
   fetchMaybeSettings,
-  fetchSettingsData,
+  fetchSettingsAccountData,
   getSettingsFromIndex,
   getSolanaRpc,
 } from "@revibase/wallet";
@@ -97,7 +97,9 @@ export function runDecompressionTests() {
           false,
           "Settings account should be null"
         );
-        const settingsDataCompressed = await fetchSettingsData(ctx1.index);
+        const settingsDataCompressed = await fetchSettingsAccountData(
+          ctx1.index
+        );
         expect(Number(settingsDataCompressed.index)).equal(
           Number(ctx1.index),
           "Settings compressed account should not be null"

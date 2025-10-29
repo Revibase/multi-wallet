@@ -2,7 +2,7 @@ import {
   changeConfig,
   convertMemberKeyToString,
   DelegateOp,
-  fetchSettingsData,
+  fetchSettingsAccountData,
   fetchUserAccountData,
   prepareTransactionBundle,
   prepareTransactionMessage,
@@ -68,7 +68,7 @@ export function runMemberManagementTests() {
       await sendTransaction(ixs, payer, addressesByLookupTableAddress);
 
       // Verify member was added
-      const accountData = await fetchSettingsData(ctx.index);
+      const accountData = await fetchSettingsAccountData(ctx.index);
       const userAccountData = await fetchUserAccountData(ctx.payer.address);
       const settingsIndex =
         userAccountData.settingsIndex.__option === "Some"
@@ -220,7 +220,7 @@ export function runMemberManagementTests() {
         );
       }
       // Verify member was removed
-      const accountData = await fetchSettingsData(ctx.index);
+      const accountData = await fetchSettingsAccountData(ctx.index);
       const userAccountData = await fetchUserAccountData(ctx.payer.address);
       const settingsIndex =
         userAccountData.settingsIndex.__option === "Some"

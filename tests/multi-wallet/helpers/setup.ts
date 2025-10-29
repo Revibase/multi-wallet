@@ -5,17 +5,16 @@ import {
   createWallet,
   fetchGlobalCounter,
   fetchMaybeGlobalCounter,
+  getDomainConfigAddress,
   getGlobalCounterAddress,
   getSolanaRpc,
   getWalletAddressFromIndex,
-  initializeMultiWallet,
-  MULTI_WALLET_PROGRAM_ADDRESS,
+  initialize,
 } from "@revibase/wallet";
 import {
   address,
   createKeyPairSignerFromPrivateKeyBytes,
   fetchAddressesForLookupTables,
-  getProgramDerivedAddress,
 } from "gill";
 import {
   findAddressLookupTablePda,
@@ -36,7 +35,7 @@ import { sendTransaction } from "./transaction.ts";
 export async function setupTestEnvironment(
   compressed = true
 ): Promise<TestContext> {
-  initializeMultiWallet({
+  initialize({
     rpcEndpoint: LOCAL_RPC_URL,
     compressionApiEndpoint: LOCAL_INDEXER_URL,
     proverEndpoint: LOCAL_PROVER_URL,
@@ -135,14 +134,8 @@ export async function setupTestEnvironment(
   const rpId = crypto.randomUUID();
   const origin = crypto.randomUUID();
 
-  const [domainConfig] = await getProgramDerivedAddress({
-    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-    seeds: [
-      new TextEncoder().encode("domain_config"),
-      new Uint8Array(
-        await crypto.subtle.digest("SHA-256", new TextEncoder().encode(rpId))
-      ),
-    ],
+  const domainConfig = await getDomainConfigAddress({
+    rpId,
   });
 
   return {

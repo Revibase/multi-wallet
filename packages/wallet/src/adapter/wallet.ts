@@ -1,13 +1,14 @@
-import type {
-  StandardConnectFeature,
-  StandardConnectMethod,
-  StandardDisconnectFeature,
-  StandardDisconnectMethod,
-  StandardEventsFeature,
-  StandardEventsListeners,
-  StandardEventsNames,
-  StandardEventsOnMethod,
-  Wallet,
+import {
+  bytesEqual,
+  type StandardConnectFeature,
+  type StandardConnectMethod,
+  type StandardDisconnectFeature,
+  type StandardDisconnectMethod,
+  type StandardEventsFeature,
+  type StandardEventsListeners,
+  type StandardEventsNames,
+  type StandardEventsOnMethod,
+  type Wallet,
 } from "@wallet-standard/core";
 import { address, getAddressEncoder } from "gill";
 import type {
@@ -19,7 +20,6 @@ import type {
   RevibaseVerifySignedMessageMethod,
 } from "./features.js";
 import { icon } from "./icon.js";
-import { bytesEqual } from "./utils.js";
 import { type Revibase, RevibaseWalletAccount } from "./window.js";
 
 export const RevibaseNamespace = "revibase:";

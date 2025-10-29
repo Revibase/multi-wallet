@@ -235,6 +235,7 @@ export function parseOrigins(
   return origins;
 }
 export function convertSignatureDERtoRS(signature: Uint8Array): Uint8Array {
+  // already in compact format
   if (signature.length === 64) {
     return signature;
   }

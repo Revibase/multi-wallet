@@ -9,10 +9,9 @@ import {
   type ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
 import BN from "bn.js";
-import { type Decoder, getProgramDerivedAddress, getUtf8Encoder } from "gill";
+import { type Decoder } from "gill";
 import {
   getCompressedSettingsDecoder,
-  MULTI_WALLET_PROGRAM_ADDRESS,
   type SettingsReadonlyArgs,
   type ValidityProofArgs,
 } from "../../generated";
@@ -160,14 +159,6 @@ export function getCompressedAccountMutArgs<T>(
   }));
 
   return mutArgs;
-}
-
-export async function getLightCpiSigner() {
-  const [lightCpiSigner] = await getProgramDerivedAddress({
-    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-    seeds: [getUtf8Encoder().encode("cpi_authority")],
-  });
-  return lightCpiSigner;
 }
 
 export async function constructSettingsProofArgs(

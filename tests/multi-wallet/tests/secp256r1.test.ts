@@ -3,7 +3,7 @@ import {
   createUserAccounts,
   createWallet,
   fetchGlobalCounter,
-  fetchSettingsData,
+  fetchSettingsAccountData,
   fetchUserAccountData,
   getGlobalCounterAddress,
   getSecp256r1VerifyInstruction,
@@ -78,7 +78,7 @@ export function runSecp256r1Tests() {
       );
 
       // Verify Secp256r1Key was added as member
-      const accountData = await fetchSettingsData(ctx.index);
+      const accountData = await fetchSettingsAccountData(ctx.index);
 
       const userAccountData = await fetchUserAccountData(secp256r1Key);
       const settingsIndex =

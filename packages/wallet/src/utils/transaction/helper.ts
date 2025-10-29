@@ -4,6 +4,8 @@ import {
   compressTransactionMessageUsingAddressLookupTables,
   createTransactionMessage,
   getBase58Decoder,
+  getBase58Encoder,
+  getBase64Decoder,
   getBase64EncodedWireTransaction,
   getSignatureFromTransaction,
   pipe,
@@ -13,6 +15,8 @@ import {
   signTransactionMessageWithSigners,
   type Address,
   type ReadonlyUint8Array,
+  type SignatureBytes,
+  type TransactionSigner,
 } from "gill";
 import {
   getSetComputeUnitLimitInstruction,
@@ -27,9 +31,10 @@ import {
   TransactionManagerPermission,
   type TransactionDetails,
 } from "../../types";
-import { fetchSettingsData, fetchUserAccountData } from "../compressed";
+import { fetchSettingsAccountData, fetchUserAccountData } from "../compressed";
 import {
   getComputeBudgetEstimate,
+  getGlobalAuthorizedClient,
   getJitoTipsConfig,
   getSendAndConfirmTransaction,
   getSolanaRpc,
@@ -37,7 +42,6 @@ import {
 } from "../initialize";
 import {
   createEncodedBundle,
-  createTransactionManagerSigner,
   getMedianPriorityFees,
   simulateBundle,
 } from "./internal";
@@ -57,13 +61,10 @@ export async function sendBundleTransactions(bundle: TransactionDetails[]) {
   const bundleId = await sendJitoBundle(
     encodedBundle.map(getBase64EncodedWireTransaction)
   );
-
-  const signature = await pollJitoBundleConfirmation(bundleId);
-
-  return signature;
+  return bundleId;
 }
 
-export async function sendTransaction({
+export async function sendAndConfirmTransaction({
   instructions,
   payer,
   addressesByLookupTableAddress,
@@ -127,7 +128,7 @@ export async function sendJitoBundle(
   delayMs = 1000,
   jitoTipsConfig = getJitoTipsConfig()
 ): Promise<string> {
-  const { jitoBlockEngineUrl } = jitoTipsConfig;
+  const { blockEngineUrl: jitoBlockEngineUrl } = jitoTipsConfig;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const response = await fetch(`${jitoBlockEngineUrl}/bundles`, {
       method: "POST",
@@ -171,7 +172,7 @@ export async function pollJitoBundleConfirmation(
   delayMs = 3000,
   jitoTipsConfig = getJitoTipsConfig()
 ): Promise<string> {
-  const { jitoBlockEngineUrl } = jitoTipsConfig;
+  const { blockEngineUrl: jitoBlockEngineUrl } = jitoTipsConfig;
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const response = await fetch(`${jitoBlockEngineUrl}/getBundleStatuses`, {
       method: "POST",
@@ -243,7 +244,7 @@ export async function resolveTransactionManagerSigner({
   transactionMessageBytes?: ReadonlyUint8Array;
   cachedAccounts?: Map<string, any>;
 }) {
-  const settingsData = await fetchSettingsData(index, cachedAccounts);
+  const settingsData = await fetchSettingsAccountData(index, cachedAccounts);
   if (settingsData.threshold > 1) {
     throw new Error(
       "Multi-signature transactions with threshold > 1 are not supported yet."
@@ -301,6 +302,72 @@ export async function resolveTransactionManagerSigner({
     userAccountData.transactionManagerUrl.value,
     transactionMessageBytes
   );
+}
+
+export function createTransactionManagerSigner(
+  address: Address,
+  url: string,
+  transactionMessageBytes?: ReadonlyUint8Array
+): TransactionSigner {
+  return {
+    address,
+    async signTransactions(transactions) {
+      const payload: Record<
+        string,
+        string | string[] | { publicKey: string; signatures: string[] }
+      > = {
+        publicKey: address.toString(),
+        transactions: transactions.map(getBase64EncodedWireTransaction),
+      };
+
+      if (transactionMessageBytes) {
+        payload.transactionMessageBytes = getBase64Decoder().decode(
+          transactionMessageBytes
+        );
+      }
+
+      const authorizedClient = getGlobalAuthorizedClient();
+      if (authorizedClient) {
+        const { url, publicKey } = authorizedClient;
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            transactions: payload.transactions,
+            publicKey,
+          }),
+        });
+        const data = (await response.json()) as
+          | { signatures: string[] }
+          | { error: string };
+        if ("error" in data) {
+          throw new Error(data.error);
+        }
+        payload.authorizedClient = {
+          publicKey,
+          signatures: data.signatures,
+        };
+      }
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = (await response.json()) as
+        | { signatures: string[] }
+        | { error: string };
+
+      if ("error" in data) {
+        throw new Error(data.error);
+      }
+
+      return data.signatures.map((sig) => ({
+        [address]: getBase58Encoder().encode(sig) as SignatureBytes,
+      }));
+    },
+  };
 }
 export function convertMemberKeyToString(memberKey: MemberKey) {
   if (memberKey.keyType === KeyType.Ed25519) {

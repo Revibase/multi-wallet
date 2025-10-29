@@ -2,7 +2,7 @@ import {
   changeConfig,
   convertMemberKeyToString,
   createUserAccounts,
-  fetchSettingsData,
+  fetchSettingsAccountData,
   fetchUserAccountData,
   prepareTransactionMessage,
   prepareTransactionSync,
@@ -91,7 +91,7 @@ export function runTransactionManagerTests() {
       const userAccountData = await fetchUserAccountData(
         ephemeralKeypair.address
       );
-      const accountData = await fetchSettingsData(ctx.index);
+      const accountData = await fetchSettingsAccountData(ctx.index);
       const settingsIndex =
         userAccountData.settingsIndex.__option === "Some"
           ? userAccountData.settingsIndex.value

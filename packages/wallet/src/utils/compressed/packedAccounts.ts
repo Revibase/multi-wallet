@@ -18,8 +18,8 @@ import {
 } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
+import { getLightCpiSigner } from "../addresses";
 import { getLightProtocolRpc } from "../initialize";
-import { getLightCpiSigner } from "./internal";
 
 interface MapData {
   index: number;

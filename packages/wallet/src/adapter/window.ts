@@ -1,6 +1,7 @@
 import {
   ReadonlyWalletAccount,
   type StandardConnectInput,
+  type StandardDisconnectMethod,
   type WalletAccount,
 } from "@wallet-standard/core";
 import type {
@@ -32,8 +33,8 @@ export interface Revibase extends RevibaseEventEmitter {
   publicKey: string | null;
   member: string | null;
   index: number | null;
-  connect(input: StandardConnectInput | undefined): Promise<void>;
-  disconnect(): Promise<void>;
+  connect: (input: StandardConnectInput | undefined) => Promise<void>;
+  disconnect: StandardDisconnectMethod;
   signTransaction: RevibaseSignTransactionMethod;
   signMessage: RevibaseSignMessageMethod;
   verify: RevibaseVerifySignedMessageMethod;

@@ -1,6 +1,6 @@
 export interface JitoTipsConfig {
-  jitoBlockEngineUrl: string;
-  estimateJitoTipsEndpoint: string;
+  blockEngineUrl: string;
+  getJitoTipsUrl: string;
   priority:
     | "landed_tips_25th_percentile"
     | "landed_tips_50th_percentile"

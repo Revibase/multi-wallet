@@ -42,7 +42,7 @@ import {
 } from "../types";
 import {
   convertMemberKeyToString,
-  fetchSettingsData,
+  fetchSettingsAccountData,
   getCompressedSettingsAddressFromIndex,
   getUserAccountAddress,
   getWalletAddressFromIndex,
@@ -259,7 +259,10 @@ export async function changeConfig({
       }
 
       case "EditPermissions": {
-        const settingsData = await fetchSettingsData(index, cachedAccounts);
+        const settingsData = await fetchSettingsAccountData(
+          index,
+          cachedAccounts
+        );
         const permanentMember = settingsData.members.find((x) =>
           Permissions.has(x.permissions, PermanentMemberPermission)
         );

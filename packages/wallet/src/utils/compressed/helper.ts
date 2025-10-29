@@ -36,19 +36,33 @@ export async function fetchMaybeUserAccountData(
   return getUserDecoder().decode(result.data.data);
 }
 
-export async function fetchSettingsData(
+export async function fetchSettingsAccountData(
   index: number | bigint,
   cachedAccounts?: Map<string, any>
 ): Promise<CompressedSettingsData & { isCompressed: boolean }> {
+  const settingsData = await fetchMaybeSettingsAccountData(
+    index,
+    cachedAccounts
+  );
+  if (!settingsData) {
+    throw new Error("Settings cannot be found.");
+  }
+  return settingsData;
+}
+
+export async function fetchMaybeSettingsAccountData(
+  index: number | bigint,
+  cachedAccounts?: Map<string, any>
+): Promise<(CompressedSettingsData & { isCompressed: boolean }) | null> {
   try {
     const address = getCompressedSettingsAddressFromIndex(index);
     const result = await getCompressedAccount(address, cachedAccounts);
     if (!result?.data?.data) {
-      throw new Error("Settings account does not exist.");
+      return null;
     }
     const data = getCompressedSettingsDecoder().decode(result.data.data);
     if (data.data.__option === "None") {
-      throw new Error("Settings account does not exist.");
+      return null;
     }
     return { ...data.data.value, isCompressed: true };
   } catch {
@@ -57,7 +71,7 @@ export async function fetchSettingsData(
       await getSettingsFromIndex(index)
     );
     if (!result.exists) {
-      throw new Error("Settings account does not exist.");
+      return null;
     }
     return {
       ...result.data,

@@ -1,5 +1,5 @@
 import {
-  fetchSettingsData,
+  fetchSettingsAccountData,
   fetchUserAccountData,
   getSolanaRpc,
   getWalletAddressFromIndex,
@@ -87,7 +87,7 @@ export function runTransactionTests() {
           result.addressesByLookupTableAddress
         );
         // Verify transaction was successful
-        const accountData = await fetchSettingsData(ctx.index);
+        const accountData = await fetchSettingsAccountData(ctx.index);
         const userAccountData = await fetchUserAccountData(ctx.wallet.address);
         const settingsIndex =
           userAccountData.settingsIndex.__option === "Some"
