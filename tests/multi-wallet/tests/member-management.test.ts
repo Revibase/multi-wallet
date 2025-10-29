@@ -7,7 +7,7 @@ import {
   prepareTransactionBundle,
   prepareTransactionMessage,
   prepareTransactionSync,
-} from "@revibase/wallet";
+} from "@revibase/core";
 import { expect } from "chai";
 import {
   createMultiWallet,

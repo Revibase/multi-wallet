@@ -7,7 +7,7 @@ import {
   Secp256r1Key,
   SignedSecp256r1Key,
   type TransactionPayload,
-} from "@revibase/wallet";
+} from "@revibase/core";
 import {
   address,
   type GetAccountInfoApi,

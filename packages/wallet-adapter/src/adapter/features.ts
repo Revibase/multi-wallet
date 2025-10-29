@@ -1,13 +1,13 @@
 import type {
+  JitoTipsConfig,
+  MessageAuthenticationResponse,
+  TransactionDetails,
+} from "@revibase/core";
+import type {
   AddressesByLookupTableAddress,
   Instruction,
   TransactionSigner,
 } from "gill";
-import type {
-  JitoTipsConfig,
-  MessageAuthenticationResponse,
-  TransactionDetails,
-} from "../types";
 
 export const RevibaseSignTransaction = "revibase:SignTransaction";
 export type RevibaseSignTransactionMethod = (input: {

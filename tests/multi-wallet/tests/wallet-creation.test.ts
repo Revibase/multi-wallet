@@ -1,4 +1,4 @@
-import { fetchSettingsAccountData, getSolanaRpc } from "@revibase/wallet";
+import { fetchSettingsAccountData, getSolanaRpc } from "@revibase/core";
 import { expect } from "chai";
 import { address } from "gill";
 import { WALLET_TRANSFER_AMOUNT } from "../constants.ts";

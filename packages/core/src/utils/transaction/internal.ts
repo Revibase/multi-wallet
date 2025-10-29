@@ -3,22 +3,18 @@ import {
   type AccountMeta,
   AccountRole,
   address,
-  type AddressesByLookupTableAddress,
   appendTransactionMessageInstructions,
   compileTransaction,
   compressTransactionMessageUsingAddressLookupTables,
   createTransactionMessage,
-  getAddressDecoder,
   getBase58Encoder,
   getBase64Decoder,
-  getBase64EncodedWireTransaction,
   getBlockhashDecoder,
   getTransactionEncoder,
   type Instruction,
   type OptionOrNullable,
   pipe,
   prependTransactionMessageInstructions,
-  type ReadonlyUint8Array,
   type Rpc,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
@@ -30,13 +26,11 @@ import {
 } from "gill";
 import {
   getSetComputeUnitLimitInstruction,
-  getSetComputeUnitPriceInstruction,
   getTransferSolInstruction,
 } from "gill/programs";
 import type { Secp256r1VerifyArgs } from "../../generated";
-import { prepareTransactionSync } from "../../transaction";
 import { SignedSecp256r1Key, type TransactionDetails } from "../../types";
-import { getJitoTipsConfig, getSolanaRpc } from "../initialize";
+import { getSolanaRpc } from "../initialize";
 
 export async function createEncodedBundle(
   bundle: (TransactionDetails & { unitsConsumed?: number })[],
@@ -179,101 +173,6 @@ export async function simulateBundle(bundle: string[], connectionUrl: string) {
   return result.value.transactionResults.map((x: any) => x.unitsConsumed);
 }
 
-export function simulateSecp256r1Signer() {
-  const randomPubkey = crypto.getRandomValues(new Uint8Array(33));
-  const signer = new SignedSecp256r1Key(randomPubkey, {
-    originIndex: 0,
-    crossOrigin: false,
-    authData: crypto.getRandomValues(new Uint8Array(37)),
-    domainConfig: getAddressDecoder().decode(
-      crypto.getRandomValues(new Uint8Array(32))
-    ),
-    signature: crypto.getRandomValues(new Uint8Array(64)),
-    verifyArgs: {
-      slotHash: crypto.getRandomValues(new Uint8Array(32)),
-      slotNumber: BigInt(0),
-      truncatedClientDataJson: crypto.getRandomValues(new Uint8Array(100)),
-      clientDataJson: crypto.getRandomValues(new Uint8Array(250)),
-    },
-  });
-  return signer;
-}
-
-export async function estimateTransactionSizeExceedLimit({
-  payer,
-  settingsIndex,
-  transactionMessageBytes,
-  signers,
-  compressed,
-  addressesByLookupTableAddress,
-  cachedAccounts,
-}: {
-  payer: TransactionSigner;
-  transactionMessageBytes: ReadonlyUint8Array;
-  settingsIndex: number;
-  compressed: boolean;
-  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
-  signers: (TransactionSigner | SignedSecp256r1Key)[];
-  cachedAccounts?: Map<string, any>;
-}) {
-  const result = await prepareTransactionSync({
-    payer,
-    index: settingsIndex,
-    transactionMessageBytes,
-    signers,
-    compressed,
-    simulateProof: true,
-    addressesByLookupTableAddress,
-    cachedAccounts,
-  });
-
-  const tx = pipe(
-    createTransactionMessage({ version: 0 }),
-    (tx) => appendTransactionMessageInstructions(result.instructions, tx),
-    (tx) => setTransactionMessageFeePayerSigner(result.payer, tx),
-    (tx) =>
-      setTransactionMessageLifetimeUsingBlockhash(
-        {
-          blockhash: getBlockhashDecoder().decode(
-            crypto.getRandomValues(new Uint8Array(32))
-          ),
-          lastValidBlockHeight: BigInt(Number.MAX_SAFE_INTEGER),
-        },
-        tx
-      ),
-    (tx) =>
-      result.addressesByLookupTableAddress
-        ? compressTransactionMessageUsingAddressLookupTables(
-            tx,
-            result.addressesByLookupTableAddress
-          )
-        : tx,
-    (tx) =>
-      prependTransactionMessageInstructions(
-        [
-          getSetComputeUnitLimitInstruction({
-            units: 800_000,
-          }),
-          getSetComputeUnitPriceInstruction({
-            microLamports: 1000,
-          }),
-        ],
-        tx
-      ),
-
-    (tx) => compileTransaction(tx)
-  );
-  const txSize = getBase64EncodedWireTransaction(tx).length;
-  console.log("Estimated Tx Size: ", txSize);
-  return txSize > 1644;
-}
-export async function estimateJitoTips(jitoTipsConfig = getJitoTipsConfig()) {
-  const { getJitoTipsUrl: estimateJitoTipsEndpoint, priority } = jitoTipsConfig;
-  const response = await fetch(estimateJitoTipsEndpoint);
-  const result = await response.json();
-  const tipAmount = Math.round(result[0][priority] * 10 ** 9) as number;
-  return tipAmount;
-}
 export function extractSecp256r1VerificationArgs(
   signer?: SignedSecp256r1Key | TransactionSigner,
   index = 0

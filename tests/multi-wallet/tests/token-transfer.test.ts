@@ -4,7 +4,7 @@ import {
   getSolanaRpc,
   Secp256r1Key,
   tokenTransferIntent,
-} from "@revibase/wallet";
+} from "@revibase/core";
 import { expect } from "chai";
 import {
   createKeyPairSignerFromPrivateKeyBytes,

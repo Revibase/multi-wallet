@@ -5,7 +5,7 @@ import {
   fetchSettingsAccountData,
   getSettingsFromIndex,
   getSolanaRpc,
-} from "@revibase/wallet";
+} from "@revibase/core";
 import { expect } from "chai";
 import {
   createMultiWallet,

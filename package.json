@@ -12,8 +12,8 @@
     "@lightprotocol/stateless.js": "0.22.0",
     "@noble/curves": "1.9.7",
     "@noble/hashes": "1.8.0",
-    "@revibase/wallet": "workspace:*",
-    "gill": "^0.11.0"
+    "@revibase/core": "workspace:*",
+    "gill": "0.12.0"
   },
   "devDependencies": {
     "@types/chai": "^4.3.0",

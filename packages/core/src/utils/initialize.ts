@@ -2,7 +2,6 @@ import {
   createRpc,
   Rpc as LightProtocolRpc,
 } from "@lightprotocol/stateless.js";
-import { registerWallet } from "@wallet-standard/core";
 import {
   createSolanaClient,
   type CompilableTransactionMessage,
@@ -14,8 +13,6 @@ import {
   type TransactionSigner,
 } from "gill";
 import { estimateComputeUnitLimitFactory } from "gill/programs";
-import { createRevibaseAdapter } from "../adapter/core";
-import { RevibaseWallet } from "../adapter/wallet";
 import type { JitoTipsConfig } from "../types";
 import { REVIBASE_API_ENDPOINT, REVIBASE_AUTH_ENDPOINT } from "./consts";
 import { getRandomPayer } from "./transaction/internal";
@@ -146,8 +143,4 @@ export function initialize({
   globalAuthEndpoint = authEndpoint ?? null;
   globalAuthorizedClient = authorizedClient ?? null;
   globalAdditionalInfo = additionalInfo ?? null;
-
-  if (typeof window !== "undefined") {
-    registerWallet(new RevibaseWallet(createRevibaseAdapter()));
-  }
 }

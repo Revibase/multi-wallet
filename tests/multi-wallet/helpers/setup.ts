@@ -10,7 +10,7 @@ import {
   getSolanaRpc,
   getWalletAddressFromIndex,
   initialize,
-} from "@revibase/wallet";
+} from "@revibase/core";
 import {
   address,
   createKeyPairSignerFromPrivateKeyBytes,

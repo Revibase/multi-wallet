@@ -6,7 +6,7 @@ import {
   fetchUserAccountData,
   prepareTransactionMessage,
   prepareTransactionSync,
-} from "@revibase/wallet";
+} from "@revibase/core";
 import { expect } from "chai";
 import { createKeyPairSignerFromPrivateKeyBytes } from "gill";
 import {

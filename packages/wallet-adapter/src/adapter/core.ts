@@ -1,15 +1,3 @@
-import { address } from "gill";
-import {
-  signMessageWithPasskey,
-  signTransactionWithPasskey,
-  verifyMessage,
-} from "../passkeys";
-import {
-  prepareTransactionBundle,
-  prepareTransactionMessage,
-  prepareTransactionSync,
-} from "../transaction";
-import { Secp256r1Key } from "../types";
 import {
   createPopUp,
   fetchSettingsAccountData,
@@ -19,14 +7,22 @@ import {
   getSignedSecp256r1Key,
   getTransactionBufferAddress,
   getWalletAddressFromIndex,
-} from "../utils";
-import { resolveTransactionManagerSigner } from "../utils/transaction/helper";
+  prepareTransactionBundle,
+  prepareTransactionMessage,
+  prepareTransactionSync,
+  resolveTransactionManagerSigner,
+  Secp256r1Key,
+  signMessageWithPasskey,
+  signTransactionWithPasskey,
+  verifyMessage,
+} from "@revibase/core";
+import { address } from "gill";
 import {
+  createSignInMessageText,
   estimateJitoTips,
   estimateTransactionSizeExceedLimit,
   simulateSecp256r1Signer,
-} from "../utils/transaction/internal";
-import { createSignInMessageText } from "./utils";
+} from "./utils";
 import type { Revibase, RevibaseEvent } from "./window";
 
 export function createRevibaseAdapter(): Revibase {
