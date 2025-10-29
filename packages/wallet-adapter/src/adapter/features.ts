@@ -1,5 +1,4 @@
 import type {
-  JitoTipsConfig,
   MessageAuthenticationResponse,
   TransactionDetails,
 } from "@revibase/core";
@@ -9,22 +8,22 @@ import type {
   TransactionSigner,
 } from "gill";
 
-export const RevibaseSignTransaction = "revibase:SignTransaction";
-export type RevibaseSignTransactionMethod = (input: {
+export const RevibaseSignAndSendTransaction = "revibase:SignAndSendTransaction";
+export type RevibaseSignAndSendTransactionMethod = (input: {
   instructions: Instruction[];
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   additionalSigners?: TransactionSigner[];
   cachedAccounts?: Map<string, any>;
-  jitoTipsConfig?: JitoTipsConfig;
-}) => Promise<TransactionDetails[]>;
-export type RevibaseSignTransactionFeature = {
+}) => Promise<string>;
+export type RevibaseSignAndSendTransactionFeature = {
   /** Name of the feature. */
-  readonly [RevibaseSignTransaction]: {
+  readonly [RevibaseSignAndSendTransaction]: {
     /** Version of the feature API. */
     readonly version: "1.0.0";
 
     /**
-     * Sign transactions using the account's secret key.
+     * Build, Sign and Send transactions using the account's secret key.
+     * Priority Fees and Compute Units are automatically added when sending the transaction.
      *
      * @param instructions instructions for building the transaction
      * @param addressLookupTableAddress optional lookup table
@@ -32,7 +31,33 @@ export type RevibaseSignTransactionFeature = {
      *
      * @return Transaction Signature.
      */
-    readonly signAndSendTransaction: RevibaseSignTransactionMethod;
+    readonly signAndSendTransaction: RevibaseSignAndSendTransactionMethod;
+  };
+};
+
+export const RevibaseBuildTransaction = "revibase:BuildTransaction";
+export type RevibaseBuildTransactionMethod = (input: {
+  instructions: Instruction[];
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
+  additionalSigners?: TransactionSigner[];
+  cachedAccounts?: Map<string, any>;
+}) => Promise<TransactionDetails[]>;
+export type RevibaseBuildTransactionFeature = {
+  /** Name of the feature. */
+  readonly [RevibaseBuildTransaction]: {
+    /** Version of the feature API. */
+    readonly version: "1.0.0";
+
+    /**
+     * Build transactions using the account's secret key.
+     *
+     * @param instructions instructions for building the transaction
+     * @param addressLookupTableAddress optional lookup table
+     * @param additionalSigners additional signers that needs to sign the transaction other than the current wallet signer
+     *
+     * @return Transaction Details
+     */
+    readonly buildTransaction: RevibaseBuildTransactionMethod;
   };
 };
 

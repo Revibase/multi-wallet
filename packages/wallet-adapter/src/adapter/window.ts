@@ -5,8 +5,9 @@ import {
   type WalletAccount,
 } from "@wallet-standard/core";
 import type {
+  RevibaseBuildTransactionMethod,
+  RevibaseSignAndSendTransactionMethod,
   RevibaseSignMessageMethod,
-  RevibaseSignTransactionMethod,
   RevibaseVerifySignedMessageMethod,
 } from "./features";
 
@@ -35,7 +36,8 @@ export interface Revibase extends RevibaseEventEmitter {
   index: number | null;
   connect: (input: StandardConnectInput | undefined) => Promise<void>;
   disconnect: StandardDisconnectMethod;
-  signTransaction: RevibaseSignTransactionMethod;
+  signAndSendTransaction: RevibaseSignAndSendTransactionMethod;
+  buildTransaction: RevibaseBuildTransactionMethod;
   signMessage: RevibaseSignMessageMethod;
   verify: RevibaseVerifySignedMessageMethod;
 }

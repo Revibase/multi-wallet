@@ -12,6 +12,8 @@ import {
   prepareTransactionSync,
   resolveTransactionManagerSigner,
   Secp256r1Key,
+  sendAndConfirmTransaction,
+  sendBundleTransactions,
   signMessageWithPasskey,
   signTransactionWithPasskey,
   verifyMessage,
@@ -113,7 +115,7 @@ export function createRevibaseAdapter(): Revibase {
         expectedOrigin: input.expectedOrigin,
       });
     },
-    signTransaction: async function (input) {
+    buildTransaction: async function (input) {
       if (!this.member || !this.index || !this.publicKey) {
         throw new Error("Wallet is not connected");
       }
@@ -124,7 +126,6 @@ export function createRevibaseAdapter(): Revibase {
         instructions,
         additionalSigners,
         cachedAccounts = new Map(),
-        jitoTipsConfig,
       } = input;
 
       const [settingsData, settings, payer, transactionMessageBytes] =
@@ -177,7 +178,7 @@ export function createRevibaseAdapter(): Revibase {
             transactionMessageBytes: new Uint8Array(transactionMessageBytes),
             popUp,
           }),
-          estimateJitoTips(jitoTipsConfig),
+          estimateJitoTips(),
         ]);
         const signedSigner = await getSignedSecp256r1Key(authResponse);
         return await prepareTransactionBundle({
@@ -217,6 +218,17 @@ export function createRevibaseAdapter(): Revibase {
             cachedAccounts,
           }),
         ];
+      }
+    },
+    signAndSendTransaction: async function (input) {
+      const transactions = await this.buildTransaction(input);
+      if (!transactions.length) {
+        throw new Error("Unable to build transaction");
+      }
+      if (transactions.length === 1) {
+        return sendAndConfirmTransaction(transactions[0]);
+      } else {
+        return sendBundleTransactions(transactions);
       }
     },
 
