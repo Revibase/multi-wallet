@@ -12,8 +12,8 @@ import {
   prepareTransactionSync,
   resolveTransactionManagerSigner,
   Secp256r1Key,
-  sendAndConfirmTransaction,
-  sendBundleTransactions,
+  signAndSendBundledTransactions,
+  signAndSendTransaction,
   signMessageWithPasskey,
   signTransactionWithPasskey,
   verifyMessage,
@@ -226,9 +226,9 @@ export function createRevibaseAdapter(): Revibase {
         throw new Error("Unable to build transaction");
       }
       if (transactions.length === 1) {
-        return sendAndConfirmTransaction(transactions[0]);
+        return signAndSendTransaction(transactions[0]);
       } else {
-        return sendBundleTransactions(transactions);
+        return signAndSendBundledTransactions(transactions);
       }
     },
 

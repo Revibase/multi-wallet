@@ -46,7 +46,9 @@ import {
   simulateBundle,
 } from "./internal";
 
-export async function sendBundleTransactions(bundle: TransactionDetails[]) {
+export async function signAndSendBundledTransactions(
+  bundle: TransactionDetails[]
+) {
   const simulationBundle = await createEncodedBundle(bundle, true);
   const computeUnits = await simulateBundle(
     simulationBundle.map(getBase64EncodedWireTransaction),
@@ -64,7 +66,10 @@ export async function sendBundleTransactions(bundle: TransactionDetails[]) {
   return bundleId;
 }
 
-export async function sendAndConfirmTransaction({
+/**
+ * By default, median priority fees are added to the transaction
+ */
+export async function signAndSendTransaction({
   instructions,
   payer,
   addressesByLookupTableAddress,

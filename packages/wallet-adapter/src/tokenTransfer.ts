@@ -6,7 +6,7 @@ import {
   getSignedSecp256r1Key,
   nativeTransferIntent,
   resolveTransactionManagerSigner,
-  sendAndConfirmTransaction,
+  signAndSendTransaction,
   signTransactionWithPasskey,
   tokenTransferIntent,
   type BasePayload,
@@ -33,7 +33,7 @@ export async function signAndSendTokenTransfer(
   input: TokenTransferArgs
 ): Promise<string> {
   const transactionDetails = await buildTokenTransferInstruction(input);
-  return sendAndConfirmTransaction(transactionDetails);
+  return signAndSendTransaction(transactionDetails);
 }
 
 /**
