@@ -36,15 +36,8 @@ export function createTransactionBuffer({
     remainingAccounts: AccountMeta[];
   } | null;
 }) {
-  const {
-    slotHashSysvar,
-    domainConfig,
-    verifyArgs,
-    instructionsSysvar,
-    message,
-    signature,
-    publicKey,
-  } = extractSecp256r1VerificationArgs(creator);
+  const { domainConfig, verifyArgs, message, signature, publicKey } =
+    extractSecp256r1VerificationArgs(creator);
   const instructions = [];
   if (message && signature && publicKey) {
     instructions.push(
@@ -59,10 +52,10 @@ export function createTransactionBuffer({
   }
 
   if (compressedArgs) {
+    const { settingsReadonlyArgs, compressedProofArgs, remainingAccounts } =
+      compressedArgs;
     instructions.push(
       getTransactionBufferCreateCompressedInstruction({
-        instructionsSysvar,
-        slotHashSysvar,
         transactionBuffer: transactionBufferAddress,
         payer,
         secp256r1VerifyArgs: verifyArgs,
@@ -75,16 +68,14 @@ export function createTransactionBuffer({
           bufferExtendHashes,
           preauthorizeExecution,
         },
-        settingsReadonlyArgs: compressedArgs.settingsReadonlyArgs,
-        compressedProofArgs: compressedArgs.compressedProofArgs,
-        remainingAccounts: compressedArgs.remainingAccounts,
+        settingsReadonlyArgs,
+        compressedProofArgs,
+        remainingAccounts,
       })
     );
   } else {
     instructions.push(
       getTransactionBufferCreateInstruction({
-        instructionsSysvar,
-        slotHashSysvar,
         settings,
         transactionBuffer: transactionBufferAddress,
         payer,

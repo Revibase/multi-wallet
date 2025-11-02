@@ -30,15 +30,8 @@ export function voteTransactionBuffer({
     payer: TransactionSigner;
   } | null;
 }) {
-  const {
-    instructionsSysvar,
-    slotHashSysvar,
-    domainConfig,
-    verifyArgs,
-    signature,
-    publicKey,
-    message,
-  } = extractSecp256r1VerificationArgs(voter);
+  const { domainConfig, verifyArgs, signature, publicKey, message } =
+    extractSecp256r1VerificationArgs(voter);
   const instructions: Instruction[] = [];
   if (message && signature && publicKey) {
     instructions.push(
@@ -55,8 +48,6 @@ export function voteTransactionBuffer({
   if (compressedArgs) {
     instructions.push(
       getTransactionBufferVoteCompressedInstruction({
-        instructionsSysvar,
-        slotHashSysvar,
         transactionBuffer: transactionBufferAddress,
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
@@ -70,8 +61,6 @@ export function voteTransactionBuffer({
   } else {
     instructions.push(
       getTransactionBufferVoteInstruction({
-        instructionsSysvar,
-        slotHashSysvar,
         settings,
         transactionBuffer: transactionBufferAddress,
         secp256r1VerifyArgs: verifyArgs,

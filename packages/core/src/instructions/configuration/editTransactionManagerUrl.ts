@@ -23,7 +23,7 @@ export async function editTransactionManagerUrl({
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
   const hashesWithTree = await getCompressedAccountHashes([
-    { address: getUserAccountAddress(authority.address), type: "User" },
+    { address: getUserAccountAddress(authority.address).address, type: "User" },
   ]);
   const proof = await getValidityProofWithRetry(hashesWithTree, []);
   const userMutArgs = getCompressedAccountMutArgs<User>(

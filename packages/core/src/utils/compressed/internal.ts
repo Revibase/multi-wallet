@@ -3,35 +3,20 @@ import {
   type AddressWithTree,
   type BN254,
   type CompressedAccount,
-  getDefaultAddressTreeInfo,
   type HashWithTree,
   type TreeInfo,
   type ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
 import BN from "bn.js";
-import { type Decoder } from "gill";
+import { some, type Decoder, type OptionOrNullable } from "gill";
 import {
   getCompressedSettingsDecoder,
+  type CompressedProof,
   type SettingsReadonlyArgs,
-  type ValidityProofArgs,
 } from "../../generated";
 import { getCompressedSettingsAddressFromIndex } from "../addresses";
 import { getLightProtocolRpc } from "../initialize";
 import { PackedAccounts } from "./packedAccounts";
-
-export function getNewAddressesParams(
-  addresses: { pubkey: BN254; type: "Settings" | "User" }[]
-) {
-  const { tree, queue } = getDefaultAddressTreeInfo();
-
-  const newAddresses = addresses.map((x) => ({
-    type: x.type,
-    address: x.pubkey,
-    tree,
-    queue,
-  }));
-  return newAddresses;
-}
 
 export async function getCompressedAccount(
   address: BN,
@@ -78,16 +63,18 @@ export function convertToCompressedProofArgs(
   validityProof: ValidityProofWithContext | null,
   offset: number
 ) {
-  const proof: ValidityProofArgs = [
+  const proof: OptionOrNullable<CompressedProof> =
     validityProof?.compressedProof
-      ? {
+      ? some({
           a: new Uint8Array(validityProof.compressedProof.a),
           b: new Uint8Array(validityProof.compressedProof.b),
           c: new Uint8Array(validityProof.compressedProof.c),
-        }
-      : null,
-  ];
-  return { proof, lightCpiAccountsStartIndex: offset };
+        })
+      : null;
+  return {
+    proof,
+    lightCpiAccountsStartIndex: offset,
+  };
 }
 
 export async function getCompressedAccountInitArgs(
@@ -104,6 +91,7 @@ export async function getCompressedAccountInitArgs(
     rootIndex: rootIndices[index],
     address: x.address.toArray(),
   }));
+
   const { addressTrees } = packedAccounts.packTreeInfos(
     [],
     newAddressProofInputs
@@ -172,10 +160,10 @@ export async function constructSettingsProofArgs(
   const packedAccounts = new PackedAccounts();
   if (compressed) {
     await packedAccounts.addSystemAccounts();
-    const settingsAddress = getCompressedSettingsAddressFromIndex(index);
+    const { address } = getCompressedSettingsAddressFromIndex(index);
     const settings = (
       await getCompressedAccountHashes(
-        [{ address: settingsAddress, type: "Settings" }],
+        [{ address, type: "Settings" }],
         cachedAccounts
       )
     )[0];

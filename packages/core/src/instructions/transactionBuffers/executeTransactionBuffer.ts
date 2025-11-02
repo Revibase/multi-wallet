@@ -25,15 +25,8 @@ export function executeTransactionBuffer({
     payer: TransactionSigner;
   } | null;
 }) {
-  const {
-    slotHashSysvar,
-    domainConfig,
-    verifyArgs,
-    signature,
-    message,
-    publicKey,
-    instructionsSysvar,
-  } = extractSecp256r1VerificationArgs(executor);
+  const { domainConfig, verifyArgs, signature, message, publicKey } =
+    extractSecp256r1VerificationArgs(executor);
   const instructions = [];
   if (message && signature && publicKey) {
     instructions.push(
@@ -50,8 +43,6 @@ export function executeTransactionBuffer({
   if (compressedArgs) {
     instructions.push(
       getTransactionBufferExecuteCompressedInstruction({
-        instructionsSysvar,
-        slotHashSysvar,
         transactionBuffer: transactionBufferAddress,
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
@@ -65,8 +56,6 @@ export function executeTransactionBuffer({
   } else {
     instructions.push(
       getTransactionBufferExecuteInstruction({
-        instructionsSysvar,
-        slotHashSysvar,
         settings,
         transactionBuffer: transactionBufferAddress,
         secp256r1VerifyArgs: verifyArgs,

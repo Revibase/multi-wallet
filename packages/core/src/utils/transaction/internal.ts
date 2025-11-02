@@ -190,13 +190,7 @@ export function extractSecp256r1VerificationArgs(
           crossOrigin: secp256r1PublicKey.crossOrigin,
         })
       : null;
-  const instructionsSysvar =
-    signer instanceof SignedSecp256r1Key
-      ? address("Sysvar1nstructions1111111111111111111111111")
-      : undefined;
-  const slotHashSysvar = secp256r1PublicKey?.verifyArgs
-    ? address("SysvarS1otHashes111111111111111111111111111")
-    : undefined;
+
   const domainConfig = secp256r1PublicKey?.domainConfig
     ? secp256r1PublicKey.domainConfig
     : undefined;
@@ -214,8 +208,6 @@ export function extractSecp256r1VerificationArgs(
   const publicKey = secp256r1PublicKey?.toBuffer();
 
   return {
-    slotHashSysvar,
-    instructionsSysvar,
     domainConfig,
     verifyArgs,
     signature,

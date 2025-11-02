@@ -22,7 +22,6 @@ import {
   getCompressedAccountHashes,
   getCompressedAccountInitArgs,
   getCompressedAccountMutArgs,
-  getNewAddressesParams,
   getValidityProofWithRetry,
 } from "../utils/compressed/internal";
 import { PackedAccounts } from "../utils/compressed/packedAccounts";
@@ -50,15 +49,21 @@ export async function compressSettingsAccount({
   await packedAccounts.addSystemAccounts();
 
   const settings = await getSettingsFromIndex(index);
-  const settingsAddress = getCompressedSettingsAddressFromIndex(index);
+  const { address: settingsAddress, addressTree } =
+    getCompressedSettingsAddressFromIndex(index);
   const result = await getCompressedAccount(settingsAddress, cachedAccounts);
 
   let settingsArg: SettingsCreateOrMutateArgs;
   let proof: ValidityProofWithContext;
   if (!result?.data?.data) {
-    const newAddressParams = getNewAddressesParams([
-      { pubkey: settingsAddress, type: "Settings" },
-    ]);
+    const newAddressParams = [
+      {
+        address: settingsAddress,
+        tree: addressTree,
+        queue: addressTree,
+        type: "Settings" as const,
+      },
+    ];
 
     proof = await getValidityProofWithRetry([], newAddressParams);
     const settingsInitArgs = (

@@ -5,8 +5,11 @@ use crate::{
     ConfigAction, LIGHT_CPI_SIGNER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use light_sdk::cpi::{v2::LightSystemProgramCpi, InvokeLightSystemProgram, LightCpiInstruction};
 use light_sdk::{account::LightAccount, cpi::v2::CpiAccounts};
+use light_sdk::{
+    cpi::{v2::LightSystemProgramCpi, InvokeLightSystemProgram, LightCpiInstruction},
+    instruction::ValidityProof,
+};
 use std::vec;
 
 #[derive(Accounts)]
@@ -106,8 +109,11 @@ impl<'info> ChangeConfigCompressed<'info> {
         let account_infos =
             User::handle_user_delegates(delegate_ops, settings_index, &light_cpi_accounts)?;
 
-        let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof)
-            .with_light_account(settings)?;
+        let mut cpi = LightSystemProgramCpi::new_cpi(
+            LIGHT_CPI_SIGNER,
+            ValidityProof(compressed_proof_args.proof),
+        )
+        .with_light_account(settings)?;
 
         for f in account_infos {
             cpi = cpi.with_light_account(f)?;

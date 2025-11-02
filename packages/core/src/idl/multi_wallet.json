@@ -2713,8 +2713,10 @@
           {
             "name": "proof",
             "type": {
-              "defined": {
-                "name": "ValidityProof"
+              "option": {
+                "defined": {
+                  "name": "CompressedProof"
+                }
               }
             }
           },
@@ -3274,21 +3276,6 @@
                 }
               }
             ]
-          }
-        ]
-      }
-    },
-    {
-      "name": "ValidityProof",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "option": {
-              "defined": {
-                "name": "CompressedProof"
-              }
-            }
           }
         ]
       }

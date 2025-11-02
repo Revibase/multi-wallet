@@ -8,6 +8,8 @@
 
 import {
   combineCodec,
+  getOptionDecoder,
+  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
   getU8Decoder,
@@ -15,34 +17,36 @@ import {
   type Codec,
   type Decoder,
   type Encoder,
+  type Option,
+  type OptionOrNullable,
 } from "gill";
 import {
-  getValidityProofDecoder,
-  getValidityProofEncoder,
-  type ValidityProof,
-  type ValidityProofArgs,
+  getCompressedProofDecoder,
+  getCompressedProofEncoder,
+  type CompressedProof,
+  type CompressedProofArgs,
 } from ".";
 
 export type ProofArgs = {
-  proof: ValidityProof;
+  proof: Option<CompressedProof>;
   lightCpiAccountsStartIndex: number;
 };
 
 export type ProofArgsArgs = {
-  proof: ValidityProofArgs;
+  proof: OptionOrNullable<CompressedProofArgs>;
   lightCpiAccountsStartIndex: number;
 };
 
 export function getProofArgsEncoder(): Encoder<ProofArgsArgs> {
   return getStructEncoder([
-    ["proof", getValidityProofEncoder()],
+    ["proof", getOptionEncoder(getCompressedProofEncoder())],
     ["lightCpiAccountsStartIndex", getU8Encoder()],
   ]);
 }
 
 export function getProofArgsDecoder(): Decoder<ProofArgs> {
   return getStructDecoder([
-    ["proof", getValidityProofDecoder()],
+    ["proof", getOptionDecoder(getCompressedProofDecoder())],
     ["lightCpiAccountsStartIndex", getU8Decoder()],
   ]);
 }

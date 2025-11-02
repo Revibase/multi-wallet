@@ -115,7 +115,9 @@ export function runMemberManagementTests() {
         creator: ctx.wallet,
         transactionMessageBytes,
         secp256r1VerifyInput,
+        addressesByLookupTableAddress: ctx.addressLookUpTable,
       });
+
       for (const x of result) {
         await sendTransaction(
           x.instructions,
@@ -164,6 +166,7 @@ export function runMemberManagementTests() {
         creator: ctx.wallet,
         transactionMessageBytes,
         secp256r1VerifyInput,
+        addressesByLookupTableAddress: ctx.addressLookUpTable,
       });
       for (const x of result) {
         await sendTransaction(
@@ -211,6 +214,7 @@ export function runMemberManagementTests() {
         creator: ctx.wallet,
         transactionMessageBytes,
         secp256r1VerifyInput,
+        addressesByLookupTableAddress: ctx.addressLookUpTable,
       });
       for (const x of result) {
         await sendTransaction(

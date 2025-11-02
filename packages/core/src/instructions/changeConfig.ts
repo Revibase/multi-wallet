@@ -82,16 +82,16 @@ export async function changeConfig({
         ...action.members.map((m) =>
           m.pubkey instanceof SignedSecp256r1Key
             ? {
-                address: getUserAccountAddress(m.pubkey),
+                address: getUserAccountAddress(m.pubkey).address,
                 type: "User" as const,
               }
             : m.setAsDelegate
               ? {
-                  address: getUserAccountAddress(m.pubkey.address),
+                  address: getUserAccountAddress(m.pubkey.address).address,
                   type: "User" as const,
                 }
               : {
-                  address: getUserAccountAddress(m.pubkey),
+                  address: getUserAccountAddress(m.pubkey).address,
                   type: "User" as const,
                 }
         )
@@ -99,7 +99,7 @@ export async function changeConfig({
     } else if (action.type === "RemoveMembers") {
       removeDelegates.push(
         ...action.members.map((m) => ({
-          address: getUserAccountAddress(m.pubkey),
+          address: getUserAccountAddress(m.pubkey).address,
           type: "User" as const,
         }))
       );
@@ -110,7 +110,7 @@ export async function changeConfig({
             ? addDelegates
             : removeDelegates
           ).push({
-            address: getUserAccountAddress(m.pubkey),
+            address: getUserAccountAddress(m.pubkey).address,
             type: "User" as const,
           });
         }
@@ -131,7 +131,7 @@ export async function changeConfig({
       ...(compressed
         ? [
             {
-              address: getCompressedSettingsAddressFromIndex(index),
+              address: getCompressedSettingsAddressFromIndex(index).address,
               type: "Settings" as const,
             },
           ]
@@ -339,7 +339,7 @@ async function getUserArgs(
   pubkey: Address | Secp256r1Key,
   userMutArgs: UserMutArgs[]
 ): Promise<UserMutArgs | undefined> {
-  const address = getUserAccountAddress(pubkey);
+  const { address } = getUserAccountAddress(pubkey);
   const mutArg = userMutArgs.find((arg) =>
     new BN(new Uint8Array(arg.accountMeta.address)).eq(address)
   );

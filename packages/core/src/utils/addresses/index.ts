@@ -1,8 +1,8 @@
 import {
+  batchAddressTree,
   createBN254,
-  deriveAddress,
-  deriveAddressSeed,
-  getDefaultAddressTreeInfo,
+  deriveAddressSeedV2,
+  deriveAddressV2,
 } from "@lightprotocol/stateless.js";
 import { sha256 } from "@noble/hashes/sha256";
 import { PublicKey } from "@solana/web3.js";
@@ -19,40 +19,45 @@ import { Secp256r1Key } from "../../types";
 import { ADDRESS_TREE_VERSION } from "../consts";
 
 export function getCompressedSettingsAddressFromIndex(index: number | bigint) {
-  const addressSeed = deriveAddressSeed(
-    [
-      new Uint8Array(getUtf8Encoder().encode("multi_wallet")),
-      new Uint8Array(getU128Encoder().encode(index)),
-      new Uint8Array(getUtf8Encoder().encode(ADDRESS_TREE_VERSION)),
-    ],
-    new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS)
-  );
-  return createBN254(
-    deriveAddress(
-      addressSeed,
-      new PublicKey(getDefaultAddressTreeInfo().tree)
-    ).toString(),
-    "base58"
-  );
+  const addressSeed = deriveAddressSeedV2([
+    new Uint8Array(getUtf8Encoder().encode("multi_wallet")),
+    new Uint8Array(getU128Encoder().encode(index)),
+    new Uint8Array(getUtf8Encoder().encode(ADDRESS_TREE_VERSION)),
+  ]);
+  const addressTree = new PublicKey(batchAddressTree); //default v2 public tree
+  return {
+    address: createBN254(
+      deriveAddressV2(
+        addressSeed,
+        addressTree,
+        new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS)
+      ).toString(),
+      "base58"
+    ),
+    addressTree,
+  };
 }
 export function getUserAccountAddress(member: Address | Secp256r1Key) {
-  const addressSeed = deriveAddressSeed(
-    [
-      new Uint8Array(getUtf8Encoder().encode("user")),
-      member instanceof Secp256r1Key
-        ? member.toTruncatedBuffer()
-        : new Uint8Array(getAddressEncoder().encode(member)),
-      new Uint8Array(getUtf8Encoder().encode(ADDRESS_TREE_VERSION)),
-    ],
-    new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS.toString())
-  );
-  return createBN254(
-    deriveAddress(
-      addressSeed,
-      new PublicKey(getDefaultAddressTreeInfo().tree)
-    ).toString(),
-    "base58"
-  );
+  const addressSeed = deriveAddressSeedV2([
+    new Uint8Array(getUtf8Encoder().encode("user")),
+    member instanceof Secp256r1Key
+      ? member.toTruncatedBuffer()
+      : new Uint8Array(getAddressEncoder().encode(member)),
+    new Uint8Array(getUtf8Encoder().encode(ADDRESS_TREE_VERSION)),
+  ]);
+
+  const addressTree = new PublicKey(batchAddressTree); // default v2 public tree
+  return {
+    address: createBN254(
+      deriveAddressV2(
+        addressSeed,
+        addressTree,
+        new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS.toString())
+      ).toString(),
+      "base58"
+    ),
+    addressTree,
+  };
 }
 
 export async function getDomainConfigAddress({

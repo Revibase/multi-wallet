@@ -5,9 +5,12 @@ use crate::{
     SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use light_sdk::cpi::{
-    v2::{CpiAccounts, LightSystemProgramCpi},
-    InvokeLightSystemProgram, LightCpiInstruction,
+use light_sdk::{
+    cpi::{
+        v2::{CpiAccounts, LightSystemProgramCpi},
+        InvokeLightSystemProgram, LightCpiInstruction,
+    },
+    instruction::ValidityProof,
 };
 
 #[derive(Accounts)]
@@ -119,9 +122,12 @@ impl<'info> CreateMultiWalletCompressed<'info> {
             &light_cpi_accounts,
         )?;
 
-        let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof)
-            .with_light_account(settings_account)?
-            .with_new_addresses(&[settings_new_address]);
+        let mut cpi = LightSystemProgramCpi::new_cpi(
+            LIGHT_CPI_SIGNER,
+            ValidityProof(compressed_proof_args.proof),
+        )
+        .with_light_account(settings_account)?
+        .with_new_addresses(&[settings_new_address]);
 
         for account_info in user_account_info {
             cpi = cpi.with_light_account(account_info)?;

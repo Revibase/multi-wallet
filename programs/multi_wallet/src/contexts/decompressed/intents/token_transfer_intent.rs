@@ -197,7 +197,7 @@ impl<'info> TokenTransferIntent<'info> {
         let ata_ix = create_associated_token_account_idempotent(
             ctx.accounts.source.key,
             ctx.accounts.destination.key,
-            &ctx.accounts.mint.key(),
+            ctx.accounts.mint.key,
             ctx.accounts.token_program.key,
         );
 

@@ -1,7 +1,6 @@
 import {
   type AccountProofInput,
-  defaultStaticAccountsStruct,
-  lightSystemProgram,
+  getLightSystemAccountMetasV2,
   type NewAddressProofInput,
   type PackedAddressTreeInfo,
   type PackedStateTreeInfo,
@@ -10,15 +9,14 @@ import {
   type TreeInfo,
   TreeType,
 } from "@lightprotocol/stateless.js";
+import { PublicKey } from "@solana/web3.js";
 import {
   type AccountMeta,
   AccountRole,
   type AccountSignerMeta,
   address,
 } from "gill";
-import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
-import { getLightCpiSigner } from "../addresses";
 import { getLightProtocolRpc } from "../initialize";
 
 interface MapData {
@@ -45,21 +43,23 @@ export class PackedAccounts {
     this.preAccounts.push(...accounts);
   }
 
+  getAccountRole(isSigner: boolean, isWritable: boolean): AccountRole {
+    if (isSigner) {
+      return isWritable
+        ? AccountRole.WRITABLE_SIGNER
+        : AccountRole.READONLY_SIGNER;
+    } else {
+      return isWritable ? AccountRole.WRITABLE : AccountRole.READONLY;
+    }
+  }
+
   async addSystemAccounts(): Promise<void> {
-    const staticAccounts = defaultStaticAccountsStruct();
     this.systemAccounts.push(
-      ...[
-        lightSystemProgram,
-        staticAccounts.accountCompressionProgram,
-        SYSTEM_PROGRAM_ADDRESS,
-        await getLightCpiSigner(),
-        staticAccounts.registeredProgramPda,
-        staticAccounts.accountCompressionAuthority,
-        staticAccounts.noopProgram,
-        MULTI_WALLET_PROGRAM_ADDRESS,
-      ].map((x) => ({
-        address: address(x.toString()),
-        role: AccountRole.READONLY,
+      ...getLightSystemAccountMetasV2({
+        selfProgram: new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS.toString()),
+      }).map((x) => ({
+        address: address(x.pubkey.toString()),
+        role: this.getAccountRole(x.isSigner, x.isWritable),
       }))
     );
   }

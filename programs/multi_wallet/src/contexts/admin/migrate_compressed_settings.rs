@@ -5,6 +5,7 @@ use crate::{ADMIN_DOMAIN_CONFIG, LIGHT_CPI_SIGNER};
 use anchor_lang::prelude::*;
 use light_sdk::cpi::v2::{CpiAccounts, LightSystemProgramCpi};
 use light_sdk::cpi::{InvokeLightSystemProgram, LightCpiInstruction};
+use light_sdk::instruction::ValidityProof;
 
 #[derive(Accounts)]
 pub struct MigrateCompressedSettings<'info> {
@@ -43,10 +44,13 @@ impl<'info> MigrateCompressedSettings<'info> {
 
         settings_account.invariant()?;
 
-        LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof)
-            .with_light_account(settings_account)?
-            .with_new_addresses(&[settings_new_address])
-            .invoke(light_cpi_accounts)?;
+        LightSystemProgramCpi::new_cpi(
+            LIGHT_CPI_SIGNER,
+            ValidityProof(compressed_proof_args.proof),
+        )
+        .with_light_account(settings_account)?
+        .with_new_addresses(&[settings_new_address])
+        .invoke(light_cpi_accounts)?;
 
         Ok(())
     }

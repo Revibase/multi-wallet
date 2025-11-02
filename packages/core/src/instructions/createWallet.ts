@@ -17,7 +17,6 @@ import {
   getCompressedAccountHashes,
   getCompressedAccountInitArgs,
   getCompressedAccountMutArgs,
-  getNewAddressesParams,
   getValidityProofWithRetry,
 } from "../utils/compressed/internal";
 import { PackedAccounts } from "../utils/compressed/packedAccounts";
@@ -41,15 +40,8 @@ export async function createWallet({
   cachedAccounts,
 }: CreateWalletArgs) {
   const globalCounter = await getGlobalCounterAddress();
-  const {
-    domainConfig,
-    verifyArgs,
-    instructionsSysvar,
-    slotHashSysvar,
-    message,
-    signature,
-    publicKey,
-  } = extractSecp256r1VerificationArgs(initialMember);
+  const { domainConfig, verifyArgs, message, signature, publicKey } =
+    extractSecp256r1VerificationArgs(initialMember);
 
   const secp256r1VerifyInput: Secp256r1VerifyInput = [];
   if (message && signature && publicKey) {
@@ -72,7 +64,7 @@ export async function createWallet({
         {
           address: getUserAccountAddress(
             "address" in initialMember ? initialMember.address : initialMember
-          ),
+          ).address,
           type: "User" as const,
         },
       ],
@@ -81,15 +73,14 @@ export async function createWallet({
   );
 
   if (compressed) {
-    const settingsAddress = getCompressedSettingsAddressFromIndex(index);
-    newAddressParams.push(
-      ...getNewAddressesParams([
-        {
-          pubkey: settingsAddress,
-          type: "Settings" as const,
-        },
-      ])
-    );
+    const { address: settingsAddress, addressTree } =
+      getCompressedSettingsAddressFromIndex(index);
+    newAddressParams.push({
+      address: settingsAddress,
+      queue: addressTree,
+      tree: addressTree,
+      type: "Settings" as const,
+    });
   }
   const hashesWithTreeEndIndex = hashesWithTree.length;
 
@@ -146,8 +137,6 @@ export async function createWallet({
     instructions.push(
       getCreateMultiWalletCompressedInstruction({
         settingsIndex: index,
-        instructionsSysvar,
-        slotHashSysvar,
         payer: payer,
         initialMember:
           initialMember instanceof SignedSecp256r1Key
@@ -169,8 +158,6 @@ export async function createWallet({
       getCreateMultiWalletInstruction({
         settingsIndex: index,
         settings,
-        instructionsSysvar,
-        slotHashSysvar,
         payer,
         initialMember:
           initialMember instanceof SignedSecp256r1Key

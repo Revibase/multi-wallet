@@ -7,7 +7,6 @@ import { getCompressedSettingsAddressFromIndex } from "../../utils";
 import {
   convertToCompressedProofArgs,
   getCompressedAccountInitArgs,
-  getNewAddressesParams,
   getValidityProofWithRetry,
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
@@ -21,13 +20,17 @@ export async function migrateSettings({
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
-
-  const newAddressParams = getNewAddressesParams([
+  const { address, addressTree } = getCompressedSettingsAddressFromIndex(
+    args.index
+  );
+  const newAddressParams = [
     {
-      pubkey: getCompressedSettingsAddressFromIndex(args.index),
-      type: "Settings",
+      address,
+      tree: addressTree,
+      queue: addressTree,
+      type: "Settings" as const,
     },
-  ]);
+  ];
   const proof = await getValidityProofWithRetry([], newAddressParams);
   const settingsCreationArgs = (
     await getCompressedAccountInitArgs(

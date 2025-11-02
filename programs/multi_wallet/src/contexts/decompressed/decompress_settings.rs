@@ -4,7 +4,7 @@ use crate::{
     LIGHT_CPI_SIGNER
 };
 use anchor_lang::{prelude::*, solana_program::{sysvar::SysvarId}};
-use light_sdk::light_hasher::{Hasher, Sha256};
+use light_sdk::{instruction::ValidityProof, light_hasher::{Hasher, Sha256}};
 use light_sdk::{
     cpi::{
         v2::{CpiAccounts, LightSystemProgramCpi},
@@ -171,7 +171,7 @@ impl<'info> DecompressSettingsAccount<'info> {
 
         settings_account.data = None;
 
-        LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof).with_light_account(settings_account)?.invoke(light_cpi_accounts)?;
+        LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, ValidityProof(compressed_proof_args.proof)).with_light_account(settings_account)?.invoke(light_cpi_accounts)?;
         
         Ok(())
     }

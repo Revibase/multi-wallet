@@ -47,7 +47,7 @@ export async function decompressSettingsAccount({
   const hashesWithTree = await getCompressedAccountHashes(
     [
       {
-        address: getCompressedSettingsAddressFromIndex(index),
+        address: getCompressedSettingsAddressFromIndex(index).address,
         type: "Settings" as const,
       },
     ],

@@ -1,8 +1,11 @@
 use crate::{MemberKey, MultisigError, ProofArgs, User, UserCreationArgs, LIGHT_CPI_SIGNER};
 use anchor_lang::prelude::*;
-use light_sdk::cpi::{
-    v2::{CpiAccounts, LightSystemProgramCpi},
-    InvokeLightSystemProgram, LightCpiInstruction,
+use light_sdk::{
+    cpi::{
+        v2::{CpiAccounts, LightSystemProgramCpi},
+        InvokeLightSystemProgram, LightCpiInstruction,
+    },
+    instruction::ValidityProof,
 };
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -34,7 +37,10 @@ impl<'info> CreateUserAccounts<'info> {
         );
 
         let mut new_addressess = vec![];
-        let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof);
+        let mut cpi = LightSystemProgramCpi::new_cpi(
+            LIGHT_CPI_SIGNER,
+            ValidityProof(compressed_proof_args.proof),
+        );
         for args in args {
             let signer = ctx
                 .remaining_accounts
@@ -61,7 +67,7 @@ impl<'info> CreateUserAccounts<'info> {
                     domain_config: None,
                     transaction_manager_url: args.transaction_manager_url,
                 },
-                None,
+                Some(cpi.account_infos.len() as u8),
             )?;
             cpi = cpi.with_light_account(account_info)?;
             new_addressess.push(new_address_params);

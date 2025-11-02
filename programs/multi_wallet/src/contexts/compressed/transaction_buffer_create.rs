@@ -1,13 +1,13 @@
 use crate::{
     durable_nonce_check, state::SettingsReadonlyArgs, ChallengeArgs, CompressedSettings,
     CompressedSettingsData, DomainConfig, KeyType, MemberKey, MultisigError, Permission, ProofArgs,
-    Secp256r1VerifyArgs, Settings, SettingsMutArgs, TransactionActionType, TransactionBuffer,
+    Secp256r1VerifyArgs, Settings, TransactionActionType, TransactionBuffer,
     TransactionBufferCreateArgs, MAX_BUFFER_SIZE, SEED_MULTISIG, SEED_TRANSACTION_BUFFER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
 #[derive(Accounts)]
-#[instruction(args: TransactionBufferCreateArgs, secp256r1_verify_args: Option<Secp256r1VerifyArgs>, settings_readonly_args: SettingsMutArgs)]
+#[instruction(args: TransactionBufferCreateArgs, secp256r1_verify_args: Option<Secp256r1VerifyArgs>, settings_readonly_args: SettingsReadonlyArgs)]
 pub struct TransactionBufferCreateCompressed<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,

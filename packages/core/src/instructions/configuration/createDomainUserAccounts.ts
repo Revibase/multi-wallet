@@ -19,7 +19,6 @@ import {
   getCompressedAccountHashes,
   getCompressedAccountInitArgs,
   getCompressedAccountMutArgs,
-  getNewAddressesParams,
   getValidityProofWithRetry,
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
@@ -53,12 +52,13 @@ export async function createDomainUserAccounts({
     addresses.push({
       address: getCompressedSettingsAddressFromIndex(
         createUserArgs.settingsIndex
-      ),
+      ).address,
       type: "Settings" as const,
     });
     if (createUserArgs.transactionManager) {
       addresses.push({
-        address: getUserAccountAddress(createUserArgs.transactionManager),
+        address: getUserAccountAddress(createUserArgs.transactionManager)
+          .address,
         type: "User" as const,
       });
     }
@@ -67,13 +67,15 @@ export async function createDomainUserAccounts({
   const hashesWithTree = addresses.length
     ? await getCompressedAccountHashes(addresses, cachedAccounts)
     : [];
-
-  const newAddressParams = getNewAddressesParams([
+  const { address, addressTree } = getUserAccountAddress(createUserArgs.member);
+  const newAddressParams = [
     {
-      pubkey: getUserAccountAddress(createUserArgs.member),
-      type: "User",
+      address,
+      type: "User" as const,
+      tree: addressTree,
+      queue: addressTree,
     },
-  ]);
+  ];
 
   const proof = await getValidityProofWithRetry(
     hashesWithTree,

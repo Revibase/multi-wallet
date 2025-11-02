@@ -7,9 +7,8 @@ use crate::{
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::{
     cpi::{
-        v2::{CpiAccounts, LightSystemProgramCpi},
-        InvokeLightSystemProgram, LightCpiInstruction,
-    },
+        InvokeLightSystemProgram, LightCpiInstruction, v2::{CpiAccounts, LightSystemProgramCpi}
+    }, instruction::ValidityProof,
 };
 use std::vec;
 
@@ -93,16 +92,16 @@ impl<'info> ChangeConfig<'info> {
         settings.invariant()?;
 
         if !delegate_ops.is_empty() {
-            let proof_args = compressed_proof_args.ok_or(MultisigError::InvalidArguments)?;
+            let compressed_proof_args = compressed_proof_args.ok_or(MultisigError::InvalidArguments)?;
             let light_cpi_accounts = CpiAccounts::new(
                 &payer,
-                &remaining_accounts[proof_args.light_cpi_accounts_start_index as usize..],
+                &remaining_accounts[compressed_proof_args.light_cpi_accounts_start_index as usize..],
                 LIGHT_CPI_SIGNER,
             );
             let account_infos = User::handle_user_delegates(delegate_ops, settings.index,&light_cpi_accounts)?;
 
        
-            let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, proof_args.proof);
+            let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, ValidityProof(compressed_proof_args.proof));
 
             for f in account_infos {
                 cpi = cpi.with_light_account(f)?;

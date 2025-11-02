@@ -6,6 +6,7 @@ use crate::{
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::cpi::{v2::LightSystemProgramCpi, InvokeLightSystemProgram, LightCpiInstruction};
+use light_sdk::instruction::ValidityProof;
 use light_sdk::light_hasher::{Hasher, Sha256};
 use light_sdk::{account::LightAccount, cpi::v2::CpiAccounts};
 use std::vec;
@@ -161,10 +162,13 @@ impl<'info> CompressSettingsAccount<'info> {
 
                 settings_account.invariant()?;
 
-                LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof)
-                    .with_light_account(settings_account)?
-                    .with_new_addresses(&[settings_new_address])
-                    .invoke(light_cpi_accounts)?;
+                LightSystemProgramCpi::new_cpi(
+                    LIGHT_CPI_SIGNER,
+                    ValidityProof(compressed_proof_args.proof),
+                )
+                .with_light_account(settings_account)?
+                .with_new_addresses(&[settings_new_address])
+                .invoke(light_cpi_accounts)?;
             }
             SettingsCreateOrMutateArgs::Mutate(settings_mut_args) => {
                 let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
@@ -184,9 +188,12 @@ impl<'info> CompressSettingsAccount<'info> {
 
                 settings_account.invariant()?;
 
-                LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof)
-                    .with_light_account(settings_account)?
-                    .invoke(light_cpi_accounts)?;
+                LightSystemProgramCpi::new_cpi(
+                    LIGHT_CPI_SIGNER,
+                    ValidityProof(compressed_proof_args.proof),
+                )
+                .with_light_account(settings_account)?
+                .invoke(light_cpi_accounts)?;
             }
         };
 

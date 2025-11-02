@@ -4,7 +4,6 @@ import { getUserAccountAddress } from "../../utils";
 import {
   convertToCompressedProofArgs,
   getCompressedAccountInitArgs,
-  getNewAddressesParams,
   getValidityProofWithRetry,
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
@@ -37,12 +36,15 @@ export async function createUserAccounts({
       signer: x.member,
     }))
   );
-  const newAddressParams = getNewAddressesParams(
-    createUserArgs.map((x) => ({
-      pubkey: getUserAccountAddress(x.member.address),
-      type: "User",
-    }))
-  );
+  const newAddressParams = createUserArgs.map((x) => {
+    const { address, addressTree } = getUserAccountAddress(x.member.address);
+    return {
+      address,
+      tree: addressTree,
+      queue: addressTree,
+      type: "User" as const,
+    };
+  });
   const proof = await getValidityProofWithRetry([], newAddressParams);
   const userCreationArgs = await getCompressedAccountInitArgs(
     packedAccounts,

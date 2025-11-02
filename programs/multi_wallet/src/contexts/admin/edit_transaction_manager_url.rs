@@ -9,6 +9,7 @@ use light_sdk::{
         v2::{CpiAccounts, LightSystemProgramCpi},
         InvokeLightSystemProgram, LightCpiInstruction,
     },
+    instruction::ValidityProof,
     LightAccount,
 };
 
@@ -47,9 +48,12 @@ impl<'info> EditTransactionManagerUrl<'info> {
         );
         user_account.transaction_manager_url = Some(transaction_manager_url);
 
-        LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof)
-            .with_light_account(user_account)?
-            .invoke(light_cpi_accounts)?;
+        LightSystemProgramCpi::new_cpi(
+            LIGHT_CPI_SIGNER,
+            ValidityProof(compressed_proof_args.proof),
+        )
+        .with_light_account(user_account)?
+        .invoke(light_cpi_accounts)?;
 
         Ok(())
     }

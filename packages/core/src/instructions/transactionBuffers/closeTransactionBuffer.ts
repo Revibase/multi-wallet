@@ -37,15 +37,8 @@ export async function closeTransactionBuffer({
     await constructSettingsProofArgs(compressed, index, false, cachedAccounts);
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
-  const {
-    slotHashSysvar,
-    instructionsSysvar,
-    domainConfig,
-    verifyArgs,
-    message,
-    signature,
-    publicKey,
-  } = extractSecp256r1VerificationArgs(closer);
+  const { domainConfig, verifyArgs, message, signature, publicKey } =
+    extractSecp256r1VerificationArgs(closer);
 
   const instructions = [];
   if (message && signature && publicKey) {
@@ -71,8 +64,6 @@ export async function closeTransactionBuffer({
 
     instructions.push(
       getTransactionBufferCloseCompressedInstruction({
-        instructionsSysvar,
-        slotHashSysvar,
         transactionBuffer: transactionBufferAddress,
         domainConfig,
         closer: closer instanceof SignedSecp256r1Key ? undefined : closer,
@@ -87,8 +78,6 @@ export async function closeTransactionBuffer({
   } else {
     instructions.push(
       getTransactionBufferCloseInstruction({
-        instructionsSysvar,
-        slotHashSysvar,
         transactionBuffer: transactionBufferAddress,
         domainConfig,
         closer: closer instanceof SignedSecp256r1Key ? undefined : closer,

@@ -8,7 +8,6 @@ import { convertMemberKeyToString, getUserAccountAddress } from "../../utils";
 import {
   convertToCompressedProofArgs,
   getCompressedAccountInitArgs,
-  getNewAddressesParams,
   getValidityProofWithRetry,
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
@@ -22,17 +21,19 @@ export async function migrateUsers({
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
-
-  const newAddressParams = getNewAddressesParams([
+  const { address: userAddress, addressTree } = getUserAccountAddress(
+    args.member.keyType === KeyType.Ed25519
+      ? address(convertMemberKeyToString(args.member))
+      : new Secp256r1Key(convertMemberKeyToString(args.member))
+  );
+  const newAddressParams = [
     {
-      pubkey: getUserAccountAddress(
-        args.member.keyType === KeyType.Ed25519
-          ? address(convertMemberKeyToString(args.member))
-          : new Secp256r1Key(convertMemberKeyToString(args.member))
-      ),
-      type: "User",
+      address: userAddress,
+      tree: addressTree,
+      queue: addressTree,
+      type: "User" as const,
     },
-  ]);
+  ];
   const proof = await getValidityProofWithRetry([], newAddressParams);
   const userCreationArgs = (
     await getCompressedAccountInitArgs(

@@ -28,7 +28,7 @@ export async function fetchMaybeUserAccountData(
   member: Address | Secp256r1Key,
   cachedAccounts?: Map<string, any>
 ): Promise<User | null> {
-  const address = getUserAccountAddress(member);
+  const { address } = getUserAccountAddress(member);
   const result = await getCompressedAccount(address, cachedAccounts);
   if (!result?.data?.data) {
     return null;
@@ -55,7 +55,7 @@ export async function fetchMaybeSettingsAccountData(
   cachedAccounts?: Map<string, any>
 ): Promise<(CompressedSettingsData & { isCompressed: boolean }) | null> {
   try {
-    const address = getCompressedSettingsAddressFromIndex(index);
+    const { address } = getCompressedSettingsAddressFromIndex(index);
     const result = await getCompressedAccount(address, cachedAccounts);
     if (!result?.data?.data) {
       return null;

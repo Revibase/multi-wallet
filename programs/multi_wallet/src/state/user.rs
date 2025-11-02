@@ -1,4 +1,6 @@
-use crate::{AddMemberArgs, MemberKey, MultisigError, RemoveMemberArgs, SEED_USER, SEED_VERSION};
+use crate::{
+    AddMemberArgs, MemberKey, MultisigError, RemoveMemberArgs, SEED_ADDRESS_TREE_VERSION, SEED_USER,
+};
 use anchor_lang::prelude::*;
 use light_sdk::address::NewAddressParamsAssignedPacked;
 use light_sdk::instruction::account_meta::{CompressedAccountMeta, CompressedAccountMetaReadOnly};
@@ -55,7 +57,7 @@ impl User {
     ) -> Result<(LightAccount<User>, NewAddressParamsAssignedPacked)> {
         let member_seed = user.member.get_seed()?;
         let (address, address_seed) = derive_address(
-            &[SEED_USER, &member_seed, SEED_VERSION],
+            &[SEED_USER, &member_seed, SEED_ADDRESS_TREE_VERSION],
             &user_creation_args
                 .address_tree_info
                 .get_tree_pubkey(light_cpi_accounts)

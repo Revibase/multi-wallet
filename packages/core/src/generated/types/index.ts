@@ -40,4 +40,3 @@ export * from './userCreationArgs';
 export * from './userMutArgs';
 export * from './userReadOnlyArgs';
 export * from './userReadOnlyOrMutateArgs';
-export * from './validityProof';

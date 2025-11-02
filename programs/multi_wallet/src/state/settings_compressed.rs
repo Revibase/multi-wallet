@@ -1,11 +1,12 @@
 use crate::{
     AddMemberArgs, EditMemberArgs, Member, MemberKey, MultisigError, MultisigSettings,
-    RemoveMemberArgs, Settings, LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VERSION,
+    RemoveMemberArgs, Settings, LIGHT_CPI_SIGNER, SEED_ADDRESS_TREE_VERSION, SEED_MULTISIG,
 };
 use anchor_lang::prelude::*;
 use light_sdk::address::NewAddressParamsAssignedPacked;
 use light_sdk::cpi::{v2::LightSystemProgramCpi, InvokeLightSystemProgram, LightCpiInstruction};
 use light_sdk::instruction::account_meta::CompressedAccountMeta;
+use light_sdk::instruction::CompressedProof;
 use light_sdk::{
     account::LightAccount,
     address::v2::derive_address,
@@ -58,7 +59,7 @@ pub enum SettingsCreateOrMutateArgs {
 
 #[derive(AnchorDeserialize, AnchorSerialize, PartialEq)]
 pub struct ProofArgs {
-    pub proof: ValidityProof,
+    pub proof: Option<CompressedProof>,
     pub light_cpi_accounts_start_index: u8,
 }
 
@@ -114,7 +115,7 @@ impl CompressedSettings {
             &[
                 SEED_MULTISIG,
                 data.index.to_le_bytes().as_ref(),
-                SEED_VERSION,
+                SEED_ADDRESS_TREE_VERSION,
             ],
             &settings_creation
                 .address_tree_info
@@ -166,9 +167,12 @@ impl CompressedSettings {
             light_cpi_accounts.tree_pubkeys().unwrap().as_slice(),
         )?;
 
-        LightSystemProgramCpi::new_cpi(crate::LIGHT_CPI_SIGNER, compressed_proof_args.proof)
-            .with_light_account(read_only_account)?
-            .invoke(light_cpi_accounts)?;
+        LightSystemProgramCpi::new_cpi(
+            crate::LIGHT_CPI_SIGNER,
+            ValidityProof(compressed_proof_args.proof),
+        )
+        .with_light_account(read_only_account)?
+        .invoke(light_cpi_accounts)?;
 
         Ok((settings_data.clone(), settings_key))
     }

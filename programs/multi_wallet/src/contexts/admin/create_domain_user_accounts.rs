@@ -9,6 +9,7 @@ use light_sdk::{
         v2::{CpiAccounts, LightSystemProgramCpi},
         InvokeLightSystemProgram, LightCpiInstruction,
     },
+    instruction::ValidityProof,
     LightAccount,
 };
 
@@ -50,7 +51,10 @@ impl<'info> CreateDomainUserAccount<'info> {
             LIGHT_CPI_SIGNER,
         );
 
-        let mut cpi = LightSystemProgramCpi::new_cpi(LIGHT_CPI_SIGNER, compressed_proof_args.proof);
+        let mut cpi = LightSystemProgramCpi::new_cpi(
+            LIGHT_CPI_SIGNER,
+            ValidityProof(compressed_proof_args.proof),
+        );
         let mut settings_index = None;
         let mut transaction_manager_url = None;
         //allow domain authority to directly link user to a particular wallet owned by the domain authority
