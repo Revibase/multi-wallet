@@ -118,7 +118,7 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
             ctx.accounts.instructions_sysvar.as_ref(),
         )?;
 
-        transaction_buffer.add_voter(&signer);
+        transaction_buffer.add_voter(&signer)?;
 
         transaction_buffer.invariant()?;
 

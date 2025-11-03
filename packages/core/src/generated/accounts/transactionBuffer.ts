@@ -88,10 +88,14 @@ export type TransactionBuffer = {
   finalBufferSize: number;
   /** Member of the Multisig who created the TransactionBuffer. */
   creator: MemberKey;
+  /** Member of the Multisig who executed the TransactionBuffer. */
+  executor: MemberKey;
   /** Buffer hash for all the buffer extend instruction */
   bufferExtendHashes: Array<ReadonlyUint8Array>;
   /** Members that voted for this transaction */
   voters: Array<MemberKey>;
+  /** Members that are expected to initiate / vote / execute this transaction */
+  expectedSigners: Array<MemberKey>;
   /** The buffer of the transaction message. */
   buffer: ReadonlyUint8Array;
 };
@@ -118,10 +122,14 @@ export type TransactionBufferArgs = {
   finalBufferSize: number;
   /** Member of the Multisig who created the TransactionBuffer. */
   creator: MemberKeyArgs;
+  /** Member of the Multisig who executed the TransactionBuffer. */
+  executor: MemberKeyArgs;
   /** Buffer hash for all the buffer extend instruction */
   bufferExtendHashes: Array<ReadonlyUint8Array>;
   /** Members that voted for this transaction */
   voters: Array<MemberKeyArgs>;
+  /** Members that are expected to initiate / vote / execute this transaction */
+  expectedSigners: Array<MemberKeyArgs>;
   /** The buffer of the transaction message. */
   buffer: ReadonlyUint8Array;
 };
@@ -141,11 +149,13 @@ export function getTransactionBufferEncoder(): Encoder<TransactionBufferArgs> {
       ["finalBufferHash", fixEncoderSize(getBytesEncoder(), 32)],
       ["finalBufferSize", getU16Encoder()],
       ["creator", getMemberKeyEncoder()],
+      ["executor", getMemberKeyEncoder()],
       [
         "bufferExtendHashes",
         getArrayEncoder(fixEncoderSize(getBytesEncoder(), 32)),
       ],
       ["voters", getArrayEncoder(getMemberKeyEncoder())],
+      ["expectedSigners", getArrayEncoder(getMemberKeyEncoder())],
       ["buffer", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
     ]),
     (value) => ({ ...value, discriminator: TRANSACTION_BUFFER_DISCRIMINATOR })
@@ -166,11 +176,13 @@ export function getTransactionBufferDecoder(): Decoder<TransactionBuffer> {
     ["finalBufferHash", fixDecoderSize(getBytesDecoder(), 32)],
     ["finalBufferSize", getU16Decoder()],
     ["creator", getMemberKeyDecoder()],
+    ["executor", getMemberKeyDecoder()],
     [
       "bufferExtendHashes",
       getArrayDecoder(fixDecoderSize(getBytesDecoder(), 32)),
     ],
     ["voters", getArrayDecoder(getMemberKeyDecoder())],
+    ["expectedSigners", getArrayDecoder(getMemberKeyDecoder())],
     ["buffer", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
   ]);
 }

@@ -122,23 +122,25 @@ impl TransactionBufferCreate<'_> {
             Some(&ctx.accounts.instructions_sysvar),
         )?;
 
+        transaction_buffer.init(
+            ctx.accounts.settings.key(),
+            settings.multi_wallet_bump,
+            ctx.accounts.payer.key(),
+            &args,
+            &settings.members.to_vec(),
+            ctx.bumps.transaction_buffer,
+        )?;
+
+        transaction_buffer.add_initiator(signer)?;
+
         let member = settings
             .members
             .iter()
             .find(|x| x.pubkey.eq(&signer))
-            .ok_or(MultisigError::MissingAccount)?;
-
-        transaction_buffer.init(
-            ctx.accounts.settings.key(),
-            settings.multi_wallet_bump,
-            member.pubkey,
-            ctx.accounts.payer.key(),
-            &args,
-            ctx.bumps.transaction_buffer,
-        )?;
+            .ok_or(MultisigError::InvalidArguments)?;
 
         if member.permissions.has(Permission::VoteTransaction) {
-            transaction_buffer.add_voter(&member.pubkey);
+            transaction_buffer.add_voter(&signer)?;
         }
 
         transaction_buffer.invariant()?;

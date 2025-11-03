@@ -1,4 +1,4 @@
-use crate::{MemberKey, MultisigError, MAXIMUM_AMOUNT_OF_MEMBERS};
+use crate::{utils::Member, MemberKey, MultisigError, MAXIMUM_AMOUNT_OF_MEMBERS};
 use anchor_lang::prelude::*;
 use light_sdk::light_hasher::{Hasher, Sha256};
 
@@ -17,6 +17,7 @@ pub struct TransactionBufferCreateArgs {
     pub buffer_extend_hashes: Vec<[u8; 32]>,
     pub final_buffer_hash: [u8; 32],
     pub final_buffer_size: u16,
+    pub expected_signers: Vec<MemberKey>,
 }
 
 #[account]
@@ -43,10 +44,14 @@ pub struct TransactionBuffer {
     pub final_buffer_size: u16,
     /// Member of the Multisig who created the TransactionBuffer.
     pub creator: MemberKey,
+    /// Member of the Multisig who executed the TransactionBuffer.
+    pub executor: MemberKey,
     /// Buffer hash for all the buffer extend instruction
     pub buffer_extend_hashes: Vec<[u8; 32]>,
     /// Members that voted for this transaction
     pub voters: Vec<MemberKey>,
+    /// Members that are expected to initiate / vote / execute this transaction
+    pub expected_signers: Vec<MemberKey>,
     /// The buffer of the transaction message.
     pub buffer: Vec<u8>,
 }
@@ -56,17 +61,22 @@ impl TransactionBuffer {
         &mut self,
         settings_key: Pubkey,
         multi_wallet_bump: u8,
-        creator: MemberKey,
         payer: Pubkey,
         args: &TransactionBufferCreateArgs,
+        current_members: &Vec<Member>,
         bump: u8,
     ) -> Result<()> {
+        require!(
+            args.expected_signers
+                .iter()
+                .all(|f| current_members.iter().any(|x| x.pubkey.eq(f))),
+            MultisigError::InvalidArguments
+        );
         self.multi_wallet_settings = settings_key;
         self.multi_wallet_bump = multi_wallet_bump;
         self.can_execute = false;
         self.preauthorize_execution = args.preauthorize_execution;
         self.buffer_extend_hashes = args.buffer_extend_hashes.to_vec();
-        self.creator = creator;
         self.payer = payer;
         self.buffer_index = args.buffer_index;
         self.final_buffer_hash = args.final_buffer_hash;
@@ -75,6 +85,7 @@ impl TransactionBuffer {
         self.bump = bump;
         self.valid_till = Clock::get().unwrap().unix_timestamp as u64 + TRANSACTION_TIME_LIMIT;
         self.voters = Vec::new();
+        self.expected_signers = args.expected_signers.to_vec();
         Ok(())
     }
 
@@ -95,9 +106,9 @@ impl TransactionBuffer {
             1  +  // buffer_index
             32 +  // final_buffer_hash
             2  +  // final_buffer_size
-            MemberKey::INIT_SPACE +  // creator
+            2 * MemberKey::INIT_SPACE +  // creator & executor
             (4 + number_of_extend_buffers * 32 ) + // extend buffer hash
-            (4 + MAXIMUM_AMOUNT_OF_MEMBERS * MemberKey::INIT_SPACE)  +  // number of signers 
+            2 * (4 + MAXIMUM_AMOUNT_OF_MEMBERS * MemberKey::INIT_SPACE)  +  // number of members (expected + actual)
             (4 + usize::from(final_message_buffer_size)), // buffer
         )
     }
@@ -136,9 +147,32 @@ impl TransactionBuffer {
         Ok(())
     }
 
-    pub fn add_voter(&mut self, voter: &MemberKey) {
+    pub fn add_voter(&mut self, voter: &MemberKey) -> Result<()> {
         if !self.voters.contains(voter) {
+            require!(
+                self.expected_signers.contains(voter),
+                MultisigError::UnexpectedSigner
+            );
             self.voters.push(*voter);
         }
+        Ok(())
+    }
+
+    pub fn add_initiator(&mut self, creator: MemberKey) -> Result<()> {
+        require!(
+            self.expected_signers.contains(&creator),
+            MultisigError::UnexpectedSigner
+        );
+        self.creator = creator;
+        Ok(())
+    }
+
+    pub fn add_executor(&mut self, executor: MemberKey) -> Result<()> {
+        require!(
+            self.expected_signers.contains(&executor),
+            MultisigError::UnexpectedSigner
+        );
+        self.executor = executor;
+        Ok(())
     }
 }

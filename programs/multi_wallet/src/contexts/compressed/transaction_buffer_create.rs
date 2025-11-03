@@ -135,24 +135,25 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
         ctx.accounts
             .validate(&args, &secp256r1_verify_args, &settings)?;
 
+        let transaction_buffer = &mut ctx.accounts.transaction_buffer;
+        transaction_buffer.init(
+            settings_key,
+            settings.multi_wallet_bump,
+            payer.key(),
+            &args,
+            &settings.members,
+            ctx.bumps.transaction_buffer,
+        )?;
+        transaction_buffer.add_initiator(signer)?;
+
         let member = settings
             .members
             .iter()
             .find(|x| x.pubkey.eq(&signer))
             .ok_or(MultisigError::MissingAccount)?;
 
-        let transaction_buffer = &mut ctx.accounts.transaction_buffer;
-        transaction_buffer.init(
-            settings_key,
-            settings.multi_wallet_bump,
-            member.pubkey,
-            payer.key(),
-            &args,
-            ctx.bumps.transaction_buffer,
-        )?;
-
         if member.permissions.has(Permission::VoteTransaction) {
-            transaction_buffer.add_voter(&member.pubkey);
+            transaction_buffer.add_voter(&signer)?;
         }
 
         transaction_buffer.invariant()?;

@@ -58,42 +58,44 @@ export const MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_EXECUTE_PERMISSION = 0
 export const MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_INITIATE_PERMISSION = 0x1784; // 6020
 /** InsufficientSignersWithVotePermission: Not enough members with vote permission to meet the approval threshold. */
 export const MULTI_WALLET_ERROR__INSUFFICIENT_SIGNERS_WITH_VOTE_PERMISSION = 0x1785; // 6021
+/** UnexpectedSigner: Member is not part of the expected signers for this transaction. */
+export const MULTI_WALLET_ERROR__UNEXPECTED_SIGNER = 0x1786; // 6022
 /** NoSignerFound: No valid signer found in this transaction. */
-export const MULTI_WALLET_ERROR__NO_SIGNER_FOUND = 0x1786; // 6022
+export const MULTI_WALLET_ERROR__NO_SIGNER_FOUND = 0x1787; // 6023
 /** UnauthorisedToCloseTransactionBuffer: Only the transaction creator or rent payer may close this transaction buffer. */
-export const MULTI_WALLET_ERROR__UNAUTHORISED_TO_CLOSE_TRANSACTION_BUFFER = 0x1787; // 6023
+export const MULTI_WALLET_ERROR__UNAUTHORISED_TO_CLOSE_TRANSACTION_BUFFER = 0x1788; // 6024
 /** InvalidBuffer: Buffer validation failed: contents do not match the expected hash (possible tampering detected). */
-export const MULTI_WALLET_ERROR__INVALID_BUFFER = 0x1788; // 6024
+export const MULTI_WALLET_ERROR__INVALID_BUFFER = 0x1789; // 6025
 /** FinalBufferHashMismatch: Final buffer hash mismatch: the serialized data may be corrupted or altered. */
-export const MULTI_WALLET_ERROR__FINAL_BUFFER_HASH_MISMATCH = 0x1789; // 6025
+export const MULTI_WALLET_ERROR__FINAL_BUFFER_HASH_MISMATCH = 0x178a; // 6026
 /** FinalBufferSizeExceeded: The serialized transaction buffer exceeds the maximum size of 10,128 bytes. */
-export const MULTI_WALLET_ERROR__FINAL_BUFFER_SIZE_EXCEEDED = 0x178a; // 6026
+export const MULTI_WALLET_ERROR__FINAL_BUFFER_SIZE_EXCEEDED = 0x178b; // 6027
 /** FinalBufferSizeMismatch: Declared buffer size does not match the actual serialized size. */
-export const MULTI_WALLET_ERROR__FINAL_BUFFER_SIZE_MISMATCH = 0x178b; // 6027
+export const MULTI_WALLET_ERROR__FINAL_BUFFER_SIZE_MISMATCH = 0x178c; // 6028
 /** TransactionHasExpired: This transaction has expired. It must be executed within 3 minutes of approval. */
-export const MULTI_WALLET_ERROR__TRANSACTION_HAS_EXPIRED = 0x178c; // 6028
+export const MULTI_WALLET_ERROR__TRANSACTION_HAS_EXPIRED = 0x178d; // 6029
 /** TransactionNotApproved: This transaction has not yet reached the required approval threshold. */
-export const MULTI_WALLET_ERROR__TRANSACTION_NOT_APPROVED = 0x178d; // 6029
+export const MULTI_WALLET_ERROR__TRANSACTION_NOT_APPROVED = 0x178e; // 6030
 /** ProtectedAccount: Writable CPI calls to protected accounts are not permitted. */
-export const MULTI_WALLET_ERROR__PROTECTED_ACCOUNT = 0x178e; // 6030
+export const MULTI_WALLET_ERROR__PROTECTED_ACCOUNT = 0x178f; // 6031
 /** MaxLengthExceeded: An input string exceeds the maximum allowed character length. */
-export const MULTI_WALLET_ERROR__MAX_LENGTH_EXCEEDED = 0x178f; // 6031
+export const MULTI_WALLET_ERROR__MAX_LENGTH_EXCEEDED = 0x1790; // 6032
 /** MissingSysvarSlotHistory: Missing required sysvar: Slot History must be included as an account in this instruction. */
-export const MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY = 0x1790; // 6032
+export const MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY = 0x1791; // 6033
 /** InvalidSysvarDataFormat: Failed to parse the Slot History sysvar: data format is invalid or corrupted. */
-export const MULTI_WALLET_ERROR__INVALID_SYSVAR_DATA_FORMAT = 0x1791; // 6033
+export const MULTI_WALLET_ERROR__INVALID_SYSVAR_DATA_FORMAT = 0x1792; // 6034
 /** SlotNumberNotFound: The specified slot number was not found in the provided slot history. */
-export const MULTI_WALLET_ERROR__SLOT_NUMBER_NOT_FOUND = 0x1792; // 6034
+export const MULTI_WALLET_ERROR__SLOT_NUMBER_NOT_FOUND = 0x1793; // 6035
 /** DomainConfigIsDisabled: The domain configuration account is disabled. Please contact support or try again later. */
-export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_DISABLED = 0x1793; // 6035
+export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_DISABLED = 0x1794; // 6036
 /** DomainConfigIsMissing: Missing domain configuration account. Include it as a required account in this instruction. */
-export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_MISSING = 0x1794; // 6036
+export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_MISSING = 0x1795; // 6037
 /** MemberDoesNotBelongToDomainConfig: This member is not registered under the provided domain configuration. */
-export const MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG = 0x1795; // 6037
+export const MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG = 0x1796; // 6038
 /** RpIdHashMismatch: The relying party ID hash does not match the one defined in the domain configuration. */
-export const MULTI_WALLET_ERROR__RP_ID_HASH_MISMATCH = 0x1796; // 6038
+export const MULTI_WALLET_ERROR__RP_ID_HASH_MISMATCH = 0x1797; // 6039
 /** OriginIndexOutOfBounds: The given origin index is not in the whitelisted origins. */
-export const MULTI_WALLET_ERROR__ORIGIN_INDEX_OUT_OF_BOUNDS = 0x1797; // 6039
+export const MULTI_WALLET_ERROR__ORIGIN_INDEX_OUT_OF_BOUNDS = 0x1798; // 6040
 
 export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__ALREADY_DELEGATED
@@ -135,7 +137,8 @@ export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__TRANSACTION_HAS_EXPIRED
   | typeof MULTI_WALLET_ERROR__TRANSACTION_MANAGER_NOT_ALLOWED
   | typeof MULTI_WALLET_ERROR__TRANSACTION_NOT_APPROVED
-  | typeof MULTI_WALLET_ERROR__UNAUTHORISED_TO_CLOSE_TRANSACTION_BUFFER;
+  | typeof MULTI_WALLET_ERROR__UNAUTHORISED_TO_CLOSE_TRANSACTION_BUFFER
+  | typeof MULTI_WALLET_ERROR__UNEXPECTED_SIGNER;
 
 let multiWalletErrorMessages: Record<MultiWalletError, string> | undefined;
 if (process.env.NODE_ENV !== "production") {
@@ -180,6 +183,7 @@ if (process.env.NODE_ENV !== "production") {
     [MULTI_WALLET_ERROR__TRANSACTION_MANAGER_NOT_ALLOWED]: `This operation cannot assign a transaction manager.`,
     [MULTI_WALLET_ERROR__TRANSACTION_NOT_APPROVED]: `This transaction has not yet reached the required approval threshold.`,
     [MULTI_WALLET_ERROR__UNAUTHORISED_TO_CLOSE_TRANSACTION_BUFFER]: `Only the transaction creator or rent payer may close this transaction buffer.`,
+    [MULTI_WALLET_ERROR__UNEXPECTED_SIGNER]: `Member is not part of the expected signers for this transaction.`,
   };
 }
 

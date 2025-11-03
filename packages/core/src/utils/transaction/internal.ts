@@ -2,11 +2,13 @@ import { sha256 } from "@noble/hashes/sha256";
 import {
   type AccountMeta,
   AccountRole,
+  type Address,
   address,
   appendTransactionMessageInstructions,
   compileTransaction,
   compressTransactionMessageUsingAddressLookupTables,
   createTransactionMessage,
+  getAddressEncoder,
   getBase58Encoder,
   getBase64Decoder,
   getBlockhashDecoder,
@@ -28,8 +30,13 @@ import {
   getSetComputeUnitLimitInstruction,
   getTransferSolInstruction,
 } from "gill/programs";
-import type { Secp256r1VerifyArgs } from "../../generated";
-import { SignedSecp256r1Key, type TransactionDetails } from "../../types";
+import type { MemberKey, Secp256r1VerifyArgs } from "../../generated";
+import {
+  KeyType,
+  Secp256r1Key,
+  SignedSecp256r1Key,
+  type TransactionDetails,
+} from "../../types";
 import { getSolanaRpc } from "../initialize";
 
 export async function createEncodedBundle(
@@ -215,16 +222,37 @@ export function extractSecp256r1VerificationArgs(
     publicKey,
   };
 }
+export function convertPubkeyToMemberkey(
+  pubkey: TransactionSigner | Address | Secp256r1Key
+): MemberKey {
+  if (pubkey instanceof Secp256r1Key) {
+    return { keyType: KeyType.Secp256r1, key: pubkey.toBytes() };
+  } else {
+    let address;
+    try {
+      address = "address" in pubkey ? pubkey.address : pubkey;
+    } catch {
+      address = pubkey as Address;
+    }
+    return {
+      keyType: KeyType.Ed25519,
+      key: new Uint8Array([
+        0, // pad start with zero to make it 33 bytes
+        ...getAddressEncoder().encode(address),
+      ]),
+    };
+  }
+}
+function getPubkeyString(pubkey: TransactionSigner | SignedSecp256r1Key) {
+  if (pubkey instanceof SignedSecp256r1Key) {
+    return pubkey.toString();
+  } else {
+    return pubkey.address.toString();
+  }
+}
 export function getDeduplicatedSigners(
   signers: (SignedSecp256r1Key | TransactionSigner)[]
 ) {
-  function getPubkeyString(pubkey: TransactionSigner | SignedSecp256r1Key) {
-    if (pubkey instanceof SignedSecp256r1Key) {
-      return pubkey.toString();
-    } else {
-      return pubkey.address.toString();
-    }
-  }
   const hashSet = new Set();
   const dedupSigners: (SignedSecp256r1Key | TransactionSigner)[] = [];
   for (const signer of signers) {

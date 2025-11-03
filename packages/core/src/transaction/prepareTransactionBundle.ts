@@ -20,6 +20,7 @@ import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
 } from "../utils/compressed/internal";
+import { convertPubkeyToMemberkey } from "../utils/transaction/internal";
 
 interface CreateTransactionBundleArgs {
   payer: TransactionSigner;
@@ -32,8 +33,8 @@ interface CreateTransactionBundleArgs {
   additionalSigners?: TransactionSigner[];
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   jitoBundlesTipAmount?: number;
-  chunkSize?: number;
   compressed?: boolean;
+  chunkSize?: number;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   cachedAccounts?: Map<string, any>;
 }
@@ -47,22 +48,20 @@ export async function prepareTransactionBundle({
   secp256r1VerifyInput,
   jitoBundlesTipAmount,
   addressesByLookupTableAddress,
+  compressed = false,
   bufferIndex = Math.floor(Math.random() * 255),
   additionalVoters = [],
   additionalSigners = [],
-  compressed = false,
   chunkSize = Math.ceil(transactionMessageBytes.length / 2),
   cachedAccounts,
 }: CreateTransactionBundleArgs): Promise<TransactionDetails[]> {
   // --- Stage 1: Setup Addresses ---
-  const [settings, transactionBufferAddress] = await Promise.all([
-    getSettingsFromIndex(index),
-    getTransactionBufferAddress(
-      await getSettingsFromIndex(index),
-      creator instanceof SignedSecp256r1Key ? creator : creator.address,
-      bufferIndex
-    ),
-  ]);
+  const settings = await getSettingsFromIndex(index);
+  const transactionBufferAddress = await getTransactionBufferAddress(
+    settings,
+    creator instanceof SignedSecp256r1Key ? creator : creator.address,
+    bufferIndex
+  );
 
   // --- Stage 2: Split Transaction Message into chunks + hashing ---
   const chunks: Uint8Array[] = [];
@@ -88,6 +87,12 @@ export async function prepareTransactionBundle({
     : null;
 
   // --- Stage 4: Instruction groups ---
+  const expectedSigners = [
+    creator,
+    ...(executor ? [executor] : []),
+    ...additionalVoters,
+  ].map(convertPubkeyToMemberkey);
+
   const createIxs = createTransactionBuffer({
     finalBufferHash,
     finalBufferSize: transactionMessageBytes.length,
@@ -99,6 +104,7 @@ export async function prepareTransactionBundle({
     preauthorizeExecution: !executor,
     bufferExtendHashes: chunksHash,
     compressedArgs,
+    expectedSigners,
   });
 
   const extendIxs = chunks.map((bytes) =>

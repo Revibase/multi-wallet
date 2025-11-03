@@ -74,6 +74,9 @@ pub enum MultisigError {
     #[msg("Not enough members with vote permission to meet the approval threshold.")]
     InsufficientSignersWithVotePermission,
 
+    #[msg("Member is not part of the expected signers for this transaction.")]
+    UnexpectedSigner,
+
     #[msg("No valid signer found in this transaction.")]
     NoSignerFound,
 

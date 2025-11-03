@@ -27,6 +27,12 @@ import {
   type Encoder,
   type ReadonlyUint8Array,
 } from "gill";
+import {
+  getMemberKeyDecoder,
+  getMemberKeyEncoder,
+  type MemberKey,
+  type MemberKeyArgs,
+} from ".";
 
 export type TransactionBufferCreateArgs = {
   bufferIndex: number;
@@ -34,9 +40,17 @@ export type TransactionBufferCreateArgs = {
   bufferExtendHashes: Array<ReadonlyUint8Array>;
   finalBufferHash: ReadonlyUint8Array;
   finalBufferSize: number;
+  expectedSigners: Array<MemberKey>;
 };
 
-export type TransactionBufferCreateArgsArgs = TransactionBufferCreateArgs;
+export type TransactionBufferCreateArgsArgs = {
+  bufferIndex: number;
+  preauthorizeExecution: boolean;
+  bufferExtendHashes: Array<ReadonlyUint8Array>;
+  finalBufferHash: ReadonlyUint8Array;
+  finalBufferSize: number;
+  expectedSigners: Array<MemberKeyArgs>;
+};
 
 export function getTransactionBufferCreateArgsEncoder(): Encoder<TransactionBufferCreateArgsArgs> {
   return getStructEncoder([
@@ -48,6 +62,7 @@ export function getTransactionBufferCreateArgsEncoder(): Encoder<TransactionBuff
     ],
     ["finalBufferHash", fixEncoderSize(getBytesEncoder(), 32)],
     ["finalBufferSize", getU16Encoder()],
+    ["expectedSigners", getArrayEncoder(getMemberKeyEncoder())],
   ]);
 }
 
@@ -61,6 +76,7 @@ export function getTransactionBufferCreateArgsDecoder(): Decoder<TransactionBuff
     ],
     ["finalBufferHash", fixDecoderSize(getBytesDecoder(), 32)],
     ["finalBufferSize", getU16Decoder()],
+    ["expectedSigners", getArrayDecoder(getMemberKeyDecoder())],
   ]);
 }
 

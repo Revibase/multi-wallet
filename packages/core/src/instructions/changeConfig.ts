@@ -5,7 +5,6 @@ import {
   type AccountSignerMeta,
   type Address,
   createNoopSigner,
-  getAddressEncoder,
   none,
   some,
   type TransactionSigner,
@@ -22,7 +21,6 @@ import {
   getCompressedSettingsDecoder,
   getUserDecoder,
   type IPermissions,
-  type MemberKey,
   type RemoveMemberArgs,
   type SettingsMutArgs,
   type User,
@@ -31,7 +29,6 @@ import {
 import {
   type ConfigurationArgs,
   type IPermission,
-  KeyType,
   PermanentMemberPermission,
   Permission,
   type PermissionArgs,
@@ -54,7 +51,10 @@ import {
   getValidityProofWithRetry,
 } from "../utils/compressed/internal";
 import { PackedAccounts } from "../utils/compressed/packedAccounts";
-import { extractSecp256r1VerificationArgs } from "../utils/transaction/internal";
+import {
+  convertPubkeyToMemberkey,
+  extractSecp256r1VerificationArgs,
+} from "../utils/transaction/internal";
 import type { Secp256r1VerifyInput } from "./secp256r1Verify";
 
 export async function changeConfig({
@@ -419,13 +419,7 @@ function convertAddMember({
   return {
     member: {
       permissions,
-      pubkey: convertPubkeyToMemberkey(
-        pubkey instanceof SignedSecp256r1Key
-          ? pubkey
-          : setAsDelegate
-            ? (pubkey as TransactionSigner).address
-            : (pubkey as Address)
-      ),
+      pubkey: convertPubkeyToMemberkey(pubkey),
     },
     verifyArgs:
       pubkey instanceof SignedSecp256r1Key && pubkey.verifyArgs && index !== -1
@@ -442,20 +436,6 @@ function convertAddMember({
       : { __kind: "Read", fields: [userMutArgs] },
     setAsDelegate,
   };
-}
-
-function convertPubkeyToMemberkey(pubkey: Address | Secp256r1Key): MemberKey {
-  if (pubkey instanceof Secp256r1Key) {
-    return { keyType: KeyType.Secp256r1, key: pubkey.toBytes() };
-  } else {
-    return {
-      keyType: KeyType.Ed25519,
-      key: new Uint8Array([
-        0, // pad start with zero to make it 33 bytes
-        ...getAddressEncoder().encode(pubkey),
-      ]),
-    };
-  }
 }
 
 function getAddMemberPermission(

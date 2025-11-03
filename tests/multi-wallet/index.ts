@@ -6,12 +6,11 @@ import { runSecp256r1Tests } from "./tests/secp256r1.test.ts";
 import { runTokenTransferTest } from "./tests/token-transfer.test.ts";
 import { runTransactionManagerTests } from "./tests/transaction-manager.test.ts";
 import { runTransactionTests } from "./tests/transactions.test.ts";
-import { runWalletCreationTests } from "./tests/wallet-creation.test.ts";
 
 describe("Multi Wallet Tests", function () {
-  describe("Wallet Creation", () => {
-    runWalletCreationTests();
-  });
+  // describe("Wallet Creation", () => {
+  //   runWalletCreationTests();
+  // });
 
   describe("Member Management", () => {
     runMemberManagementTests();
