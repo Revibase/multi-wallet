@@ -22,6 +22,7 @@ import {
   getUserDecoder,
   type IPermissions,
   type RemoveMemberArgs,
+  type SettingsIndexWithAddressArgs,
   type SettingsMutArgs,
   type User,
   type UserMutArgs,
@@ -36,6 +37,7 @@ import {
   Secp256r1Key,
   SignedSecp256r1Key,
   TransactionManagerPermission,
+  type UserAccountWithAddressArgs,
 } from "../types";
 import {
   convertMemberKeyToString,
@@ -58,18 +60,19 @@ import {
 import type { Secp256r1VerifyInput } from "./secp256r1Verify";
 
 export async function changeConfig({
-  index,
+  settingsIndexWithAddressArgs,
   configActionsArgs,
   payer,
   compressed = false,
   cachedAccounts,
 }: {
-  index: bigint | number;
+  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs;
   configActionsArgs: ConfigurationArgs[];
   payer: TransactionSigner;
   compressed?: boolean;
   cachedAccounts?: Map<string, any>;
 }) {
+  const { index } = settingsIndexWithAddressArgs;
   // --- Stage 1: Setup Addresses---
   const authority = await getWalletAddressFromIndex(index);
 
@@ -79,29 +82,48 @@ export async function changeConfig({
   for (const action of configActionsArgs) {
     if (action.type === "AddMembers") {
       addDelegates.push(
-        ...action.members.map((m) =>
-          m.pubkey instanceof SignedSecp256r1Key
-            ? {
-                address: getUserAccountAddress(m.pubkey).address,
-                type: "User" as const,
-              }
-            : m.setAsDelegate
+        ...(await Promise.all(
+          action.members.map(async (m) =>
+            m.account.member instanceof SignedSecp256r1Key
               ? {
-                  address: getUserAccountAddress(m.pubkey.address).address,
+                  address: (
+                    await getUserAccountAddress({
+                      member: m.account.member,
+                      userAddressTreeIndex: m.account.userAddressTreeIndex,
+                    })
+                  ).address,
                   type: "User" as const,
                 }
-              : {
-                  address: getUserAccountAddress(m.pubkey).address,
-                  type: "User" as const,
-                }
-        )
+              : m.setAsDelegate
+                ? {
+                    address: (
+                      await getUserAccountAddress({
+                        member: m.account.member.address,
+                        userAddressTreeIndex: m.account.userAddressTreeIndex,
+                      })
+                    ).address,
+                    type: "User" as const,
+                  }
+                : {
+                    address: (
+                      await getUserAccountAddress({
+                        member: m.account.member,
+                        userAddressTreeIndex: m.account.userAddressTreeIndex,
+                      })
+                    ).address,
+                    type: "User" as const,
+                  }
+          )
+        ))
       );
     } else if (action.type === "RemoveMembers") {
       removeDelegates.push(
-        ...action.members.map((m) => ({
-          address: getUserAccountAddress(m.pubkey).address,
-          type: "User" as const,
-        }))
+        ...(await Promise.all(
+          action.members.map(async (m) => ({
+            address: (await getUserAccountAddress(m)).address,
+            type: "User" as const,
+          }))
+        ))
       );
     } else if (action.type === "EditPermissions") {
       for (const m of action.members) {
@@ -110,7 +132,7 @@ export async function changeConfig({
             ? addDelegates
             : removeDelegates
           ).push({
-            address: getUserAccountAddress(m.pubkey).address,
+            address: (await getUserAccountAddress(m.account)).address,
             type: "User" as const,
           });
         }
@@ -131,7 +153,11 @@ export async function changeConfig({
       ...(compressed
         ? [
             {
-              address: getCompressedSettingsAddressFromIndex(index).address,
+              address: (
+                await getCompressedSettingsAddressFromIndex(
+                  settingsIndexWithAddressArgs
+                )
+              ).address,
               type: "Settings" as const,
             },
           ]
@@ -186,10 +212,10 @@ export async function changeConfig({
       case "AddMembers": {
         const field: AddMemberArgs[] = [];
         for (const m of action.members) {
-          if (m.pubkey instanceof SignedSecp256r1Key) {
+          if (m.account.member instanceof SignedSecp256r1Key) {
             const index = secp256r1VerifyInput.length;
             const { message, signature, publicKey, domainConfig } =
-              extractSecp256r1VerificationArgs(m.pubkey, index);
+              extractSecp256r1VerificationArgs(m.account.member, index);
 
             if (message && signature && publicKey) {
               secp256r1VerifyInput.push({ message, signature, publicKey });
@@ -201,14 +227,22 @@ export async function changeConfig({
               ]);
             }
 
-            const userArgs = await getUserArgs(m.pubkey, userMutArgs);
+            const userArgs = await getUserArgs(
+              {
+                member: m.account.member,
+                userAddressTreeIndex: m.account.userAddressTreeIndex,
+              },
+              userMutArgs
+            );
             if (userArgs) {
               field.push(
                 convertAddMember({
-                  ...m,
                   permissionArgs: m.permissions,
                   index,
                   userMutArgs: userArgs,
+                  isTransactionManager: m.isTransactionManager,
+                  pubkey: m.account.member,
+                  setAsDelegate: m.setAsDelegate,
                 })
               );
             }
@@ -216,24 +250,31 @@ export async function changeConfig({
             if (m.setAsDelegate) {
               packedAccounts.addPreAccounts([
                 {
-                  address: m.pubkey.address,
+                  address: m.account.member.address,
                   role: AccountRole.READONLY_SIGNER,
-                  signer: m.pubkey,
+                  signer: m.account.member,
                 } as AccountSignerMeta,
               ]);
             }
 
             const userArgs = await getUserArgs(
-              m.setAsDelegate ? m.pubkey.address : m.pubkey,
+              {
+                member: m.setAsDelegate
+                  ? m.account.member.address
+                  : m.account.member,
+                userAddressTreeIndex: m.account.userAddressTreeIndex,
+              },
               userMutArgs
             );
             if (userArgs) {
               field.push(
                 convertAddMember({
-                  ...m,
                   permissionArgs: m.permissions,
                   index: -1,
                   userMutArgs: userArgs,
+                  isTransactionManager: m.isTransactionManager,
+                  pubkey: m.account.member,
+                  setAsDelegate: m.setAsDelegate,
                 })
               );
             }
@@ -246,9 +287,12 @@ export async function changeConfig({
       case "RemoveMembers": {
         const field = await Promise.all(
           action.members.map(async (m) => {
-            const userArgs = await getUserArgs(m.pubkey, userMutArgs);
+            const userArgs = await getUserArgs(m, userMutArgs);
             if (!userArgs) throw new Error("User account not found");
-            return convertRemoveMember({ ...m, userMutArgs: userArgs });
+            return convertRemoveMember({
+              pubkey: m.member,
+              userMutArgs: userArgs,
+            });
           })
         );
         configActions.push({
@@ -260,7 +304,7 @@ export async function changeConfig({
 
       case "EditPermissions": {
         const settingsData = await fetchSettingsAccountData(
-          index,
+          settingsIndexWithAddressArgs,
           cachedAccounts
         );
         const permanentMember = settingsData.members.find((x) =>
@@ -274,11 +318,11 @@ export async function changeConfig({
             const isPermanentMember =
               !!permanentMember?.pubkey &&
               convertMemberKeyToString(permanentMember.pubkey) ===
-                m.pubkey.toString();
+                m.account.member.toString();
             const isTransactionManager =
               !!transactionManager?.pubkey &&
               convertMemberKeyToString(transactionManager.pubkey) ===
-                m.pubkey.toString();
+                m.account.member.toString();
 
             if (isTransactionManager) {
               throw new Error(
@@ -288,14 +332,15 @@ export async function changeConfig({
 
             const userArgs =
               m.delegateOperation !== DelegateOp.Ignore
-                ? await getUserArgs(m.pubkey, userMutArgs)
+                ? await getUserArgs(m.account, userMutArgs)
                 : undefined;
 
             return convertEditMember({
-              ...m,
               permissionArgs: m.permissions,
               isPermanentMember,
               userMutArgs: userArgs,
+              pubkey: m.account.member,
+              delegateOperation: m.delegateOperation,
             });
           })
         );
@@ -336,10 +381,10 @@ export async function changeConfig({
 }
 
 async function getUserArgs(
-  pubkey: Address | Secp256r1Key,
+  account: UserAccountWithAddressArgs,
   userMutArgs: UserMutArgs[]
 ): Promise<UserMutArgs | undefined> {
-  const { address } = getUserAccountAddress(pubkey);
+  const { address } = await getUserAccountAddress(account);
   const mutArg = userMutArgs.find((arg) =>
     new BN(new Uint8Array(arg.accountMeta.address)).eq(address)
   );
@@ -389,7 +434,7 @@ function convertRemoveMember({
   return {
     memberKey: convertPubkeyToMemberkey(pubkey),
     userArgs:
-      userMutArgs.data.settingsIndex.__option === "Some"
+      userMutArgs.data.delegatedTo.__option === "Some"
         ? { __kind: "Mutate", fields: [userMutArgs] }
         : { __kind: "Read", fields: [userMutArgs] },
   };
@@ -420,6 +465,7 @@ function convertAddMember({
     member: {
       permissions,
       pubkey: convertPubkeyToMemberkey(pubkey),
+      userAddressTreeIndex: userMutArgs.data.userAddressTreeIndex,
     },
     verifyArgs:
       pubkey instanceof SignedSecp256r1Key && pubkey.verifyArgs && index !== -1
@@ -452,7 +498,7 @@ function getAddMemberPermission(
         "Permanent members must also be delegates. Please set `setAsDelegate = true`."
       );
     }
-    if (userAccountData.settingsIndex.__option === "Some") {
+    if (userAccountData.delegatedTo.__option === "Some") {
       throw new Error(
         "This user is already registered as a permanent member in another wallet. A permanent member can only belong to one wallet."
       );

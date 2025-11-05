@@ -1,7 +1,6 @@
 import { AccountRole, type Instruction, type TransactionSigner } from "gill";
 import {
-  getCreateMultiWalletCompressedInstruction,
-  getCreateMultiWalletInstruction,
+  getCreateMultiWalletCompressedInstructionAsync,
   getUserDecoder,
   type User,
 } from "../generated";
@@ -9,7 +8,6 @@ import { SignedSecp256r1Key } from "../types";
 import {
   getCompressedSettingsAddressFromIndex,
   getGlobalCounterAddress,
-  getSettingsFromIndex,
   getUserAccountAddress,
 } from "../utils";
 import {
@@ -17,6 +15,7 @@ import {
   getCompressedAccountHashes,
   getCompressedAccountInitArgs,
   getCompressedAccountMutArgs,
+  getNewWhitelistedAddressTreeIndex,
   getValidityProofWithRetry,
 } from "../utils/compressed/internal";
 import { PackedAccounts } from "../utils/compressed/packedAccounts";
@@ -24,11 +23,13 @@ import { extractSecp256r1VerificationArgs } from "../utils/transaction/internal"
 import type { Secp256r1VerifyInput } from "./secp256r1Verify";
 
 type CreateWalletArgs = {
-  index: bigint | number;
+  index: number | bigint;
   payer: TransactionSigner;
-  compressed?: boolean;
   cachedAccounts?: Map<string, any>;
-  initialMember: TransactionSigner | SignedSecp256r1Key;
+  initialMember: {
+    member: TransactionSigner | SignedSecp256r1Key;
+    userAddressTreeIndex: number;
+  };
   setAsDelegate: boolean;
 };
 export async function createWallet({
@@ -36,12 +37,11 @@ export async function createWallet({
   payer,
   initialMember,
   setAsDelegate,
-  compressed = false,
   cachedAccounts,
 }: CreateWalletArgs) {
   const globalCounter = await getGlobalCounterAddress();
   const { domainConfig, verifyArgs, message, signature, publicKey } =
-    extractSecp256r1VerificationArgs(initialMember);
+    extractSecp256r1VerificationArgs(initialMember.member);
 
   const secp256r1VerifyInput: Secp256r1VerifyInput = [];
   if (message && signature && publicKey) {
@@ -62,8 +62,14 @@ export async function createWallet({
     ...(await getCompressedAccountHashes(
       [
         {
-          address: getUserAccountAddress(
-            "address" in initialMember ? initialMember.address : initialMember
+          address: (
+            await getUserAccountAddress({
+              member:
+                "address" in initialMember.member
+                  ? initialMember.member.address
+                  : initialMember.member,
+              userAddressTreeIndex: initialMember.userAddressTreeIndex,
+            })
           ).address,
           type: "User" as const,
         },
@@ -71,17 +77,19 @@ export async function createWallet({
       cachedAccounts
     ))
   );
-
-  if (compressed) {
-    const { address: settingsAddress, addressTree } =
-      getCompressedSettingsAddressFromIndex(index);
-    newAddressParams.push({
-      address: settingsAddress,
-      queue: addressTree,
-      tree: addressTree,
-      type: "Settings" as const,
+  const settingsAddressTreeIndex = await getNewWhitelistedAddressTreeIndex();
+  const { address: settingsAddress, addressTree } =
+    await getCompressedSettingsAddressFromIndex({
+      index,
+      settingsAddressTreeIndex,
     });
-  }
+  newAddressParams.push({
+    address: settingsAddress,
+    queue: addressTree,
+    tree: addressTree,
+    type: "Settings" as const,
+  });
+
   const hashesWithTreeEndIndex = hashesWithTree.length;
 
   const proof = await getValidityProofWithRetry(
@@ -114,12 +122,12 @@ export async function createWallet({
     packedAccounts.addPreAccounts([
       { address: domainConfig, role: AccountRole.READONLY },
     ]);
-  } else if ("address" in initialMember) {
+  } else if ("address" in initialMember.member) {
     packedAccounts.addPreAccounts([
       {
-        address: initialMember.address,
+        address: initialMember.member.address,
         role: AccountRole.READONLY_SIGNER,
-        signer: initialMember,
+        signer: initialMember.member,
       },
     ]);
   }
@@ -127,52 +135,30 @@ export async function createWallet({
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
 
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
-
   const instructions: Instruction[] = [];
-  if (compressed) {
-    if (!settingsCreationArgs) {
-      throw new Error("Settings creation args is missing.");
-    }
 
-    instructions.push(
-      getCreateMultiWalletCompressedInstruction({
-        settingsIndex: index,
-        payer: payer,
-        initialMember:
-          initialMember instanceof SignedSecp256r1Key
-            ? undefined
-            : initialMember,
-        secp256r1VerifyArgs: verifyArgs,
-        domainConfig,
-        userMutArgs,
-        globalCounter,
-        compressedProofArgs,
-        settingsCreation: settingsCreationArgs,
-        setAsDelegate,
-        remainingAccounts,
-      })
-    );
-  } else {
-    const settings = await getSettingsFromIndex(index);
-    instructions.push(
-      getCreateMultiWalletInstruction({
-        settingsIndex: index,
-        settings,
-        payer,
-        initialMember:
-          initialMember instanceof SignedSecp256r1Key
-            ? undefined
-            : initialMember,
-        secp256r1VerifyArgs: verifyArgs,
-        domainConfig,
-        userMutArgs,
-        globalCounter,
-        compressedProofArgs,
-        setAsDelegate,
-        remainingAccounts,
-      })
-    );
+  if (!settingsCreationArgs) {
+    throw new Error("Settings creation args is missing.");
   }
 
-  return { instructions, secp256r1VerifyInput };
+  instructions.push(
+    await getCreateMultiWalletCompressedInstructionAsync({
+      settingsIndex: index,
+      payer: payer,
+      initialMember:
+        initialMember.member instanceof SignedSecp256r1Key
+          ? undefined
+          : initialMember.member,
+      secp256r1VerifyArgs: verifyArgs,
+      domainConfig,
+      userMutArgs,
+      globalCounter,
+      compressedProofArgs,
+      settingsCreation: settingsCreationArgs,
+      setAsDelegate,
+      remainingAccounts,
+    })
+  );
+
+  return { instructions, secp256r1VerifyInput, settingsAddressTreeIndex };
 }

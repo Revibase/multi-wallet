@@ -1,6 +1,5 @@
-use crate::{
-    AddMemberArgs, MemberKey, MultisigError, RemoveMemberArgs, SEED_ADDRESS_TREE_VERSION, SEED_USER,
-};
+use crate::state::SettingsIndexWithAddress;
+use crate::{AddMemberArgs, MemberKey, MultisigError, RemoveMemberArgs, SEED_USER};
 use anchor_lang::prelude::*;
 use light_sdk::address::NewAddressParamsAssignedPacked;
 use light_sdk::instruction::account_meta::{CompressedAccountMeta, CompressedAccountMetaReadOnly};
@@ -14,8 +13,9 @@ pub struct User {
     pub member: MemberKey,
     pub domain_config: Option<Pubkey>,
     pub is_permanent_member: bool,
-    pub settings_index: Option<u128>,
+    pub delegated_to: Option<SettingsIndexWithAddress>,
     pub transaction_manager_url: Option<String>,
+    pub user_address_tree_index: u8,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, PartialEq)]
@@ -51,19 +51,13 @@ pub enum Ops {
 impl User {
     pub fn create_user_account(
         user_creation_args: UserCreationArgs,
-        light_cpi_accounts: &CpiAccounts,
+        address_tree: &Pubkey,
         user: User,
         index: Option<u8>,
     ) -> Result<(LightAccount<User>, NewAddressParamsAssignedPacked)> {
         let member_seed = user.member.get_seed()?;
-        let (address, address_seed) = derive_address(
-            &[SEED_USER, &member_seed, SEED_ADDRESS_TREE_VERSION],
-            &user_creation_args
-                .address_tree_info
-                .get_tree_pubkey(light_cpi_accounts)
-                .map_err(|_| ErrorCode::AccountNotEnoughKeys)?,
-            &crate::ID,
-        );
+        let (address, address_seed) =
+            derive_address(&[SEED_USER, &member_seed], address_tree, &crate::ID);
 
         let new_address_params = user_creation_args
             .address_tree_info
@@ -76,7 +70,7 @@ impl User {
         );
 
         user_account.member = user.member;
-        user_account.settings_index = user.settings_index;
+        user_account.delegated_to = user.delegated_to;
         user_account.domain_config = user.domain_config;
         user_account.is_permanent_member = user.is_permanent_member;
         user_account.transaction_manager_url = user.transaction_manager_url;
@@ -86,7 +80,7 @@ impl User {
 
     pub fn handle_user_delegates(
         delegate_ops: Vec<Ops>,
-        settings_index: u128,
+        settings_index_with_address: SettingsIndexWithAddress,
         light_cpi_accounts: &CpiAccounts,
     ) -> Result<Vec<LightAccount<User>>> {
         let mut final_account_infos: Vec<LightAccount<User>> = vec![];
@@ -96,14 +90,14 @@ impl User {
                 Ops::Remove(pk) => {
                     final_account_infos.push(User::remove_delegate(
                         pk.user_args,
-                        settings_index,
+                        &settings_index_with_address,
                         light_cpi_accounts,
                     )?);
                 }
                 Ops::Add(pk) => {
                     final_account_infos.push(User::handle_add_delegate(
                         pk.user_args,
-                        settings_index,
+                        &settings_index_with_address,
                         pk.set_as_delegate,
                         light_cpi_accounts,
                     )?);
@@ -116,7 +110,7 @@ impl User {
 
     pub fn handle_add_delegate(
         user_args: UserReadOnlyOrMutateArgs,
-        settings_index: u128,
+        settings_index_with_address: &SettingsIndexWithAddress,
         set_as_delegate: bool,
         light_cpi_accounts: &CpiAccounts,
     ) -> Result<LightAccount<User>> {
@@ -131,13 +125,13 @@ impl User {
 
                 if user_account.is_permanent_member {
                     require!(
-                        user_account.settings_index.is_none(),
+                        user_account.delegated_to.is_none(),
                         MultisigError::AlreadyDelegated
                     );
                 }
 
                 if set_as_delegate {
-                    user_account.settings_index = Some(settings_index);
+                    user_account.delegated_to = Some(settings_index_with_address.clone());
                 }
 
                 Ok(user_account)
@@ -158,7 +152,7 @@ impl User {
 
     fn remove_delegate(
         user_args: UserReadOnlyOrMutateArgs,
-        settings_index: u128,
+        settings_index_with_address: &SettingsIndexWithAddress,
         light_cpi_accounts: &CpiAccounts,
     ) -> Result<LightAccount<User>> {
         match user_args {
@@ -175,9 +169,9 @@ impl User {
                     MultisigError::PermanentMember
                 );
 
-                if let Some(user_account_settings_index) = user_account.settings_index {
-                    if user_account_settings_index.eq(&settings_index) {
-                        user_account.settings_index = None;
+                if let Some(user_account_settings_index_with_address) = &user_account.delegated_to {
+                    if user_account_settings_index_with_address.eq(&settings_index_with_address) {
+                        user_account.delegated_to = None;
                     }
                 }
 

@@ -1,4 +1,7 @@
-import type { TransactionDetails } from "@revibase/core";
+import type {
+  SettingsIndexWithAddress,
+  TransactionDetails,
+} from "@revibase/core";
 import {
   fetchSettingsAccountData,
   fetchUserAccountData,
@@ -66,27 +69,28 @@ export async function buildTokenTransferInstruction(
     popUp,
   });
   const signedSigner = await getSignedSecp256r1Key(authResponse);
-  let index: number;
+  let settingsIndexWithAddress: SettingsIndexWithAddress;
   if (!authResponse.additionalInfo.settingsIndex) {
     const userAccountData = await fetchUserAccountData(
-      signedSigner,
+      authResponse.signer,
       cachedAccounts
     );
-    if (userAccountData.settingsIndex.__option === "None") {
+    if (userAccountData.delegatedTo.__option === "None") {
       throw Error("User has no delegated wallet");
     }
-    index = Number(userAccountData.settingsIndex.value);
+    settingsIndexWithAddress = userAccountData.delegatedTo.value;
   } else {
-    index = authResponse.additionalInfo.settingsIndex;
+    settingsIndexWithAddress =
+      authResponse.additionalInfo.settingsIndexWithAddress;
   }
   const [settingsData, payer] = await Promise.all([
-    fetchSettingsAccountData(index, cachedAccounts),
+    fetchSettingsAccountData(settingsIndexWithAddress, cachedAccounts),
     getFeePayer(),
   ]);
 
   const transactionManagerSigner = await resolveTransactionManagerSigner({
     signer: signedSigner,
-    index,
+    settingsIndexWithAddressArgs: settingsIndexWithAddress,
     cachedAccounts,
   });
   const signers = transactionManagerSigner
@@ -95,7 +99,7 @@ export async function buildTokenTransferInstruction(
 
   const instructions = mint
     ? await tokenTransferIntent({
-        index,
+        settingsIndexWithAddressArgs: settingsIndexWithAddress,
         amount,
         signers,
         destination,
@@ -105,7 +109,7 @@ export async function buildTokenTransferInstruction(
         cachedAccounts,
       })
     : await nativeTransferIntent({
-        index,
+        settingsIndexWithAddressArgs: settingsIndexWithAddress,
         amount,
         signers,
         destination,

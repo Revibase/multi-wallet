@@ -9,6 +9,7 @@ import {
   getTokenTransferIntentCompressedInstruction,
   getTokenTransferIntentInstruction,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
+  type SettingsIndexWithAddressArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
 import {
@@ -29,7 +30,7 @@ import {
 } from "../secp256r1Verify";
 
 export async function tokenTransferIntent({
-  index,
+  settingsIndexWithAddressArgs,
   destination,
   mint,
   signers,
@@ -39,7 +40,7 @@ export async function tokenTransferIntent({
   tokenProgram,
   compressed = false,
 }: {
-  index: number | bigint;
+  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs;
   destination: Address;
   mint: Address;
   amount: number | bigint;
@@ -49,6 +50,7 @@ export async function tokenTransferIntent({
   compressed?: boolean;
   cachedAccounts?: Map<string, any>;
 }) {
+  const { index } = settingsIndexWithAddressArgs;
   const dedupSigners = getDeduplicatedSigners(signers);
   const settings = await getSettingsFromIndex(index);
   const walletAddress = await getWalletAddressFromSettings(settings);
@@ -57,7 +59,12 @@ export async function tokenTransferIntent({
     getAssociatedTokenAccountAddress(mint, destination, tokenProgram),
   ]);
   const { settingsReadonlyArgs, proof, packedAccounts } =
-    await constructSettingsProofArgs(compressed, index, false, cachedAccounts);
+    await constructSettingsProofArgs(
+      compressed,
+      settingsIndexWithAddressArgs,
+      false,
+      cachedAccounts
+    );
 
   const secp256r1VerifyInput: Secp256r1VerifyInput = [];
   const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];

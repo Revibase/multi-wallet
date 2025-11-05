@@ -1,4 +1,3 @@
-import { type Address } from "gill";
 import {
   type CompressedSettingsData,
   fetchMaybeSettings,
@@ -6,18 +5,22 @@ import {
   getCompressedSettingsDecoder,
   getUserAccountAddress,
   getUserDecoder,
-  Secp256r1Key,
+  type SettingsIndexWithAddressArgs,
   type User,
+  type UserAccountWithAddressArgs,
 } from "../..";
 import { getSettingsFromIndex } from "../addresses";
 import { getSolanaRpc } from "../initialize";
-import { getCompressedAccount } from "./internal";
+import {
+  getCachedWhitelistedAddressTree,
+  getCompressedAccount,
+} from "./internal";
 
 export async function fetchUserAccountData(
-  member: Address | Secp256r1Key,
+  user: UserAccountWithAddressArgs,
   cachedAccounts?: Map<string, any>
 ): Promise<User> {
-  const result = await fetchMaybeUserAccountData(member, cachedAccounts);
+  const result = await fetchMaybeUserAccountData(user, cachedAccounts);
   if (!result) {
     throw new Error("User cannot be found.");
   }
@@ -25,10 +28,10 @@ export async function fetchUserAccountData(
 }
 
 export async function fetchMaybeUserAccountData(
-  member: Address | Secp256r1Key,
+  user: UserAccountWithAddressArgs,
   cachedAccounts?: Map<string, any>
 ): Promise<User | null> {
-  const { address } = getUserAccountAddress(member);
+  const { address } = await getUserAccountAddress(user);
   const result = await getCompressedAccount(address, cachedAccounts);
   if (!result?.data?.data) {
     return null;
@@ -37,11 +40,11 @@ export async function fetchMaybeUserAccountData(
 }
 
 export async function fetchSettingsAccountData(
-  index: number | bigint,
+  SettingsIndexWithAddressArgs: SettingsIndexWithAddressArgs,
   cachedAccounts?: Map<string, any>
 ): Promise<CompressedSettingsData & { isCompressed: boolean }> {
   const settingsData = await fetchMaybeSettingsAccountData(
-    index,
+    SettingsIndexWithAddressArgs,
     cachedAccounts
   );
   if (!settingsData) {
@@ -51,11 +54,13 @@ export async function fetchSettingsAccountData(
 }
 
 export async function fetchMaybeSettingsAccountData(
-  index: number | bigint,
+  SettingsIndexWithAddressArgs: SettingsIndexWithAddressArgs,
   cachedAccounts?: Map<string, any>
 ): Promise<(CompressedSettingsData & { isCompressed: boolean }) | null> {
   try {
-    const { address } = getCompressedSettingsAddressFromIndex(index);
+    const { address } = await getCompressedSettingsAddressFromIndex(
+      SettingsIndexWithAddressArgs
+    );
     const result = await getCompressedAccount(address, cachedAccounts);
     if (!result?.data?.data) {
       return null;
@@ -68,7 +73,7 @@ export async function fetchMaybeSettingsAccountData(
   } catch {
     const result = await fetchMaybeSettings(
       getSolanaRpc(),
-      await getSettingsFromIndex(index)
+      await getSettingsFromIndex(SettingsIndexWithAddressArgs.index)
     );
     if (!result.exists) {
       return null;
@@ -79,4 +84,23 @@ export async function fetchMaybeSettingsAccountData(
       isCompressed: false,
     };
   }
+}
+
+export async function getWhitelistedAddressTreeFromIndex(index: number) {
+  const addressTrees = await getCachedWhitelistedAddressTree();
+  if (index < 0 || index >= addressTrees.length) {
+    throw new Error(`Invalid address tree index: ${index}`);
+  }
+  return addressTrees[index];
+}
+
+export async function getWhitelistedAddressTreeIndexFromAddress(
+  addressTree: string
+) {
+  const addressTrees = await getCachedWhitelistedAddressTree();
+  const index = addressTrees.findIndex((x) => x === addressTree);
+  if (index === -1) {
+    throw new Error(`Address tree not found: ${addressTree}`);
+  }
+  return index;
 }

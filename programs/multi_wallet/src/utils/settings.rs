@@ -1,7 +1,7 @@
 use crate::{
     state::UserReadOnlyOrMutateArgs, AddMemberArgs, ChallengeArgs, DelegateOp, DomainConfig,
-    EditMemberArgs, KeyType, Member, MemberKey, MultisigError, Permission,
-    PermissionCounts, RemoveMemberArgs, TransactionActionType,
+    EditMemberArgs, KeyType, Member, MemberKey, MultisigError, Permission, PermissionCounts,
+    RemoveMemberArgs, TransactionActionType,
 };
 use anchor_lang::prelude::*;
 use std::collections::{HashMap, HashSet};
@@ -259,6 +259,7 @@ pub trait MultisigSettings {
                             member: Member {
                                 pubkey,
                                 permissions: member.permissions,
+                                user_address_tree_index: existing_member.user_address_tree_index,
                             },
                             verify_args: None,
                             user_args: UserReadOnlyOrMutateArgs::Mutate(user_mut_args),

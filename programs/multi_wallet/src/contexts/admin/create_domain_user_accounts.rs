@@ -1,7 +1,9 @@
 use crate::{
-    state::UserMutArgs, CompressedSettings, DomainConfig, Member, MemberKey, MultisigError,
-    MultisigSettings, Permission, Permissions, ProofArgs, Secp256r1Pubkey, SettingsMutArgs, User,
-    UserCreationArgs, LIGHT_CPI_SIGNER,
+    state::{SettingsIndexWithAddress, UserMutArgs, WhitelistedAddressTree},
+    utils::SEED_WHITELISTED_ADDRESS_TREE,
+    CompressedSettings, DomainConfig, Member, MemberKey, MultisigError, MultisigSettings,
+    Permission, Permissions, ProofArgs, Secp256r1Pubkey, SettingsMutArgs, User, UserCreationArgs,
+    LIGHT_CPI_SIGNER,
 };
 use anchor_lang::prelude::*;
 use light_sdk::{
@@ -36,6 +38,11 @@ pub struct CreateDomainUserAccount<'info> {
         address = domain_config.load()?.authority,
     )]
     pub authority: Signer<'info>,
+    #[account(
+        seeds = [SEED_WHITELISTED_ADDRESS_TREE],
+        bump = whitelisted_address_trees.bump
+    )]
+    pub whitelisted_address_trees: Account<'info, WhitelistedAddressTree>,
 }
 
 impl<'info> CreateDomainUserAccount<'info> {
@@ -51,11 +58,22 @@ impl<'info> CreateDomainUserAccount<'info> {
             LIGHT_CPI_SIGNER,
         );
 
+        let address_tree = &args
+            .user_account_creation_args
+            .address_tree_info
+            .get_tree_pubkey(&light_cpi_accounts)
+            .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
+
+        let user_address_tree_index = ctx
+            .accounts
+            .whitelisted_address_trees
+            .extract_address_tree_index(address_tree)?;
+
         let mut cpi = LightSystemProgramCpi::new_cpi(
             LIGHT_CPI_SIGNER,
             ValidityProof(compressed_proof_args.proof),
         );
-        let mut settings_index = None;
+        let mut delegated_to = None;
         let mut transaction_manager_url = None;
         //allow domain authority to directly link user to a particular wallet owned by the domain authority
         if let Some(link_wallet_args) = args.link_wallet_args {
@@ -71,7 +89,10 @@ impl<'info> CreateDomainUserAccount<'info> {
                 .as_ref()
                 .ok_or(MultisigError::InvalidArguments)?;
 
-            settings_index = Some(settings_data.index);
+            delegated_to = Some(SettingsIndexWithAddress {
+                index: settings_data.index,
+                settings_address_tree_index: settings_data.settings_address_tree_index,
+            });
 
             require!(
                 settings_data.threshold == 1
@@ -118,6 +139,7 @@ impl<'info> CreateDomainUserAccount<'info> {
                         Permission::InitiateTransaction,
                         Permission::IsTransactionManager,
                     ]),
+                    user_address_tree_index: transaction_manager_account.user_address_tree_index,
                 });
                 cpi = cpi.with_light_account(transaction_manager_account)?;
             } else {
@@ -127,6 +149,7 @@ impl<'info> CreateDomainUserAccount<'info> {
             new_members.push(Member {
                 pubkey: MemberKey::convert_secp256r1(&args.member)?,
                 permissions: Permissions::from_permissions(permissions),
+                user_address_tree_index,
             });
 
             settings_account.set_members(new_members)?;
@@ -138,13 +161,14 @@ impl<'info> CreateDomainUserAccount<'info> {
 
         let (account_info, new_address_params) = User::create_user_account(
             args.user_account_creation_args,
-            &light_cpi_accounts,
+            address_tree,
             User {
                 member: MemberKey::convert_secp256r1(&args.member)?,
                 is_permanent_member: args.is_permanent_member,
                 domain_config: Some(ctx.accounts.domain_config.key()),
-                settings_index,
+                delegated_to,
                 transaction_manager_url,
+                user_address_tree_index,
             },
             Some(cpi.account_infos.len() as u8),
         )?;

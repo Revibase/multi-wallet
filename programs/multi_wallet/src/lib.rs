@@ -89,24 +89,13 @@ pub mod multi_wallet {
         )
     }
 
-    /// Creates a new multi-wallet with the specified permissions and ownership.
+    /// add whitelisted address tree
     #[instruction(discriminator = 7)]
-    pub fn create_multi_wallet<'info>(
-        ctx: Context<'_, '_, 'info, 'info, CreateMultiWallet<'info>>,
-        settings_index: u128,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        user_mut_args: UserMutArgs,
-        compressed_proof_args: ProofArgs,
-        set_as_delegate: bool,
+    pub fn add_whitelisted_address_trees<'info>(
+        ctx: Context<'_, '_, 'info, 'info, AddWhitelistedAddressTrees<'info>>,
+        address_tree: Pubkey,
     ) -> Result<()> {
-        CreateMultiWallet::process(
-            ctx,
-            settings_index,
-            secp256r1_verify_args,
-            compressed_proof_args,
-            user_mut_args,
-            set_as_delegate,
-        )
+        AddWhitelistedAddressTrees::process(ctx, address_tree)
     }
 
     /// Applies one or more configuration changes to an existing multi-wallet.
@@ -193,13 +182,13 @@ pub mod multi_wallet {
     pub fn compress_settings_account<'info>(
         ctx: Context<'_, '_, 'info, 'info, CompressSettingsAccount<'info>>,
         compressed_proof_args: ProofArgs,
-        settings_arg: SettingsCreateOrMutateArgs,
+        settings_mut_args: SettingsMutArgs,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
         CompressSettingsAccount::process(
             ctx,
             compressed_proof_args,
-            settings_arg,
+            settings_mut_args,
             secp256r1_verify_args,
         )
     }

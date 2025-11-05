@@ -2,6 +2,7 @@ import { type TransactionSigner } from "gill";
 import {
   getMigrateCompressedSettingsInstruction,
   type CompressedSettingsData,
+  type SettingsIndexWithAddressArgs,
 } from "../../generated";
 import { getCompressedSettingsAddressFromIndex } from "../../utils";
 import {
@@ -14,14 +15,16 @@ import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 export async function migrateSettings({
   args,
   authority,
+  settingsIndexWithAddressArgs,
 }: {
   authority: TransactionSigner;
   args: CompressedSettingsData;
+  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs;
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
-  const { address, addressTree } = getCompressedSettingsAddressFromIndex(
-    args.index
+  const { address, addressTree } = await getCompressedSettingsAddressFromIndex(
+    settingsIndexWithAddressArgs
   );
   const newAddressParams = [
     {

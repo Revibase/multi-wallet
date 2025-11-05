@@ -40,14 +40,14 @@ import {
   getProofArgsEncoder,
   getSecp256r1VerifyArgsWithDomainAddressDecoder,
   getSecp256r1VerifyArgsWithDomainAddressEncoder,
-  getSettingsCreateOrMutateArgsDecoder,
-  getSettingsCreateOrMutateArgsEncoder,
+  getSettingsMutArgsDecoder,
+  getSettingsMutArgsEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgsWithDomainAddress,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
-  type SettingsCreateOrMutateArgs,
-  type SettingsCreateOrMutateArgsArgs,
+  type SettingsMutArgs,
+  type SettingsMutArgsArgs,
 } from "../types";
 
 export const COMPRESS_SETTINGS_ACCOUNT_DISCRIMINATOR = new Uint8Array([16]);
@@ -93,13 +93,13 @@ export type CompressSettingsAccountInstruction<
 export type CompressSettingsAccountInstructionData = {
   discriminator: ReadonlyUint8Array;
   compressedProofArgs: ProofArgs;
-  settingsArg: SettingsCreateOrMutateArgs;
+  settingsMutArgs: SettingsMutArgs;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
 };
 
 export type CompressSettingsAccountInstructionDataArgs = {
   compressedProofArgs: ProofArgsArgs;
-  settingsArg: SettingsCreateOrMutateArgsArgs;
+  settingsMutArgs: SettingsMutArgsArgs;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
 };
 
@@ -108,7 +108,7 @@ export function getCompressSettingsAccountInstructionDataEncoder(): Encoder<Comp
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["compressedProofArgs", getProofArgsEncoder()],
-      ["settingsArg", getSettingsCreateOrMutateArgsEncoder()],
+      ["settingsMutArgs", getSettingsMutArgsEncoder()],
       [
         "secp256r1VerifyArgs",
         getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
@@ -125,7 +125,7 @@ export function getCompressSettingsAccountInstructionDataDecoder(): Decoder<Comp
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["compressedProofArgs", getProofArgsDecoder()],
-    ["settingsArg", getSettingsCreateOrMutateArgsDecoder()],
+    ["settingsMutArgs", getSettingsMutArgsDecoder()],
     [
       "secp256r1VerifyArgs",
       getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
@@ -158,7 +158,7 @@ export type CompressSettingsAccountInput<
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   compressedProofArgs: CompressSettingsAccountInstructionDataArgs["compressedProofArgs"];
-  settingsArg: CompressSettingsAccountInstructionDataArgs["settingsArg"];
+  settingsMutArgs: CompressSettingsAccountInstructionDataArgs["settingsMutArgs"];
   secp256r1VerifyArgs: CompressSettingsAccountInstructionDataArgs["secp256r1VerifyArgs"];
   remainingAccounts: CompressSettingsAccountInstructionExtraArgs["remainingAccounts"];
 };

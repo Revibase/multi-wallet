@@ -1,8 +1,10 @@
 use crate::{
-    id, state::UserReadOnlyOrMutateArgs, AddMemberArgs, CompressedSettings, CompressedSettingsData,
-    DomainConfig, GlobalCounter, Member, MemberKey, MultisigError, Ops, Permission, Permissions,
-    ProofArgs, Secp256r1VerifyArgs, SettingsCreationArgs, User, UserMutArgs, LIGHT_CPI_SIGNER,
-    SEED_MULTISIG, SEED_VAULT,
+    id,
+    state::{SettingsIndexWithAddress, UserReadOnlyOrMutateArgs, WhitelistedAddressTree},
+    utils::SEED_WHITELISTED_ADDRESS_TREE,
+    AddMemberArgs, CompressedSettings, CompressedSettingsData, DomainConfig, GlobalCounter, Member,
+    MemberKey, MultisigError, Ops, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs,
+    SettingsCreationArgs, User, UserMutArgs, LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::{
@@ -32,6 +34,11 @@ pub struct CreateMultiWalletCompressed<'info> {
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
     #[account(mut)]
     pub global_counter: AccountLoader<'info, GlobalCounter>,
+    #[account(
+        seeds = [SEED_WHITELISTED_ADDRESS_TREE],
+        bump = whitelisted_address_trees.bump
+    )]
+    pub whitelisted_address_trees: Account<'info, WhitelistedAddressTree>,
 }
 
 impl<'info> CreateMultiWalletCompressed<'info> {
@@ -71,20 +78,28 @@ impl<'info> CreateMultiWalletCompressed<'info> {
                 [compressed_proof_args.light_cpi_accounts_start_index as usize..],
             LIGHT_CPI_SIGNER,
         );
+        let address_tree = &settings_creation
+            .address_tree_info
+            .get_tree_pubkey(&light_cpi_accounts)
+            .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
 
-        let data = CompressedSettingsData {
-            threshold: 1,
-            bump,
-            index: settings_index,
-            multi_wallet_bump: multi_wallet_bump,
-            members: vec![],
-        };
+        let settings_address_tree_index = ctx
+            .accounts
+            .whitelisted_address_trees
+            .extract_address_tree_index(address_tree)?;
 
         let (mut settings_account, settings_new_address) =
             CompressedSettings::create_compressed_settings_account(
                 settings_creation,
-                data,
-                &light_cpi_accounts,
+                address_tree,
+                CompressedSettingsData {
+                    threshold: 1,
+                    bump,
+                    index: settings_index,
+                    multi_wallet_bump: multi_wallet_bump,
+                    members: vec![],
+                    settings_address_tree_index,
+                },
                 Some(0),
             )?;
 
@@ -104,6 +119,7 @@ impl<'info> CreateMultiWalletCompressed<'info> {
                 member: Member {
                     pubkey: signer,
                     permissions: Permissions::from_permissions(permissions),
+                    user_address_tree_index: user_mut_args.data.user_address_tree_index,
                 },
                 verify_args: secp256r1_verify_args,
                 user_args: UserReadOnlyOrMutateArgs::Mutate(user_mut_args),
@@ -118,7 +134,10 @@ impl<'info> CreateMultiWalletCompressed<'info> {
 
         let user_account_info = User::handle_user_delegates(
             delegate_ops.into_iter().map(Ops::Add).collect(),
-            settings_index,
+            SettingsIndexWithAddress {
+                index: settings_index,
+                settings_address_tree_index,
+            },
             &light_cpi_accounts,
         )?;
 

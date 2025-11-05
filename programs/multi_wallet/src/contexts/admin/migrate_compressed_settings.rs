@@ -34,11 +34,16 @@ impl<'info> MigrateCompressedSettings<'info> {
             LIGHT_CPI_SIGNER,
         );
 
+        let address_tree = &settings_creation_args
+            .address_tree_info
+            .get_tree_pubkey(&light_cpi_accounts)
+            .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
+
         let (settings_account, settings_new_address) =
             CompressedSettings::create_compressed_settings_account(
                 settings_creation_args,
+                address_tree,
                 args,
-                &light_cpi_accounts,
                 Some(0),
             )?;
 

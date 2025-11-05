@@ -1,14 +1,19 @@
+import { batchAddressTree } from "@lightprotocol/stateless.js";
 import {
+  addWhitelistedAddressTrees,
   createDomainConfig,
   createGlobalCounter,
   createUserAccounts,
   createWallet,
   fetchGlobalCounter,
+  fetchMaybeDomainConfig,
   fetchMaybeGlobalCounter,
+  fetchMaybeWhitelistedAddressTree,
   getDomainConfigAddress,
   getGlobalCounterAddress,
   getSolanaRpc,
   getWalletAddressFromIndex,
+  getWhitelistedAddressTreesAddress,
   initialize,
 } from "@revibase/core";
 import {
@@ -32,9 +37,7 @@ import { sendTransaction } from "./transaction.ts";
 /**
  * Sets up a fresh test environment for each test
  */
-export async function setupTestEnvironment(
-  compressed = true
-): Promise<TestContext> {
+export async function setupTestEnvironment(): Promise<TestContext> {
   initialize({
     rpcEndpoint: LOCAL_RPC_URL,
     compressionApiEndpoint: LOCAL_INDEXER_URL,
@@ -50,6 +53,7 @@ export async function setupTestEnvironment(
 
   // Fund the payer account
   await getSolanaRpc().requestAirdrop(payer.address, AIRDROP_AMOUNT).send();
+  await getSolanaRpc().requestAirdrop(wallet.address, AIRDROP_AMOUNT).send();
   const recentSlot = await getSolanaRpc()
     .getSlot({ commitment: "finalized" })
     .send();
@@ -68,7 +72,7 @@ export async function setupTestEnvironment(
   const extendIx = getExtendLookupTableInstruction({
     address: lut,
     authority: payer,
-    payer: payer,
+    payer,
     addresses: [
       "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
       "11111111111111111111111111111111",
@@ -131,18 +135,75 @@ export async function setupTestEnvironment(
     getSolanaRpc()
   );
 
-  const rpId = crypto.randomUUID();
-  const origin = crypto.randomUUID();
+  const rpId = "revibase.com";
+  const origin = "https://auth.revibase.com";
 
   const domainConfig = await getDomainConfigAddress({
     rpId,
   });
 
-  return {
-    compressed,
+  const domainConfigAccount = await fetchMaybeDomainConfig(
+    getSolanaRpc(),
+    domainConfig
+  );
+  if (!domainConfigAccount.exists) {
+    // Set up domain config
+    const setDomainIx = await createDomainConfig({
+      payer,
+      rpId,
+      origins: [origin],
+      authority: wallet.address,
+      metadataUrl: "",
+    });
+
+    await sendTransaction([setDomainIx], payer);
+  }
+
+  const whitelistedAddressTreesAccount = await fetchMaybeWhitelistedAddressTree(
+    getSolanaRpc(),
+    await getWhitelistedAddressTreesAddress()
+  );
+
+  if (!whitelistedAddressTreesAccount.exists) {
+    const addWhitelistedAddressTree = await addWhitelistedAddressTrees({
+      admin: wallet,
+      addressTree: address(batchAddressTree),
+    });
+    await sendTransaction([addWhitelistedAddressTree], payer);
+  }
+
+  const globalAccountAddress = await fetchMaybeGlobalCounter(
+    getSolanaRpc(),
+    await getGlobalCounterAddress()
+  );
+  if (!globalAccountAddress.exists) {
+    const globalCounterIx = await createGlobalCounter({
+      payer,
+    });
+
+    await sendTransaction([globalCounterIx], payer);
+  }
+
+  const { instruction, userAddressTreeIndex } = await createUserAccounts({
+    createUserArgs: [
+      {
+        member: wallet,
+        isPermanentMember: false,
+      },
+      {
+        member: payer,
+        isPermanentMember: false,
+      },
+    ],
     payer,
-    wallet,
-    index: undefined, // Will be set during wallet creation
+  });
+
+  await sendTransaction([instruction], payer);
+  return {
+    compressed: true,
+    payer: { member: payer, userAddressTreeIndex },
+    wallet: { member: wallet, userAddressTreeIndex },
+    settingsIndexWithAddress: undefined, // Will be set during wallet creation
     multiWalletVault: undefined, // Will be set during wallet creation
     rpId,
     origin,
@@ -157,69 +218,48 @@ export async function setupTestEnvironment(
 export async function createMultiWallet(
   ctx: TestContext
 ): Promise<TestContext> {
-  const globalCounter = await fetchMaybeGlobalCounter(
-    getSolanaRpc(),
-    await getGlobalCounterAddress()
-  );
+  const rpId = crypto.randomUUID();
+  const origin = crypto.randomUUID();
 
-  let createIndex;
-  if (!globalCounter.exists) {
-    const globalCounterIx = await createGlobalCounter({ payer: ctx.payer });
-
-    await sendTransaction([globalCounterIx], ctx.payer);
-    const result = await fetchGlobalCounter(
-      getSolanaRpc(),
-      await getGlobalCounterAddress()
-    );
-    createIndex = result.data.index;
-  } else {
-    createIndex = globalCounter.data.index;
-  }
+  const domainConfig = await getDomainConfigAddress({
+    rpId,
+  });
 
   // Set up domain config
   const setDomainIx = await createDomainConfig({
-    payer: ctx.payer,
-    rpId: ctx.rpId,
-    origins: [ctx.origin, "happy"],
-    authority: ctx.wallet.address,
+    payer: ctx.payer.member,
+    rpId,
+    origins: [origin, "happy"],
+    authority: ctx.wallet.member.address,
     metadataUrl: "",
   });
 
-  await sendTransaction([setDomainIx], ctx.payer);
+  await sendTransaction([setDomainIx], ctx.payer.member);
 
-  const createUserAccountIxs = await createUserAccounts({
-    createUserArgs: [
-      {
-        member: ctx.wallet,
-        isPermanentMember: false,
-      },
-      {
-        member: ctx.payer,
-        isPermanentMember: false,
-      },
-    ],
-    payer: ctx.payer,
-  });
-
-  await sendTransaction([createUserAccountIxs], ctx.payer);
-
+  const globalCounter = await fetchGlobalCounter(
+    getSolanaRpc(),
+    await getGlobalCounterAddress()
+  );
+  const createIndex = globalCounter.data.index;
   const multiWalletVault = await getWalletAddressFromIndex(createIndex);
 
   // Create wallet
-  const { instructions } = await createWallet({
-    payer: ctx.payer,
+  const { instructions, settingsAddressTreeIndex } = await createWallet({
+    payer: ctx.payer.member,
     initialMember: ctx.wallet,
     index: createIndex,
-    compressed: ctx.compressed,
     setAsDelegate: false,
   });
 
-  await sendTransaction(instructions, ctx.payer);
+  await sendTransaction(instructions, ctx.payer.member);
 
   // Return a new context with the updated settings and multiWalletVault
   return {
     ...ctx,
-    index: createIndex,
+    rpId,
+    origin,
+    domainConfig,
+    settingsIndexWithAddress: { index: createIndex, settingsAddressTreeIndex },
     multiWalletVault,
   };
 }

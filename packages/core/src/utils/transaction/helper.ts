@@ -22,7 +22,7 @@ import {
   getSetComputeUnitLimitInstruction,
   getSetComputeUnitPriceInstruction,
 } from "gill/programs";
-import type { MemberKey } from "../../generated";
+import type { MemberKey, SettingsIndexWithAddressArgs } from "../../generated";
 import {
   KeyType,
   Permission,
@@ -240,16 +240,19 @@ export async function pollJitoBundleConfirmation(
 }
 export async function resolveTransactionManagerSigner({
   signer,
-  index,
+  settingsIndexWithAddressArgs,
   transactionMessageBytes,
   cachedAccounts,
 }: {
   signer: Secp256r1Key | Address;
-  index: number | bigint;
+  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs;
   transactionMessageBytes?: ReadonlyUint8Array;
   cachedAccounts?: Map<string, any>;
 }) {
-  const settingsData = await fetchSettingsAccountData(index, cachedAccounts);
+  const settingsData = await fetchSettingsAccountData(
+    settingsIndexWithAddressArgs,
+    cachedAccounts
+  );
   if (settingsData.threshold > 1) {
     throw new Error(
       "Multi-signature transactions with threshold > 1 are not supported yet."
@@ -292,7 +295,10 @@ export async function resolveTransactionManagerSigner({
   );
 
   const userAccountData = await fetchUserAccountData(
-    transactionManagerAddress,
+    {
+      member: transactionManagerAddress,
+      userAddressTreeIndex: transactionManager.userAddressTreeIndex,
+    },
     cachedAccounts
   );
 

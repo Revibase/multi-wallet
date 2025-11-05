@@ -21,6 +21,25 @@ use bytemuck::{Pod, Zeroable};
 pub struct Member {
     pub pubkey: MemberKey,
     pub permissions: Permissions,
+    pub user_address_tree_index: u8,
+}
+
+#[derive(
+    InitSpace,
+    PartialEq,
+    AnchorSerialize,
+    AnchorDeserialize,
+    Copy,
+    Clone,
+    Zeroable,
+    Pod,
+    Default,
+    Debug,
+)]
+#[repr(C)]
+pub struct UserAccountArgs {
+    pub pubkey: MemberKey,
+    pub user_address_tree_index: u8,
 }
 
 #[derive(

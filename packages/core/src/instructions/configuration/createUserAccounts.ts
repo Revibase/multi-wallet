@@ -1,9 +1,10 @@
 import { AccountRole, type TransactionSigner } from "gill";
-import { getCreateUserAccountsInstruction } from "../../generated";
+import { getCreateUserAccountsInstructionAsync } from "../../generated";
 import { getUserAccountAddress } from "../../utils";
 import {
   convertToCompressedProofArgs,
   getCompressedAccountInitArgs,
+  getNewWhitelistedAddressTreeIndex,
   getValidityProofWithRetry,
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
@@ -36,15 +37,21 @@ export async function createUserAccounts({
       signer: x.member,
     }))
   );
-  const newAddressParams = createUserArgs.map((x) => {
-    const { address, addressTree } = getUserAccountAddress(x.member.address);
-    return {
-      address,
-      tree: addressTree,
-      queue: addressTree,
-      type: "User" as const,
-    };
-  });
+  const userAddressTreeIndex = await getNewWhitelistedAddressTreeIndex();
+  const newAddressParams = await Promise.all(
+    createUserArgs.map(async (x) => {
+      const { address, addressTree } = await getUserAccountAddress({
+        member: x.member.address,
+        userAddressTreeIndex,
+      });
+      return {
+        address,
+        tree: addressTree,
+        queue: addressTree,
+        type: "User" as const,
+      };
+    })
+  );
   const proof = await getValidityProofWithRetry([], newAddressParams);
   const userCreationArgs = await getCompressedAccountInitArgs(
     packedAccounts,
@@ -58,15 +65,18 @@ export async function createUserAccounts({
 
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
 
-  return getCreateUserAccountsInstruction({
-    compressedProofArgs,
-    payer,
-    createUserArgs: createUserArgs.map((x, index) => ({
-      member: x.member.address,
-      isPermanentMember: x.isPermanentMember,
-      userCreationArgs: userCreationArgs[index],
-      transactionManagerUrl: x.transactionManagerUrl ?? null,
-    })),
-    remainingAccounts,
-  });
+  return {
+    instruction: await getCreateUserAccountsInstructionAsync({
+      compressedProofArgs,
+      payer,
+      createUserArgs: createUserArgs.map((x, index) => ({
+        member: x.member.address,
+        isPermanentMember: x.isPermanentMember,
+        userCreationArgs: userCreationArgs[index],
+        transactionManagerUrl: x.transactionManagerUrl ?? null,
+      })),
+      remainingAccounts,
+    }),
+    userAddressTreeIndex,
+  };
 }

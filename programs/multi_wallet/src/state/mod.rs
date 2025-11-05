@@ -15,3 +15,6 @@ pub use global_counter::*;
 
 pub mod settings_compressed;
 pub use settings_compressed::*;
+
+pub mod whitelisted_address_tree;
+pub use whitelisted_address_tree::*;

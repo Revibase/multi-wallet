@@ -3,6 +3,7 @@ import type {
   ReadonlyUint8Array,
   TransactionSigner,
 } from "gill";
+import type { SettingsIndexWithAddressArgs } from "../generated";
 import {
   executeTransactionSync,
   type Secp256r1VerifyInput,
@@ -11,7 +12,7 @@ import { SignedSecp256r1Key, type TransactionDetails } from "../types";
 
 interface CreateTransactionSyncArgs {
   payer: TransactionSigner;
-  index: number | bigint;
+  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs;
   transactionMessageBytes: ReadonlyUint8Array;
   signers: (TransactionSigner | SignedSecp256r1Key)[];
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
@@ -23,7 +24,7 @@ interface CreateTransactionSyncArgs {
 
 export async function prepareTransactionSync({
   payer,
-  index,
+  settingsIndexWithAddressArgs,
   transactionMessageBytes,
   signers,
   secp256r1VerifyInput,
@@ -34,7 +35,7 @@ export async function prepareTransactionSync({
 }: CreateTransactionSyncArgs): Promise<TransactionDetails> {
   const { instructions, addressLookupTableAccounts } =
     await executeTransactionSync({
-      index,
+      settingsIndexWithAddressArgs,
       payer,
       signers,
       transactionMessageBytes,

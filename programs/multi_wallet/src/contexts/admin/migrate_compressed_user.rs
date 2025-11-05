@@ -32,8 +32,13 @@ impl<'info> MigrateCompressedUser<'info> {
             LIGHT_CPI_SIGNER,
         );
 
+        let address_tree = &user_creation_args
+            .address_tree_info
+            .get_tree_pubkey(&light_cpi_accounts)
+            .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
+
         let (account_info, new_address_params) =
-            User::create_user_account(user_creation_args, &light_cpi_accounts, args, Some(0))?;
+            User::create_user_account(user_creation_args, address_tree, args, Some(0))?;
 
         LightSystemProgramCpi::new_cpi(
             LIGHT_CPI_SIGNER,

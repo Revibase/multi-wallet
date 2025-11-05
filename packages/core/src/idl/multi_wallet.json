@@ -8,6 +8,47 @@
   },
   "instructions": [
     {
+      "name": "add_whitelisted_address_trees",
+      "docs": ["add whitelisted address tree"],
+      "discriminator": [7],
+      "accounts": [
+        {
+          "name": "whitelisted_address_trees",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119, 104, 105, 116, 101, 108, 105, 115, 116, 101, 100, 95, 97,
+                  100, 100, 114, 101, 115, 115, 95, 116, 114, 101, 101, 115
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "admin_domain_config",
+          "address": "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg"
+        }
+      ],
+      "args": [
+        {
+          "name": "address_tree",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "change_config",
       "docs": [
         "Applies one or more configuration changes to an existing multi-wallet."
@@ -194,10 +235,10 @@
           }
         },
         {
-          "name": "settings_arg",
+          "name": "settings_mut_args",
           "type": {
             "defined": {
-              "name": "SettingsCreateOrMutateArgs"
+              "name": "SettingsMutArgs"
             }
           }
         },
@@ -265,6 +306,20 @@
         {
           "name": "authority",
           "signer": true
+        },
+        {
+          "name": "whitelisted_address_trees",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119, 104, 105, 116, 101, 108, 105, 115, 116, 101, 100, 95, 97,
+                  100, 100, 114, 101, 115, 115, 95, 116, 114, 101, 101, 115
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -319,101 +374,6 @@
       "args": []
     },
     {
-      "name": "create_multi_wallet",
-      "docs": [
-        "Creates a new multi-wallet with the specified permissions and ownership."
-      ],
-      "discriminator": [7],
-      "accounts": [
-        {
-          "name": "settings",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "settings_index"
-              }
-            ]
-          }
-        },
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "initial_member",
-          "signer": true,
-          "optional": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "slot_hash_sysvar",
-          "optional": true,
-          "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "instructions_sysvar",
-          "optional": true,
-          "address": "Sysvar1nstructions1111111111111111111111111"
-        },
-        {
-          "name": "domain_config",
-          "optional": true
-        },
-        {
-          "name": "global_counter",
-          "writable": true
-        }
-      ],
-      "args": [
-        {
-          "name": "settings_index",
-          "type": "u128"
-        },
-        {
-          "name": "secp256r1_verify_args",
-          "type": {
-            "option": {
-              "defined": {
-                "name": "Secp256r1VerifyArgs"
-              }
-            }
-          }
-        },
-        {
-          "name": "user_mut_args",
-          "type": {
-            "defined": {
-              "name": "UserMutArgs"
-            }
-          }
-        },
-        {
-          "name": "compressed_proof_args",
-          "type": {
-            "defined": {
-              "name": "ProofArgs"
-            }
-          }
-        },
-        {
-          "name": "set_as_delegate",
-          "type": "bool"
-        }
-      ]
-    },
-    {
       "name": "create_multi_wallet_compressed",
       "docs": [
         "Creates a new multi-wallet with the specified permissions and ownership."
@@ -451,6 +411,20 @@
         {
           "name": "global_counter",
           "writable": true
+        },
+        {
+          "name": "whitelisted_address_trees",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119, 104, 105, 116, 101, 108, 105, 115, 116, 101, 100, 95, 97,
+                  100, 100, 114, 101, 115, 115, 95, 116, 114, 101, 101, 115
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -513,6 +487,20 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "whitelisted_address_trees",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119, 104, 105, 116, 101, 108, 105, 115, 116, 101, 100, 95, 97,
+                  100, 100, 114, 101, 115, 115, 95, 116, 114, 101, 101, 115
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -1865,6 +1853,10 @@
     {
       "name": "TransactionBuffer",
       "discriminator": [90, 36, 35, 219, 93, 225, 110, 96]
+    },
+    {
+      "name": "WhitelistedAddressTree",
+      "discriminator": [105, 23, 173, 2, 197, 255, 80, 87]
     }
   ],
   "errors": [
@@ -2072,6 +2064,11 @@
       "code": 6040,
       "name": "OriginIndexOutOfBounds",
       "msg": "The given origin index is not in the whitelisted origins."
+    },
+    {
+      "code": 6041,
+      "name": "InvalidAddressTree",
+      "msg": "Address Tree supplied is not part of the whitelisted address trees"
     }
   ],
   "types": [
@@ -2263,6 +2260,10 @@
                 }
               }
             }
+          },
+          {
+            "name": "settings_address_tree_index",
+            "type": "u8"
           }
         ]
       }
@@ -2621,6 +2622,10 @@
                 "name": "Permissions"
               }
             }
+          },
+          {
+            "name": "user_address_tree_index",
+            "type": "u8"
           }
         ]
       }
@@ -2856,34 +2861,16 @@
           {
             "name": "bump",
             "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "SettingsCreateOrMutateArgs",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Create",
-            "fields": [
-              {
-                "defined": {
-                  "name": "SettingsCreationArgs"
-                }
-              }
-            ]
           },
           {
-            "name": "Mutate",
-            "fields": [
-              {
-                "defined": {
-                  "name": "SettingsMutArgs"
-                }
-              }
-            ]
+            "name": "settings_address_tree_index",
+            "type": "u8"
+          },
+          {
+            "name": "_padding",
+            "type": {
+              "array": ["u8", 11]
+            }
           }
         ]
       }
@@ -2903,6 +2890,22 @@
           },
           {
             "name": "output_state_tree_index",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SettingsIndexWithAddress",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "index",
+            "type": "u128"
+          },
+          {
+            "name": "settings_address_tree_index",
             "type": "u8"
           }
         ]
@@ -3209,9 +3212,13 @@
             "type": "bool"
           },
           {
-            "name": "settings_index",
+            "name": "delegated_to",
             "type": {
-              "option": "u128"
+              "option": {
+                "defined": {
+                  "name": "SettingsIndexWithAddress"
+                }
+              }
             }
           },
           {
@@ -3219,6 +3226,10 @@
             "type": {
               "option": "string"
             }
+          },
+          {
+            "name": "user_address_tree_index",
+            "type": "u8"
           }
         ]
       }
@@ -3315,6 +3326,24 @@
                 }
               }
             ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "WhitelistedAddressTree",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "whitelisted_address_trees",
+            "type": {
+              "vec": "pubkey"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           }
         ]
       }

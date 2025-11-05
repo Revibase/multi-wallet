@@ -8,14 +8,19 @@ import {
   type ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
 import BN from "bn.js";
-import { some, type Decoder, type OptionOrNullable } from "gill";
+import { some, type Address, type Decoder, type OptionOrNullable } from "gill";
 import {
+  fetchWhitelistedAddressTree,
   getCompressedSettingsDecoder,
   type CompressedProof,
+  type SettingsIndexWithAddressArgs,
   type SettingsReadonlyArgs,
 } from "../../generated";
-import { getCompressedSettingsAddressFromIndex } from "../addresses";
-import { getLightProtocolRpc } from "../initialize";
+import {
+  getCompressedSettingsAddressFromIndex,
+  getWhitelistedAddressTreesAddress,
+} from "../addresses";
+import { getLightProtocolRpc, getSolanaRpc } from "../initialize";
 import { PackedAccounts } from "./packedAccounts";
 
 export async function getCompressedAccount(
@@ -151,7 +156,7 @@ export function getCompressedAccountMutArgs<T>(
 
 export async function constructSettingsProofArgs(
   compressed: boolean,
-  index: bigint | number,
+  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs,
   simulateProof?: boolean,
   cachedAccounts?: Map<string, any>
 ) {
@@ -160,7 +165,9 @@ export async function constructSettingsProofArgs(
   const packedAccounts = new PackedAccounts();
   if (compressed) {
     await packedAccounts.addSystemAccounts();
-    const { address } = getCompressedSettingsAddressFromIndex(index);
+    const { address } = await getCompressedSettingsAddressFromIndex(
+      settingsIndexWithAddressArgs
+    );
     const settings = (
       await getCompressedAccountHashes(
         [{ address, type: "Settings" }],
@@ -239,4 +246,20 @@ export async function getValidityProofWithRetry(
     }
   }
   throw new Error(`Failed to get validity proof after ${retry} attempts`);
+}
+export async function getNewWhitelistedAddressTreeIndex() {
+  const addressTrees = await getCachedWhitelistedAddressTree();
+  return Math.floor(Math.random() * addressTrees.length);
+}
+
+let cachedWhitelistedAddressTrees: Address[] | undefined = undefined;
+export async function getCachedWhitelistedAddressTree() {
+  if (!cachedWhitelistedAddressTrees) {
+    const { data } = await fetchWhitelistedAddressTree(
+      getSolanaRpc(),
+      await getWhitelistedAddressTreesAddress()
+    );
+    cachedWhitelistedAddressTrees = data.whitelistedAddressTrees;
+  }
+  return cachedWhitelistedAddressTrees;
 }

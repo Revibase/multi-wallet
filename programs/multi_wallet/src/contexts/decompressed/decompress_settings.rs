@@ -163,10 +163,11 @@ impl<'info> DecompressSettingsAccount<'info> {
 
         let settings_data = settings_account.data.as_ref().ok_or(MultisigError::InvalidArguments)?;
         settings.set_threshold(settings_data.threshold)?;
+        settings.set_members(settings_data.members.clone())?;
         settings.multi_wallet_bump = settings_data.multi_wallet_bump;
         settings.bump = ctx.bumps.settings;
         settings.index = settings_data.index;
-        settings.set_members(settings_data.members.clone())?;
+        settings.settings_address_tree_index = settings_data.settings_address_tree_index;
         settings.invariant()?;
 
         settings_account.data = None;

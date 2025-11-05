@@ -1,8 +1,8 @@
+use crate::state::SettingsMutArgs;
 use crate::{
     durable_nonce_check, ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig,
     MemberKey, MultisigError, MultisigSettings, Permission, ProofArgs,
-    Secp256r1VerifyArgsWithDomainAddress, Settings, SettingsCreateOrMutateArgs,
-    TransactionActionType, LIGHT_CPI_SIGNER,
+    Secp256r1VerifyArgsWithDomainAddress, Settings, TransactionActionType, LIGHT_CPI_SIGNER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::cpi::{v2::LightSystemProgramCpi, InvokeLightSystemProgram, LightCpiInstruction};
@@ -132,7 +132,7 @@ impl<'info> CompressSettingsAccount<'info> {
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
         compressed_proof_args: ProofArgs,
-        settings_args: SettingsCreateOrMutateArgs,
+        settings_mut_args: SettingsMutArgs,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
         let settings_data = ctx.accounts.settings.load()?;
@@ -143,59 +143,30 @@ impl<'info> CompressSettingsAccount<'info> {
             LIGHT_CPI_SIGNER,
         );
 
-        match settings_args {
-            SettingsCreateOrMutateArgs::Create(settings_creation_args) => {
-                let data = CompressedSettingsData {
-                    threshold: settings_data.get_threshold()?,
-                    bump: settings_data.bump,
-                    index: settings_data.index,
-                    multi_wallet_bump: settings_data.multi_wallet_bump,
-                    members: settings_data.get_members()?,
-                };
-                let (settings_account, settings_new_address) =
-                    CompressedSettings::create_compressed_settings_account(
-                        settings_creation_args,
-                        data,
-                        &light_cpi_accounts,
-                        Some(0),
-                    )?;
+        let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
+            &crate::ID,
+            &settings_mut_args.account_meta,
+            settings_mut_args.data,
+        )
+        .map_err(ProgramError::from)?;
 
-                settings_account.invariant()?;
+        settings_account.data = Some(CompressedSettingsData {
+            threshold: settings_data.get_threshold()?,
+            bump: settings_data.bump,
+            index: settings_data.index,
+            multi_wallet_bump: settings_data.multi_wallet_bump,
+            members: settings_data.get_members()?,
+            settings_address_tree_index: settings_data.settings_address_tree_index,
+        });
 
-                LightSystemProgramCpi::new_cpi(
-                    LIGHT_CPI_SIGNER,
-                    ValidityProof(compressed_proof_args.proof),
-                )
-                .with_light_account(settings_account)?
-                .with_new_addresses(&[settings_new_address])
-                .invoke(light_cpi_accounts)?;
-            }
-            SettingsCreateOrMutateArgs::Mutate(settings_mut_args) => {
-                let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
-                    &crate::ID,
-                    &settings_mut_args.account_meta,
-                    settings_mut_args.data,
-                )
-                .map_err(ProgramError::from)?;
+        settings_account.invariant()?;
 
-                settings_account.data = Some(CompressedSettingsData {
-                    threshold: settings_data.get_threshold()?,
-                    bump: settings_data.bump,
-                    index: settings_data.index,
-                    multi_wallet_bump: settings_data.multi_wallet_bump,
-                    members: settings_data.get_members()?,
-                });
-
-                settings_account.invariant()?;
-
-                LightSystemProgramCpi::new_cpi(
-                    LIGHT_CPI_SIGNER,
-                    ValidityProof(compressed_proof_args.proof),
-                )
-                .with_light_account(settings_account)?
-                .invoke(light_cpi_accounts)?;
-            }
-        };
+        LightSystemProgramCpi::new_cpi(
+            LIGHT_CPI_SIGNER,
+            ValidityProof(compressed_proof_args.proof),
+        )
+        .with_light_account(settings_account)?
+        .invoke(light_cpi_accounts)?;
 
         Ok(())
     }

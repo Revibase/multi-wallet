@@ -33,6 +33,7 @@ export type CompressedSettingsData = {
   index: bigint;
   multiWalletBump: number;
   members: Array<Member>;
+  settingsAddressTreeIndex: number;
 };
 
 export type CompressedSettingsDataArgs = {
@@ -41,6 +42,7 @@ export type CompressedSettingsDataArgs = {
   index: number | bigint;
   multiWalletBump: number;
   members: Array<MemberArgs>;
+  settingsAddressTreeIndex: number;
 };
 
 export function getCompressedSettingsDataEncoder(): Encoder<CompressedSettingsDataArgs> {
@@ -50,6 +52,7 @@ export function getCompressedSettingsDataEncoder(): Encoder<CompressedSettingsDa
     ["index", getU128Encoder()],
     ["multiWalletBump", getU8Encoder()],
     ["members", getArrayEncoder(getMemberEncoder())],
+    ["settingsAddressTreeIndex", getU8Encoder()],
   ]);
 }
 
@@ -60,6 +63,7 @@ export function getCompressedSettingsDataDecoder(): Decoder<CompressedSettingsDa
     ["index", getU128Decoder()],
     ["multiWalletBump", getU8Decoder()],
     ["members", getArrayDecoder(getMemberDecoder())],
+    ["settingsAddressTreeIndex", getU8Decoder()],
   ]);
 }
 

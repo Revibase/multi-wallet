@@ -96,6 +96,8 @@ export const MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG = 0x179
 export const MULTI_WALLET_ERROR__RP_ID_HASH_MISMATCH = 0x1797; // 6039
 /** OriginIndexOutOfBounds: The given origin index is not in the whitelisted origins. */
 export const MULTI_WALLET_ERROR__ORIGIN_INDEX_OUT_OF_BOUNDS = 0x1798; // 6040
+/** InvalidAddressTree: Address Tree supplied is not part of the whitelisted address trees */
+export const MULTI_WALLET_ERROR__INVALID_ADDRESS_TREE = 0x1799; // 6041
 
 export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__ALREADY_DELEGATED
@@ -111,6 +113,7 @@ export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_EXECUTE_PERMISSION
   | typeof MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_INITIATE_PERMISSION
   | typeof MULTI_WALLET_ERROR__INVALID_ACCOUNT
+  | typeof MULTI_WALLET_ERROR__INVALID_ADDRESS_TREE
   | typeof MULTI_WALLET_ERROR__INVALID_ARGUMENTS
   | typeof MULTI_WALLET_ERROR__INVALID_BUFFER
   | typeof MULTI_WALLET_ERROR__INVALID_NUMBER_OF_ACCOUNTS
@@ -156,6 +159,7 @@ if (process.env.NODE_ENV !== "production") {
     [MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_EXECUTE_PERMISSION]: `At least one signer with execute permission is required to proceed.`,
     [MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_INITIATE_PERMISSION]: `At least one signer with initiate permission is required to perform this action.`,
     [MULTI_WALLET_ERROR__INVALID_ACCOUNT]: `One or more provided accounts failed validation. Verify that all required accounts are included and correct.`,
+    [MULTI_WALLET_ERROR__INVALID_ADDRESS_TREE]: `Address Tree supplied is not part of the whitelisted address trees`,
     [MULTI_WALLET_ERROR__INVALID_ARGUMENTS]: `Invalid or missing instruction arguments. Ensure all required arguments are correctly provided.`,
     [MULTI_WALLET_ERROR__INVALID_BUFFER]: `Buffer validation failed: contents do not match the expected hash (possible tampering detected).`,
     [MULTI_WALLET_ERROR__INVALID_NUMBER_OF_ACCOUNTS]: `Unexpected number of accounts provided for this instruction.`,

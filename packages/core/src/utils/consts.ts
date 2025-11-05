@@ -1,7 +1,6 @@
 import { featureFlags, VERSION } from "@lightprotocol/stateless.js";
 
 featureFlags.version = VERSION.V2;
-export const ADDRESS_TREE_VERSION = "v2";
 
 export const REVIBASE_RP_ID = "revibase.com";
 /**

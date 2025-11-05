@@ -5,13 +5,14 @@ import type {
   ReadonlyUint8Array,
   TransactionSigner,
 } from "gill";
+import type { SettingsIndexWithAddressArgs } from "../generated";
 import {
   createTransactionBuffer,
   executeTransaction,
   executeTransactionBuffer,
   extendTransactionBuffer,
-  type Secp256r1VerifyInput,
   voteTransactionBuffer,
+  type Secp256r1VerifyInput,
 } from "../instructions";
 import { SignedSecp256r1Key } from "../types";
 import type { TransactionDetails } from "../types/transaction";
@@ -24,7 +25,7 @@ import { convertPubkeyToMemberkey } from "../utils/transaction/internal";
 
 interface CreateTransactionBundleArgs {
   payer: TransactionSigner;
-  index: bigint | number;
+  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs;
   transactionMessageBytes: ReadonlyUint8Array;
   bufferIndex?: number;
   creator: TransactionSigner | SignedSecp256r1Key;
@@ -41,7 +42,7 @@ interface CreateTransactionBundleArgs {
 
 export async function prepareTransactionBundle({
   payer,
-  index,
+  settingsIndexWithAddressArgs,
   transactionMessageBytes,
   creator,
   executor,
@@ -56,7 +57,9 @@ export async function prepareTransactionBundle({
   cachedAccounts,
 }: CreateTransactionBundleArgs): Promise<TransactionDetails[]> {
   // --- Stage 1: Setup Addresses ---
-  const settings = await getSettingsFromIndex(index);
+  const settings = await getSettingsFromIndex(
+    settingsIndexWithAddressArgs.index
+  );
   const transactionBufferAddress = await getTransactionBufferAddress(
     settings,
     creator instanceof SignedSecp256r1Key ? creator : creator.address,
@@ -75,7 +78,12 @@ export async function prepareTransactionBundle({
 
   // --- Stage 3: Derive readonly compressed proof args if necessary---
   const { settingsReadonlyArgs, proof, packedAccounts } =
-    await constructSettingsProofArgs(compressed, index, false, cachedAccounts);
+    await constructSettingsProofArgs(
+      compressed,
+      settingsIndexWithAddressArgs,
+      false,
+      cachedAccounts
+    );
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const compressedArgs = settingsReadonlyArgs
     ? {

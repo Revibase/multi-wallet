@@ -61,6 +61,8 @@ export type Settings = {
   threshold: number;
   multiWalletBump: number;
   bump: number;
+  settingsAddressTreeIndex: number;
+  padding: ReadonlyUint8Array;
 };
 
 export type SettingsArgs = {
@@ -70,6 +72,8 @@ export type SettingsArgs = {
   threshold: number;
   multiWalletBump: number;
   bump: number;
+  settingsAddressTreeIndex: number;
+  padding: ReadonlyUint8Array;
 };
 
 export function getSettingsEncoder(): FixedSizeEncoder<SettingsArgs> {
@@ -82,6 +86,8 @@ export function getSettingsEncoder(): FixedSizeEncoder<SettingsArgs> {
       ["threshold", getU8Encoder()],
       ["multiWalletBump", getU8Encoder()],
       ["bump", getU8Encoder()],
+      ["settingsAddressTreeIndex", getU8Encoder()],
+      ["padding", fixEncoderSize(getBytesEncoder(), 11)],
     ]),
     (value) => ({ ...value, discriminator: SETTINGS_DISCRIMINATOR })
   );
@@ -96,6 +102,8 @@ export function getSettingsDecoder(): FixedSizeDecoder<Settings> {
     ["threshold", getU8Decoder()],
     ["multiWalletBump", getU8Decoder()],
     ["bump", getU8Decoder()],
+    ["settingsAddressTreeIndex", getU8Decoder()],
+    ["padding", fixDecoderSize(getBytesDecoder(), 11)],
   ]);
 }
 
@@ -157,5 +165,5 @@ export async function fetchAllMaybeSettings(
 }
 
 export function getSettingsSize(): number {
-  return 168;
+  return 184;
 }

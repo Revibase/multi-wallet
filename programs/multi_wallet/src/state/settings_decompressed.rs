@@ -12,6 +12,8 @@ pub struct Settings {
     pub threshold: u8,
     pub multi_wallet_bump: u8,
     pub bump: u8,
+    pub settings_address_tree_index: u8,
+    pub _padding: [u8; 11],
 }
 
 impl Settings {
@@ -22,7 +24,9 @@ impl Settings {
         1 +  // members len
         1  + // threshold
         1  + // multi_wallet bump
-        1 // settings bump
+        1  + // settings bump
+        1  + // settings_address_tree_index
+        11 // unused padding
     }
     pub fn edit_permissions(
         &mut self,

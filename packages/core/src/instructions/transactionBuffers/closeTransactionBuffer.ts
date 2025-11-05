@@ -3,6 +3,7 @@ import {
   fetchTransactionBuffer,
   getTransactionBufferCloseCompressedInstruction,
   getTransactionBufferCloseInstruction,
+  type SettingsIndexWithAddressArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
 import { getSolanaRpc } from "../../utils";
@@ -14,14 +15,14 @@ import { extractSecp256r1VerificationArgs } from "../../utils/transaction/intern
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
 export async function closeTransactionBuffer({
-  index,
+  settingsIndexWithAddressArgs,
   closer,
   transactionBufferAddress,
   payer,
   compressed = false,
   cachedAccounts,
 }: {
-  index: bigint | number;
+  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs;
   closer: TransactionSigner | SignedSecp256r1Key;
   transactionBufferAddress: Address;
   payer?: TransactionSigner;
@@ -34,7 +35,12 @@ export async function closeTransactionBuffer({
   );
   const settings = transactionBuffer.data.multiWalletSettings;
   const { settingsReadonlyArgs, proof, packedAccounts } =
-    await constructSettingsProofArgs(compressed, index, false, cachedAccounts);
+    await constructSettingsProofArgs(
+      compressed,
+      settingsIndexWithAddressArgs,
+      false,
+      cachedAccounts
+    );
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const { domainConfig, verifyArgs, message, signature, publicKey } =

@@ -17,6 +17,7 @@ import {
   signMessageWithPasskey,
   signTransactionWithPasskey,
   verifyMessage,
+  type SettingsIndexWithAddress,
 } from "@revibase/core";
 import { address } from "gill";
 import {
@@ -44,18 +45,18 @@ export function createRevibaseAdapter(): Revibase {
   }
 
   const account = window.localStorage.getItem("Revibase:account");
-  const { publicKey, member, index } = account
+  const { publicKey, member, settingsIndexWithAddress } = account
     ? (JSON.parse(account) as {
         publicKey: string | null;
         member: string | null;
-        index: number | null;
+        settingsIndexWithAddress: SettingsIndexWithAddress | null;
       })
-    : { publicKey: null, member: null, index: null };
+    : { publicKey: null, member: null, settingsIndexWithAddress: null };
 
   return {
     publicKey,
     member,
-    index,
+    settingsIndexWithAddress,
     connect: async function () {
       const message = createSignInMessageText({
         domain: window.location.origin,
@@ -71,16 +72,19 @@ export function createRevibaseAdapter(): Revibase {
         !authResponse.additionalInfo.settingsIndex
       ) {
         const userAccountData = await fetchUserAccountData(authResponse.signer);
-        if (userAccountData.settingsIndex.__option === "None") {
+        if (userAccountData.delegatedTo.__option === "None") {
           throw Error("User has no delegated wallet");
         }
         this.publicKey = (
-          await getWalletAddressFromIndex(userAccountData.settingsIndex.value)
+          await getWalletAddressFromIndex(
+            userAccountData.delegatedTo.value.index
+          )
         ).toString();
-        this.index = Number(userAccountData.settingsIndex.value);
+        this.settingsIndexWithAddress = userAccountData.delegatedTo.value;
       } else {
         this.publicKey = authResponse.additionalInfo.walletAddress;
-        this.index = authResponse.additionalInfo.settingsIndex;
+        this.settingsIndexWithAddress =
+          authResponse.additionalInfo.settingsIndexWithAddress;
       }
 
       this.member = authResponse.signer.toString();
@@ -89,7 +93,7 @@ export function createRevibaseAdapter(): Revibase {
         JSON.stringify({
           publicKey: this.publicKey,
           member: this.member,
-          index: this.index,
+          settingsIndexWithAddress: this.settingsIndexWithAddress,
         })
       );
       emit("connect");
@@ -98,7 +102,7 @@ export function createRevibaseAdapter(): Revibase {
     disconnect: async function () {
       this.publicKey = null;
       this.member = null;
-      this.index = null;
+      this.settingsIndexWithAddress = null;
       window.localStorage.removeItem("Revibase:account");
       emit("disconnect");
     },
@@ -116,7 +120,7 @@ export function createRevibaseAdapter(): Revibase {
       });
     },
     buildTransaction: async function (input) {
-      if (!this.member || !this.index || !this.publicKey) {
+      if (!this.member || !this.settingsIndexWithAddress || !this.publicKey) {
         throw new Error("Wallet is not connected");
       }
       // open popup first so that browser won't prompt user for permission
@@ -130,8 +134,11 @@ export function createRevibaseAdapter(): Revibase {
 
       const [settingsData, settings, payer, transactionMessageBytes] =
         await Promise.all([
-          fetchSettingsAccountData(this.index, cachedAccounts),
-          getSettingsFromIndex(this.index),
+          fetchSettingsAccountData(
+            this.settingsIndexWithAddress,
+            cachedAccounts
+          ),
+          getSettingsFromIndex(this.settingsIndexWithAddress.index),
           getFeePayer(),
           prepareTransactionMessage({
             payer: address(this.publicKey),
@@ -143,7 +150,7 @@ export function createRevibaseAdapter(): Revibase {
 
       const transactionManagerSigner = await resolveTransactionManagerSigner({
         signer,
-        index: this.index,
+        settingsIndexWithAddressArgs: this.settingsIndexWithAddress,
         transactionMessageBytes,
         cachedAccounts,
       });
@@ -156,7 +163,7 @@ export function createRevibaseAdapter(): Revibase {
         ],
         compressed: settingsData.isCompressed,
         payer,
-        settingsIndex: this.index,
+        settingsIndexWithAddressArgs: this.settingsIndexWithAddress,
         transactionMessageBytes,
         addressesByLookupTableAddress,
         cachedAccounts,
@@ -183,7 +190,7 @@ export function createRevibaseAdapter(): Revibase {
         const signedSigner = await getSignedSecp256r1Key(authResponse);
         return await prepareTransactionBundle({
           compressed: settingsData.isCompressed,
-          index: this.index,
+          settingsIndexWithAddressArgs: this.settingsIndexWithAddress,
           bufferIndex,
           transactionMessageBytes,
           creator: transactionManagerSigner ?? signedSigner,
@@ -213,7 +220,7 @@ export function createRevibaseAdapter(): Revibase {
             ],
             payer,
             transactionMessageBytes,
-            index: this.index,
+            settingsIndexWithAddressArgs: this.settingsIndexWithAddress,
             addressesByLookupTableAddress,
             cachedAccounts,
           }),

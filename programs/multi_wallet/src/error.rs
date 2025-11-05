@@ -134,4 +134,7 @@ pub enum MultisigError {
 
     #[msg("The given origin index is not in the whitelisted origins.")]
     OriginIndexOutOfBounds,
+
+    #[msg("Address Tree supplied is not part of the whitelisted address trees")]
+    InvalidAddressTree,
 }

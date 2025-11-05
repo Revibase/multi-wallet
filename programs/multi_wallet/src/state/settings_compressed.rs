@@ -1,6 +1,6 @@
 use crate::{
     AddMemberArgs, EditMemberArgs, Member, MemberKey, MultisigError, MultisigSettings,
-    RemoveMemberArgs, Settings, LIGHT_CPI_SIGNER, SEED_ADDRESS_TREE_VERSION, SEED_MULTISIG,
+    RemoveMemberArgs, Settings, LIGHT_CPI_SIGNER, SEED_MULTISIG,
 };
 use anchor_lang::prelude::*;
 use light_sdk::address::NewAddressParamsAssignedPacked;
@@ -31,6 +31,13 @@ pub struct CompressedSettingsData {
     pub index: u128,
     pub multi_wallet_bump: u8,
     pub members: Vec<Member>,
+    pub settings_address_tree_index: u8,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize, PartialEq, Debug, Clone)]
+pub struct SettingsIndexWithAddress {
+    pub index: u128,
+    pub settings_address_tree_index: u8,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -49,12 +56,6 @@ pub struct SettingsMutArgs {
 pub struct SettingsReadonlyArgs {
     pub account_meta: CompressedAccountMetaReadOnly,
     pub data: CompressedSettings,
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize)]
-pub enum SettingsCreateOrMutateArgs {
-    Create(SettingsCreationArgs),
-    Mutate(SettingsMutArgs),
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, PartialEq)]
@@ -104,23 +105,16 @@ impl CompressedSettings {
 
     pub fn create_compressed_settings_account(
         settings_creation: SettingsCreationArgs,
+        address_tree: &Pubkey,
         data: CompressedSettingsData,
-        light_cpi_accounts: &CpiAccounts,
         index: Option<u8>,
     ) -> Result<(
         LightAccount<CompressedSettings>,
         NewAddressParamsAssignedPacked,
     )> {
         let (address, address_seed) = derive_address(
-            &[
-                SEED_MULTISIG,
-                data.index.to_le_bytes().as_ref(),
-                SEED_ADDRESS_TREE_VERSION,
-            ],
-            &settings_creation
-                .address_tree_info
-                .get_tree_pubkey(light_cpi_accounts)
-                .map_err(|_| ErrorCode::AccountNotEnoughKeys)?,
+            &[SEED_MULTISIG, data.index.to_le_bytes().as_ref()],
+            address_tree,
             &crate::ID,
         );
 

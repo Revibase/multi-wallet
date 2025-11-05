@@ -1,15 +1,14 @@
-import type { ValidityProofWithContext } from "@lightprotocol/stateless.js";
 import {
   AccountRole,
   type AccountSignerMeta,
   type TransactionSigner,
 } from "gill";
 import {
-  type CompressedSettings,
   getCompressedSettingsDecoder,
   getCompressSettingsAccountInstruction,
+  type CompressedSettings,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
-  type SettingsCreateOrMutateArgs,
+  type SettingsIndexWithAddressArgs,
 } from "../generated";
 import { SignedSecp256r1Key } from "../types";
 import {
@@ -18,9 +17,7 @@ import {
 } from "../utils";
 import {
   convertToCompressedProofArgs,
-  getCompressedAccount,
   getCompressedAccountHashes,
-  getCompressedAccountInitArgs,
   getCompressedAccountMutArgs,
   getValidityProofWithRetry,
 } from "../utils/compressed/internal";
@@ -35,76 +32,38 @@ import {
 } from "./secp256r1Verify";
 
 export async function compressSettingsAccount({
-  index,
+  settingsIndexWithAddressArgs,
   payer,
   signers,
   cachedAccounts,
 }: {
-  index: number | bigint;
+  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs;
   payer: TransactionSigner;
   signers: (SignedSecp256r1Key | TransactionSigner)[];
   cachedAccounts?: Map<string, any>;
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
-
+  const { index } = settingsIndexWithAddressArgs;
   const settings = await getSettingsFromIndex(index);
-  const { address: settingsAddress, addressTree } =
-    getCompressedSettingsAddressFromIndex(index);
-  const result = await getCompressedAccount(settingsAddress, cachedAccounts);
+  const { address: settingsAddress } =
+    await getCompressedSettingsAddressFromIndex(settingsIndexWithAddressArgs);
 
-  let settingsArg: SettingsCreateOrMutateArgs;
-  let proof: ValidityProofWithContext;
-  if (!result?.data?.data) {
-    const newAddressParams = [
-      {
-        address: settingsAddress,
-        tree: addressTree,
-        queue: addressTree,
-        type: "Settings" as const,
-      },
-    ];
+  const hashesWithTree = await getCompressedAccountHashes(
+    [{ address: settingsAddress, type: "Settings" }],
+    cachedAccounts
+  );
 
-    proof = await getValidityProofWithRetry([], newAddressParams);
-    const settingsInitArgs = (
-      await getCompressedAccountInitArgs(
-        packedAccounts,
-        proof.treeInfos,
-        proof.roots,
-        proof.rootIndices,
-        newAddressParams
-      )
-    )[0];
-    settingsArg = {
-      __kind: "Create",
-      fields: [settingsInitArgs] as const,
-    };
-  } else {
-    const data = getCompressedSettingsDecoder().decode(result.data.data);
-    if (data.data.__option === "None") {
-      const hashesWithTree = await getCompressedAccountHashes(
-        [{ address: settingsAddress, type: "Settings" }],
-        cachedAccounts
-      );
-
-      proof = await getValidityProofWithRetry(hashesWithTree, []);
-      const settingsMutArgs = getCompressedAccountMutArgs<CompressedSettings>(
-        packedAccounts,
-        proof.treeInfos,
-        proof.leafIndices,
-        proof.rootIndices,
-        proof.proveByIndices,
-        hashesWithTree.filter((x) => x.type === "Settings"),
-        getCompressedSettingsDecoder()
-      )[0];
-      settingsArg = {
-        __kind: "Mutate",
-        fields: [settingsMutArgs] as const,
-      };
-    } else {
-      throw new Error("Settings account is already compressed.");
-    }
-  }
+  const proof = await getValidityProofWithRetry(hashesWithTree, []);
+  const settingsMutArgs = getCompressedAccountMutArgs<CompressedSettings>(
+    packedAccounts,
+    proof.treeInfos,
+    proof.leafIndices,
+    proof.rootIndices,
+    proof.proveByIndices,
+    hashesWithTree.filter((x) => x.type === "Settings"),
+    getCompressedSettingsDecoder()
+  )[0];
 
   const dedupSigners = getDeduplicatedSigners(signers);
 
@@ -157,7 +116,7 @@ export async function compressSettingsAccount({
   instructions.push(
     getCompressSettingsAccountInstruction({
       settings,
-      settingsArg,
+      settingsMutArgs,
       compressedProofArgs,
       payer,
       secp256r1VerifyArgs,

@@ -4,10 +4,11 @@ import {
   type TransactionSigner,
 } from "gill";
 import {
-  type CompressedSettings,
   getCompressedSettingsDecoder,
   getDecompressSettingsAccountInstruction,
+  type CompressedSettings,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
+  type SettingsIndexWithAddressArgs,
 } from "../generated";
 import { SignedSecp256r1Key } from "../types";
 import {
@@ -31,12 +32,12 @@ import {
 } from "./secp256r1Verify";
 
 export async function decompressSettingsAccount({
-  index,
+  settingsIndexWithAddressArgs,
   payer,
   signers,
   cachedAccounts,
 }: {
-  index: number | bigint;
+  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs;
   payer: TransactionSigner;
   signers: (SignedSecp256r1Key | TransactionSigner)[];
   cachedAccounts?: Map<string, any>;
@@ -47,7 +48,11 @@ export async function decompressSettingsAccount({
   const hashesWithTree = await getCompressedAccountHashes(
     [
       {
-        address: getCompressedSettingsAddressFromIndex(index).address,
+        address: (
+          await getCompressedSettingsAddressFromIndex(
+            settingsIndexWithAddressArgs
+          )
+        ).address,
         type: "Settings" as const,
       },
     ],
@@ -110,8 +115,9 @@ export async function decompressSettingsAccount({
   if (secp256r1VerifyInput.length > 0) {
     instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
   }
-
-  const settings = await getSettingsFromIndex(index);
+  const settings = await getSettingsFromIndex(
+    settingsIndexWithAddressArgs.index
+  );
   instructions.push(
     getDecompressSettingsAccountInstruction({
       settings,

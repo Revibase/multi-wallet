@@ -18,10 +18,10 @@ import {
   getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
-  getU128Decoder,
-  getU128Encoder,
   getU32Decoder,
   getU32Encoder,
+  getU8Decoder,
+  getU8Encoder,
   getUtf8Decoder,
   getUtf8Encoder,
   type Address,
@@ -34,24 +34,30 @@ import {
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
+  getSettingsIndexWithAddressDecoder,
+  getSettingsIndexWithAddressEncoder,
   type MemberKey,
   type MemberKeyArgs,
+  type SettingsIndexWithAddress,
+  type SettingsIndexWithAddressArgs,
 } from ".";
 
 export type User = {
   member: MemberKey;
   domainConfig: Option<Address>;
   isPermanentMember: boolean;
-  settingsIndex: Option<bigint>;
+  delegatedTo: Option<SettingsIndexWithAddress>;
   transactionManagerUrl: Option<string>;
+  userAddressTreeIndex: number;
 };
 
 export type UserArgs = {
   member: MemberKeyArgs;
   domainConfig: OptionOrNullable<Address>;
   isPermanentMember: boolean;
-  settingsIndex: OptionOrNullable<number | bigint>;
+  delegatedTo: OptionOrNullable<SettingsIndexWithAddressArgs>;
   transactionManagerUrl: OptionOrNullable<string>;
+  userAddressTreeIndex: number;
 };
 
 export function getUserEncoder(): Encoder<UserArgs> {
@@ -59,11 +65,12 @@ export function getUserEncoder(): Encoder<UserArgs> {
     ["member", getMemberKeyEncoder()],
     ["domainConfig", getOptionEncoder(getAddressEncoder())],
     ["isPermanentMember", getBooleanEncoder()],
-    ["settingsIndex", getOptionEncoder(getU128Encoder())],
+    ["delegatedTo", getOptionEncoder(getSettingsIndexWithAddressEncoder())],
     [
       "transactionManagerUrl",
       getOptionEncoder(addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())),
     ],
+    ["userAddressTreeIndex", getU8Encoder()],
   ]);
 }
 
@@ -72,11 +79,12 @@ export function getUserDecoder(): Decoder<User> {
     ["member", getMemberKeyDecoder()],
     ["domainConfig", getOptionDecoder(getAddressDecoder())],
     ["isPermanentMember", getBooleanDecoder()],
-    ["settingsIndex", getOptionDecoder(getU128Decoder())],
+    ["delegatedTo", getOptionDecoder(getSettingsIndexWithAddressDecoder())],
     [
       "transactionManagerUrl",
       getOptionDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
     ],
+    ["userAddressTreeIndex", getU8Decoder()],
   ]);
 }
 

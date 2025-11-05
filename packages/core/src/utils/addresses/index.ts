@@ -1,5 +1,4 @@
 import {
-  batchAddressTree,
   createBN254,
   deriveAddressSeedV2,
   deriveAddressV2,
@@ -14,49 +13,57 @@ import {
   getUtf8Encoder,
   type Address,
 } from "gill";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
-import { Secp256r1Key } from "../../types";
-import { ADDRESS_TREE_VERSION } from "../consts";
+import {
+  MULTI_WALLET_PROGRAM_ADDRESS,
+  type SettingsIndexWithAddressArgs,
+} from "../../generated";
+import { Secp256r1Key, type UserAccountWithAddressArgs } from "../../types";
+import { getWhitelistedAddressTreeFromIndex } from "../compressed/helper";
 
-export function getCompressedSettingsAddressFromIndex(index: number | bigint) {
+export async function getCompressedSettingsAddressFromIndex(
+  args: SettingsIndexWithAddressArgs
+) {
+  const { index, settingsAddressTreeIndex } = args;
+  const addressTree = await getWhitelistedAddressTreeFromIndex(
+    settingsAddressTreeIndex
+  );
   const addressSeed = deriveAddressSeedV2([
     new Uint8Array(getUtf8Encoder().encode("multi_wallet")),
     new Uint8Array(getU128Encoder().encode(index)),
-    new Uint8Array(getUtf8Encoder().encode(ADDRESS_TREE_VERSION)),
   ]);
-  const addressTree = new PublicKey(batchAddressTree); //default v2 public tree
   return {
     address: createBN254(
       deriveAddressV2(
         addressSeed,
-        addressTree,
+        new PublicKey(addressTree),
         new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS)
       ).toString(),
       "base58"
     ),
-    addressTree,
+    addressTree: new PublicKey(addressTree),
   };
 }
-export function getUserAccountAddress(member: Address | Secp256r1Key) {
+export async function getUserAccountAddress(args: UserAccountWithAddressArgs) {
+  const { member, userAddressTreeIndex } = args;
+  const addressTree =
+    await getWhitelistedAddressTreeFromIndex(userAddressTreeIndex);
   const addressSeed = deriveAddressSeedV2([
     new Uint8Array(getUtf8Encoder().encode("user")),
     member instanceof Secp256r1Key
       ? member.toTruncatedBuffer()
       : new Uint8Array(getAddressEncoder().encode(member)),
-    new Uint8Array(getUtf8Encoder().encode(ADDRESS_TREE_VERSION)),
   ]);
 
-  const addressTree = new PublicKey(batchAddressTree); // default v2 public tree
   return {
     address: createBN254(
       deriveAddressV2(
         addressSeed,
-        addressTree,
+        new PublicKey(addressTree),
         new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS.toString())
       ).toString(),
       "base58"
     ),
-    addressTree,
+    addressTree: new PublicKey(addressTree),
   };
 }
 
@@ -93,6 +100,16 @@ export async function getGlobalCounterAddress() {
 
   return globalCounter;
 }
+
+export async function getWhitelistedAddressTreesAddress() {
+  const [whitelistedAddressTrees] = await getProgramDerivedAddress({
+    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
+    seeds: [getUtf8Encoder().encode("whitelisted_address_trees")],
+  });
+
+  return whitelistedAddressTrees;
+}
+
 export async function getTransactionBufferAddress(
   settings: Address,
   creator: Address | Secp256r1Key,

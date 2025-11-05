@@ -21,6 +21,9 @@ export async function signMessageWithPasskey({
   })) as any;
   return {
     ...authResponse,
-    signer: new Secp256r1Key(authResponse.signer),
+    signer: {
+      member: new Secp256r1Key(authResponse.signer),
+      userAddressTreeIndex: authResponse.userAddressTreeIndex,
+    },
   } as MessageAuthenticationResponse;
 }

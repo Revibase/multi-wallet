@@ -6,13 +6,13 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from './addWhitelistedAddressTrees';
 export * from './changeConfig';
 export * from './changeConfigCompressed';
 export * from './compressSettingsAccount';
 export * from './createDomainConfig';
 export * from './createDomainUserAccount';
 export * from './createGlobalCounter';
-export * from './createMultiWallet';
 export * from './createMultiWalletCompressed';
 export * from './createUserAccounts';
 export * from './decompressSettingsAccount';

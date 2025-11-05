@@ -1,6 +1,3 @@
-pub mod create_multi_wallet;
-pub use create_multi_wallet::*;
-
 pub mod change_config;
 pub use change_config::*;
 

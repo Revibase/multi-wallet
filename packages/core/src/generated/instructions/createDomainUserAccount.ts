@@ -16,6 +16,7 @@ import {
   getBytesEncoder,
   getOptionDecoder,
   getOptionEncoder,
+  getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
@@ -71,6 +72,7 @@ export type CreateDomainUserAccountInstruction<
   TAccountPayer extends string | AccountMeta<string> = string,
   TAccountDomainConfig extends string | AccountMeta<string> = string,
   TAccountAuthority extends string | AccountMeta<string> = string,
+  TAccountWhitelistedAddressTrees extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -87,6 +89,9 @@ export type CreateDomainUserAccountInstruction<
         ? ReadonlySignerAccount<TAccountAuthority> &
             AccountSignerMeta<TAccountAuthority>
         : TAccountAuthority,
+      TAccountWhitelistedAddressTrees extends string
+        ? ReadonlyAccount<TAccountWhitelistedAddressTrees>
+        : TAccountWhitelistedAddressTrees,
       ...TRemainingAccounts,
     ]
   >;
@@ -150,14 +155,122 @@ export type CreateDomainUserAccountInstructionExtraArgs = {
   remainingAccounts: Array<{ address: Address; role: number }>;
 };
 
-export type CreateDomainUserAccountInput<
+export type CreateDomainUserAccountAsyncInput<
   TAccountPayer extends string = string,
   TAccountDomainConfig extends string = string,
   TAccountAuthority extends string = string,
+  TAccountWhitelistedAddressTrees extends string = string,
 > = {
   payer: TransactionSigner<TAccountPayer>;
   domainConfig: Address<TAccountDomainConfig>;
   authority: TransactionSigner<TAccountAuthority>;
+  whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
+  compressedProofArgs: CreateDomainUserAccountInstructionDataArgs["compressedProofArgs"];
+  member: CreateDomainUserAccountInstructionDataArgs["member"];
+  isPermanentMember: CreateDomainUserAccountInstructionDataArgs["isPermanentMember"];
+  userAccountCreationArgs: CreateDomainUserAccountInstructionDataArgs["userAccountCreationArgs"];
+  linkWalletArgs: CreateDomainUserAccountInstructionDataArgs["linkWalletArgs"];
+  remainingAccounts: CreateDomainUserAccountInstructionExtraArgs["remainingAccounts"];
+};
+
+export async function getCreateDomainUserAccountInstructionAsync<
+  TAccountPayer extends string,
+  TAccountDomainConfig extends string,
+  TAccountAuthority extends string,
+  TAccountWhitelistedAddressTrees extends string,
+  TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
+>(
+  input: CreateDomainUserAccountAsyncInput<
+    TAccountPayer,
+    TAccountDomainConfig,
+    TAccountAuthority,
+    TAccountWhitelistedAddressTrees
+  >,
+  config?: { programAddress?: TProgramAddress }
+): Promise<
+  CreateDomainUserAccountInstruction<
+    TProgramAddress,
+    TAccountPayer,
+    TAccountDomainConfig,
+    TAccountAuthority,
+    TAccountWhitelistedAddressTrees
+  >
+> {
+  // Program address.
+  const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
+
+  // Original accounts.
+  const originalAccounts = {
+    payer: { value: input.payer ?? null, isWritable: true },
+    domainConfig: { value: input.domainConfig ?? null, isWritable: false },
+    authority: { value: input.authority ?? null, isWritable: false },
+    whitelistedAddressTrees: {
+      value: input.whitelistedAddressTrees ?? null,
+      isWritable: false,
+    },
+  };
+  const accounts = originalAccounts as Record<
+    keyof typeof originalAccounts,
+    ResolvedAccount
+  >;
+
+  // Original args.
+  const args = { ...input };
+
+  // Resolver scope.
+  const resolverScope = { programAddress, accounts, args };
+
+  // Resolve default values.
+  if (!accounts.whitelistedAddressTrees.value) {
+    accounts.whitelistedAddressTrees.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            119, 104, 105, 116, 101, 108, 105, 115, 116, 101, 100, 95, 97, 100,
+            100, 114, 101, 115, 115, 95, 116, 114, 101, 101, 115,
+          ])
+        ),
+      ],
+    });
+  }
+
+  // Remaining accounts.
+  const remainingAccounts: AccountMeta[] =
+    parseRemainingAccounts(resolverScope);
+
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  return Object.freeze({
+    accounts: [
+      getAccountMeta(accounts.payer),
+      getAccountMeta(accounts.domainConfig),
+      getAccountMeta(accounts.authority),
+      getAccountMeta(accounts.whitelistedAddressTrees),
+      ...remainingAccounts,
+    ],
+    data: getCreateDomainUserAccountInstructionDataEncoder().encode(
+      args as CreateDomainUserAccountInstructionDataArgs
+    ),
+    programAddress,
+  } as CreateDomainUserAccountInstruction<
+    TProgramAddress,
+    TAccountPayer,
+    TAccountDomainConfig,
+    TAccountAuthority,
+    TAccountWhitelistedAddressTrees
+  >);
+}
+
+export type CreateDomainUserAccountInput<
+  TAccountPayer extends string = string,
+  TAccountDomainConfig extends string = string,
+  TAccountAuthority extends string = string,
+  TAccountWhitelistedAddressTrees extends string = string,
+> = {
+  payer: TransactionSigner<TAccountPayer>;
+  domainConfig: Address<TAccountDomainConfig>;
+  authority: TransactionSigner<TAccountAuthority>;
+  whitelistedAddressTrees: Address<TAccountWhitelistedAddressTrees>;
   compressedProofArgs: CreateDomainUserAccountInstructionDataArgs["compressedProofArgs"];
   member: CreateDomainUserAccountInstructionDataArgs["member"];
   isPermanentMember: CreateDomainUserAccountInstructionDataArgs["isPermanentMember"];
@@ -170,19 +283,22 @@ export function getCreateDomainUserAccountInstruction<
   TAccountPayer extends string,
   TAccountDomainConfig extends string,
   TAccountAuthority extends string,
+  TAccountWhitelistedAddressTrees extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
   input: CreateDomainUserAccountInput<
     TAccountPayer,
     TAccountDomainConfig,
-    TAccountAuthority
+    TAccountAuthority,
+    TAccountWhitelistedAddressTrees
   >,
   config?: { programAddress?: TProgramAddress }
 ): CreateDomainUserAccountInstruction<
   TProgramAddress,
   TAccountPayer,
   TAccountDomainConfig,
-  TAccountAuthority
+  TAccountAuthority,
+  TAccountWhitelistedAddressTrees
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -192,6 +308,10 @@ export function getCreateDomainUserAccountInstruction<
     payer: { value: input.payer ?? null, isWritable: true },
     domainConfig: { value: input.domainConfig ?? null, isWritable: false },
     authority: { value: input.authority ?? null, isWritable: false },
+    whitelistedAddressTrees: {
+      value: input.whitelistedAddressTrees ?? null,
+      isWritable: false,
+    },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -214,6 +334,7 @@ export function getCreateDomainUserAccountInstruction<
       getAccountMeta(accounts.payer),
       getAccountMeta(accounts.domainConfig),
       getAccountMeta(accounts.authority),
+      getAccountMeta(accounts.whitelistedAddressTrees),
       ...remainingAccounts,
     ],
     data: getCreateDomainUserAccountInstructionDataEncoder().encode(
@@ -224,7 +345,8 @@ export function getCreateDomainUserAccountInstruction<
     TProgramAddress,
     TAccountPayer,
     TAccountDomainConfig,
-    TAccountAuthority
+    TAccountAuthority,
+    TAccountWhitelistedAddressTrees
   >);
 }
 
@@ -237,6 +359,7 @@ export type ParsedCreateDomainUserAccountInstruction<
     payer: TAccountMetas[0];
     domainConfig: TAccountMetas[1];
     authority: TAccountMetas[2];
+    whitelistedAddressTrees: TAccountMetas[3];
   };
   data: CreateDomainUserAccountInstructionData;
 };
@@ -249,7 +372,7 @@ export function parseCreateDomainUserAccountInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>
 ): ParsedCreateDomainUserAccountInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 3) {
+  if (instruction.accounts.length < 4) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -265,6 +388,7 @@ export function parseCreateDomainUserAccountInstruction<
       payer: getNextAccount(),
       domainConfig: getNextAccount(),
       authority: getNextAccount(),
+      whitelistedAddressTrees: getNextAccount(),
     },
     data: getCreateDomainUserAccountInstructionDataDecoder().decode(
       instruction.data

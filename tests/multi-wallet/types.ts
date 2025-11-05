@@ -1,3 +1,4 @@
+import type { SettingsIndexWithAddress } from "@revibase/core";
 import {
   type Address,
   type AddressesByLookupTableAddress,
@@ -8,9 +9,9 @@ import {
  * Shared test context that is passed between test files
  */
 export interface TestContext {
-  payer: KeyPairSigner;
-  wallet: KeyPairSigner;
-  index: number | bigint | undefined;
+  payer: { member: KeyPairSigner; userAddressTreeIndex: number };
+  wallet: { member: KeyPairSigner; userAddressTreeIndex: number };
+  settingsIndexWithAddress: SettingsIndexWithAddress | undefined;
   multiWalletVault: Address | undefined;
   rpId: string;
   origin: string;

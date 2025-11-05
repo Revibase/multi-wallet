@@ -2,9 +2,10 @@ import { type Address, none, some, type TransactionSigner } from "gill";
 import {
   type CompressedSettings,
   getCompressedSettingsDecoder,
-  getCreateDomainUserAccountInstruction,
+  getCreateDomainUserAccountInstructionAsync,
   getSecp256r1PubkeyDecoder,
   getUserDecoder,
+  type SettingsIndexWithAddressArgs,
   type SettingsMutArgs,
   type User,
   type UserMutArgs,
@@ -19,6 +20,7 @@ import {
   getCompressedAccountHashes,
   getCompressedAccountInitArgs,
   getCompressedAccountMutArgs,
+  getNewWhitelistedAddressTreeIndex,
   getValidityProofWithRetry,
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
@@ -26,8 +28,11 @@ import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 interface UserCreationArgs {
   member: Secp256r1Key;
   isPermanentMember: boolean;
-  settingsIndex?: number | bigint;
-  transactionManager?: Address;
+  settingsIndexWithAddressArgs?: SettingsIndexWithAddressArgs;
+  transactionManager?: {
+    member: Address;
+    userAddressTreeIndex: number;
+  };
 }
 
 export async function createDomainUserAccounts({
@@ -48,17 +53,20 @@ export async function createDomainUserAccounts({
 
   const addresses = [];
 
-  if (createUserArgs.settingsIndex) {
+  if (createUserArgs.settingsIndexWithAddressArgs) {
     addresses.push({
-      address: getCompressedSettingsAddressFromIndex(
-        createUserArgs.settingsIndex
+      address: (
+        await getCompressedSettingsAddressFromIndex(
+          createUserArgs.settingsIndexWithAddressArgs
+        )
       ).address,
       type: "Settings" as const,
     });
     if (createUserArgs.transactionManager) {
       addresses.push({
-        address: getUserAccountAddress(createUserArgs.transactionManager)
-          .address,
+        address: (
+          await getUserAccountAddress(createUserArgs.transactionManager)
+        ).address,
         type: "User" as const,
       });
     }
@@ -67,7 +75,11 @@ export async function createDomainUserAccounts({
   const hashesWithTree = addresses.length
     ? await getCompressedAccountHashes(addresses, cachedAccounts)
     : [];
-  const { address, addressTree } = getUserAccountAddress(createUserArgs.member);
+  const userAddressTreeIndex = await getNewWhitelistedAddressTreeIndex();
+  const { address, addressTree } = await getUserAccountAddress({
+    member: createUserArgs.member,
+    userAddressTreeIndex,
+  });
   const newAddressParams = [
     {
       address,
@@ -122,24 +134,27 @@ export async function createDomainUserAccounts({
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
 
-  return getCreateDomainUserAccountInstruction({
-    payer,
-    authority,
-    compressedProofArgs,
-    member: getSecp256r1PubkeyDecoder().decode(
-      createUserArgs.member.toBuffer()
-    ),
-    isPermanentMember: createUserArgs.isPermanentMember,
-    linkWalletArgs: settingsMutArgs
-      ? some({
-          settingsMutArgs,
-          transactionManager: transactionManagerMutArgs
-            ? some(transactionManagerMutArgs)
-            : none(),
-        })
-      : none(),
-    userAccountCreationArgs: userCreationArgs[0],
-    domainConfig,
-    remainingAccounts,
-  });
+  return {
+    instruction: await getCreateDomainUserAccountInstructionAsync({
+      payer,
+      authority,
+      compressedProofArgs,
+      member: getSecp256r1PubkeyDecoder().decode(
+        createUserArgs.member.toBuffer()
+      ),
+      isPermanentMember: createUserArgs.isPermanentMember,
+      linkWalletArgs: settingsMutArgs
+        ? some({
+            settingsMutArgs,
+            transactionManager: transactionManagerMutArgs
+              ? some(transactionManagerMutArgs)
+              : none(),
+          })
+        : none(),
+      userAccountCreationArgs: userCreationArgs[0],
+      domainConfig,
+      remainingAccounts,
+    }),
+    userAddressTreeIndex,
+  };
 }

@@ -1,6 +1,9 @@
 use crate::{
     error::MultisigError,
-    state::{CompressedSettings, Ops, ProofArgs, Settings, SettingsMutArgs, User},
+    state::{
+        CompressedSettings, Ops, ProofArgs, Settings, SettingsIndexWithAddress, SettingsMutArgs,
+        User,
+    },
     utils::{SEED_MULTISIG, SEED_VAULT},
     ConfigAction, LIGHT_CPI_SIGNER,
 };
@@ -51,6 +54,7 @@ impl<'info> ChangeConfigCompressed<'info> {
             .ok_or(MultisigError::InvalidArguments)?;
 
         let settings_index = settings_data.index;
+        let settings_address_tree_index = settings_data.settings_address_tree_index;
         let settings_key =
             Settings::get_settings_key_from_index(settings_index, settings_data.bump)?;
 
@@ -106,8 +110,14 @@ impl<'info> ChangeConfigCompressed<'info> {
             LIGHT_CPI_SIGNER,
         );
 
-        let account_infos =
-            User::handle_user_delegates(delegate_ops, settings_index, &light_cpi_accounts)?;
+        let account_infos = User::handle_user_delegates(
+            delegate_ops,
+            SettingsIndexWithAddress {
+                index: settings_index,
+                settings_address_tree_index,
+            },
+            &light_cpi_accounts,
+        )?;
 
         let mut cpi = LightSystemProgramCpi::new_cpi(
             LIGHT_CPI_SIGNER,

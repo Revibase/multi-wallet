@@ -1,4 +1,7 @@
-use crate::{MemberKey, MultisigError, ProofArgs, User, UserCreationArgs, LIGHT_CPI_SIGNER};
+use crate::{
+    state::WhitelistedAddressTree, utils::SEED_WHITELISTED_ADDRESS_TREE, MemberKey, MultisigError,
+    ProofArgs, User, UserCreationArgs, LIGHT_CPI_SIGNER,
+};
 use anchor_lang::prelude::*;
 use light_sdk::{
     cpi::{
@@ -21,6 +24,11 @@ pub struct CreateUserAccounts<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     pub system_program: Program<'info, System>,
+    #[account(
+        seeds = [SEED_WHITELISTED_ADDRESS_TREE],
+        bump = whitelisted_address_trees.bump
+    )]
+    pub whitelisted_address_trees: Account<'info, WhitelistedAddressTree>,
 }
 
 impl<'info> CreateUserAccounts<'info> {
@@ -57,15 +65,27 @@ impl<'info> CreateUserAccounts<'info> {
                 MultisigError::InvalidArguments
             );
 
+            let address_tree = &args
+                .user_creation_args
+                .address_tree_info
+                .get_tree_pubkey(&light_cpi_accounts)
+                .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
+
+            let user_address_tree_index = ctx
+                .accounts
+                .whitelisted_address_trees
+                .extract_address_tree_index(address_tree)?;
+
             let (account_info, new_address_params) = User::create_user_account(
                 args.user_creation_args,
-                &light_cpi_accounts,
+                address_tree,
                 User {
                     member: MemberKey::convert_ed25519(&args.member)?,
                     is_permanent_member: args.is_permanent_member,
-                    settings_index: None,
+                    delegated_to: None,
                     domain_config: None,
                     transaction_manager_url: args.transaction_manager_url,
+                    user_address_tree_index,
                 },
                 Some(cpi.account_infos.len() as u8),
             )?;

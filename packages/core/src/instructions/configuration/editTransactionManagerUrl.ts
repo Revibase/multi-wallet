@@ -15,15 +15,25 @@ import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 
 export async function editTransactionManagerUrl({
   authority,
+  userAddressTreeIndex,
   transactionManagerUrl,
 }: {
   authority: TransactionSigner;
+  userAddressTreeIndex: number;
   transactionManagerUrl: string;
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
   const hashesWithTree = await getCompressedAccountHashes([
-    { address: getUserAccountAddress(authority.address).address, type: "User" },
+    {
+      address: (
+        await getUserAccountAddress({
+          member: authority.address,
+          userAddressTreeIndex,
+        })
+      ).address,
+      type: "User",
+    },
   ]);
   const proof = await getValidityProofWithRetry(hashesWithTree, []);
   const userMutArgs = getCompressedAccountMutArgs<User>(

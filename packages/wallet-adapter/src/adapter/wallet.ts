@@ -144,8 +144,8 @@ export class RevibaseWallet implements Wallet {
   #connected = () => {
     const pubKey = this.#revibase.publicKey;
     const member = this.#revibase.member;
-    const index = this.#revibase.index;
-    if (pubKey && member && index) {
+    const settingsIndexWithAddress = this.#revibase.settingsIndexWithAddress;
+    if (pubKey && member && settingsIndexWithAddress) {
       const publicKey = new Uint8Array(
         getAddressEncoder().encode(address(pubKey))
       );
@@ -165,7 +165,7 @@ export class RevibaseWallet implements Wallet {
             ) as readonly `${string}:${string}`[],
           },
           member,
-          index
+          settingsIndexWithAddress
         );
         this.#emit("change", { accounts: this.accounts });
       }
