@@ -15,7 +15,7 @@ pub struct DomainConfig {
     pub is_disabled: u8,
     pub rp_id_length: u8,
     pub rp_id: [u8; MAX_RP_ID_LEN],
-    pub origins: [u8; MAX_ORIGINS_LEN], // [origin_len, origin..., origin_len, origin...]
+    pub origins: [u8; MAX_ORIGINS_LEN],
     pub metadata_url_length: u8,
     pub metadata_url: [u8; MAX_METADATA_URL_LEN],
 }

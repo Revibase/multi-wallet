@@ -250,7 +250,7 @@ export async function getValidityProofWithRetry(
 }
 export async function getNewWhitelistedAddressTreeIndex() {
   const addressTrees = await getCachedWhitelistedAddressTree();
-  return Math.floor(Math.random() * addressTrees.length);
+  return addressTrees.length - 1;
 }
 
 let cachedWhitelistedAddressTrees: Address[] | undefined = undefined;

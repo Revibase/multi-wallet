@@ -10,7 +10,7 @@ pub struct WhitelistedAddressTree {
 
 impl WhitelistedAddressTree {
     pub fn size() -> usize {
-        8 + 4 + 512 + 1 //allow up to 16 trees
+        8 + 4 + 512 + 1
     }
 
     pub fn extract_address_tree_index(&self, address_tree: &Pubkey) -> Result<u8> {
