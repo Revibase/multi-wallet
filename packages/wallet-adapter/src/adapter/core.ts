@@ -135,7 +135,8 @@ export function createRevibaseAdapter(): Revibase {
       const [settingsData, settings, payer, transactionMessageBytes] =
         await Promise.all([
           fetchSettingsAccountData(
-            this.settingsIndexWithAddress,
+            this.settingsIndexWithAddress.index,
+            this.settingsIndexWithAddress.settingsAddressTreeIndex,
             cachedAccounts
           ),
           getSettingsFromIndex(this.settingsIndexWithAddress.index),
@@ -150,7 +151,9 @@ export function createRevibaseAdapter(): Revibase {
 
       const transactionManagerSigner = await resolveTransactionManagerSigner({
         signer,
-        SettingsAccountWithAddressArgs: this.settingsIndexWithAddress,
+        index: this.settingsIndexWithAddress.index,
+        settingsAddressTreeIndex:
+          this.settingsIndexWithAddress.settingsAddressTreeIndex,
         transactionMessageBytes,
         cachedAccounts,
       });
@@ -163,7 +166,9 @@ export function createRevibaseAdapter(): Revibase {
         ],
         compressed: settingsData.isCompressed,
         payer,
-        SettingsAccountWithAddressArgs: this.settingsIndexWithAddress,
+        index: this.settingsIndexWithAddress.index,
+        settingsAddressTreeIndex:
+          this.settingsIndexWithAddress.settingsAddressTreeIndex,
         transactionMessageBytes,
         addressesByLookupTableAddress,
         cachedAccounts,
@@ -190,7 +195,9 @@ export function createRevibaseAdapter(): Revibase {
         const signedSigner = await getSignedSecp256r1Key(authResponse);
         return await prepareTransactionBundle({
           compressed: settingsData.isCompressed,
-          SettingsAccountWithAddressArgs: this.settingsIndexWithAddress,
+          index: this.settingsIndexWithAddress.index,
+          settingsAddressTreeIndex:
+            this.settingsIndexWithAddress.settingsAddressTreeIndex,
           bufferIndex,
           transactionMessageBytes,
           creator: transactionManagerSigner ?? signedSigner,
@@ -220,7 +227,9 @@ export function createRevibaseAdapter(): Revibase {
             ],
             payer,
             transactionMessageBytes,
-            SettingsAccountWithAddressArgs: this.settingsIndexWithAddress,
+            index: this.settingsIndexWithAddress.index,
+            settingsAddressTreeIndex:
+              this.settingsIndexWithAddress.settingsAddressTreeIndex,
             addressesByLookupTableAddress,
             cachedAccounts,
           }),
