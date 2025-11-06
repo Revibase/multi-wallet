@@ -3,7 +3,8 @@ import type { Secp256r1Key } from "./secp256r1";
 
 export type TransactionAuthenticationResponse = {
   authResponse: AuthenticationResponseJSON;
-  signer: { member: Secp256r1Key; userAddressTreeIndex: number };
+  signer: Secp256r1Key;
+  userAddressTreeIndex?: number;
   slotNumber: string;
   slotHash: string;
   additionalInfo?: any;
@@ -11,7 +12,8 @@ export type TransactionAuthenticationResponse = {
 
 export type MessageAuthenticationResponse = {
   authResponse: AuthenticationResponseJSON;
-  signer: { member: Secp256r1Key; userAddressTreeIndex: number };
+  signer: Secp256r1Key;
+  userAddressTreeIndex?: number;
   additionalInfo?: any;
 };
 

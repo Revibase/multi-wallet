@@ -26,25 +26,24 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
   it("should initialize a wallet for Secp256r1 with a transaction manager", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.settingsIndexWithAddress || !ctx.multiWalletVault) return;
+    if (!ctx.index || !ctx.multiWalletVault) return;
     const transactionManager = await createKeyPairSignerFromPrivateKeyBytes(
       crypto.getRandomValues(new Uint8Array(32))
     );
-    const { instruction: createUserAccountIx, userAddressTreeIndex } =
-      await createUserAccounts({
-        payer: ctx.payer.member,
-        createUserArgs: [
-          {
-            member: transactionManager,
-            isPermanentMember: false,
-            transactionManagerUrl: "https://xyz.com",
-          },
-        ],
-      });
+    const createUserAccountIx = await createUserAccounts({
+      payer: ctx.payer,
+      createUserArgs: [
+        {
+          member: transactionManager,
+          isPermanentMember: false,
+          transactionManagerUrl: "https://xyz.com",
+        },
+      ],
+    });
 
     await sendTransaction(
       [createUserAccountIx],
-      ctx.payer.member,
+      ctx.payer,
       ctx.addressLookUpTable
     );
 
@@ -52,50 +51,39 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
 
     // Create Secp256r1Key
     const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey);
-    const {
-      instruction: createDomainUserAccountDataIx,
-      userAddressTreeIndex: secp256r1AddressTree,
-    } = await createDomainUserAccounts({
-      payer: ctx.payer.member,
-      authority: ctx.wallet.member,
+    const createDomainUserAccountDataIx = await createDomainUserAccounts({
+      payer: ctx.payer,
+      authority: ctx.wallet,
       domainConfig: ctx.domainConfig,
       createUserArgs: {
         member: secp256r1Key,
         isPermanentMember: true,
-        settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
+        index: ctx.index,
         transactionManager: {
           member: transactionManager.address,
-          userAddressTreeIndex,
         },
       },
     });
 
     await sendTransaction(
       [createDomainUserAccountDataIx],
-      ctx.payer.member,
+      ctx.payer,
       ctx.addressLookUpTable
     );
 
     // Verify Secp256r1Key was added as member
-    const accountData = await fetchSettingsAccountData(
-      ctx.settingsIndexWithAddress
-    );
+    const accountData = await fetchSettingsAccountData(ctx.index);
 
-    const userAccountData = await fetchUserAccountData({
-      member: secp256r1Key,
-      userAddressTreeIndex: secp256r1AddressTree,
-    });
+    const userAccountData = await fetchUserAccountData(secp256r1Key);
     const settingsIndex =
       userAccountData.delegatedTo.__option === "Some"
         ? userAccountData.delegatedTo.value
         : null;
     expect(settingsIndex?.index).to.equal(
-      ctx.settingsIndexWithAddress.index,
+      ctx.index,
       "User should be associated with the correct settings"
     );
-    const walletAddress = await getWalletAddressFromIndex(
-      ctx.settingsIndexWithAddress.index
-    );
+    const walletAddress = await getWalletAddressFromIndex(ctx.index);
     expect(walletAddress.toString()).to.equal(
       ctx.multiWalletVault.toString(),
       "User should be associated with the correct vault"
@@ -110,20 +98,19 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
     ctx = await createMultiWallet(ctx);
     const secp256r1Keys = generateSecp256r1KeyPair();
 
-    const { instruction: createDomainUserAccountIx, userAddressTreeIndex } =
-      await createDomainUserAccounts({
-        payer: ctx.payer.member,
-        authority: ctx.wallet.member,
-        domainConfig: ctx.domainConfig,
-        createUserArgs: {
-          member: new Secp256r1Key(secp256r1Keys.publicKey),
-          isPermanentMember: true,
-        },
-      });
+    const createDomainUserAccountIx = await createDomainUserAccounts({
+      payer: ctx.payer,
+      authority: ctx.wallet,
+      domainConfig: ctx.domainConfig,
+      createUserArgs: {
+        member: new Secp256r1Key(secp256r1Keys.publicKey),
+        isPermanentMember: true,
+      },
+    });
 
     await sendTransaction(
       [createDomainUserAccountIx],
-      ctx.payer.member,
+      ctx.payer,
       ctx.addressLookUpTable
     );
 
@@ -142,16 +129,12 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
       },
       secp256r1Keys.privateKey,
       secp256r1Keys.publicKey,
-      userAddressTreeIndex,
       ctx
     );
 
     const { instructions, secp256r1VerifyInput } = await createWallet({
-      payer: ctx.payer.member,
-      initialMember: {
-        member: signedSigner,
-        userAddressTreeIndex,
-      },
+      payer: ctx.payer,
+      initialMember: signedSigner,
       index: globalCounter.data.index,
       setAsDelegate: true,
     });
@@ -160,10 +143,6 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
       instructions.unshift(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
     }
 
-    await sendTransaction(
-      instructions,
-      ctx.payer.member,
-      ctx.addressLookUpTable
-    );
+    await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
   });
 }

@@ -109,10 +109,10 @@ export async function fundMultiWalletVault(
 ): Promise<void> {
   if (!ctx.multiWalletVault) return;
   const transfer = getTransferSolInstruction({
-    source: ctx.payer.member,
+    source: ctx.payer,
     destination: address(ctx.multiWalletVault.toString()),
     amount: lamports(amount),
   });
 
-  await sendTransaction([transfer], ctx.payer.member);
+  await sendTransaction([transfer], ctx.payer);
 }

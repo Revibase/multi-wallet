@@ -74,7 +74,6 @@ export async function mockAuthenticationResponse(
   transaction: TransactionPayload,
   privateKey: Uint8Array,
   publicKey: Uint8Array,
-  addressTreeIndex: number,
   ctx: TestContext
 ): Promise<SignedSecp256r1Key> {
   const flags = new Uint8Array([0x01]); // User present
@@ -137,10 +136,7 @@ export async function mockAuthenticationResponse(
     {
       slotNumber,
       slotHash,
-      signer: {
-        member: new Secp256r1Key(publicKey),
-        userAddressTreeIndex: addressTreeIndex,
-      },
+      signer: new Secp256r1Key(publicKey),
       authResponse: {
         id: "",
         rawId: "",

@@ -11,7 +11,6 @@ import {
   getTransactionExecuteSyncCompressedInstruction,
   getTransactionExecuteSyncInstruction,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
-  type SettingsIndexWithAddressArgs,
 } from "../generated";
 import { SignedSecp256r1Key } from "../types";
 import { getSettingsFromIndex, getWalletAddressFromSettings } from "../utils";
@@ -30,7 +29,8 @@ import {
 } from "./secp256r1Verify";
 
 export async function executeTransactionSync({
-  settingsIndexWithAddressArgs,
+  index,
+  settingsAddressTreeIndex,
   transactionMessageBytes,
   signers,
   payer,
@@ -40,7 +40,8 @@ export async function executeTransactionSync({
   simulateProof = false,
   cachedAccounts,
 }: {
-  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs;
+  index: number | bigint;
+  settingsAddressTreeIndex?: number;
   signers: (TransactionSigner | SignedSecp256r1Key)[];
   transactionMessageBytes: ReadonlyUint8Array;
   secp256r1VerifyInput?: Secp256r1VerifyInput;
@@ -51,9 +52,7 @@ export async function executeTransactionSync({
   cachedAccounts?: Map<string, any>;
 }) {
   const dedupSigners = getDeduplicatedSigners(signers);
-  const settings = await getSettingsFromIndex(
-    settingsIndexWithAddressArgs.index
-  );
+  const settings = await getSettingsFromIndex(index);
   const walletAddress = await getWalletAddressFromSettings(settings);
   const [
     { accountMetas, addressLookupTableAccounts, transactionMessage },
@@ -69,7 +68,8 @@ export async function executeTransactionSync({
     }),
     constructSettingsProofArgs(
       compressed,
-      settingsIndexWithAddressArgs,
+      index,
+      settingsAddressTreeIndex,
       simulateProof,
       cachedAccounts
     ),

@@ -35,7 +35,7 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
     const mint = await createMint(ctx);
-    if (!ctx.settingsIndexWithAddress || !ctx.multiWalletVault || !mint) return;
+    if (!ctx.index || !ctx.multiWalletVault || !mint) return;
     try {
       const ata = await getAssociatedTokenAccountAddress(
         mint.address,
@@ -43,10 +43,10 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
         TOKEN_2022_PROGRAM_ADDRESS
       );
       const tokenTransfer = await tokenTransferIntent({
-        settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
-        payer: ctx.payer.member,
-        signers: [ctx.wallet.member],
-        destination: ctx.wallet.member.address,
+        index: ctx.index,
+        payer: ctx.payer,
+        signers: [ctx.wallet],
+        destination: ctx.wallet.address,
         amount: 10 ** 5,
         compressed: ctx.compressed,
         mint: mint.address,
@@ -55,7 +55,7 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
 
       await sendTransaction(
         [...tokenTransfer],
-        ctx.payer.member,
+        ctx.payer,
         ctx.addressLookUpTable
       );
 
@@ -74,27 +74,26 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
     const mint = await createMint(ctx);
-    if (!ctx.settingsIndexWithAddress || !ctx.multiWalletVault || !mint) return;
+    if (!ctx.index || !ctx.multiWalletVault || !mint) return;
 
     //create transaction manger
     const transactionManager = await createKeyPairSignerFromPrivateKeyBytes(
       crypto.getRandomValues(new Uint8Array(32))
     );
-    const { instruction: createUserAccountIx, userAddressTreeIndex } =
-      await createUserAccounts({
-        payer: ctx.payer.member,
-        createUserArgs: [
-          {
-            member: transactionManager,
-            isPermanentMember: false,
-            transactionManagerUrl: "https://xyz.com",
-          },
-        ],
-      });
+    const createUserAccountIx = await createUserAccounts({
+      payer: ctx.payer,
+      createUserArgs: [
+        {
+          member: transactionManager,
+          isPermanentMember: false,
+          transactionManagerUrl: "https://xyz.com",
+        },
+      ],
+    });
 
     await sendTransaction(
       [createUserAccountIx],
-      ctx.payer.member,
+      ctx.payer,
       ctx.addressLookUpTable
     );
 
@@ -102,27 +101,23 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
 
     // Create Secp256r1Key and add member to an existing wallet owned by the authority together with a transaction manager
     const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey);
-    const {
-      instruction: createDomainUserAccountIx,
-      userAddressTreeIndex: secp256r1AddressTree,
-    } = await createDomainUserAccounts({
-      payer: ctx.payer.member,
-      authority: ctx.wallet.member,
+    const createDomainUserAccountIx = await createDomainUserAccounts({
+      payer: ctx.payer,
+      authority: ctx.wallet,
       domainConfig: ctx.domainConfig,
       createUserArgs: {
         member: secp256r1Key,
         isPermanentMember: true,
-        settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
+        index: ctx.index,
         transactionManager: {
           member: transactionManager.address,
-          userAddressTreeIndex,
         },
       },
     });
 
     await sendTransaction(
       [createDomainUserAccountIx],
-      ctx.payer.member,
+      ctx.payer,
       ctx.addressLookUpTable
     );
 
@@ -136,21 +131,20 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
           transactionAddress: TOKEN_2022_PROGRAM_ADDRESS.toString(),
           transactionMessageBytes: new Uint8Array([
             ...getU64Encoder().encode(BigInt(10 ** 5)),
-            ...getAddressEncoder().encode(ctx.wallet.member.address),
+            ...getAddressEncoder().encode(ctx.wallet.address),
             ...getAddressEncoder().encode(mint.address),
           ]),
         },
         secp256r1Keys.privateKey,
         secp256r1Keys.publicKey,
-        secp256r1AddressTree,
         ctx
       );
 
       const tokenTransfer = await tokenTransferIntent({
-        settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
-        payer: ctx.payer.member,
+        index: ctx.index,
+        payer: ctx.payer,
         signers: [signedSigner, transactionManager],
-        destination: ctx.wallet.member.address,
+        destination: ctx.wallet.address,
         amount: 10 ** 5,
         compressed: ctx.compressed,
         mint: mint.address,
@@ -159,7 +153,7 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
 
       await sendTransaction(
         [...tokenTransfer],
-        ctx.payer.member,
+        ctx.payer,
         ctx.addressLookUpTable
       );
       const ata = await getAssociatedTokenAccountAddress(
@@ -180,7 +174,7 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
 }
 
 const createMint = async (ctx: TestContext) => {
-  if (!ctx.multiWalletVault || !ctx.settingsIndexWithAddress) return;
+  if (!ctx.multiWalletVault || !ctx.index) return;
   await fundMultiWalletVault(ctx, BigInt(10 ** 8));
   // Create ephemeral keypair
   const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
@@ -189,7 +183,7 @@ const createMint = async (ctx: TestContext) => {
 
   // Create account instruction
   const createAccount = getCreateAccountInstruction({
-    payer: ctx.payer.member,
+    payer: ctx.payer,
     newAccount: ephemeralKeypair,
     space: getMintSize(),
     lamports: await getSolanaRpc()
@@ -202,7 +196,7 @@ const createMint = async (ctx: TestContext) => {
   const createMint = getInitializeMintInstruction({
     mint: ephemeralKeypair.address,
     decimals: 5,
-    mintAuthority: ctx.payer.member.address,
+    mintAuthority: ctx.payer.address,
   });
   const ata = await getAssociatedTokenAccountAddress(
     ephemeralKeypair.address,
@@ -213,19 +207,19 @@ const createMint = async (ctx: TestContext) => {
     ata,
     mint: ephemeralKeypair.address,
     owner: ctx.multiWalletVault,
-    payer: ctx.payer.member,
+    payer: ctx.payer,
     tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
   });
   const mintTo = getMintToCheckedInstruction({
     amount: 10 ** 9,
     decimals: 5,
     mint: ephemeralKeypair.address,
-    mintAuthority: ctx.payer.member,
+    mintAuthority: ctx.payer,
     token: ata,
   });
   await sendTransaction(
     [createAccount, createMint, ataIx, mintTo],
-    ctx.payer.member,
+    ctx.payer,
     ctx.addressLookUpTable
   );
 

@@ -1,5 +1,5 @@
 import type { Address, TransactionSigner } from "gill";
-import { SignedSecp256r1Key, type UserAccountWithAddressArgs } from ".";
+import { Secp256r1Key, SignedSecp256r1Key } from ".";
 import type { DelegateOpArgs } from "../generated";
 
 export type PermissionArgs = {
@@ -11,28 +11,22 @@ export type PermissionArgs = {
 type AddMemberArgs =
   | {
       setAsDelegate: true;
-      account: {
-        member: TransactionSigner | SignedSecp256r1Key;
-        userAddressTreeIndex: number;
-      };
+      member: TransactionSigner | SignedSecp256r1Key;
+      userAddressTreeIndex?: number;
       permissions: PermissionArgs;
       isTransactionManager: false;
     }
   | {
       setAsDelegate: false;
-      account: {
-        member: Address;
-        userAddressTreeIndex: number;
-      };
+      member: Address;
+      userAddressTreeIndex?: number;
       permissions: { initiate: true; vote: false; execute: false };
       isTransactionManager: true;
     }
   | {
       setAsDelegate: false;
-      account: {
-        member: Address | SignedSecp256r1Key;
-        userAddressTreeIndex: number;
-      };
+      member: Address | SignedSecp256r1Key;
+      userAddressTreeIndex?: number;
       permissions: PermissionArgs;
       isTransactionManager: false;
     };
@@ -41,7 +35,8 @@ export type ConfigurationArgs =
   | {
       type: "EditPermissions";
       members: {
-        account: UserAccountWithAddressArgs;
+        member: Address | Secp256r1Key;
+        userAddressTreeIndex?: number;
         permissions: PermissionArgs;
         delegateOperation: DelegateOpArgs;
       }[];
@@ -52,6 +47,9 @@ export type ConfigurationArgs =
     }
   | {
       type: "RemoveMembers";
-      members: UserAccountWithAddressArgs[];
+      members: {
+        member: Address | Secp256r1Key;
+        userAddressTreeIndex?: number;
+      }[];
     }
   | { type: "SetThreshold"; threshold: number };

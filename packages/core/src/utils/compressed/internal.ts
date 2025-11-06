@@ -13,7 +13,6 @@ import {
   fetchWhitelistedAddressTree,
   getCompressedSettingsDecoder,
   type CompressedProof,
-  type SettingsIndexWithAddressArgs,
   type SettingsReadonlyArgs,
 } from "../../generated";
 import {
@@ -156,7 +155,8 @@ export function getCompressedAccountMutArgs<T>(
 
 export async function constructSettingsProofArgs(
   compressed: boolean,
-  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs,
+  index: number | bigint,
+  settingsAddressTreeIndex?: number,
   simulateProof?: boolean,
   cachedAccounts?: Map<string, any>
 ) {
@@ -166,7 +166,8 @@ export async function constructSettingsProofArgs(
   if (compressed) {
     await packedAccounts.addSystemAccounts();
     const { address } = await getCompressedSettingsAddressFromIndex(
-      settingsIndexWithAddressArgs
+      index,
+      settingsAddressTreeIndex
     );
     const settings = (
       await getCompressedAccountHashes(

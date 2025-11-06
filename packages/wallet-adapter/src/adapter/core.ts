@@ -150,7 +150,7 @@ export function createRevibaseAdapter(): Revibase {
 
       const transactionManagerSigner = await resolveTransactionManagerSigner({
         signer,
-        settingsIndexWithAddressArgs: this.settingsIndexWithAddress,
+        SettingsAccountWithAddressArgs: this.settingsIndexWithAddress,
         transactionMessageBytes,
         cachedAccounts,
       });
@@ -163,7 +163,7 @@ export function createRevibaseAdapter(): Revibase {
         ],
         compressed: settingsData.isCompressed,
         payer,
-        settingsIndexWithAddressArgs: this.settingsIndexWithAddress,
+        SettingsAccountWithAddressArgs: this.settingsIndexWithAddress,
         transactionMessageBytes,
         addressesByLookupTableAddress,
         cachedAccounts,
@@ -190,7 +190,7 @@ export function createRevibaseAdapter(): Revibase {
         const signedSigner = await getSignedSecp256r1Key(authResponse);
         return await prepareTransactionBundle({
           compressed: settingsData.isCompressed,
-          settingsIndexWithAddressArgs: this.settingsIndexWithAddress,
+          SettingsAccountWithAddressArgs: this.settingsIndexWithAddress,
           bufferIndex,
           transactionMessageBytes,
           creator: transactionManagerSigner ?? signedSigner,
@@ -220,7 +220,7 @@ export function createRevibaseAdapter(): Revibase {
             ],
             payer,
             transactionMessageBytes,
-            settingsIndexWithAddressArgs: this.settingsIndexWithAddress,
+            SettingsAccountWithAddressArgs: this.settingsIndexWithAddress,
             addressesByLookupTableAddress,
             cachedAccounts,
           }),

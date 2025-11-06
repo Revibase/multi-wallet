@@ -26,22 +26,21 @@ type CreateWalletArgs = {
   index: number | bigint;
   payer: TransactionSigner;
   cachedAccounts?: Map<string, any>;
-  initialMember: {
-    member: TransactionSigner | SignedSecp256r1Key;
-    userAddressTreeIndex: number;
-  };
+  initialMember: TransactionSigner | SignedSecp256r1Key;
+  userAddressTreeIndex?: number;
   setAsDelegate: boolean;
 };
 export async function createWallet({
   index,
   payer,
   initialMember,
+  userAddressTreeIndex,
   setAsDelegate,
   cachedAccounts,
 }: CreateWalletArgs) {
   const globalCounter = await getGlobalCounterAddress();
   const { domainConfig, verifyArgs, message, signature, publicKey } =
-    extractSecp256r1VerificationArgs(initialMember.member);
+    extractSecp256r1VerificationArgs(initialMember);
 
   const secp256r1VerifyInput: Secp256r1VerifyInput = [];
   if (message && signature && publicKey) {
@@ -63,13 +62,12 @@ export async function createWallet({
       [
         {
           address: (
-            await getUserAccountAddress({
-              member:
-                "address" in initialMember.member
-                  ? initialMember.member.address
-                  : initialMember.member,
-              userAddressTreeIndex: initialMember.userAddressTreeIndex,
-            })
+            await getUserAccountAddress(
+              "address" in initialMember
+                ? initialMember.address
+                : initialMember,
+              userAddressTreeIndex
+            )
           ).address,
           type: "User" as const,
         },
@@ -79,10 +77,10 @@ export async function createWallet({
   );
   const settingsAddressTreeIndex = await getNewWhitelistedAddressTreeIndex();
   const { address: settingsAddress, addressTree } =
-    await getCompressedSettingsAddressFromIndex({
+    await getCompressedSettingsAddressFromIndex(
       index,
-      settingsAddressTreeIndex,
-    });
+      settingsAddressTreeIndex
+    );
   newAddressParams.push({
     address: settingsAddress,
     queue: addressTree,
@@ -122,12 +120,12 @@ export async function createWallet({
     packedAccounts.addPreAccounts([
       { address: domainConfig, role: AccountRole.READONLY },
     ]);
-  } else if ("address" in initialMember.member) {
+  } else if ("address" in initialMember) {
     packedAccounts.addPreAccounts([
       {
-        address: initialMember.member.address,
+        address: initialMember.address,
         role: AccountRole.READONLY_SIGNER,
-        signer: initialMember.member,
+        signer: initialMember,
       },
     ]);
   }
@@ -146,9 +144,7 @@ export async function createWallet({
       settingsIndex: index,
       payer: payer,
       initialMember:
-        initialMember.member instanceof SignedSecp256r1Key
-          ? undefined
-          : initialMember.member,
+        initialMember instanceof SignedSecp256r1Key ? undefined : initialMember,
       secp256r1VerifyArgs: verifyArgs,
       domainConfig,
       userMutArgs,
@@ -160,5 +156,5 @@ export async function createWallet({
     })
   );
 
-  return { instructions, secp256r1VerifyInput, settingsAddressTreeIndex };
+  return { instructions, secp256r1VerifyInput };
 }

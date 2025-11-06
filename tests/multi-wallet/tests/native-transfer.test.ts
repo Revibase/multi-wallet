@@ -25,21 +25,21 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
   it("should transfer sol", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.settingsIndexWithAddress || !ctx.multiWalletVault) return;
+    if (!ctx.index || !ctx.multiWalletVault) return;
     await fundMultiWalletVault(ctx, BigInt(10 ** 8));
     try {
       const nativeTransfer = await nativeTransferIntent({
-        settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
-        payer: ctx.payer.member,
-        signers: [ctx.wallet.member],
-        destination: ctx.wallet.member.address,
+        index: ctx.index,
+        payer: ctx.payer,
+        signers: [ctx.wallet],
+        destination: ctx.wallet.address,
         amount: 10 ** 6,
         compressed: ctx.compressed,
       });
 
       await sendTransaction(
         [...nativeTransfer],
-        ctx.payer.member,
+        ctx.payer,
         ctx.addressLookUpTable
       );
 
@@ -60,27 +60,26 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
   it("should transfer sol with secp256r1 signer", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.settingsIndexWithAddress || !ctx.multiWalletVault) return;
+    if (!ctx.index || !ctx.multiWalletVault) return;
     await fundMultiWalletVault(ctx, BigInt(10 ** 8));
     //create transaction manger
     const transactionManager = await createKeyPairSignerFromPrivateKeyBytes(
       crypto.getRandomValues(new Uint8Array(32))
     );
-    const { instruction: createUserAccountIx, userAddressTreeIndex } =
-      await createUserAccounts({
-        payer: ctx.payer.member,
-        createUserArgs: [
-          {
-            member: transactionManager,
-            isPermanentMember: false,
-            transactionManagerUrl: "https://xyz.com",
-          },
-        ],
-      });
+    const createUserAccountIx = await createUserAccounts({
+      payer: ctx.payer,
+      createUserArgs: [
+        {
+          member: transactionManager,
+          isPermanentMember: false,
+          transactionManagerUrl: "https://xyz.com",
+        },
+      ],
+    });
 
     await sendTransaction(
       [createUserAccountIx],
-      ctx.payer.member,
+      ctx.payer,
       ctx.addressLookUpTable
     );
 
@@ -88,27 +87,23 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
 
     // Create Secp256r1Key and add member to an existing wallet owned by the authority together with a transaction manager
     const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey);
-    const {
-      instruction: createDomainUserAccountIx,
-      userAddressTreeIndex: secp256r1AddressTree,
-    } = await createDomainUserAccounts({
-      payer: ctx.payer.member,
-      authority: ctx.wallet.member,
+    const createDomainUserAccountIx = await createDomainUserAccounts({
+      payer: ctx.payer,
+      authority: ctx.wallet,
       domainConfig: ctx.domainConfig,
       createUserArgs: {
         member: secp256r1Key,
         isPermanentMember: true,
-        settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
+        index: ctx.index,
         transactionManager: {
           member: transactionManager.address,
-          userAddressTreeIndex,
         },
       },
     });
 
     await sendTransaction(
       [createDomainUserAccountIx],
-      ctx.payer.member,
+      ctx.payer,
       ctx.addressLookUpTable
     );
 
@@ -120,28 +115,27 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
           transactionAddress: SYSTEM_PROGRAM_ADDRESS.toString(),
           transactionMessageBytes: new Uint8Array([
             ...getU64Encoder().encode(BigInt(10 ** 6)),
-            ...getAddressEncoder().encode(ctx.wallet.member.address),
+            ...getAddressEncoder().encode(ctx.wallet.address),
             ...getAddressEncoder().encode(SYSTEM_PROGRAM_ADDRESS),
           ]),
         },
         secp256r1Keys.privateKey,
         secp256r1Keys.publicKey,
-        secp256r1AddressTree,
         ctx
       );
 
       const nativeTransfer = await nativeTransferIntent({
-        settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
-        payer: ctx.payer.member,
+        index: ctx.index,
+        payer: ctx.payer,
         signers: [signedSigner, transactionManager],
-        destination: ctx.wallet.member.address,
+        destination: ctx.wallet.address,
         amount: 10 ** 6,
         compressed: ctx.compressed,
       });
 
       await sendTransaction(
         [...nativeTransfer],
-        ctx.payer.member,
+        ctx.payer,
         ctx.addressLookUpTable
       );
 

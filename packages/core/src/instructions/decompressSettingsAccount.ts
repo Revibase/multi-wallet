@@ -8,7 +8,6 @@ import {
   getDecompressSettingsAccountInstruction,
   type CompressedSettings,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
-  type SettingsIndexWithAddressArgs,
 } from "../generated";
 import { SignedSecp256r1Key } from "../types";
 import {
@@ -32,12 +31,14 @@ import {
 } from "./secp256r1Verify";
 
 export async function decompressSettingsAccount({
-  settingsIndexWithAddressArgs,
+  index,
+  settingsAddressTreeIndex,
   payer,
   signers,
   cachedAccounts,
 }: {
-  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs;
+  index: number | bigint;
+  settingsAddressTreeIndex?: number;
   payer: TransactionSigner;
   signers: (SignedSecp256r1Key | TransactionSigner)[];
   cachedAccounts?: Map<string, any>;
@@ -50,7 +51,8 @@ export async function decompressSettingsAccount({
       {
         address: (
           await getCompressedSettingsAddressFromIndex(
-            settingsIndexWithAddressArgs
+            index,
+            settingsAddressTreeIndex
           )
         ).address,
         type: "Settings" as const,
@@ -115,9 +117,7 @@ export async function decompressSettingsAccount({
   if (secp256r1VerifyInput.length > 0) {
     instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
   }
-  const settings = await getSettingsFromIndex(
-    settingsIndexWithAddressArgs.index
-  );
+  const settings = await getSettingsFromIndex(index);
   instructions.push(
     getDecompressSettingsAccountInstruction({
       settings,

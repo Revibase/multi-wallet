@@ -10,11 +10,9 @@ export function runWalletCreationTests(getCtx: () => TestContext) {
     let ctx = getCtx();
     // Create the multi-wallet
     ctx = await createMultiWallet(ctx);
-    if (!ctx.settingsIndexWithAddress || !ctx.multiWalletVault) return;
+    if (!ctx.index || !ctx.multiWalletVault) return;
     // Verify wallet settings
-    const accountData = await fetchSettingsAccountData(
-      ctx.settingsIndexWithAddress
-    );
+    const accountData = await fetchSettingsAccountData(ctx.index);
 
     expect(accountData.members.length).to.equal(
       1,

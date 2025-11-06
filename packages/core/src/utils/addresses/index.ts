@@ -13,17 +13,14 @@ import {
   getUtf8Encoder,
   type Address,
 } from "gill";
-import {
-  MULTI_WALLET_PROGRAM_ADDRESS,
-  type SettingsIndexWithAddressArgs,
-} from "../../generated";
-import { Secp256r1Key, type UserAccountWithAddressArgs } from "../../types";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
+import { Secp256r1Key } from "../../types";
 import { getWhitelistedAddressTreeFromIndex } from "../compressed/helper";
 
 export async function getCompressedSettingsAddressFromIndex(
-  args: SettingsIndexWithAddressArgs
+  index: number | bigint,
+  settingsAddressTreeIndex = 0
 ) {
-  const { index, settingsAddressTreeIndex } = args;
   const addressTree = await getWhitelistedAddressTreeFromIndex(
     settingsAddressTreeIndex
   );
@@ -43,8 +40,10 @@ export async function getCompressedSettingsAddressFromIndex(
     addressTree: new PublicKey(addressTree),
   };
 }
-export async function getUserAccountAddress(args: UserAccountWithAddressArgs) {
-  const { member, userAddressTreeIndex } = args;
+export async function getUserAccountAddress(
+  member: Address | Secp256r1Key,
+  userAddressTreeIndex = 0
+) {
   const addressTree =
     await getWhitelistedAddressTreeFromIndex(userAddressTreeIndex);
   const addressSeed = deriveAddressSeedV2([

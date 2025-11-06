@@ -5,7 +5,6 @@ import type {
   ReadonlyUint8Array,
   TransactionSigner,
 } from "gill";
-import type { SettingsIndexWithAddressArgs } from "../generated";
 import {
   createTransactionBuffer,
   executeTransaction,
@@ -25,7 +24,8 @@ import { convertPubkeyToMemberkey } from "../utils/transaction/internal";
 
 interface CreateTransactionBundleArgs {
   payer: TransactionSigner;
-  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs;
+  index: number | bigint;
+  settingsAddressTreeIndex?: number;
   transactionMessageBytes: ReadonlyUint8Array;
   bufferIndex?: number;
   creator: TransactionSigner | SignedSecp256r1Key;
@@ -42,7 +42,8 @@ interface CreateTransactionBundleArgs {
 
 export async function prepareTransactionBundle({
   payer,
-  settingsIndexWithAddressArgs,
+  index,
+  settingsAddressTreeIndex,
   transactionMessageBytes,
   creator,
   executor,
@@ -57,9 +58,7 @@ export async function prepareTransactionBundle({
   cachedAccounts,
 }: CreateTransactionBundleArgs): Promise<TransactionDetails[]> {
   // --- Stage 1: Setup Addresses ---
-  const settings = await getSettingsFromIndex(
-    settingsIndexWithAddressArgs.index
-  );
+  const settings = await getSettingsFromIndex(index);
   const transactionBufferAddress = await getTransactionBufferAddress(
     settings,
     creator instanceof SignedSecp256r1Key ? creator : creator.address,
@@ -80,7 +79,8 @@ export async function prepareTransactionBundle({
   const { settingsReadonlyArgs, proof, packedAccounts } =
     await constructSettingsProofArgs(
       compressed,
-      settingsIndexWithAddressArgs,
+      index,
+      settingsAddressTreeIndex,
       false,
       cachedAccounts
     );

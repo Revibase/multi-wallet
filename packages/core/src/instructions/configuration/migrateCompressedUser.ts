@@ -1,9 +1,9 @@
-import { type TransactionSigner } from "gill";
+import { type Address, type TransactionSigner } from "gill";
 import {
   getMigrateCompressedUsersInstruction,
   type UserArgs,
 } from "../../generated";
-import { type UserAccountWithAddressArgs } from "../../types";
+import type { Secp256r1Key } from "../../types";
 import { getUserAccountAddress } from "../../utils";
 import {
   convertToCompressedProofArgs,
@@ -15,16 +15,20 @@ import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 export async function migrateUsers({
   args,
   authority,
-  userAccountArgs,
+  member,
+  userAddressTreeIndex,
 }: {
   authority: TransactionSigner;
   args: UserArgs;
-  userAccountArgs: UserAccountWithAddressArgs;
+  member: Address | Secp256r1Key;
+  userAddressTreeIndex?: number;
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
-  const { address: userAddress, addressTree } =
-    await getUserAccountAddress(userAccountArgs);
+  const { address: userAddress, addressTree } = await getUserAccountAddress(
+    member,
+    userAddressTreeIndex
+  );
   const newAddressParams = [
     {
       address: userAddress,

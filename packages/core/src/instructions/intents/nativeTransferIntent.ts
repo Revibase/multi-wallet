@@ -8,7 +8,6 @@ import {
   getNativeTransferIntentCompressedInstruction,
   getNativeTransferIntentInstruction,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
-  type SettingsIndexWithAddressArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
 import {
@@ -29,7 +28,8 @@ import {
 } from "../secp256r1Verify";
 
 export async function nativeTransferIntent({
-  settingsIndexWithAddressArgs,
+  index,
+  settingsAddressTreeIndex,
   destination,
   signers,
   cachedAccounts,
@@ -37,7 +37,8 @@ export async function nativeTransferIntent({
   payer,
   compressed = false,
 }: {
-  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs;
+  index: number | bigint;
+  settingsAddressTreeIndex?: number;
   destination: Address;
   amount: number | bigint;
   signers: (TransactionSigner | SignedSecp256r1Key)[];
@@ -45,14 +46,14 @@ export async function nativeTransferIntent({
   compressed?: boolean;
   cachedAccounts?: Map<string, any>;
 }) {
-  const { index } = settingsIndexWithAddressArgs;
   const dedupSigners = getDeduplicatedSigners(signers);
   const settings = await getSettingsFromIndex(index);
   const walletAddress = await getWalletAddressFromSettings(settings);
   const { settingsReadonlyArgs, proof, packedAccounts } =
     await constructSettingsProofArgs(
       compressed,
-      settingsIndexWithAddressArgs,
+      index,
+      settingsAddressTreeIndex,
       false,
       cachedAccounts
     );

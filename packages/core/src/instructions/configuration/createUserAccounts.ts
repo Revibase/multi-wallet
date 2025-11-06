@@ -40,10 +40,10 @@ export async function createUserAccounts({
   const userAddressTreeIndex = await getNewWhitelistedAddressTreeIndex();
   const newAddressParams = await Promise.all(
     createUserArgs.map(async (x) => {
-      const { address, addressTree } = await getUserAccountAddress({
-        member: x.member.address,
-        userAddressTreeIndex,
-      });
+      const { address, addressTree } = await getUserAccountAddress(
+        x.member.address,
+        userAddressTreeIndex
+      );
       return {
         address,
         tree: addressTree,
@@ -65,18 +65,15 @@ export async function createUserAccounts({
 
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
 
-  return {
-    instruction: await getCreateUserAccountsInstructionAsync({
-      compressedProofArgs,
-      payer,
-      createUserArgs: createUserArgs.map((x, index) => ({
-        member: x.member.address,
-        isPermanentMember: x.isPermanentMember,
-        userCreationArgs: userCreationArgs[index],
-        transactionManagerUrl: x.transactionManagerUrl ?? null,
-      })),
-      remainingAccounts,
-    }),
-    userAddressTreeIndex,
-  };
+  return await getCreateUserAccountsInstructionAsync({
+    compressedProofArgs,
+    payer,
+    createUserArgs: createUserArgs.map((x, index) => ({
+      member: x.member.address,
+      isPermanentMember: x.isPermanentMember,
+      userCreationArgs: userCreationArgs[index],
+      transactionManagerUrl: x.transactionManagerUrl ?? null,
+    })),
+    remainingAccounts,
+  });
 }

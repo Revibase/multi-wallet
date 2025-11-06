@@ -8,7 +8,6 @@ import {
   getCompressSettingsAccountInstruction,
   type CompressedSettings,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
-  type SettingsIndexWithAddressArgs,
 } from "../generated";
 import { SignedSecp256r1Key } from "../types";
 import {
@@ -32,22 +31,26 @@ import {
 } from "./secp256r1Verify";
 
 export async function compressSettingsAccount({
-  settingsIndexWithAddressArgs,
+  index,
+  settingsAddressTreeIndex,
   payer,
   signers,
   cachedAccounts,
 }: {
-  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs;
+  index: number | bigint;
+  settingsAddressTreeIndex?: number;
   payer: TransactionSigner;
   signers: (SignedSecp256r1Key | TransactionSigner)[];
   cachedAccounts?: Map<string, any>;
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
-  const { index } = settingsIndexWithAddressArgs;
   const settings = await getSettingsFromIndex(index);
   const { address: settingsAddress } =
-    await getCompressedSettingsAddressFromIndex(settingsIndexWithAddressArgs);
+    await getCompressedSettingsAddressFromIndex(
+      index,
+      settingsAddressTreeIndex
+    );
 
   const hashesWithTree = await getCompressedAccountHashes(
     [{ address: settingsAddress, type: "Settings" }],

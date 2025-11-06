@@ -16,28 +16,20 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
   it("should add a new member", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.settingsIndexWithAddress || !ctx.multiWalletVault) return;
+    if (!ctx.index || !ctx.multiWalletVault) return;
     await addNewMember(ctx);
 
     // Verify member was added
-    const accountData = await fetchSettingsAccountData(
-      ctx.settingsIndexWithAddress
-    );
-    const userAccountData = await fetchUserAccountData({
-      member: ctx.payer.member.address,
-      userAddressTreeIndex: ctx.payer.userAddressTreeIndex,
-    });
+    const accountData = await fetchSettingsAccountData(ctx.index);
+    const userAccountData = await fetchUserAccountData(ctx.payer.address);
     const settingsIndex =
       userAccountData.delegatedTo.__option === "Some"
         ? userAccountData.delegatedTo.value
         : null;
-    expect(settingsIndex?.index).equal(
-      ctx.settingsIndexWithAddress.index,
-      "Payer should be a delegate"
-    );
+    expect(settingsIndex?.index).equal(ctx.index, "Payer should be a delegate");
     expect(accountData.members.length).to.equal(2, "Should have two members");
     expect(convertMemberKeyToString(accountData.members[1].pubkey)).to.equal(
-      ctx.payer.member.address.toString(),
+      ctx.payer.address.toString(),
       "Second member should be the payer"
     );
   });
@@ -45,21 +37,18 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
   it("remove delegate permission for new member", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.settingsIndexWithAddress || !ctx.multiWalletVault) return;
+    if (!ctx.index || !ctx.multiWalletVault) return;
     // Test updating permissions for existing members
     const { instructions, secp256r1VerifyInput } = await changeConfig({
-      payer: ctx.payer.member,
+      payer: ctx.payer,
       compressed: ctx.compressed,
-      settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
+      index: ctx.index,
       configActionsArgs: [
         {
           type: "EditPermissions",
           members: [
             {
-              account: {
-                member: ctx.wallet.member.address,
-                userAddressTreeIndex: ctx.wallet.userAddressTreeIndex,
-              },
+              member: ctx.wallet.address,
               permissions: { initiate: true, vote: true, execute: true },
               delegateOperation: DelegateOp.Remove,
             },
@@ -75,9 +64,9 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
     });
     const result = await prepareTransactionBundle({
       compressed: ctx.compressed,
-      payer: ctx.payer.member,
-      settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
-      creator: ctx.wallet.member,
+      payer: ctx.payer,
+      index: ctx.index,
+      creator: ctx.wallet,
       transactionMessageBytes,
       secp256r1VerifyInput,
       addressesByLookupTableAddress: ctx.addressLookUpTable,
@@ -91,10 +80,7 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       );
     }
     // Verify permissions were updated
-    const userAccountData = await fetchUserAccountData({
-      member: ctx.wallet.member.address,
-      userAddressTreeIndex: ctx.wallet.userAddressTreeIndex,
-    });
+    const userAccountData = await fetchUserAccountData(ctx.wallet.address);
     expect(userAccountData.delegatedTo.__option).equal(
       "None",
       "Payer should be a delegate"
@@ -104,20 +90,19 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
   it("should remove a member", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.settingsIndexWithAddress || !ctx.multiWalletVault) return;
+    if (!ctx.index || !ctx.multiWalletVault) return;
 
     await addNewMember(ctx);
     const { instructions, secp256r1VerifyInput } = await changeConfig({
-      payer: ctx.payer.member,
+      payer: ctx.payer,
       compressed: ctx.compressed,
-      settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
+      index: ctx.index,
       configActionsArgs: [
         {
           type: "RemoveMembers",
           members: [
             {
-              member: ctx.payer.member.address,
-              userAddressTreeIndex: ctx.payer.userAddressTreeIndex,
+              member: ctx.payer.address,
             },
           ],
         },
@@ -131,9 +116,9 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
     });
     const result = await prepareTransactionBundle({
       compressed: ctx.compressed,
-      payer: ctx.payer.member,
-      settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
-      creator: ctx.wallet.member,
+      payer: ctx.payer,
+      index: ctx.index,
+      creator: ctx.wallet,
       transactionMessageBytes,
       secp256r1VerifyInput,
       addressesByLookupTableAddress: ctx.addressLookUpTable,
@@ -146,13 +131,8 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       );
     }
     // Verify member was removed
-    const accountData = await fetchSettingsAccountData(
-      ctx.settingsIndexWithAddress
-    );
-    const userAccountData = await fetchUserAccountData({
-      member: ctx.payer.member.address,
-      userAddressTreeIndex: ctx.payer.userAddressTreeIndex,
-    });
+    const accountData = await fetchSettingsAccountData(ctx.index);
+    const userAccountData = await fetchUserAccountData(ctx.payer.address);
     const settingsIndex =
       userAccountData.delegatedTo.__option === "Some"
         ? userAccountData.delegatedTo.value
@@ -160,7 +140,7 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
     expect(settingsIndex).equal(null, "Payer should not be a delegate");
     expect(accountData.members.length).to.equal(1, "Should have one member");
     expect(convertMemberKeyToString(accountData.members[0].pubkey)).to.equal(
-      ctx.wallet.member.address.toString(),
+      ctx.wallet.address.toString(),
       "Remaining member should be the wallet"
     );
     expect(accountData.threshold).to.equal(
@@ -171,17 +151,17 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
 }
 
 async function addNewMember(ctx: TestContext) {
-  if (!ctx.settingsIndexWithAddress || !ctx.multiWalletVault) return;
+  if (!ctx.index || !ctx.multiWalletVault) return;
   const { instructions, secp256r1VerifyInput } = await changeConfig({
-    payer: ctx.payer.member,
+    payer: ctx.payer,
     compressed: ctx.compressed,
-    settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
+    index: ctx.index,
     configActionsArgs: [
       {
         type: "AddMembers",
         members: [
           {
-            account: ctx.payer,
+            member: ctx.payer,
             permissions: { initiate: true, vote: true, execute: true },
             setAsDelegate: true,
             isTransactionManager: false,
@@ -202,9 +182,9 @@ async function addNewMember(ctx: TestContext) {
     addressesByLookupTableAddress,
   } = await prepareTransactionSync({
     compressed: ctx.compressed,
-    payer: ctx.payer.member,
-    settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
-    signers: [ctx.wallet.member],
+    payer: ctx.payer,
+    index: ctx.index,
+    signers: [ctx.wallet],
     transactionMessageBytes,
     secp256r1VerifyInput,
   });

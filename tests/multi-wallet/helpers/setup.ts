@@ -184,7 +184,7 @@ export async function setupTestEnvironment(): Promise<TestContext> {
     await sendTransaction([globalCounterIx], payer);
   }
 
-  const { instruction, userAddressTreeIndex } = await createUserAccounts({
+  const instruction = await createUserAccounts({
     createUserArgs: [
       {
         member: wallet,
@@ -201,9 +201,9 @@ export async function setupTestEnvironment(): Promise<TestContext> {
   await sendTransaction([instruction], payer);
   return {
     compressed: true,
-    payer: { member: payer, userAddressTreeIndex },
-    wallet: { member: wallet, userAddressTreeIndex },
-    settingsIndexWithAddress: undefined, // Will be set during wallet creation
+    payer,
+    wallet,
+    index: undefined, // Will be set during wallet creation
     multiWalletVault: undefined, // Will be set during wallet creation
     rpId,
     origin,
@@ -227,14 +227,14 @@ export async function createMultiWallet(
 
   // Set up domain config
   const setDomainIx = await createDomainConfig({
-    payer: ctx.payer.member,
+    payer: ctx.payer,
     rpId,
     origins: [origin, "happy"],
-    authority: ctx.wallet.member.address,
+    authority: ctx.wallet.address,
     metadataUrl: "",
   });
 
-  await sendTransaction([setDomainIx], ctx.payer.member);
+  await sendTransaction([setDomainIx], ctx.payer);
 
   const globalCounter = await fetchGlobalCounter(
     getSolanaRpc(),
@@ -244,14 +244,14 @@ export async function createMultiWallet(
   const multiWalletVault = await getWalletAddressFromIndex(createIndex);
 
   // Create wallet
-  const { instructions, settingsAddressTreeIndex } = await createWallet({
-    payer: ctx.payer.member,
+  const { instructions } = await createWallet({
+    payer: ctx.payer,
     initialMember: ctx.wallet,
     index: createIndex,
     setAsDelegate: false,
   });
 
-  await sendTransaction(instructions, ctx.payer.member);
+  await sendTransaction(instructions, ctx.payer);
 
   // Return a new context with the updated settings and multiWalletVault
   return {
@@ -259,7 +259,7 @@ export async function createMultiWallet(
     rpId,
     origin,
     domainConfig,
-    settingsIndexWithAddress: { index: createIndex, settingsAddressTreeIndex },
+    index: createIndex,
     multiWalletVault,
   };
 }

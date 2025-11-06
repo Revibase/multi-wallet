@@ -4,7 +4,11 @@ import {
   type MessageAuthenticationResponse,
   type MessagePayload,
 } from "../types";
-import { getAuthEndpoint, getGlobalAdditonalInfo } from "../utils";
+import {
+  getAuthEndpoint,
+  getGlobalAdditonalInfo,
+  getWhitelistedAddressTreeIndexFromAddress,
+} from "../utils";
 import { openAuthUrl } from "../utils/passkeys/internal";
 
 export async function signMessageWithPasskey({
@@ -21,9 +25,11 @@ export async function signMessageWithPasskey({
   })) as any;
   return {
     ...authResponse,
-    signer: {
-      member: new Secp256r1Key(authResponse.signer),
-      userAddressTreeIndex: authResponse.userAddressTreeIndex,
-    },
+    signer: new Secp256r1Key(authResponse.signer),
+    userAddressTreeIndex: authResponse.userAddressTree
+      ? await getWhitelistedAddressTreeIndexFromAddress(
+          authResponse.userAddressTree
+        )
+      : undefined,
   } as MessageAuthenticationResponse;
 }

@@ -1,4 +1,3 @@
-import type { SettingsIndexWithAddress } from "@revibase/core";
 import {
   getJitoTipsConfig,
   prepareTransactionSync,
@@ -65,7 +64,8 @@ export function simulateSecp256r1Signer() {
 
 export async function estimateTransactionSizeExceedLimit({
   payer,
-  settingsIndexWithAddressArgs,
+  index,
+  settingsAddressTreeIndex,
   transactionMessageBytes,
   signers,
   compressed,
@@ -74,7 +74,8 @@ export async function estimateTransactionSizeExceedLimit({
 }: {
   payer: TransactionSigner;
   transactionMessageBytes: ReadonlyUint8Array;
-  settingsIndexWithAddressArgs: SettingsIndexWithAddress;
+  index: number | bigint;
+  settingsAddressTreeIndex?: number;
   compressed: boolean;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   signers: (TransactionSigner | SignedSecp256r1Key)[];
@@ -82,7 +83,8 @@ export async function estimateTransactionSizeExceedLimit({
 }) {
   const result = await prepareTransactionSync({
     payer,
-    settingsIndexWithAddressArgs,
+    index,
+    settingsAddressTreeIndex,
     transactionMessageBytes,
     signers,
     compressed,

@@ -73,6 +73,7 @@ export async function buildTokenTransferInstruction(
   if (!authResponse.additionalInfo.settingsIndex) {
     const userAccountData = await fetchUserAccountData(
       authResponse.signer,
+      authResponse.userAddressTreeIndex,
       cachedAccounts
     );
     if (userAccountData.delegatedTo.__option === "None") {
@@ -84,13 +85,18 @@ export async function buildTokenTransferInstruction(
       authResponse.additionalInfo.settingsIndexWithAddress;
   }
   const [settingsData, payer] = await Promise.all([
-    fetchSettingsAccountData(settingsIndexWithAddress, cachedAccounts),
+    fetchSettingsAccountData(
+      settingsIndexWithAddress.index,
+      settingsIndexWithAddress.settingsAddressTreeIndex,
+      cachedAccounts
+    ),
     getFeePayer(),
   ]);
 
   const transactionManagerSigner = await resolveTransactionManagerSigner({
     signer: signedSigner,
-    settingsIndexWithAddressArgs: settingsIndexWithAddress,
+    index: settingsIndexWithAddress.index,
+    settingsAddressTreeIndex: settingsIndexWithAddress.settingsAddressTreeIndex,
     cachedAccounts,
   });
   const signers = transactionManagerSigner
@@ -99,7 +105,9 @@ export async function buildTokenTransferInstruction(
 
   const instructions = mint
     ? await tokenTransferIntent({
-        settingsIndexWithAddressArgs: settingsIndexWithAddress,
+        index: settingsIndexWithAddress.index,
+        settingsAddressTreeIndex:
+          settingsIndexWithAddress.settingsAddressTreeIndex,
         amount,
         signers,
         destination,
@@ -109,7 +117,9 @@ export async function buildTokenTransferInstruction(
         cachedAccounts,
       })
     : await nativeTransferIntent({
-        settingsIndexWithAddressArgs: settingsIndexWithAddress,
+        index: settingsIndexWithAddress.index,
+        settingsAddressTreeIndex:
+          settingsIndexWithAddress.settingsAddressTreeIndex,
         amount,
         signers,
         destination,

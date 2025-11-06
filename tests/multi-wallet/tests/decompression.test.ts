@@ -12,22 +12,20 @@ export function runDecompressionTests(getCtx: () => TestContext) {
   it("should handle decompress settings account", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.settingsIndexWithAddress) return;
+    if (!ctx.index) return;
     const decompressIxs = await decompressSettingsAccount({
-      settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
-      payer: ctx.payer.member,
-      signers: [ctx.wallet.member],
+      index: ctx.index,
+      payer: ctx.payer,
+      signers: [ctx.wallet],
     });
 
     try {
       await sendTransaction(
         [...decompressIxs],
-        ctx.payer.member,
+        ctx.payer,
         ctx.addressLookUpTable
       );
-      const settings = await getSettingsFromIndex(
-        ctx.settingsIndexWithAddress.index
-      );
+      const settings = await getSettingsFromIndex(ctx.index);
       const settingsData = await fetchMaybeSettings(getSolanaRpc(), settings);
 
       expect(settingsData.exists).equal(true, "Settings account should exist");

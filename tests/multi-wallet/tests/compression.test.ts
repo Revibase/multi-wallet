@@ -14,21 +14,19 @@ export function runCompressionTests(getCtx: () => TestContext) {
   it("should handle compress settings account", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.settingsIndexWithAddress) return;
+    if (!ctx.index) return;
     const decompressIxs = await decompressSettingsAccount({
-      settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
-      payer: ctx.payer.member,
-      signers: [ctx.wallet.member],
+      index: ctx.index,
+      payer: ctx.payer,
+      signers: [ctx.wallet],
     });
     try {
       await sendTransaction(
         [...decompressIxs],
-        ctx.payer.member,
+        ctx.payer,
         ctx.addressLookUpTable
       );
-      const settings = await getSettingsFromIndex(
-        ctx.settingsIndexWithAddress.index
-      );
+      const settings = await getSettingsFromIndex(ctx.index);
       const settingsData = await fetchMaybeSettings(getSolanaRpc(), settings);
 
       expect(settingsData.exists).equal(true, "Settings account should exist");
@@ -38,30 +36,26 @@ export function runCompressionTests(getCtx: () => TestContext) {
     }
 
     const compressIxs = await compressSettingsAccount({
-      settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
-      payer: ctx.payer.member,
-      signers: [ctx.wallet.member],
+      index: ctx.index,
+      payer: ctx.payer,
+      signers: [ctx.wallet],
     });
 
     try {
       await sendTransaction(
         [...compressIxs],
-        ctx.payer.member,
+        ctx.payer,
         ctx.addressLookUpTable
       );
-      const settings = await getSettingsFromIndex(
-        ctx.settingsIndexWithAddress.index
-      );
+      const settings = await getSettingsFromIndex(ctx.index);
       const settingsData = await fetchMaybeSettings(getSolanaRpc(), settings);
       expect(settingsData.exists).equal(
         false,
         "Settings account should be null"
       );
-      const settingsDataCompressed = await fetchSettingsAccountData(
-        ctx.settingsIndexWithAddress
-      );
+      const settingsDataCompressed = await fetchSettingsAccountData(ctx.index);
       expect(Number(settingsDataCompressed.index)).equal(
-        Number(ctx.settingsIndexWithAddress.index),
+        Number(ctx.index),
         "Settings compressed account should not be null"
       );
     } catch (error) {

@@ -3,7 +3,6 @@ import {
   fetchTransactionBuffer,
   getTransactionBufferCloseCompressedInstruction,
   getTransactionBufferCloseInstruction,
-  type SettingsIndexWithAddressArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
 import { getSolanaRpc } from "../../utils";
@@ -15,14 +14,16 @@ import { extractSecp256r1VerificationArgs } from "../../utils/transaction/intern
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
 export async function closeTransactionBuffer({
-  settingsIndexWithAddressArgs,
+  index,
+  settingsAddressTreeIndex,
   closer,
   transactionBufferAddress,
   payer,
   compressed = false,
   cachedAccounts,
 }: {
-  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs;
+  index: number | bigint;
+  settingsAddressTreeIndex?: number;
   closer: TransactionSigner | SignedSecp256r1Key;
   transactionBufferAddress: Address;
   payer?: TransactionSigner;
@@ -37,7 +38,8 @@ export async function closeTransactionBuffer({
   const { settingsReadonlyArgs, proof, packedAccounts } =
     await constructSettingsProofArgs(
       compressed,
-      settingsIndexWithAddressArgs,
+      index,
+      settingsAddressTreeIndex,
       false,
       cachedAccounts
     );

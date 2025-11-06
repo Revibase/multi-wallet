@@ -26,7 +26,7 @@ export function runTransactionTests(getCtx: () => TestContext) {
   it("should handle ephemeral transactions", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.multiWalletVault || !ctx.settingsIndexWithAddress) return;
+    if (!ctx.multiWalletVault || !ctx.index) return;
     // Fund the wallet for transaction
     await fundMultiWalletVault(ctx, BigInt(10 ** 9 * 0.3));
 
@@ -64,25 +64,20 @@ export function runTransactionTests(getCtx: () => TestContext) {
       // Prepare transaction
       const result = await prepareTransactionSync({
         compressed: ctx.compressed,
-        payer: ctx.payer.member,
+        payer: ctx.payer,
         transactionMessageBytes,
-        signers: [ephemeralKeypair, ctx.wallet.member],
-        settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
+        signers: [ephemeralKeypair, ctx.wallet],
+        index: ctx.index,
       });
 
       await sendTransaction(
         [...result.instructions],
-        ctx.payer.member,
+        ctx.payer,
         result.addressesByLookupTableAddress
       );
       // Verify transaction was successful
-      const accountData = await fetchSettingsAccountData(
-        ctx.settingsIndexWithAddress
-      );
-      const userAccountData = await fetchUserAccountData({
-        member: ctx.wallet.member.address,
-        userAddressTreeIndex: ctx.wallet.userAddressTreeIndex,
-      });
+      const accountData = await fetchSettingsAccountData(ctx.index);
+      const userAccountData = await fetchUserAccountData(ctx.wallet.address);
       const settingsIndex =
         userAccountData.delegatedTo.__option === "Some"
           ? userAccountData.delegatedTo.value
@@ -91,9 +86,7 @@ export function runTransactionTests(getCtx: () => TestContext) {
         null,
         "User should be associated with the correct settings"
       );
-      const walletAddress = await getWalletAddressFromIndex(
-        ctx.settingsIndexWithAddress.index
-      );
+      const walletAddress = await getWalletAddressFromIndex(ctx.index);
       expect(walletAddress.toString()).to.equal(
         ctx.multiWalletVault.toString(),
         "User should be associated with the correct vault"

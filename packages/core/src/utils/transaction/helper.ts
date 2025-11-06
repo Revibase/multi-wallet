@@ -22,7 +22,7 @@ import {
   getSetComputeUnitLimitInstruction,
   getSetComputeUnitPriceInstruction,
 } from "gill/programs";
-import type { MemberKey, SettingsIndexWithAddressArgs } from "../../generated";
+import type { MemberKey } from "../../generated";
 import {
   KeyType,
   Permission,
@@ -240,17 +240,20 @@ export async function pollJitoBundleConfirmation(
 }
 export async function resolveTransactionManagerSigner({
   signer,
-  settingsIndexWithAddressArgs,
+  index,
+  settingsAddressTreeIndex,
   transactionMessageBytes,
   cachedAccounts,
 }: {
   signer: Secp256r1Key | Address;
-  settingsIndexWithAddressArgs: SettingsIndexWithAddressArgs;
+  index: number | bigint;
+  settingsAddressTreeIndex?: number;
   transactionMessageBytes?: ReadonlyUint8Array;
   cachedAccounts?: Map<string, any>;
 }) {
   const settingsData = await fetchSettingsAccountData(
-    settingsIndexWithAddressArgs,
+    index,
+    settingsAddressTreeIndex,
     cachedAccounts
   );
   if (settingsData.threshold > 1) {
@@ -295,10 +298,8 @@ export async function resolveTransactionManagerSigner({
   );
 
   const userAccountData = await fetchUserAccountData(
-    {
-      member: transactionManagerAddress,
-      userAddressTreeIndex: transactionManager.userAddressTreeIndex,
-    },
+    transactionManagerAddress,
+    transactionManager.userAddressTreeIndex,
     cachedAccounts
   );
 

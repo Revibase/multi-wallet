@@ -185,7 +185,7 @@ export async function getSignedSecp256r1Key(
     rpIdHash: authData.subarray(0, 32),
   });
 
-  return new SignedSecp256r1Key(payload.signer.member.toString(), {
+  return new SignedSecp256r1Key(payload.signer.toString(), {
     verifyArgs: {
       clientDataJson: new Uint8Array(base64URLStringToBuffer(clientDataJSON)),
       truncatedClientDataJson,

@@ -19,7 +19,7 @@ export async function editTransactionManagerUrl({
   transactionManagerUrl,
 }: {
   authority: TransactionSigner;
-  userAddressTreeIndex: number;
+  userAddressTreeIndex?: number;
   transactionManagerUrl: string;
 }) {
   const packedAccounts = new PackedAccounts();
@@ -27,10 +27,7 @@ export async function editTransactionManagerUrl({
   const hashesWithTree = await getCompressedAccountHashes([
     {
       address: (
-        await getUserAccountAddress({
-          member: authority.address,
-          userAddressTreeIndex,
-        })
+        await getUserAccountAddress(authority.address, userAddressTreeIndex)
       ).address,
       type: "User",
     },

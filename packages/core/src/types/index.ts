@@ -5,5 +5,4 @@ export * from "./passkeys";
 export * from "./permissions";
 export * from "./secp256r1";
 export * from "./transaction";
-export * from "./userAccountArgs";
 export * from "./vaultTransactionMessage";

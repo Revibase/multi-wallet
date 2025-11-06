@@ -16,41 +16,37 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
   it("should add a new member as a transaction manager", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.settingsIndexWithAddress || !ctx.multiWalletVault) return;
+    if (!ctx.index || !ctx.multiWalletVault) return;
     const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
       crypto.getRandomValues(new Uint8Array(32))
     );
-    const { instruction: createUserAccountIx, userAddressTreeIndex } =
-      await createUserAccounts({
-        payer: ctx.payer.member,
-        createUserArgs: [
-          {
-            member: ephemeralKeypair,
-            isPermanentMember: false,
-            transactionManagerUrl: "https://xyz.com",
-          },
-        ],
-      });
+    const createUserAccountIx = await createUserAccounts({
+      payer: ctx.payer,
+      createUserArgs: [
+        {
+          member: ephemeralKeypair,
+          isPermanentMember: false,
+          transactionManagerUrl: "https://xyz.com",
+        },
+      ],
+    });
 
     await sendTransaction(
       [createUserAccountIx],
-      ctx.payer.member,
+      ctx.payer,
       ctx.addressLookUpTable
     );
 
     const { instructions, secp256r1VerifyInput } = await changeConfig({
-      payer: ctx.payer.member,
+      payer: ctx.payer,
       compressed: ctx.compressed,
-      settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
+      index: ctx.index,
       configActionsArgs: [
         {
           type: "AddMembers",
           members: [
             {
-              account: {
-                member: ephemeralKeypair.address,
-                userAddressTreeIndex,
-              },
+              member: ephemeralKeypair.address,
               permissions: { initiate: true, vote: false, execute: false },
               setAsDelegate: false,
               isTransactionManager: true,
@@ -71,9 +67,9 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
       addressesByLookupTableAddress,
     } = await prepareTransactionSync({
       compressed: ctx.compressed,
-      payer: ctx.payer.member,
-      settingsIndexWithAddressArgs: ctx.settingsIndexWithAddress,
-      signers: [ctx.wallet.member],
+      payer: ctx.payer,
+      index: ctx.index,
+      signers: [ctx.wallet],
       transactionMessageBytes,
       secp256r1VerifyInput,
     });
@@ -81,13 +77,10 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
     await sendTransaction(ixs, payer, addressesByLookupTableAddress);
 
     // Verify member was added
-    const userAccountData = await fetchUserAccountData({
-      member: ephemeralKeypair.address,
-      userAddressTreeIndex,
-    });
-    const accountData = await fetchSettingsAccountData(
-      ctx.settingsIndexWithAddress
+    const userAccountData = await fetchUserAccountData(
+      ephemeralKeypair.address
     );
+    const accountData = await fetchSettingsAccountData(ctx.index);
     const settingsIndex =
       userAccountData.delegatedTo.__option === "Some"
         ? userAccountData.delegatedTo.value
