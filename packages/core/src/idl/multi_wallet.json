@@ -410,7 +410,18 @@
         },
         {
           "name": "global_counter",
-          "writable": true
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103, 108, 111, 98, 97, 108, 95, 99, 111, 117, 110, 116, 101,
+                  114
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "whitelisted_address_trees",

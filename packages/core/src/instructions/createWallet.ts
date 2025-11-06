@@ -7,7 +7,6 @@ import {
 import { SignedSecp256r1Key } from "../types";
 import {
   getCompressedSettingsAddressFromIndex,
-  getGlobalCounterAddress,
   getUserAccountAddress,
 } from "../utils";
 import {
@@ -38,7 +37,6 @@ export async function createWallet({
   setAsDelegate,
   cachedAccounts,
 }: CreateWalletArgs) {
-  const globalCounter = await getGlobalCounterAddress();
   const { domainConfig, verifyArgs, message, signature, publicKey } =
     extractSecp256r1VerificationArgs(initialMember);
 
@@ -148,7 +146,6 @@ export async function createWallet({
       secp256r1VerifyArgs: verifyArgs,
       domainConfig,
       userMutArgs,
-      globalCounter,
       compressedProofArgs,
       settingsCreation: settingsCreationArgs,
       setAsDelegate,

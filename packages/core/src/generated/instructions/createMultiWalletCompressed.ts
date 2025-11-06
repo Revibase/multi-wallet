@@ -205,7 +205,7 @@ export type CreateMultiWalletCompressedAsyncInput<
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   domainConfig?: Address<TAccountDomainConfig>;
-  globalCounter: Address<TAccountGlobalCounter>;
+  globalCounter?: Address<TAccountGlobalCounter>;
   whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
   secp256r1VerifyArgs: CreateMultiWalletCompressedInstructionDataArgs["secp256r1VerifyArgs"];
   compressedProofArgs: CreateMultiWalletCompressedInstructionDataArgs["compressedProofArgs"];
@@ -294,6 +294,18 @@ export async function getCreateMultiWalletCompressedInstructionAsync<
   if (!accounts.instructionsSysvar.value) {
     accounts.instructionsSysvar.value =
       "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
+  }
+  if (!accounts.globalCounter.value) {
+    accounts.globalCounter.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(
+          new Uint8Array([
+            103, 108, 111, 98, 97, 108, 95, 99, 111, 117, 110, 116, 101, 114,
+          ])
+        ),
+      ],
+    });
   }
   if (!accounts.whitelistedAddressTrees.value) {
     accounts.whitelistedAddressTrees.value = await getProgramDerivedAddress({

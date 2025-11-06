@@ -1,7 +1,7 @@
 use crate::{
     id,
     state::{SettingsIndexWithAddress, UserReadOnlyOrMutateArgs, WhitelistedAddressTree},
-    utils::SEED_WHITELISTED_ADDRESS_TREE,
+    utils::{SEED_GLOBAL_COUNTER, SEED_WHITELISTED_ADDRESS_TREE},
     AddMemberArgs, CompressedSettings, CompressedSettingsData, DomainConfig, GlobalCounter, Member,
     MemberKey, MultisigError, Ops, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs,
     SettingsCreationArgs, User, UserMutArgs, LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
@@ -32,7 +32,11 @@ pub struct CreateMultiWalletCompressed<'info> {
     )]
     pub instructions_sysvar: Option<UncheckedAccount<'info>>,
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
-    #[account(mut)]
+    #[account(
+        mut,
+        seeds = [SEED_GLOBAL_COUNTER],
+        bump
+    )]
     pub global_counter: AccountLoader<'info, GlobalCounter>,
     #[account(
         seeds = [SEED_WHITELISTED_ADDRESS_TREE],
