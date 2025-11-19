@@ -471,9 +471,7 @@ function getAddMemberPermission(
 ) {
   if (userMutArgs.data.role === UserRole.PermanentMember) {
     if (delegateOperation !== DelegateOp.Add) {
-      throw new Error(
-        "Permanent members must also be delegates. Please set `setAsDelegate = true`."
-      );
+      throw new Error("Permanent members must also be delegates");
     }
     if (userMutArgs.data.delegatedTo.__option === "Some") {
       throw new Error(
