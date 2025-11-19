@@ -1,4 +1,4 @@
-import { type Address, type TransactionSigner } from "gill";
+import { type TransactionSigner } from "gill";
 import { getCreateDomainConfigInstructionAsync } from "../../generated";
 import { getDomainConfigAddress, getUserAccountAddress } from "../../utils";
 import {
@@ -15,14 +15,12 @@ export async function createDomainConfig({
   origins,
   authority,
   metadataUrl,
-  adminDomainConfig,
 }: {
   metadataUrl: string;
   payer: TransactionSigner;
   rpId: string;
   origins: string[];
   authority: TransactionSigner;
-  adminDomainConfig?: Address;
 }) {
   const domainConfig = await getDomainConfigAddress({ rpId });
   const packedAccounts = new PackedAccounts();
@@ -67,7 +65,6 @@ export async function createDomainConfig({
     domainConfig,
     rpId,
     metadataUrl,
-    adminDomainConfig,
     remainingAccounts,
   });
 }

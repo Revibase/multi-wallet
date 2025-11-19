@@ -275,10 +275,6 @@
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "admin_domain_config",
-          "optional": true
-        },
-        {
           "name": "whitelisted_address_trees",
           "pda": {
             "seeds": [

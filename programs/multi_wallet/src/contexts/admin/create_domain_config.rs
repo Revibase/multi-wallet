@@ -39,7 +39,6 @@ pub struct CreateDomainConfig<'info> {
     pub payer: Signer<'info>,
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
-    pub admin_domain_config: Option<AccountLoader<'info, DomainConfig>>,
     #[account(
         seeds = [SEED_WHITELISTED_ADDRESS_TREE],
         bump = whitelisted_address_trees.bump

@@ -18,6 +18,11 @@ pub struct CreateGlobalCounter<'info> {
 
 impl<'info> CreateGlobalCounter<'info> {
     pub fn process(ctx: Context<Self>) -> Result<()> {
+        #[cfg(feature = "mainnet")]
+        require!(
+            ctx.accounts.payer.key().eq(&crate::ADMIN),
+            crate::MultisigError::InvalidAccount
+        );
         ctx.accounts.global_counter.load_init()?.index = 1;
         Ok(())
     }
