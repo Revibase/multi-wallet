@@ -1,6 +1,7 @@
 use crate::{
     error::MultisigError,
     state::{ProofArgs, User, UserMutArgs},
+    utils::UserRole,
     LIGHT_CPI_SIGNER,
 };
 use anchor_lang::prelude::*;
@@ -43,10 +44,13 @@ impl<'info> EditTransactionManagerUrl<'info> {
         .map_err(ProgramError::from)?;
 
         require!(
-            user_account.transaction_manager_url.is_some(),
+            user_account.role.eq(&UserRole::TransactionManager)
+                && user_account.transaction_manager_url.is_some(),
             MultisigError::TransactionManagerNotAllowed
         );
         user_account.transaction_manager_url = Some(transaction_manager_url);
+
+        user_account.invariant()?;
 
         LightSystemProgramCpi::new_cpi(
             LIGHT_CPI_SIGNER,

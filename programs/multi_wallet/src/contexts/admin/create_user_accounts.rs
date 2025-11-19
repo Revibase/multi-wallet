@@ -1,6 +1,7 @@
 use crate::{
-    state::WhitelistedAddressTree, utils::SEED_WHITELISTED_ADDRESS_TREE, MemberKey, MultisigError,
-    ProofArgs, User, UserCreationArgs, LIGHT_CPI_SIGNER,
+    state::WhitelistedAddressTree,
+    utils::{UserRole, SEED_WHITELISTED_ADDRESS_TREE},
+    MemberKey, MultisigError, ProofArgs, User, UserCreationArgs, LIGHT_CPI_SIGNER,
 };
 use anchor_lang::prelude::*;
 use light_sdk::{
@@ -14,7 +15,7 @@ use light_sdk::{
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct CreateUserAccountArgs {
     pub member: Pubkey,
-    pub is_permanent_member: bool,
+    pub role: UserRole,
     pub transaction_manager_url: Option<String>,
     pub user_creation_args: UserCreationArgs,
 }
@@ -50,19 +51,15 @@ impl<'info> CreateUserAccounts<'info> {
             ValidityProof(compressed_proof_args.proof),
         );
         for args in args {
-            let signer = ctx
-                .remaining_accounts
-                .iter()
-                .find(|f| f.key.eq(&args.member));
-
             require!(
-                signer.is_some() && signer.unwrap().is_signer,
-                MultisigError::NoSignerFound
+                args.role.ne(&UserRole::Administrator),
+                MultisigError::InvalidAccount
             );
-
             require!(
-                (args.transaction_manager_url.is_none() || !args.is_permanent_member),
-                MultisigError::InvalidArguments
+                ctx.remaining_accounts
+                    .iter()
+                    .any(|f| f.key.eq(&args.member) && f.is_signer),
+                MultisigError::NoSignerFound
             );
 
             let address_tree = &args
@@ -76,17 +73,21 @@ impl<'info> CreateUserAccounts<'info> {
                 .whitelisted_address_trees
                 .extract_address_tree_index(address_tree)?;
 
+            let user = User {
+                member: MemberKey::convert_ed25519(&args.member)?,
+                role: args.role,
+                delegated_to: None,
+                domain_config: None,
+                transaction_manager_url: args.transaction_manager_url,
+                user_address_tree_index,
+            };
+
+            user.invariant()?;
+
             let (account_info, new_address_params) = User::create_user_account(
                 args.user_creation_args,
                 address_tree,
-                User {
-                    member: MemberKey::convert_ed25519(&args.member)?,
-                    is_permanent_member: args.is_permanent_member,
-                    delegated_to: None,
-                    domain_config: None,
-                    transaction_manager_url: args.transaction_manager_url,
-                    user_address_tree_index,
-                },
+                user,
                 Some(cpi.account_infos.len() as u8),
             )?;
             cpi = cpi.with_light_account(account_info)?;

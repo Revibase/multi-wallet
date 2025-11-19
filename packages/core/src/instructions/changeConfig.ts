@@ -25,21 +25,18 @@ import {
   type SettingsMutArgs,
   type User,
   type UserMutArgs,
+  UserRole,
 } from "../generated";
 import {
   type ConfigurationArgs,
   type IPermission,
-  PermanentMemberPermission,
   Permission,
   type PermissionArgs,
   Permissions,
   Secp256r1Key,
   SignedSecp256r1Key,
-  TransactionManagerPermission,
 } from "../types";
 import {
-  convertMemberKeyToString,
-  fetchSettingsAccountData,
   getCompressedSettingsAddressFromIndex,
   getUserAccountAddress,
   getWalletAddressFromIndex,
@@ -305,34 +302,8 @@ export async function changeConfig({
       }
 
       case "EditPermissions": {
-        const settingsData = await fetchSettingsAccountData(
-          index,
-          settingsAddressTreeIndex,
-          cachedAccounts
-        );
-        const permanentMember = settingsData.members.find((x) =>
-          Permissions.has(x.permissions, PermanentMemberPermission)
-        );
-        const transactionManager = settingsData.members.find((x) =>
-          Permissions.has(x.permissions, TransactionManagerPermission)
-        );
         const field = await Promise.all(
           action.members.map(async (m) => {
-            const isPermanentMember =
-              !!permanentMember?.pubkey &&
-              convertMemberKeyToString(permanentMember.pubkey) ===
-                m.member.toString();
-            const isTransactionManager =
-              !!transactionManager?.pubkey &&
-              convertMemberKeyToString(transactionManager.pubkey) ===
-                m.member.toString();
-
-            if (isTransactionManager) {
-              throw new Error(
-                "Transaction Manager's permission cannot be changed."
-              );
-            }
-
             const userArgs =
               m.delegateOperation !== DelegateOp.Ignore
                 ? await getUserArgs(
@@ -344,7 +315,6 @@ export async function changeConfig({
 
             return convertEditMember({
               permissionArgs: m.permissions,
-              isPermanentMember,
               userMutArgs: userArgs,
               pubkey: m.member,
               delegateOperation: m.delegateOperation,
@@ -404,20 +374,23 @@ function convertEditMember({
   permissionArgs,
   userMutArgs,
   delegateOperation,
-  isPermanentMember,
 }: {
   pubkey: Address | Secp256r1Key;
   permissionArgs: PermissionArgs;
-  isPermanentMember: boolean;
   userMutArgs?: UserMutArgs;
   delegateOperation: DelegateOpArgs;
 }): EditMemberArgs {
-  if (isPermanentMember) {
-    if (userMutArgs || delegateOperation !== DelegateOp.Ignore) {
-      throw new Error("Delegation cannot be modified for a permanent member.");
+  if (delegateOperation !== DelegateOp.Ignore) {
+    if (!userMutArgs) {
+      throw new Error("User args is missing");
+    }
+    if (userMutArgs.data.role !== UserRole.Member) {
+      throw new Error(
+        "Only user with member role is allowed to change delegate."
+      );
     }
   }
-  const permissions = convertPermissions(permissionArgs, isPermanentMember);
+  const permissions = convertPermissions(permissionArgs);
 
   return {
     memberKey: convertPubkeyToMemberkey(pubkey),
@@ -434,9 +407,7 @@ function convertRemoveMember({
   pubkey: Address | Secp256r1Key;
   userMutArgs: UserMutArgs;
 }): RemoveMemberArgs {
-  const userAccountData = userMutArgs.data;
-  const isPermanentMember = userAccountData.isPermanentMember;
-  if (isPermanentMember) {
+  if (userMutArgs.data.role === UserRole.PermanentMember) {
     throw new Error("Permanent Member cannot be removed from the wallet.");
   }
   return {
@@ -470,11 +441,8 @@ function convertAddMember({
     isTransactionManager
   );
   return {
-    member: {
-      permissions,
-      pubkey: convertPubkeyToMemberkey(pubkey),
-      userAddressTreeIndex: userMutArgs.data.userAddressTreeIndex,
-    },
+    memberKey: convertPubkeyToMemberkey(pubkey),
+    permissions,
     verifyArgs:
       pubkey instanceof SignedSecp256r1Key && pubkey.verifyArgs && index !== -1
         ? some({
@@ -498,15 +466,13 @@ function getAddMemberPermission(
   permissionArgs: PermissionArgs,
   isTransactionManager: boolean
 ) {
-  const userAccountData = userMutArgs.data;
-  const isPermanentMember = userAccountData.isPermanentMember;
-  if (isPermanentMember) {
+  if (userMutArgs.data.role === UserRole.PermanentMember) {
     if (!setAsDelegate) {
       throw new Error(
         "Permanent members must also be delegates. Please set `setAsDelegate = true`."
       );
     }
-    if (userAccountData.delegatedTo.__option === "Some") {
+    if (userMutArgs.data.delegatedTo.__option === "Some") {
       throw new Error(
         "This user is already registered as a permanent member in another wallet. A permanent member can only belong to one wallet."
       );
@@ -524,25 +490,15 @@ function getAddMemberPermission(
     }
   }
 
-  const permissions = convertPermissions(
-    permissionArgs,
-    isPermanentMember,
-    isTransactionManager
-  );
+  const permissions = convertPermissions(permissionArgs);
   return permissions;
 }
 
-function convertPermissions(
-  p: PermissionArgs,
-  isPermanentMember = false,
-  isTransactionManager = false
-): IPermissions {
+function convertPermissions(p: PermissionArgs): IPermissions {
   const perms: IPermission[] = [];
   if (p.initiate) perms.push(Permission.InitiateTransaction);
   if (p.vote) perms.push(Permission.VoteTransaction);
   if (p.execute) perms.push(Permission.ExecuteTransaction);
-  if (isPermanentMember) perms.push(PermanentMemberPermission);
-  if (isTransactionManager) perms.push(TransactionManagerPermission);
 
   return Permissions.fromPermissions(perms);
 }

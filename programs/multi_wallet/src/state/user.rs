@@ -1,4 +1,5 @@
 use crate::state::SettingsIndexWithAddress;
+use crate::utils::{KeyType, UserRole};
 use crate::{AddMemberArgs, MemberKey, MultisigError, RemoveMemberArgs, SEED_USER};
 use anchor_lang::prelude::*;
 use light_sdk::address::NewAddressParamsAssignedPacked;
@@ -12,7 +13,7 @@ use light_sdk::{
 pub struct User {
     pub member: MemberKey,
     pub domain_config: Option<Pubkey>,
-    pub is_permanent_member: bool,
+    pub role: UserRole,
     pub delegated_to: Option<SettingsIndexWithAddress>,
     pub transaction_manager_url: Option<String>,
     pub user_address_tree_index: u8,
@@ -49,6 +50,42 @@ pub enum Ops {
 }
 
 impl User {
+    pub fn invariant(&self) -> Result<()> {
+        if self.role.eq(&UserRole::TransactionManager) {
+            require!(
+                self.transaction_manager_url.is_some(),
+                MultisigError::InvalidAccount
+            );
+            require!(
+                self.member.get_type().eq(&KeyType::Ed25519),
+                MultisigError::InvalidAccount
+            );
+            require!(self.delegated_to.is_none(), MultisigError::InvalidAccount);
+        } else {
+            require!(
+                self.transaction_manager_url.is_none(),
+                MultisigError::InvalidAccount
+            )
+        }
+
+        if self.role.eq(&UserRole::Administrator) {
+            require!(self.delegated_to.is_none(), MultisigError::InvalidAccount);
+            require!(
+                self.member.get_type().eq(&KeyType::Ed25519),
+                MultisigError::InvalidAccount
+            );
+            require!(self.domain_config.is_some(), MultisigError::InvalidAccount);
+        }
+
+        if self.member.get_type().eq(&KeyType::Secp256r1) {
+            require!(
+                self.domain_config.is_some(),
+                MultisigError::DomainConfigIsMissing
+            );
+        }
+        Ok(())
+    }
+
     pub fn create_user_account(
         user_creation_args: UserCreationArgs,
         address_tree: &Pubkey,
@@ -72,7 +109,7 @@ impl User {
         user_account.member = user.member;
         user_account.delegated_to = user.delegated_to;
         user_account.domain_config = user.domain_config;
-        user_account.is_permanent_member = user.is_permanent_member;
+        user_account.role = user.role;
         user_account.transaction_manager_url = user.transaction_manager_url;
 
         Ok((user_account, new_address_params))
@@ -123,7 +160,7 @@ impl User {
                 )
                 .map_err(ProgramError::from)?;
 
-                if user_account.is_permanent_member {
+                if user_account.role.eq(&UserRole::PermanentMember) {
                     require!(
                         user_account.delegated_to.is_none(),
                         MultisigError::AlreadyDelegated
@@ -165,7 +202,7 @@ impl User {
                 .map_err(ProgramError::from)?;
 
                 require!(
-                    !user_account.is_permanent_member,
+                    user_account.role.ne(&UserRole::PermanentMember),
                     MultisigError::PermanentMember
                 );
 

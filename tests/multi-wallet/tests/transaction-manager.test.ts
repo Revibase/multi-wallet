@@ -6,6 +6,7 @@ import {
   fetchUserAccountData,
   prepareTransactionMessage,
   prepareTransactionSync,
+  UserRole,
 } from "@revibase/core";
 import { expect } from "chai";
 import { createKeyPairSignerFromPrivateKeyBytes } from "gill";
@@ -16,7 +17,8 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
   it("should add a new member as a transaction manager", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.index || !ctx.multiWalletVault) return;
+    if (!ctx.index || !ctx.multiWalletVault || !ctx.wallet || !ctx.payer)
+      return;
     const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
       crypto.getRandomValues(new Uint8Array(32))
     );
@@ -25,7 +27,7 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
       createUserArgs: [
         {
           member: ephemeralKeypair,
-          isPermanentMember: false,
+          role: UserRole.TransactionManager,
           transactionManagerUrl: "https://xyz.com",
         },
       ],

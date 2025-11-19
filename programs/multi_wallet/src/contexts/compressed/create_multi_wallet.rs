@@ -2,7 +2,7 @@ use crate::{
     id,
     state::{SettingsIndexWithAddress, UserReadOnlyOrMutateArgs, WhitelistedAddressTree},
     utils::{SEED_GLOBAL_COUNTER, SEED_WHITELISTED_ADDRESS_TREE},
-    AddMemberArgs, CompressedSettings, CompressedSettingsData, DomainConfig, GlobalCounter, Member,
+    AddMemberArgs, CompressedSettings, CompressedSettingsData, DomainConfig, GlobalCounter,
     MemberKey, MultisigError, Ops, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs,
     SettingsCreationArgs, User, UserMutArgs, LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
 };
@@ -107,24 +107,15 @@ impl<'info> CreateMultiWalletCompressed<'info> {
                 Some(0),
             )?;
 
-        let mut permissions: Vec<Permission> = Vec::new();
-        permissions.extend([
-            Permission::InitiateTransaction,
-            Permission::VoteTransaction,
-            Permission::ExecuteTransaction,
-        ]);
-        if user_mut_args.data.is_permanent_member {
-            permissions.push(Permission::IsPermanentMember);
-        }
-
         let delegate_ops = settings_account.add_members(
             &settings_key,
             vec![AddMemberArgs {
-                member: Member {
-                    pubkey: signer,
-                    permissions: Permissions::from_permissions(permissions),
-                    user_address_tree_index: user_mut_args.data.user_address_tree_index,
-                },
+                member_key: signer,
+                permissions: Permissions::from_permissions(vec![
+                    Permission::InitiateTransaction,
+                    Permission::VoteTransaction,
+                    Permission::ExecuteTransaction,
+                ]),
                 verify_args: secp256r1_verify_args,
                 user_args: UserReadOnlyOrMutateArgs::Mutate(user_mut_args),
                 set_as_delegate,

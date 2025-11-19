@@ -8,13 +8,13 @@ import {
  * Shared test context that is passed between test files
  */
 export interface TestContext {
-  payer: KeyPairSigner;
-  wallet: KeyPairSigner;
+  payer: KeyPairSigner | undefined;
+  wallet: KeyPairSigner | undefined;
   index: number | bigint | undefined;
   multiWalletVault: Address | undefined;
-  rpId: string;
-  origin: string;
+  rpId: string | undefined;
+  origin: string | undefined;
   compressed: boolean;
   addressLookUpTable: AddressesByLookupTableAddress;
-  domainConfig: Address;
+  domainConfig: Address | undefined;
 }

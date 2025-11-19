@@ -1,7 +1,5 @@
-use crate::state::{
-    CompressedSettings, CompressedSettingsData, DomainConfig, ProofArgs, SettingsCreationArgs,
-};
-use crate::{ADMIN_DOMAIN_CONFIG, LIGHT_CPI_SIGNER};
+use crate::state::{CompressedSettings, CompressedSettingsData, ProofArgs, SettingsCreationArgs};
+use crate::{ADMIN, LIGHT_CPI_SIGNER};
 use anchor_lang::prelude::*;
 use light_sdk::cpi::v2::{CpiAccounts, LightSystemProgramCpi};
 use light_sdk::cpi::{InvokeLightSystemProgram, LightCpiInstruction};
@@ -11,13 +9,9 @@ use light_sdk::instruction::ValidityProof;
 pub struct MigrateCompressedSettings<'info> {
     #[account(
         mut,
-        address = admin_domain_config.load()?.authority,
+        address = ADMIN,
     )]
     pub authority: Signer<'info>,
-    #[account(
-        address = ADMIN_DOMAIN_CONFIG
-    )]
-    pub admin_domain_config: AccountLoader<'info, DomainConfig>,
 }
 
 impl<'info> MigrateCompressedSettings<'info> {

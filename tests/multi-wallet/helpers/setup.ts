@@ -6,7 +6,6 @@ import {
   createUserAccounts,
   createWallet,
   fetchGlobalCounter,
-  fetchMaybeDomainConfig,
   fetchMaybeGlobalCounter,
   fetchMaybeWhitelistedAddressTree,
   getDomainConfigAddress,
@@ -15,6 +14,7 @@ import {
   getWalletAddressFromIndex,
   getWhitelistedAddressTreesAddress,
   initialize,
+  UserRole,
 } from "@revibase/core";
 import {
   address,
@@ -44,16 +44,13 @@ export async function setupTestEnvironment(): Promise<TestContext> {
     proverEndpoint: LOCAL_PROVER_URL,
   });
   // Create keypairs with deterministic seeds for testing
-  // Using deterministic seeds for testing makes tests more reproducible
   const payerSeed = crypto.getRandomValues(new Uint8Array(32));
   const walletSeed = crypto.getRandomValues(new Uint8Array(32));
 
   const payer = await createKeyPairSignerFromPrivateKeyBytes(payerSeed);
-  const wallet = await createKeyPairSignerFromPrivateKeyBytes(walletSeed);
 
   // Fund the payer account
   await getSolanaRpc().requestAirdrop(payer.address, AIRDROP_AMOUNT).send();
-  await getSolanaRpc().requestAirdrop(wallet.address, AIRDROP_AMOUNT).send();
   const recentSlot = await getSolanaRpc()
     .getSlot({ commitment: "finalized" })
     .send();
@@ -135,43 +132,6 @@ export async function setupTestEnvironment(): Promise<TestContext> {
     getSolanaRpc()
   );
 
-  const rpId = "revibase.com";
-  const origin = "https://auth.revibase.com";
-
-  const domainConfig = await getDomainConfigAddress({
-    rpId,
-  });
-
-  const domainConfigAccount = await fetchMaybeDomainConfig(
-    getSolanaRpc(),
-    domainConfig
-  );
-  if (!domainConfigAccount.exists) {
-    // Set up domain config
-    const setDomainIx = await createDomainConfig({
-      payer,
-      rpId,
-      origins: [origin],
-      authority: wallet.address,
-      metadataUrl: "",
-    });
-
-    await sendTransaction([setDomainIx], payer);
-  }
-
-  const whitelistedAddressTreesAccount = await fetchMaybeWhitelistedAddressTree(
-    getSolanaRpc(),
-    await getWhitelistedAddressTreesAddress()
-  );
-
-  if (!whitelistedAddressTreesAccount.exists) {
-    const addWhitelistedAddressTree = await addWhitelistedAddressTrees({
-      admin: wallet,
-      addressTree: address(batchAddressTree),
-    });
-    await sendTransaction([addWhitelistedAddressTree], payer);
-  }
-
   const globalAccountAddress = await fetchMaybeGlobalCounter(
     getSolanaRpc(),
     await getGlobalCounterAddress()
@@ -184,31 +144,29 @@ export async function setupTestEnvironment(): Promise<TestContext> {
     await sendTransaction([globalCounterIx], payer);
   }
 
-  const instruction = await createUserAccounts({
-    createUserArgs: [
-      {
-        member: wallet,
-        isPermanentMember: false,
-      },
-      {
-        member: payer,
-        isPermanentMember: false,
-      },
-    ],
-    payer,
-  });
+  const whitelistedAddressTreesAccount = await fetchMaybeWhitelistedAddressTree(
+    getSolanaRpc(),
+    await getWhitelistedAddressTreesAddress()
+  );
 
-  await sendTransaction([instruction], payer);
+  if (!whitelistedAddressTreesAccount.exists) {
+    const addWhitelistedAddressTree = await addWhitelistedAddressTrees({
+      admin: payer,
+      addressTree: address(batchAddressTree),
+    });
+    await sendTransaction([addWhitelistedAddressTree], payer);
+  }
+
   return {
     compressed: true,
-    payer,
-    wallet,
-    index: undefined, // Will be set during wallet creation
-    multiWalletVault: undefined, // Will be set during wallet creation
-    rpId,
-    origin,
     addressLookUpTable,
-    domainConfig,
+    payer: undefined,
+    wallet: undefined,
+    index: undefined,
+    multiWalletVault: undefined,
+    rpId: undefined,
+    origin: undefined,
+    domainConfig: undefined,
   };
 }
 
@@ -221,20 +179,30 @@ export async function createMultiWallet(
   const rpId = crypto.randomUUID();
   const origin = crypto.randomUUID();
 
+  const payerSeed = crypto.getRandomValues(new Uint8Array(32));
+  const walletSeed = crypto.getRandomValues(new Uint8Array(32));
+
+  const payer = await createKeyPairSignerFromPrivateKeyBytes(payerSeed);
+  const wallet = await createKeyPairSignerFromPrivateKeyBytes(walletSeed);
+
+  // Fund the payer account
+  await getSolanaRpc().requestAirdrop(payer.address, AIRDROP_AMOUNT).send();
+  await getSolanaRpc().requestAirdrop(wallet.address, AIRDROP_AMOUNT).send();
+
   const domainConfig = await getDomainConfigAddress({
     rpId,
   });
 
   // Set up domain config
   const setDomainIx = await createDomainConfig({
-    payer: ctx.payer,
+    payer,
     rpId,
     origins: [origin, "happy"],
-    authority: ctx.wallet.address,
+    authority: wallet,
     metadataUrl: "",
   });
 
-  await sendTransaction([setDomainIx], ctx.payer);
+  await sendTransaction([setDomainIx], payer);
 
   const globalCounter = await fetchGlobalCounter(
     getSolanaRpc(),
@@ -245,13 +213,25 @@ export async function createMultiWallet(
 
   // Create wallet
   const { instructions } = await createWallet({
-    payer: ctx.payer,
-    initialMember: ctx.wallet,
+    payer,
+    initialMember: wallet,
     index: createIndex,
     setAsDelegate: false,
   });
 
-  await sendTransaction(instructions, ctx.payer);
+  await sendTransaction(instructions, payer);
+
+  const instruction = await createUserAccounts({
+    createUserArgs: [
+      {
+        member: payer,
+        role: UserRole.Member,
+      },
+    ],
+    payer,
+  });
+
+  await sendTransaction([instruction], payer);
 
   // Return a new context with the updated settings and multiWalletVault
   return {
@@ -261,5 +241,7 @@ export async function createMultiWallet(
     domainConfig,
     index: createIndex,
     multiWalletVault,
+    payer,
+    wallet,
   };
 }

@@ -21,7 +21,40 @@ use bytemuck::{Pod, Zeroable};
 pub struct Member {
     pub pubkey: MemberKey,
     pub permissions: Permissions,
+    pub role: u8,
     pub user_address_tree_index: u8,
+}
+
+#[derive(Default, AnchorDeserialize, AnchorSerialize, PartialEq, Clone, Copy, Debug)]
+pub enum UserRole {
+    #[default]
+    Member,
+    PermanentMember,
+    TransactionManager,
+    Administrator,
+}
+
+impl From<u8> for UserRole {
+    fn from(value: u8) -> Self {
+        match value {
+            0 => UserRole::Member,
+            1 => UserRole::Administrator,
+            2 => UserRole::PermanentMember,
+            3 => UserRole::TransactionManager,
+            _ => UserRole::Member,
+        }
+    }
+}
+
+impl UserRole {
+    pub fn to_u8(self) -> u8 {
+        match self {
+            UserRole::Member => 0,
+            UserRole::Administrator => 1,
+            UserRole::PermanentMember => 2,
+            UserRole::TransactionManager => 3,
+        }
+    }
 }
 
 #[derive(
@@ -95,7 +128,7 @@ impl MemberKey {
         Err(error!(MultisigError::NoSignerFound))
     }
 
-    pub fn to_pubkey(self) -> Result<Pubkey> {
+    pub fn to_pubkey(&self) -> Result<Pubkey> {
         require!(
             self.get_type() == KeyType::Ed25519,
             MultisigError::InvalidArguments

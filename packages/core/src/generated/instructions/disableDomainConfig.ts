@@ -26,7 +26,6 @@ import {
   type Instruction,
   type InstructionWithAccounts,
   type InstructionWithData,
-  type ReadonlyAccount,
   type ReadonlySignerAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
@@ -48,9 +47,6 @@ export type DisableDomainConfigInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountDomainConfig extends string | AccountMeta<string> = string,
   TAccountAdmin extends string | AccountMeta<string> = string,
-  TAccountAdminDomainConfig extends
-    | string
-    | AccountMeta<string> = "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -63,9 +59,6 @@ export type DisableDomainConfigInstruction<
         ? ReadonlySignerAccount<TAccountAdmin> &
             AccountSignerMeta<TAccountAdmin>
         : TAccountAdmin,
-      TAccountAdminDomainConfig extends string
-        ? ReadonlyAccount<TAccountAdminDomainConfig>
-        : TAccountAdminDomainConfig,
       ...TRemainingAccounts,
     ]
   >;
@@ -114,11 +107,9 @@ export type DisableDomainConfigInstructionExtraArgs = {
 export type DisableDomainConfigInput<
   TAccountDomainConfig extends string = string,
   TAccountAdmin extends string = string,
-  TAccountAdminDomainConfig extends string = string,
 > = {
   domainConfig: Address<TAccountDomainConfig>;
   admin: TransactionSigner<TAccountAdmin>;
-  adminDomainConfig?: Address<TAccountAdminDomainConfig>;
   disable: DisableDomainConfigInstructionDataArgs["disable"];
   remainingAccounts: DisableDomainConfigInstructionExtraArgs["remainingAccounts"];
 };
@@ -126,20 +117,14 @@ export type DisableDomainConfigInput<
 export function getDisableDomainConfigInstruction<
   TAccountDomainConfig extends string,
   TAccountAdmin extends string,
-  TAccountAdminDomainConfig extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
-  input: DisableDomainConfigInput<
-    TAccountDomainConfig,
-    TAccountAdmin,
-    TAccountAdminDomainConfig
-  >,
+  input: DisableDomainConfigInput<TAccountDomainConfig, TAccountAdmin>,
   config?: { programAddress?: TProgramAddress }
 ): DisableDomainConfigInstruction<
   TProgramAddress,
   TAccountDomainConfig,
-  TAccountAdmin,
-  TAccountAdminDomainConfig
+  TAccountAdmin
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -148,10 +133,6 @@ export function getDisableDomainConfigInstruction<
   const originalAccounts = {
     domainConfig: { value: input.domainConfig ?? null, isWritable: true },
     admin: { value: input.admin ?? null, isWritable: false },
-    adminDomainConfig: {
-      value: input.adminDomainConfig ?? null,
-      isWritable: false,
-    },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -164,12 +145,6 @@ export function getDisableDomainConfigInstruction<
   // Resolver scope.
   const resolverScope = { programAddress, accounts, args };
 
-  // Resolve default values.
-  if (!accounts.adminDomainConfig.value) {
-    accounts.adminDomainConfig.value =
-      "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg" as Address<"5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg">;
-  }
-
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
@@ -179,7 +154,6 @@ export function getDisableDomainConfigInstruction<
     accounts: [
       getAccountMeta(accounts.domainConfig),
       getAccountMeta(accounts.admin),
-      getAccountMeta(accounts.adminDomainConfig),
       ...remainingAccounts,
     ],
     data: getDisableDomainConfigInstructionDataEncoder().encode(
@@ -189,8 +163,7 @@ export function getDisableDomainConfigInstruction<
   } as DisableDomainConfigInstruction<
     TProgramAddress,
     TAccountDomainConfig,
-    TAccountAdmin,
-    TAccountAdminDomainConfig
+    TAccountAdmin
   >);
 }
 
@@ -202,7 +175,6 @@ export type ParsedDisableDomainConfigInstruction<
   accounts: {
     domainConfig: TAccountMetas[0];
     admin: TAccountMetas[1];
-    adminDomainConfig: TAccountMetas[2];
   };
   data: DisableDomainConfigInstructionData;
 };
@@ -215,7 +187,7 @@ export function parseDisableDomainConfigInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>
 ): ParsedDisableDomainConfigInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 3) {
+  if (instruction.accounts.length < 2) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -227,11 +199,7 @@ export function parseDisableDomainConfigInstruction<
   };
   return {
     programAddress: instruction.programAddress,
-    accounts: {
-      domainConfig: getNextAccount(),
-      admin: getNextAccount(),
-      adminDomainConfig: getNextAccount(),
-    },
+    accounts: { domainConfig: getNextAccount(), admin: getNextAccount() },
     data: getDisableDomainConfigInstructionDataDecoder().decode(
       instruction.data
     ),

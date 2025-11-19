@@ -12,7 +12,7 @@ export function runDecompressionTests(getCtx: () => TestContext) {
   it("should handle decompress settings account", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.index) return;
+    if (!ctx.index || !ctx.payer || !ctx.wallet) return;
     const decompressIxs = await decompressSettingsAccount({
       index: ctx.index,
       payer: ctx.payer,

@@ -21,14 +21,18 @@ import {
   type OptionOrNullable,
 } from "gill";
 import {
-  getMemberDecoder,
-  getMemberEncoder,
+  getMemberKeyDecoder,
+  getMemberKeyEncoder,
+  getPermissionsDecoder,
+  getPermissionsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
   getUserReadOnlyOrMutateArgsDecoder,
   getUserReadOnlyOrMutateArgsEncoder,
-  type Member,
-  type MemberArgs,
+  type IPermissions,
+  type MemberKey,
+  type MemberKeyArgs,
+  type PermissionsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
   type UserReadOnlyOrMutateArgs,
@@ -36,14 +40,16 @@ import {
 } from ".";
 
 export type AddMemberArgs = {
-  member: Member;
+  memberKey: MemberKey;
+  permissions: IPermissions;
   verifyArgs: Option<Secp256r1VerifyArgs>;
   userArgs: UserReadOnlyOrMutateArgs;
   setAsDelegate: boolean;
 };
 
 export type AddMemberArgsArgs = {
-  member: MemberArgs;
+  memberKey: MemberKeyArgs;
+  permissions: PermissionsArgs;
   verifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
   userArgs: UserReadOnlyOrMutateArgsArgs;
   setAsDelegate: boolean;
@@ -51,7 +57,8 @@ export type AddMemberArgsArgs = {
 
 export function getAddMemberArgsEncoder(): Encoder<AddMemberArgsArgs> {
   return getStructEncoder([
-    ["member", getMemberEncoder()],
+    ["memberKey", getMemberKeyEncoder()],
+    ["permissions", getPermissionsEncoder()],
     ["verifyArgs", getOptionEncoder(getSecp256r1VerifyArgsEncoder())],
     ["userArgs", getUserReadOnlyOrMutateArgsEncoder()],
     ["setAsDelegate", getBooleanEncoder()],
@@ -60,7 +67,8 @@ export function getAddMemberArgsEncoder(): Encoder<AddMemberArgsArgs> {
 
 export function getAddMemberArgsDecoder(): Decoder<AddMemberArgs> {
   return getStructDecoder([
-    ["member", getMemberDecoder()],
+    ["memberKey", getMemberKeyDecoder()],
+    ["permissions", getPermissionsDecoder()],
     ["verifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
     ["userArgs", getUserReadOnlyOrMutateArgsDecoder()],
     ["setAsDelegate", getBooleanDecoder()],

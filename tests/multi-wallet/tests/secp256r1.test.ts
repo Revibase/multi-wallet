@@ -11,6 +11,7 @@ import {
   getSolanaRpc,
   getWalletAddressFromIndex,
   Secp256r1Key,
+  UserRole,
 } from "@revibase/core";
 import { expect } from "chai";
 import { createKeyPairSignerFromPrivateKeyBytes } from "gill";
@@ -26,7 +27,14 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
   it("should initialize a wallet for Secp256r1 with a transaction manager", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.index || !ctx.multiWalletVault) return;
+    if (
+      !ctx.index ||
+      !ctx.multiWalletVault ||
+      !ctx.wallet ||
+      !ctx.payer ||
+      !ctx.domainConfig
+    )
+      return;
     const transactionManager = await createKeyPairSignerFromPrivateKeyBytes(
       crypto.getRandomValues(new Uint8Array(32))
     );
@@ -35,7 +43,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
       createUserArgs: [
         {
           member: transactionManager,
-          isPermanentMember: false,
+          role: UserRole.TransactionManager,
           transactionManagerUrl: "https://xyz.com",
         },
       ],
@@ -97,6 +105,14 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
     const secp256r1Keys = generateSecp256r1KeyPair();
+    if (
+      !ctx.index ||
+      !ctx.multiWalletVault ||
+      !ctx.wallet ||
+      !ctx.payer ||
+      !ctx.domainConfig
+    )
+      return;
 
     const createDomainUserAccountIx = await createDomainUserAccounts({
       payer: ctx.payer,

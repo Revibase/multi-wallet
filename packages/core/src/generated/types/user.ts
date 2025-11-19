@@ -12,8 +12,6 @@ import {
   combineCodec,
   getAddressDecoder,
   getAddressEncoder,
-  getBooleanDecoder,
-  getBooleanEncoder,
   getOptionDecoder,
   getOptionEncoder,
   getStructDecoder,
@@ -36,16 +34,20 @@ import {
   getMemberKeyEncoder,
   getSettingsIndexWithAddressDecoder,
   getSettingsIndexWithAddressEncoder,
+  getUserRoleDecoder,
+  getUserRoleEncoder,
   type MemberKey,
   type MemberKeyArgs,
   type SettingsIndexWithAddress,
   type SettingsIndexWithAddressArgs,
+  type UserRole,
+  type UserRoleArgs,
 } from ".";
 
 export type User = {
   member: MemberKey;
   domainConfig: Option<Address>;
-  isPermanentMember: boolean;
+  role: UserRole;
   delegatedTo: Option<SettingsIndexWithAddress>;
   transactionManagerUrl: Option<string>;
   userAddressTreeIndex: number;
@@ -54,7 +56,7 @@ export type User = {
 export type UserArgs = {
   member: MemberKeyArgs;
   domainConfig: OptionOrNullable<Address>;
-  isPermanentMember: boolean;
+  role: UserRoleArgs;
   delegatedTo: OptionOrNullable<SettingsIndexWithAddressArgs>;
   transactionManagerUrl: OptionOrNullable<string>;
   userAddressTreeIndex: number;
@@ -64,7 +66,7 @@ export function getUserEncoder(): Encoder<UserArgs> {
   return getStructEncoder([
     ["member", getMemberKeyEncoder()],
     ["domainConfig", getOptionEncoder(getAddressEncoder())],
-    ["isPermanentMember", getBooleanEncoder()],
+    ["role", getUserRoleEncoder()],
     ["delegatedTo", getOptionEncoder(getSettingsIndexWithAddressEncoder())],
     [
       "transactionManagerUrl",
@@ -78,7 +80,7 @@ export function getUserDecoder(): Decoder<User> {
   return getStructDecoder([
     ["member", getMemberKeyDecoder()],
     ["domainConfig", getOptionDecoder(getAddressDecoder())],
-    ["isPermanentMember", getBooleanDecoder()],
+    ["role", getUserRoleDecoder()],
     ["delegatedTo", getOptionDecoder(getSettingsIndexWithAddressDecoder())],
     [
       "transactionManagerUrl",

@@ -30,7 +30,7 @@ pub enum MultisigError {
     #[msg("Only one transaction manager is allowed per wallet.")]
     OnlyOneTransactionManagerAllowed,
 
-    #[msg("This operation cannot assign a transaction manager.")]
+    #[msg("Unable to assign a transaction manager.")]
     TransactionManagerNotAllowed,
 
     #[msg("No members provided. A multisig wallet must contain at least one member.")]
@@ -123,7 +123,7 @@ pub enum MultisigError {
     )]
     DomainConfigIsDisabled,
 
-    #[msg("Missing domain configuration account. Include it as a required account in this instruction.")]
+    #[msg("Missing domain configuration account.")]
     DomainConfigIsMissing,
 
     #[msg("This member is not registered under the provided domain configuration.")]

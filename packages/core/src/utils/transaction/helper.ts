@@ -22,13 +22,12 @@ import {
   getSetComputeUnitLimitInstruction,
   getSetComputeUnitPriceInstruction,
 } from "gill/programs";
-import type { MemberKey } from "../../generated";
+import { UserRole, type MemberKey } from "../../generated";
 import {
   KeyType,
   Permission,
   Permissions,
   Secp256r1Key,
-  TransactionManagerPermission,
   type TransactionDetails,
 } from "../../types";
 import { fetchSettingsAccountData, fetchUserAccountData } from "../compressed";
@@ -286,8 +285,8 @@ export async function resolveTransactionManagerSigner({
   }
 
   // Otherwise, require a transaction manager + vote + execute rights
-  const transactionManager = settingsData.members.find((m) =>
-    Permissions.has(m.permissions, TransactionManagerPermission)
+  const transactionManager = settingsData.members.find(
+    (m) => m.role === UserRole.TransactionManager
   );
   if (!transactionManager) {
     throw new Error("No transaction manager available in wallet.");

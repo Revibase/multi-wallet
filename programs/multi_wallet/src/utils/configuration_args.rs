@@ -1,6 +1,6 @@
 use crate::{
     state::{UserMutArgs, UserReadOnlyOrMutateArgs},
-    Member, MemberKey, Permissions, Secp256r1VerifyArgs,
+    MemberKey, Permissions, Secp256r1VerifyArgs,
 };
 use anchor_lang::prelude::*;
 
@@ -13,7 +13,8 @@ pub enum DelegateOp {
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug)]
 pub struct AddMemberArgs {
-    pub member: Member,
+    pub member_key: MemberKey,
+    pub permissions: Permissions,
     pub verify_args: Option<Secp256r1VerifyArgs>,
     pub user_args: UserReadOnlyOrMutateArgs,
     pub set_as_delegate: bool,

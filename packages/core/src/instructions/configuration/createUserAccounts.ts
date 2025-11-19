@@ -1,5 +1,8 @@
 import { AccountRole, type TransactionSigner } from "gill";
-import { getCreateUserAccountsInstructionAsync } from "../../generated";
+import {
+  getCreateUserAccountsInstructionAsync,
+  UserRole,
+} from "../../generated";
 import { getUserAccountAddress } from "../../utils";
 import {
   convertToCompressedProofArgs,
@@ -12,13 +15,12 @@ import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 type UserCreationArgs =
   | {
       member: TransactionSigner;
-      isPermanentMember: true;
-      transactionManagerUrl: undefined;
+      role: UserRole.TransactionManager;
+      transactionManagerUrl: string;
     }
   | {
       member: TransactionSigner;
-      isPermanentMember: false;
-      transactionManagerUrl?: string;
+      role: UserRole.Member | UserRole.PermanentMember;
     };
 
 export async function createUserAccounts({
@@ -37,6 +39,7 @@ export async function createUserAccounts({
       signer: x.member,
     }))
   );
+
   const userAddressTreeIndex = await getNewWhitelistedAddressTreeIndex();
   const newAddressParams = await Promise.all(
     createUserArgs.map(async (x) => {
@@ -70,9 +73,10 @@ export async function createUserAccounts({
     payer,
     createUserArgs: createUserArgs.map((x, index) => ({
       member: x.member.address,
-      isPermanentMember: x.isPermanentMember,
+      role: x.role,
       userCreationArgs: userCreationArgs[index],
-      transactionManagerUrl: x.transactionManagerUrl ?? null,
+      transactionManagerUrl:
+        x.role === UserRole.TransactionManager ? x.transactionManagerUrl : null,
     })),
     remainingAccounts,
   });

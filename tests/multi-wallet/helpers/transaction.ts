@@ -107,7 +107,7 @@ export async function fundMultiWalletVault(
   ctx: TestContext,
   amount: bigint
 ): Promise<void> {
-  if (!ctx.multiWalletVault) return;
+  if (!ctx.multiWalletVault || !ctx.payer) return;
   const transfer = getTransferSolInstruction({
     source: ctx.payer,
     destination: address(ctx.multiWalletVault.toString()),

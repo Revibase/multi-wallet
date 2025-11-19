@@ -4,6 +4,7 @@ import {
   getSolanaRpc,
   nativeTransferIntent,
   Secp256r1Key,
+  UserRole,
 } from "@revibase/core";
 import { expect } from "chai";
 import {
@@ -25,7 +26,8 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
   it("should transfer sol", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.index || !ctx.multiWalletVault) return;
+    if (!ctx.index || !ctx.multiWalletVault || !ctx.wallet || !ctx.payer)
+      return;
     await fundMultiWalletVault(ctx, BigInt(10 ** 8));
     try {
       const nativeTransfer = await nativeTransferIntent({
@@ -60,7 +62,14 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
   it("should transfer sol with secp256r1 signer", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.index || !ctx.multiWalletVault) return;
+    if (
+      !ctx.index ||
+      !ctx.multiWalletVault ||
+      !ctx.wallet ||
+      !ctx.payer ||
+      !ctx.domainConfig
+    )
+      return;
     await fundMultiWalletVault(ctx, BigInt(10 ** 8));
     //create transaction manger
     const transactionManager = await createKeyPairSignerFromPrivateKeyBytes(
@@ -71,7 +80,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
       createUserArgs: [
         {
           member: transactionManager,
-          isPermanentMember: false,
+          role: UserRole.TransactionManager,
           transactionManagerUrl: "https://xyz.com",
         },
       ],

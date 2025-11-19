@@ -13,7 +13,7 @@ use utils::*;
 
 declare_id!("reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT");
 
-pub const ADMIN_DOMAIN_CONFIG: Pubkey = pubkey!("5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg");
+pub const ADMIN: Pubkey = pubkey!("AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ");
 
 pub const LIGHT_CPI_SIGNER: CpiSigner =
     derive_light_cpi_signer!("reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT");
@@ -25,8 +25,8 @@ pub mod multi_wallet {
 
     /// Initializes a new domain configuration used for WebAuthn (secp256r1) verification.
     #[instruction(discriminator = 0)]
-    pub fn create_domain_config(
-        ctx: Context<CreateDomainConfig>,
+    pub fn create_domain_config<'info>(
+        ctx: Context<'_, '_, '_, 'info, CreateDomainConfig<'info>>,
         args: CreateDomainConfigArgs,
     ) -> Result<()> {
         CreateDomainConfig::process(ctx, args)
@@ -34,8 +34,8 @@ pub mod multi_wallet {
 
     /// Updates an existing domain configuration used for WebAuthn (secp256r1) verification.
     #[instruction(discriminator = 1)]
-    pub fn edit_domain_config(
-        ctx: Context<EditDomainConfig>,
+    pub fn edit_domain_config<'info>(
+        ctx: Context<'_, '_, '_, 'info, EditDomainConfig<'info>>,
         args: EditDomainConfigArgs,
     ) -> Result<()> {
         EditDomainConfig::process(ctx, args)

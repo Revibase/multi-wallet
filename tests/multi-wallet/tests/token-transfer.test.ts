@@ -4,6 +4,7 @@ import {
   getSolanaRpc,
   Secp256r1Key,
   tokenTransferIntent,
+  UserRole,
 } from "@revibase/core";
 import { expect } from "chai";
 import {
@@ -35,7 +36,14 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
     const mint = await createMint(ctx);
-    if (!ctx.index || !ctx.multiWalletVault || !mint) return;
+    if (
+      !ctx.index ||
+      !ctx.multiWalletVault ||
+      !ctx.wallet ||
+      !ctx.payer ||
+      !mint
+    )
+      return;
     try {
       const ata = await getAssociatedTokenAccountAddress(
         mint.address,
@@ -74,7 +82,15 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
     const mint = await createMint(ctx);
-    if (!ctx.index || !ctx.multiWalletVault || !mint) return;
+    if (
+      !ctx.index ||
+      !ctx.multiWalletVault ||
+      !ctx.wallet ||
+      !ctx.payer ||
+      !mint ||
+      !ctx.domainConfig
+    )
+      return;
 
     //create transaction manger
     const transactionManager = await createKeyPairSignerFromPrivateKeyBytes(
@@ -85,7 +101,7 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
       createUserArgs: [
         {
           member: transactionManager,
-          isPermanentMember: false,
+          role: UserRole.TransactionManager,
           transactionManagerUrl: "https://xyz.com",
         },
       ],
@@ -174,7 +190,7 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
 }
 
 const createMint = async (ctx: TestContext) => {
-  if (!ctx.multiWalletVault || !ctx.index) return;
+  if (!ctx.index || !ctx.multiWalletVault || !ctx.wallet || !ctx.payer) return;
   await fundMultiWalletVault(ctx, BigInt(10 ** 8));
   // Create ephemeral keypair
   const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(

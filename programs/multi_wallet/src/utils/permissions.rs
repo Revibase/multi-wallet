@@ -6,8 +6,6 @@ pub enum Permission {
     InitiateTransaction = 1 << 0,
     VoteTransaction = 1 << 1,
     ExecuteTransaction = 1 << 2,
-    IsPermanentMember = 1 << 3,
-    IsTransactionManager = 1 << 4,
 }
 
 /// Bitmask for permissions.

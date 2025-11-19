@@ -13,7 +13,7 @@ pub struct Settings {
     pub multi_wallet_bump: u8,
     pub bump: u8,
     pub settings_address_tree_index: u8,
-    pub _padding: [u8; 11],
+    pub _padding: [u8; 7],
 }
 
 impl Settings {

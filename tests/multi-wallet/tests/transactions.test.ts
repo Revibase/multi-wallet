@@ -26,7 +26,8 @@ export function runTransactionTests(getCtx: () => TestContext) {
   it("should handle ephemeral transactions", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.multiWalletVault || !ctx.index) return;
+    if (!ctx.index || !ctx.multiWalletVault || !ctx.wallet || !ctx.payer)
+      return;
     // Fund the wallet for transaction
     await fundMultiWalletVault(ctx, BigInt(10 ** 9 * 0.3));
 

@@ -1,7 +1,7 @@
 use crate::{
-    state::UserReadOnlyOrMutateArgs, AddMemberArgs, ChallengeArgs, DelegateOp, DomainConfig,
-    EditMemberArgs, KeyType, Member, MemberKey, MultisigError, Permission, PermissionCounts,
-    RemoveMemberArgs, TransactionActionType,
+    state::UserReadOnlyOrMutateArgs, utils::UserRole, AddMemberArgs, ChallengeArgs, DelegateOp,
+    DomainConfig, EditMemberArgs, KeyType, Member, MemberKey, MultisigError, Permission,
+    PermissionCounts, RemoveMemberArgs, TransactionActionType,
 };
 use anchor_lang::prelude::*;
 use std::collections::{HashMap, HashSet};
@@ -43,10 +43,10 @@ pub trait MultisigSettings {
             if p.has(Permission::ExecuteTransaction) {
                 permission_counts.executors += 1;
             }
-            if p.has(Permission::IsPermanentMember) {
+            if UserRole::from(member.role).eq(&UserRole::PermanentMember) {
                 permission_counts.permanent_members += 1;
             }
-            if p.has(Permission::IsTransactionManager) {
+            if UserRole::from(member.role).eq(&UserRole::TransactionManager) {
                 permission_counts.transaction_manager += 1;
                 require!(
                     p.has(Permission::InitiateTransaction),
@@ -58,10 +58,6 @@ pub trait MultisigSettings {
                 );
                 require!(
                     !p.has(Permission::ExecuteTransaction),
-                    MultisigError::TransactionManagerNotAllowed
-                );
-                require!(
-                    !p.has(Permission::IsPermanentMember),
                     MultisigError::TransactionManagerNotAllowed
                 );
             }
@@ -94,6 +90,7 @@ pub trait MultisigSettings {
 
         Ok(())
     }
+
     fn add_members<'a>(
         &mut self,
         settings: &Pubkey,
@@ -102,44 +99,47 @@ pub trait MultisigSettings {
         sysvar_slot_history: &Option<UncheckedAccount<'a>>,
         instructions_sysvar: Option<&UncheckedAccount<'a>>,
     ) -> Result<Vec<AddMemberArgs>> {
+        let mut new_member_data = vec![];
         for member in &new_members {
-            let is_perm = member.member.permissions.has(Permission::IsPermanentMember);
-            let is_tx_manager = member
-                .member
-                .permissions
-                .has(Permission::IsTransactionManager);
-            let is_permanent_member = match &member.user_args {
-                UserReadOnlyOrMutateArgs::Mutate(user_mut_args) => {
-                    user_mut_args.data.is_permanent_member
-                }
-                UserReadOnlyOrMutateArgs::Read(user_readonly_args) => {
-                    user_readonly_args.data.is_permanent_member
-                }
-            };
-            let is_transaction_manager = match &member.user_args {
-                UserReadOnlyOrMutateArgs::Mutate(user_mut_args) => {
-                    user_mut_args.data.transaction_manager_url.is_some()
-                }
-                UserReadOnlyOrMutateArgs::Read(user_readonly_args) => {
-                    user_readonly_args.data.transaction_manager_url.is_some()
-                }
-            };
+            let (role, has_transaction_manager_url, user_address_tree_index) =
+                match &member.user_args {
+                    UserReadOnlyOrMutateArgs::Mutate(a) => (
+                        a.data.role,
+                        a.data.transaction_manager_url.is_some(),
+                        a.data.user_address_tree_index,
+                    ),
+                    UserReadOnlyOrMutateArgs::Read(a) => (
+                        a.data.role,
+                        a.data.transaction_manager_url.is_some(),
+                        a.data.user_address_tree_index,
+                    ),
+                };
 
             require!(
-                is_permanent_member == is_perm && (!is_perm || member.set_as_delegate),
-                MultisigError::PermanentMemberNotAllowed
+                match role {
+                    UserRole::PermanentMember => member.set_as_delegate,
+
+                    UserRole::TransactionManager =>
+                        !member.set_as_delegate && has_transaction_manager_url,
+
+                    UserRole::Administrator => !member.set_as_delegate,
+
+                    UserRole::Member => true,
+                },
+                MultisigError::InvalidAccount
             );
 
-            require!(
-                is_transaction_manager == is_tx_manager
-                    && (!is_tx_manager || !member.set_as_delegate),
-                MultisigError::TransactionManagerNotAllowed
-            );
+            new_member_data.push(Member {
+                pubkey: member.member_key,
+                permissions: member.permissions,
+                role: role.to_u8(),
+                user_address_tree_index,
+            });
 
-            match member.member.pubkey.get_type() {
+            match member.member_key.get_type() {
                 KeyType::Ed25519 => {
                     if member.set_as_delegate {
-                        let expected_seed = member.member.pubkey.get_seed()?;
+                        let expected_seed = member.member_key.get_seed()?;
                         let has_signer = remaining_accounts
                             .iter()
                             .any(|f| f.is_signer && f.key.to_bytes().eq(&expected_seed));
@@ -182,7 +182,6 @@ pub trait MultisigSettings {
             }
         }
 
-        let new_member_data: Vec<_> = new_members.iter().map(|m| m.member).collect();
         self.extend_members(new_member_data)?;
 
         Ok(new_members)
@@ -196,7 +195,7 @@ pub trait MultisigSettings {
 
         if let Some(existing_perm_member) = members
             .iter()
-            .find(|m| m.permissions.has(Permission::IsPermanentMember))
+            .find(|m| UserRole::from(m.role).eq(&UserRole::PermanentMember))
         {
             require!(
                 !member_pubkeys
@@ -233,17 +232,7 @@ pub trait MultisigSettings {
                 .ok_or(MultisigError::InvalidArguments)?;
 
             require!(
-                existing_member
-                    .permissions
-                    .has(Permission::IsPermanentMember)
-                    .eq(&member.permissions.has(Permission::IsPermanentMember)),
-                MultisigError::PermanentMemberNotAllowed
-            );
-
-            require!(
-                !existing_member
-                    .permissions
-                    .has(Permission::IsTransactionManager),
+                UserRole::from(existing_member.role).ne(&UserRole::TransactionManager),
                 MultisigError::TransactionManagerNotAllowed
             );
 
@@ -254,13 +243,15 @@ pub trait MultisigSettings {
                 DelegateOp::Add | DelegateOp::Remove => {
                     let user_mut_args = member.user_args.ok_or(MultisigError::MissingUserArgs)?;
 
+                    require!(
+                        user_mut_args.data.role.eq(&UserRole::Member),
+                        MultisigError::InvalidAccount
+                    );
+
                     if member.delegate_operation == DelegateOp::Add {
                         members_to_add_delegate.push(AddMemberArgs {
-                            member: Member {
-                                pubkey,
-                                permissions: member.permissions,
-                                user_address_tree_index: existing_member.user_address_tree_index,
-                            },
+                            member_key: pubkey,
+                            permissions: member.permissions,
                             verify_args: None,
                             user_args: UserReadOnlyOrMutateArgs::Mutate(user_mut_args),
                             set_as_delegate: true,

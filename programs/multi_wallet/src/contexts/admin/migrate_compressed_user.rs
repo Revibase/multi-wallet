@@ -1,5 +1,5 @@
-use crate::state::{DomainConfig, ProofArgs, User, UserCreationArgs};
-use crate::{ADMIN_DOMAIN_CONFIG, LIGHT_CPI_SIGNER};
+use crate::state::{ProofArgs, User, UserCreationArgs};
+use crate::{ADMIN, LIGHT_CPI_SIGNER};
 use anchor_lang::prelude::*;
 use light_sdk::cpi::v2::{CpiAccounts, LightSystemProgramCpi};
 use light_sdk::cpi::{InvokeLightSystemProgram, LightCpiInstruction};
@@ -9,13 +9,9 @@ use light_sdk::instruction::ValidityProof;
 pub struct MigrateCompressedUser<'info> {
     #[account(
         mut,
-        address = admin_domain_config.load()?.authority,
+        address = ADMIN,
     )]
     pub authority: Signer<'info>,
-    #[account(
-        address = ADMIN_DOMAIN_CONFIG
-    )]
-    pub admin_domain_config: AccountLoader<'info, DomainConfig>,
 }
 
 impl<'info> MigrateCompressedUser<'info> {
@@ -39,6 +35,8 @@ impl<'info> MigrateCompressedUser<'info> {
 
         let (account_info, new_address_params) =
             User::create_user_account(user_creation_args, address_tree, args, Some(0))?;
+
+        account_info.invariant()?;
 
         LightSystemProgramCpi::new_cpi(
             LIGHT_CPI_SIGNER,

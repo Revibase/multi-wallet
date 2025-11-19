@@ -35,10 +35,6 @@
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "admin_domain_config",
-          "address": "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg"
         }
       ],
       "args": [
@@ -271,12 +267,30 @@
           "signer": true
         },
         {
+          "name": "authority",
+          "signer": true
+        },
+        {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
         },
         {
           "name": "admin_domain_config",
           "optional": true
+        },
+        {
+          "name": "whitelisted_address_trees",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119, 104, 105, 116, 101, 108, 105, 115, 116, 101, 100, 95, 97,
+                  100, 100, 114, 101, 115, 115, 95, 116, 114, 101, 101, 115
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -620,10 +634,6 @@
         {
           "name": "admin",
           "signer": true
-        },
-        {
-          "name": "admin_domain_config",
-          "address": "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg"
         }
       ],
       "args": [
@@ -646,7 +656,28 @@
         },
         {
           "name": "authority",
+          "writable": true,
           "signer": true
+        },
+        {
+          "name": "new_authority",
+          "signer": true,
+          "optional": true
+        },
+        {
+          "name": "whitelisted_address_trees",
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119, 104, 105, 116, 101, 108, 105, 115, 116, 101, 100, 95, 97,
+                  100, 100, 114, 101, 115, 115, 95, 116, 114, 101, 101, 115
+                ]
+              }
+            ]
+          }
         },
         {
           "name": "system_program",
@@ -704,11 +735,8 @@
         {
           "name": "authority",
           "writable": true,
-          "signer": true
-        },
-        {
-          "name": "admin_domain_config",
-          "address": "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg"
+          "signer": true,
+          "address": "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ"
         }
       ],
       "args": [
@@ -745,11 +773,8 @@
         {
           "name": "authority",
           "writable": true,
-          "signer": true
-        },
-        {
-          "name": "admin_domain_config",
-          "address": "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg"
+          "signer": true,
+          "address": "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ"
         }
       ],
       "args": [
@@ -1914,7 +1939,7 @@
     {
       "code": 6008,
       "name": "TransactionManagerNotAllowed",
-      "msg": "This operation cannot assign a transaction manager."
+      "msg": "Unable to assign a transaction manager."
     },
     {
       "code": 6009,
@@ -2059,7 +2084,7 @@
     {
       "code": 6037,
       "name": "DomainConfigIsMissing",
-      "msg": "Missing domain configuration account. Include it as a required account in this instruction."
+      "msg": "Missing domain configuration account."
     },
     {
       "code": 6038,
@@ -2089,10 +2114,18 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "member",
+            "name": "member_key",
             "type": {
               "defined": {
-                "name": "Member"
+                "name": "MemberKey"
+              }
+            }
+          },
+          {
+            "name": "permissions",
+            "type": {
+              "defined": {
+                "name": "Permissions"
               }
             }
           },
@@ -2343,12 +2376,24 @@
             }
           },
           {
-            "name": "authority",
-            "type": "pubkey"
-          },
-          {
             "name": "metadata_url",
             "type": "string"
+          },
+          {
+            "name": "authority_creation_args",
+            "type": {
+              "defined": {
+                "name": "UserCreationArgs"
+              }
+            }
+          },
+          {
+            "name": "compressed_proof_args",
+            "type": {
+              "defined": {
+                "name": "ProofArgs"
+              }
+            }
           }
         ]
       }
@@ -2401,8 +2446,12 @@
             "type": "pubkey"
           },
           {
-            "name": "is_permanent_member",
-            "type": "bool"
+            "name": "role",
+            "type": {
+              "defined": {
+                "name": "UserRole"
+              }
+            }
           },
           {
             "name": "transaction_manager_url",
@@ -2512,9 +2561,13 @@
             }
           },
           {
-            "name": "new_authority",
+            "name": "new_authority_args",
             "type": {
-              "option": "pubkey"
+              "option": {
+                "defined": {
+                  "name": "NewAuthorityArgs"
+                }
+              }
             }
           },
           {
@@ -2635,6 +2688,10 @@
             }
           },
           {
+            "name": "role",
+            "type": "u8"
+          },
+          {
             "name": "user_address_tree_index",
             "type": "u8"
           }
@@ -2657,6 +2714,30 @@
             "name": "key",
             "type": {
               "array": ["u8", 33]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "NewAuthorityArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority_creation_args",
+            "type": {
+              "defined": {
+                "name": "UserCreationArgs"
+              }
+            }
+          },
+          {
+            "name": "compressed_proof_args",
+            "type": {
+              "defined": {
+                "name": "ProofArgs"
+              }
             }
           }
         ]
@@ -2880,7 +2961,7 @@
           {
             "name": "_padding",
             "type": {
-              "array": ["u8", 11]
+              "array": ["u8", 7]
             }
           }
         ]
@@ -3219,8 +3300,12 @@
             }
           },
           {
-            "name": "is_permanent_member",
-            "type": "bool"
+            "name": "role",
+            "type": {
+              "defined": {
+                "name": "UserRole"
+              }
+            }
           },
           {
             "name": "delegated_to",
@@ -3337,6 +3422,26 @@
                 }
               }
             ]
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserRole",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Member"
+          },
+          {
+            "name": "PermanentMember"
+          },
+          {
+            "name": "TransactionManager"
+          },
+          {
+            "name": "Administrator"
           }
         ]
       }

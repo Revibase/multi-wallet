@@ -24,7 +24,6 @@ import {
   type Instruction,
   type InstructionWithAccounts,
   type InstructionWithData,
-  type ReadonlyAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableSignerAccount,
@@ -57,10 +56,9 @@ export function getMigrateCompressedSettingsDiscriminatorBytes() {
 
 export type MigrateCompressedSettingsInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountAuthority extends string | AccountMeta<string> = string,
-  TAccountAdminDomainConfig extends
+  TAccountAuthority extends
     | string
-    | AccountMeta<string> = "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg",
+    | AccountMeta<string> = "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -70,9 +68,6 @@ export type MigrateCompressedSettingsInstruction<
         ? WritableSignerAccount<TAccountAuthority> &
             AccountSignerMeta<TAccountAuthority>
         : TAccountAuthority,
-      TAccountAdminDomainConfig extends string
-        ? ReadonlyAccount<TAccountAdminDomainConfig>
-        : TAccountAdminDomainConfig,
       ...TRemainingAccounts,
     ]
   >;
@@ -130,10 +125,8 @@ export type MigrateCompressedSettingsInstructionExtraArgs = {
 
 export type MigrateCompressedSettingsInput<
   TAccountAuthority extends string = string,
-  TAccountAdminDomainConfig extends string = string,
 > = {
-  authority: TransactionSigner<TAccountAuthority>;
-  adminDomainConfig?: Address<TAccountAdminDomainConfig>;
+  authority?: TransactionSigner<TAccountAuthority>;
   args: MigrateCompressedSettingsInstructionDataArgs["args"];
   compressedProofArgs: MigrateCompressedSettingsInstructionDataArgs["compressedProofArgs"];
   settingsCreationArgs: MigrateCompressedSettingsInstructionDataArgs["settingsCreationArgs"];
@@ -142,29 +135,17 @@ export type MigrateCompressedSettingsInput<
 
 export function getMigrateCompressedSettingsInstruction<
   TAccountAuthority extends string,
-  TAccountAdminDomainConfig extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
-  input: MigrateCompressedSettingsInput<
-    TAccountAuthority,
-    TAccountAdminDomainConfig
-  >,
+  input: MigrateCompressedSettingsInput<TAccountAuthority>,
   config?: { programAddress?: TProgramAddress }
-): MigrateCompressedSettingsInstruction<
-  TProgramAddress,
-  TAccountAuthority,
-  TAccountAdminDomainConfig
-> {
+): MigrateCompressedSettingsInstruction<TProgramAddress, TAccountAuthority> {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
     authority: { value: input.authority ?? null, isWritable: true },
-    adminDomainConfig: {
-      value: input.adminDomainConfig ?? null,
-      isWritable: false,
-    },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -178,9 +159,9 @@ export function getMigrateCompressedSettingsInstruction<
   const resolverScope = { programAddress, accounts, args };
 
   // Resolve default values.
-  if (!accounts.adminDomainConfig.value) {
-    accounts.adminDomainConfig.value =
-      "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg" as Address<"5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg">;
+  if (!accounts.authority.value) {
+    accounts.authority.value =
+      "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ" as Address<"AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ">;
   }
 
   // Remaining accounts.
@@ -189,19 +170,14 @@ export function getMigrateCompressedSettingsInstruction<
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
-    accounts: [
-      getAccountMeta(accounts.authority),
-      getAccountMeta(accounts.adminDomainConfig),
-      ...remainingAccounts,
-    ],
+    accounts: [getAccountMeta(accounts.authority), ...remainingAccounts],
     data: getMigrateCompressedSettingsInstructionDataEncoder().encode(
       args as MigrateCompressedSettingsInstructionDataArgs
     ),
     programAddress,
   } as MigrateCompressedSettingsInstruction<
     TProgramAddress,
-    TAccountAuthority,
-    TAccountAdminDomainConfig
+    TAccountAuthority
   >);
 }
 
@@ -212,7 +188,6 @@ export type ParsedMigrateCompressedSettingsInstruction<
   programAddress: Address<TProgram>;
   accounts: {
     authority: TAccountMetas[0];
-    adminDomainConfig: TAccountMetas[1];
   };
   data: MigrateCompressedSettingsInstructionData;
 };
@@ -225,7 +200,7 @@ export function parseMigrateCompressedSettingsInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>
 ): ParsedMigrateCompressedSettingsInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 2) {
+  if (instruction.accounts.length < 1) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -237,10 +212,7 @@ export function parseMigrateCompressedSettingsInstruction<
   };
   return {
     programAddress: instruction.programAddress,
-    accounts: {
-      authority: getNextAccount(),
-      adminDomainConfig: getNextAccount(),
-    },
+    accounts: { authority: getNextAccount() },
     data: getMigrateCompressedSettingsInstructionDataDecoder().decode(
       instruction.data
     ),

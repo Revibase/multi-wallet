@@ -12,8 +12,6 @@ import {
   combineCodec,
   getAddressDecoder,
   getAddressEncoder,
-  getBooleanDecoder,
-  getBooleanEncoder,
   getOptionDecoder,
   getOptionEncoder,
   getStructDecoder,
@@ -32,20 +30,24 @@ import {
 import {
   getUserCreationArgsDecoder,
   getUserCreationArgsEncoder,
+  getUserRoleDecoder,
+  getUserRoleEncoder,
   type UserCreationArgs,
   type UserCreationArgsArgs,
+  type UserRole,
+  type UserRoleArgs,
 } from ".";
 
 export type CreateUserAccountArgs = {
   member: Address;
-  isPermanentMember: boolean;
+  role: UserRole;
   transactionManagerUrl: Option<string>;
   userCreationArgs: UserCreationArgs;
 };
 
 export type CreateUserAccountArgsArgs = {
   member: Address;
-  isPermanentMember: boolean;
+  role: UserRoleArgs;
   transactionManagerUrl: OptionOrNullable<string>;
   userCreationArgs: UserCreationArgsArgs;
 };
@@ -53,7 +55,7 @@ export type CreateUserAccountArgsArgs = {
 export function getCreateUserAccountArgsEncoder(): Encoder<CreateUserAccountArgsArgs> {
   return getStructEncoder([
     ["member", getAddressEncoder()],
-    ["isPermanentMember", getBooleanEncoder()],
+    ["role", getUserRoleEncoder()],
     [
       "transactionManagerUrl",
       getOptionEncoder(addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())),
@@ -65,7 +67,7 @@ export function getCreateUserAccountArgsEncoder(): Encoder<CreateUserAccountArgs
 export function getCreateUserAccountArgsDecoder(): Decoder<CreateUserAccountArgs> {
   return getStructDecoder([
     ["member", getAddressDecoder()],
-    ["isPermanentMember", getBooleanDecoder()],
+    ["role", getUserRoleDecoder()],
     [
       "transactionManagerUrl",
       getOptionDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),

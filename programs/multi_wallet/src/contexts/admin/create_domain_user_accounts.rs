@@ -1,6 +1,6 @@
 use crate::{
     state::{SettingsIndexWithAddress, UserMutArgs, WhitelistedAddressTree},
-    utils::SEED_WHITELISTED_ADDRESS_TREE,
+    utils::{UserRole, SEED_WHITELISTED_ADDRESS_TREE},
     CompressedSettings, DomainConfig, Member, MemberKey, MultisigError, MultisigSettings,
     Permission, Permissions, ProofArgs, Secp256r1Pubkey, SettingsMutArgs, User, UserCreationArgs,
     LIGHT_CPI_SIGNER,
@@ -69,12 +69,17 @@ impl<'info> CreateDomainUserAccount<'info> {
             .whitelisted_address_trees
             .extract_address_tree_index(address_tree)?;
 
+        let role = if args.is_permanent_member {
+            UserRole::PermanentMember
+        } else {
+            UserRole::Member
+        };
+
         let mut cpi = LightSystemProgramCpi::new_cpi(
             LIGHT_CPI_SIGNER,
             ValidityProof(compressed_proof_args.proof),
         );
         let mut delegated_to = None;
-        let mut transaction_manager_url = None;
         //allow domain authority to directly link user to a particular wallet owned by the domain authority
         if let Some(link_wallet_args) = args.link_wallet_args {
             let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
@@ -100,9 +105,7 @@ impl<'info> CreateDomainUserAccount<'info> {
                     && settings_data.members[0]
                         .pubkey
                         .eq(&MemberKey::convert_ed25519(ctx.accounts.authority.key)?)
-                    && !settings_data.members[0]
-                        .permissions
-                        .has(Permission::IsPermanentMember),
+                    && UserRole::from(settings_data.members[0].role).eq(&UserRole::Administrator),
                 MultisigError::InvalidArguments
             );
 
@@ -110,11 +113,6 @@ impl<'info> CreateDomainUserAccount<'info> {
 
             let mut permissions = vec![Permission::VoteTransaction, Permission::ExecuteTransaction];
 
-            if args.is_permanent_member {
-                permissions.push(Permission::IsPermanentMember);
-            }
-
-            // If transaction manager is provided, ensure it has a valid API URL and add the authority as a transaction manager
             if let Some(transaction_manger) = link_wallet_args.transaction_manager {
                 let transaction_manager_account = LightAccount::<User>::new_mut(
                     &crate::ID,
@@ -126,19 +124,19 @@ impl<'info> CreateDomainUserAccount<'info> {
                 require!(
                     transaction_manager_account
                         .transaction_manager_url
-                        .is_some(),
-                    MultisigError::InvalidAccount
+                        .is_some()
+                        && transaction_manager_account
+                            .role
+                            .eq(&UserRole::TransactionManager),
+                    MultisigError::TransactionManagerNotAllowed
                 );
-
-                transaction_manager_url =
-                    transaction_manager_account.transaction_manager_url.clone();
 
                 new_members.push(Member {
                     pubkey: transaction_manager_account.member,
                     permissions: Permissions::from_permissions(vec![
                         Permission::InitiateTransaction,
-                        Permission::IsTransactionManager,
                     ]),
+                    role: UserRole::TransactionManager.to_u8(),
                     user_address_tree_index: transaction_manager_account.user_address_tree_index,
                 });
                 cpi = cpi.with_light_account(transaction_manager_account)?;
@@ -149,6 +147,7 @@ impl<'info> CreateDomainUserAccount<'info> {
             new_members.push(Member {
                 pubkey: MemberKey::convert_secp256r1(&args.member)?,
                 permissions: Permissions::from_permissions(permissions),
+                role: role.to_u8(),
                 user_address_tree_index,
             });
 
@@ -159,17 +158,21 @@ impl<'info> CreateDomainUserAccount<'info> {
             cpi = cpi.with_light_account(settings_account)?;
         }
 
+        let user = User {
+            member: MemberKey::convert_secp256r1(&args.member)?,
+            role,
+            domain_config: Some(ctx.accounts.domain_config.key()),
+            delegated_to,
+            transaction_manager_url: None,
+            user_address_tree_index,
+        };
+
+        user.invariant()?;
+
         let (account_info, new_address_params) = User::create_user_account(
             args.user_account_creation_args,
             address_tree,
-            User {
-                member: MemberKey::convert_secp256r1(&args.member)?,
-                is_permanent_member: args.is_permanent_member,
-                domain_config: Some(ctx.accounts.domain_config.key()),
-                delegated_to,
-                transaction_manager_url,
-                user_address_tree_index,
-            },
+            user,
             Some(cpi.account_infos.len() as u8),
         )?;
 

@@ -16,7 +16,7 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
   it("should add a new member", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.index || !ctx.multiWalletVault) return;
+    if (!ctx.index || !ctx.multiWalletVault || !ctx.payer) return;
     await addNewMember(ctx);
 
     // Verify member was added
@@ -37,7 +37,9 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
   it("remove delegate permission for new member", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.index || !ctx.multiWalletVault) return;
+    if (!ctx.index || !ctx.multiWalletVault || !ctx.payer || !ctx.wallet)
+      return;
+    await addNewMember(ctx);
     // Test updating permissions for existing members
     const { instructions, secp256r1VerifyInput } = await changeConfig({
       payer: ctx.payer,
@@ -48,7 +50,7 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
           type: "EditPermissions",
           members: [
             {
-              member: ctx.wallet.address,
+              member: ctx.payer.address,
               permissions: { initiate: true, vote: true, execute: true },
               delegateOperation: DelegateOp.Remove,
             },
@@ -90,7 +92,8 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
   it("should remove a member", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
-    if (!ctx.index || !ctx.multiWalletVault) return;
+    if (!ctx.index || !ctx.multiWalletVault || !ctx.payer || !ctx.wallet)
+      return;
 
     await addNewMember(ctx);
     const { instructions, secp256r1VerifyInput } = await changeConfig({
@@ -151,7 +154,7 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
 }
 
 async function addNewMember(ctx: TestContext) {
-  if (!ctx.index || !ctx.multiWalletVault) return;
+  if (!ctx.index || !ctx.multiWalletVault || !ctx.payer || !ctx.wallet) return;
   const { instructions, secp256r1VerifyInput } = await changeConfig({
     payer: ctx.payer,
     compressed: ctx.compressed,

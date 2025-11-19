@@ -30,7 +30,7 @@ export const MULTI_WALLET_ERROR__PERMANENT_MEMBER_NOT_ALLOWED = 0x1775; // 6005
 export const MULTI_WALLET_ERROR__ONLY_ONE_PERMANENT_MEMBER_ALLOWED = 0x1776; // 6006
 /** OnlyOneTransactionManagerAllowed: Only one transaction manager is allowed per wallet. */
 export const MULTI_WALLET_ERROR__ONLY_ONE_TRANSACTION_MANAGER_ALLOWED = 0x1777; // 6007
-/** TransactionManagerNotAllowed: This operation cannot assign a transaction manager. */
+/** TransactionManagerNotAllowed: Unable to assign a transaction manager. */
 export const MULTI_WALLET_ERROR__TRANSACTION_MANAGER_NOT_ALLOWED = 0x1778; // 6008
 /** EmptyMembers: No members provided. A multisig wallet must contain at least one member. */
 export const MULTI_WALLET_ERROR__EMPTY_MEMBERS = 0x1779; // 6009
@@ -88,7 +88,7 @@ export const MULTI_WALLET_ERROR__INVALID_SYSVAR_DATA_FORMAT = 0x1792; // 6034
 export const MULTI_WALLET_ERROR__SLOT_NUMBER_NOT_FOUND = 0x1793; // 6035
 /** DomainConfigIsDisabled: The domain configuration account is disabled. Please contact support or try again later. */
 export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_DISABLED = 0x1794; // 6036
-/** DomainConfigIsMissing: Missing domain configuration account. Include it as a required account in this instruction. */
+/** DomainConfigIsMissing: Missing domain configuration account. */
 export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_MISSING = 0x1795; // 6037
 /** MemberDoesNotBelongToDomainConfig: This member is not registered under the provided domain configuration. */
 export const MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG = 0x1796; // 6038
@@ -148,7 +148,7 @@ if (process.env.NODE_ENV !== "production") {
   multiWalletErrorMessages = {
     [MULTI_WALLET_ERROR__ALREADY_DELEGATED]: `This member is already delegated to another wallet.`,
     [MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_DISABLED]: `The domain configuration account is disabled. Please contact support or try again later.`,
-    [MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_MISSING]: `Missing domain configuration account. Include it as a required account in this instruction.`,
+    [MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_MISSING]: `Missing domain configuration account.`,
     [MULTI_WALLET_ERROR__DUPLICATE_MEMBER]: `Duplicate public keys detected among members. Each member must have a unique key.`,
     [MULTI_WALLET_ERROR__DURABLE_NONCE_DETECTED]: `Durable nonce detected: this program does not support transactions using a durable nonce.`,
     [MULTI_WALLET_ERROR__EMPTY_MEMBERS]: `No members provided. A multisig wallet must contain at least one member.`,
@@ -184,7 +184,7 @@ if (process.env.NODE_ENV !== "production") {
     [MULTI_WALLET_ERROR__SLOT_NUMBER_NOT_FOUND]: `The specified slot number was not found in the provided slot history.`,
     [MULTI_WALLET_ERROR__TOO_MANY_MEMBERS]: `Too many members: a maximum of 4 members are supported.`,
     [MULTI_WALLET_ERROR__TRANSACTION_HAS_EXPIRED]: `This transaction has expired. It must be executed within 3 minutes of approval.`,
-    [MULTI_WALLET_ERROR__TRANSACTION_MANAGER_NOT_ALLOWED]: `This operation cannot assign a transaction manager.`,
+    [MULTI_WALLET_ERROR__TRANSACTION_MANAGER_NOT_ALLOWED]: `Unable to assign a transaction manager.`,
     [MULTI_WALLET_ERROR__TRANSACTION_NOT_APPROVED]: `This transaction has not yet reached the required approval threshold.`,
     [MULTI_WALLET_ERROR__UNAUTHORISED_TO_CLOSE_TRANSACTION_BUFFER]: `Only the transaction creator or rent payer may close this transaction buffer.`,
     [MULTI_WALLET_ERROR__UNEXPECTED_SIGNER]: `Member is not part of the expected signers for this transaction.`,

@@ -52,9 +52,6 @@ export type AddWhitelistedAddressTreesInstruction<
   TAccountSystemProgram extends
     | string
     | AccountMeta<string> = "11111111111111111111111111111111",
-  TAccountAdminDomainConfig extends
-    | string
-    | AccountMeta<string> = "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -70,9 +67,6 @@ export type AddWhitelistedAddressTreesInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
-      TAccountAdminDomainConfig extends string
-        ? ReadonlyAccount<TAccountAdminDomainConfig>
-        : TAccountAdminDomainConfig,
       ...TRemainingAccounts,
     ]
   >;
@@ -124,12 +118,10 @@ export type AddWhitelistedAddressTreesAsyncInput<
   TAccountWhitelistedAddressTrees extends string = string,
   TAccountPayer extends string = string,
   TAccountSystemProgram extends string = string,
-  TAccountAdminDomainConfig extends string = string,
 > = {
   whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
   payer: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
-  adminDomainConfig?: Address<TAccountAdminDomainConfig>;
   addressTree: AddWhitelistedAddressTreesInstructionDataArgs["addressTree"];
   remainingAccounts: AddWhitelistedAddressTreesInstructionExtraArgs["remainingAccounts"];
 };
@@ -138,14 +130,12 @@ export async function getAddWhitelistedAddressTreesInstructionAsync<
   TAccountWhitelistedAddressTrees extends string,
   TAccountPayer extends string,
   TAccountSystemProgram extends string,
-  TAccountAdminDomainConfig extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
   input: AddWhitelistedAddressTreesAsyncInput<
     TAccountWhitelistedAddressTrees,
     TAccountPayer,
-    TAccountSystemProgram,
-    TAccountAdminDomainConfig
+    TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress }
 ): Promise<
@@ -153,8 +143,7 @@ export async function getAddWhitelistedAddressTreesInstructionAsync<
     TProgramAddress,
     TAccountWhitelistedAddressTrees,
     TAccountPayer,
-    TAccountSystemProgram,
-    TAccountAdminDomainConfig
+    TAccountSystemProgram
   >
 > {
   // Program address.
@@ -168,10 +157,6 @@ export async function getAddWhitelistedAddressTreesInstructionAsync<
     },
     payer: { value: input.payer ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
-    adminDomainConfig: {
-      value: input.adminDomainConfig ?? null,
-      isWritable: false,
-    },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -202,10 +187,6 @@ export async function getAddWhitelistedAddressTreesInstructionAsync<
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
-  if (!accounts.adminDomainConfig.value) {
-    accounts.adminDomainConfig.value =
-      "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg" as Address<"5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg">;
-  }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
@@ -217,7 +198,6 @@ export async function getAddWhitelistedAddressTreesInstructionAsync<
       getAccountMeta(accounts.whitelistedAddressTrees),
       getAccountMeta(accounts.payer),
       getAccountMeta(accounts.systemProgram),
-      getAccountMeta(accounts.adminDomainConfig),
       ...remainingAccounts,
     ],
     data: getAddWhitelistedAddressTreesInstructionDataEncoder().encode(
@@ -228,8 +208,7 @@ export async function getAddWhitelistedAddressTreesInstructionAsync<
     TProgramAddress,
     TAccountWhitelistedAddressTrees,
     TAccountPayer,
-    TAccountSystemProgram,
-    TAccountAdminDomainConfig
+    TAccountSystemProgram
   >);
 }
 
@@ -237,12 +216,10 @@ export type AddWhitelistedAddressTreesInput<
   TAccountWhitelistedAddressTrees extends string = string,
   TAccountPayer extends string = string,
   TAccountSystemProgram extends string = string,
-  TAccountAdminDomainConfig extends string = string,
 > = {
   whitelistedAddressTrees: Address<TAccountWhitelistedAddressTrees>;
   payer: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
-  adminDomainConfig?: Address<TAccountAdminDomainConfig>;
   addressTree: AddWhitelistedAddressTreesInstructionDataArgs["addressTree"];
   remainingAccounts: AddWhitelistedAddressTreesInstructionExtraArgs["remainingAccounts"];
 };
@@ -251,22 +228,19 @@ export function getAddWhitelistedAddressTreesInstruction<
   TAccountWhitelistedAddressTrees extends string,
   TAccountPayer extends string,
   TAccountSystemProgram extends string,
-  TAccountAdminDomainConfig extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
   input: AddWhitelistedAddressTreesInput<
     TAccountWhitelistedAddressTrees,
     TAccountPayer,
-    TAccountSystemProgram,
-    TAccountAdminDomainConfig
+    TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress }
 ): AddWhitelistedAddressTreesInstruction<
   TProgramAddress,
   TAccountWhitelistedAddressTrees,
   TAccountPayer,
-  TAccountSystemProgram,
-  TAccountAdminDomainConfig
+  TAccountSystemProgram
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -279,10 +253,6 @@ export function getAddWhitelistedAddressTreesInstruction<
     },
     payer: { value: input.payer ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
-    adminDomainConfig: {
-      value: input.adminDomainConfig ?? null,
-      isWritable: false,
-    },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -300,10 +270,6 @@ export function getAddWhitelistedAddressTreesInstruction<
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
-  if (!accounts.adminDomainConfig.value) {
-    accounts.adminDomainConfig.value =
-      "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg" as Address<"5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg">;
-  }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
@@ -315,7 +281,6 @@ export function getAddWhitelistedAddressTreesInstruction<
       getAccountMeta(accounts.whitelistedAddressTrees),
       getAccountMeta(accounts.payer),
       getAccountMeta(accounts.systemProgram),
-      getAccountMeta(accounts.adminDomainConfig),
       ...remainingAccounts,
     ],
     data: getAddWhitelistedAddressTreesInstructionDataEncoder().encode(
@@ -326,8 +291,7 @@ export function getAddWhitelistedAddressTreesInstruction<
     TProgramAddress,
     TAccountWhitelistedAddressTrees,
     TAccountPayer,
-    TAccountSystemProgram,
-    TAccountAdminDomainConfig
+    TAccountSystemProgram
   >);
 }
 
@@ -340,7 +304,6 @@ export type ParsedAddWhitelistedAddressTreesInstruction<
     whitelistedAddressTrees: TAccountMetas[0];
     payer: TAccountMetas[1];
     systemProgram: TAccountMetas[2];
-    adminDomainConfig: TAccountMetas[3];
   };
   data: AddWhitelistedAddressTreesInstructionData;
 };
@@ -353,7 +316,7 @@ export function parseAddWhitelistedAddressTreesInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>
 ): ParsedAddWhitelistedAddressTreesInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 4) {
+  if (instruction.accounts.length < 3) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -369,7 +332,6 @@ export function parseAddWhitelistedAddressTreesInstruction<
       whitelistedAddressTrees: getNextAccount(),
       payer: getNextAccount(),
       systemProgram: getNextAccount(),
-      adminDomainConfig: getNextAccount(),
     },
     data: getAddWhitelistedAddressTreesInstructionDataDecoder().decode(
       instruction.data
