@@ -24,7 +24,7 @@ pub struct LinkWalletArgs {
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct CreateDomainUserAccountArgs {
     pub member: Secp256r1Pubkey,
-    pub is_permanent_member: bool,
+    pub role: UserRole,
     pub user_account_creation_args: UserCreationArgs,
     pub link_wallet_args: Option<LinkWalletArgs>,
 }
@@ -68,12 +68,6 @@ impl<'info> CreateDomainUserAccount<'info> {
             .accounts
             .whitelisted_address_trees
             .extract_address_tree_index(address_tree)?;
-
-        let role = if args.is_permanent_member {
-            UserRole::PermanentMember
-        } else {
-            UserRole::Member
-        };
 
         let mut cpi = LightSystemProgramCpi::new_cpi(
             LIGHT_CPI_SIGNER,
@@ -147,7 +141,7 @@ impl<'info> CreateDomainUserAccount<'info> {
             new_members.push(Member {
                 pubkey: MemberKey::convert_secp256r1(&args.member)?,
                 permissions: Permissions::from_permissions(permissions),
-                role: role.to_u8(),
+                role: args.role.to_u8(),
                 user_address_tree_index,
             });
 
@@ -160,7 +154,7 @@ impl<'info> CreateDomainUserAccount<'info> {
 
         let user = User {
             member: MemberKey::convert_secp256r1(&args.member)?,
-            role,
+            role: args.role,
             domain_config: Some(ctx.accounts.domain_config.key()),
             delegated_to,
             transaction_manager_url: None,

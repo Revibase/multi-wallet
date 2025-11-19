@@ -10,8 +10,6 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
-  getBooleanDecoder,
-  getBooleanEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getOptionDecoder,
@@ -49,6 +47,8 @@ import {
   getSecp256r1PubkeyEncoder,
   getUserCreationArgsDecoder,
   getUserCreationArgsEncoder,
+  getUserRoleDecoder,
+  getUserRoleEncoder,
   type LinkWalletArgs,
   type LinkWalletArgsArgs,
   type ProofArgs,
@@ -57,6 +57,8 @@ import {
   type Secp256r1PubkeyArgs,
   type UserCreationArgs,
   type UserCreationArgsArgs,
+  type UserRole,
+  type UserRoleArgs,
 } from "../types";
 
 export const CREATE_DOMAIN_USER_ACCOUNT_DISCRIMINATOR = new Uint8Array([4]);
@@ -100,7 +102,7 @@ export type CreateDomainUserAccountInstructionData = {
   discriminator: ReadonlyUint8Array;
   compressedProofArgs: ProofArgs;
   member: Secp256r1Pubkey;
-  isPermanentMember: boolean;
+  role: UserRole;
   userAccountCreationArgs: UserCreationArgs;
   linkWalletArgs: Option<LinkWalletArgs>;
 };
@@ -108,7 +110,7 @@ export type CreateDomainUserAccountInstructionData = {
 export type CreateDomainUserAccountInstructionDataArgs = {
   compressedProofArgs: ProofArgsArgs;
   member: Secp256r1PubkeyArgs;
-  isPermanentMember: boolean;
+  role: UserRoleArgs;
   userAccountCreationArgs: UserCreationArgsArgs;
   linkWalletArgs: OptionOrNullable<LinkWalletArgsArgs>;
 };
@@ -119,7 +121,7 @@ export function getCreateDomainUserAccountInstructionDataEncoder(): Encoder<Crea
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["compressedProofArgs", getProofArgsEncoder()],
       ["member", getSecp256r1PubkeyEncoder()],
-      ["isPermanentMember", getBooleanEncoder()],
+      ["role", getUserRoleEncoder()],
       ["userAccountCreationArgs", getUserCreationArgsEncoder()],
       ["linkWalletArgs", getOptionEncoder(getLinkWalletArgsEncoder())],
     ]),
@@ -135,7 +137,7 @@ export function getCreateDomainUserAccountInstructionDataDecoder(): Decoder<Crea
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["compressedProofArgs", getProofArgsDecoder()],
     ["member", getSecp256r1PubkeyDecoder()],
-    ["isPermanentMember", getBooleanDecoder()],
+    ["role", getUserRoleDecoder()],
     ["userAccountCreationArgs", getUserCreationArgsDecoder()],
     ["linkWalletArgs", getOptionDecoder(getLinkWalletArgsDecoder())],
   ]);
@@ -167,7 +169,7 @@ export type CreateDomainUserAccountAsyncInput<
   whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
   compressedProofArgs: CreateDomainUserAccountInstructionDataArgs["compressedProofArgs"];
   member: CreateDomainUserAccountInstructionDataArgs["member"];
-  isPermanentMember: CreateDomainUserAccountInstructionDataArgs["isPermanentMember"];
+  role: CreateDomainUserAccountInstructionDataArgs["role"];
   userAccountCreationArgs: CreateDomainUserAccountInstructionDataArgs["userAccountCreationArgs"];
   linkWalletArgs: CreateDomainUserAccountInstructionDataArgs["linkWalletArgs"];
   remainingAccounts: CreateDomainUserAccountInstructionExtraArgs["remainingAccounts"];
@@ -273,7 +275,7 @@ export type CreateDomainUserAccountInput<
   whitelistedAddressTrees: Address<TAccountWhitelistedAddressTrees>;
   compressedProofArgs: CreateDomainUserAccountInstructionDataArgs["compressedProofArgs"];
   member: CreateDomainUserAccountInstructionDataArgs["member"];
-  isPermanentMember: CreateDomainUserAccountInstructionDataArgs["isPermanentMember"];
+  role: CreateDomainUserAccountInstructionDataArgs["role"];
   userAccountCreationArgs: CreateDomainUserAccountInstructionDataArgs["userAccountCreationArgs"];
   linkWalletArgs: CreateDomainUserAccountInstructionDataArgs["linkWalletArgs"];
   remainingAccounts: CreateDomainUserAccountInstructionExtraArgs["remainingAccounts"];

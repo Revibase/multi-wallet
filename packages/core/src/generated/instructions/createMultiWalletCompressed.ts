@@ -10,8 +10,6 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
-  getBooleanDecoder,
-  getBooleanEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getOptionDecoder,
@@ -44,6 +42,8 @@ import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
+  getDelegateOpDecoder,
+  getDelegateOpEncoder,
   getProofArgsDecoder,
   getProofArgsEncoder,
   getSecp256r1VerifyArgsDecoder,
@@ -52,6 +52,8 @@ import {
   getSettingsCreationArgsEncoder,
   getUserMutArgsDecoder,
   getUserMutArgsEncoder,
+  type DelegateOp,
+  type DelegateOpArgs,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgs,
@@ -130,7 +132,7 @@ export type CreateMultiWalletCompressedInstructionData = {
   settingsCreation: SettingsCreationArgs;
   userMutArgs: UserMutArgs;
   settingsIndex: bigint;
-  setAsDelegate: boolean;
+  delegateOperation: DelegateOp;
 };
 
 export type CreateMultiWalletCompressedInstructionDataArgs = {
@@ -139,7 +141,7 @@ export type CreateMultiWalletCompressedInstructionDataArgs = {
   settingsCreation: SettingsCreationArgsArgs;
   userMutArgs: UserMutArgsArgs;
   settingsIndex: number | bigint;
-  setAsDelegate: boolean;
+  delegateOperation: DelegateOpArgs;
 };
 
 export function getCreateMultiWalletCompressedInstructionDataEncoder(): Encoder<CreateMultiWalletCompressedInstructionDataArgs> {
@@ -154,7 +156,7 @@ export function getCreateMultiWalletCompressedInstructionDataEncoder(): Encoder<
       ["settingsCreation", getSettingsCreationArgsEncoder()],
       ["userMutArgs", getUserMutArgsEncoder()],
       ["settingsIndex", getU128Encoder()],
-      ["setAsDelegate", getBooleanEncoder()],
+      ["delegateOperation", getDelegateOpEncoder()],
     ]),
     (value) => ({
       ...value,
@@ -171,7 +173,7 @@ export function getCreateMultiWalletCompressedInstructionDataDecoder(): Decoder<
     ["settingsCreation", getSettingsCreationArgsDecoder()],
     ["userMutArgs", getUserMutArgsDecoder()],
     ["settingsIndex", getU128Decoder()],
-    ["setAsDelegate", getBooleanDecoder()],
+    ["delegateOperation", getDelegateOpDecoder()],
   ]);
 }
 
@@ -212,7 +214,7 @@ export type CreateMultiWalletCompressedAsyncInput<
   settingsCreation: CreateMultiWalletCompressedInstructionDataArgs["settingsCreation"];
   userMutArgs: CreateMultiWalletCompressedInstructionDataArgs["userMutArgs"];
   settingsIndex: CreateMultiWalletCompressedInstructionDataArgs["settingsIndex"];
-  setAsDelegate: CreateMultiWalletCompressedInstructionDataArgs["setAsDelegate"];
+  delegateOperation: CreateMultiWalletCompressedInstructionDataArgs["delegateOperation"];
   remainingAccounts: CreateMultiWalletCompressedInstructionExtraArgs["remainingAccounts"];
 };
 
@@ -378,7 +380,7 @@ export type CreateMultiWalletCompressedInput<
   settingsCreation: CreateMultiWalletCompressedInstructionDataArgs["settingsCreation"];
   userMutArgs: CreateMultiWalletCompressedInstructionDataArgs["userMutArgs"];
   settingsIndex: CreateMultiWalletCompressedInstructionDataArgs["settingsIndex"];
-  setAsDelegate: CreateMultiWalletCompressedInstructionDataArgs["setAsDelegate"];
+  delegateOperation: CreateMultiWalletCompressedInstructionDataArgs["delegateOperation"];
   remainingAccounts: CreateMultiWalletCompressedInstructionExtraArgs["remainingAccounts"];
 };
 

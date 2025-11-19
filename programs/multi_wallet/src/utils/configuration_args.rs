@@ -17,7 +17,7 @@ pub struct AddMemberArgs {
     pub permissions: Permissions,
     pub verify_args: Option<Secp256r1VerifyArgs>,
     pub user_args: UserReadOnlyOrMutateArgs,
-    pub set_as_delegate: bool,
+    pub delegate_operation: DelegateOp,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug)]

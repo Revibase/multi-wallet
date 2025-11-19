@@ -1,5 +1,5 @@
 use crate::state::SettingsIndexWithAddress;
-use crate::utils::{KeyType, UserRole};
+use crate::utils::{DelegateOp, KeyType, UserRole};
 use crate::{AddMemberArgs, MemberKey, MultisigError, RemoveMemberArgs, SEED_USER};
 use anchor_lang::prelude::*;
 use light_sdk::address::NewAddressParamsAssignedPacked;
@@ -82,6 +82,10 @@ impl User {
                 self.domain_config.is_some(),
                 MultisigError::DomainConfigIsMissing
             );
+            require!(
+                self.role.eq(&UserRole::Member) || self.role.eq(&UserRole::PermanentMember),
+                MultisigError::InvalidAccount
+            );
         }
         Ok(())
     }
@@ -135,7 +139,7 @@ impl User {
                     final_account_infos.push(User::handle_add_delegate(
                         pk.user_args,
                         &settings_index_with_address,
-                        pk.set_as_delegate,
+                        pk.delegate_operation,
                         light_cpi_accounts,
                     )?);
                 }
@@ -148,7 +152,7 @@ impl User {
     pub fn handle_add_delegate(
         user_args: UserReadOnlyOrMutateArgs,
         settings_index_with_address: &SettingsIndexWithAddress,
-        set_as_delegate: bool,
+        delegate_operation: DelegateOp,
         light_cpi_accounts: &CpiAccounts,
     ) -> Result<LightAccount<User>> {
         match user_args {
@@ -167,7 +171,7 @@ impl User {
                     );
                 }
 
-                if set_as_delegate {
+                if delegate_operation.eq(&DelegateOp::Add) {
                     user_account.delegated_to = Some(settings_index_with_address.clone());
                 }
 

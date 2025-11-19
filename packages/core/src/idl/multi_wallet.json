@@ -488,8 +488,12 @@
           "type": "u128"
         },
         {
-          "name": "set_as_delegate",
-          "type": "bool"
+          "name": "delegate_operation",
+          "type": {
+            "defined": {
+              "name": "DelegateOp"
+            }
+          }
         }
       ]
     },
@@ -2144,8 +2148,12 @@
             }
           },
           {
-            "name": "set_as_delegate",
-            "type": "bool"
+            "name": "delegate_operation",
+            "type": {
+              "defined": {
+                "name": "DelegateOp"
+              }
+            }
           }
         ]
       }
@@ -2408,8 +2416,12 @@
             }
           },
           {
-            "name": "is_permanent_member",
-            "type": "bool"
+            "name": "role",
+            "type": {
+              "defined": {
+                "name": "UserRole"
+              }
+            }
           },
           {
             "name": "user_account_creation_args",

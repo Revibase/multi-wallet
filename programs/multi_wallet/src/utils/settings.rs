@@ -117,14 +117,15 @@ pub trait MultisigSettings {
 
             require!(
                 match role {
-                    UserRole::PermanentMember => member.set_as_delegate,
+                    UserRole::PermanentMember => member.delegate_operation.eq(&DelegateOp::Add),
 
                     UserRole::TransactionManager =>
-                        !member.set_as_delegate && has_transaction_manager_url,
+                        member.delegate_operation.eq(&DelegateOp::Ignore)
+                            && has_transaction_manager_url,
 
-                    UserRole::Administrator => !member.set_as_delegate,
+                    UserRole::Administrator => member.delegate_operation.eq(&DelegateOp::Ignore),
 
-                    UserRole::Member => true,
+                    UserRole::Member => member.delegate_operation.ne(&DelegateOp::Remove),
                 },
                 MultisigError::InvalidAccount
             );
@@ -138,7 +139,7 @@ pub trait MultisigSettings {
 
             match member.member_key.get_type() {
                 KeyType::Ed25519 => {
-                    if member.set_as_delegate {
+                    if member.delegate_operation.eq(&DelegateOp::Add) {
                         let expected_seed = member.member_key.get_seed()?;
                         let has_signer = remaining_accounts
                             .iter()
@@ -254,7 +255,7 @@ pub trait MultisigSettings {
                             permissions: member.permissions,
                             verify_args: None,
                             user_args: UserReadOnlyOrMutateArgs::Mutate(user_mut_args),
-                            set_as_delegate: true,
+                            delegate_operation: member.delegate_operation,
                         });
                     } else {
                         members_to_remove_delegate.push(RemoveMemberArgs {

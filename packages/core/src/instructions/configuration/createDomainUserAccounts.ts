@@ -8,6 +8,7 @@ import {
   type SettingsMutArgs,
   type User,
   type UserMutArgs,
+  UserRole,
 } from "../../generated";
 import { Secp256r1Key } from "../../types";
 import {
@@ -26,7 +27,7 @@ import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 
 interface UserCreationArgs {
   member: Secp256r1Key;
-  isPermanentMember: boolean;
+  role: UserRole.Member | UserRole.PermanentMember;
   index?: number | bigint;
   settingsAddressTreeIndex?: number;
   transactionManager?: {
@@ -145,7 +146,7 @@ export async function createDomainUserAccounts({
     member: getSecp256r1PubkeyDecoder().decode(
       createUserArgs.member.toBuffer()
     ),
-    isPermanentMember: createUserArgs.isPermanentMember,
+    role: createUserArgs.role,
     linkWalletArgs: settingsMutArgs
       ? some({
           settingsMutArgs,

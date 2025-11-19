@@ -2,6 +2,7 @@ import {
   createDomainUserAccounts,
   createUserAccounts,
   createWallet,
+  DelegateOp,
   fetchGlobalCounter,
   fetchSettingsAccountData,
   fetchUserAccountData,
@@ -65,7 +66,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
       domainConfig: ctx.domainConfig,
       createUserArgs: {
         member: secp256r1Key,
-        isPermanentMember: true,
+        role: UserRole.PermanentMember,
         index: ctx.index,
         transactionManager: {
           member: transactionManager.address,
@@ -120,7 +121,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
       domainConfig: ctx.domainConfig,
       createUserArgs: {
         member: new Secp256r1Key(secp256r1Keys.publicKey),
-        isPermanentMember: true,
+        role: UserRole.PermanentMember,
       },
     });
 
@@ -152,7 +153,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
       payer: ctx.payer,
       initialMember: signedSigner,
       index: globalCounter.data.index,
-      setAsDelegate: true,
+      delegateOperation: DelegateOp.Add,
     });
 
     if (secp256r1VerifyInput.length > 0) {

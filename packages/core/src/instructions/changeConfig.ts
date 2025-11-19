@@ -90,7 +90,7 @@ export async function changeConfig({
                   ).address,
                   type: "User" as const,
                 }
-              : m.setAsDelegate
+              : m.delegateOperation === DelegateOp.Add
                 ? {
                     address: (
                       await getUserAccountAddress(
@@ -241,12 +241,12 @@ export async function changeConfig({
                   userMutArgs: userArgs,
                   isTransactionManager: m.isTransactionManager,
                   pubkey: m.member,
-                  setAsDelegate: m.setAsDelegate,
+                  delegateOperation: m.delegateOperation,
                 })
               );
             }
           } else {
-            if (m.setAsDelegate) {
+            if (m.delegateOperation === DelegateOp.Add) {
               packedAccounts.addPreAccounts([
                 {
                   address: m.member.address,
@@ -258,7 +258,9 @@ export async function changeConfig({
 
             const userArgs = await getUserArgs(
               userMutArgs,
-              m.setAsDelegate ? m.member.address : m.member,
+              m.delegateOperation === DelegateOp.Add
+                ? m.member.address
+                : m.member,
               m.userAddressTreeIndex
             );
             if (userArgs) {
@@ -269,7 +271,7 @@ export async function changeConfig({
                   userMutArgs: userArgs,
                   isTransactionManager: m.isTransactionManager,
                   pubkey: m.member,
-                  setAsDelegate: m.setAsDelegate,
+                  delegateOperation: m.delegateOperation,
                 })
               );
             }
@@ -424,19 +426,19 @@ function convertAddMember({
   permissionArgs,
   index,
   userMutArgs,
-  setAsDelegate,
+  delegateOperation,
   isTransactionManager,
 }: {
   pubkey: TransactionSigner | SignedSecp256r1Key | Address;
   permissionArgs: PermissionArgs;
   index: number;
   userMutArgs: UserMutArgs;
-  setAsDelegate: boolean;
+  delegateOperation: DelegateOp;
   isTransactionManager: boolean;
 }): AddMemberArgs {
   const permissions = getAddMemberPermission(
     userMutArgs,
-    setAsDelegate,
+    delegateOperation,
     permissionArgs,
     isTransactionManager
   );
@@ -453,21 +455,22 @@ function convertAddMember({
             crossOrigin: pubkey.crossOrigin,
           })
         : none(),
-    userArgs: setAsDelegate
-      ? { __kind: "Mutate", fields: [userMutArgs] }
-      : { __kind: "Read", fields: [userMutArgs] },
-    setAsDelegate,
+    userArgs:
+      delegateOperation === DelegateOp.Add
+        ? { __kind: "Mutate", fields: [userMutArgs] }
+        : { __kind: "Read", fields: [userMutArgs] },
+    delegateOperation,
   };
 }
 
 function getAddMemberPermission(
   userMutArgs: UserMutArgs,
-  setAsDelegate: boolean,
+  delegateOperation: DelegateOp,
   permissionArgs: PermissionArgs,
   isTransactionManager: boolean
 ) {
   if (userMutArgs.data.role === UserRole.PermanentMember) {
-    if (!setAsDelegate) {
+    if (delegateOperation !== DelegateOp.Add) {
       throw new Error(
         "Permanent members must also be delegates. Please set `setAsDelegate = true`."
       );
@@ -483,10 +486,8 @@ function getAddMemberPermission(
     if (permissionArgs.execute || permissionArgs.vote) {
       throw new Error("Transaction Manager can only have initiate permission");
     }
-    if (setAsDelegate) {
-      throw new Error(
-        "Transaction Manager cannot be a delegate. Please set `setAsDelegate = false`."
-      );
+    if (delegateOperation !== DelegateOp.Ignore) {
+      throw new Error("Transaction Manager cannot be a delegate.");
     }
   }
 

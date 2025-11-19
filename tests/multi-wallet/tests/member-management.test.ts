@@ -166,7 +166,7 @@ async function addNewMember(ctx: TestContext) {
           {
             member: ctx.payer,
             permissions: { initiate: true, vote: true, execute: true },
-            setAsDelegate: true,
+            delegateOperation: DelegateOp.Add,
             isTransactionManager: false,
           },
         ],

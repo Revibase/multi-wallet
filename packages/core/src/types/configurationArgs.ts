@@ -1,6 +1,6 @@
 import type { Address, TransactionSigner } from "gill";
 import { Secp256r1Key, SignedSecp256r1Key } from ".";
-import type { DelegateOpArgs } from "../generated";
+import type { DelegateOp, DelegateOpArgs } from "../generated";
 
 export type PermissionArgs = {
   initiate: boolean;
@@ -10,21 +10,21 @@ export type PermissionArgs = {
 
 type AddMemberArgs =
   | {
-      setAsDelegate: true;
+      delegateOperation: DelegateOp.Add;
       member: TransactionSigner | SignedSecp256r1Key;
       userAddressTreeIndex?: number;
       permissions: PermissionArgs;
       isTransactionManager: false;
     }
   | {
-      setAsDelegate: false;
+      delegateOperation: DelegateOp.Ignore;
       member: Address;
       userAddressTreeIndex?: number;
       permissions: { initiate: true; vote: false; execute: false };
       isTransactionManager: true;
     }
   | {
-      setAsDelegate: false;
+      delegateOperation: DelegateOp.Ignore;
       member: Address | SignedSecp256r1Key;
       userAddressTreeIndex?: number;
       permissions: PermissionArgs;

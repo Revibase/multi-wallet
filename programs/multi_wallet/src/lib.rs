@@ -218,7 +218,7 @@ pub mod multi_wallet {
         settings_creation: SettingsCreationArgs,
         user_mut_args: UserMutArgs,
         settings_index: u128,
-        set_as_delegate: bool,
+        delegate_operation: DelegateOp,
     ) -> Result<()> {
         CreateMultiWalletCompressed::process(
             ctx,
@@ -227,7 +227,7 @@ pub mod multi_wallet {
             settings_creation,
             user_mut_args,
             settings_index,
-            set_as_delegate,
+            delegate_operation,
         )
     }
 

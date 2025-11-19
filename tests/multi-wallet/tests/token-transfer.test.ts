@@ -123,7 +123,7 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
       domainConfig: ctx.domainConfig,
       createUserArgs: {
         member: secp256r1Key,
-        isPermanentMember: true,
+        role: UserRole.PermanentMember,
         index: ctx.index,
         transactionManager: {
           member: transactionManager.address,

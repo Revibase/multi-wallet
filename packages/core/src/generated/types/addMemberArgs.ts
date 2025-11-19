@@ -8,8 +8,6 @@
 
 import {
   combineCodec,
-  getBooleanDecoder,
-  getBooleanEncoder,
   getOptionDecoder,
   getOptionEncoder,
   getStructDecoder,
@@ -21,6 +19,8 @@ import {
   type OptionOrNullable,
 } from "gill";
 import {
+  getDelegateOpDecoder,
+  getDelegateOpEncoder,
   getMemberKeyDecoder,
   getMemberKeyEncoder,
   getPermissionsDecoder,
@@ -29,6 +29,8 @@ import {
   getSecp256r1VerifyArgsEncoder,
   getUserReadOnlyOrMutateArgsDecoder,
   getUserReadOnlyOrMutateArgsEncoder,
+  type DelegateOp,
+  type DelegateOpArgs,
   type IPermissions,
   type MemberKey,
   type MemberKeyArgs,
@@ -44,7 +46,7 @@ export type AddMemberArgs = {
   permissions: IPermissions;
   verifyArgs: Option<Secp256r1VerifyArgs>;
   userArgs: UserReadOnlyOrMutateArgs;
-  setAsDelegate: boolean;
+  delegateOperation: DelegateOp;
 };
 
 export type AddMemberArgsArgs = {
@@ -52,7 +54,7 @@ export type AddMemberArgsArgs = {
   permissions: PermissionsArgs;
   verifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
   userArgs: UserReadOnlyOrMutateArgsArgs;
-  setAsDelegate: boolean;
+  delegateOperation: DelegateOpArgs;
 };
 
 export function getAddMemberArgsEncoder(): Encoder<AddMemberArgsArgs> {
@@ -61,7 +63,7 @@ export function getAddMemberArgsEncoder(): Encoder<AddMemberArgsArgs> {
     ["permissions", getPermissionsEncoder()],
     ["verifyArgs", getOptionEncoder(getSecp256r1VerifyArgsEncoder())],
     ["userArgs", getUserReadOnlyOrMutateArgsEncoder()],
-    ["setAsDelegate", getBooleanEncoder()],
+    ["delegateOperation", getDelegateOpEncoder()],
   ]);
 }
 
@@ -71,7 +73,7 @@ export function getAddMemberArgsDecoder(): Decoder<AddMemberArgs> {
     ["permissions", getPermissionsDecoder()],
     ["verifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
     ["userArgs", getUserReadOnlyOrMutateArgsDecoder()],
-    ["setAsDelegate", getBooleanDecoder()],
+    ["delegateOperation", getDelegateOpDecoder()],
   ]);
 }
 
