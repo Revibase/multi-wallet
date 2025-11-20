@@ -26,7 +26,7 @@ impl Settings {
         1  + // multi_wallet bump
         1  + // settings bump
         1  + // settings_address_tree_index
-        11 // unused padding
+        7 // unused padding
     }
     pub fn edit_permissions(
         &mut self,

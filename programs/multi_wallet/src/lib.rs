@@ -1,12 +1,12 @@
 #![allow(unexpected_cfgs)]
-
-use anchor_lang::prelude::*;
-mod contexts;
 mod error;
+mod instructions;
 mod state;
 mod utils;
-use contexts::*;
+
+use anchor_lang::prelude::*;
 use error::*;
+use instructions::*;
 use light_sdk::{cpi::CpiSigner, derive_light_cpi_signer};
 use state::*;
 use utils::*;

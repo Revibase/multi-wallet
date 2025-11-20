@@ -41,7 +41,7 @@
     "@noble/hashes": "1.8.0",
     "@simplewebauthn/server": "13.2.2",
     "bn.js": "^5.2.2",
-    "gill": "^0.12.0"
+    "gill": "^0.14.0"
   },
   "peerDependencies": {
     "@lightprotocol/stateless.js": "0.22.1-alpha.1",

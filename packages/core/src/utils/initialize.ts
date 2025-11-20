@@ -4,11 +4,10 @@ import {
 } from "@lightprotocol/stateless.js";
 import {
   createSolanaClient,
-  type CompilableTransactionMessage,
+  type BaseTransactionMessage,
   type Rpc,
   type SendAndConfirmTransactionWithSignersFunction,
   type SolanaRpcApi,
-  type TransactionMessage,
   type TransactionMessageWithFeePayer,
   type TransactionSigner,
 } from "gill";
@@ -28,12 +27,11 @@ let globalSendAndConfirmTransaction: SendAndConfirmTransactionWithSignersFunctio
   null;
 let globalComputeBudgetEstimate:
   | ((
-      transactionMessage:
-        | CompilableTransactionMessage
-        | (TransactionMessage & TransactionMessageWithFeePayer),
+      transactionMessage: BaseTransactionMessage &
+        TransactionMessageWithFeePayer,
       config?: any
     ) => Promise<number>)
-  | null = null;
+  | null;
 
 let globalFeePayer: TransactionSigner | null = null;
 let globalApiEndpoint: string | null = null;
@@ -144,12 +142,12 @@ export function initialize({
   const { rpc, sendAndConfirmTransaction } = createSolanaClient({
     urlOrMoniker: globalSolanaRpcEndpoint,
   });
-  globalSolanaRpc = rpc;
   globalSendAndConfirmTransaction = sendAndConfirmTransaction;
   globalComputeBudgetEstimate = estimateComputeUnitLimitFactory({
     rpc,
   });
 
+  globalSolanaRpc = rpc;
   globalApiEndpoint = apiEndpoint ?? null;
   globalJitoTipsConfig = jitoTipsConfig ?? null;
   globalAuthEndpoint = authEndpoint ?? null;

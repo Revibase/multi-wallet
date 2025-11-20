@@ -6,7 +6,6 @@ import {
   getU8Codec,
   type ReadonlyUint8Array,
 } from "gill";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../generated";
 
 function getCompiledInstructionCodec() {
   return getStructCodec([
@@ -97,7 +96,6 @@ export function vaultTransactionMessageDeserialize(
       data: new Uint8Array(x.data),
       programAddressIndex: x.programAddressIndex,
     })),
-    lifetimeToken: MULTI_WALLET_PROGRAM_ADDRESS,
     staticAccounts: vaultTransactionMessage.accountKeys,
     version: 0,
   };
