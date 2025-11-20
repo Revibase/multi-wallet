@@ -41,7 +41,7 @@ export async function editDomainConfig({
     const userAddressTreeIndex = await getNewWhitelistedAddressTreeIndex();
 
     const { address, addressTree } = await getUserAccountAddress(
-      authority.address,
+      newAuthority.address,
       userAddressTreeIndex
     );
     const newAddressParams = [

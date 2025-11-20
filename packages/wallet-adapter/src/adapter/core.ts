@@ -116,6 +116,7 @@ export function createRevibaseAdapter(): Revibase {
       return await verifyMessage({
         message: input.message,
         response: input.authResponse,
+        expectedRPID: input.expectedRPID,
         expectedOrigin: input.expectedOrigin,
       });
     },

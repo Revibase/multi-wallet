@@ -86,6 +86,7 @@ export const RevibaseVerifySignedMessage = "revibase:VerifySignedMessage";
 export type RevibaseVerifySignedMessageMethod = (input: {
   message: string;
   authResponse: MessageAuthenticationResponse;
+  expectedRPID?: string;
   expectedOrigin?: string;
 }) => Promise<boolean>;
 export type RevibaseVerifySignedMessageFeature = {

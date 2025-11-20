@@ -10,36 +10,34 @@ export type PermissionArgs = {
 
 type AddMemberArgs =
   | {
-      delegateOperation: DelegateOp.Add;
       member: TransactionSigner | SignedSecp256r1Key;
       userAddressTreeIndex?: number;
       permissions: PermissionArgs;
-      isTransactionManager: false;
+      delegateOperation: DelegateOp.Add;
     }
   | {
-      delegateOperation: DelegateOp.Ignore;
-      member: Address;
-      userAddressTreeIndex?: number;
-      permissions: { initiate: true; vote: false; execute: false };
-      isTransactionManager: true;
-    }
-  | {
-      delegateOperation: DelegateOp.Ignore;
       member: Address | SignedSecp256r1Key;
       userAddressTreeIndex?: number;
       permissions: PermissionArgs;
-      isTransactionManager: false;
+      delegateOperation: DelegateOp.Ignore;
     };
+
+type EditMemberArgs = {
+  member: Address | Secp256r1Key;
+  userAddressTreeIndex?: number;
+  permissions: PermissionArgs;
+  delegateOperation: DelegateOpArgs;
+};
+
+type RemoveMemberArgs = {
+  member: Address | Secp256r1Key;
+  userAddressTreeIndex?: number;
+};
 
 export type ConfigurationArgs =
   | {
       type: "EditPermissions";
-      members: {
-        member: Address | Secp256r1Key;
-        userAddressTreeIndex?: number;
-        permissions: PermissionArgs;
-        delegateOperation: DelegateOpArgs;
-      }[];
+      members: EditMemberArgs[];
     }
   | {
       type: "AddMembers";
@@ -47,9 +45,6 @@ export type ConfigurationArgs =
     }
   | {
       type: "RemoveMembers";
-      members: {
-        member: Address | Secp256r1Key;
-        userAddressTreeIndex?: number;
-      }[];
+      members: RemoveMemberArgs[];
     }
   | { type: "SetThreshold"; threshold: number };

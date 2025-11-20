@@ -14,7 +14,11 @@ import {
 } from "gill";
 import { estimateComputeUnitLimitFactory } from "gill/programs";
 import type { JitoTipsConfig } from "../types";
-import { REVIBASE_API_ENDPOINT, REVIBASE_AUTH_ENDPOINT } from "./consts";
+import {
+  REVIBASE_API_ENDPOINT,
+  REVIBASE_AUTH_ENDPOINT,
+  REVIBASE_RP_ID,
+} from "./consts";
 import { getRandomPayer } from "./transaction/internal";
 
 let globalSolanaRpcEndpoint: string | null = null;
@@ -35,6 +39,7 @@ let globalFeePayer: TransactionSigner | null = null;
 let globalApiEndpoint: string | null = null;
 let globalJitoTipsConfig: JitoTipsConfig | null = null;
 let globalAuthEndpoint: string | null = null;
+let globalRpId: string | null = null;
 let globalAuthorizedClient: { publicKey: string; url: string } | null = null;
 let globalAdditionalInfo: any | null = null;
 
@@ -83,6 +88,10 @@ export function getAuthEndpoint() {
   return globalAuthEndpoint ?? REVIBASE_AUTH_ENDPOINT;
 }
 
+export function getRpId() {
+  return globalRpId ?? REVIBASE_RP_ID;
+}
+
 export function getGlobalAuthorizedClient() {
   return globalAuthorizedClient;
 }
@@ -99,6 +108,7 @@ export function uninitialize() {
   globalApiEndpoint = null;
   globalJitoTipsConfig = null;
   globalAuthEndpoint = null;
+  globalRpId = null;
   globalSendAndConfirmTransaction = null;
   globalComputeBudgetEstimate = null;
   globalAuthorizedClient = null;
@@ -111,6 +121,7 @@ export function initialize({
   jitoTipsConfig,
   apiEndpoint,
   authEndpoint,
+  rpId,
   authorizedClient,
   additionalInfo,
 }: {
@@ -120,6 +131,7 @@ export function initialize({
   jitoTipsConfig?: JitoTipsConfig;
   apiEndpoint?: string;
   authEndpoint?: string;
+  rpId?: string;
   authorizedClient?: { publicKey: string; url: string };
   additionalInfo?: any;
 }) {
@@ -141,6 +153,7 @@ export function initialize({
   globalApiEndpoint = apiEndpoint ?? null;
   globalJitoTipsConfig = jitoTipsConfig ?? null;
   globalAuthEndpoint = authEndpoint ?? null;
+  globalRpId = rpId ?? null;
   globalAuthorizedClient = authorizedClient ?? null;
   globalAdditionalInfo = additionalInfo ?? null;
 }

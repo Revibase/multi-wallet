@@ -52,7 +52,6 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
               member: ephemeralKeypair.address,
               permissions: { initiate: true, vote: false, execute: false },
               delegateOperation: DelegateOp.Ignore,
-              isTransactionManager: true,
             },
           ],
         },

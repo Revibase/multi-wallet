@@ -1,16 +1,21 @@
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import type { MessageAuthenticationResponse } from "../types";
-import { convertPubkeyCompressedToCose, getAuthEndpoint } from "../utils";
-import { REVIBASE_RP_ID } from "../utils/consts";
+import {
+  convertPubkeyCompressedToCose,
+  getAuthEndpoint,
+  getRpId,
+} from "../utils";
 import { bufferToBase64URLString } from "../utils/passkeys/internal";
 
 export async function verifyMessage({
   message,
   response,
+  expectedRPID = getRpId(),
   expectedOrigin = getAuthEndpoint(),
 }: {
   message: string;
   response: MessageAuthenticationResponse;
+  expectedRPID?: string;
   expectedOrigin?: string;
 }): Promise<boolean> {
   const { verified } = await verifyAuthenticationResponse({
@@ -19,7 +24,7 @@ export async function verifyMessage({
       new TextEncoder().encode(message)
     ),
     expectedOrigin,
-    expectedRPID: REVIBASE_RP_ID,
+    expectedRPID,
     requireUserVerification: false,
     credential: {
       id: response.authResponse.id,
