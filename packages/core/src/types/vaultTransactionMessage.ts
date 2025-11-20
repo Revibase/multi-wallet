@@ -1,11 +1,13 @@
 import {
   type CompiledTransactionMessage,
+  type CompiledTransactionMessageWithLifetime,
   getAddressCodec,
   getArrayCodec,
   getStructCodec,
   getU8Codec,
   type ReadonlyUint8Array,
 } from "gill";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../generated";
 
 function getCompiledInstructionCodec() {
   return getStructCodec([
@@ -67,7 +69,7 @@ export function vaultTransactionMessageSerialize(
 
 export function vaultTransactionMessageDeserialize(
   transactionMessageBytes: ReadonlyUint8Array
-): CompiledTransactionMessage {
+): CompiledTransactionMessage & CompiledTransactionMessageWithLifetime {
   const vaultTransactionMessage = vaultTransactionMessageCodec.decode(
     transactionMessageBytes
   );
@@ -96,6 +98,7 @@ export function vaultTransactionMessageDeserialize(
       data: new Uint8Array(x.data),
       programAddressIndex: x.programAddressIndex,
     })),
+    lifetimeToken: MULTI_WALLET_PROGRAM_ADDRESS,
     staticAccounts: vaultTransactionMessage.accountKeys,
     version: 0,
   };
