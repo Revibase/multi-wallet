@@ -141,7 +141,7 @@ async function prepareDelegateLists(configActionsArgs: ConfigurationArgs[]) {
           getUserAccountAddress(
             m.member instanceof SignedSecp256r1Key
               ? m.member
-              : "address" in m.member
+              : m.delegateOperation === DelegateOp.Add
                 ? m.member.address
                 : m.member,
             m.userAddressTreeIndex

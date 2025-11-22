@@ -5,6 +5,7 @@ export type TransactionAuthenticationResponse = {
   authResponse: AuthenticationResponseJSON;
   signer: Secp256r1Key;
   userAddressTreeIndex?: number;
+  deviceSignature: { publicKey: string; signature: string };
   slotNumber: string;
   slotHash: string;
   additionalInfo?: any;
@@ -14,6 +15,7 @@ export type MessageAuthenticationResponse = {
   authResponse: AuthenticationResponseJSON;
   signer: Secp256r1Key;
   userAddressTreeIndex?: number;
+  deviceSignature: { publicKey: string; signature: string };
   additionalInfo?: any;
 };
 

@@ -129,6 +129,7 @@ impl<'info> NativeTransferIntent<'info> {
                         message_hash,
                         action_type: TransactionActionType::TransferIntent,
                     },
+                    None,
                 )?;
             }
         }

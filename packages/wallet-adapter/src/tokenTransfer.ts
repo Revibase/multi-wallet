@@ -7,8 +7,8 @@ import {
   fetchUserAccountData,
   getFeePayer,
   getSignedSecp256r1Key,
+  getSignedTransactionManager,
   nativeTransferIntent,
-  resolveTransactionManagerSigner,
   signAndSendTransaction,
   signTransactionWithPasskey,
   tokenTransferIntent,
@@ -93,7 +93,7 @@ export async function buildTokenTransferInstruction(
     getFeePayer(),
   ]);
 
-  const transactionManagerSigner = await resolveTransactionManagerSigner({
+  const transactionManagerSigner = await getSignedTransactionManager({
     signer: signedSigner,
     index: settingsIndexWithAddress.index,
     settingsAddressTreeIndex: settingsIndexWithAddress.settingsAddressTreeIndex,

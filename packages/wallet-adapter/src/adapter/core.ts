@@ -5,12 +5,13 @@ import {
   getFeePayer,
   getSettingsFromIndex,
   getSignedSecp256r1Key,
+  getSignedTransactionManager,
   getTransactionBufferAddress,
   getWalletAddressFromIndex,
   prepareTransactionBundle,
   prepareTransactionMessage,
   prepareTransactionSync,
-  resolveTransactionManagerSigner,
+  retrieveTransactionManager,
   Secp256r1Key,
   signAndSendBundledTransactions,
   signAndSendTransaction,
@@ -19,7 +20,7 @@ import {
   verifyMessage,
   type SettingsIndexWithAddress,
 } from "@revibase/core";
-import { address } from "gill";
+import { address, createNoopSigner } from "gill";
 import {
   createSignInMessageText,
   estimateJitoTips,
@@ -150,20 +151,21 @@ export function createRevibaseAdapter(): Revibase {
         ]);
       const signer = new Secp256r1Key(this.member);
 
-      const transactionManagerSigner = await resolveTransactionManagerSigner({
-        signer,
-        index: this.settingsIndexWithAddress.index,
-        settingsAddressTreeIndex:
+      const { transactionManagerAddress, userAddressTreeIndex } =
+        await retrieveTransactionManager(
+          signer,
+          this.settingsIndexWithAddress.index,
           this.settingsIndexWithAddress.settingsAddressTreeIndex,
-        transactionMessageBytes,
-        cachedAccounts,
-      });
+          cachedAccounts
+        );
 
       const useBundle = await estimateTransactionSizeExceedLimit({
         signers: [
           simulateSecp256r1Signer(),
           ...(additionalSigners ?? []),
-          ...(transactionManagerSigner ? [transactionManagerSigner] : []),
+          ...(transactionManagerAddress
+            ? [createNoopSigner(transactionManagerAddress)]
+            : []),
         ],
         compressed: settingsData.isCompressed,
         payer,
@@ -178,13 +180,13 @@ export function createRevibaseAdapter(): Revibase {
         const bufferIndex = Math.round(Math.random() * 255);
         const transactionBufferAddress = await getTransactionBufferAddress(
           settings,
-          transactionManagerSigner ? transactionManagerSigner.address : signer,
+          transactionManagerAddress ? transactionManagerAddress : signer,
           bufferIndex
         );
         const [authResponse, jitoBundlesTipAmount] = await Promise.all([
           signTransactionWithPasskey({
             signer,
-            transactionActionType: transactionManagerSigner
+            transactionActionType: transactionManagerAddress
               ? "execute"
               : "create_with_preauthorized_execution",
             transactionAddress: transactionBufferAddress,
@@ -193,7 +195,16 @@ export function createRevibaseAdapter(): Revibase {
           }),
           estimateJitoTips(),
         ]);
-        const signedSigner = await getSignedSecp256r1Key(authResponse);
+        const [transactionManagerSigner, signedSigner] = await Promise.all([
+          getSignedTransactionManager({
+            authResponses: [authResponse],
+            transactionMessageBytes,
+            transactionManagerAddress,
+            userAddressTreeIndex,
+          }),
+          getSignedSecp256r1Key(authResponse),
+        ]);
+
         return await prepareTransactionBundle({
           compressed: settingsData.isCompressed,
           index: this.settingsIndexWithAddress.index,
@@ -217,7 +228,16 @@ export function createRevibaseAdapter(): Revibase {
           transactionMessageBytes: new Uint8Array(transactionMessageBytes),
           popUp,
         });
-        const signedSigner = await getSignedSecp256r1Key(authResponse);
+        const [transactionManagerSigner, signedSigner] = await Promise.all([
+          getSignedTransactionManager({
+            authResponses: [authResponse],
+            transactionMessageBytes: new Uint8Array(transactionMessageBytes),
+            transactionManagerAddress,
+            userAddressTreeIndex,
+          }),
+          getSignedSecp256r1Key(authResponse),
+        ]);
+
         return [
           await prepareTransactionSync({
             compressed: settingsData.isCompressed,

@@ -152,6 +152,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
                         message_hash,
                         action_type: TransactionActionType::TransferIntent,
                     },
+                    None,
                 )?;
             }
         }

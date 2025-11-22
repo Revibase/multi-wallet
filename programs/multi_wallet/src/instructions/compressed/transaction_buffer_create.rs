@@ -105,6 +105,7 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
                         TransactionActionType::Create
                     },
                 },
+                Some(&args.expected_secp256r1_signers),
             )?;
         }
 

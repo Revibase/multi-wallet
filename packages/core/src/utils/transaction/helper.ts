@@ -1,3 +1,4 @@
+import { sha256 } from "@noble/hashes/sha2";
 import {
   address,
   appendTransactionMessageInstructions,
@@ -28,6 +29,7 @@ import {
   Permission,
   Permissions,
   Secp256r1Key,
+  type TransactionAuthenticationResponse,
   type TransactionDetails,
 } from "../../types";
 import { fetchSettingsAccountData, fetchUserAccountData } from "../compressed";
@@ -39,6 +41,7 @@ import {
   getSolanaRpc,
   getSolanaRpcEndpoint,
 } from "../initialize";
+import { base64URLStringToBuffer } from "../passkeys/internal";
 import {
   createEncodedBundle,
   getMedianPriorityFees,
@@ -237,19 +240,13 @@ export async function pollJitoBundleConfirmation(
 
   throw new Error("Failed to get bundle status after retries.");
 }
-export async function resolveTransactionManagerSigner({
-  signer,
-  index,
-  settingsAddressTreeIndex,
-  transactionMessageBytes,
-  cachedAccounts,
-}: {
-  signer: Secp256r1Key | Address;
-  index: number | bigint;
-  settingsAddressTreeIndex?: number;
-  transactionMessageBytes?: ReadonlyUint8Array;
-  cachedAccounts?: Map<string, any>;
-}) {
+
+export async function retrieveTransactionManager(
+  signer: Secp256r1Key,
+  index: number | bigint,
+  settingsAddressTreeIndex?: number,
+  cachedAccounts?: Map<string, any>
+) {
   const settingsData = await fetchSettingsAccountData(
     index,
     settingsAddressTreeIndex,
@@ -278,7 +275,7 @@ export async function resolveTransactionManagerSigner({
   );
   // If signer has full signing rights, no transaction manager is needed
   if (hasInitiate && hasVote && hasExecute) {
-    return null;
+    return {};
   }
   if (!hasVote || !hasExecute) {
     throw new Error("Signer lacks the required Vote/Execute permissions.");
@@ -292,13 +289,30 @@ export async function resolveTransactionManagerSigner({
     throw new Error("No transaction manager available in wallet.");
   }
 
-  const transactionManagerAddress = address(
-    convertMemberKeyToString(transactionManager.pubkey)
-  );
-
+  return {
+    transactionManagerAddress: address(
+      convertMemberKeyToString(transactionManager.pubkey)
+    ),
+    userAddressTreeIndex: transactionManager.userAddressTreeIndex,
+  };
+}
+export async function getSignedTransactionManager({
+  authResponses,
+  transactionManagerAddress,
+  userAddressTreeIndex,
+  transactionMessageBytes,
+  cachedAccounts,
+}: {
+  authResponses: TransactionAuthenticationResponse[];
+  transactionMessageBytes?: ReadonlyUint8Array;
+  transactionManagerAddress?: Address;
+  userAddressTreeIndex?: number;
+  cachedAccounts?: Map<string, any>;
+}) {
+  if (!transactionManagerAddress) return null;
   const userAccountData = await fetchUserAccountData(
     transactionManagerAddress,
-    transactionManager.userAddressTreeIndex,
+    userAddressTreeIndex,
     cachedAccounts
   );
 
@@ -308,9 +322,32 @@ export async function resolveTransactionManagerSigner({
     );
   }
 
+  const messageHashes = [];
+  const deviceSignatures = [];
+  for (const authResponse of authResponses) {
+    const {
+      authResponse: { response },
+      deviceSignature,
+    } = authResponse;
+
+    messageHashes.push(
+      sha256(
+        new Uint8Array([
+          ...new Uint8Array(
+            base64URLStringToBuffer(response.authenticatorData)
+          ),
+          ...sha256(response.clientDataJSON),
+        ])
+      )
+    );
+    deviceSignatures.push(deviceSignature);
+  }
+
   return createTransactionManagerSigner(
     transactionManagerAddress,
     userAccountData.transactionManagerUrl.value,
+    messageHashes,
+    deviceSignatures,
     transactionMessageBytes
   );
 }
@@ -318,6 +355,11 @@ export async function resolveTransactionManagerSigner({
 export function createTransactionManagerSigner(
   address: Address,
   url: string,
+  messageHashes: Uint8Array[],
+  deviceSignatures: {
+    publicKey: string;
+    signature: string;
+  }[],
   transactionMessageBytes?: ReadonlyUint8Array
 ): TransactionSigner {
   return {
@@ -325,10 +367,11 @@ export function createTransactionManagerSigner(
     async signTransactions(transactions) {
       const payload: Record<
         string,
-        string | string[] | { publicKey: string; signatures: string[] }
+        string | string[] | { publicKey: string; signature: string }[]
       > = {
         publicKey: address.toString(),
         transactions: transactions.map(getBase64EncodedWireTransaction),
+        deviceSignatures,
       };
 
       if (transactionMessageBytes) {
@@ -344,7 +387,7 @@ export function createTransactionManagerSigner(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            transactions: payload.transactions,
+            messageHashes,
             publicKey,
           }),
         });
@@ -354,10 +397,10 @@ export function createTransactionManagerSigner(
         if ("error" in data) {
           throw new Error(data.error);
         }
-        payload.authorizedClient = {
+        payload.clientSignatures = data.signatures.map((signature) => ({
           publicKey,
-          signatures: data.signatures,
-        };
+          signature,
+        }));
       }
 
       const response = await fetch(url, {

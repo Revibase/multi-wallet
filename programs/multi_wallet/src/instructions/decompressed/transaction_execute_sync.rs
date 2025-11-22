@@ -106,6 +106,7 @@ impl<'info> TransactionExecuteSync<'info> {
                         message_hash: transaction_message_hash,
                         action_type: TransactionActionType::Sync,
                     },
+                    None,
                 )?;
             }
         }

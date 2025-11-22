@@ -6,6 +6,5 @@ export * from "./createUserAccounts";
 export * from "./disableDomainConfig";
 export * from "./editDomainConfig";
 export * from "./editTransactionManagerUrl";
-// export * from "./migrateCompressedDelegates";
-// export * from "./migrateCompressedSettings";
-// export * from "./migrateDelegateExtension";
+export * from "./migrateCompressedSettings";
+export * from "./migrateCompressedUser";

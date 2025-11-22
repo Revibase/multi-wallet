@@ -49,8 +49,12 @@ import {
   type ReadonlyUint8Array,
 } from "gill";
 import {
+  getExpectedSecp256r1SignersDecoder,
+  getExpectedSecp256r1SignersEncoder,
   getMemberKeyDecoder,
   getMemberKeyEncoder,
+  type ExpectedSecp256r1Signers,
+  type ExpectedSecp256r1SignersArgs,
   type MemberKey,
   type MemberKeyArgs,
 } from "../types";
@@ -94,8 +98,8 @@ export type TransactionBuffer = {
   bufferExtendHashes: Array<ReadonlyUint8Array>;
   /** Members that voted for this transaction */
   voters: Array<MemberKey>;
-  /** Members that are expected to initiate / vote / execute this transaction */
-  expectedSigners: Array<MemberKey>;
+  /** Secp256r1 Signers that are expected to initiate / vote / execute this transaction (used for off-chain transaction inspection) */
+  expectedSecp256r1Signers: Array<ExpectedSecp256r1Signers>;
   /** The buffer of the transaction message. */
   buffer: ReadonlyUint8Array;
 };
@@ -128,8 +132,8 @@ export type TransactionBufferArgs = {
   bufferExtendHashes: Array<ReadonlyUint8Array>;
   /** Members that voted for this transaction */
   voters: Array<MemberKeyArgs>;
-  /** Members that are expected to initiate / vote / execute this transaction */
-  expectedSigners: Array<MemberKeyArgs>;
+  /** Secp256r1 Signers that are expected to initiate / vote / execute this transaction (used for off-chain transaction inspection) */
+  expectedSecp256r1Signers: Array<ExpectedSecp256r1SignersArgs>;
   /** The buffer of the transaction message. */
   buffer: ReadonlyUint8Array;
 };
@@ -155,7 +159,10 @@ export function getTransactionBufferEncoder(): Encoder<TransactionBufferArgs> {
         getArrayEncoder(fixEncoderSize(getBytesEncoder(), 32)),
       ],
       ["voters", getArrayEncoder(getMemberKeyEncoder())],
-      ["expectedSigners", getArrayEncoder(getMemberKeyEncoder())],
+      [
+        "expectedSecp256r1Signers",
+        getArrayEncoder(getExpectedSecp256r1SignersEncoder()),
+      ],
       ["buffer", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
     ]),
     (value) => ({ ...value, discriminator: TRANSACTION_BUFFER_DISCRIMINATOR })
@@ -182,7 +189,10 @@ export function getTransactionBufferDecoder(): Decoder<TransactionBuffer> {
       getArrayDecoder(fixDecoderSize(getBytesDecoder(), 32)),
     ],
     ["voters", getArrayDecoder(getMemberKeyDecoder())],
-    ["expectedSigners", getArrayDecoder(getMemberKeyDecoder())],
+    [
+      "expectedSecp256r1Signers",
+      getArrayDecoder(getExpectedSecp256r1SignersDecoder()),
+    ],
     ["buffer", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
   ]);
 }

@@ -17,6 +17,7 @@ export * from './configAction';
 export * from './createUserAccountArgs';
 export * from './delegateOp';
 export * from './editMemberArgs';
+export * from './expectedSecp256r1Signers';
 export * from './linkWalletArgs';
 export * from './member';
 export * from './memberKey';

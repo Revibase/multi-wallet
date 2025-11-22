@@ -2630,6 +2630,28 @@
       }
     },
     {
+      "name": "ExpectedSecp256r1Signers",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "member_key",
+            "type": {
+              "defined": {
+                "name": "MemberKey"
+              }
+            }
+          },
+          {
+            "name": "message_hash",
+            "type": {
+              "array": ["u8", 32]
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "GlobalCounter",
       "serialization": "bytemuck",
       "repr": {
@@ -3160,14 +3182,14 @@
             }
           },
           {
-            "name": "expected_signers",
+            "name": "expected_secp256r1_signers",
             "docs": [
-              "Members that are expected to initiate / vote / execute this transaction"
+              "Secp256r1 Signers that are expected to initiate / vote / execute this transaction (used for off-chain transaction inspection)"
             ],
             "type": {
               "vec": {
                 "defined": {
-                  "name": "MemberKey"
+                  "name": "ExpectedSecp256r1Signers"
                 }
               }
             }
@@ -3212,11 +3234,11 @@
             "type": "u16"
           },
           {
-            "name": "expected_signers",
+            "name": "expected_secp256r1_signers",
             "type": {
               "vec": {
                 "defined": {
-                  "name": "MemberKey"
+                  "name": "ExpectedSecp256r1Signers"
                 }
               }
             }

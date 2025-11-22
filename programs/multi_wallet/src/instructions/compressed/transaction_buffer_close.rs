@@ -95,6 +95,7 @@ impl<'info> TransactionBufferCloseCompressed<'info> {
                         message_hash: transaction_buffer.final_buffer_hash,
                         action_type: TransactionActionType::Close,
                     },
+                    Some(&transaction_buffer.expected_secp256r1_signers),
                 )?;
             }
 

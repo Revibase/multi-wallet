@@ -178,6 +178,7 @@ pub trait MultisigSettings {
                             message_hash: rp_id_hash,
                             action_type: TransactionActionType::AddNewMember,
                         },
+                        None,
                     )?;
                 }
             }

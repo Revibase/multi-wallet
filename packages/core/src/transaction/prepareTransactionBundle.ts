@@ -20,7 +20,10 @@ import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
 } from "../utils/compressed/internal";
-import { convertPubkeyToMemberkey } from "../utils/transaction/internal";
+import {
+  convertPubkeyToMemberkey,
+  getDeduplicatedSigners,
+} from "../utils/transaction/internal";
 
 interface CreateTransactionBundleArgs {
   payer: TransactionSigner;
@@ -95,11 +98,18 @@ export async function prepareTransactionBundle({
     : null;
 
   // --- Stage 4: Instruction groups ---
-  const expectedSigners = [
+  const expectedSecp256r1Signers = getDeduplicatedSigners([
     creator,
     ...(executor ? [executor] : []),
     ...additionalVoters,
-  ].map(convertPubkeyToMemberkey);
+  ])
+    .filter((x) => x instanceof SignedSecp256r1Key)
+    .map((x) => ({
+      memberKey: convertPubkeyToMemberkey(x),
+      messageHash: sha256(
+        new Uint8Array([...x.authData, ...sha256(x.verifyArgs.clientDataJson)])
+      ),
+    }));
 
   const createIxs = createTransactionBuffer({
     finalBufferHash,
@@ -112,7 +122,7 @@ export async function prepareTransactionBundle({
     preauthorizeExecution: !executor,
     bufferExtendHashes: chunksHash,
     compressedArgs,
-    expectedSigners,
+    expectedSecp256r1Signers,
   });
 
   const extendIxs = chunks.map((bytes) =>

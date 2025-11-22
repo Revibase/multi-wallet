@@ -150,6 +150,7 @@ export async function mockAuthenticationResponse(
           signature: bufferToBase64URLString(signature.buffer),
         },
       },
+      deviceSignature: { publicKey: "", signature: "" },
     },
     originIndex,
     crossOrigin

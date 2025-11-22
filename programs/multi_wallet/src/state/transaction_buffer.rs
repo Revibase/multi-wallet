@@ -1,4 +1,7 @@
-use crate::{utils::Member, MemberKey, MultisigError, MAXIMUM_AMOUNT_OF_MEMBERS};
+use crate::{
+    utils::{ExpectedSecp256r1Signers, KeyType, Member},
+    MemberKey, MultisigError, MAXIMUM_AMOUNT_OF_MEMBERS,
+};
 use anchor_lang::prelude::*;
 use light_sdk::light_hasher::{Hasher, Sha256};
 
@@ -17,7 +20,7 @@ pub struct TransactionBufferCreateArgs {
     pub buffer_extend_hashes: Vec<[u8; 32]>,
     pub final_buffer_hash: [u8; 32],
     pub final_buffer_size: u16,
-    pub expected_signers: Vec<MemberKey>,
+    pub expected_secp256r1_signers: Vec<ExpectedSecp256r1Signers>,
 }
 
 #[account]
@@ -50,8 +53,8 @@ pub struct TransactionBuffer {
     pub buffer_extend_hashes: Vec<[u8; 32]>,
     /// Members that voted for this transaction
     pub voters: Vec<MemberKey>,
-    /// Members that are expected to initiate / vote / execute this transaction
-    pub expected_signers: Vec<MemberKey>,
+    /// Secp256r1 Signers that are expected to initiate / vote / execute this transaction (used for off-chain transaction inspection)
+    pub expected_secp256r1_signers: Vec<ExpectedSecp256r1Signers>,
     /// The buffer of the transaction message.
     pub buffer: Vec<u8>,
 }
@@ -67,9 +70,13 @@ impl TransactionBuffer {
         bump: u8,
     ) -> Result<()> {
         require!(
-            args.expected_signers
+            args.expected_secp256r1_signers
                 .iter()
-                .all(|f| current_members.iter().any(|x| x.pubkey.eq(f))),
+                .all(|f| current_members.iter().any(|x| f
+                    .member_key
+                    .get_type()
+                    .eq(&KeyType::Secp256r1)
+                    && x.pubkey.eq(&f.member_key))),
             MultisigError::InvalidArguments
         );
         self.multi_wallet_settings = settings_key;
@@ -85,7 +92,7 @@ impl TransactionBuffer {
         self.bump = bump;
         self.valid_till = Clock::get().unwrap().unix_timestamp as u64 + TRANSACTION_TIME_LIMIT;
         self.voters = Vec::new();
-        self.expected_signers = args.expected_signers.to_vec();
+        self.expected_secp256r1_signers = args.expected_secp256r1_signers.to_vec();
         Ok(())
     }
 
@@ -149,29 +156,41 @@ impl TransactionBuffer {
 
     pub fn add_voter(&mut self, voter: &MemberKey) -> Result<()> {
         if !self.voters.contains(voter) {
-            require!(
-                self.expected_signers.contains(voter),
-                MultisigError::UnexpectedSigner
-            );
+            if voter.get_type().eq(&KeyType::Secp256r1) {
+                require!(
+                    self.expected_secp256r1_signers
+                        .iter()
+                        .any(|f| f.member_key.eq(&voter)),
+                    MultisigError::UnexpectedSigner
+                );
+            }
             self.voters.push(*voter);
         }
         Ok(())
     }
 
     pub fn add_initiator(&mut self, creator: MemberKey) -> Result<()> {
-        require!(
-            self.expected_signers.contains(&creator),
-            MultisigError::UnexpectedSigner
-        );
+        if creator.get_type().eq(&KeyType::Secp256r1) {
+            require!(
+                self.expected_secp256r1_signers
+                    .iter()
+                    .any(|f| f.member_key.eq(&creator)),
+                MultisigError::UnexpectedSigner
+            );
+        }
         self.creator = creator;
         Ok(())
     }
 
     pub fn add_executor(&mut self, executor: MemberKey) -> Result<()> {
-        require!(
-            self.expected_signers.contains(&executor),
-            MultisigError::UnexpectedSigner
-        );
+        if executor.get_type().eq(&KeyType::Secp256r1) {
+            require!(
+                self.expected_secp256r1_signers
+                    .iter()
+                    .any(|f| f.member_key.eq(&executor)),
+                MultisigError::UnexpectedSigner
+            );
+        }
         self.executor = executor;
         Ok(())
     }

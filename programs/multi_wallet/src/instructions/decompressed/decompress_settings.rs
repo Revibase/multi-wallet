@@ -119,6 +119,7 @@ impl<'info> DecompressSettingsAccount<'info> {
                         message_hash: Sha256::hash(&payer.key().to_bytes()).unwrap(),
                         action_type: TransactionActionType::Decompress,
                     },
+                    None,
                 )?;
             }
         }

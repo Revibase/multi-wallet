@@ -1,5 +1,5 @@
 use crate::{
-    DomainConfig, MultisigError, Secp256r1Pubkey, TransactionActionType,
+    utils::MemberKey, DomainConfig, MultisigError, Secp256r1Pubkey, TransactionActionType,
     COMPRESSED_PUBKEY_SERIALIZED_SIZE, SECP256R1_PROGRAM_ID, SIGNATURE_OFFSETS_SERIALIZED_SIZE,
     SIGNATURE_OFFSETS_START,
 };
@@ -37,6 +37,12 @@ pub struct ChallengeArgs {
     pub account: Pubkey,
     pub message_hash: [u8; 32],
     pub action_type: TransactionActionType,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy)]
+pub struct ExpectedSecp256r1Signers {
+    pub member_key: MemberKey,
+    pub message_hash: [u8; 32],
 }
 
 impl Secp256r1VerifyArgs {
@@ -168,6 +174,7 @@ impl Secp256r1VerifyArgs {
     fn extract_webauthn_signed_message_from_instruction(
         &self,
         instructions_sysvar: &UncheckedAccount,
+        expected_secp256r1_signers: Option<&Vec<ExpectedSecp256r1Signers>>,
     ) -> Result<([u8; 32], [u8; 32])> {
         let instruction = instructions::get_instruction_relative(-1, instructions_sysvar)?;
 
@@ -197,6 +204,27 @@ impl Secp256r1VerifyArgs {
         let message_offset = offsets.message_data_offset as usize;
         let message_end = message_offset + offsets.message_data_size as usize;
         let message = &instruction.data[message_offset..message_end];
+
+        if let Some(expected_secp256r1_signers) = expected_secp256r1_signers {
+            let public_key_offset = offsets.public_key_offset as usize;
+            let public_key_end = public_key_offset + COMPRESSED_PUBKEY_SERIALIZED_SIZE;
+
+            let extracted_pubkey = MemberKey::convert_secp256r1(&Secp256r1Pubkey(
+                instruction.data[public_key_offset..public_key_end]
+                    .try_into()
+                    .map_err(|_| MultisigError::InvalidSignedMessage)?,
+            ))?;
+            let extracted_message_hash = expected_secp256r1_signers
+                .iter()
+                .find(|f| f.member_key.eq(&extracted_pubkey))
+                .ok_or(MultisigError::InvalidSignedMessage)?
+                .message_hash;
+
+            require!(
+                extracted_message_hash.eq(&Sha256::hash(message).unwrap()),
+                MultisigError::InvalidSignedMessage
+            );
+        }
 
         let rp_id_hash: [u8; 32] = message[..32]
             .try_into()
@@ -258,6 +286,7 @@ impl Secp256r1VerifyArgs {
         domain_config: &Option<AccountLoader<'info, DomainConfig>>,
         instructions_sysvar: &UncheckedAccount<'info>,
         challenge_args: ChallengeArgs,
+        expected_secp256r1_signers: Option<&Vec<ExpectedSecp256r1Signers>>,
     ) -> Result<()> {
         let domain_data = domain_config
             .as_ref()
@@ -269,8 +298,11 @@ impl Secp256r1VerifyArgs {
             MultisigError::DomainConfigIsDisabled
         );
 
-        let (rp_id_hash, client_data_hash) =
-            self.extract_webauthn_signed_message_from_instruction(instructions_sysvar)?;
+        let (rp_id_hash, client_data_hash) = self
+            .extract_webauthn_signed_message_from_instruction(
+                instructions_sysvar,
+                expected_secp256r1_signers,
+            )?;
 
         require!(
             domain_data.rp_id_hash.eq(&rp_id_hash),

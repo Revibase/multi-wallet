@@ -102,6 +102,7 @@ impl TransactionBufferCreate<'_> {
                         TransactionActionType::Create
                     },
                 },
+                Some(&transaction_buffer.expected_secp256r1_signers),
             )?;
         }
 
