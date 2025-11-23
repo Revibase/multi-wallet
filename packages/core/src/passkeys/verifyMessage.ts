@@ -21,7 +21,10 @@ export async function verifyMessage({
   const { verified } = await verifyAuthenticationResponse({
     response: response.authResponse,
     expectedChallenge: bufferToBase64URLString(
-      new TextEncoder().encode(message)
+      new Uint8Array([
+        ...new TextEncoder().encode(response.requestedClient),
+        ...new TextEncoder().encode(message),
+      ])
     ),
     expectedOrigin,
     expectedRPID,

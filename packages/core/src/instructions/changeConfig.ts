@@ -510,6 +510,7 @@ function convertAddMember({
             signedMessageIndex: index,
             originIndex: pubkey.originIndex,
             crossOrigin: pubkey.crossOrigin,
+            requestedClientAndDeviceHash: pubkey.requestedClientAndDeviceHash,
           })
         : none(),
     userArgs:

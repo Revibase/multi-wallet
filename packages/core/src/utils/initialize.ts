@@ -38,7 +38,6 @@ let globalApiEndpoint: string | null = null;
 let globalJitoTipsConfig: JitoTipsConfig | null = null;
 let globalAuthEndpoint: string | null = null;
 let globalRpId: string | null = null;
-let globalAuthorizedClient: { publicKey: string; url: string } | null = null;
 let globalAdditionalInfo: any | null = null;
 
 export function getSolanaRpcEndpoint() {
@@ -90,10 +89,6 @@ export function getRpId() {
   return globalRpId ?? REVIBASE_RP_ID;
 }
 
-export function getGlobalAuthorizedClient() {
-  return globalAuthorizedClient;
-}
-
 export function getGlobalAdditonalInfo() {
   return globalAdditionalInfo;
 }
@@ -109,7 +104,6 @@ export function uninitialize() {
   globalRpId = null;
   globalSendAndConfirmTransaction = null;
   globalComputeBudgetEstimate = null;
-  globalAuthorizedClient = null;
 }
 
 export function initialize({
@@ -120,7 +114,6 @@ export function initialize({
   apiEndpoint,
   authEndpoint,
   rpId,
-  authorizedClient,
   additionalInfo,
 }: {
   rpcEndpoint: string;
@@ -130,7 +123,6 @@ export function initialize({
   apiEndpoint?: string;
   authEndpoint?: string;
   rpId?: string;
-  authorizedClient?: { publicKey: string; url: string };
   additionalInfo?: any;
 }) {
   globalSolanaRpcEndpoint = rpcEndpoint;
@@ -152,6 +144,5 @@ export function initialize({
   globalJitoTipsConfig = jitoTipsConfig ?? null;
   globalAuthEndpoint = authEndpoint ?? null;
   globalRpId = rpId ?? null;
-  globalAuthorizedClient = authorizedClient ?? null;
   globalAdditionalInfo = additionalInfo ?? null;
 }

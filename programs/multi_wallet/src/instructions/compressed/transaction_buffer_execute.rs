@@ -125,7 +125,7 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
                     message_hash: transaction_buffer.final_buffer_hash,
                     action_type: TransactionActionType::Execute,
                 },
-                Some(&transaction_buffer.expected_secp256r1_signers),
+                transaction_buffer.expected_secp256r1_signers.as_ref(),
             )?;
         }
 

@@ -1,4 +1,3 @@
-import { sha256 } from "@noble/hashes/sha2";
 import {
   address,
   appendTransactionMessageInstructions,
@@ -35,13 +34,11 @@ import {
 import { fetchSettingsAccountData, fetchUserAccountData } from "../compressed";
 import {
   getComputeBudgetEstimate,
-  getGlobalAuthorizedClient,
   getJitoTipsConfig,
   getSendAndConfirmTransaction,
   getSolanaRpc,
   getSolanaRpcEndpoint,
 } from "../initialize";
-import { base64URLStringToBuffer } from "../passkeys/internal";
 import {
   createEncodedBundle,
   getMedianPriorityFees,
@@ -304,8 +301,8 @@ export async function getSignedTransactionManager({
   cachedAccounts,
 }: {
   authResponses: TransactionAuthenticationResponse[];
-  transactionMessageBytes?: ReadonlyUint8Array;
   transactionManagerAddress?: Address;
+  transactionMessageBytes?: ReadonlyUint8Array;
   userAddressTreeIndex?: number;
   cachedAccounts?: Map<string, any>;
 }) {
@@ -322,32 +319,10 @@ export async function getSignedTransactionManager({
     );
   }
 
-  const messageHashes = [];
-  const deviceSignatures = [];
-  for (const authResponse of authResponses) {
-    const {
-      authResponse: { response },
-      deviceSignature,
-    } = authResponse;
-
-    messageHashes.push(
-      sha256(
-        new Uint8Array([
-          ...new Uint8Array(
-            base64URLStringToBuffer(response.authenticatorData)
-          ),
-          ...sha256(response.clientDataJSON),
-        ])
-      )
-    );
-    deviceSignatures.push(deviceSignature);
-  }
-
   return createTransactionManagerSigner(
     transactionManagerAddress,
     userAccountData.transactionManagerUrl.value,
-    messageHashes,
-    deviceSignatures,
+    authResponses,
     transactionMessageBytes
   );
 }
@@ -355,11 +330,7 @@ export async function getSignedTransactionManager({
 export function createTransactionManagerSigner(
   address: Address,
   url: string,
-  messageHashes: Uint8Array[],
-  deviceSignatures: {
-    publicKey: string;
-    signature: string;
-  }[],
+  authResponses?: TransactionAuthenticationResponse[],
   transactionMessageBytes?: ReadonlyUint8Array
 ): TransactionSigner {
   return {
@@ -367,11 +338,10 @@ export function createTransactionManagerSigner(
     async signTransactions(transactions) {
       const payload: Record<
         string,
-        string | string[] | { publicKey: string; signature: string }[]
+        string | string[] | TransactionAuthenticationResponse[]
       > = {
         publicKey: address.toString(),
         transactions: transactions.map(getBase64EncodedWireTransaction),
-        deviceSignatures,
       };
 
       if (transactionMessageBytes) {
@@ -379,28 +349,8 @@ export function createTransactionManagerSigner(
           transactionMessageBytes
         );
       }
-
-      const authorizedClient = getGlobalAuthorizedClient();
-      if (authorizedClient) {
-        const { url, publicKey } = authorizedClient;
-        const response = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            messageHashes,
-            publicKey,
-          }),
-        });
-        const data = (await response.json()) as
-          | { signatures: string[] }
-          | { error: string };
-        if ("error" in data) {
-          throw new Error(data.error);
-        }
-        payload.clientSignatures = data.signatures.map((signature) => ({
-          publicKey,
-          signature,
-        }));
+      if (authResponses) {
+        payload.authResponses = authResponses;
       }
 
       const response = await fetch(url, {

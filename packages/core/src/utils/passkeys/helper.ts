@@ -1,11 +1,20 @@
-import { type CBORType, decodeCBOR, encodeCBOR } from "@levischuck/tiny-cbor";
+import { decodeCBOR, encodeCBOR, type CBORType } from "@levischuck/tiny-cbor";
 import { p256 } from "@noble/curves/p256";
+import { equalBytes } from "@noble/curves/utils";
+import { sha256 } from "@noble/hashes/sha2";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
-import { type Address, getBase58Decoder, getBase58Encoder } from "gill";
+import {
+  address,
+  getAddressEncoder,
+  getBase58Decoder,
+  getBase58Encoder,
+  getUtf8Encoder,
+  type Address,
+} from "gill";
 import { fetchDomainConfig } from "../../generated";
 import {
-  type TransactionAuthenticationResponse,
   SignedSecp256r1Key,
+  type TransactionAuthenticationResponse,
 } from "../../types";
 import { getDomainConfigAddress } from "../addresses";
 import { getAuthEndpoint, getSolanaRpc } from "../initialize";
@@ -192,6 +201,12 @@ export async function getSignedSecp256r1Key(
       slotNumber: BigInt(payload.slotNumber),
       slotHash: new Uint8Array(getBase58Encoder().encode(payload.slotHash)),
     },
+    requestedClientAndDeviceHash: sha256(
+      new Uint8Array([
+        ...new TextEncoder().encode(payload.requestedClient),
+        ...getBase58Encoder().encode(payload.deviceSignature.publicKey),
+      ])
+    ),
     domainConfig,
     authData,
     signature: convertedSignature,
@@ -200,21 +215,58 @@ export async function getSignedSecp256r1Key(
   });
 }
 
-/**
- * Retrieves the index of a given origin within a domain configuration account.
- *
- * This index is used on-chain to verify that a WebAuthn request originated from
- * an authorized origin associated with a specific domain configuration.
- *
- * @param domainConfig - The on-chain address of the domain configuration (see `getDomainConfigAddress`).
- * @param origin - The full origin URL (e.g., "https://auth.example.com").
- * @returns The 0-based index of the origin within the domain config.
- *
- * @throws {Error} If the origin is not found in the configuration.
- *
- * @example
- * const index = await getOriginIndex(domainConfigAddress, "https://auth.example.com");
- */
+export function verifyTransactionAuthResponseWithMessageHash(
+  payload: TransactionAuthenticationResponse,
+  expectedMessageHash: Uint8Array
+) {
+  const { authenticatorData, clientDataJSON } = (
+    payload.authResponse as AuthenticationResponseJSON
+  ).response;
+
+  const authData = new Uint8Array(base64URLStringToBuffer(authenticatorData));
+
+  const clientDataJsonParsed = JSON.parse(
+    new TextDecoder().decode(base64URLStringToBuffer(clientDataJSON))
+  ) as Record<string, any>;
+
+  const { transactionActionType, transactionAddress, transactionMessageBytes } =
+    payload.transactionPayload;
+
+  const challenge = sha256(
+    new Uint8Array([
+      ...getUtf8Encoder().encode(transactionActionType),
+      ...getAddressEncoder().encode(address(transactionAddress)),
+      ...sha256(transactionMessageBytes),
+      ...getBase58Encoder().encode(payload.slotHash),
+      ...sha256(
+        new Uint8Array([
+          ...getUtf8Encoder().encode(payload.requestedClient),
+          ...getBase58Encoder().encode(payload.deviceSignature.publicKey),
+        ])
+      ),
+    ])
+  );
+  if (
+    !equalBytes(
+      new Uint8Array(
+        base64URLStringToBuffer(clientDataJsonParsed["challenge"])
+      ),
+      challenge
+    )
+  )
+    throw new Error("Invalid challenge");
+
+  const messageHash = sha256(
+    new Uint8Array([
+      ...authData,
+      ...sha256(new Uint8Array(base64URLStringToBuffer(clientDataJSON))),
+    ])
+  );
+
+  if (!equalBytes(messageHash, expectedMessageHash))
+    throw new Error("Invalid message hash");
+}
+
 export async function getOriginIndex(domainConfig: Address, origin: string) {
   const { data } = await fetchDomainConfig(getSolanaRpc(), domainConfig);
   const origins = parseOrigins(new Uint8Array(data.origins), data.numOrigins);

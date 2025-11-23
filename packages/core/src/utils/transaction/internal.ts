@@ -195,6 +195,8 @@ export function extractSecp256r1VerificationArgs(
           slotNumber: secp256r1PublicKey.verifyArgs.slotNumber,
           originIndex: secp256r1PublicKey.originIndex,
           crossOrigin: secp256r1PublicKey.crossOrigin,
+          requestedClientAndDeviceHash:
+            secp256r1PublicKey.requestedClientAndDeviceHash,
         })
       : null;
 

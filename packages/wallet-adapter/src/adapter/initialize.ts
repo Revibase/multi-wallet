@@ -8,10 +8,6 @@ interface InitializeWalletArgs {
   proverEndpoint?: string;
   compressionApiEndpoint?: string;
   jitoTipsConfig?: JitoTipsConfig;
-  authorizedClient?: {
-    publicKey: string;
-    url: string;
-  };
 }
 
 export function initializeWallet(input: InitializeWalletArgs) {

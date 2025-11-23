@@ -2918,6 +2918,12 @@
           {
             "name": "truncated_client_data_json",
             "type": "bytes"
+          },
+          {
+            "name": "requested_client_and_device_hash",
+            "type": {
+              "array": ["u8", 32]
+            }
           }
         ]
       }
@@ -3184,12 +3190,14 @@
           {
             "name": "expected_secp256r1_signers",
             "docs": [
-              "Secp256r1 Signers that are expected to initiate / vote / execute this transaction (used for off-chain transaction inspection)"
+              "All Secp256r1 Signers that are expected to initiate / vote / execute this transaction (used for off-chain inspection by the transaction manager)"
             ],
             "type": {
-              "vec": {
-                "defined": {
-                  "name": "ExpectedSecp256r1Signers"
+              "option": {
+                "vec": {
+                  "defined": {
+                    "name": "ExpectedSecp256r1Signers"
+                  }
                 }
               }
             }
@@ -3236,9 +3244,11 @@
           {
             "name": "expected_secp256r1_signers",
             "type": {
-              "vec": {
-                "defined": {
-                  "name": "ExpectedSecp256r1Signers"
+              "option": {
+                "vec": {
+                  "defined": {
+                    "name": "ExpectedSecp256r1Signers"
+                  }
                 }
               }
             }

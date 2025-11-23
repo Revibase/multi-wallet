@@ -9,6 +9,7 @@ import {
   getSignedSecp256r1Key,
   getSignedTransactionManager,
   nativeTransferIntent,
+  retrieveTransactionManager,
   signAndSendTransaction,
   signTransactionWithPasskey,
   tokenTransferIntent,
@@ -93,12 +94,21 @@ export async function buildTokenTransferInstruction(
     getFeePayer(),
   ]);
 
+  const { transactionManagerAddress, userAddressTreeIndex } =
+    await retrieveTransactionManager(
+      signedSigner,
+      settingsIndexWithAddress.index,
+      settingsIndexWithAddress.settingsAddressTreeIndex,
+      cachedAccounts
+    );
+
   const transactionManagerSigner = await getSignedTransactionManager({
-    signer: signedSigner,
-    index: settingsIndexWithAddress.index,
-    settingsAddressTreeIndex: settingsIndexWithAddress.settingsAddressTreeIndex,
+    authResponses: [authResponse],
+    transactionManagerAddress,
+    userAddressTreeIndex,
     cachedAccounts,
   });
+
   const signers = transactionManagerSigner
     ? [signedSigner, transactionManagerSigner]
     : [signedSigner];

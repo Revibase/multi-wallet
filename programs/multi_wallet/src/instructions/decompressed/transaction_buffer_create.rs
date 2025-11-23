@@ -1,7 +1,8 @@
 use crate::{
-    durable_nonce_check, ChallengeArgs, DomainConfig, KeyType, MemberKey, MultisigError,
-    Permission, Secp256r1VerifyArgs, Settings, TransactionActionType, TransactionBuffer,
-    TransactionBufferCreateArgs, MAX_BUFFER_SIZE, SEED_MULTISIG, SEED_TRANSACTION_BUFFER,
+    durable_nonce_check, utils::UserRole, ChallengeArgs, DomainConfig, KeyType, MemberKey,
+    MultisigError, Permission, Secp256r1VerifyArgs, Settings, TransactionActionType,
+    TransactionBuffer, TransactionBufferCreateArgs, MAX_BUFFER_SIZE, SEED_MULTISIG,
+    SEED_TRANSACTION_BUFFER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
@@ -102,8 +103,26 @@ impl TransactionBufferCreate<'_> {
                         TransactionActionType::Create
                     },
                 },
-                Some(&transaction_buffer.expected_secp256r1_signers),
+                None,
             )?;
+        }
+
+        if UserRole::from(member.role).eq(&UserRole::TransactionManager) {
+            let expected_secp256r1_signers = args
+                .expected_secp256r1_signers
+                .as_ref()
+                .ok_or(MultisigError::InvalidArguments)?;
+
+            require!(
+                expected_secp256r1_signers
+                    .iter()
+                    .all(|f| settings.members.iter().any(|x| f
+                        .member_key
+                        .get_type()
+                        .eq(&KeyType::Secp256r1)
+                        && x.pubkey.eq(&f.member_key))),
+                MultisigError::InvalidArguments
+            );
         }
 
         Ok(())
@@ -128,7 +147,6 @@ impl TransactionBufferCreate<'_> {
             settings.multi_wallet_bump,
             ctx.accounts.payer.key(),
             &args,
-            &settings.members.to_vec(),
             ctx.bumps.transaction_buffer,
         )?;
 

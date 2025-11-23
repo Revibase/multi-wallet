@@ -16,6 +16,8 @@ import {
   getBooleanEncoder,
   getBytesDecoder,
   getBytesEncoder,
+  getOptionDecoder,
+  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
   getU16Decoder,
@@ -25,6 +27,8 @@ import {
   type Codec,
   type Decoder,
   type Encoder,
+  type Option,
+  type OptionOrNullable,
   type ReadonlyUint8Array,
 } from "gill";
 import {
@@ -40,7 +44,7 @@ export type TransactionBufferCreateArgs = {
   bufferExtendHashes: Array<ReadonlyUint8Array>;
   finalBufferHash: ReadonlyUint8Array;
   finalBufferSize: number;
-  expectedSecp256r1Signers: Array<ExpectedSecp256r1Signers>;
+  expectedSecp256r1Signers: Option<Array<ExpectedSecp256r1Signers>>;
 };
 
 export type TransactionBufferCreateArgsArgs = {
@@ -49,7 +53,9 @@ export type TransactionBufferCreateArgsArgs = {
   bufferExtendHashes: Array<ReadonlyUint8Array>;
   finalBufferHash: ReadonlyUint8Array;
   finalBufferSize: number;
-  expectedSecp256r1Signers: Array<ExpectedSecp256r1SignersArgs>;
+  expectedSecp256r1Signers: OptionOrNullable<
+    Array<ExpectedSecp256r1SignersArgs>
+  >;
 };
 
 export function getTransactionBufferCreateArgsEncoder(): Encoder<TransactionBufferCreateArgsArgs> {
@@ -64,7 +70,7 @@ export function getTransactionBufferCreateArgsEncoder(): Encoder<TransactionBuff
     ["finalBufferSize", getU16Encoder()],
     [
       "expectedSecp256r1Signers",
-      getArrayEncoder(getExpectedSecp256r1SignersEncoder()),
+      getOptionEncoder(getArrayEncoder(getExpectedSecp256r1SignersEncoder())),
     ],
   ]);
 }
@@ -81,7 +87,7 @@ export function getTransactionBufferCreateArgsDecoder(): Decoder<TransactionBuff
     ["finalBufferSize", getU16Decoder()],
     [
       "expectedSecp256r1Signers",
-      getArrayDecoder(getExpectedSecp256r1SignersDecoder()),
+      getOptionDecoder(getArrayDecoder(getExpectedSecp256r1SignersDecoder())),
     ],
   ]);
 }
