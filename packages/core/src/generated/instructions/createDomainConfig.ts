@@ -101,7 +101,6 @@ export type CreateDomainConfigInstructionData = {
   discriminator: ReadonlyUint8Array;
   rpId: string;
   origins: Array<string>;
-  metadataUrl: string;
   authorityCreationArgs: UserCreationArgs;
   compressedProofArgs: ProofArgs;
 };
@@ -109,7 +108,6 @@ export type CreateDomainConfigInstructionData = {
 export type CreateDomainConfigInstructionDataArgs = {
   rpId: string;
   origins: Array<string>;
-  metadataUrl: string;
   authorityCreationArgs: UserCreationArgsArgs;
   compressedProofArgs: ProofArgsArgs;
 };
@@ -125,7 +123,6 @@ export function getCreateDomainConfigInstructionDataEncoder(): Encoder<CreateDom
           addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())
         ),
       ],
-      ["metadataUrl", addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
       ["authorityCreationArgs", getUserCreationArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
     ]),
@@ -141,7 +138,6 @@ export function getCreateDomainConfigInstructionDataDecoder(): Decoder<CreateDom
       "origins",
       getArrayDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
     ],
-    ["metadataUrl", addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
     ["authorityCreationArgs", getUserCreationArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
   ]);
@@ -175,7 +171,6 @@ export type CreateDomainConfigAsyncInput<
   whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
   rpId: CreateDomainConfigInstructionDataArgs["rpId"];
   origins: CreateDomainConfigInstructionDataArgs["origins"];
-  metadataUrl: CreateDomainConfigInstructionDataArgs["metadataUrl"];
   authorityCreationArgs: CreateDomainConfigInstructionDataArgs["authorityCreationArgs"];
   compressedProofArgs: CreateDomainConfigInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: CreateDomainConfigInstructionExtraArgs["remainingAccounts"];
@@ -293,7 +288,6 @@ export type CreateDomainConfigInput<
   whitelistedAddressTrees: Address<TAccountWhitelistedAddressTrees>;
   rpId: CreateDomainConfigInstructionDataArgs["rpId"];
   origins: CreateDomainConfigInstructionDataArgs["origins"];
-  metadataUrl: CreateDomainConfigInstructionDataArgs["metadataUrl"];
   authorityCreationArgs: CreateDomainConfigInstructionDataArgs["authorityCreationArgs"];
   compressedProofArgs: CreateDomainConfigInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: CreateDomainConfigInstructionExtraArgs["remainingAccounts"];

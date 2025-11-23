@@ -17,7 +17,6 @@ use light_sdk::{
 pub struct EditDomainConfigArgs {
     new_origins: Option<Vec<String>>,
     new_authority_args: Option<NewAuthorityArgs>,
-    new_metadata_url: Option<String>,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -111,10 +110,6 @@ impl<'info> EditDomainConfig<'info> {
 
         if args.new_origins.is_some() {
             domain_config.write_origins(args.new_origins.unwrap())?;
-        }
-
-        if args.new_metadata_url.is_some() {
-            domain_config.write_metadata_url(args.new_metadata_url.unwrap())?;
         }
 
         Ok(())

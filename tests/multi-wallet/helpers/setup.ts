@@ -200,7 +200,6 @@ export async function createMultiWallet(
     rpId,
     origins: [origin, "happy"],
     authority: wallet,
-    metadataUrl: "",
   });
 
   await sendTransaction([setDomainIx], payer);

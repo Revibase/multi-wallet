@@ -14,9 +14,7 @@ export async function createDomainConfig({
   rpId,
   origins,
   authority,
-  metadataUrl,
 }: {
-  metadataUrl: string;
   payer: TransactionSigner;
   rpId: string;
   origins: string[];
@@ -64,7 +62,6 @@ export async function createDomainConfig({
     payer,
     domainConfig,
     rpId,
-    metadataUrl,
     remainingAccounts,
   });
 }

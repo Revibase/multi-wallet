@@ -24,13 +24,11 @@ export async function editDomainConfig({
   domainConfig,
   newAuthority,
   newOrigins,
-  newMetadataUrl,
 }: {
   domainConfig: Address;
   authority: TransactionSigner;
   newAuthority?: TransactionSigner;
   newOrigins?: string[];
-  newMetadataUrl?: string;
 }) {
   let newAuthorityArgs: OptionOrNullable<NewAuthorityArgsArgs> = null;
   let remainingAccounts: AccountMeta[] = [];
@@ -80,7 +78,6 @@ export async function editDomainConfig({
     newOrigins: newOrigins ? some(newOrigins) : none(),
     newAuthorityArgs,
     newAuthority,
-    newMetadataUrl: newMetadataUrl ? some(newMetadataUrl) : none(),
     remainingAccounts,
   });
 }

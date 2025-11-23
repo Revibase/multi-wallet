@@ -17,7 +17,6 @@ use light_sdk::{
 pub struct CreateDomainConfigArgs {
     rp_id: String,
     origins: Vec<String>,
-    metadata_url: String,
     authority_creation_args: UserCreationArgs,
     compressed_proof_args: ProofArgs,
 }
@@ -99,8 +98,6 @@ impl<'info> CreateDomainConfig<'info> {
 
         let domain_config = &mut ctx.accounts.domain_config.load_init()?;
         domain_config.rp_id_hash = Sha256::hash(args.rp_id.as_bytes()).unwrap();
-
-        domain_config.write_metadata_url(args.metadata_url)?;
         domain_config.write_rp_id(args.rp_id)?;
         domain_config.write_origins(args.origins)?;
         domain_config.authority = ctx.accounts.authority.key();

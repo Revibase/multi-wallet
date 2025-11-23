@@ -21,8 +21,6 @@ import {
   getBytesEncoder,
   getStructDecoder,
   getStructEncoder,
-  getU16Decoder,
-  getU16Encoder,
   getU8Decoder,
   getU8Encoder,
   transformEncoder,
@@ -51,45 +49,39 @@ export function getDomainConfigDiscriminatorBytes() {
 
 export type DomainConfig = {
   discriminator: ReadonlyUint8Array;
-  numOrigins: number;
   authority: Address;
   rpIdHash: ReadonlyUint8Array;
   bump: number;
   isDisabled: number;
   rpIdLength: number;
+  numOrigins: number;
   rpId: ReadonlyUint8Array;
   origins: ReadonlyUint8Array;
-  metadataUrlLength: number;
-  metadataUrl: ReadonlyUint8Array;
 };
 
 export type DomainConfigArgs = {
-  numOrigins: number;
   authority: Address;
   rpIdHash: ReadonlyUint8Array;
   bump: number;
   isDisabled: number;
   rpIdLength: number;
+  numOrigins: number;
   rpId: ReadonlyUint8Array;
   origins: ReadonlyUint8Array;
-  metadataUrlLength: number;
-  metadataUrl: ReadonlyUint8Array;
 };
 
 export function getDomainConfigEncoder(): FixedSizeEncoder<DomainConfigArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["numOrigins", getU16Encoder()],
       ["authority", getAddressEncoder()],
       ["rpIdHash", fixEncoderSize(getBytesEncoder(), 32)],
       ["bump", getU8Encoder()],
       ["isDisabled", getU8Encoder()],
       ["rpIdLength", getU8Encoder()],
+      ["numOrigins", getU8Encoder()],
       ["rpId", fixEncoderSize(getBytesEncoder(), 255)],
-      ["origins", fixEncoderSize(getBytesEncoder(), 413)],
-      ["metadataUrlLength", getU8Encoder()],
-      ["metadataUrl", fixEncoderSize(getBytesEncoder(), 100)],
+      ["origins", fixEncoderSize(getBytesEncoder(), 515)],
     ]),
     (value) => ({ ...value, discriminator: DOMAIN_CONFIG_DISCRIMINATOR })
   );
@@ -98,16 +90,14 @@ export function getDomainConfigEncoder(): FixedSizeEncoder<DomainConfigArgs> {
 export function getDomainConfigDecoder(): FixedSizeDecoder<DomainConfig> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["numOrigins", getU16Decoder()],
     ["authority", getAddressDecoder()],
     ["rpIdHash", fixDecoderSize(getBytesDecoder(), 32)],
     ["bump", getU8Decoder()],
     ["isDisabled", getU8Decoder()],
     ["rpIdLength", getU8Decoder()],
+    ["numOrigins", getU8Decoder()],
     ["rpId", fixDecoderSize(getBytesDecoder(), 255)],
-    ["origins", fixDecoderSize(getBytesDecoder(), 413)],
-    ["metadataUrlLength", getU8Decoder()],
-    ["metadataUrl", fixDecoderSize(getBytesDecoder(), 100)],
+    ["origins", fixDecoderSize(getBytesDecoder(), 515)],
   ]);
 }
 

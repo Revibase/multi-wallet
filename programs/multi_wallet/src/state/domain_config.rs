@@ -2,37 +2,24 @@ use crate::error::MultisigError;
 use anchor_lang::prelude::*;
 use std::str::from_utf8;
 
-const MAX_METADATA_URL_LEN: usize = 100;
-const MAX_ORIGINS_LEN: usize = 413;
+const MAX_ORIGINS_LEN: usize = 515;
 const MAX_RP_ID_LEN: usize = u8::MAX as usize;
 
 #[account(zero_copy)]
 pub struct DomainConfig {
-    pub num_origins: u16,
     pub authority: Pubkey,
     pub rp_id_hash: [u8; 32],
     pub bump: u8,
     pub is_disabled: u8,
     pub rp_id_length: u8,
+    pub num_origins: u8,
     pub rp_id: [u8; MAX_RP_ID_LEN],
     pub origins: [u8; MAX_ORIGINS_LEN],
-    pub metadata_url_length: u8,
-    pub metadata_url: [u8; MAX_METADATA_URL_LEN],
 }
 
 impl DomainConfig {
     pub fn size() -> usize {
-        return 8
-            + 2
-            + 32
-            + 32
-            + 1
-            + 1
-            + 1
-            + MAX_RP_ID_LEN
-            + MAX_ORIGINS_LEN
-            + 1
-            + MAX_METADATA_URL_LEN;
+        return 8 + 32 + 32 + 1 + 1 + 1 + 1 + MAX_RP_ID_LEN + MAX_ORIGINS_LEN;
     }
 
     pub fn write_rp_id(&mut self, rp_id: String) -> Result<()> {
@@ -50,26 +37,6 @@ impl DomainConfig {
                 self.rp_id[i] = rp_id[i];
             } else {
                 self.rp_id[i] = 0;
-            }
-        }
-        Ok(())
-    }
-
-    pub fn write_metadata_url(&mut self, metadata_url: String) -> Result<()> {
-        let metadata_url = metadata_url.as_bytes();
-
-        require!(
-            metadata_url.len() <= MAX_METADATA_URL_LEN,
-            MultisigError::MaxLengthExceeded
-        );
-
-        self.metadata_url_length = metadata_url.len().try_into()?;
-
-        for i in 0..MAX_METADATA_URL_LEN {
-            if i < metadata_url.len() {
-                self.metadata_url[i] = metadata_url[i];
-            } else {
-                self.metadata_url[i] = 0;
             }
         }
         Ok(())
