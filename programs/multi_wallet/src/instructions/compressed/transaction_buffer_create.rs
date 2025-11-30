@@ -49,11 +49,11 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
         args: &TransactionBufferCreateArgs,
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
         settings: &CompressedSettingsData,
+        settings_key: &Pubkey,
     ) -> Result<()> {
         let Self {
             creator,
             domain_config,
-            transaction_buffer,
             instructions_sysvar,
             slot_hash_sysvar,
             ..
@@ -97,7 +97,7 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
                 domain_config,
                 instructions_sysvar,
                 ChallengeArgs {
-                    account: transaction_buffer.key(),
+                    account: *settings_key,
                     message_hash: args.final_buffer_hash,
                     action_type: if args.preauthorize_execution {
                         TransactionActionType::CreateWithPreauthorizedExecution
@@ -152,7 +152,7 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
         )?;
 
         ctx.accounts
-            .validate(&args, &secp256r1_verify_args, &settings)?;
+            .validate(&args, &secp256r1_verify_args, &settings, &settings_key)?;
 
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
         transaction_buffer.init(

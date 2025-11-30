@@ -98,9 +98,10 @@ export class PackedAccounts {
     const stateTreeInfos = getSolanaRpcEndpoint().includes("devnet")
       ? localTestActiveStateTreeInfos()
       : await getLightProtocolRpc().getStateTreeInfos();
-    const outputStateTreeIndex = this.packOutputTreeIndex(
-      selectStateTreeInfo(stateTreeInfos)
-    );
+
+    const selectedStateTree = selectStateTreeInfo(stateTreeInfos);
+
+    const outputStateTreeIndex = this.packOutputTreeIndex(selectedStateTree);
     return outputStateTreeIndex;
   }
 

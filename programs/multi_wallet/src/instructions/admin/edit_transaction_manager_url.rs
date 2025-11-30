@@ -46,7 +46,7 @@ impl<'info> EditTransactionManagerUrl<'info> {
         require!(
             user_account.role.eq(&UserRole::TransactionManager)
                 && user_account.transaction_manager_url.is_some(),
-            MultisigError::TransactionManagerNotAllowed
+            MultisigError::ExpectedTransactionManagerRoleMismatch
         );
         user_account.transaction_manager_url = Some(transaction_manager_url);
 

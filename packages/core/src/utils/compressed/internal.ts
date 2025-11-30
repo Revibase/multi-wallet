@@ -1,4 +1,17 @@
 import {
+  bn,
+  CompressedAccountResult,
+  CompressedAccountResultV2,
+  createCompressedAccountWithMerkleContextLegacy,
+  createMerkleContextLegacy,
+  encodeBN254toBase58,
+  featureFlags,
+  getStateTreeInfoByPubkey,
+  jsonRpcResultAndContext,
+  localTestActiveStateTreeInfos,
+  parseAccountData,
+  rpcRequest,
+  versionedEndpoint,
   type AccountProofInput,
   type AddressWithTree,
   type BN254,
@@ -7,8 +20,10 @@ import {
   type TreeInfo,
   type ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
+import { SolanaJSONRPCError } from "@solana/web3.js";
 import BN from "bn.js";
 import { some, type Address, type Decoder, type OptionOrNullable } from "gill";
+import { create, nullable } from "superstruct";
 import {
   fetchWhitelistedAddressTree,
   getCompressedSettingsDecoder,
@@ -19,7 +34,11 @@ import {
   getCompressedSettingsAddressFromIndex,
   getWhitelistedAddressTreesAddress,
 } from "../addresses";
-import { getLightProtocolRpc, getSolanaRpc } from "../initialize";
+import {
+  getLightProtocolRpc,
+  getSolanaRpc,
+  getSolanaRpcEndpoint,
+} from "../initialize";
 import { PackedAccounts } from "./packedAccounts";
 
 export async function getCompressedAccount(
@@ -30,8 +49,57 @@ export async function getCompressedAccount(
   if (result) {
     return result;
   } else {
-    const compressedAccount =
-      await getLightProtocolRpc().getCompressedAccount(address);
+    const unsafeRes = await rpcRequest(
+      getLightProtocolRpc().compressionApiEndpoint,
+      versionedEndpoint("getCompressedAccount"),
+      {
+        hash: undefined,
+        address: address ? encodeBN254toBase58(address) : undefined,
+      }
+    );
+
+    let res;
+    if (featureFlags.isV2()) {
+      res = create(
+        unsafeRes,
+        jsonRpcResultAndContext(nullable(CompressedAccountResultV2))
+      );
+    } else {
+      res = create(
+        unsafeRes,
+        jsonRpcResultAndContext(nullable(CompressedAccountResult))
+      );
+    }
+
+    if ("error" in res) {
+      throw new SolanaJSONRPCError(
+        res.error,
+        `failed to get info for compressed account ${address ? address.toString() : ""}`
+      );
+    }
+    if (res.result.value === null) {
+      return null;
+    }
+
+    const tree = featureFlags.isV2()
+      ? (res.result.value as any).merkleContext.tree
+      : (res.result.value as any).tree!;
+
+    const stateTreeInfos = getSolanaRpcEndpoint().includes("devnet")
+      ? localTestActiveStateTreeInfos()
+      : await getLightProtocolRpc().getStateTreeInfos();
+
+    const stateTreeInfo = getStateTreeInfoByPubkey(stateTreeInfos, tree);
+    const item = res.result.value;
+
+    const compressedAccount = createCompressedAccountWithMerkleContextLegacy(
+      createMerkleContextLegacy(stateTreeInfo, item.hash, item.leafIndex),
+      item.owner,
+      bn(item.lamports),
+      item.data ? parseAccountData(item.data) : undefined,
+      item.address || undefined
+    );
+
     if (compressedAccount) {
       cachedAccounts?.set(address.toString(), compressedAccount);
     }

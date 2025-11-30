@@ -51,7 +51,6 @@ impl TransactionBufferCreate<'_> {
             settings,
             creator,
             domain_config,
-            transaction_buffer,
             instructions_sysvar,
             slot_hash_sysvar,
             ..
@@ -66,6 +65,7 @@ impl TransactionBufferCreate<'_> {
 
         let signer: MemberKey =
             MemberKey::get_signer(creator, &secp256r1_verify_args, Some(instructions_sysvar))?;
+        let settings_key = settings.key();
         let settings = settings.load()?;
         let member = settings
             .members
@@ -95,7 +95,7 @@ impl TransactionBufferCreate<'_> {
                 domain_config,
                 instructions_sysvar,
                 ChallengeArgs {
-                    account: transaction_buffer.key(),
+                    account: settings_key,
                     message_hash: args.final_buffer_hash,
                     action_type: if args.preauthorize_execution {
                         TransactionActionType::CreateWithPreauthorizedExecution

@@ -70,7 +70,7 @@ impl TransactionBufferVote<'_> {
                 domain_config,
                 instructions_sysvar,
                 ChallengeArgs {
-                    account: transaction_buffer.key(),
+                    account: transaction_buffer.multi_wallet_settings,
                     message_hash: transaction_buffer.final_buffer_hash,
                     action_type: TransactionActionType::Vote,
                 },

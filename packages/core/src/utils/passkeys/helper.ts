@@ -8,12 +8,14 @@ import {
   getAddressEncoder,
   getBase58Decoder,
   getBase58Encoder,
+  getBase64Encoder,
   getUtf8Encoder,
   type Address,
 } from "gill";
 import { fetchDomainConfig } from "../../generated";
 import {
   SignedSecp256r1Key,
+  type TransactionAuthDetails,
   type TransactionAuthenticationResponse,
 } from "../../types";
 import { getDomainConfigAddress } from "../addresses";
@@ -216,32 +218,40 @@ export async function getSignedSecp256r1Key(
 }
 
 export function verifyTransactionAuthResponseWithMessageHash(
-  payload: TransactionAuthenticationResponse,
+  authDetails: TransactionAuthDetails,
   expectedMessageHash: Uint8Array
 ) {
-  const { authenticatorData, clientDataJSON } = (
-    payload.authResponse as AuthenticationResponseJSON
-  ).response;
+  const {
+    authResponse,
+    transactionPayload,
+    slotHash,
+    requestedClient,
+    deviceSignature,
+  } = authDetails;
+  const {
+    response: { authenticatorData, clientDataJSON },
+  } = authResponse;
 
   const authData = new Uint8Array(base64URLStringToBuffer(authenticatorData));
-
   const clientDataJsonParsed = JSON.parse(
     new TextDecoder().decode(base64URLStringToBuffer(clientDataJSON))
   ) as Record<string, any>;
 
   const { transactionActionType, transactionAddress, transactionMessageBytes } =
-    payload.transactionPayload;
+    transactionPayload;
 
   const challenge = sha256(
     new Uint8Array([
       ...getUtf8Encoder().encode(transactionActionType),
       ...getAddressEncoder().encode(address(transactionAddress)),
-      ...sha256(transactionMessageBytes),
-      ...getBase58Encoder().encode(payload.slotHash),
+      ...sha256(
+        new Uint8Array(getBase64Encoder().encode(transactionMessageBytes))
+      ),
+      ...getBase58Encoder().encode(slotHash),
       ...sha256(
         new Uint8Array([
-          ...getUtf8Encoder().encode(payload.requestedClient),
-          ...getBase58Encoder().encode(payload.deviceSignature.publicKey),
+          ...getUtf8Encoder().encode(requestedClient),
+          ...getBase58Encoder().encode(deviceSignature.publicKey),
         ])
       ),
     ])

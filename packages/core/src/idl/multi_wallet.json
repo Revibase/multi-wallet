@@ -1898,211 +1898,261 @@
   "errors": [
     {
       "code": 6000,
-      "name": "InvalidSignedMessage",
-      "msg": "Invalid signature: the provided signature does not match the expected message payload."
-    },
-    {
-      "code": 6001,
       "name": "InvalidSecp256r1VerifyArg",
       "msg": "Malformed or missing WebAuthn verification parameters. Please provide valid secp256r1 signature arguments."
     },
     {
+      "code": 6001,
+      "name": "InvalidSecp256r1Instruction",
+      "msg": "The instruction preceding this program invocation is not a secp256r1 verification instruction."
+    },
+    {
       "code": 6002,
+      "name": "SignatureIndexOutOfBounds",
+      "msg": "The signature index provided is out of bounds for the secp256r1 instruction."
+    },
+    {
+      "code": 6003,
+      "name": "InvalidSignatureOffsets",
+      "msg": "Failed to deserialize secp256r1 signature offsets from the instruction data."
+    },
+    {
+      "code": 6004,
+      "name": "InvalidSecp256r1PublicKey",
+      "msg": "The extracted public key has an invalid length or encoding."
+    },
+    {
+      "code": 6005,
+      "name": "MalformedSignedMessage",
+      "msg": "The extracted WebAuthn signed message payload is malformed."
+    },
+    {
+      "code": 6006,
+      "name": "RpIdHashMismatch",
+      "msg": "The rpIdHash extracted from the signed message does not match the expected value."
+    },
+    {
+      "code": 6007,
+      "name": "ClientDataHashMismatch",
+      "msg": "The clientDataJSON hash extracted from the signature does not match the generated hash."
+    },
+    {
+      "code": 6008,
+      "name": "ExpectedMessageHashMismatch",
+      "msg": "The message hash associated with the signer does not match the pre-declared expected message hash."
+    },
+    {
+      "code": 6009,
       "name": "DurableNonceDetected",
       "msg": "Durable nonce detected: this program does not support transactions using a durable nonce."
     },
     {
-      "code": 6003,
+      "code": 6010,
       "name": "DuplicateMember",
       "msg": "Duplicate public keys detected among members. Each member must have a unique key."
     },
     {
-      "code": 6004,
+      "code": 6011,
       "name": "PermanentMember",
       "msg": "Permanent members cannot be removed from a wallet."
     },
     {
-      "code": 6005,
-      "name": "PermanentMemberNotAllowed",
-      "msg": "This operation cannot assign a permanent member."
-    },
-    {
-      "code": 6006,
+      "code": 6012,
       "name": "OnlyOnePermanentMemberAllowed",
       "msg": "Only one permanent member is allowed per wallet."
     },
     {
-      "code": 6007,
+      "code": 6013,
       "name": "OnlyOneTransactionManagerAllowed",
       "msg": "Only one transaction manager is allowed per wallet."
     },
     {
-      "code": 6008,
-      "name": "TransactionManagerNotAllowed",
-      "msg": "Unable to assign a transaction manager."
+      "code": 6014,
+      "name": "InvalidTransactionManagerPermission",
+      "msg": "Invalid Transaction Manager permissions. Only initiate is allowed."
     },
     {
-      "code": 6009,
+      "code": 6015,
+      "name": "ExpectedTransactionManagerRoleMismatch",
+      "msg": "Expected a User with Transaction Manager role for this instruction."
+    },
+    {
+      "code": 6016,
+      "name": "InvalidTransactionManagerConfig",
+      "msg": "User with Transaction Manager role requires a valid transaction manager url, be a ed25519 Signer and have no delegated wallet."
+    },
+    {
+      "code": 6017,
+      "name": "ExpectedAdministratorRoleMismatch",
+      "msg": "Expected a User with Administrator role for this instruction."
+    },
+    {
+      "code": 6018,
+      "name": "InvalidAdministratorConfig",
+      "msg": "User with Administrator role requires a valid domain config, be a ed25519 Signer and have no delegated wallet."
+    },
+    {
+      "code": 6019,
       "name": "EmptyMembers",
       "msg": "No members provided. A multisig wallet must contain at least one member."
     },
     {
-      "code": 6010,
+      "code": 6020,
       "name": "TooManyMembers",
       "msg": "Too many members: a maximum of 4 members are supported."
     },
     {
-      "code": 6011,
+      "code": 6021,
       "name": "InvalidThreshold",
       "msg": "Invalid threshold: must be at least 1 and cannot exceed the number of voting-eligible members."
     },
     {
-      "code": 6012,
+      "code": 6022,
       "name": "InvalidTransactionMessage",
       "msg": "Malformed transaction message: structure or formatting does not match the expected layout."
     },
     {
-      "code": 6013,
+      "code": 6023,
       "name": "InvalidNumberOfAccounts",
       "msg": "Unexpected number of accounts provided for this instruction."
     },
     {
-      "code": 6014,
+      "code": 6024,
       "name": "InvalidAccount",
       "msg": "One or more provided accounts failed validation. Verify that all required accounts are included and correct."
     },
     {
-      "code": 6015,
+      "code": 6025,
+      "name": "InvalidUserRole",
+      "msg": "One or more provided user accounts failed validation. Verify that only users with appropriate roles are allowed to perform this action."
+    },
+    {
+      "code": 6026,
       "name": "InvalidArguments",
       "msg": "Invalid or missing instruction arguments. Ensure all required arguments are correctly provided."
     },
     {
-      "code": 6016,
+      "code": 6027,
       "name": "MissingAccount",
       "msg": "A required account is missing from the instruction context."
     },
     {
-      "code": 6017,
+      "code": 6028,
       "name": "MissingUserArgs",
       "msg": "User mutation arguments are required when performing add or remove delegate operations."
     },
     {
-      "code": 6018,
+      "code": 6029,
       "name": "AlreadyDelegated",
       "msg": "This member is already delegated to another wallet."
     },
     {
-      "code": 6019,
+      "code": 6030,
       "name": "InsufficientSignerWithExecutePermission",
       "msg": "At least one signer with execute permission is required to proceed."
     },
     {
-      "code": 6020,
+      "code": 6031,
       "name": "InsufficientSignerWithInitiatePermission",
       "msg": "At least one signer with initiate permission is required to perform this action."
     },
     {
-      "code": 6021,
+      "code": 6032,
       "name": "InsufficientSignersWithVotePermission",
       "msg": "Not enough members with vote permission to meet the approval threshold."
     },
     {
-      "code": 6022,
+      "code": 6033,
       "name": "UnexpectedSigner",
       "msg": "Member is not part of the expected signers for this transaction."
     },
     {
-      "code": 6023,
+      "code": 6034,
       "name": "NoSignerFound",
       "msg": "No valid signer found in this transaction."
     },
     {
-      "code": 6024,
+      "code": 6035,
       "name": "UnauthorisedToCloseTransactionBuffer",
       "msg": "Only the transaction creator or rent payer may close this transaction buffer."
     },
     {
-      "code": 6025,
+      "code": 6036,
       "name": "InvalidBuffer",
       "msg": "Buffer validation failed: contents do not match the expected hash (possible tampering detected)."
     },
     {
-      "code": 6026,
+      "code": 6037,
       "name": "FinalBufferHashMismatch",
       "msg": "Final buffer hash mismatch: the serialized data may be corrupted or altered."
     },
     {
-      "code": 6027,
+      "code": 6038,
       "name": "FinalBufferSizeExceeded",
       "msg": "The serialized transaction buffer exceeds the maximum size of 10,128 bytes."
     },
     {
-      "code": 6028,
+      "code": 6039,
       "name": "FinalBufferSizeMismatch",
       "msg": "Declared buffer size does not match the actual serialized size."
     },
     {
-      "code": 6029,
+      "code": 6040,
       "name": "TransactionHasExpired",
       "msg": "This transaction has expired. It must be executed within 3 minutes of approval."
     },
     {
-      "code": 6030,
+      "code": 6041,
       "name": "TransactionNotApproved",
       "msg": "This transaction has not yet reached the required approval threshold."
     },
     {
-      "code": 6031,
+      "code": 6042,
       "name": "ProtectedAccount",
       "msg": "Writable CPI calls to protected accounts are not permitted."
     },
     {
-      "code": 6032,
+      "code": 6043,
       "name": "MaxLengthExceeded",
       "msg": "An input string exceeds the maximum allowed character length."
     },
     {
-      "code": 6033,
+      "code": 6044,
       "name": "MissingSysvarSlotHistory",
       "msg": "Missing required sysvar: Slot History must be included as an account in this instruction."
     },
     {
-      "code": 6034,
+      "code": 6045,
       "name": "InvalidSysvarDataFormat",
       "msg": "Failed to parse the Slot History sysvar: data format is invalid or corrupted."
     },
     {
-      "code": 6035,
+      "code": 6046,
       "name": "SlotNumberNotFound",
       "msg": "The specified slot number was not found in the provided slot history."
     },
     {
-      "code": 6036,
+      "code": 6047,
       "name": "DomainConfigIsDisabled",
       "msg": "The domain configuration account is disabled. Please contact support or try again later."
     },
     {
-      "code": 6037,
+      "code": 6048,
       "name": "DomainConfigIsMissing",
       "msg": "Missing domain configuration account."
     },
     {
-      "code": 6038,
+      "code": 6049,
       "name": "MemberDoesNotBelongToDomainConfig",
       "msg": "This member is not registered under the provided domain configuration."
     },
     {
-      "code": 6039,
-      "name": "RpIdHashMismatch",
-      "msg": "The relying party ID hash does not match the one defined in the domain configuration."
-    },
-    {
-      "code": 6040,
+      "code": 6050,
       "name": "OriginIndexOutOfBounds",
       "msg": "The given origin index is not in the whitelisted origins."
     },
     {
-      "code": 6041,
+      "code": 6051,
       "name": "InvalidAddressTree",
       "msg": "Address Tree supplied is not part of the whitelisted address trees"
     }

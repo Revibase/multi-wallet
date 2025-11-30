@@ -50,15 +50,15 @@ pub trait MultisigSettings {
                 permission_counts.transaction_manager += 1;
                 require!(
                     p.has(Permission::InitiateTransaction),
-                    MultisigError::TransactionManagerNotAllowed
+                    MultisigError::InvalidTransactionManagerPermission
                 );
                 require!(
                     !p.has(Permission::VoteTransaction),
-                    MultisigError::TransactionManagerNotAllowed
+                    MultisigError::InvalidTransactionManagerPermission
                 );
                 require!(
                     !p.has(Permission::ExecuteTransaction),
-                    MultisigError::TransactionManagerNotAllowed
+                    MultisigError::InvalidTransactionManagerPermission
                 );
             }
         }
@@ -127,7 +127,7 @@ pub trait MultisigSettings {
 
                     UserRole::Member => member.delegate_operation.ne(&DelegateOp::Remove),
                 },
-                MultisigError::InvalidAccount
+                MultisigError::InvalidUserRole
             );
 
             new_member_data.push(Member {
@@ -235,7 +235,7 @@ pub trait MultisigSettings {
 
             require!(
                 UserRole::from(existing_member.role).ne(&UserRole::TransactionManager),
-                MultisigError::TransactionManagerNotAllowed
+                MultisigError::InvalidTransactionManagerPermission
             );
 
             // update permissions in place
@@ -247,7 +247,7 @@ pub trait MultisigSettings {
 
                     require!(
                         user_mut_args.data.role.eq(&UserRole::Member),
-                        MultisigError::InvalidAccount
+                        MultisigError::InvalidUserRole
                     );
 
                     if member.delegate_operation == DelegateOp::Add {

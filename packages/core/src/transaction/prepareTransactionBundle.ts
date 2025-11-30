@@ -30,7 +30,6 @@ interface CreateTransactionBundleArgs {
   index: number | bigint;
   settingsAddressTreeIndex?: number;
   transactionMessageBytes: ReadonlyUint8Array;
-  bufferIndex?: number;
   creator: TransactionSigner | SignedSecp256r1Key;
   additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
   executor?: TransactionSigner | SignedSecp256r1Key;
@@ -54,7 +53,6 @@ export async function prepareTransactionBundle({
   jitoBundlesTipAmount,
   addressesByLookupTableAddress,
   compressed = false,
-  bufferIndex = Math.floor(Math.random() * 255),
   additionalVoters = [],
   additionalSigners = [],
   chunkSize = Math.ceil(transactionMessageBytes.length / 2),
@@ -62,6 +60,8 @@ export async function prepareTransactionBundle({
 }: CreateTransactionBundleArgs): Promise<TransactionDetails[]> {
   // --- Stage 1: Setup Addresses ---
   const settings = await getSettingsFromIndex(index);
+
+  const bufferIndex = Math.floor(Math.random() * 255);
   const transactionBufferAddress = await getTransactionBufferAddress(
     settings,
     creator instanceof SignedSecp256r1Key ? creator : creator.address,

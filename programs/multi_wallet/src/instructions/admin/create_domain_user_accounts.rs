@@ -122,7 +122,7 @@ impl<'info> CreateDomainUserAccount<'info> {
                         && transaction_manager_account
                             .role
                             .eq(&UserRole::TransactionManager),
-                    MultisigError::TransactionManagerNotAllowed
+                    MultisigError::ExpectedTransactionManagerRoleMismatch
                 );
 
                 new_members.push(Member {

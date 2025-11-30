@@ -181,14 +181,14 @@ impl Secp256r1VerifyArgs {
 
         require!(
             instruction.program_id.eq(&SECP256R1_PROGRAM_ID),
-            MultisigError::InvalidSignedMessage
+            MultisigError::InvalidSecp256r1Instruction
         );
 
         let num_signatures = instruction.data[0];
 
         require!(
             self.signed_message_index < num_signatures,
-            MultisigError::InvalidSignedMessage
+            MultisigError::SignatureIndexOutOfBounds
         );
 
         let start: u8 = self
@@ -213,27 +213,27 @@ impl Secp256r1VerifyArgs {
             let extracted_pubkey = MemberKey::convert_secp256r1(&Secp256r1Pubkey(
                 instruction.data[public_key_offset..public_key_end]
                     .try_into()
-                    .map_err(|_| MultisigError::InvalidSignedMessage)?,
+                    .map_err(|_| MultisigError::InvalidSecp256r1PublicKey)?,
             ))?;
             let extracted_message_hash = expected_secp256r1_signers
                 .iter()
                 .find(|f| f.member_key.eq(&extracted_pubkey))
-                .ok_or(MultisigError::InvalidSignedMessage)?
+                .ok_or(MultisigError::MalformedSignedMessage)?
                 .message_hash;
 
             require!(
                 extracted_message_hash.eq(&Sha256::hash(message).unwrap()),
-                MultisigError::InvalidSignedMessage
+                MultisigError::ExpectedMessageHashMismatch
             );
         }
 
         let rp_id_hash: [u8; 32] = message[..32]
             .try_into()
-            .map_err(|_| MultisigError::InvalidSignedMessage)?;
+            .map_err(|_| MultisigError::InvalidSignatureOffsets)?;
 
         let client_data_hash: [u8; 32] = message[37..]
             .try_into()
-            .map_err(|_| MultisigError::InvalidSignedMessage)?;
+            .map_err(|_| MultisigError::InvalidSignatureOffsets)?;
 
         Ok((rp_id_hash, client_data_hash))
     }
@@ -249,14 +249,14 @@ impl Secp256r1VerifyArgs {
 
         require!(
             instruction.program_id.eq(&SECP256R1_PROGRAM_ID),
-            MultisigError::InvalidSignedMessage
+            MultisigError::InvalidSecp256r1Instruction
         );
 
         let num_signatures = instruction.data[0];
 
         require!(
             self.signed_message_index < num_signatures,
-            MultisigError::InvalidSignedMessage
+            MultisigError::SignatureIndexOutOfBounds
         );
 
         let start: u8 = self
@@ -276,7 +276,7 @@ impl Secp256r1VerifyArgs {
         let extracted_pubkey: [u8; COMPRESSED_PUBKEY_SERIALIZED_SIZE] = instruction.data
             [public_key_offset..public_key_end]
             .try_into()
-            .map_err(|_| MultisigError::InvalidSignedMessage)?;
+            .map_err(|_| MultisigError::InvalidSecp256r1PublicKey)?;
 
         Ok(Secp256r1Pubkey(extracted_pubkey))
     }
@@ -337,7 +337,7 @@ impl Secp256r1VerifyArgs {
                 generated_client_data_json.len(),
                 &generated_client_data_json
             );
-            return err!(MultisigError::InvalidSignedMessage);
+            return err!(MultisigError::ClientDataHashMismatch);
         }
 
         Ok(())

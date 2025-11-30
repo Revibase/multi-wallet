@@ -54,13 +54,16 @@ impl User {
         if self.role.eq(&UserRole::TransactionManager) {
             require!(
                 self.transaction_manager_url.is_some(),
-                MultisigError::InvalidAccount
+                MultisigError::InvalidTransactionManagerConfig
             );
             require!(
                 self.member.get_type().eq(&KeyType::Ed25519),
-                MultisigError::InvalidAccount
+                MultisigError::InvalidTransactionManagerConfig
             );
-            require!(self.delegated_to.is_none(), MultisigError::InvalidAccount);
+            require!(
+                self.delegated_to.is_none(),
+                MultisigError::InvalidTransactionManagerConfig
+            );
         } else {
             require!(
                 self.transaction_manager_url.is_none(),
@@ -69,12 +72,18 @@ impl User {
         }
 
         if self.role.eq(&UserRole::Administrator) {
-            require!(self.delegated_to.is_none(), MultisigError::InvalidAccount);
+            require!(
+                self.delegated_to.is_none(),
+                MultisigError::InvalidAdministratorConfig
+            );
             require!(
                 self.member.get_type().eq(&KeyType::Ed25519),
-                MultisigError::InvalidAccount
+                MultisigError::InvalidAdministratorConfig
             );
-            require!(self.domain_config.is_some(), MultisigError::InvalidAccount);
+            require!(
+                self.domain_config.is_some(),
+                MultisigError::InvalidAdministratorConfig
+            );
         }
 
         if self.member.get_type().eq(&KeyType::Secp256r1) {
@@ -84,7 +93,7 @@ impl User {
             );
             require!(
                 self.role.eq(&UserRole::Member) || self.role.eq(&UserRole::PermanentMember),
-                MultisigError::InvalidAccount
+                MultisigError::InvalidUserRole
             );
         }
         Ok(())

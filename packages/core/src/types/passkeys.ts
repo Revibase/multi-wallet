@@ -1,16 +1,25 @@
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import type { Secp256r1Key } from "./secp256r1";
 
-export type TransactionAuthenticationResponse = {
-  authResponse: AuthenticationResponseJSON;
+export type TransactionAuthenticationResponse = TransactionAuthDetails & {
   signer: Secp256r1Key;
   userAddressTreeIndex?: number;
-  transactionPayload: TransactionPayload;
-  requestedClient: string;
-  deviceSignature: { publicKey: string; signature: string };
-  slotHash: string;
   slotNumber: string;
   additionalInfo?: any;
+};
+
+export type TransactionAuthDetails = {
+  authResponse: AuthenticationResponseJSON;
+  transactionPayload: TransactionPayloadWithBase64MessageBytes;
+  slotHash: string;
+  requestedClient: string;
+  deviceSignature: { publicKey: string; signature: string };
+};
+
+type TransactionPayloadWithBase64MessageBytes = {
+  transactionActionType: TransactionActionType;
+  transactionAddress: string;
+  transactionMessageBytes: string;
 };
 
 export type MessageAuthenticationResponse = {

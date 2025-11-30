@@ -53,7 +53,7 @@ impl<'info> CreateUserAccounts<'info> {
         for args in args {
             require!(
                 args.role.ne(&UserRole::Administrator),
-                MultisigError::InvalidAccount
+                MultisigError::ExpectedAdministratorRoleMismatch
             );
             require!(
                 ctx.remaining_accounts

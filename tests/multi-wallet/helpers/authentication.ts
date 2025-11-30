@@ -13,6 +13,7 @@ import {
   type GetAccountInfoApi,
   getBase58Decoder,
   getBase58Encoder,
+  getBase64Decoder,
   getBase64Encoder,
   getU64Decoder,
   getUtf8Encoder,
@@ -162,7 +163,12 @@ export async function mockAuthenticationResponse(
           signature: bufferToBase64URLString(signature.buffer),
         },
       },
-      transactionPayload: transaction,
+      transactionPayload: {
+        ...transaction,
+        transactionMessageBytes: getBase64Decoder().decode(
+          transaction.transactionMessageBytes
+        ),
+      },
       requestedClient,
       deviceSignature: {
         publicKey: getBase58Decoder().decode(device),

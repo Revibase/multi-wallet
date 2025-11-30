@@ -2,13 +2,34 @@ use anchor_lang::prelude::*;
 
 #[error_code]
 pub enum MultisigError {
-    #[msg(
-        "Invalid signature: the provided signature does not match the expected message payload."
-    )]
-    InvalidSignedMessage,
-
     #[msg("Malformed or missing WebAuthn verification parameters. Please provide valid secp256r1 signature arguments.")]
     InvalidSecp256r1VerifyArg,
+
+    #[msg("The instruction preceding this program invocation is not a secp256r1 verification instruction.")]
+    InvalidSecp256r1Instruction,
+
+    #[msg("The signature index provided is out of bounds for the secp256r1 instruction.")]
+    SignatureIndexOutOfBounds,
+
+    #[msg("Failed to deserialize secp256r1 signature offsets from the instruction data.")]
+    InvalidSignatureOffsets,
+
+    #[msg("The extracted public key has an invalid length or encoding.")]
+    InvalidSecp256r1PublicKey,
+
+    #[msg("The extracted WebAuthn signed message payload is malformed.")]
+    MalformedSignedMessage,
+
+    #[msg("The rpIdHash extracted from the signed message does not match the expected value.")]
+    RpIdHashMismatch,
+
+    #[msg(
+        "The clientDataJSON hash extracted from the signature does not match the generated hash."
+    )]
+    ClientDataHashMismatch,
+
+    #[msg("The message hash associated with the signer does not match the pre-declared expected message hash.")]
+    ExpectedMessageHashMismatch,
 
     #[msg(
         "Durable nonce detected: this program does not support transactions using a durable nonce."
@@ -21,17 +42,26 @@ pub enum MultisigError {
     #[msg("Permanent members cannot be removed from a wallet.")]
     PermanentMember,
 
-    #[msg("This operation cannot assign a permanent member.")]
-    PermanentMemberNotAllowed,
-
     #[msg("Only one permanent member is allowed per wallet.")]
     OnlyOnePermanentMemberAllowed,
 
     #[msg("Only one transaction manager is allowed per wallet.")]
     OnlyOneTransactionManagerAllowed,
 
-    #[msg("Unable to assign a transaction manager.")]
-    TransactionManagerNotAllowed,
+    #[msg("Invalid Transaction Manager permissions. Only initiate is allowed.")]
+    InvalidTransactionManagerPermission,
+
+    #[msg("Expected a User with Transaction Manager role for this instruction.")]
+    ExpectedTransactionManagerRoleMismatch,
+
+    #[msg("User with Transaction Manager role requires a valid transaction manager url, be a ed25519 Signer and have no delegated wallet.")]
+    InvalidTransactionManagerConfig,
+
+    #[msg("Expected a User with Administrator role for this instruction.")]
+    ExpectedAdministratorRoleMismatch,
+
+    #[msg("User with Administrator role requires a valid domain config, be a ed25519 Signer and have no delegated wallet.")]
+    InvalidAdministratorConfig,
 
     #[msg("No members provided. A multisig wallet must contain at least one member.")]
     EmptyMembers,
@@ -50,6 +80,9 @@ pub enum MultisigError {
 
     #[msg("One or more provided accounts failed validation. Verify that all required accounts are included and correct.")]
     InvalidAccount,
+
+    #[msg("One or more provided user accounts failed validation. Verify that only users with appropriate roles are allowed to perform this action.")]
+    InvalidUserRole,
 
     #[msg("Invalid or missing instruction arguments. Ensure all required arguments are correctly provided.")]
     InvalidArguments,
@@ -128,9 +161,6 @@ pub enum MultisigError {
 
     #[msg("This member is not registered under the provided domain configuration.")]
     MemberDoesNotBelongToDomainConfig,
-
-    #[msg("The relying party ID hash does not match the one defined in the domain configuration.")]
-    RpIdHashMismatch,
 
     #[msg("The given origin index is not in the whitelisted origins.")]
     OriginIndexOutOfBounds,

@@ -6,7 +6,6 @@ import {
   getSettingsFromIndex,
   getSignedSecp256r1Key,
   getSignedTransactionManager,
-  getTransactionBufferAddress,
   getWalletAddressFromIndex,
   prepareTransactionBundle,
   prepareTransactionMessage,
@@ -177,19 +176,13 @@ export function createRevibaseAdapter(): Revibase {
         cachedAccounts,
       });
       if (useBundle) {
-        const bufferIndex = Math.round(Math.random() * 255);
-        const transactionBufferAddress = await getTransactionBufferAddress(
-          settings,
-          transactionManagerAddress ? transactionManagerAddress : signer,
-          bufferIndex
-        );
         const [authResponse, jitoBundlesTipAmount] = await Promise.all([
           signTransactionWithPasskey({
             signer,
             transactionActionType: transactionManagerAddress
               ? "execute"
               : "create_with_preauthorized_execution",
-            transactionAddress: transactionBufferAddress,
+            transactionAddress: settings,
             transactionMessageBytes: new Uint8Array(transactionMessageBytes),
             popUp,
           }),
@@ -210,7 +203,6 @@ export function createRevibaseAdapter(): Revibase {
           index: this.settingsIndexWithAddress.index,
           settingsAddressTreeIndex:
             this.settingsIndexWithAddress.settingsAddressTreeIndex,
-          bufferIndex,
           transactionMessageBytes,
           creator: transactionManagerSigner ?? signedSigner,
           executor: transactionManagerSigner ? signedSigner : undefined,
