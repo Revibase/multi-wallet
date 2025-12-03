@@ -69,7 +69,7 @@ export function createRevibaseAdapter(): Revibase {
       }
       if (
         !authResponse.additionalInfo?.walletAddress ||
-        !authResponse.additionalInfo.settingsIndex
+        !authResponse.additionalInfo.settingsIndexWithAddress
       ) {
         const userAccountData = await fetchUserAccountData(authResponse.signer);
         if (userAccountData.delegatedTo.__option === "None") {

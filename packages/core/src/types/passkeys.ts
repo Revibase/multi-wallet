@@ -14,6 +14,8 @@ export type TransactionAuthDetails = {
   slotHash: string;
   requestedClient: string;
   deviceSignature: { publicKey: string; signature: string };
+  originIndex: number;
+  crossOrigin: boolean;
 };
 
 type TransactionPayloadWithBase64MessageBytes = {

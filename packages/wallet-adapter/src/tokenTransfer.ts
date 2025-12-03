@@ -71,7 +71,7 @@ export async function buildTokenTransferInstruction(
   });
   const signedSigner = await getSignedSecp256r1Key(authResponse);
   let settingsIndexWithAddress: SettingsIndexWithAddress;
-  if (!authResponse.additionalInfo.settingsIndex) {
+  if (!authResponse.additionalInfo.settingsIndexWithAddress) {
     const userAccountData = await fetchUserAccountData(
       authResponse.signer,
       authResponse.userAddressTreeIndex,

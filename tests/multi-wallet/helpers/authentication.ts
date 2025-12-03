@@ -145,39 +145,37 @@ export async function mockAuthenticationResponse(
     origin
   );
 
-  return await getSignedSecp256r1Key(
-    {
-      slotNumber,
-      slotHash,
-      signer: new Secp256r1Key(publicKey),
-      authResponse: {
-        id: "",
-        rawId: "",
-        type: "public-key",
-        clientExtensionResults: {},
-        response: {
-          authenticatorData: bufferToBase64URLString(
-            mockAuthenticatorData.buffer
-          ),
-          clientDataJSON: bufferToBase64URLString(clientDataJSONBytes.buffer),
-          signature: bufferToBase64URLString(signature.buffer),
-        },
-      },
-      transactionPayload: {
-        ...transaction,
-        transactionMessageBytes: getBase64Decoder().decode(
-          transaction.transactionMessageBytes
+  return await getSignedSecp256r1Key({
+    slotNumber,
+    slotHash,
+    signer: new Secp256r1Key(publicKey),
+    authResponse: {
+      id: "",
+      rawId: "",
+      type: "public-key",
+      clientExtensionResults: {},
+      response: {
+        authenticatorData: bufferToBase64URLString(
+          mockAuthenticatorData.buffer
         ),
-      },
-      requestedClient,
-      deviceSignature: {
-        publicKey: getBase58Decoder().decode(device),
-        signature: getBase58Decoder().decode(
-          crypto.getRandomValues(new Uint8Array(64))
-        ),
+        clientDataJSON: bufferToBase64URLString(clientDataJSONBytes.buffer),
+        signature: bufferToBase64URLString(signature.buffer),
       },
     },
+    transactionPayload: {
+      ...transaction,
+      transactionMessageBytes: getBase64Decoder().decode(
+        transaction.transactionMessageBytes
+      ),
+    },
+    requestedClient,
+    deviceSignature: {
+      publicKey: getBase58Decoder().decode(device),
+      signature: getBase58Decoder().decode(
+        crypto.getRandomValues(new Uint8Array(64))
+      ),
+    },
     originIndex,
-    crossOrigin
-  );
+    crossOrigin,
+  });
 }

@@ -172,9 +172,7 @@ export function convertPubkeyCompressedToCose(
  * const signedKey = await getSignedSecp256r1Key(response, originIndex);
  */
 export async function getSignedSecp256r1Key(
-  payload: TransactionAuthenticationResponse,
-  originIndex = 0,
-  crossOrigin = false
+  payload: TransactionAuthenticationResponse
 ): Promise<SignedSecp256r1Key> {
   const { authenticatorData, clientDataJSON, signature } = (
     payload.authResponse as AuthenticationResponseJSON
@@ -212,8 +210,8 @@ export async function getSignedSecp256r1Key(
     domainConfig,
     authData,
     signature: convertedSignature,
-    originIndex,
-    crossOrigin,
+    originIndex: payload.originIndex,
+    crossOrigin: payload.crossOrigin,
   });
 }
 
