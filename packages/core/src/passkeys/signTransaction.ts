@@ -4,11 +4,7 @@ import {
   type TransactionAuthenticationResponse,
   type TransactionPayload,
 } from "../types";
-import {
-  getAuthEndpoint,
-  getGlobalAdditonalInfo,
-  getWhitelistedAddressTreeIndexFromAddress,
-} from "../utils";
+import { getAuthEndpoint, getGlobalAdditonalInfo } from "../utils";
 import {
   bufferToBase64URLString,
   openAuthUrl,
@@ -40,10 +36,5 @@ export async function signTransactionWithPasskey({
   return {
     ...authResponse,
     signer: new Secp256r1Key(authResponse.signer),
-    userAddressTreeIndex: authResponse.userAddressTree
-      ? await getWhitelistedAddressTreeIndexFromAddress(
-          authResponse.userAddressTree
-        )
-      : undefined,
   } as TransactionAuthenticationResponse;
 }

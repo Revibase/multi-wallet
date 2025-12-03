@@ -4,11 +4,7 @@ import {
   type MessageAuthenticationResponse,
   type MessagePayload,
 } from "../types";
-import {
-  getAuthEndpoint,
-  getGlobalAdditonalInfo,
-  getWhitelistedAddressTreeIndexFromAddress,
-} from "../utils";
+import { getAuthEndpoint, getGlobalAdditonalInfo } from "../utils";
 import { openAuthUrl } from "../utils/passkeys/internal";
 
 export async function signMessageWithPasskey({
@@ -26,10 +22,5 @@ export async function signMessageWithPasskey({
   return {
     ...authResponse,
     signer: new Secp256r1Key(authResponse.signer),
-    userAddressTreeIndex: authResponse.userAddressTree
-      ? await getWhitelistedAddressTreeIndexFromAddress(
-          authResponse.userAddressTree
-        )
-      : undefined,
   } as MessageAuthenticationResponse;
 }
