@@ -38,6 +38,7 @@ export async function tokenTransferIntent({
   amount,
   payer,
   tokenProgram,
+  createAtaIfNeeded = true,
   compressed = false,
 }: {
   index: number | bigint;
@@ -47,6 +48,7 @@ export async function tokenTransferIntent({
   amount: number | bigint;
   signers: (TransactionSigner | SignedSecp256r1Key)[];
   tokenProgram: Address;
+  createAtaIfNeeded?: boolean;
   payer?: TransactionSigner;
   compressed?: boolean;
   cachedAccounts?: Map<string, any>;
@@ -114,6 +116,7 @@ export async function tokenTransferIntent({
     instructions.push(
       getTokenTransferIntentCompressedInstruction({
         amount,
+        createAtaIfNeeded,
         settingsReadonlyArgs,
         compressedProofArgs,
         payer,
@@ -131,6 +134,7 @@ export async function tokenTransferIntent({
     instructions.push(
       getTokenTransferIntentInstruction({
         amount,
+        createAtaIfNeeded,
         secp256r1VerifyArgs,
         source: walletAddress,
         sourceTokenAccount,

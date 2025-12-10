@@ -25,7 +25,7 @@ pub struct Secp256r1VerifyArgs {
     pub origin_index: u8,
     pub cross_origin: bool,
     pub truncated_client_data_json: Vec<u8>,
-    pub requested_client_and_device_hash: [u8; 32],
+    pub client_and_device_hash: [u8; 32],
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, PartialEq)]
@@ -322,7 +322,7 @@ impl Secp256r1VerifyArgs {
         buffer.extend_from_slice(challenge_args.account.as_ref());
         buffer.extend_from_slice(&challenge_args.message_hash);
         buffer.extend_from_slice(&slot_hash);
-        buffer.extend_from_slice(self.requested_client_and_device_hash.as_ref());
+        buffer.extend_from_slice(self.client_and_device_hash.as_ref());
 
         let expected_challenge = Sha256::hash(&buffer).unwrap();
 

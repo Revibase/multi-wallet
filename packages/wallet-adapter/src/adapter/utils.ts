@@ -58,7 +58,7 @@ export function simulateSecp256r1Signer() {
       truncatedClientDataJson: crypto.getRandomValues(new Uint8Array(100)),
       clientDataJson: crypto.getRandomValues(new Uint8Array(250)),
     },
-    requestedClientAndDeviceHash: crypto.getRandomValues(new Uint8Array(32)),
+    clientAndDeviceHash: crypto.getRandomValues(new Uint8Array(32)),
   });
   return signer;
 }

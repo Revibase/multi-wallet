@@ -176,6 +176,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
         amount: u64,
+        create_ata_if_needed: bool,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
         settings_readonly_args: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
@@ -208,26 +209,28 @@ impl<'info> TokenTransferIntentCompressed<'info> {
             MultisigError::InvalidAccount
         );
 
-        let ata_ix = create_associated_token_account_idempotent(
-            ctx.accounts.source.key,
-            ctx.accounts.destination.key,
-            ctx.accounts.mint.key,
-            ctx.accounts.token_program.key,
-        );
+        if create_ata_if_needed {
+            let ata_ix = create_associated_token_account_idempotent(
+                ctx.accounts.source.key,
+                ctx.accounts.destination.key,
+                ctx.accounts.mint.key,
+                ctx.accounts.token_program.key,
+            );
 
-        invoke_signed(
-            &ata_ix,
-            &[
-                ctx.accounts.source.to_account_info(),
-                ctx.accounts.destination_token_account.to_account_info(),
-                ctx.accounts.destination.to_account_info(),
-                ctx.accounts.mint.to_account_info(),
-                ctx.accounts.system_program.to_account_info(),
-                ctx.accounts.token_program.to_account_info(),
-                ctx.accounts.associated_token_program.to_account_info(),
-            ],
-            &[signer_seeds],
-        )?;
+            invoke_signed(
+                &ata_ix,
+                &[
+                    ctx.accounts.source.to_account_info(),
+                    ctx.accounts.destination_token_account.to_account_info(),
+                    ctx.accounts.destination.to_account_info(),
+                    ctx.accounts.mint.to_account_info(),
+                    ctx.accounts.system_program.to_account_info(),
+                    ctx.accounts.token_program.to_account_info(),
+                    ctx.accounts.associated_token_program.to_account_info(),
+                ],
+                &[signer_seeds],
+            )?;
+        }
 
         let mint = Mint::unpack(&mut ctx.accounts.mint.data.borrow_mut().as_ref())?;
 

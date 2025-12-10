@@ -1,8 +1,11 @@
+import { ed25519 } from "@noble/curves/ed25519";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
+import { getBase58Encoder } from "gill";
 import type { MessageAuthenticationResponse } from "../types";
 import {
   convertPubkeyCompressedToCose,
   getAuthEndpoint,
+  getClientAndDeviceHash,
   getRpId,
 } from "../utils";
 import { bufferToBase64URLString } from "../utils/passkeys/internal";
@@ -18,14 +21,25 @@ export async function verifyMessage({
   expectedRPID?: string;
   expectedOrigin?: string;
 }): Promise<boolean> {
+  const challenge = new Uint8Array([
+    ...new TextEncoder().encode(message),
+    ...getClientAndDeviceHash(
+      response.clientId,
+      response.deviceSignature.publicKey
+    ),
+  ]);
+  const deviceVerified = ed25519.verify(
+    new Uint8Array(
+      getBase58Encoder().encode(response.deviceSignature.signature)
+    ),
+    challenge,
+    new Uint8Array(
+      getBase58Encoder().encode(response.deviceSignature.publicKey)
+    )
+  );
   const { verified } = await verifyAuthenticationResponse({
     response: response.authResponse,
-    expectedChallenge: bufferToBase64URLString(
-      new Uint8Array([
-        ...new TextEncoder().encode(response.requestedClient),
-        ...new TextEncoder().encode(message),
-      ])
-    ),
+    expectedChallenge: bufferToBase64URLString(challenge),
     expectedOrigin,
     expectedRPID,
     requireUserVerification: false,
@@ -36,5 +50,5 @@ export async function verifyMessage({
     },
   });
 
-  return verified;
+  return verified && deviceVerified;
 }

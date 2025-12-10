@@ -370,6 +370,7 @@ pub mod multi_wallet {
     pub fn token_transfer_intent_compressed<'info>(
         ctx: Context<'_, '_, 'info, 'info, TokenTransferIntentCompressed<'info>>,
         amount: u64,
+        create_ata_if_needed: bool,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
         settings_readonly_args: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
@@ -377,6 +378,7 @@ pub mod multi_wallet {
         TokenTransferIntentCompressed::process(
             ctx,
             amount,
+            create_ata_if_needed,
             secp256r1_verify_args,
             settings_readonly_args,
             compressed_proof_args,
@@ -400,9 +402,10 @@ pub mod multi_wallet {
     pub fn token_transfer_intent<'info>(
         ctx: Context<'_, '_, 'info, 'info, TokenTransferIntent<'info>>,
         amount: u64,
+        create_ata_if_needed: bool,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
-        TokenTransferIntent::process(ctx, amount, secp256r1_verify_args)
+        TokenTransferIntent::process(ctx, amount, create_ata_if_needed, secp256r1_verify_args)
     }
 
     #[instruction(discriminator = 31)]

@@ -201,17 +201,16 @@ export async function getSignedSecp256r1Key(
       slotNumber: BigInt(payload.slotNumber),
       slotHash: new Uint8Array(getBase58Encoder().encode(payload.slotHash)),
     },
-    requestedClientAndDeviceHash: sha256(
-      new Uint8Array([
-        ...new TextEncoder().encode(payload.requestedClient),
-        ...getBase58Encoder().encode(payload.deviceSignature.publicKey),
-      ])
+    clientAndDeviceHash: getClientAndDeviceHash(
+      payload.clientId,
+      payload.deviceSignature.publicKey
     ),
     domainConfig,
     authData,
     signature: convertedSignature,
     originIndex: payload.originIndex,
     crossOrigin: payload.crossOrigin,
+    authResponse: payload.authResponse,
   });
 }
 
@@ -223,14 +222,13 @@ export function verifyTransactionAuthResponseWithMessageHash(
     authResponse,
     transactionPayload,
     slotHash,
-    requestedClient,
+    clientId,
     deviceSignature,
   } = authDetails;
   const {
-    response: { authenticatorData, clientDataJSON },
+    response: { clientDataJSON },
   } = authResponse;
 
-  const authData = new Uint8Array(base64URLStringToBuffer(authenticatorData));
   const clientDataJsonParsed = JSON.parse(
     new TextDecoder().decode(base64URLStringToBuffer(clientDataJSON))
   ) as Record<string, any>;
@@ -246,12 +244,7 @@ export function verifyTransactionAuthResponseWithMessageHash(
         new Uint8Array(getBase64Encoder().encode(transactionMessageBytes))
       ),
       ...getBase58Encoder().encode(slotHash),
-      ...sha256(
-        new Uint8Array([
-          ...getUtf8Encoder().encode(requestedClient),
-          ...getBase58Encoder().encode(deviceSignature.publicKey),
-        ])
-      ),
+      ...getClientAndDeviceHash(clientId, deviceSignature.publicKey),
     ])
   );
   if (
@@ -264,12 +257,7 @@ export function verifyTransactionAuthResponseWithMessageHash(
   )
     throw new Error("Invalid challenge");
 
-  const messageHash = sha256(
-    new Uint8Array([
-      ...authData,
-      ...sha256(new Uint8Array(base64URLStringToBuffer(clientDataJSON))),
-    ])
-  );
+  const messageHash = getSecp256r1MessageHash(authResponse);
 
   if (!equalBytes(messageHash, expectedMessageHash))
     throw new Error("Invalid message hash");
@@ -283,4 +271,35 @@ export async function getOriginIndex(domainConfig: Address, origin: string) {
     throw new Error("Origin not found in domain config");
   }
   return index;
+}
+
+export function getClientAndDeviceHash(
+  clientId: string,
+  devicePublicKey: string
+) {
+  return sha256(
+    new Uint8Array([
+      ...new TextEncoder().encode(clientId),
+      ...getBase58Encoder().encode(devicePublicKey),
+    ])
+  );
+}
+
+export function getSecp256r1MessageHash(
+  authResponse: AuthenticationResponseJSON
+) {
+  return sha256(getSecp256r1Message(authResponse));
+}
+
+export function getSecp256r1Message(authResponse: AuthenticationResponseJSON) {
+  return new Uint8Array([
+    ...new Uint8Array(
+      base64URLStringToBuffer(authResponse.response.authenticatorData)
+    ),
+    ...sha256(
+      new Uint8Array(
+        base64URLStringToBuffer(authResponse.response.clientDataJSON)
+      )
+    ),
+  ]);
 }

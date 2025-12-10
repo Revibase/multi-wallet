@@ -28,17 +28,20 @@ import {
   Permission,
   Permissions,
   Secp256r1Key,
-  type TransactionAuthenticationResponse,
+  type TransactionAuthDetails,
+  type TransactionAuthDetailsWithClientSignature,
   type TransactionDetails,
 } from "../../types";
 import { fetchSettingsAccountData, fetchUserAccountData } from "../compressed";
 import {
+  getClientSettings,
   getComputeBudgetEstimate,
   getJitoTipsConfig,
   getSendAndConfirmTransaction,
   getSolanaRpc,
   getSolanaRpcEndpoint,
 } from "../initialize";
+import { getSecp256r1MessageHash } from "../passkeys";
 import {
   createEncodedBundle,
   getMedianPriorityFees,
@@ -300,7 +303,7 @@ export async function getSignedTransactionManager({
   transactionMessageBytes,
   cachedAccounts,
 }: {
-  authResponses: TransactionAuthenticationResponse[];
+  authResponses: TransactionAuthDetails[];
   transactionManagerAddress?: Address;
   transactionMessageBytes?: ReadonlyUint8Array;
   userAddressTreeIndex?: number;
@@ -330,7 +333,7 @@ export async function getSignedTransactionManager({
 export function createTransactionManagerSigner(
   address: Address,
   url: string,
-  authResponses?: TransactionAuthenticationResponse[],
+  authResponses?: TransactionAuthDetails[],
   transactionMessageBytes?: ReadonlyUint8Array
 ): TransactionSigner {
   return {
@@ -338,7 +341,7 @@ export function createTransactionManagerSigner(
     async signTransactions(transactions) {
       const payload: Record<
         string,
-        string | string[] | TransactionAuthenticationResponse[]
+        string | string[] | TransactionAuthDetailsWithClientSignature[]
       > = {
         publicKey: address.toString(),
         transactions: transactions.map(getBase64EncodedWireTransaction),
@@ -350,7 +353,23 @@ export function createTransactionManagerSigner(
         );
       }
       if (authResponses) {
-        payload.authResponses = authResponses;
+        const { clientId, signClientMessage } = getClientSettings();
+        payload.authResponses = await Promise.all(
+          authResponses.map(async (x) => ({
+            ...x,
+            clientSignature: {
+              clientId,
+              signature: (
+                await signClientMessage(
+                  "complete",
+                  getBase64Decoder().decode(
+                    getSecp256r1MessageHash(x.authResponse)
+                  )
+                )
+              ).signature,
+            },
+          }))
+        );
       }
 
       const response = await fetch(url, {

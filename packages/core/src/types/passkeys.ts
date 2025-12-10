@@ -12,10 +12,17 @@ export type TransactionAuthDetails = {
   authResponse: AuthenticationResponseJSON;
   transactionPayload: TransactionPayloadWithBase64MessageBytes;
   slotHash: string;
-  requestedClient: string;
+  clientId: string;
   deviceSignature: { publicKey: string; signature: string };
   originIndex: number;
   crossOrigin: boolean;
+};
+
+export type TransactionAuthDetailsWithClientSignature = Omit<
+  TransactionAuthDetails,
+  "clientId"
+> & {
+  clientSignature: { clientId: string; signature: string };
 };
 
 type TransactionPayloadWithBase64MessageBytes = {
@@ -24,10 +31,19 @@ type TransactionPayloadWithBase64MessageBytes = {
   transactionMessageBytes: string;
 };
 
+export type SignClientMessage = {
+  (
+    type: "start",
+    message: string
+  ): Promise<{ signature: string; expiry: number }>;
+  (type: "complete", message: string): Promise<{ signature: string }>;
+};
+
 export type MessageAuthenticationResponse = {
   authResponse: AuthenticationResponseJSON;
   signer: Secp256r1Key;
-  requestedClient: string;
+  clientId: string;
+  deviceSignature: { publicKey: string; signature: string };
   userAddressTreeIndex?: number;
   additionalInfo?: any;
 };

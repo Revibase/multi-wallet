@@ -1,4 +1,3 @@
-import { sha256 } from "@noble/hashes/sha256";
 import {
   type AccountMeta,
   AccountRole,
@@ -38,6 +37,7 @@ import {
   type TransactionDetails,
 } from "../../types";
 import { getSolanaRpc } from "../initialize";
+import { getSecp256r1Message } from "../passkeys";
 
 export async function createEncodedBundle(
   bundle: (TransactionDetails & { unitsConsumed?: number })[],
@@ -195,8 +195,7 @@ export function extractSecp256r1VerificationArgs(
           slotNumber: secp256r1PublicKey.verifyArgs.slotNumber,
           originIndex: secp256r1PublicKey.originIndex,
           crossOrigin: secp256r1PublicKey.crossOrigin,
-          requestedClientAndDeviceHash:
-            secp256r1PublicKey.requestedClientAndDeviceHash,
+          clientAndDeviceHash: secp256r1PublicKey.clientAndDeviceHash,
         })
       : null;
 
@@ -209,10 +208,7 @@ export function extractSecp256r1VerificationArgs(
   const message =
     secp256r1PublicKey?.authData &&
     secp256r1PublicKey.verifyArgs?.clientDataJson
-      ? new Uint8Array([
-          ...secp256r1PublicKey.authData,
-          ...sha256(secp256r1PublicKey.verifyArgs.clientDataJson),
-        ])
+      ? getSecp256r1Message(secp256r1PublicKey.authResponse)
       : undefined;
   const publicKey = secp256r1PublicKey?.toBuffer();
 

@@ -36,7 +36,7 @@ export type Secp256r1VerifyArgs = {
   originIndex: number;
   crossOrigin: boolean;
   truncatedClientDataJson: ReadonlyUint8Array;
-  requestedClientAndDeviceHash: ReadonlyUint8Array;
+  clientAndDeviceHash: ReadonlyUint8Array;
 };
 
 export type Secp256r1VerifyArgsArgs = {
@@ -45,7 +45,7 @@ export type Secp256r1VerifyArgsArgs = {
   originIndex: number;
   crossOrigin: boolean;
   truncatedClientDataJson: ReadonlyUint8Array;
-  requestedClientAndDeviceHash: ReadonlyUint8Array;
+  clientAndDeviceHash: ReadonlyUint8Array;
 };
 
 export function getSecp256r1VerifyArgsEncoder(): Encoder<Secp256r1VerifyArgsArgs> {
@@ -58,7 +58,7 @@ export function getSecp256r1VerifyArgsEncoder(): Encoder<Secp256r1VerifyArgsArgs
       "truncatedClientDataJson",
       addEncoderSizePrefix(getBytesEncoder(), getU32Encoder()),
     ],
-    ["requestedClientAndDeviceHash", fixEncoderSize(getBytesEncoder(), 32)],
+    ["clientAndDeviceHash", fixEncoderSize(getBytesEncoder(), 32)],
   ]);
 }
 
@@ -72,7 +72,7 @@ export function getSecp256r1VerifyArgsDecoder(): Decoder<Secp256r1VerifyArgs> {
       "truncatedClientDataJson",
       addDecoderSizePrefix(getBytesDecoder(), getU32Decoder()),
     ],
-    ["requestedClientAndDeviceHash", fixDecoderSize(getBytesDecoder(), 32)],
+    ["clientAndDeviceHash", fixDecoderSize(getBytesDecoder(), 32)],
   ]);
 }
 

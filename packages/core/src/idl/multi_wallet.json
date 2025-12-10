@@ -1062,6 +1062,10 @@
           "type": "u64"
         },
         {
+          "name": "create_ata_if_needed",
+          "type": "bool"
+        },
+        {
           "name": "secp256r1_verify_args",
           "type": {
             "vec": {
@@ -1177,6 +1181,10 @@
         {
           "name": "amount",
           "type": "u64"
+        },
+        {
+          "name": "create_ata_if_needed",
+          "type": "bool"
         },
         {
           "name": "secp256r1_verify_args",
@@ -2950,7 +2958,7 @@
             "type": "bytes"
           },
           {
-            "name": "requested_client_and_device_hash",
+            "name": "client_and_device_hash",
             "type": {
               "array": ["u8", 32]
             }

@@ -9,13 +9,11 @@ const DEFAULT_TIMEOUT = 5 * 60 * 1000;
 
 export async function openAuthUrl({
   authUrl,
-  additionalInfo,
   signer,
   popUp = null,
   data,
 }: {
   authUrl: string;
-  additionalInfo?: any;
   data?: {
     type: "transaction" | "message";
     payload: string;
@@ -39,7 +37,6 @@ export async function openAuthUrl({
     }, 500);
 
     const globalTimeout = setTimeout(() => {
-      log("Authentication timeout.");
       cleanUp();
       reject(new Error("Authentication timed out"));
     }, DEFAULT_TIMEOUT);
@@ -64,29 +61,22 @@ export async function openAuthUrl({
       return;
     }
 
-    function log(...args: any[]) {
-      if (additionalInfo?.debug) console.debug("[Popup]", ...args);
-    }
-
     const messageReceivedHandler = (event: MessageEvent) => {
       const isSameOrigin = event.origin === origin;
       const isSameWindow = event.source === popUp;
 
       if (!isSameOrigin || !isSameWindow || !event.isTrusted || !popUp) {
-        log("Ignored message from unknown source", event);
         return;
       }
 
       switch (event.data.type) {
         case "popup-ready":
-          log("Popup is ready, sending auth data");
           popUp.postMessage(
             {
               type: "popup-init",
               payload: {
                 signer: signer?.toString(),
                 data,
-                additionalInfo,
               },
             },
             origin
@@ -97,7 +87,6 @@ export async function openAuthUrl({
           }, HEARTBEAT_INTERVAL + TIMEOUT_BUFFER);
           break;
         case "popup-complete":
-          log("Received completion message");
           try {
             const payload = JSON.parse(event.data.payload as string);
             cleanUp();
@@ -107,7 +96,6 @@ export async function openAuthUrl({
           }
           break;
         case "popup-heartbeat":
-          log("Received heartbeat");
           if (heartbeatTimeout) {
             clearTimeout(heartbeatTimeout);
             heartbeatTimeout = setTimeout(() => {
@@ -118,13 +106,9 @@ export async function openAuthUrl({
           break;
 
         case "popup-closed":
-          log("Popup explicitly closed");
           cleanUp();
           reject(new Error("User closed the authentication window"));
           break;
-
-        default:
-          log("Unknown message type", event.data.type);
       }
     };
 

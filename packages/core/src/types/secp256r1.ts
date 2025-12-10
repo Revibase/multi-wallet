@@ -1,3 +1,4 @@
+import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
 import { getBase58Decoder, getBase58Encoder, type Address } from "gill";
 
 const SECP256R1_PUBLIC_KEY_LENGTH = 33;
@@ -14,7 +15,8 @@ type SignedMessageDetails = {
   signature: Uint8Array;
   originIndex: number;
   crossOrigin: boolean;
-  requestedClientAndDeviceHash: Uint8Array;
+  clientAndDeviceHash: Uint8Array;
+  authResponse: AuthenticationResponseJSON;
 };
 
 export class Secp256r1Key {
@@ -79,7 +81,8 @@ export class SignedSecp256r1Key extends Secp256r1Key {
   signature: SignedMessageDetails["signature"];
   originIndex: SignedMessageDetails["originIndex"];
   crossOrigin: SignedMessageDetails["crossOrigin"];
-  requestedClientAndDeviceHash: SignedMessageDetails["requestedClientAndDeviceHash"];
+  clientAndDeviceHash: SignedMessageDetails["clientAndDeviceHash"];
+  authResponse: SignedMessageDetails["authResponse"];
 
   constructor(value: Secp256r1KeyInitData, signed: SignedMessageDetails) {
     super(value);
@@ -89,6 +92,7 @@ export class SignedSecp256r1Key extends Secp256r1Key {
     this.signature = signed.signature;
     this.originIndex = signed.originIndex;
     this.crossOrigin = signed.crossOrigin;
-    this.requestedClientAndDeviceHash = signed.requestedClientAndDeviceHash;
+    this.clientAndDeviceHash = signed.clientAndDeviceHash;
+    this.authResponse = signed.authResponse;
   }
 }

@@ -1,4 +1,4 @@
-import { sha256 } from "@noble/hashes/sha256";
+import { sha256 } from "@noble/hashes/sha2";
 import type {
   AddressesByLookupTableAddress,
   Instruction,
@@ -15,7 +15,11 @@ import {
 } from "../instructions";
 import { SignedSecp256r1Key } from "../types";
 import type { TransactionDetails } from "../types/transaction";
-import { getSettingsFromIndex, getTransactionBufferAddress } from "../utils";
+import {
+  getSecp256r1MessageHash,
+  getSettingsFromIndex,
+  getTransactionBufferAddress,
+} from "../utils";
 import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
@@ -106,9 +110,7 @@ export async function prepareTransactionBundle({
     .filter((x) => x instanceof SignedSecp256r1Key)
     .map((x) => ({
       memberKey: convertPubkeyToMemberkey(x),
-      messageHash: sha256(
-        new Uint8Array([...x.authData, ...sha256(x.verifyArgs.clientDataJson)])
-      ),
+      messageHash: getSecp256r1MessageHash(x.authResponse),
     }));
 
   const createIxs = createTransactionBuffer({

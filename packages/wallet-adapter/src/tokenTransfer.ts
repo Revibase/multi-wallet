@@ -22,6 +22,7 @@ import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 interface TokenTransferArgs extends BasePayload {
   amount: number | bigint;
   destination: Address;
+  createAtaIfNeeded?: boolean;
   mint?: Address;
   tokenProgram?: Address;
   cachedAccounts?: Map<string, any>;
@@ -57,6 +58,7 @@ export async function buildTokenTransferInstruction(
     cachedAccounts = new Map<string, any>(),
     signer,
     popUp,
+    createAtaIfNeeded = true,
   } = input;
   const authResponse = await signTransactionWithPasskey({
     transactionActionType: "transfer_intent",
@@ -118,6 +120,7 @@ export async function buildTokenTransferInstruction(
         index: settingsIndexWithAddress.index,
         settingsAddressTreeIndex:
           settingsIndexWithAddress.settingsAddressTreeIndex,
+        createAtaIfNeeded,
         amount,
         signers,
         destination,

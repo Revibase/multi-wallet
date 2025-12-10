@@ -13,6 +13,8 @@ import {
   getAddressEncoder,
   getArrayDecoder,
   getArrayEncoder,
+  getBooleanDecoder,
+  getBooleanEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getProgramDerivedAddress,
@@ -123,11 +125,13 @@ export type TokenTransferIntentInstruction<
 export type TokenTransferIntentInstructionData = {
   discriminator: ReadonlyUint8Array;
   amount: bigint;
+  createAtaIfNeeded: boolean;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
 };
 
 export type TokenTransferIntentInstructionDataArgs = {
   amount: number | bigint;
+  createAtaIfNeeded: boolean;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
 };
 
@@ -136,6 +140,7 @@ export function getTokenTransferIntentInstructionDataEncoder(): Encoder<TokenTra
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["amount", getU64Encoder()],
+      ["createAtaIfNeeded", getBooleanEncoder()],
       [
         "secp256r1VerifyArgs",
         getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
@@ -152,6 +157,7 @@ export function getTokenTransferIntentInstructionDataDecoder(): Decoder<TokenTra
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["amount", getU64Decoder()],
+    ["createAtaIfNeeded", getBooleanDecoder()],
     [
       "secp256r1VerifyArgs",
       getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
@@ -198,6 +204,7 @@ export type TokenTransferIntentAsyncInput<
   systemProgram?: Address<TAccountSystemProgram>;
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   amount: TokenTransferIntentInstructionDataArgs["amount"];
+  createAtaIfNeeded: TokenTransferIntentInstructionDataArgs["createAtaIfNeeded"];
   secp256r1VerifyArgs: TokenTransferIntentInstructionDataArgs["secp256r1VerifyArgs"];
   remainingAccounts: TokenTransferIntentInstructionExtraArgs["remainingAccounts"];
 };
@@ -409,6 +416,7 @@ export type TokenTransferIntentInput<
   systemProgram?: Address<TAccountSystemProgram>;
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   amount: TokenTransferIntentInstructionDataArgs["amount"];
+  createAtaIfNeeded: TokenTransferIntentInstructionDataArgs["createAtaIfNeeded"];
   secp256r1VerifyArgs: TokenTransferIntentInstructionDataArgs["secp256r1VerifyArgs"];
   remainingAccounts: TokenTransferIntentInstructionExtraArgs["remainingAccounts"];
 };

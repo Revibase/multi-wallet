@@ -13,6 +13,8 @@ import {
   getAddressEncoder,
   getArrayDecoder,
   getArrayEncoder,
+  getBooleanDecoder,
+  getBooleanEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getProgramDerivedAddress,
@@ -137,6 +139,7 @@ export type TokenTransferIntentCompressedInstruction<
 export type TokenTransferIntentCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   amount: bigint;
+  createAtaIfNeeded: boolean;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
   settingsReadonlyArgs: SettingsReadonlyArgs;
   compressedProofArgs: ProofArgs;
@@ -144,6 +147,7 @@ export type TokenTransferIntentCompressedInstructionData = {
 
 export type TokenTransferIntentCompressedInstructionDataArgs = {
   amount: number | bigint;
+  createAtaIfNeeded: boolean;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
   settingsReadonlyArgs: SettingsReadonlyArgsArgs;
   compressedProofArgs: ProofArgsArgs;
@@ -154,6 +158,7 @@ export function getTokenTransferIntentCompressedInstructionDataEncoder(): Encode
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["amount", getU64Encoder()],
+      ["createAtaIfNeeded", getBooleanEncoder()],
       [
         "secp256r1VerifyArgs",
         getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
@@ -172,6 +177,7 @@ export function getTokenTransferIntentCompressedInstructionDataDecoder(): Decode
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["amount", getU64Decoder()],
+    ["createAtaIfNeeded", getBooleanDecoder()],
     [
       "secp256r1VerifyArgs",
       getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
@@ -220,6 +226,7 @@ export type TokenTransferIntentCompressedAsyncInput<
   systemProgram?: Address<TAccountSystemProgram>;
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   amount: TokenTransferIntentCompressedInstructionDataArgs["amount"];
+  createAtaIfNeeded: TokenTransferIntentCompressedInstructionDataArgs["createAtaIfNeeded"];
   secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs["secp256r1VerifyArgs"];
   settingsReadonlyArgs: TokenTransferIntentCompressedInstructionDataArgs["settingsReadonlyArgs"];
   compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs["compressedProofArgs"];
@@ -419,6 +426,7 @@ export type TokenTransferIntentCompressedInput<
   systemProgram?: Address<TAccountSystemProgram>;
   associatedTokenProgram?: Address<TAccountAssociatedTokenProgram>;
   amount: TokenTransferIntentCompressedInstructionDataArgs["amount"];
+  createAtaIfNeeded: TokenTransferIntentCompressedInstructionDataArgs["createAtaIfNeeded"];
   secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs["secp256r1VerifyArgs"];
   settingsReadonlyArgs: TokenTransferIntentCompressedInstructionDataArgs["settingsReadonlyArgs"];
   compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs["compressedProofArgs"];

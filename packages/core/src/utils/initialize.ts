@@ -12,7 +12,7 @@ import {
   type TransactionSigner,
 } from "gill";
 import { estimateComputeUnitLimitFactory } from "gill/programs";
-import type { JitoTipsConfig } from "../types";
+import type { JitoTipsConfig, SignClientMessage } from "../types";
 import {
   REVIBASE_API_ENDPOINT,
   REVIBASE_AUTH_ENDPOINT,
@@ -20,90 +20,84 @@ import {
 } from "./consts";
 import { getRandomPayer } from "./transaction/internal";
 
-let globalSolanaRpcEndpoint: string | null = null;
-let lightProtocolRpc: LightProtocolRpc | null = null;
-let globalSolanaRpc: Rpc<SolanaRpcApi> | null = null;
-let globalSendAndConfirmTransaction: SendAndConfirmTransactionWithSignersFunction | null =
-  null;
-let globalComputeBudgetEstimate:
-  | ((
-      transactionMessage: BaseTransactionMessage &
-        TransactionMessageWithFeePayer,
-      config?: any
-    ) => Promise<number>)
-  | null;
+type RevibaseGlobalState = {
+  solanaRpcEndpoint?: string;
+  lightProtocolRpc?: LightProtocolRpc;
+  solanaRpc?: Rpc<SolanaRpcApi>;
+  sendAndConfirm?: SendAndConfirmTransactionWithSignersFunction;
+  computeEstimate?: (
+    tx: BaseTransactionMessage & TransactionMessageWithFeePayer,
+    cfg?: any
+  ) => Promise<number>;
+  feePayer?: TransactionSigner;
+  apiEndpoint?: string | null;
+  jitoTipsConfig?: JitoTipsConfig | null;
+  authEndpoint?: string | null;
+  rpId?: string | null;
+  clientSettings?: {
+    clientId: string;
+    signClientMessage: SignClientMessage;
+  } | null;
+};
 
-let globalFeePayer: TransactionSigner | null = null;
-let globalApiEndpoint: string | null = null;
-let globalJitoTipsConfig: JitoTipsConfig | null = null;
-let globalAuthEndpoint: string | null = null;
-let globalRpId: string | null = null;
-let globalAdditionalInfo: any | null = null;
+const state: RevibaseGlobalState = {};
 
 export function getSolanaRpcEndpoint() {
-  if (!globalSolanaRpcEndpoint) throw new Error("Rpc is not initialized yet.");
-  return globalSolanaRpcEndpoint;
+  if (!state.solanaRpcEndpoint) throw new Error("Rpc is not initialized yet.");
+  return state.solanaRpcEndpoint;
 }
 
 export function getLightProtocolRpc() {
-  if (!lightProtocolRpc) throw new Error("Rpc is not initialized yet");
-  return lightProtocolRpc;
+  if (!state.lightProtocolRpc) throw new Error("Rpc is not initialized yet");
+  return state.lightProtocolRpc;
 }
 
 export function getSolanaRpc() {
-  if (!globalSolanaRpc) throw new Error("Rpc is not initialized yet");
-  return globalSolanaRpc;
+  if (!state.solanaRpc) throw new Error("Rpc is not initialized yet");
+  return state.solanaRpc;
 }
 
 export function getSendAndConfirmTransaction() {
-  if (!globalSendAndConfirmTransaction)
-    throw new Error("Rpc is not initialized yet.");
-  return globalSendAndConfirmTransaction;
+  if (!state.sendAndConfirm) throw new Error("Rpc is not initialized yet.");
+  return state.sendAndConfirm;
 }
 
 export function getComputeBudgetEstimate() {
-  if (!globalComputeBudgetEstimate)
-    throw new Error("Rpc is not initialized yet");
-  return globalComputeBudgetEstimate;
+  if (!state.computeEstimate) throw new Error("Rpc is not initialized yet");
+  return state.computeEstimate;
 }
 
 export async function getFeePayer() {
-  if (!globalFeePayer) {
-    globalFeePayer = await getRandomPayer(
-      globalApiEndpoint ?? REVIBASE_API_ENDPOINT
+  if (!state.feePayer) {
+    state.feePayer = await getRandomPayer(
+      state.apiEndpoint ?? REVIBASE_API_ENDPOINT
     );
   }
-  return globalFeePayer;
+  return state.feePayer;
 }
 
 export function getJitoTipsConfig() {
-  if (!globalJitoTipsConfig) throw new Error("Jito Bundle Config is not set.");
-  return globalJitoTipsConfig;
+  if (!state.jitoTipsConfig) throw new Error("Jito Bundle Config is not set.");
+  return state.jitoTipsConfig;
 }
 
 export function getAuthEndpoint() {
-  return globalAuthEndpoint ?? REVIBASE_AUTH_ENDPOINT;
+  return state.authEndpoint ?? REVIBASE_AUTH_ENDPOINT;
 }
 
 export function getRpId() {
-  return globalRpId ?? REVIBASE_RP_ID;
+  return state.rpId ?? REVIBASE_RP_ID;
 }
 
-export function getGlobalAdditonalInfo() {
-  return globalAdditionalInfo;
+export function getClientSettings() {
+  if (!state.clientSettings) throw new Error("No client settings found.");
+  return state.clientSettings;
 }
 
 export function uninitialize() {
-  lightProtocolRpc = null;
-  globalSolanaRpc = null;
-  globalSolanaRpcEndpoint = null;
-  globalFeePayer = null;
-  globalApiEndpoint = null;
-  globalJitoTipsConfig = null;
-  globalAuthEndpoint = null;
-  globalRpId = null;
-  globalSendAndConfirmTransaction = null;
-  globalComputeBudgetEstimate = null;
+  Object.keys(state).forEach((key) => {
+    (state as any)[key] = undefined;
+  });
 }
 
 export function initialize({
@@ -114,7 +108,7 @@ export function initialize({
   apiEndpoint,
   authEndpoint,
   rpId,
-  additionalInfo,
+  clientSettings,
 }: {
   rpcEndpoint: string;
   proverEndpoint?: string;
@@ -123,26 +117,30 @@ export function initialize({
   apiEndpoint?: string;
   authEndpoint?: string;
   rpId?: string;
-  additionalInfo?: any;
+  clientSettings?: {
+    clientId: string;
+    signClientMessage: SignClientMessage;
+  };
 }) {
-  globalSolanaRpcEndpoint = rpcEndpoint;
-  lightProtocolRpc = createRpc(
-    globalSolanaRpcEndpoint,
+  state.solanaRpcEndpoint = rpcEndpoint;
+
+  state.lightProtocolRpc = createRpc(
+    rpcEndpoint,
     compressionApiEndpoint,
     proverEndpoint
   );
+
   const { rpc, sendAndConfirmTransaction } = createSolanaClient({
-    urlOrMoniker: globalSolanaRpcEndpoint,
-  });
-  globalSendAndConfirmTransaction = sendAndConfirmTransaction;
-  globalComputeBudgetEstimate = estimateComputeUnitLimitFactory({
-    rpc,
+    urlOrMoniker: rpcEndpoint,
   });
 
-  globalSolanaRpc = rpc;
-  globalApiEndpoint = apiEndpoint ?? null;
-  globalJitoTipsConfig = jitoTipsConfig ?? null;
-  globalAuthEndpoint = authEndpoint ?? null;
-  globalRpId = rpId ?? null;
-  globalAdditionalInfo = additionalInfo ?? null;
+  state.solanaRpc = rpc;
+  state.sendAndConfirm = sendAndConfirmTransaction;
+  state.computeEstimate = estimateComputeUnitLimitFactory({ rpc });
+
+  state.apiEndpoint = apiEndpoint ?? null;
+  state.jitoTipsConfig = jitoTipsConfig ?? null;
+  state.authEndpoint = authEndpoint ?? null;
+  state.rpId = rpId ?? null;
+  state.clientSettings = clientSettings ?? null;
 }
