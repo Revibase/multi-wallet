@@ -1,21 +1,11 @@
 import { decodeCBOR, encodeCBOR, type CBORType } from "@levischuck/tiny-cbor";
 import { p256 } from "@noble/curves/nist.js";
-import { equalBytes } from "@noble/curves/utils.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
-import {
-  address,
-  getAddressEncoder,
-  getBase58Decoder,
-  getBase58Encoder,
-  getBase64Encoder,
-  getUtf8Encoder,
-  type Address,
-} from "gill";
+import { getBase58Decoder, getBase58Encoder, type Address } from "gill";
 import { fetchDomainConfig } from "../../generated";
 import {
   SignedSecp256r1Key,
-  type TransactionAuthDetails,
   type TransactionAuthenticationResponse,
 } from "../../types";
 import { getDomainConfigAddress } from "../addresses";
@@ -203,7 +193,8 @@ export async function getSignedSecp256r1Key(
     },
     clientAndDeviceHash: getClientAndDeviceHash(
       payload.clientId,
-      payload.deviceSignature.publicKey
+      payload.deviceSignature.publicKey,
+      payload.nonce
     ),
     domainConfig,
     authData,
@@ -212,55 +203,6 @@ export async function getSignedSecp256r1Key(
     crossOrigin: payload.crossOrigin,
     authResponse: payload.authResponse,
   });
-}
-
-export function verifyTransactionAuthResponseWithMessageHash(
-  authDetails: TransactionAuthDetails,
-  expectedMessageHash: Uint8Array
-) {
-  const {
-    authResponse,
-    transactionPayload,
-    slotHash,
-    clientId,
-    deviceSignature,
-  } = authDetails;
-  const {
-    response: { clientDataJSON },
-  } = authResponse;
-
-  const clientDataJsonParsed = JSON.parse(
-    new TextDecoder().decode(base64URLStringToBuffer(clientDataJSON))
-  ) as Record<string, any>;
-
-  const { transactionActionType, transactionAddress, transactionMessageBytes } =
-    transactionPayload;
-
-  const challenge = sha256(
-    new Uint8Array([
-      ...getUtf8Encoder().encode(transactionActionType),
-      ...getAddressEncoder().encode(address(transactionAddress)),
-      ...sha256(
-        new Uint8Array(getBase64Encoder().encode(transactionMessageBytes))
-      ),
-      ...getBase58Encoder().encode(slotHash),
-      ...getClientAndDeviceHash(clientId, deviceSignature.publicKey),
-    ])
-  );
-  if (
-    !equalBytes(
-      new Uint8Array(
-        base64URLStringToBuffer(clientDataJsonParsed["challenge"])
-      ),
-      challenge
-    )
-  )
-    throw new Error("Invalid challenge");
-
-  const messageHash = getSecp256r1MessageHash(authResponse);
-
-  if (!equalBytes(messageHash, expectedMessageHash))
-    throw new Error("Invalid message hash");
 }
 
 export async function getOriginIndex(domainConfig: Address, origin: string) {
@@ -275,12 +217,14 @@ export async function getOriginIndex(domainConfig: Address, origin: string) {
 
 export function getClientAndDeviceHash(
   clientId: string,
-  devicePublicKey: string
+  devicePublicKey: string,
+  nonce: string
 ) {
   return sha256(
     new Uint8Array([
-      ...new TextEncoder().encode(clientId),
+      ...getBase58Encoder().encode(clientId),
       ...getBase58Encoder().encode(devicePublicKey),
+      ...new TextEncoder().encode(nonce),
     ])
   );
 }

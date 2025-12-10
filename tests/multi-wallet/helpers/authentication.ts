@@ -34,7 +34,8 @@ export async function createTransactionChallenge(
     transactionMessageBytes,
   }: TransactionPayload,
   clientId: string,
-  devicePublicKey: string
+  devicePublicKey: string,
+  nonce: string
 ) {
   const slotSysvarData = (
     await connection
@@ -61,7 +62,7 @@ export async function createTransactionChallenge(
       ...getBase58Encoder().encode(transactionAddress),
       ...sha256(transactionMessageBytes),
       ...slotHashBytes,
-      ...getClientAndDeviceHash(clientId, devicePublicKey),
+      ...getClientAndDeviceHash(clientId, devicePublicKey, nonce),
     ])
   );
 
@@ -78,6 +79,7 @@ export async function mockAuthenticationResponse(
   publicKey: Uint8Array,
   ctx: TestContext
 ): Promise<SignedSecp256r1Key> {
+  const nonce = crypto.randomUUID();
   const clientId = "https://app.revibase.com";
   const devicePublicKey = getBase58Decoder().decode(
     crypto.getRandomValues(new Uint8Array(32))
@@ -98,7 +100,8 @@ export async function mockAuthenticationResponse(
     connection,
     transaction,
     clientId,
-    devicePublicKey
+    devicePublicKey,
+    nonce
   ));
 
   const origin = "happy";
@@ -163,6 +166,7 @@ export async function mockAuthenticationResponse(
         crypto.getRandomValues(new Uint8Array(64))
       ),
     },
+    nonce,
     originIndex,
     crossOrigin,
   });

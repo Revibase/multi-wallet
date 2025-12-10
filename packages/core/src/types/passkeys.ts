@@ -14,6 +14,7 @@ export type TransactionAuthDetails = {
   slotHash: string;
   clientId: string;
   deviceSignature: { publicKey: string; signature: string };
+  nonce: string;
   originIndex: number;
   crossOrigin: boolean;
 };
@@ -44,6 +45,7 @@ export type MessageAuthenticationResponse = {
   signer: Secp256r1Key;
   clientId: string;
   deviceSignature: { publicKey: string; signature: string };
+  nonce: string;
   userAddressTreeIndex?: number;
   additionalInfo?: any;
 };

@@ -25,7 +25,8 @@ export async function verifyMessage({
     ...new TextEncoder().encode(message),
     ...getClientAndDeviceHash(
       response.clientId,
-      response.deviceSignature.publicKey
+      response.deviceSignature.publicKey,
+      response.nonce
     ),
   ]);
   const deviceVerified = ed25519.verify(
