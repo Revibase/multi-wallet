@@ -44,23 +44,46 @@ export function createSignInMessageText(input: {
 
 export function simulateSecp256r1Signer() {
   const randomPubkey = crypto.getRandomValues(new Uint8Array(33));
+  const authData = crypto.getRandomValues(new Uint8Array(37));
+  const clientDataJSON = crypto.getRandomValues(new Uint8Array(250));
+  const signature = crypto.getRandomValues(new Uint8Array(64));
   const signer = new SignedSecp256r1Key(randomPubkey, {
     originIndex: 0,
     crossOrigin: false,
-    authData: crypto.getRandomValues(new Uint8Array(37)),
+    authData,
     domainConfig: getAddressDecoder().decode(
       crypto.getRandomValues(new Uint8Array(32))
     ),
-    signature: crypto.getRandomValues(new Uint8Array(64)),
+    signature,
     verifyArgs: {
       slotHash: crypto.getRandomValues(new Uint8Array(32)),
       slotNumber: BigInt(0),
       truncatedClientDataJson: crypto.getRandomValues(new Uint8Array(100)),
-      clientDataJson: crypto.getRandomValues(new Uint8Array(250)),
+      clientDataJson: clientDataJSON,
     },
     clientAndDeviceHash: crypto.getRandomValues(new Uint8Array(32)),
+    authResponse: {
+      id: "",
+      rawId: "",
+      type: "public-key",
+      clientExtensionResults: {},
+      response: {
+        authenticatorData: bufferToBase64URLString(authData),
+        clientDataJSON: bufferToBase64URLString(clientDataJSON),
+        signature: bufferToBase64URLString(signature),
+      },
+    },
   });
   return signer;
+}
+
+function bufferToBase64URLString(buffer: Uint8Array) {
+  let str = "";
+  for (const charCode of buffer) {
+    str += String.fromCharCode(charCode);
+  }
+  const base64String = btoa(str);
+  return base64String.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
 export async function estimateTransactionSizeExceedLimit({

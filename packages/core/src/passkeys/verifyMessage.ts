@@ -7,6 +7,7 @@ import {
   getAuthEndpoint,
   getClientAndDeviceHash,
   getRpId,
+  getSecp256r1MessageHash,
 } from "../utils";
 import { bufferToBase64URLString } from "../utils/passkeys/internal";
 
@@ -29,15 +30,7 @@ export async function verifyMessage({
       response.nonce
     ),
   ]);
-  const deviceVerified = ed25519.verify(
-    new Uint8Array(
-      getBase58Encoder().encode(response.deviceSignature.signature)
-    ),
-    challenge,
-    new Uint8Array(
-      getBase58Encoder().encode(response.deviceSignature.publicKey)
-    )
-  );
+
   const { verified } = await verifyAuthenticationResponse({
     response: response.authResponse,
     expectedChallenge: bufferToBase64URLString(challenge),
@@ -50,6 +43,16 @@ export async function verifyMessage({
       counter: 0,
     },
   });
+
+  const deviceVerified = ed25519.verify(
+    new Uint8Array(
+      getBase58Encoder().encode(response.deviceSignature.signature)
+    ),
+    getSecp256r1MessageHash(response.authResponse),
+    new Uint8Array(
+      getBase58Encoder().encode(response.deviceSignature.publicKey)
+    )
+  );
 
   return verified && deviceVerified;
 }
