@@ -80,7 +80,9 @@ export async function mockAuthenticationResponse(
   ctx: TestContext
 ): Promise<SignedSecp256r1Key> {
   const nonce = crypto.randomUUID();
-  const clientId = "https://app.revibase.com";
+  const clientId = getBase58Decoder().decode(
+    crypto.getRandomValues(new Uint8Array(32))
+  );
   const devicePublicKey = getBase58Decoder().decode(
     crypto.getRandomValues(new Uint8Array(32))
   );
