@@ -1,6 +1,6 @@
 {
   "name": "@revibase/core",
-  "version": "0.0.12",
+  "version": "0.0.13",
   "scripts": {
     "build": "rimraf dist & tsup",
     "clean": "rimraf dist",
@@ -37,8 +37,8 @@
   "description": "",
   "dependencies": {
     "@levischuck/tiny-cbor": "0.3.2",
-    "@noble/curves": "1.9.7",
-    "@noble/hashes": "1.8.0",
+    "@noble/curves": "2.0.1",
+    "@noble/hashes": "2.0.1",
     "@simplewebauthn/server": "13.2.2",
     "bn.js": "^5.2.2",
     "gill": "^0.14.0",

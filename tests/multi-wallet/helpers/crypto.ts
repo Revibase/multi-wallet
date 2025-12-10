@@ -1,4 +1,4 @@
-import { p256 } from "@noble/curves/p256";
+import { p256 } from "@noble/curves/nist.js";
 
 /**
  * Converts bytes to a BigInt

@@ -1,4 +1,4 @@
-import { ed25519 } from "@noble/curves/ed25519";
+import { ed25519 } from "@noble/curves/ed25519.js";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import { getBase58Encoder } from "gill";
 import type { MessageAuthenticationResponse } from "../types";

@@ -10,8 +10,8 @@
   "dependencies": {
     "@coral-xyz/anchor": "0.31.1",
     "@lightprotocol/stateless.js": "0.22.1-alpha.1",
-    "@noble/curves": "1.9.7",
-    "@noble/hashes": "1.8.0",
+    "@noble/curves": "2.0.1",
+    "@noble/hashes": "2.0.1",
     "@revibase/core": "workspace:*",
     "gill": "0.14.0"
   },

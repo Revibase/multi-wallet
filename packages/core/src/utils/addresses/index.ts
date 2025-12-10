@@ -3,7 +3,7 @@ import {
   deriveAddressSeedV2,
   deriveAddressV2,
 } from "@lightprotocol/stateless.js";
-import { sha256 } from "@noble/hashes/sha2";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { PublicKey } from "@solana/web3.js";
 import {
   getAddressEncoder,

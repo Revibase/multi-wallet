@@ -1,6 +1,7 @@
-import { p256 } from "@noble/curves/p256";
-import { sha256 } from "@noble/hashes/sha256";
+import { p256 } from "@noble/curves/nist.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import {
+  getClientAndDeviceHash,
   getDomainConfigAddress,
   getOriginIndex,
   getSignedSecp256r1Key,
@@ -33,7 +34,7 @@ export async function createTransactionChallenge(
     transactionMessageBytes,
   }: TransactionPayload,
   clientId: string,
-  device: Uint8Array
+  devicePublicKey: string
 ) {
   const slotSysvarData = (
     await connection
@@ -54,19 +55,14 @@ export async function createTransactionChallenge(
   const slotHashBytes = slotHashData.subarray(16, 48);
   const slotHash = getBase58Decoder().decode(slotHashBytes);
 
-  const challenge = new Uint8Array(
-    await crypto.subtle.digest(
-      "SHA-256",
-      new Uint8Array([
-        ...new Uint8Array(getUtf8Encoder().encode(transactionActionType)),
-        ...getBase58Encoder().encode(transactionAddress),
-        ...sha256(transactionMessageBytes),
-        ...slotHashBytes,
-        ...sha256(
-          new Uint8Array([...new TextEncoder().encode(clientId), ...device])
-        ),
-      ])
-    )
+  const challenge = sha256(
+    new Uint8Array([
+      ...new Uint8Array(getUtf8Encoder().encode(transactionActionType)),
+      ...getBase58Encoder().encode(transactionAddress),
+      ...sha256(transactionMessageBytes),
+      ...slotHashBytes,
+      ...getClientAndDeviceHash(clientId, devicePublicKey),
+    ])
   );
 
   return { slotNumber, slotHash, challenge };
@@ -83,7 +79,9 @@ export async function mockAuthenticationResponse(
   ctx: TestContext
 ): Promise<SignedSecp256r1Key> {
   const clientId = "https://app.revibase.com";
-  const device = crypto.getRandomValues(new Uint8Array(32));
+  const devicePublicKey = getBase58Decoder().decode(
+    crypto.getRandomValues(new Uint8Array(32))
+  );
   const flags = new Uint8Array([0x01]); // User present
   const signCount = new Uint8Array([0, 0, 0, 1]); // Sign counter
   const mockAuthenticatorData = new Uint8Array([
@@ -100,7 +98,7 @@ export async function mockAuthenticationResponse(
     connection,
     transaction,
     clientId,
-    device
+    devicePublicKey
   ));
 
   const origin = "happy";
@@ -116,25 +114,18 @@ export async function mockAuthenticationResponse(
   const clientDataJSONBytes = new TextEncoder().encode(clientDataJSON);
 
   // Hash clientDataJSON
-  const clientDataHash = await crypto.subtle.digest(
-    "SHA-256",
-    clientDataJSONBytes
-  );
+  const clientDataHash = sha256(clientDataJSONBytes);
 
   const messageBuffer = new Uint8Array([
     ...mockAuthenticatorData,
     ...new Uint8Array(clientDataHash),
   ]);
 
-  const webauthnMessageHash = sha256(messageBuffer);
-
   const signature = new Uint8Array(
-    p256
-      .sign(new Uint8Array(webauthnMessageHash), privateKey, {
-        format: "compact",
-        lowS: true,
-      })
-      .toBytes("compact")
+    p256.sign(messageBuffer, privateKey, {
+      format: "compact",
+      lowS: true,
+    })
   );
 
   const originIndex = await getOriginIndex(
@@ -167,7 +158,7 @@ export async function mockAuthenticationResponse(
     },
     clientId,
     deviceSignature: {
-      publicKey: getBase58Decoder().decode(device),
+      publicKey: devicePublicKey,
       signature: getBase58Decoder().decode(
         crypto.getRandomValues(new Uint8Array(64))
       ),

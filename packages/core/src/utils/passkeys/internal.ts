@@ -1,4 +1,4 @@
-import { p256 } from "@noble/curves/p256";
+import { p256 } from "@noble/curves/nist.js";
 import { Secp256r1Key } from "../../types";
 import { createPopUp } from "./helper";
 
