@@ -3,7 +3,8 @@ use crate::utils::{KeyType, UserRole};
 use crate::{AddMemberArgs, MemberKey, MultisigError, RemoveMemberArgs, SEED_USER};
 use anchor_lang::prelude::*;
 use light_sdk::address::NewAddressParamsAssignedPacked;
-use light_sdk::instruction::account_meta::CompressedAccountMeta;
+use light_sdk::cpi::v2::CpiAccounts;
+use light_sdk::instruction::account_meta::{CompressedAccountMeta, CompressedAccountMetaReadOnly};
 use light_sdk::{
     account::LightAccount, address::v2::derive_address, instruction::PackedAddressTreeInfo,
     LightDiscriminator,
@@ -29,6 +30,18 @@ pub struct UserCreationArgs {
 pub struct UserMutArgs {
     pub account_meta: CompressedAccountMeta,
     pub data: User,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize, PartialEq, Debug)]
+pub struct UserReadOnlyArgs {
+    pub account_meta: CompressedAccountMetaReadOnly,
+    pub data: User,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq)]
+pub enum UserReadOnlyOrMutateArgs {
+    Read(UserReadOnlyArgs),
+    Mutate(UserMutArgs),
 }
 
 #[derive(PartialEq)]
@@ -119,6 +132,7 @@ impl User {
     pub fn handle_user_delegates(
         delegate_ops: Vec<Ops>,
         settings_index_with_address: SettingsIndexWithAddress,
+        light_cpi_accounts: &CpiAccounts,
     ) -> Result<Vec<LightAccount<User>>> {
         let mut final_account_infos: Vec<LightAccount<User>> = vec![];
 
@@ -126,14 +140,16 @@ impl User {
             match action {
                 Ops::Remove(pk) => {
                     final_account_infos.push(User::remove_delegate(
-                        pk.user_mut_args,
+                        pk.user_args,
                         &settings_index_with_address,
+                        light_cpi_accounts,
                     )?);
                 }
                 Ops::Add(pk) => {
                     final_account_infos.push(User::add_delegate(
-                        pk.user_mut_args,
+                        pk.user_args,
                         &settings_index_with_address,
+                        light_cpi_accounts,
                     )?);
                 }
             }
@@ -143,49 +159,93 @@ impl User {
     }
 
     pub fn add_delegate(
-        user_mut_args: UserMutArgs,
+        user_args: UserReadOnlyOrMutateArgs,
         settings_index_with_address: &SettingsIndexWithAddress,
+        light_cpi_accounts: &CpiAccounts,
     ) -> Result<LightAccount<User>> {
-        let mut user_account = LightAccount::<User>::new_mut(
-            &crate::ID,
-            &user_mut_args.account_meta,
-            user_mut_args.data,
-        )
-        .map_err(ProgramError::from)?;
+        match user_args {
+            UserReadOnlyOrMutateArgs::Mutate(user_mut_args) => {
+                let mut user_account = LightAccount::<User>::new_mut(
+                    &crate::ID,
+                    &user_mut_args.account_meta,
+                    user_mut_args.data,
+                )
+                .map_err(ProgramError::from)?;
 
-        if user_account.role.eq(&UserRole::PermanentMember) {
-            require!(
-                user_account.delegated_to.is_none(),
-                MultisigError::AlreadyDelegated
-            );
-            user_account.delegated_to = Some(settings_index_with_address.clone());
+                if user_account.role.eq(&UserRole::PermanentMember) {
+                    require!(
+                        user_account.delegated_to.is_none(),
+                        MultisigError::AlreadyDelegated
+                    );
+                    user_account.delegated_to = Some(settings_index_with_address.clone());
+                }
+                Ok(user_account)
+            }
+            UserReadOnlyOrMutateArgs::Read(user_readonly_args) => {
+                let user_account = LightAccount::<User>::new_read_only(
+                    &crate::ID,
+                    &user_readonly_args.account_meta,
+                    user_readonly_args.data,
+                    light_cpi_accounts.tree_pubkeys().unwrap().as_slice(),
+                )
+                .map_err(ProgramError::from)?;
+                if user_account.role.eq(&UserRole::PermanentMember) {
+                    return err!(MultisigError::InvalidArguments);
+                }
+                Ok(user_account)
+            }
         }
-
-        Ok(user_account)
     }
 
     fn remove_delegate(
-        user_mut_args: UserMutArgs,
+        user_args: UserReadOnlyOrMutateArgs,
         settings_index_with_address: &SettingsIndexWithAddress,
+        light_cpi_accounts: &CpiAccounts,
     ) -> Result<LightAccount<User>> {
-        let mut user_account = LightAccount::<User>::new_mut(
-            &crate::ID,
-            &user_mut_args.account_meta,
-            user_mut_args.data,
-        )
-        .map_err(ProgramError::from)?;
+        match user_args {
+            UserReadOnlyOrMutateArgs::Mutate(user_mut_args) => {
+                let mut user_account = LightAccount::<User>::new_mut(
+                    &crate::ID,
+                    &user_mut_args.account_meta,
+                    user_mut_args.data,
+                )
+                .map_err(ProgramError::from)?;
 
-        require!(
-            user_account.role.ne(&UserRole::PermanentMember),
-            MultisigError::PermanentMember
-        );
+                require!(
+                    user_account.role.ne(&UserRole::PermanentMember),
+                    MultisigError::PermanentMember
+                );
 
-        if let Some(user_account_settings_index_with_address) = &user_account.delegated_to {
-            if user_account_settings_index_with_address.eq(&settings_index_with_address) {
-                user_account.delegated_to = None;
+                if let Some(user_account_settings_index_with_address) = &user_account.delegated_to {
+                    if user_account_settings_index_with_address.eq(&settings_index_with_address) {
+                        user_account.delegated_to = None;
+                    }
+                }
+
+                Ok(user_account)
+            }
+            UserReadOnlyOrMutateArgs::Read(user_readonly_args) => {
+                let user_account = LightAccount::<User>::new_read_only(
+                    &crate::ID,
+                    &user_readonly_args.account_meta,
+                    user_readonly_args.data,
+                    light_cpi_accounts.tree_pubkeys().unwrap().as_slice(),
+                )
+                .map_err(ProgramError::from)?;
+
+                require!(
+                    user_account.role.ne(&UserRole::PermanentMember),
+                    MultisigError::PermanentMember
+                );
+
+                if let Some(user_account_settings_index_with_address) = &user_account.delegated_to {
+                    if user_account_settings_index_with_address.eq(&settings_index_with_address) {
+                        return err!(MultisigError::InvalidArguments);
+                    }
+                }
+
+                Ok(user_account)
             }
         }
-
-        Ok(user_account)
     }
 }

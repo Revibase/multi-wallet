@@ -114,6 +114,7 @@ impl<'info> ChangeConfigCompressed<'info> {
                 index: settings_index,
                 settings_address_tree_index,
             },
+            &light_cpi_accounts,
         )?;
 
         let mut cpi = LightSystemProgramCpi::new_cpi(

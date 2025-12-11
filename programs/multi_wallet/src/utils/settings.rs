@@ -1,7 +1,7 @@
 use crate::{
-    utils::UserRole, AddMemberArgs, ChallengeArgs, DomainConfig, EditMemberArgs, KeyType, Member,
-    MemberKey, MultisigError, Permission, PermissionCounts, RemoveMemberArgs,
-    TransactionActionType,
+    state::UserReadOnlyOrMutateArgs, utils::UserRole, AddMemberArgs, ChallengeArgs, DomainConfig,
+    EditMemberArgs, KeyType, Member, MemberKey, MultisigError, Permission, PermissionCounts,
+    RemoveMemberArgs, TransactionActionType,
 };
 use anchor_lang::prelude::*;
 use std::collections::{HashMap, HashSet};
@@ -121,9 +121,13 @@ pub trait MultisigSettings {
     ) -> Result<Vec<AddMemberArgs>> {
         let mut new_member_data = vec![];
         for member in &new_members {
-            let user_mut_args = &member.user_mut_args;
-            let role = member.user_mut_args.data.role;
-            let user_address_tree_index = member.user_mut_args.data.user_address_tree_index;
+            let (role, user_address_tree_index) = match &member.user_args {
+                UserReadOnlyOrMutateArgs::Mutate(a) => {
+                    (a.data.role, a.data.user_address_tree_index)
+                }
+                UserReadOnlyOrMutateArgs::Read(a) => (a.data.role, a.data.user_address_tree_index),
+            };
+
             new_member_data.push(Member {
                 pubkey: member.member_key,
                 permissions: member.permissions,
@@ -133,10 +137,16 @@ pub trait MultisigSettings {
             });
 
             if member.member_key.get_type().eq(&KeyType::Secp256r1) {
-                let domain_config_key = user_mut_args
-                    .data
-                    .domain_config
-                    .ok_or(MultisigError::DomainConfigIsMissing)?;
+                let domain_config_key = match &member.user_args {
+                    UserReadOnlyOrMutateArgs::Mutate(user_mut_args) => user_mut_args
+                        .data
+                        .domain_config
+                        .ok_or(MultisigError::DomainConfigIsMissing)?,
+                    UserReadOnlyOrMutateArgs::Read(user_readonly_args) => user_readonly_args
+                        .data
+                        .domain_config
+                        .ok_or(MultisigError::DomainConfigIsMissing)?,
+                };
                 let domain_config = DomainConfig::extract_domain_config_account(
                     remaining_accounts,
                     domain_config_key,

@@ -25,30 +25,30 @@ import {
   getPermissionsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  getUserMutArgsDecoder,
-  getUserMutArgsEncoder,
+  getUserReadOnlyOrMutateArgsDecoder,
+  getUserReadOnlyOrMutateArgsEncoder,
   type IPermissions,
   type MemberKey,
   type MemberKeyArgs,
   type PermissionsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-  type UserMutArgs,
-  type UserMutArgsArgs,
+  type UserReadOnlyOrMutateArgs,
+  type UserReadOnlyOrMutateArgsArgs,
 } from ".";
 
 export type AddMemberArgs = {
   memberKey: MemberKey;
   permissions: IPermissions;
   verifyArgs: Option<Secp256r1VerifyArgs>;
-  userMutArgs: UserMutArgs;
+  userArgs: UserReadOnlyOrMutateArgs;
 };
 
 export type AddMemberArgsArgs = {
   memberKey: MemberKeyArgs;
   permissions: PermissionsArgs;
   verifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  userMutArgs: UserMutArgsArgs;
+  userArgs: UserReadOnlyOrMutateArgsArgs;
 };
 
 export function getAddMemberArgsEncoder(): Encoder<AddMemberArgsArgs> {
@@ -56,7 +56,7 @@ export function getAddMemberArgsEncoder(): Encoder<AddMemberArgsArgs> {
     ["memberKey", getMemberKeyEncoder()],
     ["permissions", getPermissionsEncoder()],
     ["verifyArgs", getOptionEncoder(getSecp256r1VerifyArgsEncoder())],
-    ["userMutArgs", getUserMutArgsEncoder()],
+    ["userArgs", getUserReadOnlyOrMutateArgsEncoder()],
   ]);
 }
 
@@ -65,7 +65,7 @@ export function getAddMemberArgsDecoder(): Decoder<AddMemberArgs> {
     ["memberKey", getMemberKeyDecoder()],
     ["permissions", getPermissionsDecoder()],
     ["verifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ["userMutArgs", getUserMutArgsDecoder()],
+    ["userArgs", getUserReadOnlyOrMutateArgsDecoder()],
   ]);
 }
 

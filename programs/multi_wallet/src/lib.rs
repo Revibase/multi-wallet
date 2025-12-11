@@ -238,7 +238,7 @@ pub mod multi_wallet {
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         compressed_proof_args: ProofArgs,
         settings_creation: SettingsCreationArgs,
-        user_mut_args: UserMutArgs,
+        user_args: UserReadOnlyOrMutateArgs,
         settings_index: u128,
     ) -> Result<()> {
         CreateMultiWalletCompressed::process(
@@ -246,7 +246,7 @@ pub mod multi_wallet {
             secp256r1_verify_args,
             compressed_proof_args,
             settings_creation,
-            user_mut_args,
+            user_args,
             settings_index,
         )
     }

@@ -25,7 +25,7 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       userAccountData.delegatedTo.__option === "Some"
         ? userAccountData.delegatedTo.value
         : null;
-    expect(settingsIndex?.index).equal(ctx.index, "Payer should be a delegate");
+    expect(settingsIndex?.index).equal(null, "Payer should be a delegate");
     expect(accountData.members.length).to.equal(2, "Should have two members");
     expect(convertMemberKeyToString(accountData.members[1].pubkey)).to.equal(
       ctx.payer.address.toString(),

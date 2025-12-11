@@ -476,10 +476,10 @@
           }
         },
         {
-          "name": "user_mut_args",
+          "name": "user_args",
           "type": {
             "defined": {
-              "name": "UserMutArgs"
+              "name": "UserReadOnlyOrMutateArgs"
             }
           }
         },
@@ -2300,10 +2300,10 @@
             }
           },
           {
-            "name": "user_mut_args",
+            "name": "user_args",
             "type": {
               "defined": {
-                "name": "UserMutArgs"
+                "name": "UserReadOnlyOrMutateArgs"
               }
             }
           }
@@ -2974,10 +2974,10 @@
             }
           },
           {
-            "name": "user_mut_args",
+            "name": "user_args",
             "type": {
               "defined": {
-                "name": "UserMutArgs"
+                "name": "UserReadOnlyOrMutateArgs"
               }
             }
           }
@@ -3511,6 +3511,58 @@
                 "name": "User"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserReadOnlyArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "account_meta",
+            "type": {
+              "defined": {
+                "name": "CompressedAccountMetaReadOnly"
+              }
+            }
+          },
+          {
+            "name": "data",
+            "type": {
+              "defined": {
+                "name": "User"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "UserReadOnlyOrMutateArgs",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Read",
+            "fields": [
+              {
+                "defined": {
+                  "name": "UserReadOnlyArgs"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Mutate",
+            "fields": [
+              {
+                "defined": {
+                  "name": "UserMutArgs"
+                }
+              }
+            ]
           }
         ]
       }

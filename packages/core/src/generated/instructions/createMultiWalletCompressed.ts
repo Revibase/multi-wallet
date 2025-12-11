@@ -48,16 +48,16 @@ import {
   getSecp256r1VerifyArgsEncoder,
   getSettingsCreationArgsDecoder,
   getSettingsCreationArgsEncoder,
-  getUserMutArgsDecoder,
-  getUserMutArgsEncoder,
+  getUserReadOnlyOrMutateArgsDecoder,
+  getUserReadOnlyOrMutateArgsEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
   type SettingsCreationArgs,
   type SettingsCreationArgsArgs,
-  type UserMutArgs,
-  type UserMutArgsArgs,
+  type UserReadOnlyOrMutateArgs,
+  type UserReadOnlyOrMutateArgsArgs,
 } from "../types";
 
 export const CREATE_MULTI_WALLET_COMPRESSED_DISCRIMINATOR = new Uint8Array([
@@ -126,7 +126,7 @@ export type CreateMultiWalletCompressedInstructionData = {
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
   compressedProofArgs: ProofArgs;
   settingsCreation: SettingsCreationArgs;
-  userMutArgs: UserMutArgs;
+  userArgs: UserReadOnlyOrMutateArgs;
   settingsIndex: bigint;
 };
 
@@ -134,7 +134,7 @@ export type CreateMultiWalletCompressedInstructionDataArgs = {
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
   compressedProofArgs: ProofArgsArgs;
   settingsCreation: SettingsCreationArgsArgs;
-  userMutArgs: UserMutArgsArgs;
+  userArgs: UserReadOnlyOrMutateArgsArgs;
   settingsIndex: number | bigint;
 };
 
@@ -148,7 +148,7 @@ export function getCreateMultiWalletCompressedInstructionDataEncoder(): Encoder<
       ],
       ["compressedProofArgs", getProofArgsEncoder()],
       ["settingsCreation", getSettingsCreationArgsEncoder()],
-      ["userMutArgs", getUserMutArgsEncoder()],
+      ["userArgs", getUserReadOnlyOrMutateArgsEncoder()],
       ["settingsIndex", getU128Encoder()],
     ]),
     (value) => ({
@@ -164,7 +164,7 @@ export function getCreateMultiWalletCompressedInstructionDataDecoder(): Decoder<
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
     ["compressedProofArgs", getProofArgsDecoder()],
     ["settingsCreation", getSettingsCreationArgsDecoder()],
-    ["userMutArgs", getUserMutArgsDecoder()],
+    ["userArgs", getUserReadOnlyOrMutateArgsDecoder()],
     ["settingsIndex", getU128Decoder()],
   ]);
 }
@@ -204,7 +204,7 @@ export type CreateMultiWalletCompressedAsyncInput<
   secp256r1VerifyArgs: CreateMultiWalletCompressedInstructionDataArgs["secp256r1VerifyArgs"];
   compressedProofArgs: CreateMultiWalletCompressedInstructionDataArgs["compressedProofArgs"];
   settingsCreation: CreateMultiWalletCompressedInstructionDataArgs["settingsCreation"];
-  userMutArgs: CreateMultiWalletCompressedInstructionDataArgs["userMutArgs"];
+  userArgs: CreateMultiWalletCompressedInstructionDataArgs["userArgs"];
   settingsIndex: CreateMultiWalletCompressedInstructionDataArgs["settingsIndex"];
   remainingAccounts: CreateMultiWalletCompressedInstructionExtraArgs["remainingAccounts"];
 };
@@ -369,7 +369,7 @@ export type CreateMultiWalletCompressedInput<
   secp256r1VerifyArgs: CreateMultiWalletCompressedInstructionDataArgs["secp256r1VerifyArgs"];
   compressedProofArgs: CreateMultiWalletCompressedInstructionDataArgs["compressedProofArgs"];
   settingsCreation: CreateMultiWalletCompressedInstructionDataArgs["settingsCreation"];
-  userMutArgs: CreateMultiWalletCompressedInstructionDataArgs["userMutArgs"];
+  userArgs: CreateMultiWalletCompressedInstructionDataArgs["userArgs"];
   settingsIndex: CreateMultiWalletCompressedInstructionDataArgs["settingsIndex"];
   remainingAccounts: CreateMultiWalletCompressedInstructionExtraArgs["remainingAccounts"];
 };

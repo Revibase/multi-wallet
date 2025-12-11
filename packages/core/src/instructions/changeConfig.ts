@@ -66,9 +66,8 @@ export async function changeConfig({
   compressed?: boolean;
   cachedAccounts?: Map<string, any>;
 }) {
-  // 1) Stage delegate address gathering (Add / Remove lists)
-  const { addDelegates, removeDelegates } =
-    await prepareDelegateLists(configActionsArgs);
+  // 1) Gather all user accounts
+  const userAccounts = await prepareUserAccounts(configActionsArgs);
 
   // 2) Prepare compressed proof + account mutation args (if needed)
   const packedAccounts = new PackedAccounts();
@@ -76,11 +75,10 @@ export async function changeConfig({
   let settingsMutArgs: SettingsMutArgs | null = null;
   let userMutArgs: UserMutArgs[] = [];
 
-  if (addDelegates.length || removeDelegates.length || compressed) {
+  if (userAccounts.length || compressed) {
     const proofResult = await prepareProofAndMutArgs({
       packedAccounts,
-      addDelegates,
-      removeDelegates,
+      userAccounts,
       compressed,
       index,
       settingsAddressTreeIndex,
@@ -97,6 +95,7 @@ export async function changeConfig({
     configActionsArgs,
     packedAccounts,
     userMutArgs,
+    index,
   });
 
   // 4) Assemble final instructions
@@ -127,9 +126,8 @@ export async function changeConfig({
   return { instructions, secp256r1VerifyInput };
 }
 
-async function prepareDelegateLists(configActionsArgs: ConfigurationArgs[]) {
-  const addDelegates: { address: BN; type: "User" }[] = [];
-  const removeDelegates: { address: BN; type: "User" }[] = [];
+async function prepareUserAccounts(configActionsArgs: ConfigurationArgs[]) {
+  const result: { address: BN; type: "User" }[] = [];
 
   for (const action of configActionsArgs) {
     switch (action.type) {
@@ -140,7 +138,7 @@ async function prepareDelegateLists(configActionsArgs: ConfigurationArgs[]) {
           )
         );
         for (const r of results)
-          addDelegates.push({ address: r.address, type: "User" });
+          result.push({ address: r.address, type: "User" });
         break;
       }
 
@@ -151,7 +149,7 @@ async function prepareDelegateLists(configActionsArgs: ConfigurationArgs[]) {
           )
         );
         for (const r of results)
-          removeDelegates.push({ address: r.address, type: "User" });
+          result.push({ address: r.address, type: "User" });
         break;
       }
 
@@ -160,21 +158,19 @@ async function prepareDelegateLists(configActionsArgs: ConfigurationArgs[]) {
     }
   }
 
-  return { addDelegates, removeDelegates };
+  return result;
 }
 
 async function prepareProofAndMutArgs({
   packedAccounts,
-  addDelegates,
-  removeDelegates,
+  userAccounts,
   compressed,
   index,
   settingsAddressTreeIndex,
   cachedAccounts,
 }: {
   packedAccounts: PackedAccounts;
-  addDelegates: { address: BN; type: "User" }[];
-  removeDelegates: { address: BN; type: "User" }[];
+  userAccounts: { address: BN; type: "User" }[];
   compressed: boolean;
   index: number | bigint;
   settingsAddressTreeIndex?: number;
@@ -192,8 +188,7 @@ async function prepareProofAndMutArgs({
     ).address;
     addresses.push({ address: settingsAddr, type: "Settings" } as any);
   }
-  if (removeDelegates.length) addresses.push(...removeDelegates);
-  if (addDelegates.length) addresses.push(...addDelegates);
+  if (userAccounts.length) addresses.push(...userAccounts);
 
   const hashesWithTree = addresses.length
     ? await getCompressedAccountHashes(addresses, cachedAccounts)
@@ -243,10 +238,12 @@ async function prepareProofAndMutArgs({
 }
 
 async function buildConfigActions({
+  index,
   configActionsArgs,
   packedAccounts,
   userMutArgs,
 }: {
+  index: number | bigint;
   configActionsArgs: ConfigurationArgs[];
   packedAccounts: PackedAccounts;
   userMutArgs: UserMutArgs[];
@@ -331,6 +328,7 @@ async function buildConfigActions({
                 return convertRemoveMember({
                   pubkey: m.member,
                   userMutArgs: found,
+                  index,
                 });
               }
             )
@@ -376,16 +374,24 @@ function convertEditMember({
 function convertRemoveMember({
   pubkey,
   userMutArgs,
+  index,
 }: {
   pubkey: Address | Secp256r1Key;
   userMutArgs: UserMutArgs;
+  index: number | bigint;
 }): RemoveMemberArgs {
   if (userMutArgs.data.role === UserRole.PermanentMember) {
     throw new Error("Permanent Member cannot be removed from the wallet.");
   }
+  const isDelegate =
+    userMutArgs.data.delegatedTo.__option === "Some"
+      ? Number(userMutArgs.data.delegatedTo.value.index.toString()) === index
+      : false;
   return {
     memberKey: convertPubkeyToMemberkey(pubkey),
-    userMutArgs,
+    userArgs: isDelegate
+      ? { __kind: "Mutate", fields: [userMutArgs] }
+      : { __kind: "Read", fields: [userMutArgs] },
   };
 }
 
@@ -425,7 +431,10 @@ function convertAddMember({
             clientAndDeviceHash: pubkey.clientAndDeviceHash,
           })
         : none(),
-    userMutArgs,
+    userArgs:
+      userMutArgs.data.role === UserRole.PermanentMember
+        ? { __kind: "Mutate", fields: [userMutArgs] }
+        : { __kind: "Read", fields: [userMutArgs] },
   };
 }
 

@@ -96,6 +96,7 @@ impl<'info> ChangeConfig<'info> {
             let account_infos = User::handle_user_delegates(
                 delegate_ops, 
                 SettingsIndexWithAddress{ index:settings.index, settings_address_tree_index: settings.settings_address_tree_index },
+                &light_cpi_accounts
             )?;
 
        

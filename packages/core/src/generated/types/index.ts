@@ -39,4 +39,6 @@ export * from './transactionMessageAddressTableLookup';
 export * from './user';
 export * from './userCreationArgs';
 export * from './userMutArgs';
+export * from './userReadOnlyArgs';
+export * from './userReadOnlyOrMutateArgs';
 export * from './userRole';

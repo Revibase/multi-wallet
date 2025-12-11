@@ -2,6 +2,7 @@ import { AccountRole, type Instruction, type TransactionSigner } from "gill";
 import {
   getCreateMultiWalletCompressedInstructionAsync,
   getUserDecoder,
+  UserRole,
   type User,
 } from "../generated";
 import { SignedSecp256r1Key } from "../types";
@@ -150,7 +151,10 @@ export async function createWallet({
         initialMember instanceof SignedSecp256r1Key ? undefined : initialMember,
       secp256r1VerifyArgs: verifyArgs,
       domainConfig,
-      userMutArgs,
+      userArgs:
+        userMutArgs.data.role === UserRole.PermanentMember
+          ? { __kind: "Mutate", fields: [userMutArgs] }
+          : { __kind: "Read", fields: [userMutArgs] },
       compressedProofArgs,
       settingsCreation: settingsCreationArgs,
       remainingAccounts,
