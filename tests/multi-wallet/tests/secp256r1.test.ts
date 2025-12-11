@@ -6,7 +6,6 @@ import {
   fetchSettingsAccountData,
   fetchUserAccountData,
   getGlobalCounterAddress,
-  getSecp256r1VerifyInstruction,
   getSettingsFromIndex,
   getSolanaRpc,
   getWalletAddressFromIndex,
@@ -148,15 +147,11 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
       ctx
     );
 
-    const { instructions, secp256r1VerifyInput } = await createWallet({
+    const instructions = await createWallet({
       payer: ctx.payer,
       initialMember: signedSigner,
       index: globalCounter.data.index,
     });
-
-    if (secp256r1VerifyInput.length > 0) {
-      instructions.unshift(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
-    }
 
     await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
   });

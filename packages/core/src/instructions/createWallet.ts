@@ -19,7 +19,10 @@ import {
 } from "../utils/compressed/internal";
 import { PackedAccounts } from "../utils/compressed/packedAccounts";
 import { extractSecp256r1VerificationArgs } from "../utils/transaction/internal";
-import type { Secp256r1VerifyInput } from "./secp256r1Verify";
+import {
+  getSecp256r1VerifyInstruction,
+  type Secp256r1VerifyInput,
+} from "./secp256r1Verify";
 
 type CreateWalletArgs = {
   index: number | bigint;
@@ -135,6 +138,10 @@ export async function createWallet({
     throw new Error("Settings creation args is missing.");
   }
 
+  if (secp256r1VerifyInput.length > 0) {
+    instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
+  }
+
   instructions.push(
     await getCreateMultiWalletCompressedInstructionAsync({
       settingsIndex: index,
@@ -150,5 +157,5 @@ export async function createWallet({
     })
   );
 
-  return { instructions, secp256r1VerifyInput };
+  return instructions;
 }

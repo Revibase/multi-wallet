@@ -211,7 +211,7 @@ export async function createMultiWallet(
   const multiWalletVault = await getWalletAddressFromIndex(createIndex);
 
   // Create wallet
-  const { instructions } = await createWallet({
+  const instructions = await createWallet({
     payer,
     initialMember: wallet,
     index: createIndex,

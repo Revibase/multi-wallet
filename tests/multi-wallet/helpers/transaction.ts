@@ -1,4 +1,10 @@
-import { getSendAndConfirmTransaction, getSolanaRpc } from "@revibase/core";
+import {
+  changeConfig,
+  getSendAndConfirmTransaction,
+  getSolanaRpc,
+  prepareTransactionMessage,
+  prepareTransactionSync,
+} from "@revibase/core";
 import {
   address,
   type AddressesByLookupTableAddress,
@@ -115,4 +121,44 @@ export async function fundMultiWalletVault(
   });
 
   await sendTransaction([transfer], ctx.payer);
+}
+
+export async function addPayerAsNewMember(ctx: TestContext) {
+  if (!ctx.index || !ctx.multiWalletVault || !ctx.payer || !ctx.wallet) return;
+  const { instructions, secp256r1VerifyInput } = await changeConfig({
+    payer: ctx.payer,
+    compressed: ctx.compressed,
+    index: ctx.index,
+    configActionsArgs: [
+      {
+        type: "AddMembers",
+        members: [
+          {
+            member: ctx.payer.address,
+            permissions: { initiate: true, vote: true, execute: true },
+          },
+        ],
+      },
+    ],
+  });
+
+  const transactionMessageBytes = prepareTransactionMessage({
+    payer: ctx.multiWalletVault,
+    instructions,
+    addressesByLookupTableAddress: ctx.addressLookUpTable,
+  });
+  const {
+    instructions: ixs,
+    payer,
+    addressesByLookupTableAddress,
+  } = await prepareTransactionSync({
+    compressed: ctx.compressed,
+    payer: ctx.payer,
+    index: ctx.index,
+    signers: [ctx.wallet],
+    transactionMessageBytes,
+    secp256r1VerifyInput,
+  });
+
+  await sendTransaction(ixs, payer, addressesByLookupTableAddress);
 }

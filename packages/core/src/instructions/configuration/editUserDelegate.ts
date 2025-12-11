@@ -31,7 +31,10 @@ import {
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 import { extractSecp256r1VerificationArgs } from "../../utils/transaction/internal";
-import type { Secp256r1VerifyInput } from "../secp256r1Verify";
+import {
+  getSecp256r1VerifyInstruction,
+  type Secp256r1VerifyInput,
+} from "../secp256r1Verify";
 
 export async function editUserDelegate({
   payer,
@@ -215,6 +218,9 @@ export async function editUserDelegate({
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
 
   const instructions: Instruction[] = [];
+  if (secp256r1VerifyInput.length > 0) {
+    instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
+  }
   instructions.push(
     getEditUserDelegateInstruction({
       secp256r1VerifyArgs: verifyArgs,
@@ -232,5 +238,5 @@ export async function editUserDelegate({
     })
   );
 
-  return { instructions, secp256r1VerifyInput };
+  return instructions;
 }

@@ -5,10 +5,10 @@ import {
   fetchUserAccountData,
   prepareTransactionBundle,
   prepareTransactionMessage,
-  prepareTransactionSync,
 } from "@revibase/core";
 import { expect } from "chai";
 import { createMultiWallet, sendTransaction } from "../helpers/index.ts";
+import { addPayerAsNewMember } from "../helpers/transaction.ts";
 import type { TestContext } from "../types.ts";
 
 export function runMemberManagementTests(getCtx: () => TestContext) {
@@ -16,7 +16,7 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
     if (!ctx.index || !ctx.multiWalletVault || !ctx.payer) return;
-    await addNewMember(ctx);
+    await addPayerAsNewMember(ctx);
 
     // Verify member was added
     const accountData = await fetchSettingsAccountData(ctx.index);
@@ -38,7 +38,7 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
     ctx = await createMultiWallet(ctx);
     if (!ctx.index || !ctx.multiWalletVault || !ctx.payer || !ctx.wallet)
       return;
-    await addNewMember(ctx);
+    await addPayerAsNewMember(ctx);
     // Test updating permissions for existing members
     const { instructions, secp256r1VerifyInput } = await changeConfig({
       payer: ctx.payer,
@@ -93,7 +93,7 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
     if (!ctx.index || !ctx.multiWalletVault || !ctx.payer || !ctx.wallet)
       return;
 
-    await addNewMember(ctx);
+    await addPayerAsNewMember(ctx);
     const { instructions, secp256r1VerifyInput } = await changeConfig({
       payer: ctx.payer,
       compressed: ctx.compressed,
@@ -149,44 +149,4 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       "Threshold should be updated to 1"
     );
   });
-}
-
-async function addNewMember(ctx: TestContext) {
-  if (!ctx.index || !ctx.multiWalletVault || !ctx.payer || !ctx.wallet) return;
-  const { instructions, secp256r1VerifyInput } = await changeConfig({
-    payer: ctx.payer,
-    compressed: ctx.compressed,
-    index: ctx.index,
-    configActionsArgs: [
-      {
-        type: "AddMembers",
-        members: [
-          {
-            member: ctx.payer.address,
-            permissions: { initiate: true, vote: true, execute: true },
-          },
-        ],
-      },
-    ],
-  });
-
-  const transactionMessageBytes = prepareTransactionMessage({
-    payer: ctx.multiWalletVault,
-    instructions,
-    addressesByLookupTableAddress: ctx.addressLookUpTable,
-  });
-  const {
-    instructions: ixs,
-    payer,
-    addressesByLookupTableAddress,
-  } = await prepareTransactionSync({
-    compressed: ctx.compressed,
-    payer: ctx.payer,
-    index: ctx.index,
-    signers: [ctx.wallet],
-    transactionMessageBytes,
-    secp256r1VerifyInput,
-  });
-
-  await sendTransaction(ixs, payer, addressesByLookupTableAddress);
 }
