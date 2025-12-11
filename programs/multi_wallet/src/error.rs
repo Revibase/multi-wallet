@@ -45,6 +45,9 @@ pub enum MultisigError {
     #[msg("Only one permanent member is allowed per wallet.")]
     OnlyOnePermanentMemberAllowed,
 
+    #[msg("User with Permanent Member role requires a must have a delegated wallet.")]
+    InvalidPermanentMemberConfig,
+
     #[msg("Only one transaction manager is allowed per wallet.")]
     OnlyOneTransactionManagerAllowed,
 
@@ -106,6 +109,9 @@ pub enum MultisigError {
 
     #[msg("Not enough members with vote permission to meet the approval threshold.")]
     InsufficientSignersWithVotePermission,
+
+    #[msg("Only delegated members are allowed for this transaction.")]
+    InvalidNonDelegatedSigners,
 
     #[msg("Member is not part of the expected signers for this transaction.")]
     UnexpectedSigner,

@@ -1,7 +1,7 @@
 use crate::{
-    state::UserReadOnlyOrMutateArgs, utils::UserRole, AddMemberArgs, ChallengeArgs, DelegateOp,
-    DomainConfig, EditMemberArgs, KeyType, Member, MemberKey, MultisigError, Permission,
-    PermissionCounts, RemoveMemberArgs, TransactionActionType,
+    utils::UserRole, AddMemberArgs, ChallengeArgs, DomainConfig, EditMemberArgs, KeyType, Member,
+    MemberKey, MultisigError, Permission, PermissionCounts, RemoveMemberArgs,
+    TransactionActionType,
 };
 use anchor_lang::prelude::*;
 use std::collections::{HashMap, HashSet};
@@ -45,8 +45,11 @@ pub trait MultisigSettings {
             }
             if UserRole::from(member.role).eq(&UserRole::PermanentMember) {
                 permission_counts.permanent_members += 1;
-            }
-            if UserRole::from(member.role).eq(&UserRole::TransactionManager) {
+                require!(
+                    member.is_delegate == 1,
+                    MultisigError::InvalidPermanentMemberConfig
+                );
+            } else if UserRole::from(member.role).eq(&UserRole::TransactionManager) {
                 permission_counts.transaction_manager += 1;
                 require!(
                     p.has(Permission::InitiateTransaction),
@@ -59,6 +62,23 @@ pub trait MultisigSettings {
                 require!(
                     !p.has(Permission::ExecuteTransaction),
                     MultisigError::InvalidTransactionManagerPermission
+                );
+                require!(
+                    member.is_delegate == 0,
+                    MultisigError::InvalidTransactionManagerConfig
+                );
+                require!(
+                    member.pubkey.get_type().eq(&KeyType::Ed25519),
+                    MultisigError::InvalidTransactionManagerConfig
+                );
+            } else if UserRole::from(member.role).eq(&UserRole::Administrator) {
+                require!(
+                    member.pubkey.get_type().eq(&KeyType::Ed25519),
+                    MultisigError::InvalidAdministratorConfig
+                );
+                require!(
+                    member.is_delegate == 0,
+                    MultisigError::InvalidAdministratorConfig
                 );
             }
         }
@@ -101,86 +121,44 @@ pub trait MultisigSettings {
     ) -> Result<Vec<AddMemberArgs>> {
         let mut new_member_data = vec![];
         for member in &new_members {
-            let (role, has_transaction_manager_url, user_address_tree_index) =
-                match &member.user_args {
-                    UserReadOnlyOrMutateArgs::Mutate(a) => (
-                        a.data.role,
-                        a.data.transaction_manager_url.is_some(),
-                        a.data.user_address_tree_index,
-                    ),
-                    UserReadOnlyOrMutateArgs::Read(a) => (
-                        a.data.role,
-                        a.data.transaction_manager_url.is_some(),
-                        a.data.user_address_tree_index,
-                    ),
-                };
-
-            require!(
-                match role {
-                    UserRole::PermanentMember => member.delegate_operation.eq(&DelegateOp::Add),
-
-                    UserRole::TransactionManager =>
-                        member.delegate_operation.eq(&DelegateOp::Ignore)
-                            && has_transaction_manager_url,
-
-                    UserRole::Administrator => member.delegate_operation.eq(&DelegateOp::Ignore),
-
-                    UserRole::Member => member.delegate_operation.ne(&DelegateOp::Remove),
-                },
-                MultisigError::InvalidUserRole
-            );
-
+            let user_mut_args = &member.user_mut_args;
+            let role = member.user_mut_args.data.role;
+            let user_address_tree_index = member.user_mut_args.data.user_address_tree_index;
             new_member_data.push(Member {
                 pubkey: member.member_key,
                 permissions: member.permissions,
                 role: role.to_u8(),
                 user_address_tree_index,
+                is_delegate: UserRole::from(role).eq(&UserRole::PermanentMember).into(),
             });
 
-            match member.member_key.get_type() {
-                KeyType::Ed25519 => {
-                    if member.delegate_operation.eq(&DelegateOp::Add) {
-                        let expected_seed = member.member_key.get_seed()?;
-                        let has_signer = remaining_accounts
-                            .iter()
-                            .any(|f| f.is_signer && f.key.to_bytes().eq(&expected_seed));
-                        require!(has_signer, MultisigError::NoSignerFound);
-                    }
-                }
-                KeyType::Secp256r1 => {
-                    let domain_config_key = match &member.user_args {
-                        UserReadOnlyOrMutateArgs::Mutate(user_mut_args) => user_mut_args
-                            .data
-                            .domain_config
-                            .ok_or(MultisigError::DomainConfigIsMissing)?,
-                        UserReadOnlyOrMutateArgs::Read(user_readonly_args) => user_readonly_args
-                            .data
-                            .domain_config
-                            .ok_or(MultisigError::DomainConfigIsMissing)?,
-                    };
-                    let domain_config = DomainConfig::extract_domain_config_account(
-                        remaining_accounts,
-                        domain_config_key,
-                    )?;
-                    let rp_id_hash = domain_config.load()?.rp_id_hash;
-                    let verify_data = member
-                        .verify_args
-                        .as_ref()
-                        .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
-                    let instructions_sysvar =
-                        instructions_sysvar.ok_or(MultisigError::MissingAccount)?;
-                    verify_data.verify_webauthn(
-                        sysvar_slot_history,
-                        &Some(domain_config),
-                        instructions_sysvar,
-                        ChallengeArgs {
-                            account: *settings,
-                            message_hash: rp_id_hash,
-                            action_type: TransactionActionType::AddNewMember,
-                        },
-                        None,
-                    )?;
-                }
+            if member.member_key.get_type().eq(&KeyType::Secp256r1) {
+                let domain_config_key = user_mut_args
+                    .data
+                    .domain_config
+                    .ok_or(MultisigError::DomainConfigIsMissing)?;
+                let domain_config = DomainConfig::extract_domain_config_account(
+                    remaining_accounts,
+                    domain_config_key,
+                )?;
+                let rp_id_hash = domain_config.load()?.rp_id_hash;
+                let verify_data = member
+                    .verify_args
+                    .as_ref()
+                    .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
+                let instructions_sysvar =
+                    instructions_sysvar.ok_or(MultisigError::MissingAccount)?;
+                verify_data.verify_webauthn(
+                    sysvar_slot_history,
+                    &Some(domain_config),
+                    instructions_sysvar,
+                    ChallengeArgs {
+                        account: *settings,
+                        message_hash: rp_id_hash,
+                        action_type: TransactionActionType::AddNewMember,
+                    },
+                    None,
+                )?;
             }
         }
 
@@ -214,13 +192,7 @@ pub trait MultisigSettings {
         Ok(member_pubkeys)
     }
 
-    fn edit_permissions(
-        &mut self,
-        new_members: Vec<EditMemberArgs>,
-    ) -> Result<(Vec<AddMemberArgs>, Vec<RemoveMemberArgs>)> {
-        let mut members_to_remove_delegate = Vec::new();
-        let mut members_to_add_delegate = Vec::new();
-
+    fn edit_permissions(&mut self, new_members: Vec<EditMemberArgs>) -> Result<()> {
         let mut current_members_map: HashMap<MemberKey, Member> = self
             .get_members()?
             .into_iter()
@@ -240,37 +212,10 @@ pub trait MultisigSettings {
 
             // update permissions in place
             existing_member.permissions = member.permissions;
-
-            match member.delegate_operation {
-                DelegateOp::Add | DelegateOp::Remove => {
-                    let user_mut_args = member.user_args.ok_or(MultisigError::MissingUserArgs)?;
-
-                    require!(
-                        user_mut_args.data.role.eq(&UserRole::Member),
-                        MultisigError::InvalidUserRole
-                    );
-
-                    if member.delegate_operation == DelegateOp::Add {
-                        members_to_add_delegate.push(AddMemberArgs {
-                            member_key: pubkey,
-                            permissions: member.permissions,
-                            verify_args: None,
-                            user_args: UserReadOnlyOrMutateArgs::Mutate(user_mut_args),
-                            delegate_operation: member.delegate_operation,
-                        });
-                    } else {
-                        members_to_remove_delegate.push(RemoveMemberArgs {
-                            member_key: pubkey,
-                            user_args: UserReadOnlyOrMutateArgs::Mutate(user_mut_args),
-                        });
-                    }
-                }
-                DelegateOp::Ignore => {}
-            }
         }
 
         self.set_members(current_members_map.into_values().collect())?;
 
-        Ok((members_to_add_delegate, members_to_remove_delegate))
+        Ok(())
     }
 }

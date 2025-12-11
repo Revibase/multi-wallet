@@ -54,7 +54,7 @@ import {
 } from "../types";
 
 export const TRANSACTION_BUFFER_CLOSE_COMPRESSED_DISCRIMINATOR = new Uint8Array(
-  [23]
+  [24]
 );
 
 export function getTransactionBufferCloseCompressedDiscriminatorBytes() {

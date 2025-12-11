@@ -65,10 +65,7 @@ pub struct ProofArgs {
 }
 
 impl CompressedSettings {
-    pub fn edit_permissions(
-        &mut self,
-        members: Vec<EditMemberArgs>,
-    ) -> Result<(Vec<AddMemberArgs>, Vec<RemoveMemberArgs>)> {
+    pub fn edit_permissions(&mut self, members: Vec<EditMemberArgs>) -> Result<()> {
         MultisigSettings::edit_permissions(self, members)
     }
     pub fn add_members<'a>(

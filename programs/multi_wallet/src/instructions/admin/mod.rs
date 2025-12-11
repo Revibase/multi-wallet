@@ -19,6 +19,9 @@ pub use create_user_accounts::*;
 pub mod edit_transaction_manager_url;
 pub use edit_transaction_manager_url::*;
 
+pub mod edit_user_delegate;
+pub use edit_user_delegate::*;
+
 pub mod add_whitelisted_address_trees;
 pub use add_whitelisted_address_trees::*;
 

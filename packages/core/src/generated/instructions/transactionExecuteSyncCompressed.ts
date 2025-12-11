@@ -54,7 +54,7 @@ import {
 } from "../types";
 
 export const TRANSACTION_EXECUTE_SYNC_COMPRESSED_DISCRIMINATOR = new Uint8Array(
-  [26]
+  [27]
 );
 
 export function getTransactionExecuteSyncCompressedDiscriminatorBytes() {

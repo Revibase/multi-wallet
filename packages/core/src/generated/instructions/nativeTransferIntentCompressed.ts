@@ -53,7 +53,7 @@ import {
 } from "../types";
 
 export const NATIVE_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR = new Uint8Array([
-  27,
+  28,
 ]);
 
 export function getNativeTransferIntentCompressedDiscriminatorBytes() {

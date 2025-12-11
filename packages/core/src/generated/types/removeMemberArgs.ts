@@ -17,35 +17,35 @@ import {
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
-  getUserReadOnlyOrMutateArgsDecoder,
-  getUserReadOnlyOrMutateArgsEncoder,
+  getUserMutArgsDecoder,
+  getUserMutArgsEncoder,
   type MemberKey,
   type MemberKeyArgs,
-  type UserReadOnlyOrMutateArgs,
-  type UserReadOnlyOrMutateArgsArgs,
+  type UserMutArgs,
+  type UserMutArgsArgs,
 } from ".";
 
 export type RemoveMemberArgs = {
   memberKey: MemberKey;
-  userArgs: UserReadOnlyOrMutateArgs;
+  userMutArgs: UserMutArgs;
 };
 
 export type RemoveMemberArgsArgs = {
   memberKey: MemberKeyArgs;
-  userArgs: UserReadOnlyOrMutateArgsArgs;
+  userMutArgs: UserMutArgsArgs;
 };
 
 export function getRemoveMemberArgsEncoder(): Encoder<RemoveMemberArgsArgs> {
   return getStructEncoder([
     ["memberKey", getMemberKeyEncoder()],
-    ["userArgs", getUserReadOnlyOrMutateArgsEncoder()],
+    ["userMutArgs", getUserMutArgsEncoder()],
   ]);
 }
 
 export function getRemoveMemberArgsDecoder(): Decoder<RemoveMemberArgs> {
   return getStructDecoder([
     ["memberKey", getMemberKeyDecoder()],
-    ["userArgs", getUserReadOnlyOrMutateArgsDecoder()],
+    ["userMutArgs", getUserMutArgsDecoder()],
   ]);
 }
 

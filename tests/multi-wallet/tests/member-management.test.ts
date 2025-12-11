@@ -1,7 +1,6 @@
 import {
   changeConfig,
   convertMemberKeyToString,
-  DelegateOp,
   fetchSettingsAccountData,
   fetchUserAccountData,
   prepareTransactionBundle,
@@ -52,7 +51,6 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
             {
               member: ctx.payer.address,
               permissions: { initiate: true, vote: true, execute: true },
-              delegateOperation: DelegateOp.Remove,
             },
           ],
         },
@@ -164,9 +162,8 @@ async function addNewMember(ctx: TestContext) {
         type: "AddMembers",
         members: [
           {
-            member: ctx.payer,
+            member: ctx.payer.address,
             permissions: { initiate: true, vote: true, execute: true },
-            delegateOperation: DelegateOp.Add,
           },
         ],
       },

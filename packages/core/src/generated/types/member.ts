@@ -32,6 +32,7 @@ export type Member = {
   permissions: IPermissions;
   role: number;
   userAddressTreeIndex: number;
+  isDelegate: number;
 };
 
 export type MemberArgs = {
@@ -39,6 +40,7 @@ export type MemberArgs = {
   permissions: PermissionsArgs;
   role: number;
   userAddressTreeIndex: number;
+  isDelegate: number;
 };
 
 export function getMemberEncoder(): FixedSizeEncoder<MemberArgs> {
@@ -47,6 +49,7 @@ export function getMemberEncoder(): FixedSizeEncoder<MemberArgs> {
     ["permissions", getPermissionsEncoder()],
     ["role", getU8Encoder()],
     ["userAddressTreeIndex", getU8Encoder()],
+    ["isDelegate", getU8Encoder()],
   ]);
 }
 
@@ -56,6 +59,7 @@ export function getMemberDecoder(): FixedSizeDecoder<Member> {
     ["permissions", getPermissionsDecoder()],
     ["role", getU8Decoder()],
     ["userAddressTreeIndex", getU8Decoder()],
+    ["isDelegate", getU8Decoder()],
   ]);
 }
 

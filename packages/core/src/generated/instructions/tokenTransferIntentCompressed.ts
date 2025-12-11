@@ -61,7 +61,7 @@ import {
 } from "../types";
 
 export const TOKEN_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR = new Uint8Array([
-  28,
+  29,
 ]);
 
 export function getTokenTransferIntentCompressedDiscriminatorBytes() {

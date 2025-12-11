@@ -1,7 +1,8 @@
 use crate::{
-    durable_nonce_check, state::SettingsReadonlyArgs, ChallengeArgs, CompressedSettings,
-    CompressedSettingsData, DomainConfig, MemberKey, MultisigError, Permission, ProofArgs,
-    Secp256r1VerifyArgsWithDomainAddress, TransactionActionType, SEED_MULTISIG, SEED_VAULT,
+    durable_nonce_check, state::SettingsReadonlyArgs, utils::UserRole, ChallengeArgs,
+    CompressedSettings, CompressedSettingsData, DomainConfig, MemberKey, MultisigError, Permission,
+    ProofArgs, Secp256r1VerifyArgsWithDomainAddress, TransactionActionType, SEED_MULTISIG,
+    SEED_VAULT,
 };
 use anchor_lang::{
     prelude::*,
@@ -88,6 +89,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
         let mut initiate = false;
         let mut execute = false;
         let mut vote_count = 0;
+        let mut are_delegates = true;
 
         let threshold = settings.threshold as usize;
         let secp256r1_member_keys: Vec<(MemberKey, &Secp256r1VerifyArgsWithDomainAddress)> =
@@ -129,6 +131,11 @@ impl<'info> TokenTransferIntentCompressed<'info> {
                 if has_permission(Permission::VoteTransaction) {
                     vote_count += 1;
                 }
+                if UserRole::from(member.role).ne(&UserRole::TransactionManager)
+                    && member.is_delegate == 0
+                {
+                    are_delegates = false;
+                }
             }
 
             if let Some((_, secp256r1_verify_data)) = secp256r1_signer {
@@ -169,6 +176,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
             vote_count >= threshold,
             MultisigError::InsufficientSignersWithVotePermission
         );
+        require!(are_delegates, MultisigError::InvalidNonDelegatedSigners);
 
         Ok(())
     }

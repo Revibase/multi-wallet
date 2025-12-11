@@ -2,7 +2,6 @@ import {
   changeConfig,
   convertMemberKeyToString,
   createUserAccounts,
-  DelegateOp,
   fetchSettingsAccountData,
   fetchUserAccountData,
   prepareTransactionMessage,
@@ -51,7 +50,6 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
             {
               member: ephemeralKeypair.address,
               permissions: { initiate: true, vote: false, execute: false },
-              delegateOperation: DelegateOp.Ignore,
             },
           ],
         },

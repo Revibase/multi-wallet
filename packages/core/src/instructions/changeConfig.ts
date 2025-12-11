@@ -2,7 +2,6 @@ import type { ValidityProofWithContext } from "@lightprotocol/stateless.js";
 import BN from "bn.js";
 import {
   AccountRole,
-  type AccountSignerMeta,
   type Address,
   createNoopSigner,
   none,
@@ -13,8 +12,6 @@ import {
   type AddMemberArgs,
   type CompressedSettings,
   type ConfigAction,
-  DelegateOp,
-  type DelegateOpArgs,
   type EditMemberArgs,
   getChangeConfigCompressedInstruction,
   getChangeConfigInstructionAsync,
@@ -137,49 +134,24 @@ async function prepareDelegateLists(configActionsArgs: ConfigurationArgs[]) {
   for (const action of configActionsArgs) {
     switch (action.type) {
       case "AddMembers": {
-        const promises = action.members.map((m) =>
-          getUserAccountAddress(
-            m.member instanceof SignedSecp256r1Key
-              ? m.member
-              : m.delegateOperation === DelegateOp.Add
-                ? m.member.address
-                : m.member,
-            m.userAddressTreeIndex
+        const results = await Promise.all(
+          action.members.map((m) =>
+            getUserAccountAddress(m.member, m.userAddressTreeIndex)
           )
         );
-        const results = await Promise.all(promises);
         for (const r of results)
           addDelegates.push({ address: r.address, type: "User" });
         break;
       }
 
       case "RemoveMembers": {
-        const promises = action.members.map((m) =>
-          getUserAccountAddress(m.member, m.userAddressTreeIndex)
+        const results = await Promise.all(
+          action.members.map((m) =>
+            getUserAccountAddress(m.member, m.userAddressTreeIndex)
+          )
         );
-        const results = await Promise.all(promises);
         for (const r of results)
           removeDelegates.push({ address: r.address, type: "User" });
-        break;
-      }
-
-      case "EditPermissions": {
-        const promises = action.members.map((m) => {
-          if (m.delegateOperation === DelegateOp.Ignore)
-            return Promise.resolve(
-              undefined as unknown as { address: BN } | undefined
-            );
-          return getUserAccountAddress(m.member, m.userAddressTreeIndex);
-        });
-        const results = await Promise.all(promises);
-        for (let i = 0; i < results.length; i++) {
-          const r = results[i];
-          const m = action.members[i];
-          if (!r) continue;
-          if (m.delegateOperation === DelegateOp.Add)
-            addDelegates.push({ address: r.address, type: "User" });
-          else removeDelegates.push({ address: r.address, type: "User" });
-        }
         break;
       }
 
@@ -320,27 +292,11 @@ async function buildConfigActions({
                 index,
                 userMutArgs: userArgs,
                 pubkey: m.member,
-                delegateOperation: m.delegateOperation,
               })
             );
           } else {
-            if (m.delegateOperation === DelegateOp.Add) {
-              packedAccounts.addPreAccounts([
-                {
-                  address: m.member.address,
-                  role: AccountRole.READONLY_SIGNER,
-                  signer: m.member,
-                } as AccountSignerMeta,
-              ]);
-            }
-
-            const lookupMember =
-              m.delegateOperation === DelegateOp.Add
-                ? m.member.address
-                : m.member;
-
             const userArgs = await getUserAccountAddress(
-              lookupMember,
+              m.member,
               m.userAddressTreeIndex
             ).then((r) =>
               userMutArgs.find((arg) =>
@@ -354,7 +310,6 @@ async function buildConfigActions({
                 index: -1,
                 userMutArgs: userArgs,
                 pubkey: m.member,
-                delegateOperation: m.delegateOperation,
               })
             );
           }
@@ -365,45 +320,34 @@ async function buildConfigActions({
       }
 
       case "RemoveMembers": {
-        const promises = action.members.map((m) =>
-          getUserAccountAddress(m.member, m.userAddressTreeIndex).then((r) => {
-            const found = userMutArgs.find((arg) =>
-              new BN(new Uint8Array(arg.accountMeta.address)).eq(r.address)
-            );
-            if (!found) throw new Error("Unable to find user account");
-            return convertRemoveMember({
-              pubkey: m.member,
-              userMutArgs: found,
-            });
-          })
+        const field = await Promise.all(
+          action.members.map((m) =>
+            getUserAccountAddress(m.member, m.userAddressTreeIndex).then(
+              (r) => {
+                const found = userMutArgs.find((arg) =>
+                  new BN(new Uint8Array(arg.accountMeta.address)).eq(r.address)
+                );
+                if (!found) throw new Error("Unable to find user account");
+                return convertRemoveMember({
+                  pubkey: m.member,
+                  userMutArgs: found,
+                });
+              }
+            )
+          )
         );
-        const field = await Promise.all(promises);
         configActions.push({ __kind: action.type, fields: [field] });
         break;
       }
 
       case "EditPermissions": {
-        const promises = action.members.map((m) =>
-          (m.delegateOperation !== DelegateOp.Ignore
-            ? getUserAccountAddress(m.member, m.userAddressTreeIndex).then(
-                (r) =>
-                  userMutArgs.find((arg) =>
-                    new BN(new Uint8Array(arg.accountMeta.address)).eq(
-                      r.address
-                    )
-                  )
-              )
-            : Promise.resolve(undefined as UserMutArgs | undefined)
-          ).then((userArgs) =>
-            convertEditMember({
-              permissionArgs: m.permissions,
-              userMutArgs: userArgs,
-              pubkey: m.member,
-              delegateOperation: m.delegateOperation,
-            })
-          )
+        const field = action.members.map((m) =>
+          convertEditMember({
+            permissionArgs: m.permissions,
+            pubkey: m.member,
+          })
         );
-        const field = await Promise.all(promises);
+
         configActions.push({ __kind: action.type, fields: [field] });
         break;
       }
@@ -419,30 +363,13 @@ async function buildConfigActions({
 function convertEditMember({
   pubkey,
   permissionArgs,
-  userMutArgs,
-  delegateOperation,
 }: {
   pubkey: Address | Secp256r1Key;
   permissionArgs: PermissionArgs;
-  userMutArgs?: UserMutArgs;
-  delegateOperation: DelegateOpArgs;
 }): EditMemberArgs {
-  if (delegateOperation !== DelegateOp.Ignore) {
-    if (!userMutArgs) {
-      throw new Error("User args is missing");
-    }
-    if (userMutArgs.data.role !== UserRole.Member) {
-      throw new Error(
-        "Only user with member role is allowed to change delegate."
-      );
-    }
-  }
-
   return {
     memberKey: convertPubkeyToMemberkey(pubkey),
     permissions: convertPermissions(permissionArgs),
-    userArgs: userMutArgs ? some(userMutArgs) : none(),
-    delegateOperation,
   };
 }
 
@@ -458,10 +385,7 @@ function convertRemoveMember({
   }
   return {
     memberKey: convertPubkeyToMemberkey(pubkey),
-    userArgs:
-      userMutArgs.data.delegatedTo.__option === "Some"
-        ? { __kind: "Mutate", fields: [userMutArgs] }
-        : { __kind: "Read", fields: [userMutArgs] },
+    userMutArgs,
   };
 }
 
@@ -470,18 +394,13 @@ function convertAddMember({
   permissionArgs,
   index,
   userMutArgs,
-  delegateOperation,
 }: {
   pubkey: TransactionSigner | SignedSecp256r1Key | Address;
   permissionArgs: PermissionArgs;
   index: number;
   userMutArgs: UserMutArgs;
-  delegateOperation: DelegateOp;
 }): AddMemberArgs {
   if (userMutArgs.data.role === UserRole.PermanentMember) {
-    if (delegateOperation !== DelegateOp.Add) {
-      throw new Error("Permanent members must also be delegates");
-    }
     if (userMutArgs.data.delegatedTo.__option === "Some") {
       throw new Error(
         "This user is already registered as a permanent member in another wallet. A permanent member can only belong to one wallet."
@@ -490,13 +409,6 @@ function convertAddMember({
   } else if (userMutArgs.data.role === UserRole.TransactionManager) {
     if (permissionArgs.execute || permissionArgs.vote) {
       throw new Error("Transaction Manager can only have initiate permission");
-    }
-    if (delegateOperation !== DelegateOp.Ignore) {
-      throw new Error("Transaction Manager cannot be a delegate.");
-    }
-  } else if (userMutArgs.data.role === UserRole.Administrator) {
-    if (delegateOperation !== DelegateOp.Ignore) {
-      throw new Error("Administrator cannot be a delegate.");
     }
   }
   return {
@@ -513,11 +425,7 @@ function convertAddMember({
             clientAndDeviceHash: pubkey.clientAndDeviceHash,
           })
         : none(),
-    userArgs:
-      delegateOperation === DelegateOp.Add
-        ? { __kind: "Mutate", fields: [userMutArgs] }
-        : { __kind: "Read", fields: [userMutArgs] },
-    delegateOperation,
+    userMutArgs,
   };
 }
 

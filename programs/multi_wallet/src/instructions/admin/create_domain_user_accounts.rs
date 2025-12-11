@@ -132,6 +132,7 @@ impl<'info> CreateDomainUserAccount<'info> {
                     ]),
                     role: UserRole::TransactionManager.to_u8(),
                     user_address_tree_index: transaction_manager_account.user_address_tree_index,
+                    is_delegate: false.into(),
                 });
                 cpi = cpi.with_light_account(transaction_manager_account)?;
             } else {
@@ -143,6 +144,7 @@ impl<'info> CreateDomainUserAccount<'info> {
                 permissions: Permissions::from_permissions(permissions),
                 role: args.role.to_u8(),
                 user_address_tree_index,
+                is_delegate: true.into(),
             });
 
             settings_account.set_members(new_members)?;

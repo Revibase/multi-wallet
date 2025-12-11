@@ -50,7 +50,7 @@ import {
   type SettingsMutArgsArgs,
 } from "../types";
 
-export const DECOMPRESS_SETTINGS_ACCOUNT_DISCRIMINATOR = new Uint8Array([17]);
+export const DECOMPRESS_SETTINGS_ACCOUNT_DISCRIMINATOR = new Uint8Array([18]);
 
 export function getDecompressSettingsAccountDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(

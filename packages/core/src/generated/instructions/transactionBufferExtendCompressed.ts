@@ -37,7 +37,7 @@ import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 
 export const TRANSACTION_BUFFER_EXTEND_COMPRESSED_DISCRIMINATOR =
-  new Uint8Array([22]);
+  new Uint8Array([23]);
 
 export function getTransactionBufferExtendCompressedDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(

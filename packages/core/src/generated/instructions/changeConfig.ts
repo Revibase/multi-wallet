@@ -60,7 +60,7 @@ import {
   type ProofArgsArgs,
 } from "../types";
 
-export const CHANGE_CONFIG_DISCRIMINATOR = new Uint8Array([8]);
+export const CHANGE_CONFIG_DISCRIMINATOR = new Uint8Array([9]);
 
 export function getChangeConfigDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(

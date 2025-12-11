@@ -54,7 +54,7 @@ import {
 } from "../types";
 
 export const TRANSACTION_BUFFER_EXECUTE_COMPRESSED_DISCRIMINATOR =
-  new Uint8Array([24]);
+  new Uint8Array([25]);
 
 export function getTransactionBufferExecuteCompressedDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(

@@ -54,7 +54,7 @@ import {
 } from "../types";
 
 export const TRANSACTION_BUFFER_VOTE_COMPRESSED_DISCRIMINATOR = new Uint8Array([
-  21,
+  22,
 ]);
 
 export function getTransactionBufferVoteCompressedDiscriminatorBytes() {

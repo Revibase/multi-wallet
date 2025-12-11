@@ -18,6 +18,7 @@ use light_sdk::{
 #[instruction(user_mut_args: UserMutArgs)]
 pub struct EditTransactionManagerUrl<'info> {
     #[account(
+        mut,
         address = user_mut_args.data.member.to_pubkey()?
     )]
     pub authority: Signer<'info>,

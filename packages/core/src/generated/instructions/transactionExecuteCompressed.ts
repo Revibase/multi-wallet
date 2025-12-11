@@ -33,7 +33,7 @@ import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 
 export const TRANSACTION_EXECUTE_COMPRESSED_DISCRIMINATOR = new Uint8Array([
-  25,
+  26,
 ]);
 
 export function getTransactionExecuteCompressedDiscriminatorBytes() {

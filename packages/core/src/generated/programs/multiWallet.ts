@@ -27,6 +27,7 @@ import {
   type ParsedDisableDomainConfigInstruction,
   type ParsedEditDomainConfigInstruction,
   type ParsedEditTransactionManagerUrlInstruction,
+  type ParsedEditUserDelegateInstruction,
   type ParsedMigrateCompressedSettingsInstruction,
   type ParsedMigrateCompressedUsersInstruction,
   type ParsedNativeTransferIntentCompressedInstruction,
@@ -138,6 +139,7 @@ export enum MultiWalletInstruction {
   DisableDomainConfig,
   EditDomainConfig,
   EditTransactionManagerUrl,
+  EditUserDelegate,
   MigrateCompressedSettings,
   MigrateCompressedUsers,
   NativeTransferIntent,
@@ -167,7 +169,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([7])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([8])),
       0
     )
   ) {
@@ -176,7 +178,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([8])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([9])),
       0
     )
   ) {
@@ -185,7 +187,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([19])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([20])),
       0
     )
   ) {
@@ -194,7 +196,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([16])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([17])),
       0
     )
   ) {
@@ -230,7 +232,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([18])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([19])),
       0
     )
   ) {
@@ -248,7 +250,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([17])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([18])),
       0
     )
   ) {
@@ -284,7 +286,16 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([32])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([7])),
+      0
+    )
+  ) {
+    return MultiWalletInstruction.EditUserDelegate;
+  }
+  if (
+    containsBytes(
+      data,
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([33])),
       0
     )
   ) {
@@ -293,7 +304,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([31])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([32])),
       0
     )
   ) {
@@ -302,7 +313,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([29])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([30])),
       0
     )
   ) {
@@ -311,7 +322,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([27])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([28])),
       0
     )
   ) {
@@ -320,7 +331,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([30])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([31])),
       0
     )
   ) {
@@ -329,7 +340,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([28])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([29])),
       0
     )
   ) {
@@ -338,7 +349,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([12])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([13])),
       0
     )
   ) {
@@ -347,7 +358,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([23])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([24])),
       0
     )
   ) {
@@ -356,7 +367,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([9])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([10])),
       0
     )
   ) {
@@ -365,7 +376,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([20])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([21])),
       0
     )
   ) {
@@ -374,7 +385,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([13])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([14])),
       0
     )
   ) {
@@ -383,7 +394,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([24])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([25])),
       0
     )
   ) {
@@ -392,7 +403,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([11])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([12])),
       0
     )
   ) {
@@ -401,7 +412,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([22])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([23])),
       0
     )
   ) {
@@ -410,7 +421,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([10])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([11])),
       0
     )
   ) {
@@ -419,7 +430,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([21])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([22])),
       0
     )
   ) {
@@ -428,7 +439,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([14])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([15])),
       0
     )
   ) {
@@ -437,7 +448,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([25])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([26])),
       0
     )
   ) {
@@ -446,7 +457,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([15])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([16])),
       0
     )
   ) {
@@ -455,7 +466,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([26])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([27])),
       0
     )
   ) {
@@ -508,6 +519,9 @@ export type ParsedMultiWalletInstruction<
   | ({
       instructionType: MultiWalletInstruction.EditTransactionManagerUrl;
     } & ParsedEditTransactionManagerUrlInstruction<TProgram>)
+  | ({
+      instructionType: MultiWalletInstruction.EditUserDelegate;
+    } & ParsedEditUserDelegateInstruction<TProgram>)
   | ({
       instructionType: MultiWalletInstruction.MigrateCompressedSettings;
     } & ParsedMigrateCompressedSettingsInstruction<TProgram>)

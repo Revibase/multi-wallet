@@ -46,7 +46,7 @@ import {
   type SettingsCreationArgsArgs,
 } from "../types";
 
-export const MIGRATE_COMPRESSED_SETTINGS_DISCRIMINATOR = new Uint8Array([32]);
+export const MIGRATE_COMPRESSED_SETTINGS_DISCRIMINATOR = new Uint8Array([33]);
 
 export function getMigrateCompressedSettingsDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(

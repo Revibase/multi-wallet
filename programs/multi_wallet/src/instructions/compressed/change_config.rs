@@ -79,9 +79,7 @@ impl<'info> ChangeConfigCompressed<'info> {
         for action in config_actions {
             match action {
                 ConfigAction::EditPermissions(members) => {
-                    let ops = settings.edit_permissions(members)?;
-                    delegate_ops.extend(ops.0.into_iter().map(Ops::Add));
-                    delegate_ops.extend(ops.1.into_iter().map(Ops::Remove));
+                    settings.edit_permissions(members)?;
                 }
                 ConfigAction::AddMembers(members) => {
                     let ops = settings.add_members(
@@ -116,7 +114,6 @@ impl<'info> ChangeConfigCompressed<'info> {
                 index: settings_index,
                 settings_address_tree_index,
             },
-            &light_cpi_accounts,
         )?;
 
         let mut cpi = LightSystemProgramCpi::new_cpi(

@@ -50,7 +50,7 @@ import {
   type SettingsMutArgsArgs,
 } from "../types";
 
-export const COMPRESS_SETTINGS_ACCOUNT_DISCRIMINATOR = new Uint8Array([16]);
+export const COMPRESS_SETTINGS_ACCOUNT_DISCRIMINATOR = new Uint8Array([17]);
 
 export function getCompressSettingsAccountDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(

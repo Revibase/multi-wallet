@@ -49,7 +49,7 @@ import {
   type TransactionBufferCreateArgsArgs,
 } from "../types";
 
-export const TRANSACTION_BUFFER_CREATE_DISCRIMINATOR = new Uint8Array([9]);
+export const TRANSACTION_BUFFER_CREATE_DISCRIMINATOR = new Uint8Array([10]);
 
 export function getTransactionBufferCreateDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(

@@ -19,42 +19,36 @@ import {
   type OptionOrNullable,
 } from "gill";
 import {
-  getDelegateOpDecoder,
-  getDelegateOpEncoder,
   getMemberKeyDecoder,
   getMemberKeyEncoder,
   getPermissionsDecoder,
   getPermissionsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  getUserReadOnlyOrMutateArgsDecoder,
-  getUserReadOnlyOrMutateArgsEncoder,
-  type DelegateOp,
-  type DelegateOpArgs,
+  getUserMutArgsDecoder,
+  getUserMutArgsEncoder,
   type IPermissions,
   type MemberKey,
   type MemberKeyArgs,
   type PermissionsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-  type UserReadOnlyOrMutateArgs,
-  type UserReadOnlyOrMutateArgsArgs,
+  type UserMutArgs,
+  type UserMutArgsArgs,
 } from ".";
 
 export type AddMemberArgs = {
   memberKey: MemberKey;
   permissions: IPermissions;
   verifyArgs: Option<Secp256r1VerifyArgs>;
-  userArgs: UserReadOnlyOrMutateArgs;
-  delegateOperation: DelegateOp;
+  userMutArgs: UserMutArgs;
 };
 
 export type AddMemberArgsArgs = {
   memberKey: MemberKeyArgs;
   permissions: PermissionsArgs;
   verifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  userArgs: UserReadOnlyOrMutateArgsArgs;
-  delegateOperation: DelegateOpArgs;
+  userMutArgs: UserMutArgsArgs;
 };
 
 export function getAddMemberArgsEncoder(): Encoder<AddMemberArgsArgs> {
@@ -62,8 +56,7 @@ export function getAddMemberArgsEncoder(): Encoder<AddMemberArgsArgs> {
     ["memberKey", getMemberKeyEncoder()],
     ["permissions", getPermissionsEncoder()],
     ["verifyArgs", getOptionEncoder(getSecp256r1VerifyArgsEncoder())],
-    ["userArgs", getUserReadOnlyOrMutateArgsEncoder()],
-    ["delegateOperation", getDelegateOpEncoder()],
+    ["userMutArgs", getUserMutArgsEncoder()],
   ]);
 }
 
@@ -72,8 +65,7 @@ export function getAddMemberArgsDecoder(): Decoder<AddMemberArgs> {
     ["memberKey", getMemberKeyDecoder()],
     ["permissions", getPermissionsDecoder()],
     ["verifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ["userArgs", getUserReadOnlyOrMutateArgsDecoder()],
-    ["delegateOperation", getDelegateOpDecoder()],
+    ["userMutArgs", getUserMutArgsDecoder()],
   ]);
 }
 

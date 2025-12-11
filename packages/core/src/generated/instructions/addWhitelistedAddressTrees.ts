@@ -37,7 +37,7 @@ import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 
-export const ADD_WHITELISTED_ADDRESS_TREES_DISCRIMINATOR = new Uint8Array([7]);
+export const ADD_WHITELISTED_ADDRESS_TREES_DISCRIMINATOR = new Uint8Array([8]);
 
 export function getAddWhitelistedAddressTreesDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(

@@ -1,7 +1,11 @@
 import {
+  changeConfig,
   createDomainUserAccounts,
   createUserAccounts,
+  editUserDelegate,
   getSolanaRpc,
+  prepareTransactionMessage,
+  prepareTransactionSync,
   Secp256r1Key,
   tokenTransferIntent,
   UserRole,
@@ -45,6 +49,13 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
     )
       return;
     try {
+      await addNewMember(ctx);
+      const { instructions } = await editUserDelegate({
+        payer: ctx.payer,
+        user: ctx.payer,
+        newDelegate: { index: BigInt(ctx.index), settingsAddressTreeIndex: 0 },
+      });
+      await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
       const ata = await getAssociatedTokenAccountAddress(
         mint.address,
         ctx.multiWalletVault,
@@ -53,7 +64,7 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
       const tokenTransfer = await tokenTransferIntent({
         index: ctx.index,
         payer: ctx.payer,
-        signers: [ctx.wallet],
+        signers: [ctx.payer],
         destination: ctx.wallet.address,
         amount: 10 ** 5,
         compressed: ctx.compressed,
@@ -241,3 +252,43 @@ const createMint = async (ctx: TestContext) => {
 
   return ephemeralKeypair;
 };
+
+async function addNewMember(ctx: TestContext) {
+  if (!ctx.index || !ctx.multiWalletVault || !ctx.payer || !ctx.wallet) return;
+  const { instructions, secp256r1VerifyInput } = await changeConfig({
+    payer: ctx.payer,
+    compressed: ctx.compressed,
+    index: ctx.index,
+    configActionsArgs: [
+      {
+        type: "AddMembers",
+        members: [
+          {
+            member: ctx.payer.address,
+            permissions: { initiate: true, vote: true, execute: true },
+          },
+        ],
+      },
+    ],
+  });
+
+  const transactionMessageBytes = prepareTransactionMessage({
+    payer: ctx.multiWalletVault,
+    instructions,
+    addressesByLookupTableAddress: ctx.addressLookUpTable,
+  });
+  const {
+    instructions: ixs,
+    payer,
+    addressesByLookupTableAddress,
+  } = await prepareTransactionSync({
+    compressed: ctx.compressed,
+    payer: ctx.payer,
+    index: ctx.index,
+    signers: [ctx.wallet],
+    transactionMessageBytes,
+    secp256r1VerifyInput,
+  });
+
+  await sendTransaction(ixs, payer, addressesByLookupTableAddress);
+}

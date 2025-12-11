@@ -46,7 +46,7 @@ import {
   type UserCreationArgsArgs,
 } from "../types";
 
-export const MIGRATE_COMPRESSED_USERS_DISCRIMINATOR = new Uint8Array([31]);
+export const MIGRATE_COMPRESSED_USERS_DISCRIMINATOR = new Uint8Array([32]);
 
 export function getMigrateCompressedUsersDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(

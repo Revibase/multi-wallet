@@ -30,7 +30,7 @@ import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 
-export const TRANSACTION_EXECUTE_DISCRIMINATOR = new Uint8Array([14]);
+export const TRANSACTION_EXECUTE_DISCRIMINATOR = new Uint8Array([15]);
 
 export function getTransactionExecuteDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(

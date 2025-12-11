@@ -1,7 +1,7 @@
 use crate::{
     id,
-    state::{SettingsIndexWithAddress, UserReadOnlyOrMutateArgs, WhitelistedAddressTree},
-    utils::{DelegateOp, SEED_GLOBAL_COUNTER, SEED_WHITELISTED_ADDRESS_TREE},
+    state::{SettingsIndexWithAddress, WhitelistedAddressTree},
+    utils::{SEED_GLOBAL_COUNTER, SEED_WHITELISTED_ADDRESS_TREE},
     AddMemberArgs, CompressedSettings, CompressedSettingsData, DomainConfig, GlobalCounter,
     MemberKey, MultisigError, Ops, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs,
     SettingsCreationArgs, User, UserMutArgs, LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
@@ -53,7 +53,6 @@ impl<'info> CreateMultiWalletCompressed<'info> {
         settings_creation: SettingsCreationArgs,
         user_mut_args: UserMutArgs,
         settings_index: u128,
-        delegate_operation: DelegateOp,
     ) -> Result<()> {
         let global_counter = &mut ctx.accounts.global_counter.load_mut()?;
         require!(
@@ -117,8 +116,7 @@ impl<'info> CreateMultiWalletCompressed<'info> {
                     Permission::ExecuteTransaction,
                 ]),
                 verify_args: secp256r1_verify_args,
-                user_args: UserReadOnlyOrMutateArgs::Mutate(user_mut_args),
-                delegate_operation,
+                user_mut_args,
             }],
             ctx.remaining_accounts,
             &ctx.accounts.slot_hash_sysvar,
@@ -133,7 +131,6 @@ impl<'info> CreateMultiWalletCompressed<'info> {
                 index: settings_index,
                 settings_address_tree_index,
             },
-            &light_cpi_accounts,
         )?;
 
         let mut cpi = LightSystemProgramCpi::new_cpi(

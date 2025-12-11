@@ -10,6 +10,7 @@ pub enum TransactionActionType {
     Compress,
     Decompress,
     TransferIntent,
+    ChangeDelegate,
 }
 
 impl TransactionActionType {
@@ -27,6 +28,7 @@ impl TransactionActionType {
             TransactionActionType::Compress => b"compress",
             TransactionActionType::Decompress => b"decompress",
             TransactionActionType::TransferIntent => b"transfer_intent",
+            TransactionActionType::ChangeDelegate => b"change_delegate",
         }
     }
 }

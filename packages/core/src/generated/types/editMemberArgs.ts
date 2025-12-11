@@ -8,68 +8,48 @@
 
 import {
   combineCodec,
-  getOptionDecoder,
-  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
-  type Codec,
-  type Decoder,
-  type Encoder,
-  type Option,
-  type OptionOrNullable,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
 } from "gill";
 import {
-  getDelegateOpDecoder,
-  getDelegateOpEncoder,
   getMemberKeyDecoder,
   getMemberKeyEncoder,
   getPermissionsDecoder,
   getPermissionsEncoder,
-  getUserMutArgsDecoder,
-  getUserMutArgsEncoder,
-  type DelegateOp,
-  type DelegateOpArgs,
   type IPermissions,
   type MemberKey,
   type MemberKeyArgs,
   type PermissionsArgs,
-  type UserMutArgs,
-  type UserMutArgsArgs,
 } from ".";
 
 export type EditMemberArgs = {
   memberKey: MemberKey;
   permissions: IPermissions;
-  userArgs: Option<UserMutArgs>;
-  delegateOperation: DelegateOp;
 };
 
 export type EditMemberArgsArgs = {
   memberKey: MemberKeyArgs;
   permissions: PermissionsArgs;
-  userArgs: OptionOrNullable<UserMutArgsArgs>;
-  delegateOperation: DelegateOpArgs;
 };
 
-export function getEditMemberArgsEncoder(): Encoder<EditMemberArgsArgs> {
+export function getEditMemberArgsEncoder(): FixedSizeEncoder<EditMemberArgsArgs> {
   return getStructEncoder([
     ["memberKey", getMemberKeyEncoder()],
     ["permissions", getPermissionsEncoder()],
-    ["userArgs", getOptionEncoder(getUserMutArgsEncoder())],
-    ["delegateOperation", getDelegateOpEncoder()],
   ]);
 }
 
-export function getEditMemberArgsDecoder(): Decoder<EditMemberArgs> {
+export function getEditMemberArgsDecoder(): FixedSizeDecoder<EditMemberArgs> {
   return getStructDecoder([
     ["memberKey", getMemberKeyDecoder()],
     ["permissions", getPermissionsDecoder()],
-    ["userArgs", getOptionDecoder(getUserMutArgsDecoder())],
-    ["delegateOperation", getDelegateOpDecoder()],
   ]);
 }
 
-export function getEditMemberArgsCodec(): Codec<
+export function getEditMemberArgsCodec(): FixedSizeCodec<
   EditMemberArgsArgs,
   EditMemberArgs
 > {

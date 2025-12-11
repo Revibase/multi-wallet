@@ -13,7 +13,7 @@ pub struct Settings {
     pub multi_wallet_bump: u8,
     pub bump: u8,
     pub settings_address_tree_index: u8,
-    pub _padding: [u8; 7],
+    pub _padding: [u8; 3],
 }
 
 impl Settings {
@@ -26,12 +26,9 @@ impl Settings {
         1  + // multi_wallet bump
         1  + // settings bump
         1  + // settings_address_tree_index
-        7 // unused padding
+        3 // unused padding
     }
-    pub fn edit_permissions(
-        &mut self,
-        members: Vec<EditMemberArgs>,
-    ) -> Result<(Vec<AddMemberArgs>, Vec<RemoveMemberArgs>)> {
+    pub fn edit_permissions(&mut self, members: Vec<EditMemberArgs>) -> Result<()> {
         MultisigSettings::edit_permissions(self, members)
     }
     pub fn add_members<'a>(

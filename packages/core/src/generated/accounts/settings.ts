@@ -87,7 +87,7 @@ export function getSettingsEncoder(): FixedSizeEncoder<SettingsArgs> {
       ["multiWalletBump", getU8Encoder()],
       ["bump", getU8Encoder()],
       ["settingsAddressTreeIndex", getU8Encoder()],
-      ["padding", fixEncoderSize(getBytesEncoder(), 7)],
+      ["padding", fixEncoderSize(getBytesEncoder(), 3)],
     ]),
     (value) => ({ ...value, discriminator: SETTINGS_DISCRIMINATOR })
   );
@@ -103,7 +103,7 @@ export function getSettingsDecoder(): FixedSizeDecoder<Settings> {
     ["multiWalletBump", getU8Decoder()],
     ["bump", getU8Decoder()],
     ["settingsAddressTreeIndex", getU8Decoder()],
-    ["padding", fixDecoderSize(getBytesDecoder(), 7)],
+    ["padding", fixDecoderSize(getBytesDecoder(), 3)],
   ]);
 }
 

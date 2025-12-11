@@ -10,7 +10,7 @@
     {
       "name": "add_whitelisted_address_trees",
       "docs": ["add whitelisted address tree"],
-      "discriminator": [7],
+      "discriminator": [8],
       "accounts": [
         {
           "name": "whitelisted_address_trees",
@@ -49,7 +49,7 @@
       "docs": [
         "Applies one or more configuration changes to an existing multi-wallet."
       ],
-      "discriminator": [8],
+      "discriminator": [9],
       "accounts": [
         {
           "name": "settings",
@@ -143,7 +143,7 @@
       "docs": [
         "Applies one or more configuration changes to an existing multi-wallet."
       ],
-      "discriminator": [19],
+      "discriminator": [20],
       "accounts": [
         {
           "name": "payer",
@@ -200,7 +200,7 @@
         "* Compressed Versions",
         "Compress an existing settings account."
       ],
-      "discriminator": [16],
+      "discriminator": [17],
       "accounts": [
         {
           "name": "settings",
@@ -388,7 +388,7 @@
       "docs": [
         "Creates a new multi-wallet with the specified permissions and ownership."
       ],
-      "discriminator": [18],
+      "discriminator": [19],
       "accounts": [
         {
           "name": "payer",
@@ -486,14 +486,6 @@
         {
           "name": "settings_index",
           "type": "u128"
-        },
-        {
-          "name": "delegate_operation",
-          "type": {
-            "defined": {
-              "name": "DelegateOp"
-            }
-          }
         }
       ]
     },
@@ -552,7 +544,7 @@
     {
       "name": "decompress_settings_account",
       "docs": ["Decompress an existing settings account."],
-      "discriminator": [17],
+      "discriminator": [18],
       "accounts": [
         {
           "name": "settings",
@@ -702,6 +694,7 @@
       "accounts": [
         {
           "name": "authority",
+          "writable": true,
           "signer": true
         }
       ],
@@ -729,8 +722,107 @@
       ]
     },
     {
+      "name": "edit_user_delegate",
+      "docs": ["Edit User Delegate"],
+      "discriminator": [7],
+      "accounts": [
+        {
+          "name": "fee_payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "signer",
+          "signer": true,
+          "optional": true
+        },
+        {
+          "name": "old_settings",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "new_settings",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "slot_hash_sysvar",
+          "optional": true,
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "instructions_sysvar",
+          "optional": true,
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
+          "name": "domain_config",
+          "optional": true
+        }
+      ],
+      "args": [
+        {
+          "name": "user_mut_args",
+          "type": {
+            "defined": {
+              "name": "UserMutArgs"
+            }
+          }
+        },
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "Secp256r1VerifyArgs"
+              }
+            }
+          }
+        },
+        {
+          "name": "delegate_to",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "SettingsIndexWithAddress"
+              }
+            }
+          }
+        },
+        {
+          "name": "old_settings_mut_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "SettingsMutArgs"
+              }
+            }
+          }
+        },
+        {
+          "name": "new_settings_mut_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "SettingsMutArgs"
+              }
+            }
+          }
+        },
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "defined": {
+              "name": "ProofArgs"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "migrate_compressed_settings",
-      "discriminator": [32],
+      "discriminator": [33],
       "accounts": [
         {
           "name": "authority",
@@ -768,7 +860,7 @@
     },
     {
       "name": "migrate_compressed_users",
-      "discriminator": [31],
+      "discriminator": [32],
       "accounts": [
         {
           "name": "authority",
@@ -810,7 +902,7 @@
         "Creates a native SOL transfer intent with on chain settings.",
         "Intents are one-step transfers that bypass the transaction buffer flow."
       ],
-      "discriminator": [29],
+      "discriminator": [30],
       "accounts": [
         {
           "name": "settings"
@@ -878,7 +970,7 @@
         "Creates a native SOL transfer intent with compressed settings verification.",
         "Intents are one-step transfers that bypass the transaction buffer flow."
       ],
-      "discriminator": [27],
+      "discriminator": [28],
       "accounts": [
         {
           "name": "payer",
@@ -946,7 +1038,7 @@
         "Creates a token transfer intent with on chain settings.",
         "Intents are one-step transfers that bypass the transaction buffer flow."
       ],
-      "discriminator": [30],
+      "discriminator": [31],
       "accounts": [
         {
           "name": "settings"
@@ -1083,7 +1175,7 @@
         "Creates a token transfer intent with compressed settings verification.",
         "Intents are one-step transfers that bypass the transaction buffer flow."
       ],
-      "discriminator": [28],
+      "discriminator": [29],
       "accounts": [
         {
           "name": "payer",
@@ -1217,7 +1309,7 @@
     {
       "name": "transaction_buffer_close",
       "docs": ["Closes and cleans up a transaction buffer."],
-      "discriminator": [12],
+      "discriminator": [13],
       "accounts": [
         {
           "name": "settings"
@@ -1266,7 +1358,7 @@
     {
       "name": "transaction_buffer_close_compressed",
       "docs": ["Closes and cleans up a transaction buffer."],
-      "discriminator": [23],
+      "discriminator": [24],
       "accounts": [
         {
           "name": "payer",
@@ -1335,7 +1427,7 @@
       "docs": [
         "Creates a new transaction buffer to stage a transaction before execution."
       ],
-      "discriminator": [9],
+      "discriminator": [10],
       "accounts": [
         {
           "name": "settings"
@@ -1398,7 +1490,7 @@
       "docs": [
         "Creates a new transaction buffer to stage a transaction before execution."
       ],
-      "discriminator": [20],
+      "discriminator": [21],
       "accounts": [
         {
           "name": "payer",
@@ -1472,7 +1564,7 @@
     {
       "name": "transaction_buffer_execute",
       "docs": ["Executes a previously approved transaction buffer."],
-      "discriminator": [13],
+      "discriminator": [14],
       "accounts": [
         {
           "name": "settings"
@@ -1517,7 +1609,7 @@
     {
       "name": "transaction_buffer_execute_compressed",
       "docs": ["Executes a previously approved transaction buffer."],
-      "discriminator": [24],
+      "discriminator": [25],
       "accounts": [
         {
           "name": "payer",
@@ -1582,7 +1674,7 @@
       "docs": [
         "Extends an existing transaction buffer to allow for updated data or additional time."
       ],
-      "discriminator": [11],
+      "discriminator": [12],
       "accounts": [
         {
           "name": "settings"
@@ -1604,7 +1696,7 @@
       "docs": [
         "Extends an existing transaction buffer to allow for updated data or additional time."
       ],
-      "discriminator": [22],
+      "discriminator": [23],
       "accounts": [
         {
           "name": "transaction_buffer",
@@ -1625,7 +1717,7 @@
     {
       "name": "transaction_buffer_vote",
       "docs": ["Signs a transaction buffer to register approval."],
-      "discriminator": [10],
+      "discriminator": [11],
       "accounts": [
         {
           "name": "settings"
@@ -1674,7 +1766,7 @@
     {
       "name": "transaction_buffer_vote_compressed",
       "docs": ["Signs a transaction buffer to register approval."],
-      "discriminator": [21],
+      "discriminator": [22],
       "accounts": [
         {
           "name": "payer",
@@ -1741,7 +1833,7 @@
     {
       "name": "transaction_execute",
       "docs": ["Executes a staged transaction from a buffer."],
-      "discriminator": [14],
+      "discriminator": [15],
       "accounts": [
         {
           "name": "settings",
@@ -1761,7 +1853,7 @@
     {
       "name": "transaction_execute_compressed",
       "docs": ["Executes a staged transaction from a buffer."],
-      "discriminator": [25],
+      "discriminator": [26],
       "accounts": [
         {
           "name": "payer",
@@ -1784,7 +1876,7 @@
       "docs": [
         "Executes a transaction synchronously by directly submitting the message and verifying it."
       ],
-      "discriminator": [15],
+      "discriminator": [16],
       "accounts": [
         {
           "name": "settings",
@@ -1826,7 +1918,7 @@
       "docs": [
         "Executes a transaction synchronously by directly submitting the message and verifying it."
       ],
-      "discriminator": [26],
+      "discriminator": [27],
       "accounts": [
         {
           "name": "payer",
@@ -1971,196 +2063,206 @@
     },
     {
       "code": 6013,
+      "name": "InvalidPermanentMemberConfig",
+      "msg": "User with Permanent Member role requires a must have a delegated wallet."
+    },
+    {
+      "code": 6014,
       "name": "OnlyOneTransactionManagerAllowed",
       "msg": "Only one transaction manager is allowed per wallet."
     },
     {
-      "code": 6014,
+      "code": 6015,
       "name": "InvalidTransactionManagerPermission",
       "msg": "Invalid Transaction Manager permissions. Only initiate is allowed."
     },
     {
-      "code": 6015,
+      "code": 6016,
       "name": "ExpectedTransactionManagerRoleMismatch",
       "msg": "Expected a User with Transaction Manager role for this instruction."
     },
     {
-      "code": 6016,
+      "code": 6017,
       "name": "InvalidTransactionManagerConfig",
       "msg": "User with Transaction Manager role requires a valid transaction manager url, be a ed25519 Signer and have no delegated wallet."
     },
     {
-      "code": 6017,
+      "code": 6018,
       "name": "ExpectedAdministratorRoleMismatch",
       "msg": "Expected a User with Administrator role for this instruction."
     },
     {
-      "code": 6018,
+      "code": 6019,
       "name": "InvalidAdministratorConfig",
       "msg": "User with Administrator role requires a valid domain config, be a ed25519 Signer and have no delegated wallet."
     },
     {
-      "code": 6019,
+      "code": 6020,
       "name": "EmptyMembers",
       "msg": "No members provided. A multisig wallet must contain at least one member."
     },
     {
-      "code": 6020,
+      "code": 6021,
       "name": "TooManyMembers",
       "msg": "Too many members: a maximum of 4 members are supported."
     },
     {
-      "code": 6021,
+      "code": 6022,
       "name": "InvalidThreshold",
       "msg": "Invalid threshold: must be at least 1 and cannot exceed the number of voting-eligible members."
     },
     {
-      "code": 6022,
+      "code": 6023,
       "name": "InvalidTransactionMessage",
       "msg": "Malformed transaction message: structure or formatting does not match the expected layout."
     },
     {
-      "code": 6023,
+      "code": 6024,
       "name": "InvalidNumberOfAccounts",
       "msg": "Unexpected number of accounts provided for this instruction."
     },
     {
-      "code": 6024,
+      "code": 6025,
       "name": "InvalidAccount",
       "msg": "One or more provided accounts failed validation. Verify that all required accounts are included and correct."
     },
     {
-      "code": 6025,
+      "code": 6026,
       "name": "InvalidUserRole",
       "msg": "One or more provided user accounts failed validation. Verify that only users with appropriate roles are allowed to perform this action."
     },
     {
-      "code": 6026,
+      "code": 6027,
       "name": "InvalidArguments",
       "msg": "Invalid or missing instruction arguments. Ensure all required arguments are correctly provided."
     },
     {
-      "code": 6027,
+      "code": 6028,
       "name": "MissingAccount",
       "msg": "A required account is missing from the instruction context."
     },
     {
-      "code": 6028,
+      "code": 6029,
       "name": "MissingUserArgs",
       "msg": "User mutation arguments are required when performing add or remove delegate operations."
     },
     {
-      "code": 6029,
+      "code": 6030,
       "name": "AlreadyDelegated",
       "msg": "This member is already delegated to another wallet."
     },
     {
-      "code": 6030,
+      "code": 6031,
       "name": "InsufficientSignerWithExecutePermission",
       "msg": "At least one signer with execute permission is required to proceed."
     },
     {
-      "code": 6031,
+      "code": 6032,
       "name": "InsufficientSignerWithInitiatePermission",
       "msg": "At least one signer with initiate permission is required to perform this action."
     },
     {
-      "code": 6032,
+      "code": 6033,
       "name": "InsufficientSignersWithVotePermission",
       "msg": "Not enough members with vote permission to meet the approval threshold."
     },
     {
-      "code": 6033,
+      "code": 6034,
+      "name": "InvalidNonDelegatedSigners",
+      "msg": "Only delegated members are allowed for this transaction."
+    },
+    {
+      "code": 6035,
       "name": "UnexpectedSigner",
       "msg": "Member is not part of the expected signers for this transaction."
     },
     {
-      "code": 6034,
+      "code": 6036,
       "name": "NoSignerFound",
       "msg": "No valid signer found in this transaction."
     },
     {
-      "code": 6035,
+      "code": 6037,
       "name": "UnauthorisedToCloseTransactionBuffer",
       "msg": "Only the transaction creator or rent payer may close this transaction buffer."
     },
     {
-      "code": 6036,
+      "code": 6038,
       "name": "InvalidBuffer",
       "msg": "Buffer validation failed: contents do not match the expected hash (possible tampering detected)."
     },
     {
-      "code": 6037,
+      "code": 6039,
       "name": "FinalBufferHashMismatch",
       "msg": "Final buffer hash mismatch: the serialized data may be corrupted or altered."
     },
     {
-      "code": 6038,
+      "code": 6040,
       "name": "FinalBufferSizeExceeded",
       "msg": "The serialized transaction buffer exceeds the maximum size of 10,128 bytes."
     },
     {
-      "code": 6039,
+      "code": 6041,
       "name": "FinalBufferSizeMismatch",
       "msg": "Declared buffer size does not match the actual serialized size."
     },
     {
-      "code": 6040,
+      "code": 6042,
       "name": "TransactionHasExpired",
       "msg": "This transaction has expired. It must be executed within 3 minutes of approval."
     },
     {
-      "code": 6041,
+      "code": 6043,
       "name": "TransactionNotApproved",
       "msg": "This transaction has not yet reached the required approval threshold."
     },
     {
-      "code": 6042,
+      "code": 6044,
       "name": "ProtectedAccount",
       "msg": "Writable CPI calls to protected accounts are not permitted."
     },
     {
-      "code": 6043,
+      "code": 6045,
       "name": "MaxLengthExceeded",
       "msg": "An input string exceeds the maximum allowed character length."
     },
     {
-      "code": 6044,
+      "code": 6046,
       "name": "MissingSysvarSlotHistory",
       "msg": "Missing required sysvar: Slot History must be included as an account in this instruction."
     },
     {
-      "code": 6045,
+      "code": 6047,
       "name": "InvalidSysvarDataFormat",
       "msg": "Failed to parse the Slot History sysvar: data format is invalid or corrupted."
     },
     {
-      "code": 6046,
+      "code": 6048,
       "name": "SlotNumberNotFound",
       "msg": "The specified slot number was not found in the provided slot history."
     },
     {
-      "code": 6047,
+      "code": 6049,
       "name": "DomainConfigIsDisabled",
       "msg": "The domain configuration account is disabled. Please contact support or try again later."
     },
     {
-      "code": 6048,
+      "code": 6050,
       "name": "DomainConfigIsMissing",
       "msg": "Missing domain configuration account."
     },
     {
-      "code": 6049,
+      "code": 6051,
       "name": "MemberDoesNotBelongToDomainConfig",
       "msg": "This member is not registered under the provided domain configuration."
     },
     {
-      "code": 6050,
+      "code": 6052,
       "name": "OriginIndexOutOfBounds",
       "msg": "The given origin index is not in the whitelisted origins."
     },
     {
-      "code": 6051,
+      "code": 6053,
       "name": "InvalidAddressTree",
       "msg": "Address Tree supplied is not part of the whitelisted address trees"
     }
@@ -2198,18 +2300,10 @@
             }
           },
           {
-            "name": "user_args",
+            "name": "user_mut_args",
             "type": {
               "defined": {
-                "name": "UserReadOnlyOrMutateArgs"
-              }
-            }
-          },
-          {
-            "name": "delegate_operation",
-            "type": {
-              "defined": {
-                "name": "DelegateOp"
+                "name": "UserMutArgs"
               }
             }
           }
@@ -2533,23 +2627,6 @@
       }
     },
     {
-      "name": "DelegateOp",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Add"
-          },
-          {
-            "name": "Remove"
-          },
-          {
-            "name": "Ignore"
-          }
-        ]
-      }
-    },
-    {
       "name": "DomainConfig",
       "serialization": "bytemuck",
       "repr": {
@@ -2643,24 +2720,6 @@
             "type": {
               "defined": {
                 "name": "Permissions"
-              }
-            }
-          },
-          {
-            "name": "user_args",
-            "type": {
-              "option": {
-                "defined": {
-                  "name": "UserMutArgs"
-                }
-              }
-            }
-          },
-          {
-            "name": "delegate_operation",
-            "type": {
-              "defined": {
-                "name": "DelegateOp"
               }
             }
           }
@@ -2761,6 +2820,10 @@
           },
           {
             "name": "user_address_tree_index",
+            "type": "u8"
+          },
+          {
+            "name": "is_delegate",
             "type": "u8"
           }
         ]
@@ -2911,10 +2974,10 @@
             }
           },
           {
-            "name": "user_args",
+            "name": "user_mut_args",
             "type": {
               "defined": {
-                "name": "UserReadOnlyOrMutateArgs"
+                "name": "UserMutArgs"
               }
             }
           }
@@ -3035,7 +3098,7 @@
           {
             "name": "_padding",
             "type": {
-              "array": ["u8", 7]
+              "array": ["u8", 3]
             }
           }
         ]
@@ -3448,58 +3511,6 @@
                 "name": "User"
               }
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "UserReadOnlyArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "account_meta",
-            "type": {
-              "defined": {
-                "name": "CompressedAccountMetaReadOnly"
-              }
-            }
-          },
-          {
-            "name": "data",
-            "type": {
-              "defined": {
-                "name": "User"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "UserReadOnlyOrMutateArgs",
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Read",
-            "fields": [
-              {
-                "defined": {
-                  "name": "UserReadOnlyArgs"
-                }
-              }
-            ]
-          },
-          {
-            "name": "Mutate",
-            "fields": [
-              {
-                "defined": {
-                  "name": "UserMutArgs"
-                }
-              }
-            ]
           }
         ]
       }

@@ -1,6 +1,5 @@
 import { AccountRole, type Instruction, type TransactionSigner } from "gill";
 import {
-  DelegateOp,
   getCreateMultiWalletCompressedInstructionAsync,
   getUserDecoder,
   type User,
@@ -28,14 +27,12 @@ type CreateWalletArgs = {
   cachedAccounts?: Map<string, any>;
   initialMember: TransactionSigner | SignedSecp256r1Key;
   userAddressTreeIndex?: number;
-  delegateOperation: DelegateOp.Add | DelegateOp.Ignore;
 };
 export async function createWallet({
   index,
   payer,
   initialMember,
   userAddressTreeIndex,
-  delegateOperation,
   cachedAccounts,
 }: CreateWalletArgs) {
   const { domainConfig, verifyArgs, message, signature, publicKey } =
@@ -149,7 +146,6 @@ export async function createWallet({
       userMutArgs,
       compressedProofArgs,
       settingsCreation: settingsCreationArgs,
-      delegateOperation,
       remainingAccounts,
     })
   );

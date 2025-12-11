@@ -23,6 +23,7 @@ pub struct Member {
     pub permissions: Permissions,
     pub role: u8,
     pub user_address_tree_index: u8,
+    pub is_delegate: u8,
 }
 
 #[derive(Default, AnchorDeserialize, AnchorSerialize, PartialEq, Clone, Copy, Debug)]

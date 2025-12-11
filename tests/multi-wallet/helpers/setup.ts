@@ -5,7 +5,6 @@ import {
   createGlobalCounter,
   createUserAccounts,
   createWallet,
-  DelegateOp,
   fetchGlobalCounter,
   fetchMaybeGlobalCounter,
   fetchMaybeWhitelistedAddressTree,
@@ -216,7 +215,6 @@ export async function createMultiWallet(
     payer,
     initialMember: wallet,
     index: createIndex,
-    delegateOperation: DelegateOp.Ignore,
   });
 
   await sendTransaction(instructions, payer);

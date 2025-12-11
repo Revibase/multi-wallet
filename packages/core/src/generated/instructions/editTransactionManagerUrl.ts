@@ -30,9 +30,9 @@ import {
   type Instruction,
   type InstructionWithAccounts,
   type InstructionWithData,
-  type ReadonlySignerAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
+  type WritableSignerAccount,
 } from "gill";
 import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
@@ -65,7 +65,7 @@ export type EditTransactionManagerUrlInstruction<
   InstructionWithAccounts<
     [
       TAccountAuthority extends string
-        ? ReadonlySignerAccount<TAccountAuthority> &
+        ? WritableSignerAccount<TAccountAuthority> &
             AccountSignerMeta<TAccountAuthority>
         : TAccountAuthority,
       ...TRemainingAccounts,
@@ -151,7 +151,7 @@ export function getEditTransactionManagerUrlInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    authority: { value: input.authority ?? null, isWritable: false },
+    authority: { value: input.authority ?? null, isWritable: true },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,

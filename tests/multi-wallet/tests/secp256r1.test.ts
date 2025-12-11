@@ -2,7 +2,6 @@ import {
   createDomainUserAccounts,
   createUserAccounts,
   createWallet,
-  DelegateOp,
   fetchGlobalCounter,
   fetchSettingsAccountData,
   fetchUserAccountData,
@@ -153,7 +152,6 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
       payer: ctx.payer,
       initialMember: signedSigner,
       index: globalCounter.data.index,
-      delegateOperation: DelegateOp.Add,
     });
 
     if (secp256r1VerifyInput.length > 0) {

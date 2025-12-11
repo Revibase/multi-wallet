@@ -60,7 +60,8 @@ export type TransactionActionType =
   | "add_new_member"
   | "compress"
   | "decompress"
-  | "transfer_intent";
+  | "transfer_intent"
+  | "change_delegate";
 
 export type TransactionPayload = {
   transactionActionType: TransactionActionType;

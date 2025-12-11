@@ -43,7 +43,7 @@ import {
   type TransactionMessageArgs,
 } from "../types";
 
-export const TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR = new Uint8Array([15]);
+export const TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR = new Uint8Array([16]);
 
 export function getTransactionExecuteSyncDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
