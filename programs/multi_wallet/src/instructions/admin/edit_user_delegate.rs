@@ -58,27 +58,25 @@ impl<'info> EditUserDelegate<'info> {
         return err!(MultisigError::InvalidAccount);
     }
 
-    pub fn process(
-        ctx: Context<'_, '_, 'info, 'info, Self>,
-        user_mut_args: UserMutArgs,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        delegate_to: Option<SettingsIndexWithAddress>,
-        old_settings_mut_args: Option<SettingsMutArgs>,
-        new_settings_mut_args: Option<SettingsMutArgs>,
-        compressed_proof_args: ProofArgs,
+    fn validate(
+        &self,
+        secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
+        user_account: &LightAccount<User>,
+        old_settings_key: &Option<Pubkey>,
+        new_settings_key: &Option<Pubkey>,
     ) -> Result<()> {
+        let Self {
+            signer,
+            instructions_sysvar,
+            domain_config,
+            slot_hash_sysvar,
+            ..
+        } = self;
         let signer: MemberKey = MemberKey::get_signer(
-            &ctx.accounts.signer,
+            &signer,
             &secp256r1_verify_args,
-            ctx.accounts.instructions_sysvar.as_ref(),
+            instructions_sysvar.as_ref(),
         )?;
-
-        let mut user_account = LightAccount::<User>::new_mut(
-            &crate::ID,
-            &user_mut_args.account_meta,
-            user_mut_args.data,
-        )
-        .map_err(ProgramError::from)?;
 
         require!(
             user_account.role.eq(&UserRole::Member),
@@ -95,15 +93,11 @@ impl<'info> EditUserDelegate<'info> {
                 .as_ref()
                 .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
 
-            let instructions_sysvar = ctx
-                .accounts
-                .instructions_sysvar
+            let instructions_sysvar = instructions_sysvar
                 .as_ref()
                 .ok_or(MultisigError::MissingAccount)?;
 
-            let domain_config = ctx
-                .accounts
-                .domain_config
+            let given_domain_config = domain_config
                 .as_ref()
                 .ok_or(MultisigError::DomainConfigIsMissing)?;
 
@@ -113,27 +107,18 @@ impl<'info> EditUserDelegate<'info> {
                 .ok_or(MultisigError::DomainConfigIsMissing)?;
 
             require!(
-                expected_domain_config.eq(&domain_config.key()),
+                expected_domain_config.eq(&given_domain_config.key()),
                 MultisigError::DomainConfigIsMissing
             );
 
             let mut buffer = vec![];
-            if let Some(delegated_to) = &user_account.delegated_to {
-                buffer.extend_from_slice(delegated_to.index.to_le_bytes().as_ref());
-            } else {
-                buffer.extend_from_slice(crate::ID.as_ref());
-            }
-            if let Some(delegated_to) = &delegate_to {
-                buffer.extend_from_slice(delegated_to.index.to_le_bytes().as_ref());
-            } else {
-                buffer.extend_from_slice(crate::ID.as_ref());
-            }
-
+            buffer.extend_from_slice(old_settings_key.unwrap_or(crate::ID).as_ref());
+            buffer.extend_from_slice(new_settings_key.unwrap_or(crate::ID).as_ref());
             let message_hash = Sha256::hash(&buffer).unwrap();
 
             secp256r1_verify_data.verify_webauthn(
-                &ctx.accounts.slot_hash_sysvar,
-                &ctx.accounts.domain_config,
+                slot_hash_sysvar,
+                domain_config,
                 instructions_sysvar,
                 ChallengeArgs {
                     account: Pubkey::from(
@@ -148,10 +133,31 @@ impl<'info> EditUserDelegate<'info> {
             )?;
         }
 
+        Ok(())
+    }
+
+    pub fn process(
+        ctx: Context<'_, '_, 'info, 'info, Self>,
+        user_mut_args: UserMutArgs,
+        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
+        delegate_to: Option<SettingsIndexWithAddress>,
+        old_settings_mut_args: Option<SettingsMutArgs>,
+        new_settings_mut_args: Option<SettingsMutArgs>,
+        compressed_proof_args: ProofArgs,
+    ) -> Result<()> {
+        let mut user_account = LightAccount::<User>::new_mut(
+            &crate::ID,
+            &user_mut_args.account_meta,
+            user_mut_args.data,
+        )
+        .map_err(ProgramError::from)?;
+
         let mut cpi_accounts = LightSystemProgramCpi::new_cpi(
             LIGHT_CPI_SIGNER,
             ValidityProof(compressed_proof_args.proof),
         );
+        let mut old_setting_key = None;
+        let mut new_settings_key = None;
         if let Some(old_delegate) = &user_account.delegated_to {
             if let Some(old_settings) = &ctx.accounts.old_settings {
                 let settings_data = &mut old_settings.load_mut()?;
@@ -169,6 +175,10 @@ impl<'info> EditUserDelegate<'info> {
                     false,
                 )?;
                 settings_data.invariant()?;
+                old_setting_key = Some(Settings::get_settings_key_from_index(
+                    settings_data.index,
+                    settings_data.bump,
+                )?);
             } else if let Some(old_settings_mut_args) = old_settings_mut_args {
                 let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
                     &crate::ID,
@@ -193,6 +203,10 @@ impl<'info> EditUserDelegate<'info> {
                     user_account.user_address_tree_index,
                     false,
                 )?;
+                old_setting_key = Some(Settings::get_settings_key_from_index(
+                    settings_data.index,
+                    settings_data.bump,
+                )?);
                 settings_account.invariant()?;
                 cpi_accounts = cpi_accounts.with_light_account(settings_account)?;
             } else {
@@ -217,6 +231,10 @@ impl<'info> EditUserDelegate<'info> {
                     true,
                 )?;
                 settings_data.invariant()?;
+                new_settings_key = Some(Settings::get_settings_key_from_index(
+                    settings_data.index,
+                    settings_data.bump,
+                )?);
             } else if let Some(new_settings_mut_args) = new_settings_mut_args {
                 let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
                     &crate::ID,
@@ -241,12 +259,23 @@ impl<'info> EditUserDelegate<'info> {
                     user_account.user_address_tree_index,
                     true,
                 )?;
+                new_settings_key = Some(Settings::get_settings_key_from_index(
+                    settings_data.index,
+                    settings_data.bump,
+                )?);
                 settings_account.invariant()?;
                 cpi_accounts = cpi_accounts.with_light_account(settings_account)?;
             } else {
                 return err!(MultisigError::MissingAccount);
             }
         }
+
+        ctx.accounts.validate(
+            &secp256r1_verify_args,
+            &user_account,
+            &old_setting_key,
+            &new_settings_key,
+        )?;
 
         user_account.delegated_to = delegate_to;
 
