@@ -95,11 +95,11 @@ export async function fetchMaybeSettingsAccountData(
     );
     const result = await getCompressedAccount(address, cachedAccounts);
     if (!result?.data?.data) {
-      return null;
+      throw new Error("No compressed settings account found.");
     }
     const data = getCompressedSettingsDecoder().decode(result.data.data);
     if (data.data.__option === "None") {
-      return null;
+      throw new Error("No compressed settings account found.");
     }
     return { ...data.data.value, isCompressed: true };
   } catch {
