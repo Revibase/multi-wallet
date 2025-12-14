@@ -2,7 +2,13 @@ import { decodeCBOR, encodeCBOR, type CBORType } from "@levischuck/tiny-cbor";
 import { p256 } from "@noble/curves/nist.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
-import { getBase58Decoder, getBase58Encoder, type Address } from "gill";
+import {
+  getBase58Decoder,
+  getBase58Encoder,
+  getBase64Decoder,
+  getUtf8Encoder,
+  type Address,
+} from "gill";
 import { fetchDomainConfig } from "../../generated";
 import {
   SignedSecp256r1Key,
@@ -246,4 +252,25 @@ export function getSecp256r1Message(authResponse: AuthenticationResponseJSON) {
       )
     ),
   ]);
+}
+
+export function getClientMessageHash(
+  data: {
+    type: "transaction" | "message";
+    payload: string;
+  },
+  clientId: string,
+  redirectUrl: string,
+  signer?: string
+) {
+  return getBase64Decoder().decode(
+    sha256(
+      new Uint8Array([
+        ...getUtf8Encoder().encode(JSON.stringify(data)),
+        ...getUtf8Encoder().encode(clientId),
+        ...getUtf8Encoder().encode(redirectUrl),
+        ...(signer ? getBase58Encoder().encode(signer) : []),
+      ])
+    )
+  );
 }

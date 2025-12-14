@@ -32,12 +32,12 @@ type TransactionPayloadWithBase64MessageBytes = {
   transactionMessageBytes: string;
 };
 
-export type SignClientMessage = {
+export type SignClientMessageMethod = {
   (
     type: "start",
-    message: string
+    messageHash: string
   ): Promise<{ signature: string; expiry: number }>;
-  (type: "complete", message: string): Promise<{ signature: string }>;
+  (type: "complete", messageHash: string): Promise<{ signature: string }>;
 };
 
 export type MessageAuthenticationResponse = {

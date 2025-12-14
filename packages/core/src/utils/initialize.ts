@@ -12,7 +12,7 @@ import {
   type TransactionSigner,
 } from "gill";
 import { estimateComputeUnitLimitFactory } from "gill/programs";
-import type { JitoTipsConfig, SignClientMessage } from "../types";
+import type { JitoTipsConfig, SignClientMessageMethod } from "../types";
 import {
   REVIBASE_API_ENDPOINT,
   REVIBASE_AUTH_ENDPOINT,
@@ -36,7 +36,7 @@ type RevibaseGlobalState = {
   rpId?: string | null;
   clientSettings?: {
     clientId: string;
-    signClientMessage: SignClientMessage;
+    signClientMessage: SignClientMessageMethod;
   } | null;
 };
 
@@ -119,7 +119,7 @@ export function initialize({
   rpId?: string;
   clientSettings?: {
     clientId: string;
-    signClientMessage: SignClientMessage;
+    signClientMessage: SignClientMessageMethod;
   };
 }) {
   state.solanaRpcEndpoint = rpcEndpoint;

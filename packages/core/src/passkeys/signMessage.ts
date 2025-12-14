@@ -1,11 +1,14 @@
-import { getBase64Decoder } from "gill";
 import {
   Secp256r1Key,
   type BasePayload,
   type MessageAuthenticationResponse,
   type MessagePayload,
 } from "../types";
-import { getAuthEndpoint, getClientSettings } from "../utils";
+import {
+  getAuthEndpoint,
+  getClientMessageHash,
+  getClientSettings,
+} from "../utils";
 import { openAuthUrl } from "../utils/passkeys/internal";
 
 export async function signMessageWithPasskey({
@@ -13,21 +16,29 @@ export async function signMessageWithPasskey({
   signer,
   popUp,
 }: MessagePayload & BasePayload) {
+  if (typeof window === "undefined") {
+    throw new Error("Function can only be called in a browser environment");
+  }
   const { clientId, signClientMessage } = getClientSettings();
   const data = { type: "message" as const, payload: message };
-  const payload = getBase64Decoder().decode(
-    new Uint8Array([
-      ...new TextEncoder().encode(JSON.stringify(data)),
-      ...(signer ? signer.toBuffer() : []),
-    ])
+  const redirectUrl = window.origin;
+  const clientMessageHash = getClientMessageHash(
+    data,
+    clientId,
+    redirectUrl,
+    signer?.toString()
   );
-  const { signature, expiry } = await signClientMessage("start", payload);
+  const { signature, expiry } = await signClientMessage(
+    "start",
+    clientMessageHash
+  );
   const authUrl =
     `${getAuthEndpoint()}/?` +
-    `redirectUrl=${encodeURIComponent(window.origin)}` +
+    `redirectUrl=${encodeURIComponent(redirectUrl)}` +
     `&clientId=${encodeURIComponent(clientId)}` +
     `&signature=${encodeURIComponent(signature)}` +
-    `&expiry=${encodeURIComponent(expiry)}`;
+    `&expiry=${encodeURIComponent(expiry)}` +
+    `&messageHash=${encodeURIComponent(clientMessageHash)}`;
 
   const authResponse = (await openAuthUrl({
     authUrl,
