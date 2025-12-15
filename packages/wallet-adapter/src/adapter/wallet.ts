@@ -18,8 +18,6 @@ import type {
   RevibaseSignAndSendTransactionMethod,
   RevibaseSignMessageFeature,
   RevibaseSignMessageMethod,
-  RevibaseVerifySignedMessageFeature,
-  RevibaseVerifySignedMessageMethod,
 } from "./features.js";
 import { icon } from "./icon.js";
 import { type Revibase, RevibaseWalletAccount } from "./window.js";
@@ -61,7 +59,6 @@ export class RevibaseWallet implements Wallet {
     StandardDisconnectFeature &
     StandardEventsFeature &
     RevibaseSignMessageFeature &
-    RevibaseVerifySignedMessageFeature &
     RevibaseBuildTransactionFeature &
     RevibaseSignAndSendTransactionFeature &
     RevibaseFeature {
@@ -89,10 +86,6 @@ export class RevibaseWallet implements Wallet {
       "revibase:SignMessage": {
         version: "1.0.0",
         signMessage: this.#signMessage,
-      },
-      "revibase:VerifySignedMessage": {
-        version: "1.0.0",
-        verify: this.#verify,
       },
       "revibase:": {
         revibase: this.#revibase,
@@ -211,9 +204,5 @@ export class RevibaseWallet implements Wallet {
 
   #signMessage: RevibaseSignMessageMethod = (input) => {
     return this.#revibase.signMessage(input);
-  };
-
-  #verify: RevibaseVerifySignedMessageMethod = (input) => {
-    return this.#revibase.verify(input);
   };
 }

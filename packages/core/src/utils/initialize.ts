@@ -12,7 +12,7 @@ import {
   type TransactionSigner,
 } from "gill";
 import { estimateComputeUnitLimitFactory } from "gill/programs";
-import type { JitoTipsConfig, SignClientMessageMethod } from "../types";
+import type { ClientAuthorizationCallback, JitoTipsConfig } from "../types";
 import {
   REVIBASE_API_ENDPOINT,
   REVIBASE_AUTH_ENDPOINT,
@@ -34,10 +34,7 @@ type RevibaseGlobalState = {
   jitoTipsConfig?: JitoTipsConfig | null;
   authEndpoint?: string | null;
   rpId?: string | null;
-  clientSettings?: {
-    clientId: string;
-    signClientMessage: SignClientMessageMethod;
-  } | null;
+  onClientAuthorizationCallback?: ClientAuthorizationCallback | null;
 };
 
 const state: RevibaseGlobalState = {};
@@ -89,9 +86,10 @@ export function getRpId() {
   return state.rpId ?? REVIBASE_RP_ID;
 }
 
-export function getClientSettings() {
-  if (!state.clientSettings) throw new Error("No client settings found.");
-  return state.clientSettings;
+export function getOnClientAuthorizationCallback() {
+  if (!state.onClientAuthorizationCallback)
+    throw new Error("No client transaction callback found.");
+  return state.onClientAuthorizationCallback;
 }
 
 export function uninitialize() {
@@ -108,7 +106,7 @@ export function initialize({
   apiEndpoint,
   authEndpoint,
   rpId,
-  clientSettings,
+  onClientTransactionCallback,
 }: {
   rpcEndpoint: string;
   proverEndpoint?: string;
@@ -117,10 +115,7 @@ export function initialize({
   apiEndpoint?: string;
   authEndpoint?: string;
   rpId?: string;
-  clientSettings?: {
-    clientId: string;
-    signClientMessage: SignClientMessageMethod;
-  };
+  onClientTransactionCallback?: ClientAuthorizationCallback;
 }) {
   state.solanaRpcEndpoint = rpcEndpoint;
 
@@ -142,5 +137,5 @@ export function initialize({
   state.jitoTipsConfig = jitoTipsConfig ?? null;
   state.authEndpoint = authEndpoint ?? null;
   state.rpId = rpId ?? null;
-  state.clientSettings = clientSettings ?? null;
+  state.onClientAuthorizationCallback = onClientTransactionCallback ?? null;
 }

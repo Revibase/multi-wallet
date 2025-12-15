@@ -64,7 +64,7 @@ export type RevibaseBuildTransactionFeature = {
 export const RevibaseSignMessage = "revibase:SignMessage";
 export type RevibaseSignMessageMethod = (
   message: string
-) => Promise<MessageAuthenticationResponse>;
+) => Promise<MessageAuthenticationResponse | null>;
 export type RevibaseSignMessageFeature = {
   /** Name of the feature. */
   readonly [RevibaseSignMessage]: {
@@ -79,29 +79,5 @@ export type RevibaseSignMessageFeature = {
      * @return Message Authentication Response.
      */
     readonly signMessage: RevibaseSignMessageMethod;
-  };
-};
-
-export const RevibaseVerifySignedMessage = "revibase:VerifySignedMessage";
-export type RevibaseVerifySignedMessageMethod = (input: {
-  message: string;
-  authResponse: MessageAuthenticationResponse;
-  expectedRPID?: string;
-  expectedOrigin?: string;
-}) => Promise<boolean>;
-export type RevibaseVerifySignedMessageFeature = {
-  /** Name of the feature. */
-  readonly [RevibaseVerifySignedMessage]: {
-    /** Version of the feature API. */
-    readonly version: "1.0.0";
-
-    /**
-     * Sign transactions using the account's secret key.
-     *
-     * @param input Message Auth Response
-     *
-     * @return boolean
-     */
-    readonly verify: RevibaseVerifySignedMessageMethod;
   };
 };

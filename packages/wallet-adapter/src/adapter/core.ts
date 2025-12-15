@@ -16,7 +16,6 @@ import {
   signAndSendTransaction,
   signMessageWithPasskey,
   signTransactionWithPasskey,
-  verifyMessage,
   type SettingsIndexWithAddress,
 } from "@revibase/core";
 import { address, createNoopSigner } from "gill";
@@ -63,15 +62,16 @@ export function createRevibaseAdapter(): Revibase {
         nonce: crypto.randomUUID(),
       });
       const authResponse = await this.signMessage(message);
-      const verified = await this.verify({ message, authResponse });
-      if (!verified) {
+      if (!authResponse) {
         throw Error("Failed to verify signed message");
       }
       if (
         !authResponse.additionalInfo?.walletAddress ||
         !authResponse.additionalInfo.settingsIndexWithAddress
       ) {
-        const userAccountData = await fetchUserAccountData(authResponse.signer);
+        const userAccountData = await fetchUserAccountData(
+          new Secp256r1Key(authResponse.signer)
+        );
         if (userAccountData.delegatedTo.__option === "None") {
           throw Error("User has no delegated wallet");
         }
@@ -108,16 +108,8 @@ export function createRevibaseAdapter(): Revibase {
     },
     signMessage: async function (input) {
       return await signMessageWithPasskey({
-        signer: this.member ? new Secp256r1Key(this.member) : undefined,
+        signer: this.member ?? undefined,
         message: input,
-      });
-    },
-    verify: async function (input) {
-      return await verifyMessage({
-        message: input.message,
-        response: input.authResponse,
-        expectedRPID: input.expectedRPID,
-        expectedOrigin: input.expectedOrigin,
       });
     },
     buildTransaction: async function (input) {
@@ -148,7 +140,7 @@ export function createRevibaseAdapter(): Revibase {
             addressesByLookupTableAddress,
           }),
         ]);
-      const signer = new Secp256r1Key(this.member);
+      const signer = this.member;
 
       const { transactionManagerAddress, userAddressTreeIndex } =
         await retrieveTransactionManager(

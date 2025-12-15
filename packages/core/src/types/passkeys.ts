@@ -1,10 +1,21 @@
-import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
-import type { Secp256r1Key } from "./secp256r1";
+import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
 
 export type TransactionAuthenticationResponse = TransactionAuthDetails & {
-  signer: Secp256r1Key;
+  type: "transaction";
+  signer: string;
   userAddressTreeIndex?: number;
   slotNumber: string;
+  additionalInfo?: any;
+};
+
+export type MessageAuthenticationResponse = {
+  type: "message";
+  authResponse: AuthenticationResponseJSON;
+  signer: string;
+  clientSignature: { clientOrigin: string };
+  deviceSignature: { publicKey: string; signature: string };
+  nonce: string;
+  userAddressTreeIndex?: number;
   additionalInfo?: any;
 };
 
@@ -12,18 +23,11 @@ export type TransactionAuthDetails = {
   authResponse: AuthenticationResponseJSON;
   transactionPayload: TransactionPayloadWithBase64MessageBytes;
   slotHash: string;
-  clientId: string;
+  clientSignature: { clientOrigin: string; signature: string };
   deviceSignature: { publicKey: string; signature: string };
   nonce: string;
   originIndex: number;
   crossOrigin: boolean;
-};
-
-export type TransactionAuthDetailsWithClientSignature = Omit<
-  TransactionAuthDetails,
-  "clientId"
-> & {
-  clientSignature: { clientId: string; signature: string };
 };
 
 type TransactionPayloadWithBase64MessageBytes = {
@@ -32,23 +36,42 @@ type TransactionPayloadWithBase64MessageBytes = {
   transactionMessageBytes: string;
 };
 
-export type SignClientMessageMethod = {
-  (
-    type: "start",
-    messageHash: string
-  ): Promise<{ signature: string; expiry: number }>;
-  (type: "complete", messageHash: string): Promise<{ signature: string }>;
+export type ClientAuthorizationStartRequest = {
+  phase: "start";
+  data:
+    | {
+        type: "transaction";
+        payload: TransactionPayloadWithBase64MessageBytes;
+      }
+    | { type: "message"; payload: string };
+  redirectOrigin: string;
+  signer?: string;
 };
 
-export type MessageAuthenticationResponse = {
-  authResponse: AuthenticationResponseJSON;
-  signer: Secp256r1Key;
-  clientId: string;
-  deviceSignature: { publicKey: string; signature: string };
-  nonce: string;
-  userAddressTreeIndex?: number;
-  additionalInfo?: any;
+export type ClientAuthorizationCompleteRequest = {
+  phase: "complete";
+  data: {
+    type: "transaction" | "message";
+    sessionToken: string;
+  };
 };
+
+export type ClientAuthorizationRequest =
+  | ClientAuthorizationStartRequest
+  | ClientAuthorizationCompleteRequest;
+
+export type ClientAuthorizationResponse<T extends ClientAuthorizationRequest> =
+  T["phase"] extends "start"
+    ? string
+    : T["data"]["type"] extends "transaction"
+      ? TransactionAuthenticationResponse
+      : MessageAuthenticationResponse | null;
+
+export type ClientAuthorizationCallback = <
+  T extends ClientAuthorizationRequest,
+>(
+  request: T
+) => Promise<ClientAuthorizationResponse<T>>;
 
 export type TransactionActionType =
   | "create"
@@ -74,6 +97,6 @@ export type MessagePayload = {
 };
 
 export type BasePayload = {
-  signer?: Secp256r1Key;
+  signer?: string;
   popUp?: Window | null;
 };

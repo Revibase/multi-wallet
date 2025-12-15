@@ -10,6 +10,7 @@ import {
   getSignedTransactionManager,
   nativeTransferIntent,
   retrieveTransactionManager,
+  Secp256r1Key,
   signAndSendTransaction,
   signTransactionWithPasskey,
   tokenTransferIntent,
@@ -71,11 +72,11 @@ export async function buildTokenTransferInstruction(
     signer,
     popUp,
   });
-  const signedSigner = await getSignedSecp256r1Key(authResponse);
+
   let settingsIndexWithAddress: SettingsIndexWithAddress;
   if (!authResponse.additionalInfo.settingsIndexWithAddress) {
     const userAccountData = await fetchUserAccountData(
-      authResponse.signer,
+      new Secp256r1Key(authResponse.signer),
       authResponse.userAddressTreeIndex,
       cachedAccounts
     );
@@ -87,22 +88,26 @@ export async function buildTokenTransferInstruction(
     settingsIndexWithAddress =
       authResponse.additionalInfo.settingsIndexWithAddress;
   }
-  const [settingsData, payer] = await Promise.all([
+  const [
+    payer,
+    settingsData,
+    signedSigner,
+    { transactionManagerAddress, userAddressTreeIndex },
+  ] = await Promise.all([
+    getFeePayer(),
     fetchSettingsAccountData(
       settingsIndexWithAddress.index,
       settingsIndexWithAddress.settingsAddressTreeIndex,
       cachedAccounts
     ),
-    getFeePayer(),
-  ]);
-
-  const { transactionManagerAddress, userAddressTreeIndex } =
-    await retrieveTransactionManager(
-      signedSigner,
+    getSignedSecp256r1Key(authResponse),
+    retrieveTransactionManager(
+      authResponse.signer,
       settingsIndexWithAddress.index,
       settingsIndexWithAddress.settingsAddressTreeIndex,
       cachedAccounts
-    );
+    ),
+  ]);
 
   const transactionManagerSigner = await getSignedTransactionManager({
     authResponses: [authResponse],

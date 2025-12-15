@@ -1,4 +1,4 @@
-import type { AuthenticationResponseJSON } from "@simplewebauthn/server";
+import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
 import { getBase58Decoder, getBase58Encoder, type Address } from "gill";
 
 const SECP256R1_PUBLIC_KEY_LENGTH = 33;

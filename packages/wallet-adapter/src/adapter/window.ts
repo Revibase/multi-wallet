@@ -9,7 +9,6 @@ import type {
   RevibaseBuildTransactionMethod,
   RevibaseSignAndSendTransactionMethod,
   RevibaseSignMessageMethod,
-  RevibaseVerifySignedMessageMethod,
 } from "./features";
 
 export interface RevibaseEvent {
@@ -40,7 +39,6 @@ export interface Revibase extends RevibaseEventEmitter {
   signAndSendTransaction: RevibaseSignAndSendTransactionMethod;
   buildTransaction: RevibaseBuildTransactionMethod;
   signMessage: RevibaseSignMessageMethod;
-  verify: RevibaseVerifySignedMessageMethod;
 }
 
 export class RevibaseWalletAccount extends ReadonlyWalletAccount {

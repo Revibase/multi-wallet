@@ -27,21 +27,17 @@ import {
   KeyType,
   Permission,
   Permissions,
-  Secp256r1Key,
   type TransactionAuthDetails,
-  type TransactionAuthDetailsWithClientSignature,
   type TransactionDetails,
 } from "../../types";
 import { fetchSettingsAccountData, fetchUserAccountData } from "../compressed";
 import {
-  getClientSettings,
   getComputeBudgetEstimate,
   getJitoTipsConfig,
   getSendAndConfirmTransaction,
   getSolanaRpc,
   getSolanaRpcEndpoint,
 } from "../initialize";
-import { getSecp256r1MessageHash } from "../passkeys";
 import {
   createEncodedBundle,
   getMedianPriorityFees,
@@ -242,7 +238,7 @@ export async function pollJitoBundleConfirmation(
 }
 
 export async function retrieveTransactionManager(
-  signer: Secp256r1Key,
+  signer: string,
   index: number | bigint,
   settingsAddressTreeIndex?: number,
   cachedAccounts?: Map<string, any>
@@ -259,7 +255,7 @@ export async function retrieveTransactionManager(
   }
   const { permissions } =
     settingsData.members.find(
-      (m) => convertMemberKeyToString(m.pubkey) === signer.toString()
+      (m) => convertMemberKeyToString(m.pubkey) === signer
     ) ?? {};
   if (!permissions) {
     throw new Error("No permissions found for the current member.");
@@ -341,7 +337,7 @@ export function createTransactionManagerSigner(
     async signTransactions(transactions) {
       const payload: Record<
         string,
-        string | string[] | TransactionAuthDetailsWithClientSignature[]
+        string | string[] | TransactionAuthDetails[]
       > = {
         publicKey: address.toString(),
         transactions: transactions.map(getBase64EncodedWireTransaction),
@@ -353,23 +349,7 @@ export function createTransactionManagerSigner(
         );
       }
       if (authResponses) {
-        const { clientId, signClientMessage } = getClientSettings();
-        payload.authResponses = await Promise.all(
-          authResponses.map(async (x) => ({
-            ...x,
-            clientSignature: {
-              clientId,
-              signature: (
-                await signClientMessage(
-                  "complete",
-                  getBase64Decoder().decode(
-                    getSecp256r1MessageHash(x.authResponse)
-                  )
-                )
-              ).signature,
-            },
-          }))
-        );
+        payload.authResponses = authResponses;
       }
 
       const response = await fetch(url, {

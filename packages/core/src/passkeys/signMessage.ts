@@ -1,14 +1,5 @@
-import {
-  Secp256r1Key,
-  type BasePayload,
-  type MessageAuthenticationResponse,
-  type MessagePayload,
-} from "../types";
-import {
-  getAuthEndpoint,
-  getClientMessageHash,
-  getClientSettings,
-} from "../utils";
+import { type BasePayload, type MessagePayload } from "../types";
+import { getAuthEndpoint, getOnClientAuthorizationCallback } from "../utils";
 import { openAuthUrl } from "../utils/passkeys/internal";
 
 export async function signMessageWithPasskey({
@@ -19,35 +10,24 @@ export async function signMessageWithPasskey({
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }
-  const { clientId, signClientMessage } = getClientSettings();
+  const redirectOrigin = window.origin;
   const data = { type: "message" as const, payload: message };
-  const redirectUrl = window.origin;
-  const clientMessageHash = getClientMessageHash(
+  const sessionToken = await getOnClientAuthorizationCallback()({
+    phase: "start",
     data,
-    clientId,
-    redirectUrl,
-    signer?.toString()
-  );
-  const { signature, expiry } = await signClientMessage(
-    "start",
-    clientMessageHash
-  );
-  const authUrl =
-    `${getAuthEndpoint()}/?` +
-    `redirectUrl=${encodeURIComponent(redirectUrl)}` +
-    `&clientId=${encodeURIComponent(clientId)}` +
-    `&signature=${encodeURIComponent(signature)}` +
-    `&expiry=${encodeURIComponent(expiry)}` +
-    `&messageHash=${encodeURIComponent(clientMessageHash)}`;
-
-  const authResponse = (await openAuthUrl({
-    authUrl,
-    data,
+    redirectOrigin,
     signer,
+  });
+  await openAuthUrl({
+    authUrl: `${getAuthEndpoint()}&sessionToken=${sessionToken}`,
     popUp,
-  })) as any;
-  return {
-    ...authResponse,
-    signer: new Secp256r1Key(authResponse.signer),
-  } as MessageAuthenticationResponse;
+  });
+  const result = await getOnClientAuthorizationCallback()({
+    phase: "complete",
+    data: {
+      type: "message",
+      sessionToken,
+    },
+  });
+  return result;
 }
