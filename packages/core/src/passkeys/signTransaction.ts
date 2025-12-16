@@ -40,7 +40,7 @@ export async function signTransactionWithPasskey({
   };
   const signature = await getOnClientAuthorizationCallback()(payload);
   const response = (await openAuthUrl({
-    authUrl: `${getAuthEndpoint()}&redirectOrigin=${redirectOrigin}`,
+    authUrl: `${getAuthEndpoint()}?redirectOrigin=${redirectOrigin}`,
     payload,
     signature,
     popUp,

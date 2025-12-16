@@ -1,7 +1,6 @@
 import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
 
 export type TransactionAuthenticationResponse = TransactionAuthDetails & {
-  type: "transaction";
   signer: string;
   userAddressTreeIndex?: number;
   slotNumber: string;
@@ -9,7 +8,6 @@ export type TransactionAuthenticationResponse = TransactionAuthDetails & {
 };
 
 export type MessageAuthenticationResponse = {
-  type: "message";
   authResponse: AuthenticationResponseJSON;
   signer: string;
   userAddressTreeIndex?: number;
