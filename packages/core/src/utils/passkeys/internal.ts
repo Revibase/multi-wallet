@@ -1,4 +1,5 @@
 import { p256 } from "@noble/curves/nist.js";
+import type { ClientAuthorizationStartRequest } from "../../types";
 import { createPopUp } from "./helper";
 
 let activeMessageHandler: ((event: MessageEvent) => void) | null = null;
@@ -8,9 +9,13 @@ const DEFAULT_TIMEOUT = 5 * 60 * 1000;
 
 export async function openAuthUrl({
   authUrl,
+  payload,
+  signature,
   popUp = null,
 }: {
   authUrl: string;
+  payload: ClientAuthorizationStartRequest;
+  signature: string;
   popUp?: Window | null;
 }) {
   if (typeof window === "undefined") {
@@ -63,6 +68,14 @@ export async function openAuthUrl({
 
       switch (event.data.type) {
         case "popup-ready":
+          popUp.postMessage(
+            {
+              type: "popup-init",
+              payload,
+              signature,
+            },
+            origin
+          );
           heartbeatTimeout = setTimeout(() => {
             cleanUp();
             reject(new Error("User closed the authentication window"));
@@ -70,8 +83,9 @@ export async function openAuthUrl({
           break;
         case "popup-complete":
           try {
+            const payload = JSON.parse(event.data.payload as string);
             cleanUp();
-            resolve({ result: "approved" });
+            resolve(payload);
           } catch (error) {
             reject(new Error("Failed to parse response payload"));
           }

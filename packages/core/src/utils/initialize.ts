@@ -88,7 +88,7 @@ export function getRpId() {
 
 export function getOnClientAuthorizationCallback() {
   if (!state.onClientAuthorizationCallback)
-    throw new Error("No client transaction callback found.");
+    throw new Error("No client authorization callback found.");
   return state.onClientAuthorizationCallback;
 }
 

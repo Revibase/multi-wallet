@@ -1,4 +1,10 @@
-import { type BasePayload, type TransactionPayload } from "../types";
+import {
+  type BasePayload,
+  type ClientAuthorizationCompleteRequest,
+  type ClientAuthorizationStartRequest,
+  type TransactionAuthenticationResponse,
+  type TransactionPayload,
+} from "../types";
 import { getAuthEndpoint, getOnClientAuthorizationCallback } from "../utils";
 import {
   bufferToBase64URLString,
@@ -11,35 +17,42 @@ export async function signTransactionWithPasskey({
   transactionMessageBytes,
   signer,
   popUp,
-}: TransactionPayload & BasePayload) {
+}: TransactionPayload &
+  BasePayload): Promise<TransactionAuthenticationResponse> {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }
   const redirectOrigin = window.origin;
-  const data = {
-    type: "transaction" as const,
-    payload: {
-      transactionActionType,
-      transactionAddress,
-      transactionMessageBytes: bufferToBase64URLString(transactionMessageBytes),
-    },
-  };
-  const sessionToken = await getOnClientAuthorizationCallback()({
+  const payload: ClientAuthorizationStartRequest = {
     phase: "start",
-    data,
+    data: {
+      type: "transaction" as const,
+      payload: {
+        transactionActionType,
+        transactionAddress,
+        transactionMessageBytes: bufferToBase64URLString(
+          transactionMessageBytes
+        ),
+      },
+    },
     redirectOrigin,
     signer,
-  });
-  await openAuthUrl({
-    authUrl: `${getAuthEndpoint()}&sessionToken=${sessionToken}`,
+  };
+  const signature = await getOnClientAuthorizationCallback()(payload);
+  const response = (await openAuthUrl({
+    authUrl: `${getAuthEndpoint()}&redirectOrigin=${redirectOrigin}`,
+    payload,
+    signature,
     popUp,
-  });
-  const result = await getOnClientAuthorizationCallback()({
-    phase: "complete",
-    data: {
-      type: "transaction",
-      sessionToken,
+  })) as ClientAuthorizationCompleteRequest;
+  if (response.data.type !== "transaction") {
+    throw new Error("Expected Transaction Response");
+  }
+  return {
+    ...response.data.payload,
+    clientSignature: {
+      ...response.data.payload.clientSignature,
+      signature: await getOnClientAuthorizationCallback()(response),
     },
-  });
-  return result;
+  };
 }

@@ -1,4 +1,10 @@
-import { type BasePayload, type MessagePayload } from "../types";
+import {
+  type BasePayload,
+  type ClientAuthorizationCompleteRequest,
+  type ClientAuthorizationStartRequest,
+  type MessageAuthenticationResponse,
+  type MessagePayload,
+} from "../types";
 import { getAuthEndpoint, getOnClientAuthorizationCallback } from "../utils";
 import { openAuthUrl } from "../utils/passkeys/internal";
 
@@ -6,28 +12,32 @@ export async function signMessageWithPasskey({
   message,
   signer,
   popUp,
-}: MessagePayload & BasePayload) {
+}: MessagePayload & BasePayload): Promise<MessageAuthenticationResponse> {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }
   const redirectOrigin = window.origin;
-  const data = { type: "message" as const, payload: message };
-  const sessionToken = await getOnClientAuthorizationCallback()({
+  const payload: ClientAuthorizationStartRequest = {
     phase: "start",
-    data,
+    data: { type: "message" as const, payload: message },
     redirectOrigin,
     signer,
-  });
-  await openAuthUrl({
-    authUrl: `${getAuthEndpoint()}&sessionToken=${sessionToken}`,
+  };
+  const signature = await getOnClientAuthorizationCallback()(payload);
+  const response = (await openAuthUrl({
+    authUrl: `${getAuthEndpoint()}&redirectOrigin=${redirectOrigin}`,
+    payload,
+    signature,
     popUp,
-  });
-  const result = await getOnClientAuthorizationCallback()({
-    phase: "complete",
-    data: {
-      type: "message",
-      sessionToken,
+  })) as ClientAuthorizationCompleteRequest;
+  if (response.data.type !== "message") {
+    throw new Error("Expected Message Response");
+  }
+  return {
+    ...response.data.payload,
+    clientSignature: {
+      ...response.data.payload.clientSignature,
+      signature: await getOnClientAuthorizationCallback()(response),
     },
-  });
-  return result;
+  };
 }

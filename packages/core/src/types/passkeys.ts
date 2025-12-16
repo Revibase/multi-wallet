@@ -12,20 +12,20 @@ export type MessageAuthenticationResponse = {
   type: "message";
   authResponse: AuthenticationResponseJSON;
   signer: string;
-  clientSignature: { clientOrigin: string };
-  deviceSignature: { publicKey: string; signature: string };
-  nonce: string;
   userAddressTreeIndex?: number;
+  nonce: string;
+  clientSignature: { clientOrigin: string; signature: string };
+  deviceSignature: { publicKey: string; signature: string };
   additionalInfo?: any;
 };
 
 export type TransactionAuthDetails = {
-  authResponse: AuthenticationResponseJSON;
   transactionPayload: TransactionPayloadWithBase64MessageBytes;
+  authResponse: AuthenticationResponseJSON;
   slotHash: string;
+  nonce: string;
   clientSignature: { clientOrigin: string; signature: string };
   deviceSignature: { publicKey: string; signature: string };
-  nonce: string;
   originIndex: number;
   crossOrigin: boolean;
 };
@@ -50,28 +50,28 @@ export type ClientAuthorizationStartRequest = {
 
 export type ClientAuthorizationCompleteRequest = {
   phase: "complete";
-  data: {
-    type: "transaction" | "message";
-    sessionToken: string;
-  };
+  data:
+    | {
+        type: "transaction";
+        payload: Omit<TransactionAuthenticationResponse, "clientSignature"> & {
+          clientSignature: { clientOrigin: string };
+        };
+      }
+    | {
+        type: "message";
+        payload: Omit<MessageAuthenticationResponse, "clientSignature"> & {
+          clientSignature: { clientOrigin: string };
+        };
+      };
 };
 
-export type ClientAuthorizationRequest =
-  | ClientAuthorizationStartRequest
-  | ClientAuthorizationCompleteRequest;
-
-export type ClientAuthorizationResponse<T extends ClientAuthorizationRequest> =
-  T["phase"] extends "start"
-    ? string
-    : T["data"]["type"] extends "transaction"
-      ? TransactionAuthenticationResponse
-      : MessageAuthenticationResponse | null;
-
-export type ClientAuthorizationCallback = <
-  T extends ClientAuthorizationRequest,
->(
-  request: T
-) => Promise<ClientAuthorizationResponse<T>>;
+export type ClientAuthorizationCallback = {
+  (
+    request:
+      | ClientAuthorizationStartRequest
+      | ClientAuthorizationCompleteRequest
+  ): Promise<string>;
+};
 
 export type TransactionActionType =
   | "create"
