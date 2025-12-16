@@ -9,6 +9,7 @@ import { getAuthEndpoint, getOnClientAuthorizationCallback } from "../utils";
 import { openAuthUrl } from "../utils/passkeys/internal";
 
 export async function signMessageWithPasskey({
+  id,
   message,
   signer,
   popUp,
@@ -37,7 +38,10 @@ export async function signMessageWithPasskey({
     ...response.data.payload,
     clientSignature: {
       ...response.data.payload.clientSignature,
-      signature: await getOnClientAuthorizationCallback()(response),
+      signature: await getOnClientAuthorizationCallback()({
+        ...response,
+        data: { ...response.data, id },
+      }),
     },
   };
 }

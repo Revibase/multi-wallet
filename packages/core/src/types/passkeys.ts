@@ -56,6 +56,7 @@ export type ClientAuthorizationCompleteRequest = {
         };
       }
     | {
+        id?: string;
         type: "message";
         payload: Omit<MessageAuthenticationResponse, "clientSignature"> & {
           clientSignature: { clientOrigin: string };
@@ -92,6 +93,7 @@ export type TransactionPayload = {
 
 export type MessagePayload = {
   message: string;
+  id?: string;
 };
 
 export type BasePayload = {
