@@ -41,7 +41,7 @@ export type ClientAuthorizationStartRequest = {
         type: "transaction";
         payload: TransactionPayloadWithBase64MessageBytes;
       }
-    | { type: "message"; payload: string };
+    | { id?: string; type: "message"; payload: string };
   redirectOrigin: string;
   signer?: string;
 };

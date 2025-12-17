@@ -20,7 +20,7 @@ export async function signMessageWithPasskey({
   const redirectOrigin = window.origin;
   const payload: ClientAuthorizationStartRequest = {
     phase: "start",
-    data: { type: "message" as const, payload: message },
+    data: { id, type: "message" as const, payload: message },
     redirectOrigin,
     signer,
   };
@@ -38,10 +38,7 @@ export async function signMessageWithPasskey({
     ...response.data.payload,
     clientSignature: {
       ...response.data.payload.clientSignature,
-      signature: await getOnClientAuthorizationCallback()({
-        ...response,
-        data: { ...response.data, id },
-      }),
+      signature: await getOnClientAuthorizationCallback()(response),
     },
   };
 }
