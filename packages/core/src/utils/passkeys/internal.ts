@@ -3,20 +3,16 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
 import type { ClientAuthorizationStartRequest } from "../../types";
 import { base64URLStringToBuffer, createPopUp } from "./helper";
-
 const DEFAULT_TIMEOUT = 10 * 60 * 1000; // 10 minutes
 const HEARTBEAT_INTERVAL = 500; // ms
 
 type PopupMessage =
+  | { type: "popup-init"; payload: any; signature: string }
   | { type: "popup-ready" }
-  | {
-      type: "popup-init";
-      payload: ClientAuthorizationStartRequest;
-      signature: string;
-    }
   | { type: "popup-complete"; payload: any }
   | { type: "popup-error"; error: string }
-  | { type: "popup-closed" };
+  | { type: "popup-closed" }
+  | { type: "popup-connect" };
 
 export async function openAuthUrl({
   authUrl,
@@ -35,8 +31,8 @@ export async function openAuthUrl({
 
   return new Promise((resolve, reject) => {
     const origin = new URL(authUrl).origin;
-    const channel = new MessageChannel();
     let settled = false;
+    let port: MessagePort | null = null;
 
     // Cleanup function
     const cleanup = () => {
@@ -45,7 +41,7 @@ export async function openAuthUrl({
 
       clearTimeout(timeout);
       clearInterval(heartbeatInterval);
-      channel.port1.close();
+      port?.close();
 
       try {
         popUp && !popUp.closed && popUp.close();
@@ -80,34 +76,45 @@ export async function openAuthUrl({
       return;
     }
 
-    channel.port1.onmessage = (event: MessageEvent<PopupMessage>) => {
-      const data = event.data;
+    // ✅ Wait for the popup to send its port first
+    const onConnect = (event: MessageEvent) => {
+      if (event.origin !== origin) return;
+      if (event.data?.type !== "popup-connect") return;
+      if (!event.ports?.[0]) return;
 
-      switch (data.type) {
-        case "popup-ready":
-          channel.port1.postMessage({ type: "popup-init", payload, signature });
-          break;
+      port = event.ports[0];
+      port.start();
 
-        case "popup-complete":
-          cleanup();
-          resolve(data.payload);
-          break;
+      port.postMessage({ type: "popup-init", payload, signature });
 
-        case "popup-error":
-          cleanup();
-          reject(new Error(data.error));
-          break;
+      port.onmessage = (event: MessageEvent<PopupMessage>) => {
+        const data = event.data;
 
-        case "popup-closed":
-          cleanup();
-          reject(new Error("User closed the authentication window"));
-          break;
-      }
+        switch (data.type) {
+          case "popup-complete":
+            cleanup();
+            resolve(data.payload);
+            break;
+
+          case "popup-error":
+            cleanup();
+            reject(new Error(data.error));
+            break;
+
+          case "popup-closed":
+            cleanup();
+            reject(new Error("User closed the authentication window"));
+            break;
+        }
+      };
+
+      window.removeEventListener("message", onConnect);
     };
 
-    popUp.postMessage({ type: "popup-connect" }, origin, [channel.port2]);
+    window.addEventListener("message", onConnect);
   });
 }
+
 export function uint8ArrayToHex(bytes: Uint8Array) {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, "0"))

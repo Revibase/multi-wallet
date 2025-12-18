@@ -33,7 +33,7 @@ type AuthenticationContext = {
 type BaseResponse = {
   signer: string;
   userAddressTreeIndex?: number;
-  additionalInfo?: unknown;
+  additionalInfo?: any;
 };
 
 export type TransactionPayloadWithBase64MessageBytes = {
