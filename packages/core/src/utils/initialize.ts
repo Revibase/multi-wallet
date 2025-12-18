@@ -106,7 +106,7 @@ export function initialize({
   apiEndpoint,
   authEndpoint,
   rpId,
-  onClientTransactionCallback,
+  onClientAuthorizationCallback,
 }: {
   rpcEndpoint: string;
   proverEndpoint?: string;
@@ -115,7 +115,7 @@ export function initialize({
   apiEndpoint?: string;
   authEndpoint?: string;
   rpId?: string;
-  onClientTransactionCallback?: ClientAuthorizationCallback;
+  onClientAuthorizationCallback?: ClientAuthorizationCallback;
 }) {
   state.solanaRpcEndpoint = rpcEndpoint;
 
@@ -137,5 +137,5 @@ export function initialize({
   state.jitoTipsConfig = jitoTipsConfig ?? null;
   state.authEndpoint = authEndpoint ?? null;
   state.rpId = rpId ?? null;
-  state.onClientAuthorizationCallback = onClientTransactionCallback ?? null;
+  state.onClientAuthorizationCallback = onClientAuthorizationCallback ?? null;
 }

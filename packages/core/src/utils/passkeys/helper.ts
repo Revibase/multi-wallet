@@ -3,15 +3,22 @@ import { p256 } from "@noble/curves/nist.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
 import {
+  address,
   getBase58Decoder,
   getBase58Encoder,
+  getBase64Encoder,
+  getU64Decoder,
   getUtf8Encoder,
   type Address,
 } from "gill";
 import { fetchDomainConfig } from "../../generated";
 import {
   SignedSecp256r1Key,
+  type ClientAuthorizationCompleteRequest,
+  type ClientAuthorizationStartRequest,
   type TransactionAuthenticationResponse,
+  type TransactionPayload,
+  type TransactionPayloadWithBase64MessageBytes,
 } from "../../types";
 import { getDomainConfigAddress } from "../addresses";
 import { getAuthEndpoint, getSolanaRpc } from "../initialize";
@@ -19,6 +26,7 @@ import {
   base64URLStringToBuffer,
   convertSignatureDERtoRS,
   extractAdditionalFields,
+  getSecp256r1Message,
   parseOrigins,
   uint8ArrayToHex,
 } from "./internal";
@@ -234,21 +242,77 @@ export function getClientAndDeviceHash(
   );
 }
 
+export function createClientAuthorizationStartRequestChallenge(
+  payload: ClientAuthorizationStartRequest
+) {
+  return sha256(
+    new Uint8Array(getUtf8Encoder().encode(JSON.stringify(payload)))
+  );
+}
+
+export function createClientAuthorizationCompleteRequestChallenge(
+  payload: ClientAuthorizationCompleteRequest
+) {
+  return getSecp256r1MessageHash(payload.data.payload.authResponse);
+}
+
+export function createMessageChallenge(
+  payload: string,
+  clientOrigin: string,
+  devicePublicKey: string,
+  nonce: string
+) {
+  return sha256(
+    new Uint8Array([
+      ...getUtf8Encoder().encode(payload),
+      ...getClientAndDeviceHash(clientOrigin, devicePublicKey, nonce),
+    ])
+  );
+}
+
+export async function createTransactionChallenge(
+  payload: TransactionPayloadWithBase64MessageBytes | TransactionPayload,
+  clientOrigin: string,
+  devicePublicKey: string,
+  nonce: string
+) {
+  const slotSysvarData = (
+    await getSolanaRpc()
+      .getAccountInfo(address("SysvarS1otHashes111111111111111111111111111"), {
+        encoding: "base64",
+        commitment: "confirmed",
+      })
+      .send()
+  ).value?.data;
+  if (!slotSysvarData) {
+    throw new Error("Unable to fetch slot sysvar");
+  }
+  const slotHashData = getBase64Encoder().encode(slotSysvarData[0]);
+  const slotNumber = getU64Decoder()
+    .decode(slotHashData.subarray(8, 16))
+    .toString();
+  const slotHashBytes = slotHashData.subarray(16, 48);
+  const slotHash = getBase58Decoder().decode(slotHashBytes);
+  const challenge = sha256(
+    new Uint8Array([
+      ...getUtf8Encoder().encode(payload.transactionActionType),
+      ...getBase58Encoder().encode(payload.transactionAddress),
+      ...sha256(
+        typeof payload.transactionMessageBytes === "string"
+          ? new Uint8Array(
+              base64URLStringToBuffer(payload.transactionMessageBytes)
+            )
+          : payload.transactionMessageBytes
+      ),
+      ...slotHashBytes,
+      ...getClientAndDeviceHash(clientOrigin, devicePublicKey, nonce),
+    ])
+  );
+  return { slotNumber, slotHash, challenge };
+}
+
 export function getSecp256r1MessageHash(
   authResponse: AuthenticationResponseJSON
 ) {
   return sha256(getSecp256r1Message(authResponse));
-}
-
-export function getSecp256r1Message(authResponse: AuthenticationResponseJSON) {
-  return new Uint8Array([
-    ...new Uint8Array(
-      base64URLStringToBuffer(authResponse.response.authenticatorData)
-    ),
-    ...sha256(
-      new Uint8Array(
-        base64URLStringToBuffer(authResponse.response.clientDataJSON)
-      )
-    ),
-  ]);
 }

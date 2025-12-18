@@ -28,7 +28,7 @@ export type TransactionAuthDetails = {
   crossOrigin: boolean;
 };
 
-type TransactionPayloadWithBase64MessageBytes = {
+export type TransactionPayloadWithBase64MessageBytes = {
   transactionActionType: TransactionActionType;
   transactionAddress: string;
   transactionMessageBytes: string;
@@ -57,6 +57,7 @@ export type ClientAuthorizationCompleteRequest = {
       }
     | {
         id?: string;
+        message?: string;
         type: "message";
         payload: Omit<MessageAuthenticationResponse, "clientSignature"> & {
           clientSignature: { clientOrigin: string };

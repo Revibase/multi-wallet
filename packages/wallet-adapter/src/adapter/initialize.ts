@@ -9,14 +9,22 @@ import { RevibaseWallet } from "./wallet";
 
 interface InitializeWalletArgs {
   rpcEndpoint: string;
-  onClientTransactionCallback: ClientAuthorizationCallback;
+  onClientAuthorizationCallback: ClientAuthorizationCallback;
   proverEndpoint?: string;
   compressionApiEndpoint?: string;
   jitoTipsConfig?: JitoTipsConfig;
+  authEndpoint?: string;
 }
 
 export function initializeWallet(input: InitializeWalletArgs) {
-  initialize(input);
+  initialize({
+    rpcEndpoint: input.rpcEndpoint,
+    onClientAuthorizationCallback: input.onClientAuthorizationCallback,
+    proverEndpoint: input.proverEndpoint,
+    compressionApiEndpoint: input.compressionApiEndpoint,
+    jitoTipsConfig: input.jitoTipsConfig,
+    authEndpoint: input.authEndpoint,
+  });
   if (typeof window !== "undefined") {
     registerWallet(new RevibaseWallet(createRevibaseAdapter()));
   }

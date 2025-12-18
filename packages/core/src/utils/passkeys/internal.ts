@@ -1,4 +1,6 @@
 import { p256 } from "@noble/curves/nist.js";
+import { sha256 } from "@noble/hashes/sha2.js";
+import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
 import type { ClientAuthorizationStartRequest } from "../../types";
 import { createPopUp } from "./helper";
 
@@ -261,4 +263,17 @@ export function convertSignatureDERtoRS(signature: Uint8Array): Uint8Array {
   const sPad = hexToUint8Array(sHex);
 
   return new Uint8Array([...rPad, ...sPad]);
+}
+
+export function getSecp256r1Message(authResponse: AuthenticationResponseJSON) {
+  return new Uint8Array([
+    ...new Uint8Array(
+      base64URLStringToBuffer(authResponse.response.authenticatorData)
+    ),
+    ...sha256(
+      new Uint8Array(
+        base64URLStringToBuffer(authResponse.response.clientDataJSON)
+      )
+    ),
+  ]);
 }

@@ -1,3 +1,4 @@
+import type { SettingsIndexWithAddressArgs } from "@revibase/core";
 import {
   createPopUp,
   fetchSettingsAccountData,
@@ -16,15 +17,18 @@ import {
   signAndSendTransaction,
   signMessageWithPasskey,
   signTransactionWithPasskey,
-  type SettingsIndexWithAddress,
 } from "@revibase/core";
 import { address, createNoopSigner } from "gill";
+import {
+  buildTokenTransferInstruction,
+  signAndSendTokenTransfer,
+} from "src/methods/tokenTransfer";
 import {
   createSignInMessageText,
   estimateJitoTips,
   estimateTransactionSizeExceedLimit,
   simulateSecp256r1Signer,
-} from "./utils";
+} from "../utils";
 import type { Revibase, RevibaseEvent } from "./window";
 
 export function createRevibaseAdapter(): Revibase {
@@ -48,7 +52,7 @@ export function createRevibaseAdapter(): Revibase {
     ? (JSON.parse(account) as {
         publicKey: string | null;
         member: string | null;
-        settingsIndexWithAddress: SettingsIndexWithAddress | null;
+        settingsIndexWithAddress: SettingsIndexWithAddressArgs | null;
       })
     : { publicKey: null, member: null, settingsIndexWithAddress: null };
 
@@ -65,10 +69,7 @@ export function createRevibaseAdapter(): Revibase {
       if (!authResponse) {
         throw Error("Failed to verify signed message");
       }
-      if (
-        !authResponse.additionalInfo?.walletAddress ||
-        !authResponse.additionalInfo.settingsIndexWithAddress
-      ) {
+      if (!authResponse.additionalInfo.settingsIndexWithAddress) {
         const userAccountData = await fetchUserAccountData(
           new Secp256r1Key(authResponse.signer)
         );
@@ -82,19 +83,25 @@ export function createRevibaseAdapter(): Revibase {
         ).toString();
         this.settingsIndexWithAddress = userAccountData.delegatedTo.value;
       } else {
-        this.publicKey = authResponse.additionalInfo.walletAddress;
+        this.publicKey = await getWalletAddressFromIndex(
+          authResponse.additionalInfo.settingsIndexWithAddress.index
+        );
         this.settingsIndexWithAddress =
           authResponse.additionalInfo.settingsIndexWithAddress;
       }
 
-      this.member = authResponse.signer.toString();
+      this.member = authResponse.signer;
       window.localStorage.setItem(
         "Revibase:account",
-        JSON.stringify({
-          publicKey: this.publicKey,
-          member: this.member,
-          settingsIndexWithAddress: this.settingsIndexWithAddress,
-        })
+        JSON.stringify(
+          {
+            publicKey: this.publicKey,
+            member: this.member,
+            settingsIndexWithAddress: this.settingsIndexWithAddress,
+          },
+          (key, value) =>
+            typeof value === "bigint" ? Number(value.toString()) : value
+        )
       );
       emit("connect");
       emit("accountChanged");
@@ -111,6 +118,18 @@ export function createRevibaseAdapter(): Revibase {
         signer: this.member ?? undefined,
         message: input,
       });
+    },
+    buildTokenTransfer: async function (input) {
+      if (!this.member || !this.settingsIndexWithAddress || !this.publicKey) {
+        throw new Error("Wallet is not connected");
+      }
+      return buildTokenTransferInstruction({ signer: this.member, ...input });
+    },
+    signAndSendTokenTransfer: async function (input) {
+      if (!this.member || !this.settingsIndexWithAddress || !this.publicKey) {
+        throw new Error("Wallet is not connected");
+      }
+      return signAndSendTokenTransfer({ signer: this.member, ...input });
     },
     buildTransaction: async function (input) {
       if (!this.member || !this.settingsIndexWithAddress || !this.publicKey) {

@@ -3,6 +3,7 @@ import type {
   TransactionDetails,
 } from "@revibase/core";
 import type {
+  Address,
   AddressesByLookupTableAddress,
   Instruction,
   TransactionSigner,
@@ -58,6 +59,52 @@ export type RevibaseBuildTransactionFeature = {
      * @return Transaction Details
      */
     readonly buildTransaction: RevibaseBuildTransactionMethod;
+  };
+};
+
+export const RevibaseSignAndSendTokenTransfer =
+  "revibase:SignAndSendTokenTransfer";
+export type RevibaseSignAndSendTokenTransferMethod = (input: {
+  amount: number | bigint;
+  destination: Address;
+  createAtaIfNeeded?: boolean;
+  mint?: Address;
+  tokenProgram?: Address;
+  cachedAccounts?: Map<string, any>;
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
+  signer?: string | undefined;
+  popUp?: Window | null | undefined;
+}) => Promise<string>;
+export type RevibaseSignAndSendTokenTransferFeature = {
+  /** Name of the feature. */
+  readonly [RevibaseSignAndSendTokenTransfer]: {
+    /** Version of the feature API. */
+    readonly version: "1.0.0";
+
+    readonly signAndSendTokenTransfer: RevibaseSignAndSendTokenTransferMethod;
+  };
+};
+
+export const RevibaseBuildTokenTransferTransaction =
+  "revibase:BuildTokenTransferTransaction";
+export type RevibaseBuildTokenTransferTransactionMethod = (input: {
+  amount: number | bigint;
+  destination: Address;
+  createAtaIfNeeded?: boolean;
+  mint?: Address;
+  tokenProgram?: Address;
+  cachedAccounts?: Map<string, any>;
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
+  signer?: string | undefined;
+  popUp?: Window | null | undefined;
+}) => Promise<TransactionDetails>;
+export type RevibaseBuildTokenTransferTransactionFeature = {
+  /** Name of the feature. */
+  readonly [RevibaseBuildTokenTransferTransaction]: {
+    /** Version of the feature API. */
+    readonly version: "1.0.0";
+
+    readonly buildTokenTransferTransaction: RevibaseBuildTokenTransferTransactionMethod;
   };
 };
 

@@ -37,7 +37,7 @@ import {
   type TransactionDetails,
 } from "../../types";
 import { getSolanaRpc } from "../initialize";
-import { getSecp256r1Message } from "../passkeys";
+import { getSecp256r1Message } from "../passkeys/internal";
 
 export async function createEncodedBundle(
   bundle: (TransactionDetails & { unitsConsumed?: number })[],

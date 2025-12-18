@@ -1,5 +1,5 @@
 import type {
-  SettingsIndexWithAddress,
+  SettingsIndexWithAddressArgs,
   TransactionDetails,
 } from "@revibase/core";
 import {
@@ -14,13 +14,17 @@ import {
   signAndSendTransaction,
   signTransactionWithPasskey,
   tokenTransferIntent,
-  type BasePayload,
 } from "@revibase/core";
 import type { AddressesByLookupTableAddress } from "gill";
 import { getAddressEncoder, getU64Encoder, type Address } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 
-interface TokenTransferArgs extends BasePayload {
+/**
+ *
+ * @param mint If no mint is provided, Native SOL will be used for the transfer
+ * @returns
+ */
+export async function signAndSendTokenTransfer(input: {
   amount: number | bigint;
   destination: Address;
   createAtaIfNeeded?: boolean;
@@ -28,16 +32,9 @@ interface TokenTransferArgs extends BasePayload {
   tokenProgram?: Address;
   cachedAccounts?: Map<string, any>;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
-}
-
-/**
- *
- * @param mint If no mint is provided, Native SOL will be used for the transfer
- * @returns
- */
-export async function signAndSendTokenTransfer(
-  input: TokenTransferArgs
-): Promise<string> {
+  signer?: string | undefined;
+  popUp?: Window | null | undefined;
+}): Promise<string> {
   const transactionDetails = await buildTokenTransferInstruction(input);
   return signAndSendTransaction(transactionDetails);
 }
@@ -47,9 +44,17 @@ export async function signAndSendTokenTransfer(
  * @param mint If no mint is provided, Native SOL will be used for the transfer
  * @returns
  */
-export async function buildTokenTransferInstruction(
-  input: TokenTransferArgs
-): Promise<TransactionDetails> {
+export async function buildTokenTransferInstruction(input: {
+  amount: number | bigint;
+  destination: Address;
+  createAtaIfNeeded?: boolean;
+  mint?: Address;
+  tokenProgram?: Address;
+  cachedAccounts?: Map<string, any>;
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
+  signer?: string | undefined;
+  popUp?: Window | null | undefined;
+}): Promise<TransactionDetails> {
   const {
     amount,
     destination,
@@ -73,7 +78,7 @@ export async function buildTokenTransferInstruction(
     popUp,
   });
 
-  let settingsIndexWithAddress: SettingsIndexWithAddress;
+  let settingsIndexWithAddress: SettingsIndexWithAddressArgs;
   if (!authResponse.additionalInfo.settingsIndexWithAddress) {
     const userAccountData = await fetchUserAccountData(
       new Secp256r1Key(authResponse.signer),

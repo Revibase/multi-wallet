@@ -12,8 +12,12 @@ import {
 } from "@wallet-standard/core";
 import { address, getAddressEncoder } from "gill";
 import type {
+  RevibaseBuildTokenTransferTransactionFeature,
+  RevibaseBuildTokenTransferTransactionMethod,
   RevibaseBuildTransactionFeature,
   RevibaseBuildTransactionMethod,
+  RevibaseSignAndSendTokenTransferFeature,
+  RevibaseSignAndSendTokenTransferMethod,
   RevibaseSignAndSendTransactionFeature,
   RevibaseSignAndSendTransactionMethod,
   RevibaseSignMessageFeature,
@@ -61,6 +65,8 @@ export class RevibaseWallet implements Wallet {
     RevibaseSignMessageFeature &
     RevibaseBuildTransactionFeature &
     RevibaseSignAndSendTransactionFeature &
+    RevibaseBuildTokenTransferTransactionFeature &
+    RevibaseSignAndSendTokenTransferFeature &
     RevibaseFeature {
     return {
       "standard:connect": {
@@ -82,6 +88,14 @@ export class RevibaseWallet implements Wallet {
       "revibase:BuildTransaction": {
         version: "1.0.0",
         buildTransaction: this.#buildTransaction,
+      },
+      "revibase:SignAndSendTokenTransfer": {
+        version: "1.0.0",
+        signAndSendTokenTransfer: this.#signAndSendTokenTransfer,
+      },
+      "revibase:BuildTokenTransferTransaction": {
+        version: "1.0.0",
+        buildTokenTransferTransaction: this.#buildTokenTransferTransaction,
       },
       "revibase:SignMessage": {
         version: "1.0.0",
@@ -201,6 +215,17 @@ export class RevibaseWallet implements Wallet {
   #buildTransaction: RevibaseBuildTransactionMethod = (input) => {
     return this.#revibase.buildTransaction(input);
   };
+
+  #signAndSendTokenTransfer: RevibaseSignAndSendTokenTransferMethod = (
+    input
+  ) => {
+    return this.#revibase.signAndSendTokenTransfer(input);
+  };
+
+  #buildTokenTransferTransaction: RevibaseBuildTokenTransferTransactionMethod =
+    (input) => {
+      return this.#revibase.buildTokenTransfer(input);
+    };
 
   #signMessage: RevibaseSignMessageMethod = (input) => {
     return this.#revibase.signMessage(input);
