@@ -4,10 +4,19 @@ import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
 import type { ClientAuthorizationStartRequest } from "../../types";
 import { base64URLStringToBuffer, createPopUp } from "./helper";
 
-let activeMessageHandler: ((event: MessageEvent) => void) | null = null;
-const HEARTBEAT_INTERVAL = 2000;
-const TIMEOUT_BUFFER = 3000;
-const DEFAULT_TIMEOUT = 5 * 60 * 1000;
+const DEFAULT_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+const HEARTBEAT_INTERVAL = 500; // ms
+
+type PopupMessage =
+  | { type: "popup-ready" }
+  | {
+      type: "popup-init";
+      payload: ClientAuthorizationStartRequest;
+      signature: string;
+    }
+  | { type: "popup-complete"; payload: any }
+  | { type: "popup-error"; error: string }
+  | { type: "popup-closed" };
 
 export async function openAuthUrl({
   authUrl,
@@ -18,105 +27,87 @@ export async function openAuthUrl({
   authUrl: string;
   payload: ClientAuthorizationStartRequest;
   signature: string;
-  popUp: Window | null;
-}) {
+  popUp?: Window | null;
+}): Promise<any> {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }
+
   return new Promise((resolve, reject) => {
     const origin = new URL(authUrl).origin;
+    const channel = new MessageChannel();
+    let settled = false;
 
-    let heartbeatTimeout: NodeJS.Timeout | null = null;
+    // Cleanup function
+    const cleanup = () => {
+      if (settled) return;
+      settled = true;
 
-    const closeCheckInterval = setInterval(() => {
-      if (popUp && popUp.closed) {
-        cleanUp();
-        reject(new Error("User closed the authentication window"));
-      }
-    }, 500);
+      clearTimeout(timeout);
+      clearInterval(heartbeatInterval);
+      channel.port1.close();
 
-    const globalTimeout = setTimeout(() => {
-      cleanUp();
+      try {
+        popUp && !popUp.closed && popUp.close();
+      } catch {}
+    };
+
+    const timeout = setTimeout(() => {
+      cleanup();
       reject(new Error("Authentication timed out"));
     }, DEFAULT_TIMEOUT);
 
-    function cleanUp() {
-      clearInterval(closeCheckInterval);
-      clearTimeout(globalTimeout);
-      if (heartbeatTimeout) clearTimeout(heartbeatTimeout);
-      if (activeMessageHandler)
-        window.removeEventListener("message", activeMessageHandler);
-      if (popUp) popUp.close();
-    }
+    const heartbeatInterval = setInterval(() => {
+      if (popUp?.closed) {
+        cleanup();
+        reject(new Error("User closed the authentication window"));
+      }
+    }, HEARTBEAT_INTERVAL);
 
-    if (popUp) {
-      popUp.location.replace(authUrl);
-    } else {
+    if (!popUp) {
       popUp = createPopUp(authUrl);
+    } else {
+      try {
+        if (popUp.location.href !== authUrl) popUp.location.replace(authUrl);
+      } catch {
+        popUp.location.replace(authUrl);
+      }
     }
 
     if (!popUp) {
-      reject(new Error("Disable your popup blocker to continue."));
+      cleanup();
+      reject(new Error("Popup blocked. Please enable popups."));
       return;
     }
 
-    const messageReceivedHandler = (event: MessageEvent) => {
-      const isSameOrigin = event.origin === origin;
-      const isSameWindow = event.source === popUp;
+    channel.port1.onmessage = (event: MessageEvent<PopupMessage>) => {
+      const data = event.data;
 
-      if (!isSameOrigin || !isSameWindow || !event.isTrusted || !popUp) {
-        return;
-      }
-
-      switch (event.data.type) {
+      switch (data.type) {
         case "popup-ready":
-          popUp.postMessage(
-            {
-              type: "popup-init",
-              payload,
-              signature,
-            },
-            origin
-          );
-          heartbeatTimeout = setTimeout(() => {
-            cleanUp();
-            reject(new Error("User closed the authentication window"));
-          }, HEARTBEAT_INTERVAL + TIMEOUT_BUFFER);
+          channel.port1.postMessage({ type: "popup-init", payload, signature });
           break;
+
         case "popup-complete":
-          try {
-            const payload = JSON.parse(event.data.payload as string);
-            cleanUp();
-            resolve(payload);
-          } catch (error) {
-            reject(new Error("Failed to parse response payload"));
-          }
+          cleanup();
+          resolve(data.payload);
           break;
-        case "popup-heartbeat":
-          if (heartbeatTimeout) {
-            clearTimeout(heartbeatTimeout);
-            heartbeatTimeout = setTimeout(() => {
-              cleanUp();
-              reject(new Error("User closed the authentication window"));
-            }, HEARTBEAT_INTERVAL + TIMEOUT_BUFFER);
-          }
+
+        case "popup-error":
+          cleanup();
+          reject(new Error(data.error));
           break;
 
         case "popup-closed":
-          cleanUp();
+          cleanup();
           reject(new Error("User closed the authentication window"));
           break;
       }
     };
 
-    if (activeMessageHandler) {
-      window.removeEventListener("message", activeMessageHandler);
-    }
-    activeMessageHandler = messageReceivedHandler;
-    window.addEventListener("message", activeMessageHandler);
+    popUp.postMessage({ type: "popup-connect" }, origin, [channel.port2]);
   });
 }
-
 export function uint8ArrayToHex(bytes: Uint8Array) {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, "0"))

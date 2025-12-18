@@ -21,31 +21,40 @@ export async function signMessageWithPasskey({
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }
+
   const redirectOrigin = window.origin;
   const authUrl = `${getAuthEndpoint()}?redirectOrigin=${redirectOrigin}`;
-  popUp = popUp ?? createPopUp(authUrl);
 
+  const authorization = getOnClientAuthorizationCallback();
   const payload: ClientAuthorizationStartRequest = {
     phase: "start",
     data: { id, type: "message" as const, payload: message },
     redirectOrigin,
     signer,
   };
-  const signature = await getOnClientAuthorizationCallback()(payload);
+  const [popupWindow, initialSignature] = await Promise.all([
+    Promise.resolve(popUp ?? createPopUp(authUrl)),
+    authorization(payload),
+  ]);
+
   const response = (await openAuthUrl({
     authUrl,
     payload,
-    signature,
-    popUp,
+    signature: initialSignature,
+    popUp: popupWindow,
   })) as ClientAuthorizationCompleteRequest;
+
   if (response.data.type !== "message") {
     throw new Error("Expected Message Response");
   }
+
+  const finalSignature = await authorization(response);
+
   return {
     ...response.data.payload,
     clientSignature: {
       ...response.data.payload.clientSignature,
-      signature: await getOnClientAuthorizationCallback()(response),
+      signature: finalSignature,
     },
   };
 }

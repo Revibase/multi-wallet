@@ -1,31 +1,39 @@
 import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
 
-export type TransactionAuthenticationResponse = TransactionAuthDetails & {
-  signer: string;
-  userAddressTreeIndex?: number;
-  slotNumber: string;
-  additionalInfo?: any;
-};
+export type TransactionAuthenticationResponse = TransactionDetails &
+  AuthenticationContext &
+  BaseResponse;
 
-export type MessageAuthenticationResponse = {
-  authResponse: AuthenticationResponseJSON;
-  signer: string;
-  userAddressTreeIndex?: number;
-  nonce: string;
-  clientSignature: { clientOrigin: string; signature: string };
-  deviceSignature: { publicKey: string; signature: string };
-  additionalInfo?: any;
-};
+export type MessageAuthenticationResponse = AuthenticationContext &
+  BaseResponse;
 
-export type TransactionAuthDetails = {
+export type TransactionAuthDetails = TransactionDetails & AuthenticationContext;
+
+type TransactionDetails = {
   transactionPayload: TransactionPayloadWithBase64MessageBytes;
-  authResponse: AuthenticationResponseJSON;
   slotHash: string;
-  nonce: string;
-  clientSignature: { clientOrigin: string; signature: string };
-  deviceSignature: { publicKey: string; signature: string };
+  slotNumber: string;
   originIndex: number;
   crossOrigin: boolean;
+};
+
+type AuthenticationContext = {
+  authResponse: AuthenticationResponseJSON;
+  nonce: string;
+  clientSignature: {
+    clientOrigin: string;
+    signature: string;
+  };
+  deviceSignature: {
+    publicKey: string;
+    signature: string;
+  };
+};
+
+type BaseResponse = {
+  signer: string;
+  userAddressTreeIndex?: number;
+  additionalInfo?: unknown;
 };
 
 export type TransactionPayloadWithBase64MessageBytes = {
