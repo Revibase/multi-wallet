@@ -2,7 +2,7 @@ import { p256 } from "@noble/curves/nist.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
 import type { ClientAuthorizationStartRequest } from "../../types";
-import { createPopUp } from "./helper";
+import { base64URLStringToBuffer, createPopUp } from "./helper";
 
 let activeMessageHandler: ((event: MessageEvent) => void) | null = null;
 const HEARTBEAT_INTERVAL = 2000;
@@ -18,7 +18,7 @@ export async function openAuthUrl({
   authUrl: string;
   payload: ClientAuthorizationStartRequest;
   signature: string;
-  popUp?: Window | null;
+  popUp: Window | null;
 }) {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
@@ -115,38 +115,6 @@ export async function openAuthUrl({
     activeMessageHandler = messageReceivedHandler;
     window.addEventListener("message", activeMessageHandler);
   });
-}
-
-export function bufferToBase64URLString(buffer: Uint8Array) {
-  let str = "";
-  for (const charCode of buffer) {
-    str += String.fromCharCode(charCode);
-  }
-  const base64String = btoa(str);
-  return base64String.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
-}
-
-export function base64URLStringToBuffer(base64URLString: string) {
-  // Convert from Base64URL to Base64
-  const base64 = base64URLString.replace(/-/g, "+").replace(/_/g, "/");
-  /**
-   * Pad with '=' until it's a multiple of four
-   * (4 - (85 % 4 = 1) = 3) % 4 = 3 padding
-   * (4 - (86 % 4 = 2) = 2) % 4 = 2 padding
-   * (4 - (87 % 4 = 3) = 1) % 4 = 1 padding
-   * (4 - (88 % 4 = 0) = 4) % 4 = 0 padding
-   */
-  const padLength = (4 - (base64.length % 4)) % 4;
-  const padded = base64.padEnd(base64.length + padLength, "=");
-  // Convert to a binary string
-  const binary = atob(padded);
-  // Convert binary string to buffer
-  const buffer = new ArrayBuffer(binary.length);
-  const bytes = new Uint8Array(buffer);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return buffer;
 }
 
 export function uint8ArrayToHex(bytes: Uint8Array) {

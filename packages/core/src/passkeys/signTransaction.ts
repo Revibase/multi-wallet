@@ -6,10 +6,8 @@ import {
   type TransactionPayload,
 } from "../types";
 import { getAuthEndpoint, getOnClientAuthorizationCallback } from "../utils";
-import {
-  bufferToBase64URLString,
-  openAuthUrl,
-} from "../utils/passkeys/internal";
+import { bufferToBase64URLString, createPopUp } from "../utils/passkeys/helper";
+import { openAuthUrl } from "../utils/passkeys/internal";
 
 export async function signTransactionWithPasskey({
   transactionActionType,
@@ -23,6 +21,8 @@ export async function signTransactionWithPasskey({
     throw new Error("Function can only be called in a browser environment");
   }
   const redirectOrigin = window.origin;
+  const authUrl = `${getAuthEndpoint()}?redirectOrigin=${redirectOrigin}`;
+  popUp = popUp ?? createPopUp(authUrl);
   const payload: ClientAuthorizationStartRequest = {
     phase: "start",
     data: {
@@ -40,7 +40,7 @@ export async function signTransactionWithPasskey({
   };
   const signature = await getOnClientAuthorizationCallback()(payload);
   const response = (await openAuthUrl({
-    authUrl: `${getAuthEndpoint()}?redirectOrigin=${redirectOrigin}`,
+    authUrl,
     payload,
     signature,
     popUp,

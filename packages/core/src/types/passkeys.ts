@@ -57,7 +57,7 @@ export type ClientAuthorizationCompleteRequest = {
       }
     | {
         id?: string;
-        message?: string;
+        message: string;
         type: "message";
         payload: Omit<MessageAuthenticationResponse, "clientSignature"> & {
           clientSignature: { clientOrigin: string };

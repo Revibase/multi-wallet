@@ -127,6 +127,7 @@ export async function buildTokenTransferInstruction(input: {
 
   const instructions = mint
     ? await tokenTransferIntent({
+        payer,
         index: settingsIndexWithAddress.index,
         settingsAddressTreeIndex:
           settingsIndexWithAddress.settingsAddressTreeIndex,
@@ -140,6 +141,7 @@ export async function buildTokenTransferInstruction(input: {
         cachedAccounts,
       })
     : await nativeTransferIntent({
+        payer,
         index: settingsIndexWithAddress.index,
         settingsAddressTreeIndex:
           settingsIndexWithAddress.settingsAddressTreeIndex,

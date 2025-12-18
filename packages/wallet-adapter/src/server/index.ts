@@ -1,4 +1,5 @@
 import {
+  bufferToBase64URLString,
   convertPubkeyCompressedToCose,
   getAuthEndpoint,
   getRpId,
@@ -9,15 +10,17 @@ import {
 } from "@simplewebauthn/server";
 
 export async function verifyMessage(
-  expectedChallenge: string,
+  response: AuthenticationResponseJSON,
+  expectedChallenge: Uint8Array,
   expectedSigner: string,
-  response: AuthenticationResponseJSON
+  expectedOrigin = getAuthEndpoint(),
+  expectedRPID = getRpId()
 ) {
   const { verified } = await verifyAuthenticationResponse({
     response,
-    expectedChallenge,
-    expectedRPID: getRpId(),
-    expectedOrigin: getAuthEndpoint(),
+    expectedChallenge: bufferToBase64URLString(expectedChallenge),
+    expectedRPID,
+    expectedOrigin,
     requireUserVerification: false,
     credential: {
       counter: 0,

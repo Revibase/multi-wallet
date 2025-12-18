@@ -23,7 +23,6 @@ import {
 import { getDomainConfigAddress } from "../addresses";
 import { getAuthEndpoint, getSolanaRpc } from "../initialize";
 import {
-  base64URLStringToBuffer,
   convertSignatureDERtoRS,
   extractAdditionalFields,
   getSecp256r1Message,
@@ -274,25 +273,36 @@ export async function createTransactionChallenge(
   payload: TransactionPayloadWithBase64MessageBytes | TransactionPayload,
   clientOrigin: string,
   devicePublicKey: string,
-  nonce: string
+  nonce: string,
+  slotHash?: string,
+  slotNumber?: string
 ) {
-  const slotSysvarData = (
-    await getSolanaRpc()
-      .getAccountInfo(address("SysvarS1otHashes111111111111111111111111111"), {
-        encoding: "base64",
-        commitment: "confirmed",
-      })
-      .send()
-  ).value?.data;
-  if (!slotSysvarData) {
-    throw new Error("Unable to fetch slot sysvar");
+  let slotHashBytes: Uint8Array;
+  if (!slotHash || !slotNumber) {
+    const slotSysvarData = (
+      await getSolanaRpc()
+        .getAccountInfo(
+          address("SysvarS1otHashes111111111111111111111111111"),
+          {
+            encoding: "base64",
+            commitment: "confirmed",
+          }
+        )
+        .send()
+    ).value?.data;
+    if (!slotSysvarData) {
+      throw new Error("Unable to fetch slot sysvar");
+    }
+    const slotHashData = getBase64Encoder().encode(slotSysvarData[0]);
+    slotNumber = getU64Decoder()
+      .decode(slotHashData.subarray(8, 16))
+      .toString();
+    slotHashBytes = slotHashData.subarray(16, 48);
+    slotHash = getBase58Decoder().decode(slotHashBytes);
+  } else {
+    slotHashBytes = new Uint8Array(getBase58Encoder().encode(slotHash));
   }
-  const slotHashData = getBase64Encoder().encode(slotSysvarData[0]);
-  const slotNumber = getU64Decoder()
-    .decode(slotHashData.subarray(8, 16))
-    .toString();
-  const slotHashBytes = slotHashData.subarray(16, 48);
-  const slotHash = getBase58Decoder().decode(slotHashBytes);
+
   const challenge = sha256(
     new Uint8Array([
       ...getUtf8Encoder().encode(payload.transactionActionType),
@@ -315,4 +325,36 @@ export function getSecp256r1MessageHash(
   authResponse: AuthenticationResponseJSON
 ) {
   return sha256(getSecp256r1Message(authResponse));
+}
+
+export function bufferToBase64URLString(buffer: Uint8Array) {
+  let str = "";
+  for (const charCode of buffer) {
+    str += String.fromCharCode(charCode);
+  }
+  const base64String = btoa(str);
+  return base64String.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+export function base64URLStringToBuffer(base64URLString: string) {
+  // Convert from Base64URL to Base64
+  const base64 = base64URLString.replace(/-/g, "+").replace(/_/g, "/");
+  /**
+   * Pad with '=' until it's a multiple of four
+   * (4 - (85 % 4 = 1) = 3) % 4 = 3 padding
+   * (4 - (86 % 4 = 2) = 2) % 4 = 2 padding
+   * (4 - (87 % 4 = 3) = 1) % 4 = 1 padding
+   * (4 - (88 % 4 = 0) = 4) % 4 = 0 padding
+   */
+  const padLength = (4 - (base64.length % 4)) % 4;
+  const padded = base64.padEnd(base64.length + padLength, "=");
+  // Convert to a binary string
+  const binary = atob(padded);
+  // Convert binary string to buffer
+  const buffer = new ArrayBuffer(binary.length);
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return buffer;
 }

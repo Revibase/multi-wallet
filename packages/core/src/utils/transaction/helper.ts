@@ -75,7 +75,7 @@ export async function signAndSendTransaction({
   const latestBlockHash = await getSolanaRpc().getLatestBlockhash().send();
   const tx = await pipe(
     createTransactionMessage({ version: 0 }),
-    (tx) => appendTransactionMessageInstructions([...instructions], tx),
+    (tx) => appendTransactionMessageInstructions(instructions, tx),
     (tx) => setTransactionMessageFeePayerSigner(payer, tx),
     (tx) =>
       setTransactionMessageLifetimeUsingBlockhash(latestBlockHash.value, tx),

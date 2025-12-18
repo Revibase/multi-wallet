@@ -5,7 +5,11 @@ import {
   type MessageAuthenticationResponse,
   type MessagePayload,
 } from "../types";
-import { getAuthEndpoint, getOnClientAuthorizationCallback } from "../utils";
+import {
+  createPopUp,
+  getAuthEndpoint,
+  getOnClientAuthorizationCallback,
+} from "../utils";
 import { openAuthUrl } from "../utils/passkeys/internal";
 
 export async function signMessageWithPasskey({
@@ -18,6 +22,9 @@ export async function signMessageWithPasskey({
     throw new Error("Function can only be called in a browser environment");
   }
   const redirectOrigin = window.origin;
+  const authUrl = `${getAuthEndpoint()}?redirectOrigin=${redirectOrigin}`;
+  popUp = popUp ?? createPopUp(authUrl);
+
   const payload: ClientAuthorizationStartRequest = {
     phase: "start",
     data: { id, type: "message" as const, payload: message },
@@ -26,7 +33,7 @@ export async function signMessageWithPasskey({
   };
   const signature = await getOnClientAuthorizationCallback()(payload);
   const response = (await openAuthUrl({
-    authUrl: `${getAuthEndpoint()}?redirectOrigin=${redirectOrigin}`,
+    authUrl,
     payload,
     signature,
     popUp,

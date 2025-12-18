@@ -14,6 +14,7 @@ interface InitializeWalletArgs {
   compressionApiEndpoint?: string;
   jitoTipsConfig?: JitoTipsConfig;
   authEndpoint?: string;
+  apiEndpoint?: string;
 }
 
 export function initializeWallet(input: InitializeWalletArgs) {
@@ -24,6 +25,7 @@ export function initializeWallet(input: InitializeWalletArgs) {
     compressionApiEndpoint: input.compressionApiEndpoint,
     jitoTipsConfig: input.jitoTipsConfig,
     authEndpoint: input.authEndpoint,
+    apiEndpoint: input.apiEndpoint,
   });
   if (typeof window !== "undefined") {
     registerWallet(new RevibaseWallet(createRevibaseAdapter()));
