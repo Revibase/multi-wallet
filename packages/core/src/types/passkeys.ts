@@ -28,6 +28,10 @@ type AuthenticationContext = {
     publicKey: string;
     signature: string;
   };
+  authProviderSignature?: {
+    publicKey: string;
+    signature: string;
+  };
 };
 
 type BaseResponse = {

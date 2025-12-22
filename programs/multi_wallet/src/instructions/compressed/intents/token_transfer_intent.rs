@@ -1,8 +1,7 @@
 use crate::{
-    durable_nonce_check, state::SettingsReadonlyArgs, utils::UserRole, ChallengeArgs,
-    CompressedSettings, CompressedSettingsData, DomainConfig, MemberKey, MultisigError, Permission,
-    ProofArgs, Secp256r1VerifyArgsWithDomainAddress, TransactionActionType, SEED_MULTISIG,
-    SEED_VAULT,
+    durable_nonce_check, state::SettingsReadonlyArgs, ChallengeArgs, CompressedSettings,
+    CompressedSettingsData, DomainConfig, MemberKey, MultisigError, Permission, ProofArgs,
+    Secp256r1VerifyArgsWithDomainAddress, TransactionActionType, SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{
     prelude::*,
@@ -131,9 +130,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
                 if has_permission(Permission::VoteTransaction) {
                     vote_count += 1;
                 }
-                if UserRole::from(member.role).ne(&UserRole::TransactionManager)
-                    && member.is_delegate == 0
-                {
+                if secp256r1_signer.is_some() && member.is_delegate == 0 {
                     are_delegates = false;
                 }
             }
