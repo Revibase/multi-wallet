@@ -4,28 +4,25 @@ import {
   type ClientAuthorizationStartRequest,
   type MessageAuthenticationResponse,
   type MessagePayload,
-} from "../types";
-import {
-  createPopUp,
-  getAuthEndpoint,
-  getOnClientAuthorizationCallback,
-} from "../utils";
-import { openAuthUrl } from "../utils/passkeys/internal";
+} from "@revibase/core";
+import { createPopUp } from "./helper";
+import { openAuthUrl } from "./internal";
 
 export async function signMessageWithPasskey({
   id,
   message,
   signer,
   popUp,
+  authOrigin,
+  onClientAuthorizationCallback,
 }: MessagePayload & BasePayload): Promise<MessageAuthenticationResponse> {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }
 
   const redirectOrigin = window.origin;
-  const authUrl = `${getAuthEndpoint()}?redirectOrigin=${redirectOrigin}`;
+  const authUrl = `${authOrigin}?redirectOrigin=${redirectOrigin}`;
 
-  const authorization = getOnClientAuthorizationCallback();
   const payload: ClientAuthorizationStartRequest = {
     phase: "start",
     data: { id, type: "message" as const, payload: message },
@@ -34,7 +31,7 @@ export async function signMessageWithPasskey({
   };
   const [popupWindow, initialSignature] = await Promise.all([
     Promise.resolve(popUp ?? createPopUp(authUrl)),
-    authorization(payload),
+    onClientAuthorizationCallback(payload),
   ]);
 
   const response = (await openAuthUrl({
@@ -48,7 +45,7 @@ export async function signMessageWithPasskey({
     throw new Error("Expected Message Response");
   }
 
-  const finalSignature = await authorization(response);
+  const finalSignature = await onClientAuthorizationCallback(response);
 
   return {
     ...response.data.payload,

@@ -1,6 +1,8 @@
 import {
   createRpc,
+  featureFlags,
   Rpc as LightProtocolRpc,
+  VERSION,
 } from "@lightprotocol/stateless.js";
 import {
   createSolanaClient,
@@ -9,16 +11,11 @@ import {
   type SendAndConfirmTransactionWithSignersFunction,
   type SolanaRpcApi,
   type TransactionMessageWithFeePayer,
-  type TransactionSigner,
 } from "gill";
 import { estimateComputeUnitLimitFactory } from "gill/programs";
-import type { ClientAuthorizationCallback, JitoTipsConfig } from "../types";
-import {
-  REVIBASE_API_ENDPOINT,
-  REVIBASE_AUTH_ENDPOINT,
-  REVIBASE_RP_ID,
-} from "./consts";
-import { getRandomPayer } from "./transaction/internal";
+import type { JitoTipsConfig } from "../types";
+
+featureFlags.version = VERSION.V2;
 
 type RevibaseGlobalState = {
   solanaRpcEndpoint?: string;
@@ -29,12 +26,7 @@ type RevibaseGlobalState = {
     tx: BaseTransactionMessage & TransactionMessageWithFeePayer,
     cfg?: any
   ) => Promise<number>;
-  feePayer?: TransactionSigner;
-  apiEndpoint?: string | null;
   jitoTipsConfig?: JitoTipsConfig | null;
-  authEndpoint?: string | null;
-  rpId?: string | null;
-  onClientAuthorizationCallback?: ClientAuthorizationCallback | null;
 };
 
 const state: RevibaseGlobalState = {};
@@ -64,32 +56,9 @@ export function getComputeBudgetEstimate() {
   return state.computeEstimate;
 }
 
-export async function getFeePayer() {
-  if (!state.feePayer) {
-    state.feePayer = await getRandomPayer(
-      state.apiEndpoint ?? REVIBASE_API_ENDPOINT
-    );
-  }
-  return state.feePayer;
-}
-
 export function getJitoTipsConfig() {
   if (!state.jitoTipsConfig) throw new Error("Jito Bundle Config is not set.");
   return state.jitoTipsConfig;
-}
-
-export function getAuthEndpoint() {
-  return state.authEndpoint ?? REVIBASE_AUTH_ENDPOINT;
-}
-
-export function getRpId() {
-  return state.rpId ?? REVIBASE_RP_ID;
-}
-
-export function getOnClientAuthorizationCallback() {
-  if (!state.onClientAuthorizationCallback)
-    throw new Error("No client authorization callback found.");
-  return state.onClientAuthorizationCallback;
 }
 
 export function uninitialize() {
@@ -103,39 +72,23 @@ export function initialize({
   proverEndpoint,
   compressionApiEndpoint,
   jitoTipsConfig,
-  apiEndpoint,
-  authEndpoint,
-  rpId,
-  onClientAuthorizationCallback,
 }: {
   rpcEndpoint: string;
   proverEndpoint?: string;
   compressionApiEndpoint?: string;
   jitoTipsConfig?: JitoTipsConfig;
-  apiEndpoint?: string;
-  authEndpoint?: string;
-  rpId?: string;
-  onClientAuthorizationCallback?: ClientAuthorizationCallback;
 }) {
   state.solanaRpcEndpoint = rpcEndpoint;
-
   state.lightProtocolRpc = createRpc(
     rpcEndpoint,
     compressionApiEndpoint,
     proverEndpoint
   );
-
   const { rpc, sendAndConfirmTransaction } = createSolanaClient({
     urlOrMoniker: rpcEndpoint,
   });
-
   state.solanaRpc = rpc;
   state.sendAndConfirm = sendAndConfirmTransaction;
   state.computeEstimate = estimateComputeUnitLimitFactory({ rpc });
-
-  state.apiEndpoint = apiEndpoint ?? null;
   state.jitoTipsConfig = jitoTipsConfig ?? null;
-  state.authEndpoint = authEndpoint ?? null;
-  state.rpId = rpId ?? null;
-  state.onClientAuthorizationCallback = onClientAuthorizationCallback ?? null;
 }

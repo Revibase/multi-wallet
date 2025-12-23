@@ -1,13 +1,13 @@
 import {
+  bufferToBase64URLString,
   type BasePayload,
   type ClientAuthorizationCompleteRequest,
   type ClientAuthorizationStartRequest,
   type TransactionAuthenticationResponse,
   type TransactionPayload,
-} from "../types";
-import { getAuthEndpoint, getOnClientAuthorizationCallback } from "../utils";
-import { bufferToBase64URLString, createPopUp } from "../utils/passkeys/helper";
-import { openAuthUrl } from "../utils/passkeys/internal";
+} from "@revibase/core";
+import { createPopUp } from "./helper";
+import { openAuthUrl } from "./internal";
 
 export async function signTransactionWithPasskey({
   transactionActionType,
@@ -15,6 +15,8 @@ export async function signTransactionWithPasskey({
   transactionMessageBytes,
   signer,
   popUp,
+  authOrigin,
+  onClientAuthorizationCallback,
 }: TransactionPayload &
   BasePayload): Promise<TransactionAuthenticationResponse> {
   if (typeof window === "undefined") {
@@ -22,9 +24,8 @@ export async function signTransactionWithPasskey({
   }
 
   const redirectOrigin = window.origin;
-  const authUrl = `${getAuthEndpoint()}?redirectOrigin=${redirectOrigin}`;
+  const authUrl = `${authOrigin}?redirectOrigin=${redirectOrigin}`;
 
-  const authorization = getOnClientAuthorizationCallback();
   const payload: ClientAuthorizationStartRequest = {
     phase: "start",
     data: {
@@ -43,7 +44,7 @@ export async function signTransactionWithPasskey({
 
   const [popupWindow, initialSignature] = await Promise.all([
     Promise.resolve(popUp ?? createPopUp(authUrl)),
-    authorization(payload),
+    onClientAuthorizationCallback(payload),
   ]);
 
   const response = (await openAuthUrl({
@@ -57,7 +58,7 @@ export async function signTransactionWithPasskey({
     throw new Error("Expected Transaction Response");
   }
 
-  const finalSignature = await authorization(response);
+  const finalSignature = await onClientAuthorizationCallback(response);
 
   return {
     ...response.data.payload,

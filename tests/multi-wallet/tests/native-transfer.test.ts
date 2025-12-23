@@ -128,7 +128,6 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
 
     try {
       const signedSigner = await mockAuthenticationResponse(
-        getSolanaRpc(),
         {
           transactionActionType: "transfer_intent",
           transactionAddress: SYSTEM_PROGRAM_ADDRESS.toString(),

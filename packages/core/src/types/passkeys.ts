@@ -112,4 +112,6 @@ export type MessagePayload = {
 export type BasePayload = {
   signer?: string;
   popUp?: Window | null;
+  authOrigin: string;
+  onClientAuthorizationCallback: ClientAuthorizationCallback;
 };

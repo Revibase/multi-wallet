@@ -150,7 +150,6 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
 
     try {
       const signedSigner = await mockAuthenticationResponse(
-        getSolanaRpc(),
         {
           transactionActionType: "transfer_intent",
           transactionAddress: TOKEN_2022_PROGRAM_ADDRESS.toString(),

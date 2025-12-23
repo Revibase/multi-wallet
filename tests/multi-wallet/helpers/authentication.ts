@@ -1,6 +1,7 @@
 import { p256 } from "@noble/curves/nist.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import {
+  bufferToBase64URLString,
   createTransactionChallenge,
   getDomainConfigAddress,
   getOriginIndex,
@@ -11,7 +12,6 @@ import {
 } from "@revibase/core";
 import { getBase58Decoder, getBase64Decoder } from "gill";
 import type { TestContext } from "../types.ts";
-import { bufferToBase64URLString } from "./crypto.ts";
 
 /**
  * Creates a mock authentication response for testing
@@ -51,7 +51,7 @@ export async function mockAuthenticationResponse(
 
   const clientDataJSON = JSON.stringify({
     type: "webauthn.get",
-    challenge: bufferToBase64URLString(challenge.buffer as ArrayBuffer),
+    challenge: bufferToBase64URLString(challenge),
     origin,
     crossOrigin,
   });
@@ -88,11 +88,9 @@ export async function mockAuthenticationResponse(
       type: "public-key",
       clientExtensionResults: {},
       response: {
-        authenticatorData: bufferToBase64URLString(
-          mockAuthenticatorData.buffer
-        ),
-        clientDataJSON: bufferToBase64URLString(clientDataJSONBytes.buffer),
-        signature: bufferToBase64URLString(signature.buffer),
+        authenticatorData: bufferToBase64URLString(mockAuthenticatorData),
+        clientDataJSON: bufferToBase64URLString(clientDataJSONBytes),
+        signature: bufferToBase64URLString(signature),
       },
     },
     transactionPayload: {

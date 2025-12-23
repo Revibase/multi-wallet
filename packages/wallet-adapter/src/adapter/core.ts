@@ -1,37 +1,30 @@
-import type { SettingsIndexWithAddressArgs } from "@revibase/core";
+import type {
+  ClientAuthorizationCallback,
+  SettingsIndexWithAddressArgs,
+} from "@revibase/core";
 import {
-  createPopUp,
-  fetchSettingsAccountData,
   fetchUserAccountData,
-  getFeePayer,
-  getSettingsFromIndex,
-  getSignedSecp256r1Key,
-  getSignedTransactionManager,
   getWalletAddressFromIndex,
-  prepareTransactionBundle,
-  prepareTransactionMessage,
-  prepareTransactionSync,
-  retrieveTransactionManager,
   Secp256r1Key,
   signAndSendBundledTransactions,
   signAndSendTransaction,
-  signMessageWithPasskey,
-  signTransactionWithPasskey,
 } from "@revibase/core";
-import { address, createNoopSigner } from "gill";
+import type { TransactionSigner } from "gill";
+import { buildTransaction } from "src/methods";
 import {
   buildTokenTransferInstruction,
   signAndSendTokenTransfer,
 } from "src/methods/tokenTransfer";
-import {
-  createSignInMessageText,
-  estimateJitoTips,
-  estimateTransactionSizeExceedLimit,
-  simulateSecp256r1Signer,
-} from "../utils";
+import { signMessageWithPasskey } from "src/utils";
+import { REVIBASE_API_URL, REVIBASE_AUTH_URL } from "src/utils/consts";
+import { createSignInMessageText, getRandomPayer } from "src/utils/internal";
 import type { Revibase, RevibaseEvent } from "./window";
 
-export function createRevibaseAdapter(): Revibase {
+export function createRevibaseAdapter(
+  onClientAuthorizationCallback: ClientAuthorizationCallback,
+  feePayer?: TransactionSigner,
+  authOrigin?: string
+): Revibase {
   // 👇 Event listener map
   const listeners: {
     [E in keyof RevibaseEvent]?: Array<{ fn: RevibaseEvent[E]; ctx?: any }>;
@@ -116,149 +109,50 @@ export function createRevibaseAdapter(): Revibase {
     signMessage: async function (input) {
       return await signMessageWithPasskey({
         signer: this.member ?? undefined,
+        onClientAuthorizationCallback,
         message: input,
+        authOrigin: authOrigin ?? REVIBASE_AUTH_URL,
       });
     },
     buildTokenTransfer: async function (input) {
       if (!this.member || !this.settingsIndexWithAddress || !this.publicKey) {
         throw new Error("Wallet is not connected");
       }
-      return buildTokenTransferInstruction({ signer: this.member, ...input });
+      const payer = feePayer ?? (await getRandomPayer(REVIBASE_API_URL));
+      return buildTokenTransferInstruction({
+        signer: this.member,
+        payer,
+        onClientAuthorizationCallback,
+        ...input,
+        authOrigin,
+      });
     },
     signAndSendTokenTransfer: async function (input) {
       if (!this.member || !this.settingsIndexWithAddress || !this.publicKey) {
         throw new Error("Wallet is not connected");
       }
-      return signAndSendTokenTransfer({ signer: this.member, ...input });
+      const payer = feePayer ?? (await getRandomPayer(REVIBASE_API_URL));
+      return signAndSendTokenTransfer({
+        signer: this.member,
+        onClientAuthorizationCallback,
+        payer,
+        ...input,
+        authOrigin,
+      });
     },
     buildTransaction: async function (input) {
       if (!this.member || !this.settingsIndexWithAddress || !this.publicKey) {
         throw new Error("Wallet is not connected");
       }
-      // open popup first so that browser won't prompt user for permission
-      const popUp = createPopUp();
-      let {
-        addressesByLookupTableAddress,
-        instructions,
-        additionalSigners,
-        cachedAccounts = new Map(),
-      } = input;
-
-      const [settingsData, settings, payer, transactionMessageBytes] =
-        await Promise.all([
-          fetchSettingsAccountData(
-            this.settingsIndexWithAddress.index,
-            this.settingsIndexWithAddress.settingsAddressTreeIndex,
-            cachedAccounts
-          ),
-          getSettingsFromIndex(this.settingsIndexWithAddress.index),
-          getFeePayer(),
-          prepareTransactionMessage({
-            payer: address(this.publicKey),
-            instructions,
-            addressesByLookupTableAddress,
-          }),
-        ]);
-      const signer = this.member;
-
-      const { transactionManagerAddress, userAddressTreeIndex } =
-        await retrieveTransactionManager(
-          signer,
-          this.settingsIndexWithAddress.index,
-          this.settingsIndexWithAddress.settingsAddressTreeIndex,
-          cachedAccounts
-        );
-
-      const useBundle = await estimateTransactionSizeExceedLimit({
-        signers: [
-          simulateSecp256r1Signer(),
-          ...(additionalSigners ?? []),
-          ...(transactionManagerAddress
-            ? [createNoopSigner(transactionManagerAddress)]
-            : []),
-        ],
-        compressed: settingsData.isCompressed,
+      const payer = feePayer ?? (await getRandomPayer(REVIBASE_API_URL));
+      return buildTransaction({
+        signer: this.member,
+        settingsIndexWithAddress: this.settingsIndexWithAddress,
+        onClientAuthorizationCallback,
         payer,
-        index: this.settingsIndexWithAddress.index,
-        settingsAddressTreeIndex:
-          this.settingsIndexWithAddress.settingsAddressTreeIndex,
-        transactionMessageBytes,
-        addressesByLookupTableAddress,
-        cachedAccounts,
+        ...input,
+        authOrigin,
       });
-      if (useBundle) {
-        const [authResponse, jitoBundlesTipAmount] = await Promise.all([
-          signTransactionWithPasskey({
-            signer,
-            transactionActionType: transactionManagerAddress
-              ? "execute"
-              : "create_with_preauthorized_execution",
-            transactionAddress: settings,
-            transactionMessageBytes: new Uint8Array(transactionMessageBytes),
-            popUp,
-          }),
-          estimateJitoTips(),
-        ]);
-        const [transactionManagerSigner, signedSigner] = await Promise.all([
-          getSignedTransactionManager({
-            authResponses: [authResponse],
-            transactionMessageBytes,
-            transactionManagerAddress,
-            userAddressTreeIndex,
-          }),
-          getSignedSecp256r1Key(authResponse),
-        ]);
-
-        return await prepareTransactionBundle({
-          compressed: settingsData.isCompressed,
-          index: this.settingsIndexWithAddress.index,
-          settingsAddressTreeIndex:
-            this.settingsIndexWithAddress.settingsAddressTreeIndex,
-          transactionMessageBytes,
-          creator: transactionManagerSigner ?? signedSigner,
-          executor: transactionManagerSigner ? signedSigner : undefined,
-          jitoBundlesTipAmount,
-          payer,
-          additionalSigners,
-          addressesByLookupTableAddress,
-          cachedAccounts,
-        });
-      } else {
-        const authResponse = await signTransactionWithPasskey({
-          signer,
-          transactionActionType: "sync",
-          transactionAddress: settings.toString(),
-          transactionMessageBytes: new Uint8Array(transactionMessageBytes),
-          popUp,
-        });
-        const [transactionManagerSigner, signedSigner] = await Promise.all([
-          getSignedTransactionManager({
-            authResponses: [authResponse],
-            transactionMessageBytes: new Uint8Array(transactionMessageBytes),
-            transactionManagerAddress,
-            userAddressTreeIndex,
-          }),
-          getSignedSecp256r1Key(authResponse),
-        ]);
-
-        return [
-          await prepareTransactionSync({
-            compressed: settingsData.isCompressed,
-            signers: [
-              signedSigner,
-              ...(additionalSigners ?? []),
-              ...(transactionManagerSigner ? [transactionManagerSigner] : []),
-            ],
-            payer,
-            transactionMessageBytes,
-            index: this.settingsIndexWithAddress.index,
-            settingsAddressTreeIndex:
-              this.settingsIndexWithAddress.settingsAddressTreeIndex,
-            addressesByLookupTableAddress,
-            cachedAccounts,
-          }),
-        ];
-      }
     },
     signAndSendTransaction: async function (input) {
       const transactions = await this.buildTransaction(input);

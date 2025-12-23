@@ -1,23 +1,23 @@
 import type {
+  ClientAuthorizationCallback,
   SettingsIndexWithAddressArgs,
-  TransactionDetails,
 } from "@revibase/core";
 import {
   fetchSettingsAccountData,
   fetchUserAccountData,
-  getFeePayer,
   getSignedSecp256r1Key,
   getSignedTransactionManager,
   nativeTransferIntent,
   retrieveTransactionManager,
   Secp256r1Key,
   signAndSendTransaction,
-  signTransactionWithPasskey,
   tokenTransferIntent,
 } from "@revibase/core";
-import type { AddressesByLookupTableAddress } from "gill";
+import type { AddressesByLookupTableAddress, TransactionSigner } from "gill";
 import { getAddressEncoder, getU64Encoder, type Address } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
+import { signTransactionWithPasskey } from "src/utils";
+import { REVIBASE_AUTH_URL } from "src/utils/consts";
 
 /**
  *
@@ -27,9 +27,12 @@ import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 export async function signAndSendTokenTransfer(input: {
   amount: number | bigint;
   destination: Address;
+  payer: TransactionSigner;
+  onClientAuthorizationCallback: ClientAuthorizationCallback;
   createAtaIfNeeded?: boolean;
   mint?: Address;
   tokenProgram?: Address;
+  authOrigin?: string;
   cachedAccounts?: Map<string, any>;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   signer?: string | undefined;
@@ -44,9 +47,12 @@ export async function signAndSendTokenTransfer(input: {
  * @param mint If no mint is provided, Native SOL will be used for the transfer
  * @returns
  */
-export async function buildTokenTransferInstruction(input: {
+export const buildTokenTransferInstruction = async (input: {
   amount: number | bigint;
   destination: Address;
+  payer: TransactionSigner;
+  onClientAuthorizationCallback: ClientAuthorizationCallback;
+  authOrigin?: string;
   createAtaIfNeeded?: boolean;
   mint?: Address;
   tokenProgram?: Address;
@@ -54,16 +60,19 @@ export async function buildTokenTransferInstruction(input: {
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   signer?: string | undefined;
   popUp?: Window | null | undefined;
-}): Promise<TransactionDetails> {
+}) => {
   const {
     amount,
     destination,
     mint,
+    payer,
     addressesByLookupTableAddress,
     tokenProgram = TOKEN_PROGRAM_ADDRESS,
     cachedAccounts = new Map<string, any>(),
     signer,
+    authOrigin = REVIBASE_AUTH_URL,
     popUp,
+    onClientAuthorizationCallback,
     createAtaIfNeeded = true,
   } = input;
   const authResponse = await signTransactionWithPasskey({
@@ -76,6 +85,8 @@ export async function buildTokenTransferInstruction(input: {
     ]),
     signer,
     popUp,
+    onClientAuthorizationCallback,
+    authOrigin,
   });
 
   let settingsIndexWithAddress: SettingsIndexWithAddressArgs;
@@ -94,12 +105,10 @@ export async function buildTokenTransferInstruction(input: {
       authResponse.additionalInfo.settingsIndexWithAddress;
   }
   const [
-    payer,
     settingsData,
     signedSigner,
     { transactionManagerAddress, userAddressTreeIndex },
   ] = await Promise.all([
-    getFeePayer(),
     fetchSettingsAccountData(
       settingsIndexWithAddress.index,
       settingsIndexWithAddress.settingsAddressTreeIndex,
@@ -153,4 +162,4 @@ export async function buildTokenTransferInstruction(input: {
       });
 
   return { instructions, payer, addressesByLookupTableAddress };
-}
+};

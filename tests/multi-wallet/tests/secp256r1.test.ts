@@ -136,7 +136,6 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
 
     const settings = await getSettingsFromIndex(globalCounter.data.index);
     const signedSigner = await mockAuthenticationResponse(
-      getSolanaRpc(),
       {
         transactionActionType: "add_new_member",
         transactionAddress: settings.toString(),
