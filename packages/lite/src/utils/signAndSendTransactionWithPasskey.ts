@@ -1,15 +1,17 @@
+import type {
+  CompleteTransactionRequest,
+  StartTransactionRequest,
+} from "@revibase/core";
 import {
   bufferToBase64URLString,
   type BasePayload,
-  type ClientAuthorizationCompleteRequest,
-  type ClientAuthorizationStartRequest,
-  type TransactionAuthenticationResponse,
   type TransactionPayload,
 } from "@revibase/core";
 import { createPopUp } from "./helper";
 import { openAuthUrl } from "./internal";
+import type { ClientAuthorizationCallback } from "./types";
 
-export async function signTransactionWithPasskey({
+export async function signAndSendTransactionWithPasskey({
   transactionActionType,
   transactionAddress,
   transactionMessageBytes,
@@ -18,7 +20,9 @@ export async function signTransactionWithPasskey({
   authOrigin,
   onClientAuthorizationCallback,
 }: TransactionPayload &
-  BasePayload): Promise<TransactionAuthenticationResponse> {
+  BasePayload & {
+    onClientAuthorizationCallback: ClientAuthorizationCallback;
+  }) {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }
@@ -26,7 +30,7 @@ export async function signTransactionWithPasskey({
   const redirectOrigin = window.origin;
   const authUrl = `${authOrigin}?redirectOrigin=${redirectOrigin}`;
 
-  const payload: ClientAuthorizationStartRequest = {
+  const payload: StartTransactionRequest = {
     phase: "start",
     data: {
       type: "transaction" as const,
@@ -42,7 +46,7 @@ export async function signTransactionWithPasskey({
     signer,
   };
 
-  const [popupWindow, initialSignature] = await Promise.all([
+  const [popupWindow, { signature }] = await Promise.all([
     Promise.resolve(popUp ?? createPopUp(authUrl)),
     onClientAuthorizationCallback(payload),
   ]);
@@ -50,21 +54,13 @@ export async function signTransactionWithPasskey({
   const response = (await openAuthUrl({
     authUrl,
     payload,
-    signature: initialSignature,
+    signature,
     popUp: popupWindow,
-  })) as ClientAuthorizationCompleteRequest;
+  })) as CompleteTransactionRequest;
 
   if (response.data.type !== "transaction") {
     throw new Error("Expected Transaction Response");
   }
 
-  const finalSignature = await onClientAuthorizationCallback(response);
-
-  return {
-    ...response.data.payload,
-    clientSignature: {
-      ...response.data.payload.clientSignature,
-      signature: finalSignature,
-    },
-  };
+  return await onClientAuthorizationCallback(response);
 }

@@ -46,43 +46,46 @@ export type TransactionPayloadWithBase64MessageBytes = {
   transactionMessageBytes: string;
 };
 
-export type ClientAuthorizationStartRequest = {
+export type StartTransactionRequest = {
   phase: "start";
-  data:
-    | {
-        type: "transaction";
-        payload: TransactionPayloadWithBase64MessageBytes;
-      }
-    | { id?: string; type: "message"; payload: string };
   redirectOrigin: string;
   signer?: string;
+  data: {
+    type: "transaction";
+    payload: TransactionPayloadWithBase64MessageBytes;
+  };
 };
 
-export type ClientAuthorizationCompleteRequest = {
+export type StartMessageRequest = {
+  phase: "start";
+  redirectOrigin: string;
+  signer?: string;
+  data: {
+    type: "message";
+    payload?: string;
+  };
+};
+
+export type CompleteTransactionRequest = {
   phase: "complete";
-  data:
-    | {
-        type: "transaction";
-        payload: Omit<TransactionAuthenticationResponse, "clientSignature"> & {
-          clientSignature: { clientOrigin: string };
-        };
-      }
-    | {
-        id?: string;
-        message: string;
-        type: "message";
-        payload: Omit<MessageAuthenticationResponse, "clientSignature"> & {
-          clientSignature: { clientOrigin: string };
-        };
-      };
+  data: {
+    type: "transaction";
+    payload: Omit<TransactionAuthenticationResponse, "clientSignature"> & {
+      clientSignature: { clientOrigin: string };
+    };
+  };
 };
 
-export type ClientAuthorizationCallback = {
-  (
-    request:
-      | ClientAuthorizationStartRequest
-      | ClientAuthorizationCompleteRequest
-  ): Promise<string>;
+export type CompleteMessageRequest = {
+  phase: "complete";
+  data: {
+    type: "message";
+    payload: Omit<MessageAuthenticationResponse, "clientSignature"> & {
+      clientSignature: { clientOrigin: string };
+      id?: string;
+      message: string;
+    };
+  };
 };
 
 export type TransactionActionType =
@@ -105,13 +108,11 @@ export type TransactionPayload = {
 };
 
 export type MessagePayload = {
-  message: string;
-  id?: string;
+  message?: string;
 };
 
 export type BasePayload = {
   signer?: string;
   popUp?: Window | null;
   authOrigin: string;
-  onClientAuthorizationCallback: ClientAuthorizationCallback;
 };

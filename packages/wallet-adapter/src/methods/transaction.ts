@@ -8,7 +8,6 @@ import {
   prepareTransactionMessage,
   prepareTransactionSync,
   retrieveTransactionManager,
-  type ClientAuthorizationCallback,
   type SettingsIndexWithAddressArgs,
 } from "@revibase/core";
 import {
@@ -24,6 +23,7 @@ import {
   estimateTransactionSizeExceedLimit,
   simulateSecp256r1Signer,
 } from "src/utils/internal";
+import type { ClientAuthorizationCallback } from "src/utils/types";
 
 export const buildTransaction = async (input: {
   instructions: Instruction[];
@@ -65,12 +65,7 @@ export const buildTransaction = async (input: {
   ]);
 
   const { transactionManagerAddress, userAddressTreeIndex } =
-    await retrieveTransactionManager(
-      signer,
-      settingsIndexWithAddress.index,
-      settingsIndexWithAddress.settingsAddressTreeIndex,
-      cachedAccounts
-    );
+    retrieveTransactionManager(signer, settingsData);
 
   const useBundle = await estimateTransactionSizeExceedLimit({
     signers: [

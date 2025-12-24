@@ -1,21 +1,18 @@
-import {
-  initialize,
-  type ClientAuthorizationCallback,
-  type JitoTipsConfig,
-} from "@revibase/core";
+import { initialize, type JitoTipsConfig } from "@revibase/core";
 import { registerWallet } from "@wallet-standard/core";
 import type { TransactionSigner } from "gill";
+import type { ClientAuthorizationCallback } from "../utils/types";
 import { createRevibaseAdapter } from "./core";
 import { RevibaseWallet } from "./wallet";
 
 interface InitializeWalletArgs {
   rpcEndpoint: string;
-  onClientAuthorizationCallback: ClientAuthorizationCallback;
-  authOrigin?: string;
-  feePayer?: TransactionSigner;
   proverEndpoint?: string;
   compressionApiEndpoint?: string;
   jitoTipsConfig?: JitoTipsConfig;
+  onClientAuthorizationCallback: ClientAuthorizationCallback;
+  authOrigin?: string;
+  feePayer?: TransactionSigner;
 }
 
 export function initializeWallet(input: InitializeWalletArgs) {

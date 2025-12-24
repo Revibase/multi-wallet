@@ -22,7 +22,11 @@ import {
   getSetComputeUnitLimitInstruction,
   getSetComputeUnitPriceInstruction,
 } from "gill/programs";
-import { UserRole, type MemberKey } from "../../generated";
+import {
+  UserRole,
+  type CompressedSettingsData,
+  type MemberKey,
+} from "../../generated";
 import {
   KeyType,
   Permission,
@@ -30,7 +34,7 @@ import {
   type TransactionAuthDetails,
   type TransactionDetails,
 } from "../../types";
-import { fetchSettingsAccountData, fetchUserAccountData } from "../compressed";
+import { fetchUserAccountData } from "../compressed";
 import {
   getComputeBudgetEstimate,
   getJitoTipsConfig,
@@ -237,17 +241,12 @@ export async function pollJitoBundleConfirmation(
   throw new Error("Failed to get bundle status after retries.");
 }
 
-export async function retrieveTransactionManager(
+export function retrieveTransactionManager(
   signer: string,
-  index: number | bigint,
-  settingsAddressTreeIndex?: number,
-  cachedAccounts?: Map<string, any>
+  settingsData: CompressedSettingsData & {
+    isCompressed: boolean;
+  }
 ) {
-  const settingsData = await fetchSettingsAccountData(
-    index,
-    settingsAddressTreeIndex,
-    cachedAccounts
-  );
   if (settingsData.threshold > 1) {
     throw new Error(
       "Multi-signature transactions with threshold > 1 are not supported yet."

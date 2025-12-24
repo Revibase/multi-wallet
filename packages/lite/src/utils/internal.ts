@@ -1,23 +1,19 @@
-import type {
-  CompleteMessageRequest,
-  CompleteTransactionRequest,
-  SettingsIndexWithAddressArgs,
-  StartMessageRequest,
-  StartTransactionRequest,
-} from "@revibase/core";
 import {
-  bufferToBase64URLString,
   fetchUserAccountData,
   getJitoTipsConfig,
-  prepareTransactionSync,
   Secp256r1Key,
-  SignedSecp256r1Key,
+  type CompleteMessageRequest,
+  type CompleteTransactionRequest,
+  type SettingsIndexWithAddressArgs,
+  type StartMessageRequest,
+  type StartTransactionRequest,
 } from "@revibase/core";
 import {
   address,
   appendTransactionMessageInstructions,
   compileTransaction,
   compressTransactionMessageUsingAddressLookupTables,
+  createNoopSigner,
   createTransactionMessage,
   getAddressDecoder,
   getBase58Encoder,
@@ -30,7 +26,7 @@ import {
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
   type AddressesByLookupTableAddress,
-  type ReadonlyUint8Array,
+  type Instruction,
   type SignatureBytes,
   type TransactionSigner,
 } from "gill";
@@ -170,120 +166,6 @@ export function createSignInMessageText(input: {
   return message;
 }
 
-export function simulateSecp256r1Signer() {
-  const randomPubkey = crypto.getRandomValues(new Uint8Array(33));
-  const authData = crypto.getRandomValues(new Uint8Array(37));
-  const clientDataJSON = crypto.getRandomValues(new Uint8Array(250));
-  const signature = crypto.getRandomValues(new Uint8Array(64));
-  const signer = new SignedSecp256r1Key(randomPubkey, {
-    originIndex: 0,
-    crossOrigin: false,
-    authData,
-    domainConfig: getAddressDecoder().decode(
-      crypto.getRandomValues(new Uint8Array(32))
-    ),
-    signature,
-    verifyArgs: {
-      slotHash: crypto.getRandomValues(new Uint8Array(32)),
-      slotNumber: BigInt(0),
-      truncatedClientDataJson: crypto.getRandomValues(new Uint8Array(100)),
-      clientDataJson: clientDataJSON,
-    },
-    clientAndDeviceHash: crypto.getRandomValues(new Uint8Array(32)),
-    authResponse: {
-      id: "",
-      rawId: "",
-      type: "public-key",
-      clientExtensionResults: {},
-      response: {
-        authenticatorData: bufferToBase64URLString(authData),
-        clientDataJSON: bufferToBase64URLString(clientDataJSON),
-        signature: bufferToBase64URLString(signature),
-      },
-    },
-  });
-  return signer;
-}
-
-export async function estimateTransactionSizeExceedLimit({
-  payer,
-  index,
-  settingsAddressTreeIndex,
-  transactionMessageBytes,
-  signers,
-  compressed,
-  addressesByLookupTableAddress,
-  cachedAccounts,
-}: {
-  payer: TransactionSigner;
-  transactionMessageBytes: ReadonlyUint8Array;
-  index: number | bigint;
-  settingsAddressTreeIndex?: number;
-  compressed: boolean;
-  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
-  signers: (TransactionSigner | SignedSecp256r1Key)[];
-  cachedAccounts?: Map<string, any>;
-}) {
-  const result = await prepareTransactionSync({
-    payer,
-    index,
-    settingsAddressTreeIndex,
-    transactionMessageBytes,
-    signers,
-    compressed,
-    simulateProof: true,
-    addressesByLookupTableAddress,
-    cachedAccounts,
-  });
-
-  const tx = pipe(
-    createTransactionMessage({ version: 0 }),
-    (tx) => appendTransactionMessageInstructions(result.instructions, tx),
-    (tx) => setTransactionMessageFeePayerSigner(result.payer, tx),
-    (tx) =>
-      setTransactionMessageLifetimeUsingBlockhash(
-        {
-          blockhash: getBlockhashDecoder().decode(
-            crypto.getRandomValues(new Uint8Array(32))
-          ),
-          lastValidBlockHeight: BigInt(Number.MAX_SAFE_INTEGER),
-        },
-        tx
-      ),
-    (tx) =>
-      result.addressesByLookupTableAddress
-        ? compressTransactionMessageUsingAddressLookupTables(
-            tx,
-            result.addressesByLookupTableAddress
-          )
-        : tx,
-    (tx) =>
-      prependTransactionMessageInstructions(
-        [
-          getSetComputeUnitLimitInstruction({
-            units: 800_000,
-          }),
-          getSetComputeUnitPriceInstruction({
-            microLamports: 1000,
-          }),
-        ],
-        tx
-      ),
-
-    (tx) => compileTransaction(tx)
-  );
-  const txSize = getBase64EncodedWireTransaction(tx).length;
-  console.log("Estimated Tx Size: ", txSize);
-  return txSize > 1644;
-}
-export async function estimateJitoTips(jitoTipsConfig = getJitoTipsConfig()) {
-  const { getJitoTipsUrl: estimateJitoTipsEndpoint, priority } = jitoTipsConfig;
-  const response = await fetch(estimateJitoTipsEndpoint);
-  const result = await response.json();
-  const tipAmount = Math.round(result[0][priority] * 10 ** 9) as number;
-  return tipAmount;
-}
-
 export async function getRandomPayer(
   payerEndpoint: string
 ): Promise<TransactionSigner> {
@@ -343,4 +225,63 @@ export async function getSettingsIndexWithAddress(
       request.data.payload.additionalInfo.settingsIndexWithAddress;
   }
   return settingsIndexWithAddress;
+}
+
+export function estimateTransactionSizeExceedLimit(
+  instructions: Instruction[],
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress
+) {
+  const tx = pipe(
+    createTransactionMessage({ version: 0 }),
+    (tx) => appendTransactionMessageInstructions(instructions, tx),
+    (tx) =>
+      setTransactionMessageFeePayerSigner(
+        createNoopSigner(
+          getAddressDecoder().decode(crypto.getRandomValues(new Uint8Array(32)))
+        ),
+        tx
+      ),
+    (tx) =>
+      setTransactionMessageLifetimeUsingBlockhash(
+        {
+          blockhash: getBlockhashDecoder().decode(
+            crypto.getRandomValues(new Uint8Array(32))
+          ),
+          lastValidBlockHeight: BigInt(Number.MAX_SAFE_INTEGER),
+        },
+        tx
+      ),
+    (tx) =>
+      addressesByLookupTableAddress
+        ? compressTransactionMessageUsingAddressLookupTables(
+            tx,
+            addressesByLookupTableAddress
+          )
+        : tx,
+    (tx) =>
+      prependTransactionMessageInstructions(
+        [
+          getSetComputeUnitLimitInstruction({
+            units: 800_000,
+          }),
+          getSetComputeUnitPriceInstruction({
+            microLamports: 1000,
+          }),
+        ],
+        tx
+      ),
+
+    (tx) => compileTransaction(tx)
+  );
+  const txSize = getBase64EncodedWireTransaction(tx).length;
+  console.log("Estimated Tx Size: ", txSize);
+  return txSize > 1644 * 0.7;
+}
+
+export async function estimateJitoTips(jitoTipsConfig = getJitoTipsConfig()) {
+  const { getJitoTipsUrl: estimateJitoTipsEndpoint, priority } = jitoTipsConfig;
+  const response = await fetch(estimateJitoTipsEndpoint);
+  const result = await response.json();
+  const tipAmount = Math.round(result[0][priority] * 10 ** 9) as number;
+  return tipAmount;
 }

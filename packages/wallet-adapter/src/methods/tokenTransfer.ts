@@ -1,7 +1,4 @@
-import type {
-  ClientAuthorizationCallback,
-  SettingsIndexWithAddressArgs,
-} from "@revibase/core";
+import type { SettingsIndexWithAddressArgs } from "@revibase/core";
 import {
   fetchSettingsAccountData,
   fetchUserAccountData,
@@ -18,6 +15,7 @@ import { getAddressEncoder, getU64Encoder, type Address } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 import { signTransactionWithPasskey } from "src/utils";
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
+import type { ClientAuthorizationCallback } from "src/utils/types";
 
 /**
  *
@@ -104,24 +102,17 @@ export const buildTokenTransferInstruction = async (input: {
     settingsIndexWithAddress =
       authResponse.additionalInfo.settingsIndexWithAddress;
   }
-  const [
-    settingsData,
-    signedSigner,
-    { transactionManagerAddress, userAddressTreeIndex },
-  ] = await Promise.all([
+  const [settingsData, signedSigner] = await Promise.all([
     fetchSettingsAccountData(
       settingsIndexWithAddress.index,
       settingsIndexWithAddress.settingsAddressTreeIndex,
       cachedAccounts
     ),
     getSignedSecp256r1Key(authResponse),
-    retrieveTransactionManager(
-      authResponse.signer,
-      settingsIndexWithAddress.index,
-      settingsIndexWithAddress.settingsAddressTreeIndex,
-      cachedAccounts
-    ),
   ]);
+
+  const { transactionManagerAddress, userAddressTreeIndex } =
+    retrieveTransactionManager(authResponse.signer, settingsData);
 
   const transactionManagerSigner = await getSignedTransactionManager({
     authResponses: [authResponse],

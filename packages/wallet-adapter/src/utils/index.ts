@@ -1,3 +1,3 @@
 export * from "./helper";
-export * from "./signMessage";
-export * from "./signTransaction";
+export * from "./signAndVerifyMessageWithPasskey";
+export * from "./signTransactionWithPasskey";

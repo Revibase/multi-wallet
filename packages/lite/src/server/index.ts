@@ -4,13 +4,13 @@ import type {
   StartMessageRequest,
   StartTransactionRequest,
 } from "@revibase/core";
-import {
-  createClientAuthorizationCompleteRequestChallenge,
-  createClientAuthorizationStartRequestChallenge,
-} from "@revibase/core";
-import { getBase58Decoder } from "gill";
+import { createClientAuthorizationStartRequestChallenge } from "@revibase/core";
+import { getBase58Decoder, type TransactionSigner } from "gill";
 import { createSignInMessageText } from "src/utils/internal";
+import { processBundledTransaction } from "./processBundledTransaction";
 import { processMessage } from "./processMessage";
+import { processSyncTransaction } from "./processSyncTransaction";
+import { processTokenTransfer } from "./processTokenTransfer";
 
 export async function processClientAuthCallback(
   request:
@@ -19,6 +19,7 @@ export async function processClientAuthCallback(
     | CompleteTransactionRequest
     | CompleteMessageRequest,
   privateKey: CryptoKey,
+  feePayer?: TransactionSigner,
   expectedOrigin?: string,
   expectedRPID?: string
 ) {
@@ -56,16 +57,34 @@ export async function processClientAuthCallback(
     );
     return { user };
   }
-  const challenge = createClientAuthorizationCompleteRequestChallenge(request);
-  const signature = getBase58Decoder().decode(
-    new Uint8Array(
-      await crypto.subtle.sign(
-        { name: "Ed25519" },
-        privateKey,
-        new Uint8Array(challenge)
-      )
-    )
-  );
 
-  return { signature };
+  const { transactionActionType } = request.data.payload.transactionPayload;
+
+  if (transactionActionType === "transfer_intent") {
+    const signature = await processTokenTransfer(
+      { phase: "complete", data: request.data },
+      privateKey,
+      feePayer
+    );
+    return { signature };
+  } else if (transactionActionType === "sync") {
+    const signature = await processSyncTransaction(
+      { phase: "complete", data: request.data },
+      privateKey,
+      feePayer
+    );
+    return { signature };
+  } else if (
+    transactionActionType === "execute" ||
+    transactionActionType === "create_with_preauthorized_execution"
+  ) {
+    const signature = await processBundledTransaction(
+      { phase: "complete", data: request.data },
+      privateKey,
+      feePayer
+    );
+    return { signature };
+  } else {
+    throw new Error("Transaction action type not allowed.");
+  }
 }

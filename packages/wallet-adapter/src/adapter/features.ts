@@ -1,7 +1,4 @@
-import type {
-  MessageAuthenticationResponse,
-  TransactionDetails,
-} from "@revibase/core";
+import type { TransactionDetails } from "@revibase/core";
 import type {
   Address,
   AddressesByLookupTableAddress,
@@ -109,9 +106,19 @@ export type RevibaseBuildTokenTransferTransactionFeature = {
 };
 
 export const RevibaseSignMessage = "revibase:SignMessage";
-export type RevibaseSignMessageMethod = (
-  message: string
-) => Promise<MessageAuthenticationResponse | null>;
+export type RevibaseSignMessageMethod = (message: string) => Promise<{
+  user: {
+    publicKey: string;
+    walletAddress: string;
+    settingsIndexWtihAddress: {
+      index: number | bigint;
+      settingsAddressTreeIndex: number;
+    };
+    hasTxManager: boolean;
+    username?: string | undefined;
+    image?: string | undefined;
+  } | null;
+}>;
 export type RevibaseSignMessageFeature = {
   /** Name of the feature. */
   readonly [RevibaseSignMessage]: {

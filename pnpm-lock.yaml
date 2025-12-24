@@ -110,6 +110,31 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
 
+  packages/lite:
+    dependencies:
+      '@revibase/core':
+        specifier: workspace:*
+        version: link:../core
+      '@simplewebauthn/server':
+        specifier: ^13.2.2
+        version: 13.2.2
+    devDependencies:
+      '@types/node':
+        specifier: 24.3.1
+        version: 24.3.1
+      prettier:
+        specifier: ^3.6.2
+        version: 3.6.2
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.0.1
+      tsup:
+        specifier: 8.5.0
+        version: 8.5.0(typescript@5.9.3)
+      typescript:
+        specifier: 5.9.3
+        version: 5.9.3
+
   packages/wallet-adapter:
     dependencies:
       '@revibase/core':

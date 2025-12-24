@@ -57,7 +57,14 @@ export function getComputeBudgetEstimate() {
 }
 
 export function getJitoTipsConfig() {
-  if (!state.jitoTipsConfig) throw new Error("Jito Bundle Config is not set.");
+  if (!state.jitoTipsConfig) {
+    return {
+      blockEngineUrl: "https://mainnet.block-engine.jito.wtf/api/v1",
+      getJitoTipsUrl: "https://bundles.jito.wtf/api/v1/bundles/tip_floor",
+      priority: "landed_tips_75th_percentile",
+    };
+  }
+
   return state.jitoTipsConfig;
 }
 

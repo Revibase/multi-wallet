@@ -14,8 +14,10 @@ import {
 import { fetchDomainConfig } from "../../generated";
 import {
   SignedSecp256r1Key,
-  type ClientAuthorizationCompleteRequest,
-  type ClientAuthorizationStartRequest,
+  type CompleteMessageRequest,
+  type CompleteTransactionRequest,
+  type StartMessageRequest,
+  type StartTransactionRequest,
   type TransactionAuthenticationResponse,
   type TransactionPayload,
   type TransactionPayloadWithBase64MessageBytes,
@@ -174,7 +176,7 @@ export function getClientAndDeviceHash(
 }
 
 export function createClientAuthorizationStartRequestChallenge(
-  payload: ClientAuthorizationStartRequest
+  payload: StartTransactionRequest | StartMessageRequest
 ) {
   return sha256(
     new Uint8Array(getUtf8Encoder().encode(JSON.stringify(payload)))
@@ -182,7 +184,7 @@ export function createClientAuthorizationStartRequestChallenge(
 }
 
 export function createClientAuthorizationCompleteRequestChallenge(
-  payload: ClientAuthorizationCompleteRequest
+  payload: CompleteTransactionRequest | CompleteMessageRequest
 ) {
   return getSecp256r1MessageHash(payload.data.payload.authResponse);
 }

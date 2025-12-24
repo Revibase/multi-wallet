@@ -1,11 +1,5 @@
-import type {
-  ClientAuthorizationCallback,
-  SettingsIndexWithAddressArgs,
-} from "@revibase/core";
+import type { SettingsIndexWithAddressArgs } from "@revibase/core";
 import {
-  fetchUserAccountData,
-  getWalletAddressFromIndex,
-  Secp256r1Key,
   signAndSendBundledTransactions,
   signAndSendTransaction,
 } from "@revibase/core";
@@ -15,9 +9,10 @@ import {
   buildTokenTransferInstruction,
   signAndSendTokenTransfer,
 } from "src/methods/tokenTransfer";
-import { signMessageWithPasskey } from "src/utils";
+import { signAndVerifyMessageWithPasskey } from "src/utils";
 import { REVIBASE_API_URL, REVIBASE_AUTH_URL } from "src/utils/consts";
 import { createSignInMessageText, getRandomPayer } from "src/utils/internal";
+import type { ClientAuthorizationCallback } from "src/utils/types";
 import type { Revibase, RevibaseEvent } from "./window";
 
 export function createRevibaseAdapter(
@@ -58,32 +53,13 @@ export function createRevibaseAdapter(
         domain: window.location.origin,
         nonce: crypto.randomUUID(),
       });
-      const authResponse = await this.signMessage(message);
-      if (!authResponse) {
+      const { user } = await this.signMessage(message);
+      if (!user) {
         throw Error("Failed to verify signed message");
       }
-      if (!authResponse.additionalInfo.settingsIndexWithAddress) {
-        const userAccountData = await fetchUserAccountData(
-          new Secp256r1Key(authResponse.signer)
-        );
-        if (userAccountData.delegatedTo.__option === "None") {
-          throw Error("User has no delegated wallet");
-        }
-        this.publicKey = (
-          await getWalletAddressFromIndex(
-            userAccountData.delegatedTo.value.index
-          )
-        ).toString();
-        this.settingsIndexWithAddress = userAccountData.delegatedTo.value;
-      } else {
-        this.publicKey = await getWalletAddressFromIndex(
-          authResponse.additionalInfo.settingsIndexWithAddress.index
-        );
-        this.settingsIndexWithAddress =
-          authResponse.additionalInfo.settingsIndexWithAddress;
-      }
-
-      this.member = authResponse.signer;
+      this.publicKey = user.walletAddress;
+      this.member = user.publicKey;
+      this.settingsIndexWithAddress = user.settingsIndexWtihAddress;
       window.localStorage.setItem(
         "Revibase:account",
         JSON.stringify(
@@ -107,7 +83,7 @@ export function createRevibaseAdapter(
       emit("disconnect");
     },
     signMessage: async function (input) {
-      return await signMessageWithPasskey({
+      return await signAndVerifyMessageWithPasskey({
         signer: this.member ?? undefined,
         onClientAuthorizationCallback,
         message: input,
