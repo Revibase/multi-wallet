@@ -62,8 +62,8 @@ impl<'info> EditUserDelegate<'info> {
         &self,
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
         user_account: &LightAccount<User>,
-        old_settings_key: &Option<Pubkey>,
-        new_settings_key: &Option<Pubkey>,
+        old_settings_delegate: &Option<SettingsIndexWithAddress>,
+        new_settings_delegate: &Option<SettingsIndexWithAddress>,
     ) -> Result<()> {
         let Self {
             signer,
@@ -112,8 +112,20 @@ impl<'info> EditUserDelegate<'info> {
             );
 
             let mut buffer = vec![];
-            buffer.extend_from_slice(old_settings_key.unwrap_or(crate::ID).as_ref());
-            buffer.extend_from_slice(new_settings_key.unwrap_or(crate::ID).as_ref());
+            buffer.extend_from_slice(
+                old_settings_delegate
+                    .as_ref()
+                    .map_or(0u128, |f| f.index)
+                    .to_le_bytes()
+                    .as_ref(),
+            );
+            buffer.extend_from_slice(
+                new_settings_delegate
+                    .as_ref()
+                    .map_or(0u128, |f| f.index)
+                    .to_le_bytes()
+                    .as_ref(),
+            );
             let message_hash = Sha256::hash(&buffer).unwrap();
 
             secp256r1_verify_data.verify_webauthn(
@@ -152,12 +164,18 @@ impl<'info> EditUserDelegate<'info> {
         )
         .map_err(ProgramError::from)?;
 
+        ctx.accounts.validate(
+            &secp256r1_verify_args,
+            &user_account,
+            &user_account.delegated_to,
+            &delegate_to,
+        )?;
+
         let mut cpi_accounts = LightSystemProgramCpi::new_cpi(
             LIGHT_CPI_SIGNER,
             ValidityProof(compressed_proof_args.proof),
         );
-        let mut old_setting_key = None;
-        let mut new_settings_key = None;
+
         if let Some(old_delegate) = &user_account.delegated_to {
             if let Some(old_settings) = &ctx.accounts.old_settings {
                 let settings_data = &mut old_settings.load_mut()?;
@@ -175,10 +193,6 @@ impl<'info> EditUserDelegate<'info> {
                     false,
                 )?;
                 settings_data.invariant()?;
-                old_setting_key = Some(Settings::get_settings_key_from_index(
-                    settings_data.index,
-                    settings_data.bump,
-                )?);
             } else if let Some(old_settings_mut_args) = old_settings_mut_args {
                 let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
                     &crate::ID,
@@ -203,10 +217,7 @@ impl<'info> EditUserDelegate<'info> {
                     user_account.user_address_tree_index,
                     false,
                 )?;
-                old_setting_key = Some(Settings::get_settings_key_from_index(
-                    settings_data.index,
-                    settings_data.bump,
-                )?);
+
                 settings_account.invariant()?;
                 cpi_accounts = cpi_accounts.with_light_account(settings_account)?;
             } else {
@@ -231,10 +242,6 @@ impl<'info> EditUserDelegate<'info> {
                     true,
                 )?;
                 settings_data.invariant()?;
-                new_settings_key = Some(Settings::get_settings_key_from_index(
-                    settings_data.index,
-                    settings_data.bump,
-                )?);
             } else if let Some(new_settings_mut_args) = new_settings_mut_args {
                 let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
                     &crate::ID,
@@ -259,23 +266,13 @@ impl<'info> EditUserDelegate<'info> {
                     user_account.user_address_tree_index,
                     true,
                 )?;
-                new_settings_key = Some(Settings::get_settings_key_from_index(
-                    settings_data.index,
-                    settings_data.bump,
-                )?);
+
                 settings_account.invariant()?;
                 cpi_accounts = cpi_accounts.with_light_account(settings_account)?;
             } else {
                 return err!(MultisigError::MissingAccount);
             }
         }
-
-        ctx.accounts.validate(
-            &secp256r1_verify_args,
-            &user_account,
-            &old_setting_key,
-            &new_settings_key,
-        )?;
 
         user_account.delegated_to = delegate_to;
 

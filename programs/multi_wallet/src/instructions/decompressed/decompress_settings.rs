@@ -52,7 +52,6 @@ impl<'info> DecompressSettingsAccount<'info> {
             settings,
             slot_hash_sysvar,
             instructions_sysvar,
-            payer,
             ..
         } = &self;
 
@@ -116,7 +115,7 @@ impl<'info> DecompressSettingsAccount<'info> {
                     instructions_sysvar,
                     ChallengeArgs {
                         account: settings.key(),
-                        message_hash: Sha256::hash(&payer.key().to_bytes()).unwrap(),
+                        message_hash: Sha256::hash(&settings.key().to_bytes()).unwrap(),
                         action_type: TransactionActionType::Decompress,
                     },
                     None,
