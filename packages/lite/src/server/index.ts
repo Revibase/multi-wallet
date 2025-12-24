@@ -76,29 +76,29 @@ export async function processClientAuthCallback(
   const { transactionActionType } = request.data.payload.transactionPayload;
 
   if (transactionActionType === "transfer_intent") {
-    const signature = await processTokenTransfer(
+    const txSig = await processTokenTransfer(
       { phase: "complete", data: request.data },
       privateKey,
       feePayer
     );
-    return { signature };
+    return { txSig };
   } else if (transactionActionType === "sync") {
-    const signature = await processSyncTransaction(
+    const txSig = await processSyncTransaction(
       { phase: "complete", data: request.data },
       privateKey,
       feePayer
     );
-    return { signature };
+    return { txSig };
   } else if (
     transactionActionType === "execute" ||
     transactionActionType === "create_with_preauthorized_execution"
   ) {
-    const signature = await processBundledTransaction(
+    const txSig = await processBundledTransaction(
       { phase: "complete", data: request.data },
       privateKey,
       feePayer
     );
-    return { signature };
+    return { txSig };
   } else {
     throw new Error("Transaction action type not allowed.");
   }
