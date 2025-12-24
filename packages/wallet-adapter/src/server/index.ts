@@ -25,16 +25,6 @@ export async function processClientAuthCallback(
   // Start Request
   if (request.phase === "start") {
     const { data } = request;
-    const challenge = createClientAuthorizationStartRequestChallenge(request);
-    const signature = getBase58Decoder().decode(
-      new Uint8Array(
-        await crypto.subtle.sign(
-          { name: "Ed25519" },
-          privateKey,
-          new Uint8Array(challenge)
-        )
-      )
-    );
     if (data.type === "message") {
       const message =
         data.payload ??
@@ -42,9 +32,33 @@ export async function processClientAuthCallback(
           domain: "your_website_name",
           nonce: crypto.randomUUID(),
         });
+      const challenge = createClientAuthorizationStartRequestChallenge({
+        ...request,
+        data: { ...data, payload: message },
+      });
+      const signature = getBase58Decoder().decode(
+        new Uint8Array(
+          await crypto.subtle.sign(
+            { name: "Ed25519" },
+            privateKey,
+            new Uint8Array(challenge)
+          )
+        )
+      );
       return { signature, message };
+    } else {
+      const challenge = createClientAuthorizationStartRequestChallenge(request);
+      const signature = getBase58Decoder().decode(
+        new Uint8Array(
+          await crypto.subtle.sign(
+            { name: "Ed25519" },
+            privateKey,
+            new Uint8Array(challenge)
+          )
+        )
+      );
+      return { signature };
     }
-    return { signature };
   }
 
   // Complete Request

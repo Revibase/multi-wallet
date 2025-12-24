@@ -1,5 +1,4 @@
-import type { Address } from "gill";
-import { getAddressEncoder, getU64Encoder } from "gill";
+import { address, getAddressEncoder, getU64Encoder } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
 import { signAndSendTransactionWithPasskey } from "src/utils/signAndSendTransactionWithPasskey";
@@ -8,10 +7,10 @@ import type { ClientAuthorizationCallback } from "src/utils/types";
 export async function transferTokens(
   onClientAuthorizationCallback: ClientAuthorizationCallback,
   amount: number | bigint,
-  destination: Address,
+  destination: string,
   signer?: string,
-  mint?: Address,
-  tokenProgram?: Address,
+  mint?: string,
+  tokenProgram?: string,
   authOrigin?: string,
   popUp?: Window | null | undefined
 ) {
@@ -22,8 +21,8 @@ export async function transferTokens(
       : SYSTEM_PROGRAM_ADDRESS,
     transactionMessageBytes: new Uint8Array([
       ...getU64Encoder().encode(amount),
-      ...getAddressEncoder().encode(destination),
-      ...getAddressEncoder().encode(mint ?? SYSTEM_PROGRAM_ADDRESS),
+      ...getAddressEncoder().encode(address(destination)),
+      ...getAddressEncoder().encode(address(mint ?? SYSTEM_PROGRAM_ADDRESS)),
     ]),
     signer,
     popUp,

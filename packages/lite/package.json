@@ -1,6 +1,6 @@
 {
   "name": "@revibase/lite",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "scripts": {
     "build": "rimraf dist & tsup",
     "clean": "rimraf dist",
