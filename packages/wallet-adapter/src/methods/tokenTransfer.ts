@@ -13,8 +13,9 @@ import {
 import type { AddressesByLookupTableAddress, TransactionSigner } from "gill";
 import { getAddressEncoder, getU64Encoder, type Address } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
-import { signTransactionWithPasskey } from "src/utils";
+
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
+import { signTransactionWithPasskey } from "src/utils/signTransactionWithPasskey";
 import type { ClientAuthorizationCallback } from "src/utils/types";
 
 /**

@@ -10,20 +10,12 @@ import {
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
 import { estimateTransactionSizeExceedLimit } from "src/utils/internal";
 import { signAndSendTransactionWithPasskey } from "src/utils/signAndSendTransactionWithPasskey";
-import type { ClientAuthorizationCallback } from "src/utils/types";
+import type { ClientAuthorizationCallback, User } from "src/utils/types";
 
 export async function executeTransaction(
   onClientAuthorizationCallback: ClientAuthorizationCallback,
   instructions: Instruction[],
-  signer: {
-    publicKey: string;
-    walletAddress: string;
-    settingsIndexWtihAddress: {
-      index: number | bigint;
-      settingsAddressTreeIndex: number;
-    };
-    hasTxManager: boolean;
-  },
+  signer: User,
   addressesByLookupTableAddress?: AddressesByLookupTableAddress,
   authOrigin?: string,
   popUp?: Window | null | undefined
@@ -38,7 +30,7 @@ export async function executeTransaction(
     addressesByLookupTableAddress
   );
   const settings = await getSettingsFromIndex(
-    signer.settingsIndexWtihAddress.index
+    signer.settingsIndexWithAddress.index
   );
   if (useBundle) {
     return signAndSendTransactionWithPasskey({

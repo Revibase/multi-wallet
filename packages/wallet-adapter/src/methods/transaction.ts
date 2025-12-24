@@ -16,13 +16,14 @@ import {
   type Instruction,
   type TransactionSigner,
 } from "gill";
-import { createPopUp, signTransactionWithPasskey } from "src/utils";
+import { createPopUp } from "src/utils";
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
 import {
   estimateJitoTips,
   estimateTransactionSizeExceedLimit,
   simulateSecp256r1Signer,
 } from "src/utils/internal";
+import { signTransactionWithPasskey } from "src/utils/signTransactionWithPasskey";
 import type { ClientAuthorizationCallback } from "src/utils/types";
 
 export const buildTransaction = async (input: {

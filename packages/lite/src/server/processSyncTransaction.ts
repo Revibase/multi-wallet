@@ -11,10 +11,8 @@ import {
 } from "@revibase/core";
 import { getBase58Decoder, type TransactionSigner } from "gill";
 import { REVIBASE_API_URL } from "src/utils/consts";
-import {
-  getRandomPayer,
-  getSettingsIndexWithAddress,
-} from "src/utils/internal";
+import { getRandomPayer } from "src/utils/helper";
+import { getSettingsIndexWithAddress } from "src/utils/internal";
 
 export async function processSyncTransaction(
   request: CompleteTransactionRequest,

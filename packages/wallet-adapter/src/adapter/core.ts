@@ -9,9 +9,10 @@ import {
   buildTokenTransferInstruction,
   signAndSendTokenTransfer,
 } from "src/methods/tokenTransfer";
-import { signAndVerifyMessageWithPasskey } from "src/utils";
 import { REVIBASE_API_URL, REVIBASE_AUTH_URL } from "src/utils/consts";
-import { createSignInMessageText, getRandomPayer } from "src/utils/internal";
+import { getRandomPayer } from "src/utils/helper";
+import { createSignInMessageText } from "src/utils/internal";
+import { signAndVerifyMessageWithPasskey } from "src/utils/signAndVerifyMessageWithPasskey";
 import type { ClientAuthorizationCallback } from "src/utils/types";
 import type { Revibase, RevibaseEvent } from "./window";
 
@@ -59,7 +60,7 @@ export function createRevibaseAdapter(
       }
       this.publicKey = user.walletAddress;
       this.member = user.publicKey;
-      this.settingsIndexWithAddress = user.settingsIndexWtihAddress;
+      this.settingsIndexWithAddress = user.settingsIndexWithAddress;
       window.localStorage.setItem(
         "Revibase:account",
         JSON.stringify(

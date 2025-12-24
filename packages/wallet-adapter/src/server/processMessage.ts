@@ -1,15 +1,15 @@
-import type { CompleteMessageRequest } from "@revibase/core";
+import type {
+  CompleteMessageRequest,
+  SettingsIndexWithAddressArgs,
+} from "@revibase/core";
 import {
   bufferToBase64URLString,
   convertPubkeyCompressedToCose,
   createMessageChallenge,
-  fetchSettingsAccountData,
   getWalletAddressFromIndex,
-  UserRole,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import { REVIBASE_AUTH_URL, REVIBASE_RP_ID } from "src/utils/consts";
-import { getSettingsIndexWithAddress } from "src/utils/internal";
 
 export async function processMessage(
   request: CompleteMessageRequest,
@@ -40,22 +40,19 @@ export async function processMessage(
   if (!verified) {
     throw new Error("Unable to verify message");
   }
-  const settingsIndexWithAddress = await getSettingsIndexWithAddress(request);
+  const settingsIndexWithAddress: SettingsIndexWithAddressArgs | undefined =
+    request.data.payload.additionalInfo.settingsIndexWithAddress;
+  if (!settingsIndexWithAddress) {
+    throw new Error("User does not have a delegated wallet address.");
+  }
   const walletAddress = await getWalletAddressFromIndex(
     settingsIndexWithAddress.index
   );
-  const settings = await fetchSettingsAccountData(
-    settingsIndexWithAddress.index,
-    settingsIndexWithAddress.settingsAddressTreeIndex
-  );
-  const hasTxManager = settings.members.some(
-    (x) => x.role === UserRole.TransactionManager
-  );
+
   const user = {
     publicKey: payload.signer,
     walletAddress,
     settingsIndexWithAddress,
-    hasTxManager,
     ...payload.additionalInfo,
   };
   return user;

@@ -5,6 +5,7 @@ import type {
   Instruction,
   TransactionSigner,
 } from "gill";
+import type { User } from "src/utils/types";
 
 export const RevibaseSignAndSendTransaction = "revibase:SignAndSendTransaction";
 export type RevibaseSignAndSendTransactionMethod = (input: {
@@ -107,17 +108,7 @@ export type RevibaseBuildTokenTransferTransactionFeature = {
 
 export const RevibaseSignMessage = "revibase:SignMessage";
 export type RevibaseSignMessageMethod = (message: string) => Promise<{
-  user: {
-    publicKey: string;
-    walletAddress: string;
-    settingsIndexWtihAddress: {
-      index: number | bigint;
-      settingsAddressTreeIndex: number;
-    };
-    hasTxManager: boolean;
-    username?: string | undefined;
-    image?: string | undefined;
-  } | null;
+  user: User | null;
 }>;
 export type RevibaseSignMessageFeature = {
   /** Name of the feature. */

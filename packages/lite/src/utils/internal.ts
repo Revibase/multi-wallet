@@ -9,26 +9,20 @@ import {
   type StartTransactionRequest,
 } from "@revibase/core";
 import {
-  address,
   appendTransactionMessageInstructions,
   compileTransaction,
   compressTransactionMessageUsingAddressLookupTables,
   createNoopSigner,
   createTransactionMessage,
   getAddressDecoder,
-  getBase58Encoder,
-  getBase64Decoder,
   getBase64EncodedWireTransaction,
   getBlockhashDecoder,
-  getTransactionEncoder,
   pipe,
   prependTransactionMessageInstructions,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
   type AddressesByLookupTableAddress,
   type Instruction,
-  type SignatureBytes,
-  type TransactionSigner,
 } from "gill";
 import {
   getSetComputeUnitLimitInstruction,
@@ -164,45 +158,6 @@ export function createSignInMessageText(input: {
   }
 
   return message;
-}
-
-export async function getRandomPayer(
-  payerEndpoint: string
-): Promise<TransactionSigner> {
-  const response = await fetch(`${payerEndpoint}/getRandomPayer`);
-  const { randomPayer } = (await response.json()) as { randomPayer: string };
-
-  return {
-    address: address(randomPayer),
-    async signTransactions(transactions) {
-      const payload = {
-        publicKey: randomPayer,
-        transactions: transactions.map((tx) =>
-          getBase64Decoder().decode(getTransactionEncoder().encode(tx))
-        ),
-      };
-
-      const response = await fetch(`${payerEndpoint}/sign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = (await response.json()) as
-        | { signatures: string[] }
-        | { error: string };
-
-      if ("error" in data) {
-        throw new Error(data.error);
-      }
-
-      return data.signatures.map((sig) => ({
-        [address(randomPayer)]: getBase58Encoder().encode(
-          sig
-        ) as SignatureBytes,
-      }));
-    },
-  };
 }
 
 export async function getSettingsIndexWithAddress(

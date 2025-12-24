@@ -1,37 +1,27 @@
 import type {
-  CompleteMessageRequest,
-  CompleteTransactionRequest,
-  SettingsIndexWithAddressArgs,
   StartMessageRequest,
   StartTransactionRequest,
 } from "@revibase/core";
 import {
   bufferToBase64URLString,
-  fetchUserAccountData,
   getJitoTipsConfig,
   prepareTransactionSync,
-  Secp256r1Key,
   SignedSecp256r1Key,
 } from "@revibase/core";
 import {
-  address,
   appendTransactionMessageInstructions,
   compileTransaction,
   compressTransactionMessageUsingAddressLookupTables,
   createTransactionMessage,
   getAddressDecoder,
-  getBase58Encoder,
-  getBase64Decoder,
   getBase64EncodedWireTransaction,
   getBlockhashDecoder,
-  getTransactionEncoder,
   pipe,
   prependTransactionMessageInstructions,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
   type AddressesByLookupTableAddress,
   type ReadonlyUint8Array,
-  type SignatureBytes,
   type TransactionSigner,
 } from "gill";
 import {
@@ -282,65 +272,4 @@ export async function estimateJitoTips(jitoTipsConfig = getJitoTipsConfig()) {
   const result = await response.json();
   const tipAmount = Math.round(result[0][priority] * 10 ** 9) as number;
   return tipAmount;
-}
-
-export async function getRandomPayer(
-  payerEndpoint: string
-): Promise<TransactionSigner> {
-  const response = await fetch(`${payerEndpoint}/getRandomPayer`);
-  const { randomPayer } = (await response.json()) as { randomPayer: string };
-
-  return {
-    address: address(randomPayer),
-    async signTransactions(transactions) {
-      const payload = {
-        publicKey: randomPayer,
-        transactions: transactions.map((tx) =>
-          getBase64Decoder().decode(getTransactionEncoder().encode(tx))
-        ),
-      };
-
-      const response = await fetch(`${payerEndpoint}/sign`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      const data = (await response.json()) as
-        | { signatures: string[] }
-        | { error: string };
-
-      if ("error" in data) {
-        throw new Error(data.error);
-      }
-
-      return data.signatures.map((sig) => ({
-        [address(randomPayer)]: getBase58Encoder().encode(
-          sig
-        ) as SignatureBytes,
-      }));
-    },
-  };
-}
-
-export async function getSettingsIndexWithAddress(
-  request: CompleteMessageRequest | CompleteTransactionRequest,
-  cachedAccounts?: Map<string, any>
-) {
-  let settingsIndexWithAddress: SettingsIndexWithAddressArgs;
-  if (!request.data.payload.additionalInfo.settingsIndexWithAddress) {
-    const userAccountData = await fetchUserAccountData(
-      new Secp256r1Key(request.data.payload.signer),
-      request.data.payload.userAddressTreeIndex,
-      cachedAccounts
-    );
-    if (userAccountData.delegatedTo.__option === "None") {
-      throw Error("User has no delegated wallet");
-    }
-    settingsIndexWithAddress = userAccountData.delegatedTo.value;
-  } else {
-    settingsIndexWithAddress =
-      request.data.payload.additionalInfo.settingsIndexWithAddress;
-  }
-  return settingsIndexWithAddress;
 }

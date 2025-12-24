@@ -11,9 +11,9 @@ import {
 } from "@revibase/core";
 import { getBase58Decoder, type TransactionSigner } from "gill";
 import { REVIBASE_API_URL } from "src/utils/consts";
+import { getRandomPayer } from "src/utils/helper";
 import {
   estimateJitoTips,
-  getRandomPayer,
   getSettingsIndexWithAddress,
 } from "src/utils/internal";
 
