@@ -20,7 +20,10 @@ import {
 import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
 import { REVIBASE_API_URL } from "src/utils/consts";
 import { getRandomPayer } from "src/utils/helper";
-import { getSettingsIndexWithAddress } from "src/utils/internal";
+import {
+  getAddressByLookUpTable,
+  getSettingsIndexWithAddress,
+} from "src/utils/internal";
 
 export async function processTokenTransfer(
   request: CompleteTransactionRequest,
@@ -112,5 +115,9 @@ export async function processTokenTransfer(
           cachedAccounts,
         });
 
-  return signAndSendTransaction({ instructions, payer });
+  return signAndSendTransaction({
+    instructions,
+    payer,
+    addressesByLookupTableAddress: getAddressByLookUpTable(),
+  });
 }

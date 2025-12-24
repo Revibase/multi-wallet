@@ -14,6 +14,7 @@ import { REVIBASE_API_URL } from "src/utils/consts";
 import { getRandomPayer } from "src/utils/helper";
 import {
   estimateJitoTips,
+  getAddressByLookUpTable,
   getSettingsIndexWithAddress,
 } from "src/utils/internal";
 
@@ -92,5 +93,12 @@ export async function processBundledTransaction(
     cachedAccounts,
   });
 
-  return signAndSendBundledTransactions(bundle);
+  return signAndSendBundledTransactions(
+    bundle.map((x) => ({
+      ...x,
+      addressesByLookupTableAddress: x.addressesByLookupTableAddress
+        ? { ...x.addressesByLookupTableAddress, ...getAddressByLookUpTable() }
+        : getAddressByLookUpTable(),
+    }))
+  );
 }

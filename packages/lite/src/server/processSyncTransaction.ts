@@ -12,7 +12,10 @@ import {
 import { getBase58Decoder, type TransactionSigner } from "gill";
 import { REVIBASE_API_URL } from "src/utils/consts";
 import { getRandomPayer } from "src/utils/helper";
-import { getSettingsIndexWithAddress } from "src/utils/internal";
+import {
+  getAddressByLookUpTable,
+  getSettingsIndexWithAddress,
+} from "src/utils/internal";
 
 export async function processSyncTransaction(
   request: CompleteTransactionRequest,
@@ -90,6 +93,8 @@ export async function processSyncTransaction(
   return signAndSendTransaction({
     instructions,
     payer,
-    addressesByLookupTableAddress,
+    addressesByLookupTableAddress: addressesByLookupTableAddress
+      ? { ...addressesByLookupTableAddress, ...getAddressByLookUpTable() }
+      : getAddressByLookUpTable(),
   });
 }
