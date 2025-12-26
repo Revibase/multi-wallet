@@ -13,10 +13,9 @@ import {
 import type { AddressesByLookupTableAddress, TransactionSigner } from "gill";
 import { getAddressEncoder, getU64Encoder, type Address } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
+import type { RevibaseProvider } from "src/provider";
 
-import { REVIBASE_AUTH_URL } from "src/utils/consts";
 import { signTransactionWithPasskey } from "src/utils/signTransactionWithPasskey";
-import type { ClientAuthorizationCallback } from "src/utils/types";
 
 /**
  *
@@ -27,15 +26,13 @@ export async function signAndSendTokenTransfer(input: {
   amount: number | bigint;
   destination: Address;
   payer: TransactionSigner;
-  onClientAuthorizationCallback: ClientAuthorizationCallback;
+  provider: RevibaseProvider;
   createAtaIfNeeded?: boolean;
   mint?: Address;
   tokenProgram?: Address;
-  authOrigin?: string;
   cachedAccounts?: Map<string, any>;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   signer?: string | undefined;
-  popUp?: Window | null | undefined;
 }): Promise<string> {
   const transactionDetails = await buildTokenTransferInstruction(input);
   return signAndSendTransaction(transactionDetails);
@@ -50,15 +47,13 @@ export const buildTokenTransferInstruction = async (input: {
   amount: number | bigint;
   destination: Address;
   payer: TransactionSigner;
-  onClientAuthorizationCallback: ClientAuthorizationCallback;
-  authOrigin?: string;
+  provider: RevibaseProvider;
   createAtaIfNeeded?: boolean;
   mint?: Address;
   tokenProgram?: Address;
   cachedAccounts?: Map<string, any>;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   signer?: string | undefined;
-  popUp?: Window | null | undefined;
 }) => {
   const {
     amount,
@@ -69,11 +64,10 @@ export const buildTokenTransferInstruction = async (input: {
     tokenProgram = TOKEN_PROGRAM_ADDRESS,
     cachedAccounts = new Map<string, any>(),
     signer,
-    authOrigin = REVIBASE_AUTH_URL,
-    popUp,
-    onClientAuthorizationCallback,
+    provider,
     createAtaIfNeeded = true,
   } = input;
+  provider.openBlankPopUp();
   const authResponse = await signTransactionWithPasskey({
     transactionActionType: "transfer_intent",
     transactionAddress: mint ? tokenProgram : SYSTEM_PROGRAM_ADDRESS,
@@ -83,9 +77,7 @@ export const buildTokenTransferInstruction = async (input: {
       ...getAddressEncoder().encode(mint ?? SYSTEM_PROGRAM_ADDRESS),
     ]),
     signer,
-    popUp,
-    onClientAuthorizationCallback,
-    authOrigin,
+    provider,
   });
 
   let settingsIndexWithAddress: SettingsIndexWithAddressArgs;

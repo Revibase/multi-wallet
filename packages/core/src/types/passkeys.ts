@@ -106,13 +106,3 @@ export type TransactionPayload = {
   transactionAddress: string;
   transactionMessageBytes: Uint8Array;
 };
-
-export type MessagePayload = {
-  message?: string;
-};
-
-export type BasePayload = {
-  signer?: string;
-  popUp?: Window | null;
-  authOrigin?: string;
-};

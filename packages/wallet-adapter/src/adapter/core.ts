@@ -9,17 +9,16 @@ import {
   buildTokenTransferInstruction,
   signAndSendTokenTransfer,
 } from "src/methods/tokenTransfer";
-import { REVIBASE_API_URL, REVIBASE_AUTH_URL } from "src/utils/consts";
+import type { RevibaseProvider } from "src/provider";
+import { REVIBASE_API_URL } from "src/utils/consts";
 import { getRandomPayer } from "src/utils/helper";
 import { createSignInMessageText } from "src/utils/internal";
 import { signAndVerifyMessageWithPasskey } from "src/utils/signAndVerifyMessageWithPasskey";
-import type { ClientAuthorizationCallback } from "src/utils/types";
 import type { Revibase, RevibaseEvent } from "./window";
 
 export function createRevibaseAdapter(
-  onClientAuthorizationCallback: ClientAuthorizationCallback,
-  feePayer?: TransactionSigner,
-  authOrigin?: string
+  provider: RevibaseProvider,
+  feePayer?: TransactionSigner
 ): Revibase {
   // 👇 Event listener map
   const listeners: {
@@ -86,9 +85,8 @@ export function createRevibaseAdapter(
     signMessage: async function (input) {
       return await signAndVerifyMessageWithPasskey({
         signer: this.member ?? undefined,
-        onClientAuthorizationCallback,
         message: input,
-        authOrigin: authOrigin ?? REVIBASE_AUTH_URL,
+        provider,
       });
     },
     buildTokenTransfer: async function (input) {
@@ -97,11 +95,10 @@ export function createRevibaseAdapter(
       }
       const payer = feePayer ?? (await getRandomPayer(REVIBASE_API_URL));
       return buildTokenTransferInstruction({
+        ...input,
         signer: this.member,
         payer,
-        onClientAuthorizationCallback,
-        ...input,
-        authOrigin,
+        provider,
       });
     },
     signAndSendTokenTransfer: async function (input) {
@@ -110,11 +107,10 @@ export function createRevibaseAdapter(
       }
       const payer = feePayer ?? (await getRandomPayer(REVIBASE_API_URL));
       return signAndSendTokenTransfer({
-        signer: this.member,
-        onClientAuthorizationCallback,
-        payer,
         ...input,
-        authOrigin,
+        signer: this.member,
+        payer,
+        provider,
       });
     },
     buildTransaction: async function (input) {
@@ -123,12 +119,11 @@ export function createRevibaseAdapter(
       }
       const payer = feePayer ?? (await getRandomPayer(REVIBASE_API_URL));
       return buildTransaction({
+        ...input,
         signer: this.member,
         settingsIndexWithAddress: this.settingsIndexWithAddress,
-        onClientAuthorizationCallback,
         payer,
-        ...input,
-        authOrigin,
+        provider,
       });
     },
     signAndSendTransaction: async function (input) {

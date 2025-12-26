@@ -1,70 +1,60 @@
 import type {
   CompleteTransactionRequest,
   StartTransactionRequest,
+  TransactionPayload,
 } from "@revibase/core";
 import {
   bufferToBase64URLString,
-  type BasePayload,
   type TransactionAuthenticationResponse,
-  type TransactionPayload,
 } from "@revibase/core";
-import { createPopUp } from "./helper";
-import { openAuthUrl } from "./internal";
-import type { ClientAuthorizationCallback } from "./types";
+import type { RevibaseProvider } from "src/provider";
 
 export async function signTransactionWithPasskey({
   transactionActionType,
   transactionAddress,
   transactionMessageBytes,
   signer,
-  popUp,
-  authOrigin,
-  onClientAuthorizationCallback,
-}: TransactionPayload &
-  BasePayload & {
-    onClientAuthorizationCallback: ClientAuthorizationCallback;
-  }): Promise<TransactionAuthenticationResponse> {
+  provider,
+}: {
+  transactionActionType: TransactionPayload["transactionActionType"];
+  transactionAddress: TransactionPayload["transactionAddress"];
+  transactionMessageBytes: TransactionPayload["transactionMessageBytes"];
+  signer?: string;
+  provider: RevibaseProvider;
+}): Promise<TransactionAuthenticationResponse> {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }
-
+  const transactionPayload = {
+    transactionActionType,
+    transactionAddress,
+    transactionMessageBytes: bufferToBase64URLString(transactionMessageBytes),
+  };
   const redirectOrigin = window.origin;
-  const authUrl = `${authOrigin}?redirectOrigin=${redirectOrigin}`;
 
   const payload: StartTransactionRequest = {
     phase: "start",
     data: {
       type: "transaction" as const,
-      payload: {
-        transactionActionType,
-        transactionAddress,
-        transactionMessageBytes: bufferToBase64URLString(
-          transactionMessageBytes
-        ),
-      },
+      payload: transactionPayload,
     },
     redirectOrigin,
     signer,
   };
-
-  const [popupWindow, { signature }] = await Promise.all([
-    Promise.resolve(popUp ?? createPopUp(authUrl)),
-    onClientAuthorizationCallback(payload),
-  ]);
-
-  const response = (await openAuthUrl({
-    authUrl,
+  const { signature } = await provider.onClientAuthorizationCallback(payload);
+  const response = (await provider.sendPayloadToProvider({
     payload,
     signature,
-    popUp: popupWindow,
   })) as CompleteTransactionRequest;
 
-  if (response.data.type !== "transaction") {
-    throw new Error("Expected Transaction Response");
-  }
-
   const { signature: finalSignature } =
-    await onClientAuthorizationCallback(response);
+    await provider.onClientAuthorizationCallback({
+      ...response,
+      data: {
+        ...response.data,
+        payload: { ...response.data.payload, transactionPayload },
+      },
+    });
 
   return {
     ...response.data.payload,

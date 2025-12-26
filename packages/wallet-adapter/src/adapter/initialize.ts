@@ -1,6 +1,7 @@
 import { initialize, type JitoTipsConfig } from "@revibase/core";
 import { registerWallet } from "@wallet-standard/core";
 import type { TransactionSigner } from "gill";
+import { RevibaseProvider } from "src/provider";
 import type { ClientAuthorizationCallback } from "../utils/types";
 import { createRevibaseAdapter } from "./core";
 import { RevibaseWallet } from "./wallet";
@@ -11,7 +12,7 @@ interface InitializeWalletArgs {
   compressionApiEndpoint?: string;
   jitoTipsConfig?: JitoTipsConfig;
   onClientAuthorizationCallback: ClientAuthorizationCallback;
-  authOrigin?: string;
+  providerOrigin?: string;
   feePayer?: TransactionSigner;
 }
 
@@ -22,15 +23,14 @@ export function initializeWallet(input: InitializeWalletArgs) {
     compressionApiEndpoint: input.compressionApiEndpoint,
     jitoTipsConfig: input.jitoTipsConfig,
   });
+
   if (typeof window !== "undefined") {
+    const provider = new RevibaseProvider({
+      onClientAuthorizationCallback: input.onClientAuthorizationCallback,
+      providerOrigin: input.providerOrigin,
+    });
     registerWallet(
-      new RevibaseWallet(
-        createRevibaseAdapter(
-          input.onClientAuthorizationCallback,
-          input.feePayer,
-          input.authOrigin
-        )
-      )
+      new RevibaseWallet(createRevibaseAdapter(provider, input.feePayer))
     );
   }
 }

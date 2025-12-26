@@ -16,41 +16,35 @@ import {
   type Instruction,
   type TransactionSigner,
 } from "gill";
-import { createPopUp } from "src/utils";
-import { REVIBASE_AUTH_URL } from "src/utils/consts";
+import type { RevibaseProvider } from "src/provider";
 import {
   estimateJitoTips,
   estimateTransactionSizeExceedLimit,
   simulateSecp256r1Signer,
 } from "src/utils/internal";
 import { signTransactionWithPasskey } from "src/utils/signTransactionWithPasskey";
-import type { ClientAuthorizationCallback } from "src/utils/types";
 
 export const buildTransaction = async (input: {
   instructions: Instruction[];
   signer: string;
   payer: TransactionSigner;
-  onClientAuthorizationCallback: ClientAuthorizationCallback;
-  authOrigin?: string;
   settingsIndexWithAddress: SettingsIndexWithAddressArgs;
+  provider: RevibaseProvider;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   additionalSigners?: TransactionSigner[];
   cachedAccounts?: Map<string, any>;
 }) => {
-  // open popup first so that browser won't prompt user for permission
-  const popUp = createPopUp();
   let {
     addressesByLookupTableAddress,
     instructions,
     payer,
-    onClientAuthorizationCallback,
     additionalSigners,
     signer,
     settingsIndexWithAddress,
-    authOrigin = REVIBASE_AUTH_URL,
+    provider,
     cachedAccounts = new Map(),
   } = input;
-
+  provider.openBlankPopUp();
   const [settingsData, settings, transactionMessageBytes] = await Promise.all([
     fetchSettingsAccountData(
       settingsIndexWithAddress.index,
@@ -93,9 +87,7 @@ export const buildTransaction = async (input: {
           : "create_with_preauthorized_execution",
         transactionAddress: settings,
         transactionMessageBytes: new Uint8Array(transactionMessageBytes),
-        popUp,
-        onClientAuthorizationCallback,
-        authOrigin,
+        provider,
       }),
       estimateJitoTips(),
     ]);
@@ -129,9 +121,7 @@ export const buildTransaction = async (input: {
       transactionActionType: "sync",
       transactionAddress: settings.toString(),
       transactionMessageBytes: new Uint8Array(transactionMessageBytes),
-      popUp,
-      onClientAuthorizationCallback,
-      authOrigin,
+      provider,
     });
     const [transactionManagerSigner, signedSigner] = await Promise.all([
       getSignedTransactionManager({
