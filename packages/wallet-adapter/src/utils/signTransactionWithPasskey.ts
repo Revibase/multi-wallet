@@ -58,6 +58,7 @@ export async function signTransactionWithPasskey({
 
   return {
     ...response.data.payload,
+    transactionPayload,
     clientSignature: {
       ...response.data.payload.clientSignature,
       signature: finalSignature,
