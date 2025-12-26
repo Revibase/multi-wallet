@@ -22,8 +22,6 @@ export type ClientAuthorizationCallback = {
     request: StartMessageRequest
   ): Promise<{ id?: string; message: string; signature: string }>;
   (request: StartTransactionRequest): Promise<{ signature: string }>;
-  (request: CompleteMessageRequest): Promise<{
-    user: User;
-  }>;
+  (request: CompleteMessageRequest): Promise<{ user: User }>;
   (request: CompleteTransactionRequest): Promise<{ txSig: string }>;
 };
