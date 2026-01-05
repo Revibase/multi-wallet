@@ -31,7 +31,6 @@ export async function processClientAuthCallback(
       const message =
         data.payload ??
         createSignInMessageText({
-          domain: "your_website_name",
           nonce: crypto.randomUUID(),
         });
       const challenge = createClientAuthorizationStartRequestChallenge({

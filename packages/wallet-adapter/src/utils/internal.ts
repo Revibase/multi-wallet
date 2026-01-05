@@ -26,10 +26,16 @@ import {
 } from "gill/programs";
 
 export function createSignInMessageText(input: {
-  domain: string;
+  domain?: string;
   nonce: string;
 }): string {
-  let message = `${input.domain} wants you to sign in with your account.`;
+  let message = "";
+
+  if (input.domain) {
+    message += `${input.domain} wants you to sign in with your account.`;
+  } else {
+    message += `Sign in with your account.`;
+  }
 
   const fields: string[] = [];
 

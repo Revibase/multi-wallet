@@ -6,6 +6,8 @@ import { bufferToBase64URLString } from "@revibase/core";
 import type { ClientAuthorizationCallback } from "src/utils";
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
 import {
+  CLOSE_POLL_GRACE_MS,
+  CONNECT_GRACE_MS,
   createPopUp,
   DEFAULT_TIMEOUT,
   HEARTBEAT_INTERVAL,
@@ -23,20 +25,22 @@ export class RevibaseProvider {
   private pending = new Map<string, Pending>();
   public onClientAuthorizationCallback: ClientAuthorizationCallback;
   private providerOrigin: string;
+  private providerLoadingUrl: string;
+  private providerFetchResultUrl: string;
   private popUp: Window | null;
 
   constructor(opts: Options) {
     this.onClientAuthorizationCallback = opts.onClientAuthorizationCallback;
     this.providerOrigin = opts.providerOrigin ?? REVIBASE_AUTH_URL;
+    this.providerLoadingUrl =
+      opts.providerLoadingUrl ?? `${this.providerOrigin}/loading`;
+    this.providerFetchResultUrl =
+      opts.providerFetchResultUrl ?? `${this.providerOrigin}/api/getResult`;
     this.popUp = null;
   }
 
-  /**
-   * Best practice: call this on a user gesture (click/tap) to avoid popup blockers.
-   * It opens about:blank now; navigation happens later.
-   */
   openBlankPopUp() {
-    this.popUp = createPopUp("about:blank");
+    this.popUp = createPopUp(this.providerLoadingUrl);
   }
 
   async sendPayloadToProvider({
@@ -95,8 +99,7 @@ export class RevibaseProvider {
   /**
    * Communicate with the popup using MessageChannel.
    * Fallback to polling if we never connect, or if popup closes and we need the result.
-   */
-  private openWebPopup(params: {
+   */ private openWebPopup(params: {
     startUrl: string;
     origin: string;
     rid: string;
@@ -114,12 +117,13 @@ export class RevibaseProvider {
     let connected = false;
     let closeHandled = false;
 
-    const lifecycleAbort = new AbortController();
-
+    let pollKickoff: ReturnType<typeof setTimeout> | null = null;
+    let pollInFlight: Promise<void> | null = null;
     let activePollAbort: AbortController | null = null;
 
+    let popupReady = false;
+
     const deadlineMs = Date.now() + timeoutMs;
-    let pollKickoff: ReturnType<typeof setTimeout> | null = null;
 
     const abortActivePoll = () => {
       try {
@@ -128,28 +132,28 @@ export class RevibaseProvider {
       activePollAbort = null;
     };
 
-    const cleanup = () => {
-      window.removeEventListener("message", onConnect);
-
-      abortActivePoll();
-
-      try {
-        lifecycleAbort.abort();
-      } catch {}
-
+    const clearKickoff = () => {
       if (pollKickoff) {
         clearTimeout(pollKickoff);
         pollKickoff = null;
       }
+    };
+
+    const cleanup = () => {
+      window.removeEventListener("message", onConnect);
+
+      clearKickoff();
+      abortActivePoll();
 
       try {
         port?.close();
       } catch {}
+      port = null;
 
       try {
         if (popup && !popup.closed) popup.close();
-        this.popUp = null;
       } catch {}
+      this.popUp = null;
 
       clearInterval(heartbeatId);
     };
@@ -174,54 +178,79 @@ export class RevibaseProvider {
 
     entry.cancel = fail;
 
-    // Open or reuse popup
-    if (!popup) {
-      popup = createPopUp(startUrl);
-    } else {
-      try {
-        if (popup.location.href !== startUrl) popup.location.replace(startUrl);
-      } catch {
-        popup.location.replace(startUrl);
+    const ensurePopupOpenedAndNavigated = (): Window => {
+      // open or reuse popup
+      if (!popup) {
+        popup = createPopUp(startUrl);
+      } else {
+        // MUST navigate (no silent fallback)
+        try {
+          // location access can throw; if it does, we still try replace
+          if (popup.location.href !== startUrl)
+            popup.location.replace(startUrl);
+        } catch {
+          // if replace throws too, we consider navigation failed
+          try {
+            popup.location.replace(startUrl);
+          } catch {
+            throw new Error("Unable to navigate popup to provider URL");
+          }
+        }
       }
-    }
 
-    if (!popup) {
-      fail(new Error("Popup blocked. Please enable popups."));
+      if (!popup) throw new Error("Popup blocked. Please enable popups.");
+      popupReady = true;
+      return popup;
+    };
+
+    /**
+     * Polling gate: idempotent + never concurrent.
+     * Only polls if popupReady is true (i.e., popup is open + navigation attempted).
+     * Never polls while connected (we prefer MessageChannel).
+     */
+    const ensurePolling = (untilMs: number = deadlineMs): Promise<void> => {
+      if (finished) return Promise.resolve();
+      if (!popupReady) return Promise.resolve(); // should not happen, but safe
+      if (connected) return Promise.resolve();
+      if (pollInFlight) return pollInFlight;
+
+      pollInFlight = (async () => {
+        try {
+          abortActivePoll();
+          activePollAbort = new AbortController();
+
+          const result = await this.pollForResult({
+            rid,
+            deadlineMs: untilMs,
+            signal: activePollAbort.signal,
+          });
+
+          if (finished) return;
+
+          if (result.status === "complete") succeed(result.payload);
+          else if (result.status === "error") fail(new Error(result.error));
+          // pending/timeout => do nothing; caller decides next step
+        } finally {
+          pollInFlight = null;
+        }
+      })();
+
+      return pollInFlight;
+    };
+
+    // --- Start: open popup + require navigation
+    try {
+      popup = ensurePopupOpenedAndNavigated();
+    } catch (e) {
+      fail(e instanceof Error ? e : new Error(String(e)));
       return;
     }
 
-    const startPolling = async (): Promise<void> => {
-      if (finished) return;
-
-      abortActivePoll();
-
-      activePollAbort = new AbortController();
-
-      const result = await this.pollForResult({
-        rid,
-        deadlineMs,
-        signal: activePollAbort.signal,
-      });
-
-      if (finished) return;
-
-      if (result.status === "complete") {
-        succeed(result.payload);
-      } else if (result.status === "error") {
-        fail(new Error(result.error));
-      } else {
-        // pending/timeout -> let overall timeout decide
-      }
-    };
-
-    // If we never connect via MessageChannel within a short window, start polling.
-    const START_POLL_AFTER_MS = 1200;
+    // If MessageChannel doesn't connect in time, start fallback polling
     pollKickoff = setTimeout(() => {
       if (finished || connected) return;
-      startPolling().catch(() => {
-        // ignore; overall timeout decides
-      });
-    }, START_POLL_AFTER_MS);
+      ensurePolling().catch(() => {});
+    }, CONNECT_GRACE_MS);
 
     // Detect user closing popup
     const heartbeatId = setInterval(() => {
@@ -229,14 +258,10 @@ export class RevibaseProvider {
       if (closeHandled) return;
       closeHandled = true;
 
-      // If already connected, port won't be usable; treat as closed
-      if (connected) {
-        fail(new Error("User closed the authentication window"));
-        return;
-      }
+      // Poll until deadline; if still nothing, report closed
+      const briefUntil = Math.min(deadlineMs, Date.now() + CLOSE_POLL_GRACE_MS);
 
-      // Not connected: poll until deadline; if still nothing, report closed
-      startPolling()
+      ensurePolling(briefUntil)
         .then(() => {
           if (!finished)
             fail(new Error("User closed the authentication window"));
@@ -255,11 +280,8 @@ export class RevibaseProvider {
 
       connected = true;
 
-      // Once connected, stop any scheduled kickoff and abort any already-running poll promptly
-      if (pollKickoff) {
-        clearTimeout(pollKickoff);
-        pollKickoff = null;
-      }
+      // Once connected: stop kickoff + stop any in-flight poll
+      clearKickoff();
       abortActivePoll();
 
       port = event.ports[0];
@@ -272,12 +294,23 @@ export class RevibaseProvider {
           case "popup-complete":
             succeed(ev.data.payload);
             break;
+
           case "popup-error":
             fail(new Error(ev.data.error));
             break;
-          case "popup-closed":
-            // Provider says closed; still try polling briefly (until deadline)
-            startPolling()
+
+          case "popup-closed": {
+            // Provider says closed; channel may be dead soon.
+            // Allow fallback polling from now on.
+            connected = false;
+            abortActivePoll();
+
+            const briefUntil = Math.min(
+              deadlineMs,
+              Date.now() + CLOSE_POLL_GRACE_MS
+            );
+
+            ensurePolling(briefUntil)
               .then(() => {
                 if (!finished)
                   fail(new Error("User closed the authentication window"));
@@ -286,6 +319,7 @@ export class RevibaseProvider {
                 fail(new Error("User closed the authentication window"))
               );
             break;
+          }
         }
       };
 
@@ -307,8 +341,7 @@ export class RevibaseProvider {
     let delay = POLL_INITIAL_DELAY_MS;
 
     const pollOnce = async (): Promise<PollResponse> => {
-      const endpoint = new URL(this.providerOrigin);
-      endpoint.pathname = "/api/getResult";
+      const endpoint = new URL(this.providerFetchResultUrl);
       endpoint.searchParams.set("rid", rid);
 
       const res = await fetch(endpoint.toString(), {
@@ -343,7 +376,7 @@ export class RevibaseProvider {
     };
 
     while (Date.now() < deadlineMs) {
-      if (signal?.aborted) return { status: "error", error: "Polling aborted" };
+      if (signal?.aborted) return { status: "pending" };
 
       try {
         const r = await pollOnce();

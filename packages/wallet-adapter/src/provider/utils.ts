@@ -3,6 +3,12 @@ import type { ClientAuthorizationCallback } from "src/utils";
 export type CallbackStatus = "ok" | "error" | "cancel";
 export const DEFAULT_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 export const HEARTBEAT_INTERVAL = 2000; // 2s
+// How long to wait for MessageChannel connection before starting fallback polling
+export const CONNECT_GRACE_MS = 3000; // 3s
+
+// After a close signal, poll briefly to catch a persisted result, then fail.
+export const CLOSE_POLL_GRACE_MS = 1500; //1.5s
+
 // Polling settings
 export const POLL_INITIAL_DELAY_MS = 1000; // 1s
 export const POLL_MAX_DELAY_MS = 4000; // 4s
@@ -27,9 +33,20 @@ export type Options = {
    */
   onClientAuthorizationCallback: ClientAuthorizationCallback;
   /**
-   * Auth website
+   * Origin of the authentication provider (e.g. https://auth.example.com).
+   * Used to open and communicate with the authorization popup.
    */
   providerOrigin?: string;
+  /**
+   * URL shown in the popup while the authorization flow is initializing.
+   * Typically a lightweight loading or handoff page hosted by the provider.
+   */
+  providerLoadingUrl?: string;
+  /**
+   * Endpoint used to fetch the result as a fallback
+   * when MessageChannel communication is unavailable or interrupted.
+   */
+  providerFetchResultUrl?: string;
 };
 
 export type Pending = {
@@ -52,7 +69,7 @@ export type Pending = {
  * @throws {Error} If called outside a browser environment.
  *
  */
-export function createPopUp(url = "about:blank") {
+export function createPopUp(url: string) {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }
