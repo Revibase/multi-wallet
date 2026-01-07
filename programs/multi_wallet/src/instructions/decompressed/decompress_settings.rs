@@ -12,7 +12,7 @@ use light_sdk::{
 use std::vec;
 
 #[derive(Accounts)]
-#[instruction(settings_mut: SettingsMutArgs)]
+#[instruction(settings_mut_args: SettingsMutArgs)]
 pub struct DecompressSettingsAccount<'info> {
     #[account(
         init, 
@@ -20,7 +20,7 @@ pub struct DecompressSettingsAccount<'info> {
         space = Settings::size(), 
         seeds = [
             SEED_MULTISIG,  
-            settings_mut.data.data.as_ref().ok_or(MultisigError::InvalidArguments)?.index.to_le_bytes().as_ref()
+            settings_mut_args.data.data.as_ref().ok_or(MultisigError::InvalidArguments)?.index.to_le_bytes().as_ref()
         ],
         bump
     )]
@@ -44,7 +44,7 @@ impl<'info> DecompressSettingsAccount<'info> {
         &self,
         remaining_accounts: &'info [AccountInfo<'info>],
         secp256r1_verify_args: &Vec<Secp256r1VerifyArgsWithDomainAddress>,
-        settings_mut: &SettingsMutArgs,
+        settings_mut_args: &SettingsMutArgs,
     ) -> Result<()> {
         let Self {
             settings,
@@ -59,7 +59,7 @@ impl<'info> DecompressSettingsAccount<'info> {
         let mut execute = false;
         let mut vote_count = 0;
 
-        let settings_data = settings_mut.data.data.as_ref().ok_or(MultisigError::InvalidArguments)?;
+        let settings_data = settings_mut_args.data.data.as_ref().ok_or(MultisigError::InvalidArguments)?;
         let threshold = settings_data.threshold as usize;
         let secp256r1_member_keys: Vec<(MemberKey, &Secp256r1VerifyArgsWithDomainAddress)> =
             secp256r1_verify_args
@@ -137,10 +137,10 @@ impl<'info> DecompressSettingsAccount<'info> {
         Ok(())
     }
 
-    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, &secp256r1_verify_args, &settings_mut))]
+    #[access_control(ctx.accounts.validate(&ctx.remaining_accounts, &secp256r1_verify_args, &settings_mut_args))]
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
-        settings_mut: SettingsMutArgs,
+        settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
@@ -154,8 +154,8 @@ impl<'info> DecompressSettingsAccount<'info> {
 
          let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
             &crate::ID,
-            &settings_mut.account_meta,
-            settings_mut.data,
+            &settings_mut_args.account_meta,
+            settings_mut_args.data,
         )
         .map_err(ProgramError::from)?;
 

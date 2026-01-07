@@ -98,13 +98,13 @@ export type DecompressSettingsAccountInstruction<
 
 export type DecompressSettingsAccountInstructionData = {
   discriminator: ReadonlyUint8Array;
-  settingsMut: SettingsMutArgs;
+  settingsMutArgs: SettingsMutArgs;
   compressedProofArgs: ProofArgs;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
 };
 
 export type DecompressSettingsAccountInstructionDataArgs = {
-  settingsMut: SettingsMutArgsArgs;
+  settingsMutArgs: SettingsMutArgsArgs;
   compressedProofArgs: ProofArgsArgs;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
 };
@@ -113,7 +113,7 @@ export function getDecompressSettingsAccountInstructionDataEncoder(): Encoder<De
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["settingsMut", getSettingsMutArgsEncoder()],
+      ["settingsMutArgs", getSettingsMutArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
       [
         "secp256r1VerifyArgs",
@@ -130,7 +130,7 @@ export function getDecompressSettingsAccountInstructionDataEncoder(): Encoder<De
 export function getDecompressSettingsAccountInstructionDataDecoder(): Decoder<DecompressSettingsAccountInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["settingsMut", getSettingsMutArgsDecoder()],
+    ["settingsMutArgs", getSettingsMutArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
     [
       "secp256r1VerifyArgs",
@@ -165,7 +165,7 @@ export type DecompressSettingsAccountInput<
   systemProgram?: Address<TAccountSystemProgram>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  settingsMut: DecompressSettingsAccountInstructionDataArgs["settingsMut"];
+  settingsMutArgs: DecompressSettingsAccountInstructionDataArgs["settingsMutArgs"];
   compressedProofArgs: DecompressSettingsAccountInstructionDataArgs["compressedProofArgs"];
   secp256r1VerifyArgs: DecompressSettingsAccountInstructionDataArgs["secp256r1VerifyArgs"];
   remainingAccounts: DecompressSettingsAccountInstructionExtraArgs["remainingAccounts"];

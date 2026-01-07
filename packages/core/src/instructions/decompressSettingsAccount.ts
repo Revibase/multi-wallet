@@ -99,7 +99,7 @@ export async function decompressSettingsAccount({
     getDecompressSettingsAccountInstruction({
       settings,
       payer,
-      settingsMut: settingsMutArgs,
+      settingsMutArgs,
       compressedProofArgs,
       secp256r1VerifyArgs,
       remainingAccounts,

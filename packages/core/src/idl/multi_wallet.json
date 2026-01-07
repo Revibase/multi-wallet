@@ -191,7 +191,7 @@
           }
         },
         {
-          "name": "settings_mut",
+          "name": "settings_mut_args",
           "type": {
             "defined": {
               "name": "SettingsMutArgs"
@@ -548,7 +548,7 @@
               },
               {
                 "kind": "arg",
-                "path": "settings_mut.data.data"
+                "path": "settings_mut_args.data.data"
               }
             ]
           }
@@ -574,7 +574,7 @@
       ],
       "args": [
         {
-          "name": "settings_mut",
+          "name": "settings_mut_args",
           "type": {
             "defined": {
               "name": "SettingsMutArgs"

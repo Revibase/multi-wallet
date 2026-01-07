@@ -93,14 +93,14 @@ export type ChangeConfigCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   configActions: Array<ConfigAction>;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
-  settingsMut: SettingsMutArgs;
+  settingsMutArgs: SettingsMutArgs;
   compressedProofArgs: ProofArgs;
 };
 
 export type ChangeConfigCompressedInstructionDataArgs = {
   configActions: Array<ConfigActionArgs>;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
-  settingsMut: SettingsMutArgsArgs;
+  settingsMutArgs: SettingsMutArgsArgs;
   compressedProofArgs: ProofArgsArgs;
 };
 
@@ -113,7 +113,7 @@ export function getChangeConfigCompressedInstructionDataEncoder(): Encoder<Chang
         "secp256r1VerifyArgs",
         getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
       ],
-      ["settingsMut", getSettingsMutArgsEncoder()],
+      ["settingsMutArgs", getSettingsMutArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
@@ -131,7 +131,7 @@ export function getChangeConfigCompressedInstructionDataDecoder(): Decoder<Chang
       "secp256r1VerifyArgs",
       getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
     ],
-    ["settingsMut", getSettingsMutArgsDecoder()],
+    ["settingsMutArgs", getSettingsMutArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }
@@ -160,7 +160,7 @@ export type ChangeConfigCompressedInput<
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   configActions: ChangeConfigCompressedInstructionDataArgs["configActions"];
   secp256r1VerifyArgs: ChangeConfigCompressedInstructionDataArgs["secp256r1VerifyArgs"];
-  settingsMut: ChangeConfigCompressedInstructionDataArgs["settingsMut"];
+  settingsMutArgs: ChangeConfigCompressedInstructionDataArgs["settingsMutArgs"];
   compressedProofArgs: ChangeConfigCompressedInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: ChangeConfigCompressedInstructionExtraArgs["remainingAccounts"];
 };

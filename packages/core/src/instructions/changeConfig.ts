@@ -136,25 +136,33 @@ export async function changeConfig({
   if (secp256r1VerifyInput.length > 0) {
     instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
   }
-  instructions.push(
-    compressed
-      ? getChangeConfigCompressedInstruction({
-          configActions,
-          payer,
-          compressedProofArgs,
-          settingsMut: settingsMutArgs!,
-          remainingAccounts,
-          secp256r1VerifyArgs,
-        })
-      : await getChangeConfigInstructionAsync({
-          settingsIndex: index,
-          configActions,
-          payer,
-          compressedProofArgs,
-          remainingAccounts,
-          secp256r1VerifyArgs,
-        })
-  );
+
+  if (compressed) {
+    if (!settingsMutArgs) {
+      throw new Error("Payer not found or proof args is missing.");
+    }
+    instructions.push(
+      getChangeConfigCompressedInstruction({
+        configActions,
+        payer,
+        compressedProofArgs,
+        settingsMutArgs,
+        remainingAccounts,
+        secp256r1VerifyArgs,
+      })
+    );
+  } else {
+    instructions.push(
+      await getChangeConfigInstructionAsync({
+        settingsIndex: index,
+        configActions,
+        payer,
+        compressedProofArgs,
+        remainingAccounts,
+        secp256r1VerifyArgs,
+      })
+    );
+  }
 
   return instructions;
 }

@@ -226,13 +226,13 @@ pub mod multi_wallet {
     #[instruction(discriminator = 18)]
     pub fn decompress_settings_account<'info>(
         ctx: Context<'_, '_, 'info, 'info, DecompressSettingsAccount<'info>>,
-        settings_mut: SettingsMutArgs,
+        settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
         DecompressSettingsAccount::process(
             ctx,
-            settings_mut,
+            settings_mut_args,
             compressed_proof_args,
             secp256r1_verify_args,
         )
@@ -262,14 +262,14 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, ChangeConfigCompressed<'info>>,
         config_actions: Vec<ConfigAction>,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
-        settings_mut: SettingsMutArgs,
+        settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         ChangeConfigCompressed::process(
             ctx,
             config_actions,
             secp256r1_verify_args,
-            settings_mut,
+            settings_mut_args,
             compressed_proof_args,
         )
     }
