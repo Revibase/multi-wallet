@@ -52,12 +52,13 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
 
         let signer =
             MemberKey::get_signer(voter, secp256r1_verify_args, instructions_sysvar.as_ref())?;
-        let (settings, settings_key) = CompressedSettings::verify_compressed_settings_account(
-            &payer.to_account_info(),
-            settings_readonly_args,
-            &remaining_accounts,
-            compressed_proof_args,
-        )?;
+        let (settings, settings_key) =
+            CompressedSettings::verify_readonly_compressed_settings_account(
+                &payer.to_account_info(),
+                settings_readonly_args,
+                &remaining_accounts,
+                compressed_proof_args,
+            )?;
         require!(
             settings_key.eq(&transaction_buffer.multi_wallet_settings),
             MultisigError::InvalidAccount

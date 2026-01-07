@@ -144,12 +144,13 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
             Some(&ctx.accounts.instructions_sysvar),
         )?;
 
-        let (settings, settings_key) = CompressedSettings::verify_compressed_settings_account(
-            &payer.to_account_info(),
-            &settings_readonly_args,
-            ctx.remaining_accounts,
-            &compressed_proof_args,
-        )?;
+        let (settings, settings_key) =
+            CompressedSettings::verify_readonly_compressed_settings_account(
+                &payer.to_account_info(),
+                &settings_readonly_args,
+                ctx.remaining_accounts,
+                &compressed_proof_args,
+            )?;
 
         ctx.accounts
             .validate(&args, &secp256r1_verify_args, &settings, &settings_key)?;

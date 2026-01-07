@@ -128,7 +128,7 @@ impl CompressedSettings {
         Ok((settings_account, new_address_params))
     }
 
-    pub fn verify_compressed_settings_account<'info>(
+    pub fn verify_readonly_compressed_settings_account<'info>(
         payer: &AccountInfo<'info>,
         settings_readonly_args: &SettingsReadonlyArgs,
         remaining_accounts: &[AccountInfo<'info>],
