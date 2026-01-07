@@ -1,4 +1,4 @@
-export * from "./changeConfig";
+export * from "./admin";
 export * from "./compressSettingsAccount";
 export * from "./configuration";
 export * from "./createWallet";

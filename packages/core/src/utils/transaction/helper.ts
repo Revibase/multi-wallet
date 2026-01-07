@@ -8,6 +8,8 @@ import {
   getBase64Decoder,
   getBase64EncodedWireTransaction,
   getSignatureFromTransaction,
+  getU32Decoder,
+  getU32Encoder,
   pipe,
   prependTransactionMessageInstructions,
   setTransactionMessageFeePayerSigner,
@@ -23,8 +25,11 @@ import {
   getSetComputeUnitPriceInstruction,
 } from "gill/programs";
 import {
+  getConfigActionDecoder,
+  getConfigActionEncoder,
   UserRole,
   type CompressedSettingsData,
+  type ConfigAction,
   type MemberKey,
 } from "../../generated";
 import {
@@ -377,4 +382,46 @@ export function convertMemberKeyToString(memberKey: MemberKey) {
   } else {
     return getBase58Decoder().decode(memberKey.key);
   }
+}
+export function serializeConfigActions(configActions: ConfigAction[]) {
+  const encodedActions = configActions.map((x) =>
+    getConfigActionEncoder().encode(x)
+  );
+
+  const totalLength = 4 + encodedActions.reduce((sum, a) => sum + a.length, 0);
+
+  const serializedConfigActions = new Uint8Array(totalLength);
+
+  let offset = 0;
+
+  serializedConfigActions.set(
+    getU32Encoder().encode(configActions.length),
+    offset
+  );
+  offset += 4;
+
+  for (const action of encodedActions) {
+    serializedConfigActions.set(action, offset);
+    offset += action.length;
+  }
+
+  return serializedConfigActions;
+}
+
+export function deserializeConfigActions(bytes: Uint8Array): ConfigAction[] {
+  let offset = 0;
+  const [count, u32offset] = getU32Decoder().read(bytes, offset);
+  offset = u32offset;
+
+  const out: ConfigAction[] = new Array(count);
+  for (let i = 0; i < count; i++) {
+    const r = getConfigActionDecoder().read(bytes, offset);
+    out[i] = r[0];
+    offset = r[1];
+  }
+
+  if (offset !== bytes.length) {
+    throw new Error(`Trailing bytes: ${bytes.length - offset}`);
+  }
+  return out;
 }

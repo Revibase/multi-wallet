@@ -4,6 +4,7 @@ import {
   createDomainUserAccounts,
   fetchSettingsAccountData,
   fetchUserAccountData,
+  prepareChangeConfigArgs,
   Secp256r1Key,
   UserRole,
 } from "@revibase/core";
@@ -44,10 +45,8 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
     if (!ctx.index || !ctx.multiWalletVault || !ctx.payer || !ctx.wallet)
       return;
     await addPayerAsNewMember(ctx);
-    // Test updating permissions for existing members
-    const instructions = await changeConfig({
-      signers: [ctx.wallet],
-      payer: ctx.payer,
+
+    const changeConfigArgs = await prepareChangeConfigArgs({
       compressed: ctx.compressed,
       index: ctx.index,
       configActionsArgs: [
@@ -61,6 +60,12 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
           ],
         },
       ],
+    });
+
+    const instructions = await changeConfig({
+      signers: [ctx.wallet],
+      payer: ctx.payer,
+      changeConfigArgs,
     });
 
     await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
@@ -80,9 +85,8 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       return;
 
     await addPayerAsNewMember(ctx);
-    const instructions = await changeConfig({
-      signers: [ctx.wallet],
-      payer: ctx.payer,
+
+    const changeConfigArgs = await prepareChangeConfigArgs({
       compressed: ctx.compressed,
       index: ctx.index,
       configActionsArgs: [
@@ -95,6 +99,12 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
           ],
         },
       ],
+    });
+
+    const instructions = await changeConfig({
+      signers: [ctx.wallet],
+      payer: ctx.payer,
+      changeConfigArgs,
     });
 
     await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
@@ -149,9 +159,7 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       ctx.addressLookUpTable
     );
 
-    const instructions = await changeConfig({
-      signers: [ctx.wallet],
-      payer: ctx.payer,
+    const changeConfigArgs = await prepareChangeConfigArgs({
       compressed: ctx.compressed,
       index: ctx.index,
       configActionsArgs: [
@@ -165,6 +173,11 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
           ],
         },
       ],
+    });
+    const instructions = await changeConfig({
+      signers: [ctx.wallet],
+      payer: ctx.payer,
+      changeConfigArgs,
     });
 
     await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);

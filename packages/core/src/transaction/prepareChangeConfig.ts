@@ -1,71 +1,62 @@
 import type { ValidityProofWithContext } from "@lightprotocol/stateless.js";
 import BN from "bn.js";
-import { AccountRole, type Address, type TransactionSigner } from "gill";
+import { type Address } from "gill";
 import {
+  getCompressedSettingsDecoder,
+  getUserDecoder,
+  UserRole,
   type AddMemberArgs,
   type CompressedSettings,
   type ConfigAction,
   type EditMemberArgs,
-  getChangeConfigCompressedInstruction,
-  getChangeConfigInstructionAsync,
-  getCompressedSettingsDecoder,
-  getUserDecoder,
   type IPermissions,
   type RemoveMemberArgs,
-  type Secp256r1VerifyArgsWithDomainAddressArgs,
   type SettingsMutArgs,
   type User,
   type UserMutArgs,
-  UserRole,
 } from "../generated";
 import {
-  type ConfigurationArgs,
-  type IPermission,
   Permission,
-  type PermissionArgs,
   Permissions,
   Secp256r1Key,
-  SignedSecp256r1Key,
+  type ConfigurationArgs,
+  type IPermission,
+  type PermissionArgs,
 } from "../types";
 import {
   getCompressedSettingsAddressFromIndex,
   getUserAccountAddress,
 } from "../utils";
 import {
-  convertToCompressedProofArgs,
   getCompressedAccountHashes,
   getCompressedAccountMutArgs,
   getValidityProofWithRetry,
 } from "../utils/compressed/internal";
 import { PackedAccounts } from "../utils/compressed/packedAccounts";
-import {
-  convertPubkeyToMemberkey,
-  extractSecp256r1VerificationArgs,
-  getDeduplicatedSigners,
-} from "../utils/transaction/internal";
-import { getSecp256r1VerifyInstruction } from "./secp256r1Verify";
+import { convertPubkeyToMemberkey } from "../utils/transaction/internal";
 
-export async function changeConfig({
+export async function prepareChangeConfigArgs({
   index,
   settingsAddressTreeIndex,
   configActionsArgs,
-  signers,
-  payer,
-  compressed = false,
   cachedAccounts,
+  compressed = false,
 }: {
   index: number | bigint;
+  compressed?: boolean;
   settingsAddressTreeIndex?: number;
   configActionsArgs: ConfigurationArgs[];
-  signers: (TransactionSigner | SignedSecp256r1Key)[];
-  payer: TransactionSigner;
-  compressed?: boolean;
   cachedAccounts?: Map<string, any>;
-}) {
-  // 1) Gather all user accounts
+}): Promise<{
+  configActions: ConfigAction[];
+  index: number | bigint;
+  compressed: boolean;
+  packedAccounts: PackedAccounts;
+  proof: ValidityProofWithContext | null;
+  settingsMutArgs: SettingsMutArgs | null;
+}> {
   const userAccounts = await prepareUserAccounts(configActionsArgs);
 
-  // 2) Prepare compressed proof + account mutation args (if needed)
   const packedAccounts = new PackedAccounts();
   let proof: ValidityProofWithContext | null = null;
   let settingsMutArgs: SettingsMutArgs | null = null;
@@ -85,86 +76,21 @@ export async function changeConfig({
     settingsMutArgs = proofResult.settingsMutArgs ?? null;
     userMutArgs = proofResult.userMutArgs ?? [];
   }
-  // 3) Prepare signers
-  const dedupSigners = getDeduplicatedSigners(signers);
-  const transactionSigners = dedupSigners.filter(
-    (x) => !(x instanceof SignedSecp256r1Key)
-  ) as TransactionSigner[];
-  packedAccounts.addPreAccounts(
-    transactionSigners.map((x) => ({
-      address: x.address,
-      role: AccountRole.READONLY_SIGNER,
-      signer: x,
-    }))
-  );
-  const secp256r1Signers = dedupSigners.filter(
-    (x) => x instanceof SignedSecp256r1Key
-  );
-  const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];
-  const secp256r1VerifyInput = [];
-  for (const x of secp256r1Signers) {
-    const index = secp256r1VerifyInput.length;
-    const { domainConfig, verifyArgs, signature, publicKey, message } =
-      extractSecp256r1VerificationArgs(x, index);
-    if (message && signature && publicKey) {
-      secp256r1VerifyInput.push({ message, signature, publicKey });
-    }
-    if (domainConfig) {
-      packedAccounts.addPreAccounts([
-        { address: domainConfig, role: AccountRole.READONLY },
-      ]);
-      if (verifyArgs?.__option === "Some") {
-        secp256r1VerifyArgs.push({
-          domainConfigKey: domainConfig,
-          verifyArgs: verifyArgs.value,
-        });
-      }
-    }
-  }
 
-  // 4) Build the config actions
   const configActions = await buildConfigActions({
     configActionsArgs,
     userMutArgs,
     index,
   });
 
-  // 5) Assemble final instructions
-  const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
-  const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
-  const instructions = [];
-  if (secp256r1VerifyInput.length > 0) {
-    instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
-  }
-
-  if (compressed) {
-    if (!settingsMutArgs) {
-      throw new Error("Payer not found or proof args is missing.");
-    }
-    instructions.push(
-      getChangeConfigCompressedInstruction({
-        configActions,
-        payer,
-        compressedProofArgs,
-        settingsMutArgs,
-        remainingAccounts,
-        secp256r1VerifyArgs,
-      })
-    );
-  } else {
-    instructions.push(
-      await getChangeConfigInstructionAsync({
-        settingsIndex: index,
-        configActions,
-        payer,
-        compressedProofArgs,
-        remainingAccounts,
-        secp256r1VerifyArgs,
-      })
-    );
-  }
-
-  return instructions;
+  return {
+    configActions,
+    index,
+    proof,
+    settingsMutArgs,
+    packedAccounts,
+    compressed,
+  };
 }
 
 async function prepareUserAccounts(configActionsArgs: ConfigurationArgs[]) {

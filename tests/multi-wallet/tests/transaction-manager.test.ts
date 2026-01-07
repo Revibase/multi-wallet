@@ -4,6 +4,7 @@ import {
   createUserAccounts,
   fetchSettingsAccountData,
   fetchUserAccountData,
+  prepareChangeConfigArgs,
   UserRole,
 } from "@revibase/core";
 import { expect } from "chai";
@@ -37,9 +38,7 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
       ctx.addressLookUpTable
     );
 
-    const instructions = await changeConfig({
-      signers: [ctx.wallet],
-      payer: ctx.payer,
+    const changeConfigArgs = await prepareChangeConfigArgs({
       compressed: ctx.compressed,
       index: ctx.index,
       configActionsArgs: [
@@ -53,6 +52,12 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
           ],
         },
       ],
+    });
+
+    const instructions = await changeConfig({
+      signers: [ctx.wallet],
+      payer: ctx.payer,
+      changeConfigArgs,
     });
 
     await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
