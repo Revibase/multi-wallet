@@ -25,22 +25,20 @@ export class RevibaseProvider {
   private pending = new Map<string, Pending>();
   public onClientAuthorizationCallback: ClientAuthorizationCallback;
   private providerOrigin: string;
-  private providerLoadingUrl: string;
   private providerFetchResultUrl: string;
   private popUp: Window | null;
 
   constructor(opts: Options) {
     this.onClientAuthorizationCallback = opts.onClientAuthorizationCallback;
     this.providerOrigin = opts.providerOrigin ?? REVIBASE_AUTH_URL;
-    this.providerLoadingUrl =
-      opts.providerLoadingUrl ?? `${this.providerOrigin}/loading`;
     this.providerFetchResultUrl =
       opts.providerFetchResultUrl ?? `${this.providerOrigin}/api/getResult`;
     this.popUp = null;
   }
 
   openBlankPopUp() {
-    this.popUp = createPopUp(this.providerLoadingUrl);
+    this.popUp = createPopUp();
+    if (!this.popUp) throw new Error("Popup blocked. Please enable popups.");
   }
 
   async sendPayloadToProvider({

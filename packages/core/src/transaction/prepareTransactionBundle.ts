@@ -83,7 +83,7 @@ export async function prepareTransactionBundle({
   const finalBufferHash = sha256(new Uint8Array(transactionMessageBytes));
 
   // --- Stage 3: Derive readonly compressed proof args if necessary---
-  const { settingsReadonlyArgs, proof, packedAccounts } =
+  const { settingsReadonlyArgs, settingsMutArgs, proof, packedAccounts } =
     await constructSettingsProofArgs(
       compressed,
       index,
@@ -92,14 +92,19 @@ export async function prepareTransactionBundle({
       cachedAccounts
     );
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
-  const compressedArgs = settingsReadonlyArgs
-    ? {
-        settingsReadonlyArgs,
-        compressedProofArgs: convertToCompressedProofArgs(proof, systemOffset),
-        remainingAccounts,
-        payer,
-      }
-    : null;
+  const compressedArgs =
+    proof && settingsReadonlyArgs && settingsMutArgs
+      ? {
+          settingsReadonlyArgs,
+          settingsMutArgs,
+          compressedProofArgs: convertToCompressedProofArgs(
+            proof,
+            systemOffset
+          ),
+          remainingAccounts,
+          payer,
+        }
+      : null;
 
   // --- Stage 4: Instruction groups ---
   const expectedSecp256r1Signers = getDeduplicatedSigners([

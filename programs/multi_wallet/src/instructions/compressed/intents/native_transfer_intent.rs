@@ -1,14 +1,24 @@
 use crate::{
-    durable_nonce_check, state::SettingsReadonlyArgs, ChallengeArgs, CompressedSettings,
-    CompressedSettingsData, DomainConfig, MemberKey, MultisigError, Permission, ProofArgs,
-    Secp256r1VerifyArgsWithDomainAddress, TransactionActionType, SEED_MULTISIG, SEED_VAULT,
+    durable_nonce_check,
+    state::{Settings, SettingsMutArgs},
+    ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig, MemberKey,
+    MultisigError, Permission, ProofArgs, Secp256r1VerifyArgsWithDomainAddress,
+    TransactionActionType, LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{
     prelude::*,
     solana_program::sysvar::SysvarId,
     system_program::{transfer, Transfer},
 };
-use light_sdk::light_hasher::{Hasher, Sha256};
+use light_sdk::{
+    cpi::{
+        v2::{CpiAccounts, LightSystemProgramCpi},
+        InvokeLightSystemProgram, LightCpiInstruction,
+    },
+    instruction::ValidityProof,
+    light_hasher::{Hasher, Sha256},
+    LightAccount,
+};
 
 #[derive(Accounts)]
 pub struct NativeTransferIntentCompressed<'info> {
@@ -151,28 +161,43 @@ impl<'info> NativeTransferIntentCompressed<'info> {
         ctx: Context<'_, '_, 'info, 'info, Self>,
         amount: u64,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
-        settings_readonly_args: SettingsReadonlyArgs,
+        settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
-        let (settings, settings_key) = CompressedSettings::verify_compressed_settings_account(
-            &ctx.accounts.payer.to_account_info(),
-            &settings_readonly_args,
-            ctx.remaining_accounts,
-            &compressed_proof_args,
-        )?;
+        let light_cpi_accounts = CpiAccounts::new(
+            &ctx.accounts.payer,
+            &ctx.remaining_accounts
+                [compressed_proof_args.light_cpi_accounts_start_index as usize..],
+            LIGHT_CPI_SIGNER,
+        );
+
+        let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
+            &crate::ID,
+            &settings_mut_args.account_meta,
+            settings_mut_args.data,
+        )
+        .map_err(ProgramError::from)?;
+
+        let settings_data = settings_account
+            .data
+            .as_ref()
+            .ok_or(MultisigError::InvalidAccount)?;
+
+        let settings_key =
+            Settings::get_settings_key_from_index(settings_data.index, settings_data.bump)?;
 
         ctx.accounts.validate(
             amount,
             ctx.remaining_accounts,
             &secp256r1_verify_args,
-            &settings,
+            &settings_data,
         )?;
 
         let signer_seeds: &[&[u8]] = &[
             SEED_MULTISIG,
             settings_key.as_ref(),
             SEED_VAULT,
-            &[settings.multi_wallet_bump],
+            &[settings_data.multi_wallet_bump],
         ];
 
         let multi_wallet = Pubkey::create_program_address(signer_seeds, &crate::id())
@@ -193,6 +218,23 @@ impl<'info> NativeTransferIntentCompressed<'info> {
             .with_signer(&[signer_seeds]),
             amount,
         )?;
+
+        settings_account.latest_slot_number_check(
+            secp256r1_verify_args
+                .iter()
+                .map(|f| f.verify_args.slot_number)
+                .collect(),
+            &ctx.accounts.slot_hash_sysvar,
+        )?;
+
+        settings_account.invariant()?;
+
+        LightSystemProgramCpi::new_cpi(
+            LIGHT_CPI_SIGNER,
+            ValidityProof(compressed_proof_args.proof),
+        )
+        .with_light_account(settings_account)?
+        .invoke(light_cpi_accounts)?;
 
         Ok(())
     }

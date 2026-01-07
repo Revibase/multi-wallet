@@ -22,9 +22,6 @@ export async function signTransactionWithPasskey({
   signer?: string;
   provider: RevibaseProvider;
 }): Promise<TransactionAuthenticationResponse> {
-  if (typeof window === "undefined") {
-    throw new Error("Function can only be called in a browser environment");
-  }
   const transactionPayload = {
     transactionActionType,
     transactionAddress,

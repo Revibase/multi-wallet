@@ -35,7 +35,7 @@ export async function closeTransactionBuffer({
     transactionBufferAddress
   );
   const settings = transactionBuffer.data.multiWalletSettings;
-  const { settingsReadonlyArgs, proof, packedAccounts } =
+  const { packedAccounts, proof, settingsMutArgs } =
     await constructSettingsProofArgs(
       compressed,
       index,
@@ -62,7 +62,7 @@ export async function closeTransactionBuffer({
   }
 
   if (compressed) {
-    if (!payer || !settingsReadonlyArgs) {
+    if (!payer || !settingsMutArgs) {
       throw new Error("Payer not found or proof args is missing.");
     }
     const compressedProofArgs = convertToCompressedProofArgs(
@@ -77,7 +77,7 @@ export async function closeTransactionBuffer({
         closer: closer instanceof SignedSecp256r1Key ? undefined : closer,
         rentCollector: transactionBuffer.data.payer,
         secp256r1VerifyArgs: verifyArgs,
-        settingsReadonlyArgs,
+        settingsMutArgs,
         payer,
         compressedProofArgs,
         remainingAccounts,

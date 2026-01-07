@@ -13,7 +13,7 @@ pub struct VaultTransactionMessage {
 
 impl VaultTransactionMessage {
     pub fn validate(&self) -> Result<()> {
-        let num_all_account_keys = self.account_keys.len()
+        let num_all_account_keys: usize = self.account_keys.len()
             + self
                 .address_table_lookups
                 .iter()

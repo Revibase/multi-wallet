@@ -12,8 +12,6 @@ import {
   fixEncoderSize,
   getBytesDecoder,
   getBytesEncoder,
-  getOptionDecoder,
-  getOptionEncoder,
   getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
@@ -29,8 +27,6 @@ import {
   type Instruction,
   type InstructionWithAccounts,
   type InstructionWithData,
-  type Option,
-  type OptionOrNullable,
   type ReadonlyAccount,
   type ReadonlySignerAccount,
   type ReadonlyUint8Array,
@@ -44,20 +40,16 @@ import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
   getProofArgsDecoder,
   getProofArgsEncoder,
-  getSecp256r1VerifyArgsDecoder,
-  getSecp256r1VerifyArgsEncoder,
   getSettingsCreationArgsDecoder,
   getSettingsCreationArgsEncoder,
-  getUserReadOnlyOrMutateArgsDecoder,
-  getUserReadOnlyOrMutateArgsEncoder,
+  getUserReadOnlyArgsDecoder,
+  getUserReadOnlyArgsEncoder,
   type ProofArgs,
   type ProofArgsArgs,
-  type Secp256r1VerifyArgs,
-  type Secp256r1VerifyArgsArgs,
   type SettingsCreationArgs,
   type SettingsCreationArgsArgs,
-  type UserReadOnlyOrMutateArgs,
-  type UserReadOnlyOrMutateArgsArgs,
+  type UserReadOnlyArgs,
+  type UserReadOnlyArgsArgs,
 } from "../types";
 
 export const CREATE_MULTI_WALLET_COMPRESSED_DISCRIMINATOR = new Uint8Array([
@@ -77,13 +69,6 @@ export type CreateMultiWalletCompressedInstruction<
   TAccountSystemProgram extends
     | string
     | AccountMeta<string> = "11111111111111111111111111111111",
-  TAccountSlotHashSysvar extends
-    | string
-    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
-  TAccountInstructionsSysvar extends
-    | string
-    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
-  TAccountDomainConfig extends string | AccountMeta<string> = string,
   TAccountGlobalCounter extends string | AccountMeta<string> = string,
   TAccountWhitelistedAddressTrees extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
@@ -102,15 +87,6 @@ export type CreateMultiWalletCompressedInstruction<
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
-      TAccountSlotHashSysvar extends string
-        ? ReadonlyAccount<TAccountSlotHashSysvar>
-        : TAccountSlotHashSysvar,
-      TAccountInstructionsSysvar extends string
-        ? ReadonlyAccount<TAccountInstructionsSysvar>
-        : TAccountInstructionsSysvar,
-      TAccountDomainConfig extends string
-        ? ReadonlyAccount<TAccountDomainConfig>
-        : TAccountDomainConfig,
       TAccountGlobalCounter extends string
         ? WritableAccount<TAccountGlobalCounter>
         : TAccountGlobalCounter,
@@ -123,18 +99,16 @@ export type CreateMultiWalletCompressedInstruction<
 
 export type CreateMultiWalletCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
-  secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
   compressedProofArgs: ProofArgs;
   settingsCreation: SettingsCreationArgs;
-  userArgs: UserReadOnlyOrMutateArgs;
+  userReadonlyArgs: UserReadOnlyArgs;
   settingsIndex: bigint;
 };
 
 export type CreateMultiWalletCompressedInstructionDataArgs = {
-  secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
   compressedProofArgs: ProofArgsArgs;
   settingsCreation: SettingsCreationArgsArgs;
-  userArgs: UserReadOnlyOrMutateArgsArgs;
+  userReadonlyArgs: UserReadOnlyArgsArgs;
   settingsIndex: number | bigint;
 };
 
@@ -142,13 +116,9 @@ export function getCreateMultiWalletCompressedInstructionDataEncoder(): Encoder<
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      [
-        "secp256r1VerifyArgs",
-        getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
-      ],
       ["compressedProofArgs", getProofArgsEncoder()],
       ["settingsCreation", getSettingsCreationArgsEncoder()],
-      ["userArgs", getUserReadOnlyOrMutateArgsEncoder()],
+      ["userReadonlyArgs", getUserReadOnlyArgsEncoder()],
       ["settingsIndex", getU128Encoder()],
     ]),
     (value) => ({
@@ -161,10 +131,9 @@ export function getCreateMultiWalletCompressedInstructionDataEncoder(): Encoder<
 export function getCreateMultiWalletCompressedInstructionDataDecoder(): Decoder<CreateMultiWalletCompressedInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
     ["compressedProofArgs", getProofArgsDecoder()],
     ["settingsCreation", getSettingsCreationArgsDecoder()],
-    ["userArgs", getUserReadOnlyOrMutateArgsDecoder()],
+    ["userReadonlyArgs", getUserReadOnlyArgsDecoder()],
     ["settingsIndex", getU128Decoder()],
   ]);
 }
@@ -187,24 +156,17 @@ export type CreateMultiWalletCompressedAsyncInput<
   TAccountPayer extends string = string,
   TAccountInitialMember extends string = string,
   TAccountSystemProgram extends string = string,
-  TAccountSlotHashSysvar extends string = string,
-  TAccountInstructionsSysvar extends string = string,
-  TAccountDomainConfig extends string = string,
   TAccountGlobalCounter extends string = string,
   TAccountWhitelistedAddressTrees extends string = string,
 > = {
   payer: TransactionSigner<TAccountPayer>;
-  initialMember?: TransactionSigner<TAccountInitialMember>;
+  initialMember: TransactionSigner<TAccountInitialMember>;
   systemProgram?: Address<TAccountSystemProgram>;
-  slotHashSysvar?: Address<TAccountSlotHashSysvar>;
-  instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  domainConfig?: Address<TAccountDomainConfig>;
   globalCounter?: Address<TAccountGlobalCounter>;
   whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
-  secp256r1VerifyArgs: CreateMultiWalletCompressedInstructionDataArgs["secp256r1VerifyArgs"];
   compressedProofArgs: CreateMultiWalletCompressedInstructionDataArgs["compressedProofArgs"];
   settingsCreation: CreateMultiWalletCompressedInstructionDataArgs["settingsCreation"];
-  userArgs: CreateMultiWalletCompressedInstructionDataArgs["userArgs"];
+  userReadonlyArgs: CreateMultiWalletCompressedInstructionDataArgs["userReadonlyArgs"];
   settingsIndex: CreateMultiWalletCompressedInstructionDataArgs["settingsIndex"];
   remainingAccounts: CreateMultiWalletCompressedInstructionExtraArgs["remainingAccounts"];
 };
@@ -213,9 +175,6 @@ export async function getCreateMultiWalletCompressedInstructionAsync<
   TAccountPayer extends string,
   TAccountInitialMember extends string,
   TAccountSystemProgram extends string,
-  TAccountSlotHashSysvar extends string,
-  TAccountInstructionsSysvar extends string,
-  TAccountDomainConfig extends string,
   TAccountGlobalCounter extends string,
   TAccountWhitelistedAddressTrees extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
@@ -224,9 +183,6 @@ export async function getCreateMultiWalletCompressedInstructionAsync<
     TAccountPayer,
     TAccountInitialMember,
     TAccountSystemProgram,
-    TAccountSlotHashSysvar,
-    TAccountInstructionsSysvar,
-    TAccountDomainConfig,
     TAccountGlobalCounter,
     TAccountWhitelistedAddressTrees
   >,
@@ -237,9 +193,6 @@ export async function getCreateMultiWalletCompressedInstructionAsync<
     TAccountPayer,
     TAccountInitialMember,
     TAccountSystemProgram,
-    TAccountSlotHashSysvar,
-    TAccountInstructionsSysvar,
-    TAccountDomainConfig,
     TAccountGlobalCounter,
     TAccountWhitelistedAddressTrees
   >
@@ -252,12 +205,6 @@ export async function getCreateMultiWalletCompressedInstructionAsync<
     payer: { value: input.payer ?? null, isWritable: true },
     initialMember: { value: input.initialMember ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
-    slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
-    instructionsSysvar: {
-      value: input.instructionsSysvar ?? null,
-      isWritable: false,
-    },
-    domainConfig: { value: input.domainConfig ?? null, isWritable: false },
     globalCounter: { value: input.globalCounter ?? null, isWritable: true },
     whitelistedAddressTrees: {
       value: input.whitelistedAddressTrees ?? null,
@@ -279,14 +226,6 @@ export async function getCreateMultiWalletCompressedInstructionAsync<
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
-  }
-  if (!accounts.slotHashSysvar.value) {
-    accounts.slotHashSysvar.value =
-      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
-  }
-  if (!accounts.instructionsSysvar.value) {
-    accounts.instructionsSysvar.value =
-      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
   }
   if (!accounts.globalCounter.value) {
     accounts.globalCounter.value = await getProgramDerivedAddress({
@@ -324,9 +263,6 @@ export async function getCreateMultiWalletCompressedInstructionAsync<
       getAccountMeta(accounts.payer),
       getAccountMeta(accounts.initialMember),
       getAccountMeta(accounts.systemProgram),
-      getAccountMeta(accounts.slotHashSysvar),
-      getAccountMeta(accounts.instructionsSysvar),
-      getAccountMeta(accounts.domainConfig),
       getAccountMeta(accounts.globalCounter),
       getAccountMeta(accounts.whitelistedAddressTrees),
       ...remainingAccounts,
@@ -340,9 +276,6 @@ export async function getCreateMultiWalletCompressedInstructionAsync<
     TAccountPayer,
     TAccountInitialMember,
     TAccountSystemProgram,
-    TAccountSlotHashSysvar,
-    TAccountInstructionsSysvar,
-    TAccountDomainConfig,
     TAccountGlobalCounter,
     TAccountWhitelistedAddressTrees
   >);
@@ -352,24 +285,17 @@ export type CreateMultiWalletCompressedInput<
   TAccountPayer extends string = string,
   TAccountInitialMember extends string = string,
   TAccountSystemProgram extends string = string,
-  TAccountSlotHashSysvar extends string = string,
-  TAccountInstructionsSysvar extends string = string,
-  TAccountDomainConfig extends string = string,
   TAccountGlobalCounter extends string = string,
   TAccountWhitelistedAddressTrees extends string = string,
 > = {
   payer: TransactionSigner<TAccountPayer>;
-  initialMember?: TransactionSigner<TAccountInitialMember>;
+  initialMember: TransactionSigner<TAccountInitialMember>;
   systemProgram?: Address<TAccountSystemProgram>;
-  slotHashSysvar?: Address<TAccountSlotHashSysvar>;
-  instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  domainConfig?: Address<TAccountDomainConfig>;
   globalCounter: Address<TAccountGlobalCounter>;
   whitelistedAddressTrees: Address<TAccountWhitelistedAddressTrees>;
-  secp256r1VerifyArgs: CreateMultiWalletCompressedInstructionDataArgs["secp256r1VerifyArgs"];
   compressedProofArgs: CreateMultiWalletCompressedInstructionDataArgs["compressedProofArgs"];
   settingsCreation: CreateMultiWalletCompressedInstructionDataArgs["settingsCreation"];
-  userArgs: CreateMultiWalletCompressedInstructionDataArgs["userArgs"];
+  userReadonlyArgs: CreateMultiWalletCompressedInstructionDataArgs["userReadonlyArgs"];
   settingsIndex: CreateMultiWalletCompressedInstructionDataArgs["settingsIndex"];
   remainingAccounts: CreateMultiWalletCompressedInstructionExtraArgs["remainingAccounts"];
 };
@@ -378,9 +304,6 @@ export function getCreateMultiWalletCompressedInstruction<
   TAccountPayer extends string,
   TAccountInitialMember extends string,
   TAccountSystemProgram extends string,
-  TAccountSlotHashSysvar extends string,
-  TAccountInstructionsSysvar extends string,
-  TAccountDomainConfig extends string,
   TAccountGlobalCounter extends string,
   TAccountWhitelistedAddressTrees extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
@@ -389,9 +312,6 @@ export function getCreateMultiWalletCompressedInstruction<
     TAccountPayer,
     TAccountInitialMember,
     TAccountSystemProgram,
-    TAccountSlotHashSysvar,
-    TAccountInstructionsSysvar,
-    TAccountDomainConfig,
     TAccountGlobalCounter,
     TAccountWhitelistedAddressTrees
   >,
@@ -401,9 +321,6 @@ export function getCreateMultiWalletCompressedInstruction<
   TAccountPayer,
   TAccountInitialMember,
   TAccountSystemProgram,
-  TAccountSlotHashSysvar,
-  TAccountInstructionsSysvar,
-  TAccountDomainConfig,
   TAccountGlobalCounter,
   TAccountWhitelistedAddressTrees
 > {
@@ -415,12 +332,6 @@ export function getCreateMultiWalletCompressedInstruction<
     payer: { value: input.payer ?? null, isWritable: true },
     initialMember: { value: input.initialMember ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
-    slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
-    instructionsSysvar: {
-      value: input.instructionsSysvar ?? null,
-      isWritable: false,
-    },
-    domainConfig: { value: input.domainConfig ?? null, isWritable: false },
     globalCounter: { value: input.globalCounter ?? null, isWritable: true },
     whitelistedAddressTrees: {
       value: input.whitelistedAddressTrees ?? null,
@@ -443,14 +354,6 @@ export function getCreateMultiWalletCompressedInstruction<
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
-  if (!accounts.slotHashSysvar.value) {
-    accounts.slotHashSysvar.value =
-      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
-  }
-  if (!accounts.instructionsSysvar.value) {
-    accounts.instructionsSysvar.value =
-      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
-  }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
@@ -462,9 +365,6 @@ export function getCreateMultiWalletCompressedInstruction<
       getAccountMeta(accounts.payer),
       getAccountMeta(accounts.initialMember),
       getAccountMeta(accounts.systemProgram),
-      getAccountMeta(accounts.slotHashSysvar),
-      getAccountMeta(accounts.instructionsSysvar),
-      getAccountMeta(accounts.domainConfig),
       getAccountMeta(accounts.globalCounter),
       getAccountMeta(accounts.whitelistedAddressTrees),
       ...remainingAccounts,
@@ -478,9 +378,6 @@ export function getCreateMultiWalletCompressedInstruction<
     TAccountPayer,
     TAccountInitialMember,
     TAccountSystemProgram,
-    TAccountSlotHashSysvar,
-    TAccountInstructionsSysvar,
-    TAccountDomainConfig,
     TAccountGlobalCounter,
     TAccountWhitelistedAddressTrees
   >);
@@ -493,13 +390,10 @@ export type ParsedCreateMultiWalletCompressedInstruction<
   programAddress: Address<TProgram>;
   accounts: {
     payer: TAccountMetas[0];
-    initialMember?: TAccountMetas[1] | undefined;
+    initialMember: TAccountMetas[1];
     systemProgram: TAccountMetas[2];
-    slotHashSysvar?: TAccountMetas[3] | undefined;
-    instructionsSysvar?: TAccountMetas[4] | undefined;
-    domainConfig?: TAccountMetas[5] | undefined;
-    globalCounter: TAccountMetas[6];
-    whitelistedAddressTrees: TAccountMetas[7];
+    globalCounter: TAccountMetas[3];
+    whitelistedAddressTrees: TAccountMetas[4];
   };
   data: CreateMultiWalletCompressedInstructionData;
 };
@@ -512,7 +406,7 @@ export function parseCreateMultiWalletCompressedInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>
 ): ParsedCreateMultiWalletCompressedInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 8) {
+  if (instruction.accounts.length < 5) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -522,21 +416,12 @@ export function parseCreateMultiWalletCompressedInstruction<
     accountIndex += 1;
     return accountMeta;
   };
-  const getNextOptionalAccount = () => {
-    const accountMeta = getNextAccount();
-    return accountMeta.address === MULTI_WALLET_PROGRAM_ADDRESS
-      ? undefined
-      : accountMeta;
-  };
   return {
     programAddress: instruction.programAddress,
     accounts: {
       payer: getNextAccount(),
-      initialMember: getNextOptionalAccount(),
+      initialMember: getNextAccount(),
       systemProgram: getNextAccount(),
-      slotHashSysvar: getNextOptionalAccount(),
-      instructionsSysvar: getNextOptionalAccount(),
-      domainConfig: getNextOptionalAccount(),
       globalCounter: getNextAccount(),
       whitelistedAddressTrees: getNextAccount(),
     },

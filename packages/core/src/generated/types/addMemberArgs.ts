@@ -8,55 +8,44 @@
 
 import {
   combineCodec,
-  getOptionDecoder,
-  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
   type Codec,
   type Decoder,
   type Encoder,
-  type Option,
-  type OptionOrNullable,
 } from "gill";
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
   getPermissionsDecoder,
   getPermissionsEncoder,
-  getSecp256r1VerifyArgsDecoder,
-  getSecp256r1VerifyArgsEncoder,
-  getUserReadOnlyOrMutateArgsDecoder,
-  getUserReadOnlyOrMutateArgsEncoder,
+  getUserReadOnlyArgsDecoder,
+  getUserReadOnlyArgsEncoder,
   type IPermissions,
   type MemberKey,
   type MemberKeyArgs,
   type PermissionsArgs,
-  type Secp256r1VerifyArgs,
-  type Secp256r1VerifyArgsArgs,
-  type UserReadOnlyOrMutateArgs,
-  type UserReadOnlyOrMutateArgsArgs,
+  type UserReadOnlyArgs,
+  type UserReadOnlyArgsArgs,
 } from ".";
 
 export type AddMemberArgs = {
   memberKey: MemberKey;
   permissions: IPermissions;
-  verifyArgs: Option<Secp256r1VerifyArgs>;
-  userArgs: UserReadOnlyOrMutateArgs;
+  userReadonlyArgs: UserReadOnlyArgs;
 };
 
 export type AddMemberArgsArgs = {
   memberKey: MemberKeyArgs;
   permissions: PermissionsArgs;
-  verifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  userArgs: UserReadOnlyOrMutateArgsArgs;
+  userReadonlyArgs: UserReadOnlyArgsArgs;
 };
 
 export function getAddMemberArgsEncoder(): Encoder<AddMemberArgsArgs> {
   return getStructEncoder([
     ["memberKey", getMemberKeyEncoder()],
     ["permissions", getPermissionsEncoder()],
-    ["verifyArgs", getOptionEncoder(getSecp256r1VerifyArgsEncoder())],
-    ["userArgs", getUserReadOnlyOrMutateArgsEncoder()],
+    ["userReadonlyArgs", getUserReadOnlyArgsEncoder()],
   ]);
 }
 
@@ -64,8 +53,7 @@ export function getAddMemberArgsDecoder(): Decoder<AddMemberArgs> {
   return getStructDecoder([
     ["memberKey", getMemberKeyDecoder()],
     ["permissions", getPermissionsDecoder()],
-    ["verifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ["userArgs", getUserReadOnlyOrMutateArgsDecoder()],
+    ["userReadonlyArgs", getUserReadOnlyArgsDecoder()],
   ]);
 }
 

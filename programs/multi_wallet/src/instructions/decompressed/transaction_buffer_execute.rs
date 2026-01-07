@@ -1,12 +1,13 @@
 use crate::{
-    ChallengeArgs, DomainConfig, KeyType, MemberKey, MultisigError, Permission,
-    Secp256r1VerifyArgs, Settings, TransactionActionType, TransactionBuffer,
+    utils::MultisigSettings, ChallengeArgs, DomainConfig, KeyType, MemberKey, MultisigError,
+    Permission, Secp256r1VerifyArgs, Settings, TransactionActionType, TransactionBuffer,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
 #[derive(Accounts)]
 pub struct TransactionBufferExecute<'info> {
     #[account(
+        mut,
         address = transaction_buffer.multi_wallet_settings,
     )]
     pub settings: AccountLoader<'info, Settings>,
@@ -40,10 +41,10 @@ impl<'info> TransactionBufferExecute<'info> {
 
         transaction_buffer.validate_hash()?;
         transaction_buffer.validate_size()?;
-        let settings = settings.load()?;
+        let settings = &mut settings.load_mut()?;
+        let members = settings.get_members()?;
         if transaction_buffer.preauthorize_execution {
-            let vote_count = settings
-                .members
+            let vote_count = members
                 .iter()
                 .filter(|x| {
                     x.permissions.has(Permission::VoteTransaction)
@@ -52,7 +53,7 @@ impl<'info> TransactionBufferExecute<'info> {
                 .count();
 
             require!(
-                vote_count >= settings.threshold as usize,
+                vote_count >= settings.get_threshold()? as usize,
                 MultisigError::InsufficientSignersWithVotePermission
             );
             return Ok(());
@@ -64,8 +65,7 @@ impl<'info> TransactionBufferExecute<'info> {
             instructions_sysvar.as_ref(),
         )?;
 
-        let member = settings
-            .members
+        let member = members
             .iter()
             .find(|x| x.pubkey.eq(&signer))
             .ok_or(MultisigError::MissingAccount)?;
@@ -75,8 +75,7 @@ impl<'info> TransactionBufferExecute<'info> {
             MultisigError::InsufficientSignerWithExecutePermission
         );
 
-        let vote_count = settings
-            .members
+        let vote_count = members
             .iter()
             .filter(|x| {
                 x.permissions.has(Permission::VoteTransaction)
@@ -85,7 +84,7 @@ impl<'info> TransactionBufferExecute<'info> {
             .count();
 
         require!(
-            vote_count >= settings.threshold as usize,
+            vote_count >= settings.get_threshold()? as usize,
             MultisigError::InsufficientSignersWithVotePermission
         );
 
@@ -109,7 +108,12 @@ impl<'info> TransactionBufferExecute<'info> {
                 },
                 transaction_buffer.expected_secp256r1_signers.as_ref(),
             )?;
+            settings.latest_slot_number_check(
+                vec![secp256r1_verify_data.slot_number],
+                slot_hash_sysvar,
+            )?;
         }
+        settings.invariant()?;
 
         Ok(())
     }

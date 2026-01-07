@@ -153,11 +153,20 @@ impl<'info> CompressSettingsAccount<'info> {
         settings_account.data = Some(CompressedSettingsData {
             threshold: settings_data.get_threshold()?,
             bump: settings_data.bump,
-            index: settings_data.index,
+            index: u128::from_le_bytes(settings_data.index),
             multi_wallet_bump: settings_data.multi_wallet_bump,
             members: settings_data.get_members()?,
             settings_address_tree_index: settings_data.settings_address_tree_index,
+            latest_slot_number: settings_data.get_latest_slot_number()?,
         });
+
+        settings_account.latest_slot_number_check(
+            secp256r1_verify_args
+                .iter()
+                .map(|f| f.verify_args.slot_number)
+                .collect(),
+            &ctx.accounts.slot_hash_sysvar,
+        )?;
 
         settings_account.invariant()?;
 

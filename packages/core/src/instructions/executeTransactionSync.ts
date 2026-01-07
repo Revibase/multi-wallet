@@ -56,7 +56,7 @@ export async function executeTransactionSync({
   const walletAddress = await getWalletAddressFromSettings(settings);
   const [
     { accountMetas, addressLookupTableAccounts, transactionMessage },
-    { settingsReadonlyArgs, proof, packedAccounts },
+    { settingsMutArgs, proof, packedAccounts },
   ] = await Promise.all([
     accountsForTransactionExecute({
       transactionMessageBytes,
@@ -115,7 +115,7 @@ export async function executeTransactionSync({
   );
 
   if (compressed) {
-    if (!payer || !settingsReadonlyArgs) {
+    if (!payer || !settingsMutArgs) {
       throw new Error("Payer not found or proof args is missing.");
     }
     const compressedProofArgs = convertToCompressedProofArgs(
@@ -127,7 +127,7 @@ export async function executeTransactionSync({
       getTransactionExecuteSyncCompressedInstruction({
         secp256r1VerifyArgs,
         transactionMessage: customTransactionMessage,
-        settingsReadonlyArgs,
+        settingsMutArgs,
         compressedProofArgs,
         payer,
         remainingAccounts,

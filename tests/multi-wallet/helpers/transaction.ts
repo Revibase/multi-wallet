@@ -2,8 +2,6 @@ import {
   changeConfig,
   getSendAndConfirmTransaction,
   getSolanaRpc,
-  prepareTransactionMessage,
-  prepareTransactionSync,
 } from "@revibase/core";
 import {
   address,
@@ -125,7 +123,8 @@ export async function fundMultiWalletVault(
 
 export async function addPayerAsNewMember(ctx: TestContext) {
   if (!ctx.index || !ctx.multiWalletVault || !ctx.payer || !ctx.wallet) return;
-  const { instructions, secp256r1VerifyInput } = await changeConfig({
+  const instructions = await changeConfig({
+    signers: [ctx.wallet],
     payer: ctx.payer,
     compressed: ctx.compressed,
     index: ctx.index,
@@ -142,23 +141,5 @@ export async function addPayerAsNewMember(ctx: TestContext) {
     ],
   });
 
-  const transactionMessageBytes = prepareTransactionMessage({
-    payer: ctx.multiWalletVault,
-    instructions,
-    addressesByLookupTableAddress: ctx.addressLookUpTable,
-  });
-  const {
-    instructions: ixs,
-    payer,
-    addressesByLookupTableAddress,
-  } = await prepareTransactionSync({
-    compressed: ctx.compressed,
-    payer: ctx.payer,
-    index: ctx.index,
-    signers: [ctx.wallet],
-    transactionMessageBytes,
-    secp256r1VerifyInput,
-  });
-
-  await sendTransaction(ixs, payer, addressesByLookupTableAddress);
+  await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
 }

@@ -1,13 +1,8 @@
 import {
   createDomainUserAccounts,
   createUserAccounts,
-  createWallet,
-  fetchGlobalCounter,
   fetchSettingsAccountData,
   fetchUserAccountData,
-  getGlobalCounterAddress,
-  getSettingsFromIndex,
-  getSolanaRpc,
   getWalletAddressFromIndex,
   Secp256r1Key,
   UserRole,
@@ -17,7 +12,6 @@ import { createKeyPairSignerFromPrivateKeyBytes } from "gill";
 import {
   createMultiWallet,
   generateSecp256r1KeyPair,
-  mockAuthenticationResponse,
   sendTransaction,
 } from "../helpers/index.ts";
 import type { TestContext } from "../types.ts";
@@ -98,60 +92,5 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
 
     expect(accountData.members.length).to.equal(2, "Should have two members");
     expect(accountData.threshold).to.equal(1, "Threshold should be 1");
-  });
-
-  it("should create wallet using Secp256r1 key as initial member", async () => {
-    let ctx = getCtx();
-    ctx = await createMultiWallet(ctx);
-    const secp256r1Keys = generateSecp256r1KeyPair();
-    if (
-      !ctx.index ||
-      !ctx.multiWalletVault ||
-      !ctx.wallet ||
-      !ctx.payer ||
-      !ctx.domainConfig
-    )
-      return;
-
-    const createDomainUserAccountIx = await createDomainUserAccounts({
-      payer: ctx.payer,
-      authority: ctx.wallet,
-      domainConfig: ctx.domainConfig,
-      createUserArgs: {
-        member: new Secp256r1Key(secp256r1Keys.publicKey),
-        role: UserRole.PermanentMember,
-      },
-    });
-
-    await sendTransaction(
-      [createDomainUserAccountIx],
-      ctx.payer,
-      ctx.addressLookUpTable
-    );
-
-    const globalCounter = await fetchGlobalCounter(
-      getSolanaRpc(),
-      await getGlobalCounterAddress()
-    );
-
-    const settings = await getSettingsFromIndex(globalCounter.data.index);
-    const signedSigner = await mockAuthenticationResponse(
-      {
-        transactionActionType: "add_new_member",
-        transactionAddress: settings.toString(),
-        transactionMessageBytes: new TextEncoder().encode(ctx.rpId),
-      },
-      secp256r1Keys.privateKey,
-      secp256r1Keys.publicKey,
-      ctx
-    );
-
-    const instructions = await createWallet({
-      payer: ctx.payer,
-      initialMember: signedSigner,
-      index: globalCounter.data.index,
-    });
-
-    await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
   });
 }

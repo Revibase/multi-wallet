@@ -1,9 +1,18 @@
 use crate::{
-    state::SettingsReadonlyArgs, ChallengeArgs, CompressedSettings, DomainConfig, KeyType,
-    MemberKey, MultisigError, Permission, ProofArgs, Secp256r1VerifyArgs, TransactionActionType,
-    TransactionBuffer,
+    state::{Settings, SettingsMutArgs},
+    utils::MultisigSettings,
+    ChallengeArgs, CompressedSettings, DomainConfig, KeyType, MemberKey, MultisigError, Permission,
+    ProofArgs, Secp256r1VerifyArgs, TransactionActionType, TransactionBuffer, LIGHT_CPI_SIGNER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
+use light_sdk::{
+    cpi::{
+        v2::{CpiAccounts, LightSystemProgramCpi},
+        InvokeLightSystemProgram, LightCpiInstruction,
+    },
+    instruction::ValidityProof,
+    LightAccount,
+};
 
 #[derive(Accounts)]
 pub struct TransactionBufferExecuteCompressed<'info> {
@@ -33,7 +42,7 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
         &self,
         remaining_accounts: &[AccountInfo<'info>],
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
-        settings_readonly_args: &SettingsReadonlyArgs,
+        settings_mut_args: SettingsMutArgs,
         compressed_proof_args: &ProofArgs,
     ) -> Result<()> {
         let Self {
@@ -49,19 +58,34 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
         transaction_buffer.validate_hash()?;
         transaction_buffer.validate_size()?;
 
-        let (settings, settings_key) = CompressedSettings::verify_compressed_settings_account(
-            &payer.to_account_info(),
-            settings_readonly_args,
-            &remaining_accounts,
-            compressed_proof_args,
-        )?;
+        let light_cpi_accounts = CpiAccounts::new(
+            payer,
+            &remaining_accounts[compressed_proof_args.light_cpi_accounts_start_index as usize..],
+            LIGHT_CPI_SIGNER,
+        );
+
+        let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
+            &crate::ID,
+            &settings_mut_args.account_meta,
+            settings_mut_args.data,
+        )
+        .map_err(ProgramError::from)?;
+
+        let settings_data = settings_account
+            .data
+            .as_ref()
+            .ok_or(MultisigError::InvalidAccount)?;
+
+        let settings_key =
+            Settings::get_settings_key_from_index(settings_data.index, settings_data.bump)?;
+
         require!(
             settings_key.eq(&transaction_buffer.multi_wallet_settings),
             MultisigError::InvalidAccount
         );
+        let members = settings_account.get_members()?;
         if transaction_buffer.preauthorize_execution {
-            let vote_count = settings
-                .members
+            let vote_count = members
                 .iter()
                 .filter(|x| {
                     x.permissions.has(Permission::VoteTransaction)
@@ -70,7 +94,7 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
                 .count();
 
             require!(
-                vote_count >= settings.threshold as usize,
+                vote_count >= settings_account.get_threshold()? as usize,
                 MultisigError::InsufficientSignersWithVotePermission
             );
             return Ok(());
@@ -82,8 +106,7 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
             instructions_sysvar.as_ref(),
         )?;
 
-        let member = settings
-            .members
+        let member = members
             .iter()
             .find(|x| x.pubkey.eq(&signer))
             .ok_or(MultisigError::MissingAccount)?;
@@ -93,8 +116,7 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
             MultisigError::InsufficientSignerWithExecutePermission
         );
 
-        let vote_count = settings
-            .members
+        let vote_count = members
             .iter()
             .filter(|x| {
                 x.permissions.has(Permission::VoteTransaction)
@@ -103,7 +125,7 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
             .count();
 
         require!(
-            vote_count >= settings.threshold as usize,
+            vote_count >= settings_account.get_threshold()? as usize,
             MultisigError::InsufficientSignersWithVotePermission
         );
 
@@ -127,16 +149,29 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
                 },
                 transaction_buffer.expected_secp256r1_signers.as_ref(),
             )?;
+
+            settings_account.latest_slot_number_check(
+                vec![secp256r1_verify_data.slot_number],
+                &slot_hash_sysvar,
+            )?;
         }
+
+        settings_account.invariant()?;
+        LightSystemProgramCpi::new_cpi(
+            LIGHT_CPI_SIGNER,
+            ValidityProof(compressed_proof_args.proof),
+        )
+        .with_light_account(settings_account)?
+        .invoke(light_cpi_accounts)?;
 
         Ok(())
     }
 
-    #[access_control(ctx.accounts.validate(ctx.remaining_accounts,&secp256r1_verify_args,&settings_readonly_args,&compressed_proof_args))]
+    #[access_control(ctx.accounts.validate(ctx.remaining_accounts,&secp256r1_verify_args,settings_mut_args,&compressed_proof_args))]
     pub fn process(
         ctx: Context<'_, '_, '_, 'info, Self>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly_args: SettingsReadonlyArgs,
+        settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;

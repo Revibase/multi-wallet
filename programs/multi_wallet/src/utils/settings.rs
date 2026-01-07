@@ -1,7 +1,6 @@
 use crate::{
-    state::UserReadOnlyOrMutateArgs, utils::UserRole, AddMemberArgs, ChallengeArgs, DomainConfig,
-    EditMemberArgs, KeyType, Member, MemberKey, MultisigError, Permission, PermissionCounts,
-    RemoveMemberArgs, TransactionActionType,
+    utils::UserRole, AddMemberArgs, EditMemberArgs, KeyType, Member, MemberKey, MultisigError,
+    Permission, PermissionCounts, RemoveMemberArgs,
 };
 use anchor_lang::prelude::*;
 use std::collections::{HashMap, HashSet};
@@ -13,8 +12,58 @@ pub trait MultisigSettings {
     fn set_members(&mut self, members: Vec<Member>) -> Result<()>;
     fn extend_members(&mut self, members: Vec<Member>) -> Result<()>;
     fn delete_members(&mut self, members: Vec<MemberKey>) -> Result<()>;
+    fn set_latest_slot_number(&mut self, value: u64) -> Result<()>;
     fn get_threshold(&self) -> Result<u8>;
     fn get_members(&self) -> Result<Vec<Member>>;
+    fn get_latest_slot_number(&self) -> Result<u64>;
+
+    fn latest_slot_number_check(
+        &mut self,
+        slot_numbers: Vec<u64>,
+        sysvar_slot_history: &Option<UncheckedAccount>,
+    ) -> Result<()> {
+        if !slot_numbers.is_empty() {
+            let min_slot_number = slot_numbers.iter().min().unwrap();
+            let max_slot_number = slot_numbers.iter().max().unwrap();
+            let sysvar_slot_history = sysvar_slot_history
+                .as_ref()
+                .ok_or(MultisigError::MissingSysvarSlotHistory)?;
+
+            let data = sysvar_slot_history
+                .try_borrow_data()
+                .map_err(|_| MultisigError::InvalidSysvarDataFormat)?;
+
+            let num_slot_hashes = u64::from_le_bytes(
+                data[..8]
+                    .try_into()
+                    .map_err(|_| MultisigError::InvalidSysvarDataFormat)?,
+            );
+
+            let first_slot = u64::from_le_bytes(
+                data[8..16]
+                    .try_into()
+                    .map_err(|_| MultisigError::InvalidSysvarDataFormat)?,
+            );
+
+            let offset = first_slot
+                .checked_sub(*max_slot_number)
+                .ok_or(MultisigError::SlotNumberNotFound)? as usize;
+
+            if offset >= num_slot_hashes as usize {
+                return err!(MultisigError::SlotNumberNotFound);
+            }
+
+            require!(
+                self.get_latest_slot_number()? < *min_slot_number,
+                MultisigError::InvalidSlotNumber
+            );
+
+            self.set_latest_slot_number(*max_slot_number)?;
+        }
+
+        Ok(())
+    }
+
     fn invariant(&self) -> Result<()> {
         let members = self.get_members()?;
         let member_count = members.len();
@@ -111,23 +160,11 @@ pub trait MultisigSettings {
         Ok(())
     }
 
-    fn add_members<'a>(
-        &mut self,
-        settings: &Pubkey,
-        new_members: Vec<AddMemberArgs>,
-        remaining_accounts: &'a [AccountInfo<'a>],
-        sysvar_slot_history: &Option<UncheckedAccount<'a>>,
-        instructions_sysvar: Option<&UncheckedAccount<'a>>,
-    ) -> Result<Vec<AddMemberArgs>> {
+    fn add_members<'a>(&mut self, new_members: Vec<AddMemberArgs>) -> Result<Vec<AddMemberArgs>> {
         let mut new_member_data = vec![];
         for member in &new_members {
-            let (role, user_address_tree_index) = match &member.user_args {
-                UserReadOnlyOrMutateArgs::Mutate(a) => {
-                    (a.data.role, a.data.user_address_tree_index)
-                }
-                UserReadOnlyOrMutateArgs::Read(a) => (a.data.role, a.data.user_address_tree_index),
-            };
-
+            let role = member.user_readonly_args.data.role;
+            let user_address_tree_index = member.user_readonly_args.data.user_address_tree_index;
             new_member_data.push(Member {
                 pubkey: member.member_key,
                 permissions: member.permissions,
@@ -135,41 +172,6 @@ pub trait MultisigSettings {
                 user_address_tree_index,
                 is_delegate: UserRole::from(role).eq(&UserRole::PermanentMember).into(),
             });
-
-            if member.member_key.get_type().eq(&KeyType::Secp256r1) {
-                let domain_config_key = match &member.user_args {
-                    UserReadOnlyOrMutateArgs::Mutate(user_mut_args) => user_mut_args
-                        .data
-                        .domain_config
-                        .ok_or(MultisigError::DomainConfigIsMissing)?,
-                    UserReadOnlyOrMutateArgs::Read(user_readonly_args) => user_readonly_args
-                        .data
-                        .domain_config
-                        .ok_or(MultisigError::DomainConfigIsMissing)?,
-                };
-                let domain_config = DomainConfig::extract_domain_config_account(
-                    remaining_accounts,
-                    domain_config_key,
-                )?;
-                let rp_id_hash = domain_config.load()?.rp_id_hash;
-                let verify_data = member
-                    .verify_args
-                    .as_ref()
-                    .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
-                let instructions_sysvar =
-                    instructions_sysvar.ok_or(MultisigError::MissingAccount)?;
-                verify_data.verify_webauthn(
-                    sysvar_slot_history,
-                    &Some(domain_config),
-                    instructions_sysvar,
-                    ChallengeArgs {
-                        account: *settings,
-                        message_hash: rp_id_hash,
-                        action_type: TransactionActionType::AddNewMember,
-                    },
-                    None,
-                )?;
-            }
         }
 
         self.extend_members(new_member_data)?;

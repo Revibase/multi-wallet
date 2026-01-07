@@ -75,7 +75,7 @@ export type NativeTransferIntentInstruction<
   InstructionWithAccounts<
     [
       TAccountSettings extends string
-        ? ReadonlyAccount<TAccountSettings>
+        ? WritableAccount<TAccountSettings>
         : TAccountSettings,
       TAccountSlotHashSysvar extends string
         ? ReadonlyAccount<TAccountSlotHashSysvar>
@@ -202,7 +202,7 @@ export async function getNativeTransferIntentInstructionAsync<
 
   // Original accounts.
   const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: false },
+    settings: { value: input.settings ?? null, isWritable: true },
     slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
     instructionsSysvar: {
       value: input.instructionsSysvar ?? null,
@@ -332,7 +332,7 @@ export function getNativeTransferIntentInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: false },
+    settings: { value: input.settings ?? null, isWritable: true },
     slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
     instructionsSysvar: {
       value: input.instructionsSysvar ?? null,

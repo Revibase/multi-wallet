@@ -180,7 +180,7 @@ impl<'info> EditUserDelegate<'info> {
             if let Some(old_settings) = &ctx.accounts.old_settings {
                 let settings_data = &mut old_settings.load_mut()?;
                 require!(
-                    settings_data.index.eq(&old_delegate.index)
+                    u128::from_le_bytes(settings_data.index).eq(&old_delegate.index)
                         && settings_data
                             .settings_address_tree_index
                             .eq(&old_delegate.settings_address_tree_index),
@@ -192,6 +192,12 @@ impl<'info> EditUserDelegate<'info> {
                     user_account.user_address_tree_index,
                     false,
                 )?;
+                if let Some(secp256r1_verify_args) = &secp256r1_verify_args {
+                    settings_data.latest_slot_number_check(
+                        vec![secp256r1_verify_args.slot_number],
+                        &ctx.accounts.slot_hash_sysvar,
+                    )?;
+                }
                 settings_data.invariant()?;
             } else if let Some(old_settings_mut_args) = old_settings_mut_args {
                 let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
@@ -217,7 +223,12 @@ impl<'info> EditUserDelegate<'info> {
                     user_account.user_address_tree_index,
                     false,
                 )?;
-
+                if let Some(secp256r1_verify_args) = &secp256r1_verify_args {
+                    settings_account.latest_slot_number_check(
+                        vec![secp256r1_verify_args.slot_number],
+                        &ctx.accounts.slot_hash_sysvar,
+                    )?;
+                }
                 settings_account.invariant()?;
                 cpi_accounts = cpi_accounts.with_light_account(settings_account)?;
             } else {
@@ -229,7 +240,7 @@ impl<'info> EditUserDelegate<'info> {
             if let Some(new_settings) = &ctx.accounts.new_settings {
                 let settings_data = &mut new_settings.load_mut()?;
                 require!(
-                    settings_data.index.eq(&new_delegate.index)
+                    u128::from_le_bytes(settings_data.index).eq(&new_delegate.index)
                         && settings_data
                             .settings_address_tree_index
                             .eq(&new_delegate.settings_address_tree_index),
@@ -241,6 +252,12 @@ impl<'info> EditUserDelegate<'info> {
                     user_account.user_address_tree_index,
                     true,
                 )?;
+                if let Some(secp256r1_verify_args) = &secp256r1_verify_args {
+                    settings_data.latest_slot_number_check(
+                        vec![secp256r1_verify_args.slot_number],
+                        &ctx.accounts.slot_hash_sysvar,
+                    )?;
+                }
                 settings_data.invariant()?;
             } else if let Some(new_settings_mut_args) = new_settings_mut_args {
                 let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
@@ -266,7 +283,12 @@ impl<'info> EditUserDelegate<'info> {
                     user_account.user_address_tree_index,
                     true,
                 )?;
-
+                if let Some(secp256r1_verify_args) = &secp256r1_verify_args {
+                    settings_account.latest_slot_number_check(
+                        vec![secp256r1_verify_args.slot_number],
+                        &ctx.accounts.slot_hash_sysvar,
+                    )?;
+                }
                 settings_account.invariant()?;
                 cpi_accounts = cpi_accounts.with_light_account(settings_account)?;
             } else {

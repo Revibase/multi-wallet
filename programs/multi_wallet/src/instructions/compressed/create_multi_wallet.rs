@@ -1,12 +1,12 @@
 use crate::{
     id,
-    state::{SettingsIndexWithAddress, UserReadOnlyOrMutateArgs, WhitelistedAddressTree},
+    state::{SettingsIndexWithAddress, UserReadOnlyArgs, WhitelistedAddressTree},
     utils::{SEED_GLOBAL_COUNTER, SEED_WHITELISTED_ADDRESS_TREE},
-    AddMemberArgs, CompressedSettings, CompressedSettingsData, DomainConfig, GlobalCounter,
-    MemberKey, MultisigError, Ops, Permission, Permissions, ProofArgs, Secp256r1VerifyArgs,
-    SettingsCreationArgs, User, LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
+    AddMemberArgs, CompressedSettings, CompressedSettingsData, GlobalCounter, MemberKey,
+    MultisigError, Ops, Permission, Permissions, ProofArgs, SettingsCreationArgs, User,
+    LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
 };
-use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
+use anchor_lang::prelude::*;
 use light_sdk::{
     cpi::{
         v2::{CpiAccounts, LightSystemProgramCpi},
@@ -19,19 +19,8 @@ use light_sdk::{
 pub struct CreateMultiWalletCompressed<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
-    pub initial_member: Option<Signer<'info>>,
+    pub initial_member: Signer<'info>,
     pub system_program: Program<'info, System>,
-    /// CHECK:
-    #[account(
-        address = SlotHashes::id(),
-    )]
-    pub slot_hash_sysvar: Option<UncheckedAccount<'info>>,
-    /// CHECK:
-    #[account(
-        address = Instructions::id(),
-    )]
-    pub instructions_sysvar: Option<UncheckedAccount<'info>>,
-    pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
     #[account(
         mut,
         seeds = [SEED_GLOBAL_COUNTER],
@@ -48,10 +37,9 @@ pub struct CreateMultiWalletCompressed<'info> {
 impl<'info> CreateMultiWalletCompressed<'info> {
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         compressed_proof_args: ProofArgs,
         settings_creation: SettingsCreationArgs,
-        user_args: UserReadOnlyOrMutateArgs,
+        user_readonly_args: UserReadOnlyArgs,
         settings_index: u128,
     ) -> Result<()> {
         let global_counter = &mut ctx.accounts.global_counter.load_mut()?;
@@ -63,12 +51,6 @@ impl<'info> CreateMultiWalletCompressed<'info> {
             &[SEED_MULTISIG, settings_index.to_le_bytes().as_ref()],
             &crate::ID,
         );
-
-        let signer: MemberKey = MemberKey::get_signer(
-            &ctx.accounts.initial_member,
-            &secp256r1_verify_args,
-            ctx.accounts.instructions_sysvar.as_ref(),
-        )?;
 
         let (_, multi_wallet_bump) = Pubkey::find_program_address(
             &[SEED_MULTISIG, settings_key.as_ref(), SEED_VAULT],
@@ -102,26 +84,20 @@ impl<'info> CreateMultiWalletCompressed<'info> {
                     multi_wallet_bump: multi_wallet_bump,
                     members: vec![],
                     settings_address_tree_index,
+                    latest_slot_number: 0u64,
                 },
                 Some(0),
             )?;
 
-        let delegate_ops = settings_account.add_members(
-            &settings_key,
-            vec![AddMemberArgs {
-                member_key: signer,
-                permissions: Permissions::from_permissions(vec![
-                    Permission::InitiateTransaction,
-                    Permission::VoteTransaction,
-                    Permission::ExecuteTransaction,
-                ]),
-                verify_args: secp256r1_verify_args,
-                user_args,
-            }],
-            ctx.remaining_accounts,
-            &ctx.accounts.slot_hash_sysvar,
-            ctx.accounts.instructions_sysvar.as_ref(),
-        )?;
+        let delegate_ops = settings_account.add_members(vec![AddMemberArgs {
+            member_key: MemberKey::convert_ed25519(&ctx.accounts.initial_member.key())?,
+            permissions: Permissions::from_permissions(vec![
+                Permission::InitiateTransaction,
+                Permission::VoteTransaction,
+                Permission::ExecuteTransaction,
+            ]),
+            user_readonly_args,
+        }])?;
 
         settings_account.invariant()?;
 

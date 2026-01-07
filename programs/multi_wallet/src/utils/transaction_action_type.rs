@@ -6,11 +6,11 @@ pub enum TransactionActionType {
     Vote,
     Sync,
     Close,
-    AddNewMember,
     Compress,
     Decompress,
     TransferIntent,
     ChangeDelegate,
+    ChangeConfig,
 }
 
 impl TransactionActionType {
@@ -24,11 +24,11 @@ impl TransactionActionType {
             TransactionActionType::Vote => b"vote",
             TransactionActionType::Sync => b"sync",
             TransactionActionType::Close => b"close",
-            TransactionActionType::AddNewMember => b"add_new_member",
             TransactionActionType::Compress => b"compress",
             TransactionActionType::Decompress => b"decompress",
             TransactionActionType::TransferIntent => b"transfer_intent",
             TransactionActionType::ChangeDelegate => b"change_delegate",
+            TransactionActionType::ChangeConfig => b"change_config",
         }
     }
 }

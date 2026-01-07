@@ -20,7 +20,7 @@ type UserCreationArgs =
     }
   | {
       member: TransactionSigner;
-      role: UserRole.Member | UserRole.PermanentMember;
+      role: UserRole.Member;
     };
 
 export async function createUserAccounts({

@@ -7,7 +7,7 @@ export const HEARTBEAT_INTERVAL = 2000; // 2s
 export const CONNECT_GRACE_MS = 3000; // 3s
 
 // After a close signal, poll briefly to catch a persisted result, then fail.
-export const CLOSE_POLL_GRACE_MS = 1500; //1.5s
+export const CLOSE_POLL_GRACE_MS = 30000; // 30s
 
 // Polling settings
 export const POLL_INITIAL_DELAY_MS = 1000; // 1s
@@ -38,11 +38,6 @@ export type Options = {
    */
   providerOrigin?: string;
   /**
-   * URL shown in the popup while the authorization flow is initializing.
-   * Typically a lightweight loading or handoff page hosted by the provider.
-   */
-  providerLoadingUrl?: string;
-  /**
    * Endpoint used to fetch the result as a fallback
    * when MessageChannel communication is unavailable or interrupted.
    */
@@ -61,7 +56,6 @@ export type Pending = {
  * Opens a popup window for WebAuthn or authentication workflows.
  *
  * This helper creates a centered, resizable popup on desktop, and a full-screen view on mobile.
- * It defaults to the `/loading` route of your configured authentication origin.
  *
  * @param url - The URL to load in the popup.
  * @returns A reference to the newly created popup window, or `null` if blocked by the browser.
@@ -69,7 +63,7 @@ export type Pending = {
  * @throws {Error} If called outside a browser environment.
  *
  */
-export function createPopUp(url: string) {
+export function createPopUp(url?: string) {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }
@@ -122,5 +116,5 @@ export function createPopUp(url: string) {
     "resizable=yes",
   ].join(",");
 
-  return window.open(url, "_blank", features);
+  return window.open(url ?? "", "_blank", features);
 }

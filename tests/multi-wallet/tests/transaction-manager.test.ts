@@ -4,8 +4,6 @@ import {
   createUserAccounts,
   fetchSettingsAccountData,
   fetchUserAccountData,
-  prepareTransactionMessage,
-  prepareTransactionSync,
   UserRole,
 } from "@revibase/core";
 import { expect } from "chai";
@@ -39,7 +37,8 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
       ctx.addressLookUpTable
     );
 
-    const { instructions, secp256r1VerifyInput } = await changeConfig({
+    const instructions = await changeConfig({
+      signers: [ctx.wallet],
       payer: ctx.payer,
       compressed: ctx.compressed,
       index: ctx.index,
@@ -56,25 +55,7 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
       ],
     });
 
-    const transactionMessageBytes = prepareTransactionMessage({
-      payer: ctx.multiWalletVault,
-      instructions,
-      addressesByLookupTableAddress: ctx.addressLookUpTable,
-    });
-    const {
-      instructions: ixs,
-      payer,
-      addressesByLookupTableAddress,
-    } = await prepareTransactionSync({
-      compressed: ctx.compressed,
-      payer: ctx.payer,
-      index: ctx.index,
-      signers: [ctx.wallet],
-      transactionMessageBytes,
-      secp256r1VerifyInput,
-    });
-
-    await sendTransaction(ixs, payer, addressesByLookupTableAddress);
+    await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
 
     // Verify member was added
     const userAccountData = await fetchUserAccountData(

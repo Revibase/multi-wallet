@@ -60,7 +60,7 @@ export async function tokenTransferIntent({
     getAssociatedTokenAccountAddress(mint, walletAddress, tokenProgram),
     getAssociatedTokenAccountAddress(mint, destination, tokenProgram),
   ]);
-  const { settingsReadonlyArgs, proof, packedAccounts } =
+  const { packedAccounts, proof, settingsMutArgs } =
     await constructSettingsProofArgs(
       compressed,
       index,
@@ -68,7 +68,6 @@ export async function tokenTransferIntent({
       false,
       cachedAccounts
     );
-
   const secp256r1VerifyInput: Secp256r1VerifyInput = [];
   const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];
   for (const x of dedupSigners) {
@@ -106,7 +105,7 @@ export async function tokenTransferIntent({
   }
 
   if (compressed) {
-    if (!payer || !settingsReadonlyArgs) {
+    if (!payer || !settingsMutArgs) {
       throw new Error("Payer not found or proof args is missing.");
     }
     const compressedProofArgs = convertToCompressedProofArgs(
@@ -117,7 +116,7 @@ export async function tokenTransferIntent({
       getTokenTransferIntentCompressedInstruction({
         amount,
         createAtaIfNeeded,
-        settingsReadonlyArgs,
+        settingsMutArgs,
         compressedProofArgs,
         payer,
         secp256r1VerifyArgs,

@@ -18,9 +18,6 @@ export async function transferTokens(
     tokenProgram?: string;
   }
 ) {
-  if (typeof window === "undefined") {
-    throw new Error("Function can only be called in a browser environment");
-  }
   provider.openBlankPopUp();
 
   const {

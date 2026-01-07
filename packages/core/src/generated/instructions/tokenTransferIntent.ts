@@ -86,7 +86,7 @@ export type TokenTransferIntentInstruction<
   InstructionWithAccounts<
     [
       TAccountSettings extends string
-        ? ReadonlyAccount<TAccountSettings>
+        ? WritableAccount<TAccountSettings>
         : TAccountSettings,
       TAccountSlotHashSysvar extends string
         ? ReadonlyAccount<TAccountSlotHashSysvar>
@@ -258,7 +258,7 @@ export async function getTokenTransferIntentInstructionAsync<
 
   // Original accounts.
   const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: false },
+    settings: { value: input.settings ?? null, isWritable: true },
     slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
     instructionsSysvar: {
       value: input.instructionsSysvar ?? null,
@@ -468,7 +468,7 @@ export function getTokenTransferIntentInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: false },
+    settings: { value: input.settings ?? null, isWritable: true },
     slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
     instructionsSysvar: {
       value: input.instructionsSysvar ?? null,

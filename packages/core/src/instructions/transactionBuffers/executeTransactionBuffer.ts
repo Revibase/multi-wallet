@@ -3,7 +3,7 @@ import {
   getTransactionBufferExecuteCompressedInstruction,
   getTransactionBufferExecuteInstruction,
   type ProofArgsArgs,
-  type SettingsReadonlyArgs,
+  type SettingsMutArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
 import { extractSecp256r1VerificationArgs } from "../../utils/transaction/internal";
@@ -19,7 +19,7 @@ export function executeTransactionBuffer({
   transactionBufferAddress: Address;
   settings: Address;
   compressedArgs: {
-    settingsReadonlyArgs: SettingsReadonlyArgs;
+    settingsMutArgs: SettingsMutArgs;
     compressedProofArgs: ProofArgsArgs;
     remainingAccounts: AccountMeta[];
     payer: TransactionSigner;
@@ -47,7 +47,7 @@ export function executeTransactionBuffer({
         secp256r1VerifyArgs: verifyArgs,
         domainConfig,
         executor: executor instanceof SignedSecp256r1Key ? undefined : executor,
-        settingsReadonlyArgs: compressedArgs.settingsReadonlyArgs,
+        settingsMutArgs: compressedArgs.settingsMutArgs,
         payer: compressedArgs.payer,
         compressedProofArgs: compressedArgs.compressedProofArgs,
         remainingAccounts: compressedArgs.remainingAccounts,

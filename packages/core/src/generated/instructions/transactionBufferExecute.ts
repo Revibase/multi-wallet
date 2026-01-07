@@ -70,7 +70,7 @@ export type TransactionBufferExecuteInstruction<
   InstructionWithAccounts<
     [
       TAccountSettings extends string
-        ? ReadonlyAccount<TAccountSettings>
+        ? WritableAccount<TAccountSettings>
         : TAccountSettings,
       TAccountDomainConfig extends string
         ? ReadonlyAccount<TAccountDomainConfig>
@@ -188,7 +188,7 @@ export function getTransactionBufferExecuteInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: false },
+    settings: { value: input.settings ?? null, isWritable: true },
     domainConfig: { value: input.domainConfig ?? null, isWritable: false },
     executor: { value: input.executor ?? null, isWritable: false },
     transactionBuffer: {

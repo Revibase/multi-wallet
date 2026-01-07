@@ -71,7 +71,7 @@ export type TransactionBufferCloseInstruction<
   InstructionWithAccounts<
     [
       TAccountSettings extends string
-        ? ReadonlyAccount<TAccountSettings>
+        ? WritableAccount<TAccountSettings>
         : TAccountSettings,
       TAccountPayer extends string
         ? WritableAccount<TAccountPayer>
@@ -197,7 +197,7 @@ export function getTransactionBufferCloseInstruction<
 
   // Original accounts.
   const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: false },
+    settings: { value: input.settings ?? null, isWritable: true },
     payer: { value: input.payer ?? null, isWritable: true },
     domainConfig: { value: input.domainConfig ?? null, isWritable: false },
     transactionBuffer: {

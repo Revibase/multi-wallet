@@ -13,10 +13,6 @@ export async function signAndVerifyMessageWithPasskey({
   signer?: string;
   provider: RevibaseProvider;
 }) {
-  if (typeof window === "undefined") {
-    throw new Error("Function can only be called in a browser environment");
-  }
-
   provider.openBlankPopUp();
   const redirectOrigin = window.origin;
   const payload: StartMessageRequest = {

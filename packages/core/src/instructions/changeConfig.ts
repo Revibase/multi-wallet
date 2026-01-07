@@ -1,13 +1,6 @@
 import type { ValidityProofWithContext } from "@lightprotocol/stateless.js";
 import BN from "bn.js";
-import {
-  AccountRole,
-  type Address,
-  createNoopSigner,
-  none,
-  some,
-  type TransactionSigner,
-} from "gill";
+import { AccountRole, type Address, type TransactionSigner } from "gill";
 import {
   type AddMemberArgs,
   type CompressedSettings,
@@ -19,6 +12,7 @@ import {
   getUserDecoder,
   type IPermissions,
   type RemoveMemberArgs,
+  type Secp256r1VerifyArgsWithDomainAddressArgs,
   type SettingsMutArgs,
   type User,
   type UserMutArgs,
@@ -36,7 +30,6 @@ import {
 import {
   getCompressedSettingsAddressFromIndex,
   getUserAccountAddress,
-  getWalletAddressFromIndex,
 } from "../utils";
 import {
   convertToCompressedProofArgs,
@@ -48,13 +41,15 @@ import { PackedAccounts } from "../utils/compressed/packedAccounts";
 import {
   convertPubkeyToMemberkey,
   extractSecp256r1VerificationArgs,
+  getDeduplicatedSigners,
 } from "../utils/transaction/internal";
-import type { Secp256r1VerifyInput } from "./secp256r1Verify";
+import { getSecp256r1VerifyInstruction } from "./secp256r1Verify";
 
 export async function changeConfig({
   index,
   settingsAddressTreeIndex,
   configActionsArgs,
+  signers,
   payer,
   compressed = false,
   cachedAccounts,
@@ -62,6 +57,7 @@ export async function changeConfig({
   index: number | bigint;
   settingsAddressTreeIndex?: number;
   configActionsArgs: ConfigurationArgs[];
+  signers: (TransactionSigner | SignedSecp256r1Key)[];
   payer: TransactionSigner;
   compressed?: boolean;
   cachedAccounts?: Map<string, any>;
@@ -89,41 +85,78 @@ export async function changeConfig({
     settingsMutArgs = proofResult.settingsMutArgs ?? null;
     userMutArgs = proofResult.userMutArgs ?? [];
   }
+  // 3) Prepare signers
+  const dedupSigners = getDeduplicatedSigners(signers);
+  const transactionSigners = dedupSigners.filter(
+    (x) => !(x instanceof SignedSecp256r1Key)
+  ) as TransactionSigner[];
+  packedAccounts.addPreAccounts(
+    transactionSigners.map((x) => ({
+      address: x.address,
+      role: AccountRole.READONLY_SIGNER,
+      signer: x,
+    }))
+  );
+  const secp256r1Signers = dedupSigners.filter(
+    (x) => x instanceof SignedSecp256r1Key
+  );
+  const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];
+  const secp256r1VerifyInput = [];
+  for (const x of secp256r1Signers) {
+    const index = secp256r1VerifyInput.length;
+    const { domainConfig, verifyArgs, signature, publicKey, message } =
+      extractSecp256r1VerificationArgs(x, index);
+    if (message && signature && publicKey) {
+      secp256r1VerifyInput.push({ message, signature, publicKey });
+    }
+    if (domainConfig) {
+      packedAccounts.addPreAccounts([
+        { address: domainConfig, role: AccountRole.READONLY },
+      ]);
+      if (verifyArgs?.__option === "Some") {
+        secp256r1VerifyArgs.push({
+          domainConfigKey: domainConfig,
+          verifyArgs: verifyArgs.value,
+        });
+      }
+    }
+  }
 
-  // 3) Build the config actions and collect secp verify inputs
-  const { configActions, secp256r1VerifyInput } = await buildConfigActions({
+  // 4) Build the config actions
+  const configActions = await buildConfigActions({
     configActionsArgs,
-    packedAccounts,
     userMutArgs,
     index,
   });
 
-  // 4) Assemble final instructions
+  // 5) Assemble final instructions
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
-
-  const instructions = compressed
-    ? [
-        getChangeConfigCompressedInstruction({
+  const instructions = [];
+  if (secp256r1VerifyInput.length > 0) {
+    instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
+  }
+  instructions.push(
+    compressed
+      ? getChangeConfigCompressedInstruction({
           configActions,
           payer,
-          authority: createNoopSigner(await getWalletAddressFromIndex(index)),
           compressedProofArgs,
           settingsMut: settingsMutArgs!,
           remainingAccounts,
-        }),
-      ]
-    : [
-        await getChangeConfigInstructionAsync({
+          secp256r1VerifyArgs,
+        })
+      : await getChangeConfigInstructionAsync({
           settingsIndex: index,
           configActions,
           payer,
           compressedProofArgs,
           remainingAccounts,
-        }),
-      ];
+          secp256r1VerifyArgs,
+        })
+  );
 
-  return { instructions, secp256r1VerifyInput };
+  return instructions;
 }
 
 async function prepareUserAccounts(configActionsArgs: ConfigurationArgs[]) {
@@ -240,18 +273,12 @@ async function prepareProofAndMutArgs({
 async function buildConfigActions({
   index,
   configActionsArgs,
-  packedAccounts,
   userMutArgs,
 }: {
   index: number | bigint;
   configActionsArgs: ConfigurationArgs[];
-  packedAccounts: PackedAccounts;
   userMutArgs: UserMutArgs[];
-}): Promise<{
-  configActions: ConfigAction[];
-  secp256r1VerifyInput: Secp256r1VerifyInput;
-}> {
-  const secp256r1VerifyInput: Secp256r1VerifyInput = [];
+}): Promise<ConfigAction[]> {
   const configActions: ConfigAction[] = [];
 
   for (const action of configActionsArgs) {
@@ -259,57 +286,22 @@ async function buildConfigActions({
       case "AddMembers": {
         const field: AddMemberArgs[] = [];
         for (const m of action.members) {
-          if (m.member instanceof SignedSecp256r1Key) {
-            const index = secp256r1VerifyInput.length;
-            const { message, signature, publicKey, domainConfig } =
-              extractSecp256r1VerificationArgs(m.member, index);
-
-            if (message && signature && publicKey) {
-              secp256r1VerifyInput.push({ message, signature, publicKey });
-            }
-
-            if (domainConfig) {
-              packedAccounts.addPreAccounts([
-                { address: domainConfig, role: AccountRole.READONLY },
-              ]);
-            }
-
-            const userArgs = await getUserAccountAddress(
-              m.member,
-              m.userAddressTreeIndex
-            ).then((r) => {
-              return userMutArgs.find((arg) =>
-                new BN(new Uint8Array(arg.accountMeta.address)).eq(r.address)
-              );
-            });
-            if (!userArgs) throw new Error("Unable to find user account");
-            field.push(
-              convertAddMember({
-                permissionArgs: m.permissions,
-                index,
-                userMutArgs: userArgs,
-                pubkey: m.member,
-              })
+          const userArgs = await getUserAccountAddress(
+            m.member,
+            m.userAddressTreeIndex
+          ).then((r) => {
+            return userMutArgs.find((arg) =>
+              new BN(new Uint8Array(arg.accountMeta.address)).eq(r.address)
             );
-          } else {
-            const userArgs = await getUserAccountAddress(
-              m.member,
-              m.userAddressTreeIndex
-            ).then((r) =>
-              userMutArgs.find((arg) =>
-                new BN(new Uint8Array(arg.accountMeta.address)).eq(r.address)
-              )
-            );
-            if (!userArgs) throw new Error("Unable to find user account");
-            field.push(
-              convertAddMember({
-                permissionArgs: m.permissions,
-                index: -1,
-                userMutArgs: userArgs,
-                pubkey: m.member,
-              })
-            );
-          }
+          });
+          if (!userArgs) throw new Error("Unable to find user account");
+          field.push(
+            convertAddMember({
+              permissionArgs: m.permissions,
+              userMutArgs: userArgs,
+              pubkey: m.member,
+            })
+          );
         }
 
         configActions.push({ __kind: action.type, fields: [field] });
@@ -355,7 +347,7 @@ async function buildConfigActions({
     }
   }
 
-  return { configActions, secp256r1VerifyInput };
+  return configActions;
 }
 
 function convertEditMember({
@@ -398,20 +390,14 @@ function convertRemoveMember({
 function convertAddMember({
   pubkey,
   permissionArgs,
-  index,
   userMutArgs,
 }: {
-  pubkey: TransactionSigner | SignedSecp256r1Key | Address;
+  pubkey: Address | Secp256r1Key;
   permissionArgs: PermissionArgs;
-  index: number;
   userMutArgs: UserMutArgs;
 }): AddMemberArgs {
   if (userMutArgs.data.role === UserRole.PermanentMember) {
-    if (userMutArgs.data.delegatedTo.__option === "Some") {
-      throw new Error(
-        "This user is already registered as a permanent member in another wallet. A permanent member can only belong to one wallet."
-      );
-    }
+    throw new Error("A permanent member can only belong to one wallet.");
   } else if (userMutArgs.data.role === UserRole.TransactionManager) {
     if (permissionArgs.execute || permissionArgs.vote) {
       throw new Error("Transaction Manager can only have initiate permission");
@@ -420,21 +406,7 @@ function convertAddMember({
   return {
     memberKey: convertPubkeyToMemberkey(pubkey),
     permissions: convertPermissions(permissionArgs),
-    verifyArgs:
-      pubkey instanceof SignedSecp256r1Key && pubkey.verifyArgs && index !== -1
-        ? some({
-            truncatedClientDataJson: pubkey.verifyArgs.truncatedClientDataJson,
-            slotNumber: pubkey.verifyArgs.slotNumber,
-            signedMessageIndex: index,
-            originIndex: pubkey.originIndex,
-            crossOrigin: pubkey.crossOrigin,
-            clientAndDeviceHash: pubkey.clientAndDeviceHash,
-          })
-        : none(),
-    userArgs:
-      userMutArgs.data.role === UserRole.PermanentMember
-        ? { __kind: "Mutate", fields: [userMutArgs] }
-        : { __kind: "Read", fields: [userMutArgs] },
+    userReadonlyArgs: userMutArgs,
   };
 }
 

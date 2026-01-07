@@ -50,14 +50,14 @@ import {
   getProofArgsEncoder,
   getSecp256r1VerifyArgsWithDomainAddressDecoder,
   getSecp256r1VerifyArgsWithDomainAddressEncoder,
-  getSettingsReadonlyArgsDecoder,
-  getSettingsReadonlyArgsEncoder,
+  getSettingsMutArgsDecoder,
+  getSettingsMutArgsEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgsWithDomainAddress,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
-  type SettingsReadonlyArgs,
-  type SettingsReadonlyArgsArgs,
+  type SettingsMutArgs,
+  type SettingsMutArgsArgs,
 } from "../types";
 
 export const TOKEN_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR = new Uint8Array([
@@ -141,7 +141,7 @@ export type TokenTransferIntentCompressedInstructionData = {
   amount: bigint;
   createAtaIfNeeded: boolean;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
-  settingsReadonlyArgs: SettingsReadonlyArgs;
+  settingsMutArgs: SettingsMutArgs;
   compressedProofArgs: ProofArgs;
 };
 
@@ -149,7 +149,7 @@ export type TokenTransferIntentCompressedInstructionDataArgs = {
   amount: number | bigint;
   createAtaIfNeeded: boolean;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
-  settingsReadonlyArgs: SettingsReadonlyArgsArgs;
+  settingsMutArgs: SettingsMutArgsArgs;
   compressedProofArgs: ProofArgsArgs;
 };
 
@@ -163,7 +163,7 @@ export function getTokenTransferIntentCompressedInstructionDataEncoder(): Encode
         "secp256r1VerifyArgs",
         getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
       ],
-      ["settingsReadonlyArgs", getSettingsReadonlyArgsEncoder()],
+      ["settingsMutArgs", getSettingsMutArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
@@ -182,7 +182,7 @@ export function getTokenTransferIntentCompressedInstructionDataDecoder(): Decode
       "secp256r1VerifyArgs",
       getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
     ],
-    ["settingsReadonlyArgs", getSettingsReadonlyArgsDecoder()],
+    ["settingsMutArgs", getSettingsMutArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }
@@ -228,7 +228,7 @@ export type TokenTransferIntentCompressedAsyncInput<
   amount: TokenTransferIntentCompressedInstructionDataArgs["amount"];
   createAtaIfNeeded: TokenTransferIntentCompressedInstructionDataArgs["createAtaIfNeeded"];
   secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs["secp256r1VerifyArgs"];
-  settingsReadonlyArgs: TokenTransferIntentCompressedInstructionDataArgs["settingsReadonlyArgs"];
+  settingsMutArgs: TokenTransferIntentCompressedInstructionDataArgs["settingsMutArgs"];
   compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: TokenTransferIntentCompressedInstructionExtraArgs["remainingAccounts"];
 };
@@ -428,7 +428,7 @@ export type TokenTransferIntentCompressedInput<
   amount: TokenTransferIntentCompressedInstructionDataArgs["amount"];
   createAtaIfNeeded: TokenTransferIntentCompressedInstructionDataArgs["createAtaIfNeeded"];
   secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs["secp256r1VerifyArgs"];
-  settingsReadonlyArgs: TokenTransferIntentCompressedInstructionDataArgs["settingsReadonlyArgs"];
+  settingsMutArgs: TokenTransferIntentCompressedInstructionDataArgs["settingsMutArgs"];
   compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: TokenTransferIntentCompressedInstructionExtraArgs["remainingAccounts"];
 };

@@ -1,11 +1,21 @@
 use crate::{
-    durable_nonce_check, id, state::SettingsReadonlyArgs, ChallengeArgs, CompressedSettings,
-    CompressedSettingsData, DomainConfig, ExecutableTransactionMessage, MemberKey, MultisigError,
-    Permission, ProofArgs, Secp256r1VerifyArgsWithDomainAddress, TransactionActionType,
-    TransactionMessage, SEED_MULTISIG, SEED_VAULT,
+    durable_nonce_check, id,
+    state::{Settings, SettingsMutArgs},
+    ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig,
+    ExecutableTransactionMessage, MemberKey, MultisigError, Permission, ProofArgs,
+    Secp256r1VerifyArgsWithDomainAddress, TransactionActionType, TransactionMessage,
+    LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use light_sdk::light_hasher::{Hasher, Sha256};
+use light_sdk::{
+    cpi::{
+        v2::{CpiAccounts, LightSystemProgramCpi},
+        InvokeLightSystemProgram, LightCpiInstruction,
+    },
+    instruction::ValidityProof,
+    light_hasher::{Hasher, Sha256},
+    LightAccount,
+};
 
 #[derive(Accounts)]
 pub struct TransactionExecuteSyncCompressed<'info> {
@@ -44,14 +54,13 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
         let mut execute = false;
         let mut vote_count = 0;
 
-        let threshold = settings.threshold as usize;
         let secp256r1_member_keys: Vec<(MemberKey, &Secp256r1VerifyArgsWithDomainAddress)> =
             secp256r1_verify_args
                 .iter()
                 .filter_map(|arg| {
                     let pubkey = arg
                         .verify_args
-                        .extract_public_key_from_instruction(Some(&self.instructions_sysvar))
+                        .extract_public_key_from_instruction(Some(&instructions_sysvar))
                         .ok()?;
 
                     let member_key = MemberKey::convert_secp256r1(&pubkey).ok()?;
@@ -121,7 +130,7 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
             MultisigError::InsufficientSignerWithExecutePermission
         );
         require!(
-            vote_count >= threshold,
+            vote_count >= settings.threshold,
             MultisigError::InsufficientSignersWithVotePermission
         );
 
@@ -132,7 +141,7 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
         ctx: Context<'_, '_, 'info, 'info, TransactionExecuteSyncCompressed<'info>>,
         transaction_message: TransactionMessage,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
-        settings_readonly_args: SettingsReadonlyArgs,
+        settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         let vault_transaction_message =
@@ -151,18 +160,33 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
             .get(num_lookups..message_end_index)
             .ok_or(MultisigError::InvalidNumberOfAccounts)?;
 
-        let (settings, settings_key) = CompressedSettings::verify_compressed_settings_account(
-            &ctx.accounts.payer.to_account_info(),
-            &settings_readonly_args,
-            ctx.remaining_accounts,
-            &compressed_proof_args,
-        )?;
+        let light_cpi_accounts = CpiAccounts::new(
+            &ctx.accounts.payer,
+            &ctx.remaining_accounts
+                [compressed_proof_args.light_cpi_accounts_start_index as usize..],
+            LIGHT_CPI_SIGNER,
+        );
+
+        let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
+            &crate::ID,
+            &settings_mut_args.account_meta,
+            settings_mut_args.data,
+        )
+        .map_err(ProgramError::from)?;
+
+        let settings_data = settings_account
+            .data
+            .as_ref()
+            .ok_or(MultisigError::InvalidAccount)?;
+
+        let settings_key =
+            Settings::get_settings_key_from_index(settings_data.index, settings_data.bump)?;
 
         ctx.accounts.validate(
             ctx.remaining_accounts,
             &transaction_message,
             &secp256r1_verify_args,
-            &settings,
+            &settings_data,
             &settings_key,
         )?;
 
@@ -170,7 +194,7 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
             SEED_MULTISIG,
             settings_key.as_ref(),
             SEED_VAULT,
-            &[settings.multi_wallet_bump],
+            &[settings_data.multi_wallet_bump],
         ];
 
         let vault_pubkey =
@@ -183,13 +207,26 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
             &vault_pubkey,
         )?;
 
-        let protected_accounts = &[];
+        let protected_accounts = &[ctx.accounts.payer.key()];
 
-        executable_message.execute_message(
-            vault_signer_seed,
-            protected_accounts,
-            Some(ctx.accounts.payer.key()),
+        executable_message.execute_message(vault_signer_seed, protected_accounts)?;
+
+        settings_account.latest_slot_number_check(
+            secp256r1_verify_args
+                .iter()
+                .map(|f| f.verify_args.slot_number)
+                .collect(),
+            &ctx.accounts.slot_hash_sysvar,
         )?;
+
+        settings_account.invariant()?;
+
+        LightSystemProgramCpi::new_cpi(
+            LIGHT_CPI_SIGNER,
+            ValidityProof(compressed_proof_args.proof),
+        )
+        .with_light_account(settings_account)?
+        .invoke(light_cpi_accounts)?;
 
         Ok(())
     }

@@ -96,7 +96,7 @@ pub enum MultisigError {
     #[msg(
         "User mutation arguments are required when performing add or remove delegate operations."
     )]
-    MissingUserArgs,
+    MissingMutationUserArgs,
 
     #[msg("This member is already delegated to another wallet.")]
     AlreadyDelegated,
@@ -156,6 +156,9 @@ pub enum MultisigError {
 
     #[msg("The specified slot number was not found in the provided slot history.")]
     SlotNumberNotFound,
+
+    #[msg("The specified slot number is not recent.")]
+    InvalidSlotNumber,
 
     #[msg(
         "The domain configuration account is disabled. Please contact support or try again later."

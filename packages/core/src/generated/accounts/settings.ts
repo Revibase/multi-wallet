@@ -21,8 +21,8 @@ import {
   getBytesEncoder,
   getStructDecoder,
   getStructEncoder,
-  getU128Decoder,
-  getU128Encoder,
+  getU64Decoder,
+  getU64Encoder,
   getU8Decoder,
   getU8Encoder,
   transformEncoder,
@@ -55,7 +55,7 @@ export function getSettingsDiscriminatorBytes() {
 
 export type Settings = {
   discriminator: ReadonlyUint8Array;
-  index: bigint;
+  index: ReadonlyUint8Array;
   members: Array<Member>;
   membersLen: number;
   threshold: number;
@@ -63,10 +63,11 @@ export type Settings = {
   bump: number;
   settingsAddressTreeIndex: number;
   padding: ReadonlyUint8Array;
+  latestSlotNumber: bigint;
 };
 
 export type SettingsArgs = {
-  index: number | bigint;
+  index: ReadonlyUint8Array;
   members: Array<MemberArgs>;
   membersLen: number;
   threshold: number;
@@ -74,13 +75,14 @@ export type SettingsArgs = {
   bump: number;
   settingsAddressTreeIndex: number;
   padding: ReadonlyUint8Array;
+  latestSlotNumber: number | bigint;
 };
 
 export function getSettingsEncoder(): FixedSizeEncoder<SettingsArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["index", getU128Encoder()],
+      ["index", fixEncoderSize(getBytesEncoder(), 16)],
       ["members", getArrayEncoder(getMemberEncoder(), { size: 4 })],
       ["membersLen", getU8Encoder()],
       ["threshold", getU8Encoder()],
@@ -88,6 +90,7 @@ export function getSettingsEncoder(): FixedSizeEncoder<SettingsArgs> {
       ["bump", getU8Encoder()],
       ["settingsAddressTreeIndex", getU8Encoder()],
       ["padding", fixEncoderSize(getBytesEncoder(), 3)],
+      ["latestSlotNumber", getU64Encoder()],
     ]),
     (value) => ({ ...value, discriminator: SETTINGS_DISCRIMINATOR })
   );
@@ -96,7 +99,7 @@ export function getSettingsEncoder(): FixedSizeEncoder<SettingsArgs> {
 export function getSettingsDecoder(): FixedSizeDecoder<Settings> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["index", getU128Decoder()],
+    ["index", fixDecoderSize(getBytesDecoder(), 16)],
     ["members", getArrayDecoder(getMemberDecoder(), { size: 4 })],
     ["membersLen", getU8Decoder()],
     ["threshold", getU8Decoder()],
@@ -104,6 +107,7 @@ export function getSettingsDecoder(): FixedSizeDecoder<Settings> {
     ["bump", getU8Decoder()],
     ["settingsAddressTreeIndex", getU8Decoder()],
     ["padding", fixDecoderSize(getBytesDecoder(), 3)],
+    ["latestSlotNumber", getU64Decoder()],
   ]);
 }
 
@@ -165,5 +169,5 @@ export async function fetchAllMaybeSettings(
 }
 
 export function getSettingsSize(): number {
-  return 184;
+  return 192;
 }

@@ -12,6 +12,7 @@ use light_sdk::light_hasher::{Hasher, Sha256};
 
 #[derive(Accounts)]
 pub struct NativeTransferIntent<'info> {
+    #[account(mut)]
     pub settings: AccountLoader<'info, Settings>,
     /// CHECK:
     #[account(
@@ -161,12 +162,13 @@ impl<'info> NativeTransferIntent<'info> {
         amount: u64,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
+        let settings = &mut ctx.accounts.settings.load_mut()?;
         let settings_key = ctx.accounts.settings.key();
         let signer_seeds: &[&[u8]] = &[
             SEED_MULTISIG,
             settings_key.as_ref(),
             SEED_VAULT,
-            &[ctx.accounts.settings.load()?.multi_wallet_bump],
+            &[settings.multi_wallet_bump],
         ];
 
         transfer(
@@ -180,6 +182,16 @@ impl<'info> NativeTransferIntent<'info> {
             .with_signer(&[signer_seeds]),
             amount,
         )?;
+
+        settings.latest_slot_number_check(
+            secp256r1_verify_args
+                .iter()
+                .map(|f| f.verify_args.slot_number)
+                .collect(),
+            &ctx.accounts.slot_hash_sysvar,
+        )?;
+
+        settings.invariant()?;
 
         Ok(())
     }

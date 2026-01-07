@@ -32,6 +32,7 @@ pub struct CompressedSettingsData {
     pub multi_wallet_bump: u8,
     pub members: Vec<Member>,
     pub settings_address_tree_index: u8,
+    pub latest_slot_number: u64,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, PartialEq, Debug, Clone)]
@@ -70,20 +71,9 @@ impl CompressedSettings {
     }
     pub fn add_members<'a>(
         &mut self,
-        settings: &Pubkey,
         new_members: Vec<AddMemberArgs>,
-        remaining_accounts: &'a [AccountInfo<'a>],
-        sysvar_slot_history: &Option<UncheckedAccount<'a>>,
-        instructions_sysvar: Option<&UncheckedAccount<'a>>,
     ) -> Result<Vec<AddMemberArgs>> {
-        MultisigSettings::add_members(
-            self,
-            settings,
-            new_members,
-            remaining_accounts,
-            sysvar_slot_history,
-            instructions_sysvar,
-        )
+        MultisigSettings::add_members(self, new_members)
     }
     pub fn remove_members(
         &mut self,
@@ -98,6 +88,14 @@ impl CompressedSettings {
 
     pub fn invariant(&self) -> Result<()> {
         MultisigSettings::invariant(self)
+    }
+
+    pub fn latest_slot_number_check(
+        &mut self,
+        slot_numbers: Vec<u64>,
+        sysvar_slot_history: &Option<UncheckedAccount>,
+    ) -> Result<()> {
+        MultisigSettings::latest_slot_number_check(self, slot_numbers, sysvar_slot_history)
     }
 
     pub fn create_compressed_settings_account(
@@ -175,6 +173,21 @@ impl MultisigSettings for CompressedSettings {
             data.threshold = value;
         }
         Ok(())
+    }
+
+    fn set_latest_slot_number(&mut self, value: u64) -> Result<()> {
+        if let Some(data) = &mut self.data {
+            data.latest_slot_number = value;
+        }
+        Ok(())
+    }
+
+    fn get_latest_slot_number(&self) -> Result<u64> {
+        if let Some(data) = &self.data {
+            Ok(data.latest_slot_number)
+        } else {
+            err!(MultisigError::InvalidArguments)
+        }
     }
 
     fn get_threshold(&self) -> Result<u8> {

@@ -54,10 +54,14 @@ import {
   getConfigActionEncoder,
   getProofArgsDecoder,
   getProofArgsEncoder,
+  getSecp256r1VerifyArgsWithDomainAddressDecoder,
+  getSecp256r1VerifyArgsWithDomainAddressEncoder,
   type ConfigAction,
   type ConfigActionArgs,
   type ProofArgs,
   type ProofArgsArgs,
+  type Secp256r1VerifyArgsWithDomainAddress,
+  type Secp256r1VerifyArgsWithDomainAddressArgs,
 } from "../types";
 
 export const CHANGE_CONFIG_DISCRIMINATOR = new Uint8Array([9]);
@@ -115,12 +119,14 @@ export type ChangeConfigInstructionData = {
   discriminator: ReadonlyUint8Array;
   settingsIndex: bigint;
   configActions: Array<ConfigAction>;
+  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
   compressedProofArgs: Option<ProofArgs>;
 };
 
 export type ChangeConfigInstructionDataArgs = {
   settingsIndex: number | bigint;
   configActions: Array<ConfigActionArgs>;
+  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
   compressedProofArgs: OptionOrNullable<ProofArgsArgs>;
 };
 
@@ -130,6 +136,10 @@ export function getChangeConfigInstructionDataEncoder(): Encoder<ChangeConfigIns
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["settingsIndex", getU128Encoder()],
       ["configActions", getArrayEncoder(getConfigActionEncoder())],
+      [
+        "secp256r1VerifyArgs",
+        getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
+      ],
       ["compressedProofArgs", getOptionEncoder(getProofArgsEncoder())],
     ]),
     (value) => ({ ...value, discriminator: CHANGE_CONFIG_DISCRIMINATOR })
@@ -141,6 +151,10 @@ export function getChangeConfigInstructionDataDecoder(): Decoder<ChangeConfigIns
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["settingsIndex", getU128Decoder()],
     ["configActions", getArrayDecoder(getConfigActionDecoder())],
+    [
+      "secp256r1VerifyArgs",
+      getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
+    ],
     ["compressedProofArgs", getOptionDecoder(getProofArgsDecoder())],
   ]);
 }
@@ -175,6 +189,7 @@ export type ChangeConfigAsyncInput<
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   settingsIndex: ChangeConfigInstructionDataArgs["settingsIndex"];
   configActions: ChangeConfigInstructionDataArgs["configActions"];
+  secp256r1VerifyArgs: ChangeConfigInstructionDataArgs["secp256r1VerifyArgs"];
   compressedProofArgs: ChangeConfigInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: ChangeConfigInstructionExtraArgs["remainingAccounts"];
 };
@@ -321,6 +336,7 @@ export type ChangeConfigInput<
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   settingsIndex: ChangeConfigInstructionDataArgs["settingsIndex"];
   configActions: ChangeConfigInstructionDataArgs["configActions"];
+  secp256r1VerifyArgs: ChangeConfigInstructionDataArgs["secp256r1VerifyArgs"];
   compressedProofArgs: ChangeConfigInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: ChangeConfigInstructionExtraArgs["remainingAccounts"];
 };
@@ -433,7 +449,7 @@ export type ParsedChangeConfigInstruction<
     authority: TAccountMetas[2];
     systemProgram: TAccountMetas[3];
     slotHashSysvar?: TAccountMetas[4] | undefined;
-    instructionsSysvar?: TAccountMetas[5] | undefined;
+    instructionsSysvar: TAccountMetas[5];
   };
   data: ChangeConfigInstructionData;
 };
@@ -470,7 +486,7 @@ export function parseChangeConfigInstruction<
       authority: getNextAccount(),
       systemProgram: getNextAccount(),
       slotHashSysvar: getNextOptionalAccount(),
-      instructionsSysvar: getNextOptionalAccount(),
+      instructionsSysvar: getNextAccount(),
     },
     data: getChangeConfigInstructionDataDecoder().decode(instruction.data),
   };

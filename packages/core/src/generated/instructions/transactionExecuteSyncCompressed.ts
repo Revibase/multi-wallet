@@ -39,16 +39,16 @@ import {
   getProofArgsEncoder,
   getSecp256r1VerifyArgsWithDomainAddressDecoder,
   getSecp256r1VerifyArgsWithDomainAddressEncoder,
-  getSettingsReadonlyArgsDecoder,
-  getSettingsReadonlyArgsEncoder,
+  getSettingsMutArgsDecoder,
+  getSettingsMutArgsEncoder,
   getTransactionMessageDecoder,
   getTransactionMessageEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgsWithDomainAddress,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
-  type SettingsReadonlyArgs,
-  type SettingsReadonlyArgsArgs,
+  type SettingsMutArgs,
+  type SettingsMutArgsArgs,
   type TransactionMessage,
   type TransactionMessageArgs,
 } from "../types";
@@ -95,14 +95,14 @@ export type TransactionExecuteSyncCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   transactionMessage: TransactionMessage;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
-  settingsReadonlyArgs: SettingsReadonlyArgs;
+  settingsMutArgs: SettingsMutArgs;
   compressedProofArgs: ProofArgs;
 };
 
 export type TransactionExecuteSyncCompressedInstructionDataArgs = {
   transactionMessage: TransactionMessageArgs;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
-  settingsReadonlyArgs: SettingsReadonlyArgsArgs;
+  settingsMutArgs: SettingsMutArgsArgs;
   compressedProofArgs: ProofArgsArgs;
 };
 
@@ -115,7 +115,7 @@ export function getTransactionExecuteSyncCompressedInstructionDataEncoder(): Enc
         "secp256r1VerifyArgs",
         getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
       ],
-      ["settingsReadonlyArgs", getSettingsReadonlyArgsEncoder()],
+      ["settingsMutArgs", getSettingsMutArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
@@ -133,7 +133,7 @@ export function getTransactionExecuteSyncCompressedInstructionDataDecoder(): Dec
       "secp256r1VerifyArgs",
       getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
     ],
-    ["settingsReadonlyArgs", getSettingsReadonlyArgsDecoder()],
+    ["settingsMutArgs", getSettingsMutArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }
@@ -162,7 +162,7 @@ export type TransactionExecuteSyncCompressedInput<
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   transactionMessage: TransactionExecuteSyncCompressedInstructionDataArgs["transactionMessage"];
   secp256r1VerifyArgs: TransactionExecuteSyncCompressedInstructionDataArgs["secp256r1VerifyArgs"];
-  settingsReadonlyArgs: TransactionExecuteSyncCompressedInstructionDataArgs["settingsReadonlyArgs"];
+  settingsMutArgs: TransactionExecuteSyncCompressedInstructionDataArgs["settingsMutArgs"];
   compressedProofArgs: TransactionExecuteSyncCompressedInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: TransactionExecuteSyncCompressedInstructionExtraArgs["remainingAccounts"];
 };

@@ -107,7 +107,6 @@
         },
         {
           "name": "instructions_sysvar",
-          "optional": true,
           "address": "Sysvar1nstructions1111111111111111111111111"
         }
       ],
@@ -122,6 +121,16 @@
             "vec": {
               "defined": {
                 "name": "ConfigAction"
+              }
+            }
+          }
+        },
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "Secp256r1VerifyArgsWithDomainAddress"
               }
             }
           }
@@ -151,17 +160,12 @@
           "signer": true
         },
         {
-          "name": "authority",
-          "signer": true
-        },
-        {
           "name": "slot_hash_sysvar",
           "optional": true,
           "address": "SysvarS1otHashes111111111111111111111111111"
         },
         {
           "name": "instructions_sysvar",
-          "optional": true,
           "address": "Sysvar1nstructions1111111111111111111111111"
         }
       ],
@@ -172,6 +176,16 @@
             "vec": {
               "defined": {
                 "name": "ConfigAction"
+              }
+            }
+          }
+        },
+        {
+          "name": "secp256r1_verify_args",
+          "type": {
+            "vec": {
+              "defined": {
+                "name": "Secp256r1VerifyArgsWithDomainAddress"
               }
             }
           }
@@ -397,26 +411,11 @@
         },
         {
           "name": "initial_member",
-          "signer": true,
-          "optional": true
+          "signer": true
         },
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "slot_hash_sysvar",
-          "optional": true,
-          "address": "SysvarS1otHashes111111111111111111111111111"
-        },
-        {
-          "name": "instructions_sysvar",
-          "optional": true,
-          "address": "Sysvar1nstructions1111111111111111111111111"
-        },
-        {
-          "name": "domain_config",
-          "optional": true
         },
         {
           "name": "global_counter",
@@ -450,16 +449,6 @@
       ],
       "args": [
         {
-          "name": "secp256r1_verify_args",
-          "type": {
-            "option": {
-              "defined": {
-                "name": "Secp256r1VerifyArgs"
-              }
-            }
-          }
-        },
-        {
           "name": "compressed_proof_args",
           "type": {
             "defined": {
@@ -476,10 +465,10 @@
           }
         },
         {
-          "name": "user_args",
+          "name": "user_readonly_args",
           "type": {
             "defined": {
-              "name": "UserReadOnlyOrMutateArgs"
+              "name": "UserReadOnlyArgs"
             }
           }
         },
@@ -905,7 +894,8 @@
       "discriminator": [30],
       "accounts": [
         {
-          "name": "settings"
+          "name": "settings",
+          "writable": true
         },
         {
           "name": "slot_hash_sysvar",
@@ -1015,10 +1005,10 @@
           }
         },
         {
-          "name": "settings_readonly_args",
+          "name": "settings_mut_args",
           "type": {
             "defined": {
-              "name": "SettingsReadonlyArgs"
+              "name": "SettingsMutArgs"
             }
           }
         },
@@ -1041,7 +1031,8 @@
       "discriminator": [31],
       "accounts": [
         {
-          "name": "settings"
+          "name": "settings",
+          "writable": true
         },
         {
           "name": "slot_hash_sysvar",
@@ -1289,10 +1280,10 @@
           }
         },
         {
-          "name": "settings_readonly_args",
+          "name": "settings_mut_args",
           "type": {
             "defined": {
-              "name": "SettingsReadonlyArgs"
+              "name": "SettingsMutArgs"
             }
           }
         },
@@ -1312,7 +1303,8 @@
       "discriminator": [13],
       "accounts": [
         {
-          "name": "settings"
+          "name": "settings",
+          "writable": true
         },
         {
           "name": "payer",
@@ -1405,10 +1397,10 @@
           }
         },
         {
-          "name": "settings_readonly_args",
+          "name": "settings_mut_args",
           "type": {
             "defined": {
-              "name": "SettingsReadonlyArgs"
+              "name": "SettingsMutArgs"
             }
           }
         },
@@ -1567,7 +1559,8 @@
       "discriminator": [14],
       "accounts": [
         {
-          "name": "settings"
+          "name": "settings",
+          "writable": true
         },
         {
           "name": "domain_config",
@@ -1652,10 +1645,10 @@
           }
         },
         {
-          "name": "settings_readonly_args",
+          "name": "settings_mut_args",
           "type": {
             "defined": {
-              "name": "SettingsReadonlyArgs"
+              "name": "SettingsMutArgs"
             }
           }
         },
@@ -1955,10 +1948,10 @@
           }
         },
         {
-          "name": "settings_readonly_args",
+          "name": "settings_mut_args",
           "type": {
             "defined": {
-              "name": "SettingsReadonlyArgs"
+              "name": "SettingsMutArgs"
             }
           }
         },
@@ -2143,7 +2136,7 @@
     },
     {
       "code": 6029,
-      "name": "MissingUserArgs",
+      "name": "MissingMutationUserArgs",
       "msg": "User mutation arguments are required when performing add or remove delegate operations."
     },
     {
@@ -2243,26 +2236,31 @@
     },
     {
       "code": 6049,
+      "name": "InvalidSlotNumber",
+      "msg": "The specified slot number is not recent."
+    },
+    {
+      "code": 6050,
       "name": "DomainConfigIsDisabled",
       "msg": "The domain configuration account is disabled. Please contact support or try again later."
     },
     {
-      "code": 6050,
+      "code": 6051,
       "name": "DomainConfigIsMissing",
       "msg": "Missing domain configuration account."
     },
     {
-      "code": 6051,
+      "code": 6052,
       "name": "MemberDoesNotBelongToDomainConfig",
       "msg": "This member is not registered under the provided domain configuration."
     },
     {
-      "code": 6052,
+      "code": 6053,
       "name": "OriginIndexOutOfBounds",
       "msg": "The given origin index is not in the whitelisted origins."
     },
     {
-      "code": 6053,
+      "code": 6054,
       "name": "InvalidAddressTree",
       "msg": "Address Tree supplied is not part of the whitelisted address trees"
     }
@@ -2290,20 +2288,10 @@
             }
           },
           {
-            "name": "verify_args",
-            "type": {
-              "option": {
-                "defined": {
-                  "name": "Secp256r1VerifyArgs"
-                }
-              }
-            }
-          },
-          {
-            "name": "user_args",
+            "name": "user_readonly_args",
             "type": {
               "defined": {
-                "name": "UserReadOnlyOrMutateArgs"
+                "name": "UserReadOnlyArgs"
               }
             }
           }
@@ -2464,6 +2452,10 @@
           {
             "name": "settings_address_tree_index",
             "type": "u8"
+          },
+          {
+            "name": "latest_slot_number",
+            "type": "u64"
           }
         ]
       }
@@ -3060,7 +3052,9 @@
         "fields": [
           {
             "name": "index",
-            "type": "u128"
+            "type": {
+              "array": ["u8", 16]
+            }
           },
           {
             "name": "members",
@@ -3100,6 +3094,10 @@
             "type": {
               "array": ["u8", 3]
             }
+          },
+          {
+            "name": "latest_slot_number",
+            "type": "u64"
           }
         ]
       }

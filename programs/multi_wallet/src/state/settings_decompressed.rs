@@ -6,7 +6,7 @@ use anchor_lang::prelude::*;
 
 #[account(zero_copy)]
 pub struct Settings {
-    pub index: u128,
+    pub index: [u8; 16],
     pub members: [Member; MAXIMUM_AMOUNT_OF_MEMBERS],
     pub members_len: u8,
     pub threshold: u8,
@@ -14,6 +14,7 @@ pub struct Settings {
     pub bump: u8,
     pub settings_address_tree_index: u8,
     pub _padding: [u8; 3],
+    pub latest_slot_number: u64,
 }
 
 impl Settings {
@@ -26,27 +27,17 @@ impl Settings {
         1  + // multi_wallet bump
         1  + // settings bump
         1  + // settings_address_tree_index
-        3 // unused padding
+        3  + // unused padding
+        8 // latest slot number
     }
     pub fn edit_permissions(&mut self, members: Vec<EditMemberArgs>) -> Result<()> {
         MultisigSettings::edit_permissions(self, members)
     }
     pub fn add_members<'a>(
         &mut self,
-        settings: &Pubkey,
         new_members: Vec<AddMemberArgs>,
-        remaining_accounts: &'a [AccountInfo<'a>],
-        sysvar_slot_history: &Option<UncheckedAccount<'a>>,
-        instructions_sysvar: Option<&UncheckedAccount<'a>>,
     ) -> Result<Vec<AddMemberArgs>> {
-        MultisigSettings::add_members(
-            self,
-            settings,
-            new_members,
-            remaining_accounts,
-            sysvar_slot_history,
-            instructions_sysvar,
-        )
+        MultisigSettings::add_members(self, new_members)
     }
 
     pub fn remove_members(
@@ -68,6 +59,14 @@ impl Settings {
         MultisigSettings::invariant(self)
     }
 
+    pub fn latest_slot_number_check(
+        &mut self,
+        slot_numbers: Vec<u64>,
+        sysvar_slot_history: &Option<UncheckedAccount>,
+    ) -> Result<()> {
+        MultisigSettings::latest_slot_number_check(self, slot_numbers, sysvar_slot_history)
+    }
+
     pub fn get_settings_key_from_index(index: u128, bump: u8) -> Result<Pubkey> {
         let index_bytes = index.to_le_bytes();
         let signer_seeds: &[&[u8]] = &[SEED_MULTISIG, index_bytes.as_ref(), &[bump]];
@@ -81,6 +80,15 @@ impl MultisigSettings for Settings {
     fn set_threshold(&mut self, value: u8) -> Result<()> {
         self.threshold = value;
         Ok(())
+    }
+
+    fn set_latest_slot_number(&mut self, value: u64) -> Result<()> {
+        self.latest_slot_number = value;
+        Ok(())
+    }
+
+    fn get_latest_slot_number(&self) -> Result<u64> {
+        Ok(self.latest_slot_number)
     }
 
     fn get_threshold(&self) -> Result<u8> {

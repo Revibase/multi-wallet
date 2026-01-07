@@ -1,7 +1,8 @@
 use crate::{
-    durable_nonce_check, id, ChallengeArgs, DomainConfig, ExecutableTransactionMessage, MemberKey,
-    MultisigError, Permission, Secp256r1VerifyArgsWithDomainAddress, Settings,
-    TransactionActionType, TransactionMessage, SEED_MULTISIG, SEED_VAULT,
+    durable_nonce_check, id, utils::MultisigSettings, ChallengeArgs, DomainConfig,
+    ExecutableTransactionMessage, MemberKey, MultisigError, Permission,
+    Secp256r1VerifyArgsWithDomainAddress, Settings, TransactionActionType, TransactionMessage,
+    SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use light_sdk::light_hasher::{Hasher, Sha256};
@@ -43,14 +44,13 @@ impl<'info> TransactionExecuteSync<'info> {
         let mut vote_count = 0;
 
         let settings = settings.load()?;
-        let threshold = settings.threshold as usize;
         let secp256r1_member_keys: Vec<(MemberKey, &Secp256r1VerifyArgsWithDomainAddress)> =
             secp256r1_verify_args
                 .iter()
                 .filter_map(|arg| {
                     let pubkey = arg
                         .verify_args
-                        .extract_public_key_from_instruction(Some(&self.instructions_sysvar))
+                        .extract_public_key_from_instruction(Some(&instructions_sysvar))
                         .ok()?;
 
                     let member_key = MemberKey::convert_secp256r1(&pubkey).ok()?;
@@ -59,7 +59,7 @@ impl<'info> TransactionExecuteSync<'info> {
                 })
                 .collect();
 
-        for member in &settings.members {
+        for member in &settings.get_members()? {
             let has_permission = |perm| member.permissions.has(perm);
 
             let secp256r1_signer = secp256r1_member_keys
@@ -120,7 +120,7 @@ impl<'info> TransactionExecuteSync<'info> {
             MultisigError::InsufficientSignerWithExecutePermission
         );
         require!(
-            vote_count >= threshold,
+            vote_count >= settings.get_threshold()?,
             MultisigError::InsufficientSignersWithVotePermission
         );
 
@@ -133,7 +133,7 @@ impl<'info> TransactionExecuteSync<'info> {
         transaction_message: TransactionMessage,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
-        let settings = ctx.accounts.settings.load()?;
+        let settings = &mut ctx.accounts.settings.load_mut()?;
         let vault_transaction_message =
             transaction_message.convert_to_vault_transaction_message(ctx.remaining_accounts)?;
         vault_transaction_message.validate()?;
@@ -158,8 +158,6 @@ impl<'info> TransactionExecuteSync<'info> {
             &[settings.multi_wallet_bump],
         ];
 
-        drop(settings);
-
         let vault_pubkey =
             Pubkey::create_program_address(vault_signer_seed, &id()).map_err(ProgramError::from)?;
 
@@ -172,7 +170,17 @@ impl<'info> TransactionExecuteSync<'info> {
 
         let protected_accounts = &[];
 
-        executable_message.execute_message(vault_signer_seed, protected_accounts, None)?;
+        executable_message.execute_message(vault_signer_seed, protected_accounts)?;
+
+        settings.latest_slot_number_check(
+            secp256r1_verify_args
+                .iter()
+                .map(|f| f.verify_args.slot_number)
+                .collect(),
+            &ctx.accounts.slot_hash_sysvar,
+        )?;
+
+        settings.invariant()?;
 
         Ok(())
     }

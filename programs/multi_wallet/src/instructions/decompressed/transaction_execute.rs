@@ -79,13 +79,9 @@ impl<'info> TransactionExecute<'info> {
             &vault_pubkey,
         )?;
 
-        let protected_accounts = &[transaction_buffer.key()];
+        let protected_accounts = &[transaction_buffer.key(), transaction_buffer.payer];
 
-        executable_message.execute_message(
-            vault_signer_seed,
-            protected_accounts,
-            Some(transaction_buffer.payer),
-        )?;
+        executable_message.execute_message(vault_signer_seed, protected_accounts)?;
 
         Ok(())
     }

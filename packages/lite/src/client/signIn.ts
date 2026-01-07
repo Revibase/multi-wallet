@@ -8,9 +8,6 @@ import type { User } from "src/utils";
 export async function signIn(
   provider: RevibaseProvider
 ): Promise<{ user: User }> {
-  if (typeof window === "undefined") {
-    throw new Error("Function can only be called in a browser environment");
-  }
   provider.openBlankPopUp();
 
   const redirectOrigin = window.origin;

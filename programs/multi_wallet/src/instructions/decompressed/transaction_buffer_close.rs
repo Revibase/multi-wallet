@@ -7,6 +7,7 @@ use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 #[derive(Accounts)]
 pub struct TransactionBufferClose<'info> {
     #[account(
+        mut,
         address = transaction_buffer.multi_wallet_settings,
     )]
     pub settings: AccountLoader<'info, Settings>,
@@ -43,18 +44,17 @@ impl TransactionBufferClose<'_> {
             domain_config,
             slot_hash_sysvar,
             instructions_sysvar,
+            settings,
             ..
         } = self;
+        let settings = &mut settings.load_mut()?;
         let signer =
             MemberKey::get_signer(closer, secp256r1_verify_args, instructions_sysvar.as_ref())?;
-
         // allow rent payer to become the closer after transaction has expired
-        if Clock::get().unwrap().unix_timestamp as u64 > transaction_buffer.valid_till
+        if !(Clock::get().unwrap().unix_timestamp as u64 > transaction_buffer.valid_till
             && signer.get_type().eq(&KeyType::Ed25519)
-            && MemberKey::convert_ed25519(&transaction_buffer.payer)?.eq(&signer)
+            && MemberKey::convert_ed25519(&transaction_buffer.payer)?.eq(&signer))
         {
-            Ok(())
-        } else {
             require!(
                 transaction_buffer.creator.eq(&signer),
                 MultisigError::UnauthorisedToCloseTransactionBuffer
@@ -79,10 +79,15 @@ impl TransactionBufferClose<'_> {
                     },
                     transaction_buffer.expected_secp256r1_signers.as_ref(),
                 )?;
-            }
 
-            Ok(())
+                settings.latest_slot_number_check(
+                    vec![secp256r1_verify_data.slot_number],
+                    slot_hash_sysvar,
+                )?;
+            }
         }
+        settings.invariant()?;
+        Ok(())
     }
 
     #[access_control(ctx.accounts.validate(&secp256r1_verify_args))]

@@ -126,9 +126,16 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, ChangeConfig<'info>>,
         settings_index: u128,
         config_actions: Vec<ConfigAction>,
+        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
         compressed_proof_args: Option<ProofArgs>,
     ) -> Result<()> {
-        ChangeConfig::process(ctx, settings_index, config_actions, compressed_proof_args)
+        ChangeConfig::process(
+            ctx,
+            settings_index,
+            config_actions,
+            secp256r1_verify_args,
+            compressed_proof_args,
+        )
     }
 
     /// Creates a new transaction buffer to stage a transaction before execution.
@@ -235,18 +242,16 @@ pub mod multi_wallet {
     #[instruction(discriminator = 19)]
     pub fn create_multi_wallet_compressed<'info>(
         ctx: Context<'_, '_, 'info, 'info, CreateMultiWalletCompressed<'info>>,
-        secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         compressed_proof_args: ProofArgs,
         settings_creation: SettingsCreationArgs,
-        user_args: UserReadOnlyOrMutateArgs,
+        user_readonly_args: UserReadOnlyArgs,
         settings_index: u128,
     ) -> Result<()> {
         CreateMultiWalletCompressed::process(
             ctx,
-            secp256r1_verify_args,
             compressed_proof_args,
             settings_creation,
-            user_args,
+            user_readonly_args,
             settings_index,
         )
     }
@@ -256,10 +261,17 @@ pub mod multi_wallet {
     pub fn change_config_compressed<'info>(
         ctx: Context<'_, '_, 'info, 'info, ChangeConfigCompressed<'info>>,
         config_actions: Vec<ConfigAction>,
+        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
         settings_mut: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
-        ChangeConfigCompressed::process(ctx, config_actions, settings_mut, compressed_proof_args)
+        ChangeConfigCompressed::process(
+            ctx,
+            config_actions,
+            secp256r1_verify_args,
+            settings_mut,
+            compressed_proof_args,
+        )
     }
 
     /// Creates a new transaction buffer to stage a transaction before execution.
@@ -311,13 +323,13 @@ pub mod multi_wallet {
     pub fn transaction_buffer_close_compressed<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferCloseCompressed<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly_args: SettingsReadonlyArgs,
+        settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TransactionBufferCloseCompressed::process(
             ctx,
             secp256r1_verify_args,
-            settings_readonly_args,
+            settings_mut_args,
             compressed_proof_args,
         )
     }
@@ -327,13 +339,13 @@ pub mod multi_wallet {
     pub fn transaction_buffer_execute_compressed<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferExecuteCompressed<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
-        settings_readonly_args: SettingsReadonlyArgs,
+        settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TransactionBufferExecuteCompressed::process(
             ctx,
             secp256r1_verify_args,
-            settings_readonly_args,
+            settings_mut_args,
             compressed_proof_args,
         )
     }
@@ -353,14 +365,14 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, TransactionExecuteSyncCompressed<'info>>,
         transaction_message: TransactionMessage,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
-        settings_readonly_args: SettingsReadonlyArgs,
+        settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TransactionExecuteSyncCompressed::process(
             ctx,
             transaction_message,
             secp256r1_verify_args,
-            settings_readonly_args,
+            settings_mut_args,
             compressed_proof_args,
         )
     }
@@ -372,14 +384,14 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, NativeTransferIntentCompressed<'info>>,
         amount: u64,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
-        settings_readonly_args: SettingsReadonlyArgs,
+        settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         NativeTransferIntentCompressed::process(
             ctx,
             amount,
             secp256r1_verify_args,
-            settings_readonly_args,
+            settings_mut_args,
             compressed_proof_args,
         )
     }
@@ -392,7 +404,7 @@ pub mod multi_wallet {
         amount: u64,
         create_ata_if_needed: bool,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
-        settings_readonly_args: SettingsReadonlyArgs,
+        settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TokenTransferIntentCompressed::process(
@@ -400,7 +412,7 @@ pub mod multi_wallet {
             amount,
             create_ata_if_needed,
             secp256r1_verify_args,
-            settings_readonly_args,
+            settings_mut_args,
             compressed_proof_args,
         )
     }

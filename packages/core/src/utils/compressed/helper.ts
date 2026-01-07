@@ -15,16 +15,16 @@ import {
 } from "@lightprotocol/stateless.js";
 import { SolanaJSONRPCError } from "@solana/web3.js";
 import type BN from "bn.js";
-import type { Address } from "gill";
+import { getU128Decoder, type Address } from "gill";
 import { create, nullable } from "superstruct";
 import {
-  type CompressedSettingsData,
   fetchMaybeSettings,
   getCompressedSettingsAddressFromIndex,
   getCompressedSettingsDecoder,
   getUserAccountAddress,
   getUserDecoder,
   Secp256r1Key,
+  type CompressedSettingsData,
   type User,
 } from "../..";
 import { getSettingsFromIndex } from "../addresses";
@@ -112,6 +112,7 @@ export async function fetchMaybeSettingsAccountData(
     }
     return {
       ...result.data,
+      index: getU128Decoder().decode(result.data.index),
       members: result.data.members.slice(0, result.data.membersLen),
       isCompressed: false,
     };

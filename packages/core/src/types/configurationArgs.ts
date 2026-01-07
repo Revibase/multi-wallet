@@ -1,5 +1,5 @@
 import type { Address } from "gill";
-import { Secp256r1Key, SignedSecp256r1Key } from ".";
+import { Secp256r1Key } from ".";
 
 export type PermissionArgs = {
   initiate: boolean;
@@ -8,7 +8,7 @@ export type PermissionArgs = {
 };
 
 type AddMemberArgs = {
-  member: Address | SignedSecp256r1Key;
+  member: Address | Secp256r1Key;
   userAddressTreeIndex?: number;
   permissions: PermissionArgs;
 };

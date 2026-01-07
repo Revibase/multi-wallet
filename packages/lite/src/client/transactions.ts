@@ -25,9 +25,6 @@ export async function executeTransaction(
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   }
 ): Promise<{ txSig: string }> {
-  if (typeof window === "undefined") {
-    throw new Error("Function can only be called in a browser environment");
-  }
   provider.openBlankPopUp();
 
   const { instructions, signer, addressesByLookupTableAddress } = args;

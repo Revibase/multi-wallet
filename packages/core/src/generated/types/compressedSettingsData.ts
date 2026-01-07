@@ -14,6 +14,8 @@ import {
   getStructEncoder,
   getU128Decoder,
   getU128Encoder,
+  getU64Decoder,
+  getU64Encoder,
   getU8Decoder,
   getU8Encoder,
   type Codec,
@@ -34,6 +36,7 @@ export type CompressedSettingsData = {
   multiWalletBump: number;
   members: Array<Member>;
   settingsAddressTreeIndex: number;
+  latestSlotNumber: bigint;
 };
 
 export type CompressedSettingsDataArgs = {
@@ -43,6 +46,7 @@ export type CompressedSettingsDataArgs = {
   multiWalletBump: number;
   members: Array<MemberArgs>;
   settingsAddressTreeIndex: number;
+  latestSlotNumber: number | bigint;
 };
 
 export function getCompressedSettingsDataEncoder(): Encoder<CompressedSettingsDataArgs> {
@@ -53,6 +57,7 @@ export function getCompressedSettingsDataEncoder(): Encoder<CompressedSettingsDa
     ["multiWalletBump", getU8Encoder()],
     ["members", getArrayEncoder(getMemberEncoder())],
     ["settingsAddressTreeIndex", getU8Encoder()],
+    ["latestSlotNumber", getU64Encoder()],
   ]);
 }
 
@@ -64,6 +69,7 @@ export function getCompressedSettingsDataDecoder(): Decoder<CompressedSettingsDa
     ["multiWalletBump", getU8Decoder()],
     ["members", getArrayDecoder(getMemberDecoder())],
     ["settingsAddressTreeIndex", getU8Decoder()],
+    ["latestSlotNumber", getU64Decoder()],
   ]);
 }
 

@@ -4,23 +4,15 @@ import {
   type TransactionSigner,
 } from "gill";
 import {
-  getCompressedSettingsDecoder,
   getDecompressSettingsAccountInstruction,
-  type CompressedSettings,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
 } from "../generated";
 import { SignedSecp256r1Key } from "../types";
+import { getSettingsFromIndex } from "../utils";
 import {
-  getCompressedSettingsAddressFromIndex,
-  getSettingsFromIndex,
-} from "../utils";
-import {
+  constructSettingsProofArgs,
   convertToCompressedProofArgs,
-  getCompressedAccountHashes,
-  getCompressedAccountMutArgs,
-  getValidityProofWithRetry,
 } from "../utils/compressed/internal";
-import { PackedAccounts } from "../utils/compressed/packedAccounts";
 import {
   extractSecp256r1VerificationArgs,
   getDeduplicatedSigners,
@@ -43,33 +35,18 @@ export async function decompressSettingsAccount({
   signers: (SignedSecp256r1Key | TransactionSigner)[];
   cachedAccounts?: Map<string, any>;
 }) {
-  const packedAccounts = new PackedAccounts();
-  await packedAccounts.addSystemAccounts();
+  const { packedAccounts, proof, settingsMutArgs } =
+    await constructSettingsProofArgs(
+      true,
+      index,
+      settingsAddressTreeIndex,
+      false,
+      cachedAccounts
+    );
 
-  const hashesWithTree = await getCompressedAccountHashes(
-    [
-      {
-        address: (
-          await getCompressedSettingsAddressFromIndex(
-            index,
-            settingsAddressTreeIndex
-          )
-        ).address,
-        type: "Settings" as const,
-      },
-    ],
-    cachedAccounts
-  );
-  const proof = await getValidityProofWithRetry(hashesWithTree, []);
-  const settingsMutArgs = getCompressedAccountMutArgs<CompressedSettings>(
-    packedAccounts,
-    proof.treeInfos,
-    proof.leafIndices,
-    proof.rootIndices,
-    proof.proveByIndices,
-    hashesWithTree.filter((x) => x.type === "Settings"),
-    getCompressedSettingsDecoder()
-  )[0];
+  if (!settingsMutArgs) {
+    throw new Error("Proof args is missing");
+  }
 
   const dedupSigners = getDeduplicatedSigners(signers);
 

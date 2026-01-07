@@ -1,12 +1,14 @@
-use crate::{state::UserReadOnlyOrMutateArgs, MemberKey, Permissions, Secp256r1VerifyArgs};
+use crate::{
+    state::{UserReadOnlyArgs, UserReadOnlyOrMutateArgs},
+    MemberKey, Permissions,
+};
 use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug)]
 pub struct AddMemberArgs {
     pub member_key: MemberKey,
     pub permissions: Permissions,
-    pub verify_args: Option<Secp256r1VerifyArgs>,
-    pub user_args: UserReadOnlyOrMutateArgs,
+    pub user_readonly_args: UserReadOnlyArgs,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug)]

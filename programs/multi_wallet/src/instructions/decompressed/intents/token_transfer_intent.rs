@@ -13,6 +13,7 @@ use spl_token_2022::state::Mint;
 
 #[derive(Accounts)]
 pub struct TokenTransferIntent<'info> {
+    #[account(mut)]
     pub settings: AccountLoader<'info, Settings>,
     /// CHECK:
     #[account(
@@ -192,13 +193,13 @@ impl<'info> TokenTransferIntent<'info> {
         create_ata_if_needed: bool,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
-        let settings = &mut ctx.accounts.settings;
-        let settings_key = settings.key();
+        let settings = &mut ctx.accounts.settings.load_mut()?;
+        let settings_key = ctx.accounts.settings.key();
         let signer_seeds: &[&[&[u8]]] = &[&[
             SEED_MULTISIG,
             settings_key.as_ref(),
             SEED_VAULT,
-            &[settings.load()?.multi_wallet_bump],
+            &[settings.multi_wallet_bump],
         ]];
 
         if create_ata_if_needed {
@@ -246,6 +247,16 @@ impl<'info> TokenTransferIntent<'info> {
             ],
             signer_seeds,
         )?;
+
+        settings.latest_slot_number_check(
+            secp256r1_verify_args
+                .iter()
+                .map(|f| f.verify_args.slot_number)
+                .collect(),
+            &ctx.accounts.slot_hash_sysvar,
+        )?;
+
+        settings.invariant()?;
 
         Ok(())
     }

@@ -72,8 +72,8 @@ export const MULTI_WALLET_ERROR__INVALID_USER_ROLE = 0x178a; // 6026
 export const MULTI_WALLET_ERROR__INVALID_ARGUMENTS = 0x178b; // 6027
 /** MissingAccount: A required account is missing from the instruction context. */
 export const MULTI_WALLET_ERROR__MISSING_ACCOUNT = 0x178c; // 6028
-/** MissingUserArgs: User mutation arguments are required when performing add or remove delegate operations. */
-export const MULTI_WALLET_ERROR__MISSING_USER_ARGS = 0x178d; // 6029
+/** MissingMutationUserArgs: User mutation arguments are required when performing add or remove delegate operations. */
+export const MULTI_WALLET_ERROR__MISSING_MUTATION_USER_ARGS = 0x178d; // 6029
 /** AlreadyDelegated: This member is already delegated to another wallet. */
 export const MULTI_WALLET_ERROR__ALREADY_DELEGATED = 0x178e; // 6030
 /** InsufficientSignerWithExecutePermission: At least one signer with execute permission is required to proceed. */
@@ -112,16 +112,18 @@ export const MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY = 0x179e; // 6046
 export const MULTI_WALLET_ERROR__INVALID_SYSVAR_DATA_FORMAT = 0x179f; // 6047
 /** SlotNumberNotFound: The specified slot number was not found in the provided slot history. */
 export const MULTI_WALLET_ERROR__SLOT_NUMBER_NOT_FOUND = 0x17a0; // 6048
+/** InvalidSlotNumber: The specified slot number is not recent. */
+export const MULTI_WALLET_ERROR__INVALID_SLOT_NUMBER = 0x17a1; // 6049
 /** DomainConfigIsDisabled: The domain configuration account is disabled. Please contact support or try again later. */
-export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_DISABLED = 0x17a1; // 6049
+export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_DISABLED = 0x17a2; // 6050
 /** DomainConfigIsMissing: Missing domain configuration account. */
-export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_MISSING = 0x17a2; // 6050
+export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_MISSING = 0x17a3; // 6051
 /** MemberDoesNotBelongToDomainConfig: This member is not registered under the provided domain configuration. */
-export const MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG = 0x17a3; // 6051
+export const MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG = 0x17a4; // 6052
 /** OriginIndexOutOfBounds: The given origin index is not in the whitelisted origins. */
-export const MULTI_WALLET_ERROR__ORIGIN_INDEX_OUT_OF_BOUNDS = 0x17a4; // 6052
+export const MULTI_WALLET_ERROR__ORIGIN_INDEX_OUT_OF_BOUNDS = 0x17a5; // 6053
 /** InvalidAddressTree: Address Tree supplied is not part of the whitelisted address trees */
-export const MULTI_WALLET_ERROR__INVALID_ADDRESS_TREE = 0x17a5; // 6053
+export const MULTI_WALLET_ERROR__INVALID_ADDRESS_TREE = 0x17a6; // 6054
 
 export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__ALREADY_DELEGATED
@@ -152,6 +154,7 @@ export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__INVALID_SECP256R1_PUBLIC_KEY
   | typeof MULTI_WALLET_ERROR__INVALID_SECP256R1_VERIFY_ARG
   | typeof MULTI_WALLET_ERROR__INVALID_SIGNATURE_OFFSETS
+  | typeof MULTI_WALLET_ERROR__INVALID_SLOT_NUMBER
   | typeof MULTI_WALLET_ERROR__INVALID_SYSVAR_DATA_FORMAT
   | typeof MULTI_WALLET_ERROR__INVALID_THRESHOLD
   | typeof MULTI_WALLET_ERROR__INVALID_TRANSACTION_MANAGER_CONFIG
@@ -162,8 +165,8 @@ export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__MAX_LENGTH_EXCEEDED
   | typeof MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG
   | typeof MULTI_WALLET_ERROR__MISSING_ACCOUNT
+  | typeof MULTI_WALLET_ERROR__MISSING_MUTATION_USER_ARGS
   | typeof MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY
-  | typeof MULTI_WALLET_ERROR__MISSING_USER_ARGS
   | typeof MULTI_WALLET_ERROR__NO_SIGNER_FOUND
   | typeof MULTI_WALLET_ERROR__ONLY_ONE_PERMANENT_MEMBER_ALLOWED
   | typeof MULTI_WALLET_ERROR__ONLY_ONE_TRANSACTION_MANAGER_ALLOWED
@@ -210,6 +213,7 @@ if (process.env.NODE_ENV !== "production") {
     [MULTI_WALLET_ERROR__INVALID_SECP256R1_PUBLIC_KEY]: `The extracted public key has an invalid length or encoding.`,
     [MULTI_WALLET_ERROR__INVALID_SECP256R1_VERIFY_ARG]: `Malformed or missing WebAuthn verification parameters. Please provide valid secp256r1 signature arguments.`,
     [MULTI_WALLET_ERROR__INVALID_SIGNATURE_OFFSETS]: `Failed to deserialize secp256r1 signature offsets from the instruction data.`,
+    [MULTI_WALLET_ERROR__INVALID_SLOT_NUMBER]: `The specified slot number is not recent.`,
     [MULTI_WALLET_ERROR__INVALID_SYSVAR_DATA_FORMAT]: `Failed to parse the Slot History sysvar: data format is invalid or corrupted.`,
     [MULTI_WALLET_ERROR__INVALID_THRESHOLD]: `Invalid threshold: must be at least 1 and cannot exceed the number of voting-eligible members.`,
     [MULTI_WALLET_ERROR__INVALID_TRANSACTION_MANAGER_CONFIG]: `User with Transaction Manager role requires a valid transaction manager url, be a ed25519 Signer and have no delegated wallet.`,
@@ -220,8 +224,8 @@ if (process.env.NODE_ENV !== "production") {
     [MULTI_WALLET_ERROR__MAX_LENGTH_EXCEEDED]: `An input string exceeds the maximum allowed character length.`,
     [MULTI_WALLET_ERROR__MEMBER_DOES_NOT_BELONG_TO_DOMAIN_CONFIG]: `This member is not registered under the provided domain configuration.`,
     [MULTI_WALLET_ERROR__MISSING_ACCOUNT]: `A required account is missing from the instruction context.`,
+    [MULTI_WALLET_ERROR__MISSING_MUTATION_USER_ARGS]: `User mutation arguments are required when performing add or remove delegate operations.`,
     [MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY]: `Missing required sysvar: Slot History must be included as an account in this instruction.`,
-    [MULTI_WALLET_ERROR__MISSING_USER_ARGS]: `User mutation arguments are required when performing add or remove delegate operations.`,
     [MULTI_WALLET_ERROR__NO_SIGNER_FOUND]: `No valid signer found in this transaction.`,
     [MULTI_WALLET_ERROR__ONLY_ONE_PERMANENT_MEMBER_ALLOWED]: `Only one permanent member is allowed per wallet.`,
     [MULTI_WALLET_ERROR__ONLY_ONE_TRANSACTION_MANAGER_ALLOWED]: `Only one transaction manager is allowed per wallet.`,

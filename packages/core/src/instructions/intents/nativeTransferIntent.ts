@@ -49,7 +49,8 @@ export async function nativeTransferIntent({
   const dedupSigners = getDeduplicatedSigners(signers);
   const settings = await getSettingsFromIndex(index);
   const walletAddress = await getWalletAddressFromSettings(settings);
-  const { settingsReadonlyArgs, proof, packedAccounts } =
+
+  const { packedAccounts, proof, settingsMutArgs } =
     await constructSettingsProofArgs(
       compressed,
       index,
@@ -95,7 +96,7 @@ export async function nativeTransferIntent({
   }
 
   if (compressed) {
-    if (!payer || !settingsReadonlyArgs) {
+    if (!payer || !settingsMutArgs) {
       throw new Error("Payer not found or proof args is missing.");
     }
     const compressedProofArgs = convertToCompressedProofArgs(
@@ -105,7 +106,7 @@ export async function nativeTransferIntent({
     instructions.push(
       getNativeTransferIntentCompressedInstruction({
         amount,
-        settingsReadonlyArgs,
+        settingsMutArgs,
         compressedProofArgs,
         payer,
         secp256r1VerifyArgs,

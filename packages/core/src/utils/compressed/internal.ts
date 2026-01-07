@@ -13,6 +13,7 @@ import {
   fetchWhitelistedAddressTree,
   getCompressedSettingsDecoder,
   type CompressedProof,
+  type SettingsMutArgs,
   type SettingsReadonlyArgs,
 } from "../../generated";
 import {
@@ -161,6 +162,7 @@ export async function constructSettingsProofArgs(
   cachedAccounts?: Map<string, any>
 ) {
   let settingsReadonlyArgs: SettingsReadonlyArgs | null = null;
+  let settingsMutArgs: SettingsMutArgs | null = null;
   let proof: ValidityProofWithContext | null = null;
   const packedAccounts = new PackedAccounts();
   if (compressed) {
@@ -217,8 +219,17 @@ export async function constructSettingsProofArgs(
       },
       data: getCompressedSettingsDecoder().decode(settings.data?.data!),
     };
+
+    settingsMutArgs = {
+      accountMeta: {
+        address: new Uint8Array(settings.address!),
+        treeInfo: stateTreeInfo.packedTreeInfos[0],
+        outputStateTreeIndex: stateTreeInfo.outputTreeIndex,
+      },
+      data: getCompressedSettingsDecoder().decode(settings.data?.data!),
+    };
   }
-  return { settingsReadonlyArgs, proof, packedAccounts };
+  return { settingsReadonlyArgs, proof, packedAccounts, settingsMutArgs };
 }
 
 export async function getValidityProofWithRetry(

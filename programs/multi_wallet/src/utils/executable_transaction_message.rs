@@ -1,4 +1,3 @@
-use crate::instruction::{ChangeConfig, ChangeConfigCompressed};
 use crate::{MultisigError, VaultTransactionMessage};
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::instruction::Instruction;
@@ -149,23 +148,13 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
         self,
         vault_seeds: &[&[u8]],
         protected_accounts: &[Pubkey],
-        payer: Option<Pubkey>,
     ) -> Result<()> {
         for (ix, account_infos) in self.to_instructions_and_accounts().iter() {
-            let is_change_config_ix = crate::ID.eq(&ix.program_id)
-                && (ix.data[..1].eq(ChangeConfig::DISCRIMINATOR)
-                    || ix.data[..1].eq(ChangeConfigCompressed::DISCRIMINATOR));
             for account_meta in ix.accounts.iter().filter(|m| m.is_writable) {
                 require!(
                     !protected_accounts.contains(&account_meta.pubkey),
                     MultisigError::ProtectedAccount
                 );
-                if let Some(payer) = payer {
-                    require!(
-                        is_change_config_ix || payer.ne(&account_meta.pubkey),
-                        MultisigError::ProtectedAccount
-                    );
-                }
             }
             invoke_signed(&ix, &account_infos, &[vault_seeds])?;
         }

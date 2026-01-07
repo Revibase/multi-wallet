@@ -1,11 +1,9 @@
-import { AccountRole, type Instruction, type TransactionSigner } from "gill";
+import { type Instruction, type TransactionSigner } from "gill";
 import {
   getCreateMultiWalletCompressedInstructionAsync,
   getUserDecoder,
-  UserRole,
   type User,
 } from "../generated";
-import { SignedSecp256r1Key } from "../types";
 import {
   getCompressedSettingsAddressFromIndex,
   getUserAccountAddress,
@@ -19,17 +17,12 @@ import {
   getValidityProofWithRetry,
 } from "../utils/compressed/internal";
 import { PackedAccounts } from "../utils/compressed/packedAccounts";
-import { extractSecp256r1VerificationArgs } from "../utils/transaction/internal";
-import {
-  getSecp256r1VerifyInstruction,
-  type Secp256r1VerifyInput,
-} from "./secp256r1Verify";
 
 type CreateWalletArgs = {
   index: number | bigint;
   payer: TransactionSigner;
   cachedAccounts?: Map<string, any>;
-  initialMember: TransactionSigner | SignedSecp256r1Key;
+  initialMember: TransactionSigner;
   userAddressTreeIndex?: number;
 };
 export async function createWallet({
@@ -39,18 +32,6 @@ export async function createWallet({
   userAddressTreeIndex,
   cachedAccounts,
 }: CreateWalletArgs) {
-  const { domainConfig, verifyArgs, message, signature, publicKey } =
-    extractSecp256r1VerificationArgs(initialMember);
-
-  const secp256r1VerifyInput: Secp256r1VerifyInput = [];
-  if (message && signature && publicKey) {
-    secp256r1VerifyInput.push({
-      message,
-      signature,
-      publicKey,
-    });
-  }
-
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();
 
@@ -63,9 +44,7 @@ export async function createWallet({
         {
           address: (
             await getUserAccountAddress(
-              "address" in initialMember
-                ? initialMember.address
-                : initialMember,
+              initialMember.address,
               userAddressTreeIndex
             )
           ).address,
@@ -116,20 +95,6 @@ export async function createWallet({
   const settingsCreationArgs =
     initArgs.find((x) => x.type === "Settings") ?? null;
 
-  if (domainConfig) {
-    packedAccounts.addPreAccounts([
-      { address: domainConfig, role: AccountRole.READONLY },
-    ]);
-  } else if ("address" in initialMember) {
-    packedAccounts.addPreAccounts([
-      {
-        address: initialMember.address,
-        role: AccountRole.READONLY_SIGNER,
-        signer: initialMember,
-      },
-    ]);
-  }
-
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
 
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
@@ -139,22 +104,12 @@ export async function createWallet({
     throw new Error("Settings creation args is missing.");
   }
 
-  if (secp256r1VerifyInput.length > 0) {
-    instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
-  }
-
   instructions.push(
     await getCreateMultiWalletCompressedInstructionAsync({
       settingsIndex: index,
-      payer: payer,
-      initialMember:
-        initialMember instanceof SignedSecp256r1Key ? undefined : initialMember,
-      secp256r1VerifyArgs: verifyArgs,
-      domainConfig,
-      userArgs:
-        userMutArgs.data.role === UserRole.PermanentMember
-          ? { __kind: "Mutate", fields: [userMutArgs] }
-          : { __kind: "Read", fields: [userMutArgs] },
+      payer,
+      initialMember,
+      userReadonlyArgs: userMutArgs,
       compressedProofArgs,
       settingsCreation: settingsCreationArgs,
       remainingAccounts,

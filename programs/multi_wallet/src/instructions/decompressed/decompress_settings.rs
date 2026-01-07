@@ -1,7 +1,5 @@
 use crate::{
-    MultisigError, ChallengeArgs, CompressedSettings, DomainConfig, MemberKey, Permission, ProofArgs,  Secp256r1VerifyArgsWithDomainAddress, Settings, SettingsMutArgs, TransactionActionType, 
-    durable_nonce_check,SEED_MULTISIG, 
-    LIGHT_CPI_SIGNER
+    ChallengeArgs, CompressedSettings, DomainConfig, LIGHT_CPI_SIGNER, MemberKey, MultisigError, Permission, ProofArgs, SEED_MULTISIG, Secp256r1VerifyArgsWithDomainAddress, Settings, SettingsMutArgs, TransactionActionType, durable_nonce_check, utils::MultisigSettings
 };
 use anchor_lang::{prelude::*, solana_program::{sysvar::SysvarId}};
 use light_sdk::{instruction::ValidityProof, light_hasher::{Hasher, Sha256}};
@@ -164,10 +162,19 @@ impl<'info> DecompressSettingsAccount<'info> {
         let settings_data = settings_account.data.as_ref().ok_or(MultisigError::InvalidArguments)?;
         settings.set_threshold(settings_data.threshold)?;
         settings.set_members(settings_data.members.clone())?;
+        settings.set_latest_slot_number(settings_data.latest_slot_number)?;
         settings.multi_wallet_bump = settings_data.multi_wallet_bump;
         settings.bump = ctx.bumps.settings;
-        settings.index = settings_data.index;
+        settings.index = settings_data.index.to_le_bytes();
         settings.settings_address_tree_index = settings_data.settings_address_tree_index;
+        
+        settings.latest_slot_number_check(
+            secp256r1_verify_args
+                .iter()
+                .map(|f| f.verify_args.slot_number)
+                .collect(),  
+            &ctx.accounts.slot_hash_sysvar,
+        )?;
         settings.invariant()?;
 
         settings_account.data = None;

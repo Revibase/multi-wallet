@@ -43,14 +43,14 @@ import {
   getProofArgsEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  getSettingsReadonlyArgsDecoder,
-  getSettingsReadonlyArgsEncoder,
+  getSettingsMutArgsDecoder,
+  getSettingsMutArgsEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-  type SettingsReadonlyArgs,
-  type SettingsReadonlyArgsArgs,
+  type SettingsMutArgs,
+  type SettingsMutArgsArgs,
 } from "../types";
 
 export const TRANSACTION_BUFFER_EXECUTE_COMPRESSED_DISCRIMINATOR =
@@ -106,13 +106,13 @@ export type TransactionBufferExecuteCompressedInstruction<
 export type TransactionBufferExecuteCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
-  settingsReadonlyArgs: SettingsReadonlyArgs;
+  settingsMutArgs: SettingsMutArgs;
   compressedProofArgs: ProofArgs;
 };
 
 export type TransactionBufferExecuteCompressedInstructionDataArgs = {
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
-  settingsReadonlyArgs: SettingsReadonlyArgsArgs;
+  settingsMutArgs: SettingsMutArgsArgs;
   compressedProofArgs: ProofArgsArgs;
 };
 
@@ -124,7 +124,7 @@ export function getTransactionBufferExecuteCompressedInstructionDataEncoder(): E
         "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
-      ["settingsReadonlyArgs", getSettingsReadonlyArgsEncoder()],
+      ["settingsMutArgs", getSettingsMutArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
@@ -138,7 +138,7 @@ export function getTransactionBufferExecuteCompressedInstructionDataDecoder(): D
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ["settingsReadonlyArgs", getSettingsReadonlyArgsDecoder()],
+    ["settingsMutArgs", getSettingsMutArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }
@@ -172,7 +172,7 @@ export type TransactionBufferExecuteCompressedInput<
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   secp256r1VerifyArgs: TransactionBufferExecuteCompressedInstructionDataArgs["secp256r1VerifyArgs"];
-  settingsReadonlyArgs: TransactionBufferExecuteCompressedInstructionDataArgs["settingsReadonlyArgs"];
+  settingsMutArgs: TransactionBufferExecuteCompressedInstructionDataArgs["settingsMutArgs"];
   compressedProofArgs: TransactionBufferExecuteCompressedInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: TransactionBufferExecuteCompressedInstructionExtraArgs["remainingAccounts"];
 };

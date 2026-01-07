@@ -95,11 +95,11 @@ export type TransactionActionType =
   | "vote"
   | "sync"
   | "close"
-  | "add_new_member"
   | "compress"
   | "decompress"
   | "transfer_intent"
-  | "change_delegate";
+  | "change_delegate"
+  | "change_config";
 
 export type TransactionPayload = {
   transactionActionType: TransactionActionType;
