@@ -12,16 +12,15 @@ import {
   getBytesEncoder,
   type Address,
   type ReadonlyUint8Array,
-} from "gill";
+} from 'gill';
 import {
   type ParsedAddWhitelistedAddressTreesInstruction,
   type ParsedChangeConfigCompressedInstruction,
   type ParsedChangeConfigInstruction,
-  type ParsedCompressSettingsAccountInstruction,
+  type ParsedCreateCompressedWalletInstruction,
   type ParsedCreateDomainConfigInstruction,
   type ParsedCreateDomainUserAccountInstruction,
   type ParsedCreateGlobalCounterInstruction,
-  type ParsedCreateMultiWalletCompressedInstruction,
   type ParsedCreateUserAccountsInstruction,
   type ParsedDecompressSettingsAccountInstruction,
   type ParsedDisableDomainConfigInstruction,
@@ -48,10 +47,10 @@ import {
   type ParsedTransactionExecuteInstruction,
   type ParsedTransactionExecuteSyncCompressedInstruction,
   type ParsedTransactionExecuteSyncInstruction,
-} from "../instructions";
+} from '../instructions';
 
 export const MULTI_WALLET_PROGRAM_ADDRESS =
-  "reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT" as Address<"reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT">;
+  'reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT' as Address<'reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT'>;
 
 export enum MultiWalletAccount {
   DomainConfig,
@@ -64,7 +63,7 @@ export enum MultiWalletAccount {
 export function identifyMultiWalletAccount(
   account: { data: ReadonlyUint8Array } | ReadonlyUint8Array
 ): MultiWalletAccount {
-  const data = "data" in account ? account.data : account;
+  const data = 'data' in account ? account.data : account;
   if (
     containsBytes(
       data,
@@ -121,7 +120,7 @@ export function identifyMultiWalletAccount(
     return MultiWalletAccount.WhitelistedAddressTree;
   }
   throw new Error(
-    "The provided account could not be identified as a multiWallet account."
+    'The provided account could not be identified as a multiWallet account.'
   );
 }
 
@@ -129,11 +128,10 @@ export enum MultiWalletInstruction {
   AddWhitelistedAddressTrees,
   ChangeConfig,
   ChangeConfigCompressed,
-  CompressSettingsAccount,
+  CreateCompressedWallet,
   CreateDomainConfig,
   CreateDomainUserAccount,
   CreateGlobalCounter,
-  CreateMultiWalletCompressed,
   CreateUserAccounts,
   DecompressSettingsAccount,
   DisableDomainConfig,
@@ -165,7 +163,7 @@ export enum MultiWalletInstruction {
 export function identifyMultiWalletInstruction(
   instruction: { data: ReadonlyUint8Array } | ReadonlyUint8Array
 ): MultiWalletInstruction {
-  const data = "data" in instruction ? instruction.data : instruction;
+  const data = 'data' in instruction ? instruction.data : instruction;
   if (
     containsBytes(
       data,
@@ -187,7 +185,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([20])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([19])),
       0
     )
   ) {
@@ -196,11 +194,11 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([17])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([18])),
       0
     )
   ) {
-    return MultiWalletInstruction.CompressSettingsAccount;
+    return MultiWalletInstruction.CreateCompressedWallet;
   }
   if (
     containsBytes(
@@ -232,15 +230,6 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([19])),
-      0
-    )
-  ) {
-    return MultiWalletInstruction.CreateMultiWalletCompressed;
-  }
-  if (
-    containsBytes(
-      data,
       fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([5])),
       0
     )
@@ -250,7 +239,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([18])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([17])),
       0
     )
   ) {
@@ -295,7 +284,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([33])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([32])),
       0
     )
   ) {
@@ -304,7 +293,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([32])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([31])),
       0
     )
   ) {
@@ -313,7 +302,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([30])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([29])),
       0
     )
   ) {
@@ -322,7 +311,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([28])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([27])),
       0
     )
   ) {
@@ -331,7 +320,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([31])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([30])),
       0
     )
   ) {
@@ -340,7 +329,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([29])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([28])),
       0
     )
   ) {
@@ -358,7 +347,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([24])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([23])),
       0
     )
   ) {
@@ -376,7 +365,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([21])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([20])),
       0
     )
   ) {
@@ -394,7 +383,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([25])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([24])),
       0
     )
   ) {
@@ -412,7 +401,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([23])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([22])),
       0
     )
   ) {
@@ -430,7 +419,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([22])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([21])),
       0
     )
   ) {
@@ -448,7 +437,7 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([26])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([25])),
       0
     )
   ) {
@@ -466,19 +455,19 @@ export function identifyMultiWalletInstruction(
   if (
     containsBytes(
       data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([27])),
+      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([26])),
       0
     )
   ) {
     return MultiWalletInstruction.TransactionExecuteSyncCompressed;
   }
   throw new Error(
-    "The provided instruction could not be identified as a multiWallet instruction."
+    'The provided instruction could not be identified as a multiWallet instruction.'
   );
 }
 
 export type ParsedMultiWalletInstruction<
-  TProgram extends string = "reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT",
+  TProgram extends string = 'reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT',
 > =
   | ({
       instructionType: MultiWalletInstruction.AddWhitelistedAddressTrees;
@@ -490,8 +479,8 @@ export type ParsedMultiWalletInstruction<
       instructionType: MultiWalletInstruction.ChangeConfigCompressed;
     } & ParsedChangeConfigCompressedInstruction<TProgram>)
   | ({
-      instructionType: MultiWalletInstruction.CompressSettingsAccount;
-    } & ParsedCompressSettingsAccountInstruction<TProgram>)
+      instructionType: MultiWalletInstruction.CreateCompressedWallet;
+    } & ParsedCreateCompressedWalletInstruction<TProgram>)
   | ({
       instructionType: MultiWalletInstruction.CreateDomainConfig;
     } & ParsedCreateDomainConfigInstruction<TProgram>)
@@ -501,9 +490,6 @@ export type ParsedMultiWalletInstruction<
   | ({
       instructionType: MultiWalletInstruction.CreateGlobalCounter;
     } & ParsedCreateGlobalCounterInstruction<TProgram>)
-  | ({
-      instructionType: MultiWalletInstruction.CreateMultiWalletCompressed;
-    } & ParsedCreateMultiWalletCompressedInstruction<TProgram>)
   | ({
       instructionType: MultiWalletInstruction.CreateUserAccounts;
     } & ParsedCreateUserAccountsInstruction<TProgram>)

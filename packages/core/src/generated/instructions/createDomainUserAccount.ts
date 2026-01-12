@@ -34,10 +34,10 @@ import {
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableSignerAccount,
-} from "gill";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from 'gill';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getLinkWalletArgsDecoder,
   getLinkWalletArgsEncoder,
@@ -59,7 +59,7 @@ import {
   type UserCreationArgsArgs,
   type UserRole,
   type UserRoleArgs,
-} from "../types";
+} from '../types';
 
 export const CREATE_DOMAIN_USER_ACCOUNT_DISCRIMINATOR = new Uint8Array([4]);
 
@@ -118,12 +118,12 @@ export type CreateDomainUserAccountInstructionDataArgs = {
 export function getCreateDomainUserAccountInstructionDataEncoder(): Encoder<CreateDomainUserAccountInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["compressedProofArgs", getProofArgsEncoder()],
-      ["member", getSecp256r1PubkeyEncoder()],
-      ["role", getUserRoleEncoder()],
-      ["userAccountCreationArgs", getUserCreationArgsEncoder()],
-      ["linkWalletArgs", getOptionEncoder(getLinkWalletArgsEncoder())],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      ['compressedProofArgs', getProofArgsEncoder()],
+      ['member', getSecp256r1PubkeyEncoder()],
+      ['role', getUserRoleEncoder()],
+      ['userAccountCreationArgs', getUserCreationArgsEncoder()],
+      ['linkWalletArgs', getOptionEncoder(getLinkWalletArgsEncoder())],
     ]),
     (value) => ({
       ...value,
@@ -134,12 +134,12 @@ export function getCreateDomainUserAccountInstructionDataEncoder(): Encoder<Crea
 
 export function getCreateDomainUserAccountInstructionDataDecoder(): Decoder<CreateDomainUserAccountInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["compressedProofArgs", getProofArgsDecoder()],
-    ["member", getSecp256r1PubkeyDecoder()],
-    ["role", getUserRoleDecoder()],
-    ["userAccountCreationArgs", getUserCreationArgsDecoder()],
-    ["linkWalletArgs", getOptionDecoder(getLinkWalletArgsDecoder())],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ['compressedProofArgs', getProofArgsDecoder()],
+    ['member', getSecp256r1PubkeyDecoder()],
+    ['role', getUserRoleDecoder()],
+    ['userAccountCreationArgs', getUserCreationArgsDecoder()],
+    ['linkWalletArgs', getOptionDecoder(getLinkWalletArgsDecoder())],
   ]);
 }
 
@@ -167,12 +167,12 @@ export type CreateDomainUserAccountAsyncInput<
   domainConfig: Address<TAccountDomainConfig>;
   authority: TransactionSigner<TAccountAuthority>;
   whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
-  compressedProofArgs: CreateDomainUserAccountInstructionDataArgs["compressedProofArgs"];
-  member: CreateDomainUserAccountInstructionDataArgs["member"];
-  role: CreateDomainUserAccountInstructionDataArgs["role"];
-  userAccountCreationArgs: CreateDomainUserAccountInstructionDataArgs["userAccountCreationArgs"];
-  linkWalletArgs: CreateDomainUserAccountInstructionDataArgs["linkWalletArgs"];
-  remainingAccounts: CreateDomainUserAccountInstructionExtraArgs["remainingAccounts"];
+  compressedProofArgs: CreateDomainUserAccountInstructionDataArgs['compressedProofArgs'];
+  member: CreateDomainUserAccountInstructionDataArgs['member'];
+  role: CreateDomainUserAccountInstructionDataArgs['role'];
+  userAccountCreationArgs: CreateDomainUserAccountInstructionDataArgs['userAccountCreationArgs'];
+  linkWalletArgs: CreateDomainUserAccountInstructionDataArgs['linkWalletArgs'];
+  remainingAccounts: CreateDomainUserAccountInstructionExtraArgs['remainingAccounts'];
 };
 
 export async function getCreateDomainUserAccountInstructionAsync<
@@ -241,7 +241,7 @@ export async function getCreateDomainUserAccountInstructionAsync<
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.payer),
@@ -273,12 +273,12 @@ export type CreateDomainUserAccountInput<
   domainConfig: Address<TAccountDomainConfig>;
   authority: TransactionSigner<TAccountAuthority>;
   whitelistedAddressTrees: Address<TAccountWhitelistedAddressTrees>;
-  compressedProofArgs: CreateDomainUserAccountInstructionDataArgs["compressedProofArgs"];
-  member: CreateDomainUserAccountInstructionDataArgs["member"];
-  role: CreateDomainUserAccountInstructionDataArgs["role"];
-  userAccountCreationArgs: CreateDomainUserAccountInstructionDataArgs["userAccountCreationArgs"];
-  linkWalletArgs: CreateDomainUserAccountInstructionDataArgs["linkWalletArgs"];
-  remainingAccounts: CreateDomainUserAccountInstructionExtraArgs["remainingAccounts"];
+  compressedProofArgs: CreateDomainUserAccountInstructionDataArgs['compressedProofArgs'];
+  member: CreateDomainUserAccountInstructionDataArgs['member'];
+  role: CreateDomainUserAccountInstructionDataArgs['role'];
+  userAccountCreationArgs: CreateDomainUserAccountInstructionDataArgs['userAccountCreationArgs'];
+  linkWalletArgs: CreateDomainUserAccountInstructionDataArgs['linkWalletArgs'];
+  remainingAccounts: CreateDomainUserAccountInstructionExtraArgs['remainingAccounts'];
 };
 
 export function getCreateDomainUserAccountInstruction<
@@ -330,7 +330,7 @@ export function getCreateDomainUserAccountInstruction<
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.payer),
@@ -376,7 +376,7 @@ export function parseCreateDomainUserAccountInstruction<
 ): ParsedCreateDomainUserAccountInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 4) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {

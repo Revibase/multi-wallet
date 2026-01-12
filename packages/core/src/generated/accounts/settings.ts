@@ -21,6 +21,8 @@ import {
   getBytesEncoder,
   getStructDecoder,
   getStructEncoder,
+  getU128Decoder,
+  getU128Encoder,
   getU64Decoder,
   getU64Encoder,
   getU8Decoder,
@@ -28,22 +30,22 @@ import {
   transformEncoder,
   type Account,
   type Address,
+  type Codec,
+  type Decoder,
   type EncodedAccount,
+  type Encoder,
   type FetchAccountConfig,
   type FetchAccountsConfig,
-  type FixedSizeCodec,
-  type FixedSizeDecoder,
-  type FixedSizeEncoder,
   type MaybeAccount,
   type MaybeEncodedAccount,
   type ReadonlyUint8Array,
-} from "gill";
+} from 'gill';
 import {
   getMemberDecoder,
   getMemberEncoder,
   type Member,
   type MemberArgs,
-} from "../types";
+} from '../types';
 
 export const SETTINGS_DISCRIMINATOR = new Uint8Array([
   223, 179, 163, 190, 177, 224, 67, 173,
@@ -55,63 +57,55 @@ export function getSettingsDiscriminatorBytes() {
 
 export type Settings = {
   discriminator: ReadonlyUint8Array;
-  index: ReadonlyUint8Array;
+  index: bigint;
   members: Array<Member>;
-  membersLen: number;
   threshold: number;
   multiWalletBump: number;
   bump: number;
   settingsAddressTreeIndex: number;
-  padding: ReadonlyUint8Array;
   latestSlotNumber: bigint;
 };
 
 export type SettingsArgs = {
-  index: ReadonlyUint8Array;
+  index: number | bigint;
   members: Array<MemberArgs>;
-  membersLen: number;
   threshold: number;
   multiWalletBump: number;
   bump: number;
   settingsAddressTreeIndex: number;
-  padding: ReadonlyUint8Array;
   latestSlotNumber: number | bigint;
 };
 
-export function getSettingsEncoder(): FixedSizeEncoder<SettingsArgs> {
+export function getSettingsEncoder(): Encoder<SettingsArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["index", fixEncoderSize(getBytesEncoder(), 16)],
-      ["members", getArrayEncoder(getMemberEncoder(), { size: 4 })],
-      ["membersLen", getU8Encoder()],
-      ["threshold", getU8Encoder()],
-      ["multiWalletBump", getU8Encoder()],
-      ["bump", getU8Encoder()],
-      ["settingsAddressTreeIndex", getU8Encoder()],
-      ["padding", fixEncoderSize(getBytesEncoder(), 3)],
-      ["latestSlotNumber", getU64Encoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['index', getU128Encoder()],
+      ['members', getArrayEncoder(getMemberEncoder())],
+      ['threshold', getU8Encoder()],
+      ['multiWalletBump', getU8Encoder()],
+      ['bump', getU8Encoder()],
+      ['settingsAddressTreeIndex', getU8Encoder()],
+      ['latestSlotNumber', getU64Encoder()],
     ]),
     (value) => ({ ...value, discriminator: SETTINGS_DISCRIMINATOR })
   );
 }
 
-export function getSettingsDecoder(): FixedSizeDecoder<Settings> {
+export function getSettingsDecoder(): Decoder<Settings> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["index", fixDecoderSize(getBytesDecoder(), 16)],
-    ["members", getArrayDecoder(getMemberDecoder(), { size: 4 })],
-    ["membersLen", getU8Decoder()],
-    ["threshold", getU8Decoder()],
-    ["multiWalletBump", getU8Decoder()],
-    ["bump", getU8Decoder()],
-    ["settingsAddressTreeIndex", getU8Decoder()],
-    ["padding", fixDecoderSize(getBytesDecoder(), 3)],
-    ["latestSlotNumber", getU64Decoder()],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['index', getU128Decoder()],
+    ['members', getArrayDecoder(getMemberDecoder())],
+    ['threshold', getU8Decoder()],
+    ['multiWalletBump', getU8Decoder()],
+    ['bump', getU8Decoder()],
+    ['settingsAddressTreeIndex', getU8Decoder()],
+    ['latestSlotNumber', getU64Decoder()],
   ]);
 }
 
-export function getSettingsCodec(): FixedSizeCodec<SettingsArgs, Settings> {
+export function getSettingsCodec(): Codec<SettingsArgs, Settings> {
   return combineCodec(getSettingsEncoder(), getSettingsDecoder());
 }
 
@@ -166,8 +160,4 @@ export async function fetchAllMaybeSettings(
 ): Promise<MaybeAccount<Settings>[]> {
   const maybeAccounts = await fetchEncodedAccounts(rpc, addresses, config);
   return maybeAccounts.map((maybeAccount) => decodeSettings(maybeAccount));
-}
-
-export function getSettingsSize(): number {
-  return 192;
 }

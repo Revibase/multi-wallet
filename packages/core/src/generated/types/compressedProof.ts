@@ -18,7 +18,7 @@ import {
   type FixedSizeDecoder,
   type FixedSizeEncoder,
   type ReadonlyUint8Array,
-} from "gill";
+} from 'gill';
 
 export type CompressedProof = {
   a: ReadonlyUint8Array;
@@ -30,17 +30,17 @@ export type CompressedProofArgs = CompressedProof;
 
 export function getCompressedProofEncoder(): FixedSizeEncoder<CompressedProofArgs> {
   return getStructEncoder([
-    ["a", fixEncoderSize(getBytesEncoder(), 32)],
-    ["b", fixEncoderSize(getBytesEncoder(), 64)],
-    ["c", fixEncoderSize(getBytesEncoder(), 32)],
+    ['a', fixEncoderSize(getBytesEncoder(), 32)],
+    ['b', fixEncoderSize(getBytesEncoder(), 64)],
+    ['c', fixEncoderSize(getBytesEncoder(), 32)],
   ]);
 }
 
 export function getCompressedProofDecoder(): FixedSizeDecoder<CompressedProof> {
   return getStructDecoder([
-    ["a", fixDecoderSize(getBytesDecoder(), 32)],
-    ["b", fixDecoderSize(getBytesDecoder(), 64)],
-    ["c", fixDecoderSize(getBytesDecoder(), 32)],
+    ['a', fixDecoderSize(getBytesDecoder(), 32)],
+    ['b', fixDecoderSize(getBytesDecoder(), 64)],
+    ['c', fixDecoderSize(getBytesDecoder(), 32)],
   ]);
 }
 

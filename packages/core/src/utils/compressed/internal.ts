@@ -3,12 +3,24 @@ import {
   type AddressWithTree,
   type BN254,
   type CompressedAccount,
+  type GetCompressedTokenAccountsByOwnerOrDelegateOptions,
   type HashWithTree,
+  type ParsedTokenAccount,
   type TreeInfo,
   type ValidityProofWithContext,
+  type WithCursor,
 } from "@lightprotocol/stateless.js";
+import type { PublicKey } from "@solana/web3.js";
 import BN from "bn.js";
-import { some, type Address, type Decoder, type OptionOrNullable } from "gill";
+import {
+  some,
+  type AccountInfoBase,
+  type Address,
+  type Base64EncodedDataResponse,
+  type Decoder,
+  type OptionOrNullable,
+  type Slot,
+} from "gill";
 import {
   fetchWhitelistedAddressTree,
   getCompressedSettingsDecoder,
@@ -21,10 +33,9 @@ import {
   getWhitelistedAddressTreesAddress,
 } from "../addresses";
 import { getLightProtocolRpc, getSolanaRpc } from "../initialize";
-import { fetchCompressedAccount } from "./helper";
 import { PackedAccounts } from "./packedAccounts";
 
-export async function getCompressedAccount(
+export async function fetchCachedCompressedAccount(
   address: BN,
   cachedAccounts?: Map<string, any>
 ): Promise<CompressedAccount | null> {
@@ -32,11 +43,65 @@ export async function getCompressedAccount(
   if (result) {
     return result;
   } else {
-    const compressedAccount = await fetchCompressedAccount(address);
+    const compressedAccount =
+      await getLightProtocolRpc().getCompressedAccount(address);
     if (compressedAccount) {
       cachedAccounts?.set(address.toString(), compressedAccount);
     }
     return compressedAccount;
+  }
+}
+
+export async function fetchCachedCompressedTokenAccountsByOwner(
+  owner: PublicKey,
+  options?: GetCompressedTokenAccountsByOwnerOrDelegateOptions,
+  cachedAccounts?: Map<string, any>
+): Promise<WithCursor<ParsedTokenAccount[]>> {
+  const key =
+    owner.toString() + (options?.mint ? options?.mint.toString() : "");
+  let result = cachedAccounts?.get(key);
+  if (result) {
+    return result;
+  } else {
+    const compressedAccount =
+      await getLightProtocolRpc().getCompressedTokenAccountsByOwner(
+        owner,
+        options
+      );
+    if (compressedAccount) {
+      cachedAccounts?.set(key, compressedAccount);
+    }
+    return compressedAccount;
+  }
+}
+
+export async function fetchCachedAccountInfo(
+  address: Address,
+  cachedAccounts?: Map<string, any>
+): Promise<
+  Readonly<{
+    context: Readonly<{
+      slot: Slot;
+    }>;
+    value:
+      | (AccountInfoBase &
+          Readonly<{
+            data: Base64EncodedDataResponse;
+          }>)
+      | null;
+  }>
+> {
+  let result = cachedAccounts?.get(address.toString());
+  if (result) {
+    return result;
+  } else {
+    const accountInfo = await getSolanaRpc()
+      .getAccountInfo(address, { encoding: "base64" })
+      .send();
+    if (accountInfo) {
+      cachedAccounts?.set(address.toString(), accountInfo);
+    }
+    return accountInfo;
   }
 }
 
@@ -45,7 +110,9 @@ export async function getCompressedAccountHashes(
   cachedAccounts?: Map<string, any>
 ) {
   const compressedAccounts = await Promise.all(
-    addresses.map(async (x) => getCompressedAccount(x.address, cachedAccounts))
+    addresses.map(async (x) =>
+      fetchCachedCompressedAccount(x.address, cachedAccounts)
+    )
   );
 
   const filtered = compressedAccounts
@@ -119,7 +186,10 @@ export function getCompressedAccountMutArgs<T>(
   leafIndices: number[],
   rootIndices: number[],
   proveByIndices: boolean[],
-  hashes: (HashWithTree & CompressedAccount)[],
+  hashes: (HashWithTree & {
+    data: CompressedAccount["data"];
+    address: CompressedAccount["address"];
+  })[],
   decoder: Decoder<T>
 ) {
   const accountProofInputs: AccountProofInput[] = [];

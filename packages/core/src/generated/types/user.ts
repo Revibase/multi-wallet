@@ -28,7 +28,7 @@ import {
   type Encoder,
   type Option,
   type OptionOrNullable,
-} from "gill";
+} from 'gill';
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
@@ -42,7 +42,7 @@ import {
   type SettingsIndexWithAddressArgs,
   type UserRole,
   type UserRoleArgs,
-} from ".";
+} from '.';
 
 export type User = {
   member: MemberKey;
@@ -64,29 +64,29 @@ export type UserArgs = {
 
 export function getUserEncoder(): Encoder<UserArgs> {
   return getStructEncoder([
-    ["member", getMemberKeyEncoder()],
-    ["domainConfig", getOptionEncoder(getAddressEncoder())],
-    ["role", getUserRoleEncoder()],
-    ["delegatedTo", getOptionEncoder(getSettingsIndexWithAddressEncoder())],
+    ['member', getMemberKeyEncoder()],
+    ['domainConfig', getOptionEncoder(getAddressEncoder())],
+    ['role', getUserRoleEncoder()],
+    ['delegatedTo', getOptionEncoder(getSettingsIndexWithAddressEncoder())],
     [
-      "transactionManagerUrl",
+      'transactionManagerUrl',
       getOptionEncoder(addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())),
     ],
-    ["userAddressTreeIndex", getU8Encoder()],
+    ['userAddressTreeIndex', getU8Encoder()],
   ]);
 }
 
 export function getUserDecoder(): Decoder<User> {
   return getStructDecoder([
-    ["member", getMemberKeyDecoder()],
-    ["domainConfig", getOptionDecoder(getAddressDecoder())],
-    ["role", getUserRoleDecoder()],
-    ["delegatedTo", getOptionDecoder(getSettingsIndexWithAddressDecoder())],
+    ['member', getMemberKeyDecoder()],
+    ['domainConfig', getOptionDecoder(getAddressDecoder())],
+    ['role', getUserRoleDecoder()],
+    ['delegatedTo', getOptionDecoder(getSettingsIndexWithAddressDecoder())],
     [
-      "transactionManagerUrl",
+      'transactionManagerUrl',
       getOptionDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
     ],
-    ["userAddressTreeIndex", getU8Decoder()],
+    ['userAddressTreeIndex', getU8Decoder()],
   ]);
 }
 

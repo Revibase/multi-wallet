@@ -10,7 +10,7 @@ pub struct TransactionExecute<'info> {
         mut,
         address = transaction_buffer.multi_wallet_settings
     )]
-    pub settings: AccountLoader<'info, Settings>,
+    pub settings: Account<'info, Settings>,
     /// CHECK:
     #[account(
         mut,

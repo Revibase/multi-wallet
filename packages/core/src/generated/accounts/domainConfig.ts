@@ -35,7 +35,7 @@ import {
   type MaybeAccount,
   type MaybeEncodedAccount,
   type ReadonlyUint8Array,
-} from "gill";
+} from 'gill';
 
 export const DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([
   201, 232, 212, 229, 59, 241, 106, 197,
@@ -73,15 +73,15 @@ export type DomainConfigArgs = {
 export function getDomainConfigEncoder(): FixedSizeEncoder<DomainConfigArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["authority", getAddressEncoder()],
-      ["rpIdHash", fixEncoderSize(getBytesEncoder(), 32)],
-      ["bump", getU8Encoder()],
-      ["isDisabled", getU8Encoder()],
-      ["rpIdLength", getU8Encoder()],
-      ["numOrigins", getU8Encoder()],
-      ["rpId", fixEncoderSize(getBytesEncoder(), 255)],
-      ["origins", fixEncoderSize(getBytesEncoder(), 515)],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['authority', getAddressEncoder()],
+      ['rpIdHash', fixEncoderSize(getBytesEncoder(), 32)],
+      ['bump', getU8Encoder()],
+      ['isDisabled', getU8Encoder()],
+      ['rpIdLength', getU8Encoder()],
+      ['numOrigins', getU8Encoder()],
+      ['rpId', fixEncoderSize(getBytesEncoder(), 255)],
+      ['origins', fixEncoderSize(getBytesEncoder(), 515)],
     ]),
     (value) => ({ ...value, discriminator: DOMAIN_CONFIG_DISCRIMINATOR })
   );
@@ -89,15 +89,15 @@ export function getDomainConfigEncoder(): FixedSizeEncoder<DomainConfigArgs> {
 
 export function getDomainConfigDecoder(): FixedSizeDecoder<DomainConfig> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["authority", getAddressDecoder()],
-    ["rpIdHash", fixDecoderSize(getBytesDecoder(), 32)],
-    ["bump", getU8Decoder()],
-    ["isDisabled", getU8Decoder()],
-    ["rpIdLength", getU8Decoder()],
-    ["numOrigins", getU8Decoder()],
-    ["rpId", fixDecoderSize(getBytesDecoder(), 255)],
-    ["origins", fixDecoderSize(getBytesDecoder(), 515)],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['authority', getAddressDecoder()],
+    ['rpIdHash', fixDecoderSize(getBytesDecoder(), 32)],
+    ['bump', getU8Decoder()],
+    ['isDisabled', getU8Decoder()],
+    ['rpIdLength', getU8Decoder()],
+    ['numOrigins', getU8Decoder()],
+    ['rpId', fixDecoderSize(getBytesDecoder(), 255)],
+    ['origins', fixDecoderSize(getBytesDecoder(), 515)],
   ]);
 }
 

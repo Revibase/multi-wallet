@@ -118,7 +118,7 @@ impl<'info> ChangeConfigCompressed<'info> {
                         message_hash,
                         action_type: TransactionActionType::ChangeConfig,
                     },
-                    None,
+                    &vec![],
                 )?;
             }
         }

@@ -1,22 +1,21 @@
 use crate::{
-    durable_nonce_check, utils::UserRole, ChallengeArgs, DomainConfig, KeyType, MemberKey,
-    MultisigError, Permission, Secp256r1VerifyArgs, Settings, TransactionActionType,
-    TransactionBuffer, TransactionBufferCreateArgs, MAX_BUFFER_SIZE, SEED_MULTISIG,
-    SEED_TRANSACTION_BUFFER,
+    durable_nonce_check, ChallengeArgs, DomainConfig, KeyType, MemberKey, MultisigError,
+    Permission, Secp256r1VerifyArgs, Settings, TransactionActionType, TransactionBuffer,
+    TransactionBufferCreateArgs, MAX_BUFFER_SIZE, SEED_MULTISIG, SEED_TRANSACTION_BUFFER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
 #[derive(Accounts)]
 #[instruction(args: TransactionBufferCreateArgs, secp256r1_verify_args: Option<Secp256r1VerifyArgs> )]
 pub struct TransactionBufferCreate<'info> {
-    pub settings: AccountLoader<'info, Settings>,
+    pub settings: Account<'info, Settings>,
     #[account(mut)]
     pub payer: Signer<'info>,
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
     #[account(
         init,
         payer = payer,
-        space = TransactionBuffer::size(args.final_buffer_size, args.buffer_extend_hashes.len())?,
+        space = TransactionBuffer::size(args.final_buffer_size, args.buffer_extend_hashes.len(), settings.members.len(), args.expected_secp256r1_signers.len())?,
         seeds = [
             SEED_MULTISIG,
             settings.key().as_ref(),
@@ -66,7 +65,6 @@ impl TransactionBufferCreate<'_> {
         let signer: MemberKey =
             MemberKey::get_signer(creator, &secp256r1_verify_args, Some(instructions_sysvar))?;
         let settings_key = settings.key();
-        let settings = settings.load()?;
         let member = settings
             .members
             .iter()
@@ -103,27 +101,20 @@ impl TransactionBufferCreate<'_> {
                         TransactionActionType::Create
                     },
                 },
-                None,
+                &vec![],
             )?;
         }
 
-        if UserRole::from(member.role).eq(&UserRole::TransactionManager) {
-            let expected_secp256r1_signers = args
-                .expected_secp256r1_signers
-                .as_ref()
-                .ok_or(MultisigError::InvalidArguments)?;
-
-            require!(
-                expected_secp256r1_signers
-                    .iter()
-                    .all(|f| settings.members.iter().any(|x| f
-                        .member_key
-                        .get_type()
-                        .eq(&KeyType::Secp256r1)
-                        && x.pubkey.eq(&f.member_key))),
-                MultisigError::InvalidArguments
-            );
-        }
+        require!(
+            args.expected_secp256r1_signers
+                .iter()
+                .all(|f| settings.members.iter().any(|x| f
+                    .member_key
+                    .get_type()
+                    .eq(&KeyType::Secp256r1)
+                    && x.pubkey.eq(&f.member_key))),
+            MultisigError::InvalidArguments
+        );
 
         Ok(())
     }
@@ -135,7 +126,7 @@ impl TransactionBufferCreate<'_> {
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
-        let settings = &ctx.accounts.settings.load()?;
+        let settings = &ctx.accounts.settings;
         let signer: MemberKey = MemberKey::get_signer(
             &ctx.accounts.creator,
             &secp256r1_verify_args,

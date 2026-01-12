@@ -17,39 +17,39 @@ import {
   type Encoder,
   type Option,
   type OptionOrNullable,
-} from "gill";
+} from 'gill';
 import {
   getSettingsMutArgsDecoder,
   getSettingsMutArgsEncoder,
-  getUserMutArgsDecoder,
-  getUserMutArgsEncoder,
+  getUserReadOnlyArgsDecoder,
+  getUserReadOnlyArgsEncoder,
   type SettingsMutArgs,
   type SettingsMutArgsArgs,
-  type UserMutArgs,
-  type UserMutArgsArgs,
-} from ".";
+  type UserReadOnlyArgs,
+  type UserReadOnlyArgsArgs,
+} from '.';
 
 export type LinkWalletArgs = {
   settingsMutArgs: SettingsMutArgs;
-  transactionManager: Option<UserMutArgs>;
+  transactionManager: Option<UserReadOnlyArgs>;
 };
 
 export type LinkWalletArgsArgs = {
   settingsMutArgs: SettingsMutArgsArgs;
-  transactionManager: OptionOrNullable<UserMutArgsArgs>;
+  transactionManager: OptionOrNullable<UserReadOnlyArgsArgs>;
 };
 
 export function getLinkWalletArgsEncoder(): Encoder<LinkWalletArgsArgs> {
   return getStructEncoder([
-    ["settingsMutArgs", getSettingsMutArgsEncoder()],
-    ["transactionManager", getOptionEncoder(getUserMutArgsEncoder())],
+    ['settingsMutArgs', getSettingsMutArgsEncoder()],
+    ['transactionManager', getOptionEncoder(getUserReadOnlyArgsEncoder())],
   ]);
 }
 
 export function getLinkWalletArgsDecoder(): Decoder<LinkWalletArgs> {
   return getStructDecoder([
-    ["settingsMutArgs", getSettingsMutArgsDecoder()],
-    ["transactionManager", getOptionDecoder(getUserMutArgsDecoder())],
+    ['settingsMutArgs', getSettingsMutArgsDecoder()],
+    ['transactionManager', getOptionDecoder(getUserReadOnlyArgsDecoder())],
   ]);
 }
 

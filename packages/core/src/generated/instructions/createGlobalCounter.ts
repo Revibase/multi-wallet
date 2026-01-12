@@ -30,10 +30,10 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from "gill";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from 'gill';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 
 export const CREATE_GLOBAL_COUNTER_DISCRIMINATOR = new Uint8Array([3]);
 
@@ -49,7 +49,7 @@ export type CreateGlobalCounterInstruction<
   TAccountPayer extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | AccountMeta<string> = "11111111111111111111111111111111",
+    | AccountMeta<string> = '11111111111111111111111111111111',
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -77,7 +77,7 @@ export type CreateGlobalCounterInstructionDataArgs = {};
 
 export function getCreateGlobalCounterInstructionDataEncoder(): FixedSizeEncoder<CreateGlobalCounterInstructionDataArgs> {
   return transformEncoder(
-    getStructEncoder([["discriminator", fixEncoderSize(getBytesEncoder(), 1)]]),
+    getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 1)]]),
     (value) => ({
       ...value,
       discriminator: CREATE_GLOBAL_COUNTER_DISCRIMINATOR,
@@ -87,7 +87,7 @@ export function getCreateGlobalCounterInstructionDataEncoder(): FixedSizeEncoder
 
 export function getCreateGlobalCounterInstructionDataDecoder(): FixedSizeDecoder<CreateGlobalCounterInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
   ]);
 }
 
@@ -113,7 +113,7 @@ export type CreateGlobalCounterAsyncInput<
   globalCounter?: Address<TAccountGlobalCounter>;
   payer: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
-  remainingAccounts: CreateGlobalCounterInstructionExtraArgs["remainingAccounts"];
+  remainingAccounts: CreateGlobalCounterInstructionExtraArgs['remainingAccounts'];
 };
 
 export async function getCreateGlobalCounterInstructionAsync<
@@ -168,14 +168,14 @@ export async function getCreateGlobalCounterInstructionAsync<
   }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.globalCounter),
@@ -201,7 +201,7 @@ export type CreateGlobalCounterInput<
   globalCounter: Address<TAccountGlobalCounter>;
   payer: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
-  remainingAccounts: CreateGlobalCounterInstructionExtraArgs["remainingAccounts"];
+  remainingAccounts: CreateGlobalCounterInstructionExtraArgs['remainingAccounts'];
 };
 
 export function getCreateGlobalCounterInstruction<
@@ -242,14 +242,14 @@ export function getCreateGlobalCounterInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.globalCounter),
@@ -290,7 +290,7 @@ export function parseCreateGlobalCounterInstruction<
 ): ParsedCreateGlobalCounterInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 3) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {

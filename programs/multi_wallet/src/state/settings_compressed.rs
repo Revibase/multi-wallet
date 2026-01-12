@@ -16,6 +16,7 @@ use light_sdk::{
     },
     LightDiscriminator,
 };
+use std::collections::HashSet;
 
 #[derive(
     AnchorDeserialize, AnchorSerialize, LightDiscriminator, PartialEq, Default, Debug, Clone,
@@ -168,6 +169,10 @@ impl CompressedSettings {
 }
 
 impl MultisigSettings for CompressedSettings {
+    fn is_compressed(&self) -> Result<bool> {
+        Ok(true)
+    }
+
     fn set_threshold(&mut self, value: u8) -> Result<()> {
         if let Some(data) = &mut self.data {
             data.threshold = value;
@@ -215,7 +220,12 @@ impl MultisigSettings for CompressedSettings {
 
     fn delete_members(&mut self, members: Vec<MemberKey>) -> Result<()> {
         if let Some(data) = &mut self.data {
-            data.members.retain(|m| !members.contains(&m.pubkey));
+            let existing: HashSet<_> = data.members.iter().map(|m| m.pubkey).collect();
+            if members.iter().any(|m| !existing.contains(&m)) {
+                return err!(MultisigError::InvalidArguments);
+            }
+            let to_delete: HashSet<_> = members.into_iter().map(|m| m).collect();
+            data.members.retain(|m| !to_delete.contains(&m.pubkey));
         }
         Ok(())
     }

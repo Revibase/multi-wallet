@@ -36,3 +36,9 @@ pub use vault_transaction::*;
 
 pub mod transaction_action_type;
 pub use transaction_action_type::*;
+
+pub mod user_role;
+pub use user_role::*;
+
+pub mod compressed_token;
+pub use compressed_token::*;

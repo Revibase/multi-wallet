@@ -33,10 +33,10 @@ import {
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableSignerAccount,
-} from "gill";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from 'gill';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getProofArgsDecoder,
   getProofArgsEncoder,
@@ -46,7 +46,7 @@ import {
   type ProofArgsArgs,
   type UserMutArgs,
   type UserMutArgsArgs,
-} from "../types";
+} from '../types';
 
 export const EDIT_TRANSACTION_MANAGER_URL_DISCRIMINATOR = new Uint8Array([6]);
 
@@ -88,13 +88,13 @@ export type EditTransactionManagerUrlInstructionDataArgs = {
 export function getEditTransactionManagerUrlInstructionDataEncoder(): Encoder<EditTransactionManagerUrlInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["userMutArgs", getUserMutArgsEncoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      ['userMutArgs', getUserMutArgsEncoder()],
       [
-        "transactionManagerUrl",
+        'transactionManagerUrl',
         addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder()),
       ],
-      ["compressedProofArgs", getProofArgsEncoder()],
+      ['compressedProofArgs', getProofArgsEncoder()],
     ]),
     (value) => ({
       ...value,
@@ -105,13 +105,13 @@ export function getEditTransactionManagerUrlInstructionDataEncoder(): Encoder<Ed
 
 export function getEditTransactionManagerUrlInstructionDataDecoder(): Decoder<EditTransactionManagerUrlInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["userMutArgs", getUserMutArgsDecoder()],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ['userMutArgs', getUserMutArgsDecoder()],
     [
-      "transactionManagerUrl",
+      'transactionManagerUrl',
       addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder()),
     ],
-    ["compressedProofArgs", getProofArgsDecoder()],
+    ['compressedProofArgs', getProofArgsDecoder()],
   ]);
 }
 
@@ -133,10 +133,10 @@ export type EditTransactionManagerUrlInput<
   TAccountAuthority extends string = string,
 > = {
   authority: TransactionSigner<TAccountAuthority>;
-  userMutArgs: EditTransactionManagerUrlInstructionDataArgs["userMutArgs"];
-  transactionManagerUrl: EditTransactionManagerUrlInstructionDataArgs["transactionManagerUrl"];
-  compressedProofArgs: EditTransactionManagerUrlInstructionDataArgs["compressedProofArgs"];
-  remainingAccounts: EditTransactionManagerUrlInstructionExtraArgs["remainingAccounts"];
+  userMutArgs: EditTransactionManagerUrlInstructionDataArgs['userMutArgs'];
+  transactionManagerUrl: EditTransactionManagerUrlInstructionDataArgs['transactionManagerUrl'];
+  compressedProofArgs: EditTransactionManagerUrlInstructionDataArgs['compressedProofArgs'];
+  remainingAccounts: EditTransactionManagerUrlInstructionExtraArgs['remainingAccounts'];
 };
 
 export function getEditTransactionManagerUrlInstruction<
@@ -168,7 +168,7 @@ export function getEditTransactionManagerUrlInstruction<
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [getAccountMeta(accounts.authority), ...remainingAccounts],
     data: getEditTransactionManagerUrlInstructionDataEncoder().encode(
@@ -202,7 +202,7 @@ export function parseEditTransactionManagerUrlInstruction<
 ): ParsedEditTransactionManagerUrlInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 1) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {

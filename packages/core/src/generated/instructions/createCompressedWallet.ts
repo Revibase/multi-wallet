@@ -33,10 +33,10 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from "gill";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from 'gill';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getProofArgsDecoder,
   getProofArgsEncoder,
@@ -50,25 +50,23 @@ import {
   type SettingsCreationArgsArgs,
   type UserReadOnlyArgs,
   type UserReadOnlyArgsArgs,
-} from "../types";
+} from '../types';
 
-export const CREATE_MULTI_WALLET_COMPRESSED_DISCRIMINATOR = new Uint8Array([
-  19,
-]);
+export const CREATE_COMPRESSED_WALLET_DISCRIMINATOR = new Uint8Array([18]);
 
-export function getCreateMultiWalletCompressedDiscriminatorBytes() {
+export function getCreateCompressedWalletDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    CREATE_MULTI_WALLET_COMPRESSED_DISCRIMINATOR
+    CREATE_COMPRESSED_WALLET_DISCRIMINATOR
   );
 }
 
-export type CreateMultiWalletCompressedInstruction<
+export type CreateCompressedWalletInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountPayer extends string | AccountMeta<string> = string,
   TAccountInitialMember extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | AccountMeta<string> = "11111111111111111111111111111111",
+    | AccountMeta<string> = '11111111111111111111111111111111',
   TAccountGlobalCounter extends string | AccountMeta<string> = string,
   TAccountWhitelistedAddressTrees extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
@@ -97,7 +95,7 @@ export type CreateMultiWalletCompressedInstruction<
     ]
   >;
 
-export type CreateMultiWalletCompressedInstructionData = {
+export type CreateCompressedWalletInstructionData = {
   discriminator: ReadonlyUint8Array;
   compressedProofArgs: ProofArgs;
   settingsCreation: SettingsCreationArgs;
@@ -105,54 +103,54 @@ export type CreateMultiWalletCompressedInstructionData = {
   settingsIndex: bigint;
 };
 
-export type CreateMultiWalletCompressedInstructionDataArgs = {
+export type CreateCompressedWalletInstructionDataArgs = {
   compressedProofArgs: ProofArgsArgs;
   settingsCreation: SettingsCreationArgsArgs;
   userReadonlyArgs: UserReadOnlyArgsArgs;
   settingsIndex: number | bigint;
 };
 
-export function getCreateMultiWalletCompressedInstructionDataEncoder(): Encoder<CreateMultiWalletCompressedInstructionDataArgs> {
+export function getCreateCompressedWalletInstructionDataEncoder(): Encoder<CreateCompressedWalletInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["compressedProofArgs", getProofArgsEncoder()],
-      ["settingsCreation", getSettingsCreationArgsEncoder()],
-      ["userReadonlyArgs", getUserReadOnlyArgsEncoder()],
-      ["settingsIndex", getU128Encoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      ['compressedProofArgs', getProofArgsEncoder()],
+      ['settingsCreation', getSettingsCreationArgsEncoder()],
+      ['userReadonlyArgs', getUserReadOnlyArgsEncoder()],
+      ['settingsIndex', getU128Encoder()],
     ]),
     (value) => ({
       ...value,
-      discriminator: CREATE_MULTI_WALLET_COMPRESSED_DISCRIMINATOR,
+      discriminator: CREATE_COMPRESSED_WALLET_DISCRIMINATOR,
     })
   );
 }
 
-export function getCreateMultiWalletCompressedInstructionDataDecoder(): Decoder<CreateMultiWalletCompressedInstructionData> {
+export function getCreateCompressedWalletInstructionDataDecoder(): Decoder<CreateCompressedWalletInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["compressedProofArgs", getProofArgsDecoder()],
-    ["settingsCreation", getSettingsCreationArgsDecoder()],
-    ["userReadonlyArgs", getUserReadOnlyArgsDecoder()],
-    ["settingsIndex", getU128Decoder()],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ['compressedProofArgs', getProofArgsDecoder()],
+    ['settingsCreation', getSettingsCreationArgsDecoder()],
+    ['userReadonlyArgs', getUserReadOnlyArgsDecoder()],
+    ['settingsIndex', getU128Decoder()],
   ]);
 }
 
-export function getCreateMultiWalletCompressedInstructionDataCodec(): Codec<
-  CreateMultiWalletCompressedInstructionDataArgs,
-  CreateMultiWalletCompressedInstructionData
+export function getCreateCompressedWalletInstructionDataCodec(): Codec<
+  CreateCompressedWalletInstructionDataArgs,
+  CreateCompressedWalletInstructionData
 > {
   return combineCodec(
-    getCreateMultiWalletCompressedInstructionDataEncoder(),
-    getCreateMultiWalletCompressedInstructionDataDecoder()
+    getCreateCompressedWalletInstructionDataEncoder(),
+    getCreateCompressedWalletInstructionDataDecoder()
   );
 }
 
-export type CreateMultiWalletCompressedInstructionExtraArgs = {
+export type CreateCompressedWalletInstructionExtraArgs = {
   remainingAccounts: Array<{ address: Address; role: number }>;
 };
 
-export type CreateMultiWalletCompressedAsyncInput<
+export type CreateCompressedWalletAsyncInput<
   TAccountPayer extends string = string,
   TAccountInitialMember extends string = string,
   TAccountSystemProgram extends string = string,
@@ -164,14 +162,14 @@ export type CreateMultiWalletCompressedAsyncInput<
   systemProgram?: Address<TAccountSystemProgram>;
   globalCounter?: Address<TAccountGlobalCounter>;
   whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
-  compressedProofArgs: CreateMultiWalletCompressedInstructionDataArgs["compressedProofArgs"];
-  settingsCreation: CreateMultiWalletCompressedInstructionDataArgs["settingsCreation"];
-  userReadonlyArgs: CreateMultiWalletCompressedInstructionDataArgs["userReadonlyArgs"];
-  settingsIndex: CreateMultiWalletCompressedInstructionDataArgs["settingsIndex"];
-  remainingAccounts: CreateMultiWalletCompressedInstructionExtraArgs["remainingAccounts"];
+  compressedProofArgs: CreateCompressedWalletInstructionDataArgs['compressedProofArgs'];
+  settingsCreation: CreateCompressedWalletInstructionDataArgs['settingsCreation'];
+  userReadonlyArgs: CreateCompressedWalletInstructionDataArgs['userReadonlyArgs'];
+  settingsIndex: CreateCompressedWalletInstructionDataArgs['settingsIndex'];
+  remainingAccounts: CreateCompressedWalletInstructionExtraArgs['remainingAccounts'];
 };
 
-export async function getCreateMultiWalletCompressedInstructionAsync<
+export async function getCreateCompressedWalletInstructionAsync<
   TAccountPayer extends string,
   TAccountInitialMember extends string,
   TAccountSystemProgram extends string,
@@ -179,7 +177,7 @@ export async function getCreateMultiWalletCompressedInstructionAsync<
   TAccountWhitelistedAddressTrees extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
-  input: CreateMultiWalletCompressedAsyncInput<
+  input: CreateCompressedWalletAsyncInput<
     TAccountPayer,
     TAccountInitialMember,
     TAccountSystemProgram,
@@ -188,7 +186,7 @@ export async function getCreateMultiWalletCompressedInstructionAsync<
   >,
   config?: { programAddress?: TProgramAddress }
 ): Promise<
-  CreateMultiWalletCompressedInstruction<
+  CreateCompressedWalletInstruction<
     TProgramAddress,
     TAccountPayer,
     TAccountInitialMember,
@@ -225,7 +223,7 @@ export async function getCreateMultiWalletCompressedInstructionAsync<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
   if (!accounts.globalCounter.value) {
     accounts.globalCounter.value = await getProgramDerivedAddress({
@@ -257,7 +255,7 @@ export async function getCreateMultiWalletCompressedInstructionAsync<
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.payer),
@@ -267,11 +265,11 @@ export async function getCreateMultiWalletCompressedInstructionAsync<
       getAccountMeta(accounts.whitelistedAddressTrees),
       ...remainingAccounts,
     ],
-    data: getCreateMultiWalletCompressedInstructionDataEncoder().encode(
-      args as CreateMultiWalletCompressedInstructionDataArgs
+    data: getCreateCompressedWalletInstructionDataEncoder().encode(
+      args as CreateCompressedWalletInstructionDataArgs
     ),
     programAddress,
-  } as CreateMultiWalletCompressedInstruction<
+  } as CreateCompressedWalletInstruction<
     TProgramAddress,
     TAccountPayer,
     TAccountInitialMember,
@@ -281,7 +279,7 @@ export async function getCreateMultiWalletCompressedInstructionAsync<
   >);
 }
 
-export type CreateMultiWalletCompressedInput<
+export type CreateCompressedWalletInput<
   TAccountPayer extends string = string,
   TAccountInitialMember extends string = string,
   TAccountSystemProgram extends string = string,
@@ -293,14 +291,14 @@ export type CreateMultiWalletCompressedInput<
   systemProgram?: Address<TAccountSystemProgram>;
   globalCounter: Address<TAccountGlobalCounter>;
   whitelistedAddressTrees: Address<TAccountWhitelistedAddressTrees>;
-  compressedProofArgs: CreateMultiWalletCompressedInstructionDataArgs["compressedProofArgs"];
-  settingsCreation: CreateMultiWalletCompressedInstructionDataArgs["settingsCreation"];
-  userReadonlyArgs: CreateMultiWalletCompressedInstructionDataArgs["userReadonlyArgs"];
-  settingsIndex: CreateMultiWalletCompressedInstructionDataArgs["settingsIndex"];
-  remainingAccounts: CreateMultiWalletCompressedInstructionExtraArgs["remainingAccounts"];
+  compressedProofArgs: CreateCompressedWalletInstructionDataArgs['compressedProofArgs'];
+  settingsCreation: CreateCompressedWalletInstructionDataArgs['settingsCreation'];
+  userReadonlyArgs: CreateCompressedWalletInstructionDataArgs['userReadonlyArgs'];
+  settingsIndex: CreateCompressedWalletInstructionDataArgs['settingsIndex'];
+  remainingAccounts: CreateCompressedWalletInstructionExtraArgs['remainingAccounts'];
 };
 
-export function getCreateMultiWalletCompressedInstruction<
+export function getCreateCompressedWalletInstruction<
   TAccountPayer extends string,
   TAccountInitialMember extends string,
   TAccountSystemProgram extends string,
@@ -308,7 +306,7 @@ export function getCreateMultiWalletCompressedInstruction<
   TAccountWhitelistedAddressTrees extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
-  input: CreateMultiWalletCompressedInput<
+  input: CreateCompressedWalletInput<
     TAccountPayer,
     TAccountInitialMember,
     TAccountSystemProgram,
@@ -316,7 +314,7 @@ export function getCreateMultiWalletCompressedInstruction<
     TAccountWhitelistedAddressTrees
   >,
   config?: { programAddress?: TProgramAddress }
-): CreateMultiWalletCompressedInstruction<
+): CreateCompressedWalletInstruction<
   TProgramAddress,
   TAccountPayer,
   TAccountInitialMember,
@@ -352,14 +350,14 @@ export function getCreateMultiWalletCompressedInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.payer),
@@ -369,11 +367,11 @@ export function getCreateMultiWalletCompressedInstruction<
       getAccountMeta(accounts.whitelistedAddressTrees),
       ...remainingAccounts,
     ],
-    data: getCreateMultiWalletCompressedInstructionDataEncoder().encode(
-      args as CreateMultiWalletCompressedInstructionDataArgs
+    data: getCreateCompressedWalletInstructionDataEncoder().encode(
+      args as CreateCompressedWalletInstructionDataArgs
     ),
     programAddress,
-  } as CreateMultiWalletCompressedInstruction<
+  } as CreateCompressedWalletInstruction<
     TProgramAddress,
     TAccountPayer,
     TAccountInitialMember,
@@ -383,7 +381,7 @@ export function getCreateMultiWalletCompressedInstruction<
   >);
 }
 
-export type ParsedCreateMultiWalletCompressedInstruction<
+export type ParsedCreateCompressedWalletInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
@@ -395,20 +393,20 @@ export type ParsedCreateMultiWalletCompressedInstruction<
     globalCounter: TAccountMetas[3];
     whitelistedAddressTrees: TAccountMetas[4];
   };
-  data: CreateMultiWalletCompressedInstructionData;
+  data: CreateCompressedWalletInstructionData;
 };
 
-export function parseCreateMultiWalletCompressedInstruction<
+export function parseCreateCompressedWalletInstruction<
   TProgram extends string,
   TAccountMetas extends readonly AccountMeta[],
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>
-): ParsedCreateMultiWalletCompressedInstruction<TProgram, TAccountMetas> {
+): ParsedCreateCompressedWalletInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 5) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -425,7 +423,7 @@ export function parseCreateMultiWalletCompressedInstruction<
       globalCounter: getNextAccount(),
       whitelistedAddressTrees: getNextAccount(),
     },
-    data: getCreateMultiWalletCompressedInstructionDataDecoder().decode(
+    data: getCreateCompressedWalletInstructionDataDecoder().decode(
       instruction.data
     ),
   };

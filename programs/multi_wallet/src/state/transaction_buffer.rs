@@ -1,6 +1,6 @@
 use crate::{
     utils::{ExpectedSecp256r1Signers, KeyType},
-    MemberKey, MultisigError, MAXIMUM_AMOUNT_OF_MEMBERS,
+    MemberKey, MultisigError,
 };
 use anchor_lang::prelude::*;
 use light_sdk::light_hasher::{Hasher, Sha256};
@@ -20,7 +20,7 @@ pub struct TransactionBufferCreateArgs {
     pub buffer_extend_hashes: Vec<[u8; 32]>,
     pub final_buffer_hash: [u8; 32],
     pub final_buffer_size: u16,
-    pub expected_secp256r1_signers: Option<Vec<ExpectedSecp256r1Signers>>,
+    pub expected_secp256r1_signers: Vec<ExpectedSecp256r1Signers>,
 }
 
 #[account]
@@ -54,7 +54,7 @@ pub struct TransactionBuffer {
     /// Members that voted for this transaction
     pub voters: Vec<MemberKey>,
     /// All Secp256r1 Signers that are expected to initiate / vote / execute this transaction (used for off-chain inspection by the transaction manager)
-    pub expected_secp256r1_signers: Option<Vec<ExpectedSecp256r1Signers>>,
+    pub expected_secp256r1_signers: Vec<ExpectedSecp256r1Signers>,
     /// The buffer of the transaction message.
     pub buffer: Vec<u8>,
 }
@@ -85,7 +85,12 @@ impl TransactionBuffer {
         Ok(())
     }
 
-    pub fn size(final_message_buffer_size: u16, number_of_extend_buffers: usize) -> Result<usize> {
+    pub fn size(
+        final_message_buffer_size: u16,
+        number_of_extend_buffers: usize,
+        number_of_voters: usize,
+        number_of_expected_secp256r1_signers: usize,
+    ) -> Result<usize> {
         // Make sure final size is not greater than MAX_BUFFER_SIZE bytes.
         if (final_message_buffer_size as usize) > MAX_BUFFER_SIZE {
             return err!(MultisigError::FinalBufferSizeExceeded);
@@ -104,8 +109,8 @@ impl TransactionBuffer {
             2  +  // final_buffer_size
             2 * MemberKey::INIT_SPACE +  // creator & executor
             (4 + number_of_extend_buffers * 32 ) + // extend buffer hash
-            (4 + MAXIMUM_AMOUNT_OF_MEMBERS * MemberKey::INIT_SPACE)  +  // maximum number of members 
-            1 + (4 + MAXIMUM_AMOUNT_OF_MEMBERS * ExpectedSecp256r1Signers::INIT_SPACE)  +  // maximum number of expected secp256r1 members 
+            (4 + number_of_voters * MemberKey::INIT_SPACE)  +  // maximum number of members 
+            (4 + number_of_expected_secp256r1_signers * ExpectedSecp256r1Signers::INIT_SPACE)  +  // maximum number of expected secp256r1 members 
             (4 + usize::from(final_message_buffer_size)), // buffer
         )
     }
@@ -146,44 +151,44 @@ impl TransactionBuffer {
 
     pub fn add_voter(&mut self, voter: &MemberKey) -> Result<()> {
         if !self.voters.contains(voter) {
-            if let Some(expected_secp256r1_signers) = &self.expected_secp256r1_signers {
-                require!(
-                    voter.get_type().ne(&KeyType::Secp256r1)
-                        || expected_secp256r1_signers
-                            .iter()
-                            .any(|f| f.member_key.eq(&voter)),
-                    MultisigError::UnexpectedSigner
-                );
-            }
+            require!(
+                voter.get_type().ne(&KeyType::Secp256r1)
+                    || self
+                        .expected_secp256r1_signers
+                        .iter()
+                        .any(|f| f.member_key.eq(&voter)),
+                MultisigError::UnexpectedSigner
+            );
+
             self.voters.push(*voter);
         }
         Ok(())
     }
 
     pub fn add_initiator(&mut self, creator: MemberKey) -> Result<()> {
-        if let Some(expected_secp256r1_signers) = &self.expected_secp256r1_signers {
-            require!(
-                creator.get_type().ne(&KeyType::Secp256r1)
-                    || expected_secp256r1_signers
-                        .iter()
-                        .any(|f| f.member_key.eq(&creator)),
-                MultisigError::UnexpectedSigner
-            );
-        }
+        require!(
+            creator.get_type().ne(&KeyType::Secp256r1)
+                || self
+                    .expected_secp256r1_signers
+                    .iter()
+                    .any(|f| f.member_key.eq(&creator)),
+            MultisigError::UnexpectedSigner
+        );
+
         self.creator = creator;
         Ok(())
     }
 
     pub fn add_executor(&mut self, executor: MemberKey) -> Result<()> {
-        if let Some(expected_secp256r1_signers) = &self.expected_secp256r1_signers {
-            require!(
-                executor.get_type().ne(&KeyType::Secp256r1)
-                    || expected_secp256r1_signers
-                        .iter()
-                        .any(|f| f.member_key.eq(&executor)),
-                MultisigError::UnexpectedSigner
-            );
-        }
+        require!(
+            executor.get_type().ne(&KeyType::Secp256r1)
+                || self
+                    .expected_secp256r1_signers
+                    .iter()
+                    .any(|f| f.member_key.eq(&executor)),
+            MultisigError::UnexpectedSigner
+        );
+
         self.executor = executor;
         Ok(())
     }

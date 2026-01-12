@@ -25,8 +25,6 @@ import {
   getBooleanEncoder,
   getBytesDecoder,
   getBytesEncoder,
-  getOptionDecoder,
-  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
   getU16Decoder,
@@ -48,10 +46,8 @@ import {
   type FetchAccountsConfig,
   type MaybeAccount,
   type MaybeEncodedAccount,
-  type Option,
-  type OptionOrNullable,
   type ReadonlyUint8Array,
-} from "gill";
+} from 'gill';
 import {
   getExpectedSecp256r1SignersDecoder,
   getExpectedSecp256r1SignersEncoder,
@@ -61,7 +57,7 @@ import {
   type ExpectedSecp256r1SignersArgs,
   type MemberKey,
   type MemberKeyArgs,
-} from "../types";
+} from '../types';
 
 export const TRANSACTION_BUFFER_DISCRIMINATOR = new Uint8Array([
   90, 36, 35, 219, 93, 225, 110, 96,
@@ -103,7 +99,7 @@ export type TransactionBuffer = {
   /** Members that voted for this transaction */
   voters: Array<MemberKey>;
   /** All Secp256r1 Signers that are expected to initiate / vote / execute this transaction (used for off-chain inspection by the transaction manager) */
-  expectedSecp256r1Signers: Option<Array<ExpectedSecp256r1Signers>>;
+  expectedSecp256r1Signers: Array<ExpectedSecp256r1Signers>;
   /** The buffer of the transaction message. */
   buffer: ReadonlyUint8Array;
 };
@@ -137,9 +133,7 @@ export type TransactionBufferArgs = {
   /** Members that voted for this transaction */
   voters: Array<MemberKeyArgs>;
   /** All Secp256r1 Signers that are expected to initiate / vote / execute this transaction (used for off-chain inspection by the transaction manager) */
-  expectedSecp256r1Signers: OptionOrNullable<
-    Array<ExpectedSecp256r1SignersArgs>
-  >;
+  expectedSecp256r1Signers: Array<ExpectedSecp256r1SignersArgs>;
   /** The buffer of the transaction message. */
   buffer: ReadonlyUint8Array;
 };
@@ -147,29 +141,29 @@ export type TransactionBufferArgs = {
 export function getTransactionBufferEncoder(): Encoder<TransactionBufferArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["multiWalletSettings", getAddressEncoder()],
-      ["multiWalletBump", getU8Encoder()],
-      ["canExecute", getBooleanEncoder()],
-      ["preauthorizeExecution", getBooleanEncoder()],
-      ["validTill", getU64Encoder()],
-      ["payer", getAddressEncoder()],
-      ["bump", getU8Encoder()],
-      ["bufferIndex", getU8Encoder()],
-      ["finalBufferHash", fixEncoderSize(getBytesEncoder(), 32)],
-      ["finalBufferSize", getU16Encoder()],
-      ["creator", getMemberKeyEncoder()],
-      ["executor", getMemberKeyEncoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['multiWalletSettings', getAddressEncoder()],
+      ['multiWalletBump', getU8Encoder()],
+      ['canExecute', getBooleanEncoder()],
+      ['preauthorizeExecution', getBooleanEncoder()],
+      ['validTill', getU64Encoder()],
+      ['payer', getAddressEncoder()],
+      ['bump', getU8Encoder()],
+      ['bufferIndex', getU8Encoder()],
+      ['finalBufferHash', fixEncoderSize(getBytesEncoder(), 32)],
+      ['finalBufferSize', getU16Encoder()],
+      ['creator', getMemberKeyEncoder()],
+      ['executor', getMemberKeyEncoder()],
       [
-        "bufferExtendHashes",
+        'bufferExtendHashes',
         getArrayEncoder(fixEncoderSize(getBytesEncoder(), 32)),
       ],
-      ["voters", getArrayEncoder(getMemberKeyEncoder())],
+      ['voters', getArrayEncoder(getMemberKeyEncoder())],
       [
-        "expectedSecp256r1Signers",
-        getOptionEncoder(getArrayEncoder(getExpectedSecp256r1SignersEncoder())),
+        'expectedSecp256r1Signers',
+        getArrayEncoder(getExpectedSecp256r1SignersEncoder()),
       ],
-      ["buffer", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
+      ['buffer', addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
     ]),
     (value) => ({ ...value, discriminator: TRANSACTION_BUFFER_DISCRIMINATOR })
   );
@@ -177,29 +171,29 @@ export function getTransactionBufferEncoder(): Encoder<TransactionBufferArgs> {
 
 export function getTransactionBufferDecoder(): Decoder<TransactionBuffer> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["multiWalletSettings", getAddressDecoder()],
-    ["multiWalletBump", getU8Decoder()],
-    ["canExecute", getBooleanDecoder()],
-    ["preauthorizeExecution", getBooleanDecoder()],
-    ["validTill", getU64Decoder()],
-    ["payer", getAddressDecoder()],
-    ["bump", getU8Decoder()],
-    ["bufferIndex", getU8Decoder()],
-    ["finalBufferHash", fixDecoderSize(getBytesDecoder(), 32)],
-    ["finalBufferSize", getU16Decoder()],
-    ["creator", getMemberKeyDecoder()],
-    ["executor", getMemberKeyDecoder()],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['multiWalletSettings', getAddressDecoder()],
+    ['multiWalletBump', getU8Decoder()],
+    ['canExecute', getBooleanDecoder()],
+    ['preauthorizeExecution', getBooleanDecoder()],
+    ['validTill', getU64Decoder()],
+    ['payer', getAddressDecoder()],
+    ['bump', getU8Decoder()],
+    ['bufferIndex', getU8Decoder()],
+    ['finalBufferHash', fixDecoderSize(getBytesDecoder(), 32)],
+    ['finalBufferSize', getU16Decoder()],
+    ['creator', getMemberKeyDecoder()],
+    ['executor', getMemberKeyDecoder()],
     [
-      "bufferExtendHashes",
+      'bufferExtendHashes',
       getArrayDecoder(fixDecoderSize(getBytesDecoder(), 32)),
     ],
-    ["voters", getArrayDecoder(getMemberKeyDecoder())],
+    ['voters', getArrayDecoder(getMemberKeyDecoder())],
     [
-      "expectedSecp256r1Signers",
-      getOptionDecoder(getArrayDecoder(getExpectedSecp256r1SignersDecoder())),
+      'expectedSecp256r1Signers',
+      getArrayDecoder(getExpectedSecp256r1SignersDecoder()),
     ],
-    ["buffer", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
+    ['buffer', addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
   ]);
 }
 

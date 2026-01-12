@@ -13,7 +13,7 @@ import {
   type Codec,
   type Decoder,
   type Encoder,
-} from "gill";
+} from 'gill';
 import {
   getProofArgsDecoder,
   getProofArgsEncoder,
@@ -23,7 +23,7 @@ import {
   type ProofArgsArgs,
   type UserCreationArgs,
   type UserCreationArgsArgs,
-} from ".";
+} from '.';
 
 export type NewAuthorityArgs = {
   authorityCreationArgs: UserCreationArgs;
@@ -37,15 +37,15 @@ export type NewAuthorityArgsArgs = {
 
 export function getNewAuthorityArgsEncoder(): Encoder<NewAuthorityArgsArgs> {
   return getStructEncoder([
-    ["authorityCreationArgs", getUserCreationArgsEncoder()],
-    ["compressedProofArgs", getProofArgsEncoder()],
+    ['authorityCreationArgs', getUserCreationArgsEncoder()],
+    ['compressedProofArgs', getProofArgsEncoder()],
   ]);
 }
 
 export function getNewAuthorityArgsDecoder(): Decoder<NewAuthorityArgs> {
   return getStructDecoder([
-    ["authorityCreationArgs", getUserCreationArgsDecoder()],
-    ["compressedProofArgs", getProofArgsDecoder()],
+    ['authorityCreationArgs', getUserCreationArgsDecoder()],
+    ['compressedProofArgs', getProofArgsDecoder()],
   ]);
 }
 

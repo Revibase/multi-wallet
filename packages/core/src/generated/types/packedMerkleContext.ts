@@ -12,8 +12,6 @@ import {
   getBooleanEncoder,
   getStructDecoder,
   getStructEncoder,
-  getU16Decoder,
-  getU16Encoder,
   getU32Decoder,
   getU32Encoder,
   getU8Decoder,
@@ -23,42 +21,39 @@ import {
   type FixedSizeEncoder,
 } from 'gill';
 
-export type PackedStateTreeInfo = {
-  rootIndex: number;
-  proveByIndex: boolean;
+export type PackedMerkleContext = {
   merkleTreePubkeyIndex: number;
   queuePubkeyIndex: number;
   leafIndex: number;
+  proveByIndex: boolean;
 };
 
-export type PackedStateTreeInfoArgs = PackedStateTreeInfo;
+export type PackedMerkleContextArgs = PackedMerkleContext;
 
-export function getPackedStateTreeInfoEncoder(): FixedSizeEncoder<PackedStateTreeInfoArgs> {
+export function getPackedMerkleContextEncoder(): FixedSizeEncoder<PackedMerkleContextArgs> {
   return getStructEncoder([
-    ['rootIndex', getU16Encoder()],
-    ['proveByIndex', getBooleanEncoder()],
     ['merkleTreePubkeyIndex', getU8Encoder()],
     ['queuePubkeyIndex', getU8Encoder()],
     ['leafIndex', getU32Encoder()],
+    ['proveByIndex', getBooleanEncoder()],
   ]);
 }
 
-export function getPackedStateTreeInfoDecoder(): FixedSizeDecoder<PackedStateTreeInfo> {
+export function getPackedMerkleContextDecoder(): FixedSizeDecoder<PackedMerkleContext> {
   return getStructDecoder([
-    ['rootIndex', getU16Decoder()],
-    ['proveByIndex', getBooleanDecoder()],
     ['merkleTreePubkeyIndex', getU8Decoder()],
     ['queuePubkeyIndex', getU8Decoder()],
     ['leafIndex', getU32Decoder()],
+    ['proveByIndex', getBooleanDecoder()],
   ]);
 }
 
-export function getPackedStateTreeInfoCodec(): FixedSizeCodec<
-  PackedStateTreeInfoArgs,
-  PackedStateTreeInfo
+export function getPackedMerkleContextCodec(): FixedSizeCodec<
+  PackedMerkleContextArgs,
+  PackedMerkleContext
 > {
   return combineCodec(
-    getPackedStateTreeInfoEncoder(),
-    getPackedStateTreeInfoDecoder()
+    getPackedMerkleContextEncoder(),
+    getPackedMerkleContextDecoder()
   );
 }

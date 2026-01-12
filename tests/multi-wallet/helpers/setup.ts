@@ -20,6 +20,7 @@ import {
   address,
   createKeyPairSignerFromPrivateKeyBytes,
   fetchAddressesForLookupTables,
+  getAddressEncoder,
 } from "gill";
 import {
   findAddressLookupTablePda,
@@ -45,9 +46,13 @@ export async function setupTestEnvironment(): Promise<TestContext> {
   });
   // Create keypairs with deterministic seeds for testing
   const payerSeed = crypto.getRandomValues(new Uint8Array(32));
-  const walletSeed = crypto.getRandomValues(new Uint8Array(32));
 
-  const payer = await createKeyPairSignerFromPrivateKeyBytes(payerSeed);
+  const payer = await createKeyPairSignerFromPrivateKeyBytes(payerSeed, true);
+
+  const payerSecretKey = new Uint8Array([
+    ...payerSeed,
+    ...getAddressEncoder().encode(address(payer.address.toString())),
+  ]);
 
   // Fund the payer account
   await getSolanaRpc().requestAirdrop(payer.address, AIRDROP_AMOUNT).send();
@@ -74,11 +79,11 @@ export async function setupTestEnvironment(): Promise<TestContext> {
       "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
       "11111111111111111111111111111111",
       "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
       "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s",
       "Sysvar1nstructions1111111111111111111111111",
       "auth9SigNpDKz4sJJ1DfCTuZrZNSAgh9sFD3rboVmgg",
       "SysvarS1otHashes111111111111111111111111111",
-      "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
       "3C6AdJiD9qxMqZTmB53b5HC5Yfq2Bb57XAzYDzu4YDcj",
       "BGUMAp9Gq7iTEuizy4pqaxsTyUCBK68MDfK752saRPUY",
       "noopb9bkMVfRPU8AsbpTUg8AQkHtKwMYZiFUjNRtMmV",
@@ -88,15 +93,15 @@ export async function setupTestEnvironment(): Promise<TestContext> {
       "35hkDgaAKwMCaxRz2ocSZ6NaUrtKkyNqU6c4RV3tYJRh",
       "HwXnGK3tPkkVY6P439H2p68AxpeuWXd5PcrAxFpbmfbA",
       "compr6CUsB5m2jS4Y3831ztGSTnDpnKJTKS95d64XVq",
-      "smt1NamzXdq4AMqS2fS2F1i5KTYPZRhoHgWx38d8WsT",
-      "nfq1NvQDJ2GEgnS8zt9prAe8rjjpAW1zFkrvZoBR148",
-      "amt1Ayt45jfbdw5YSo7iz6WZxUmnZsQTYXy82hVwyC2",
-      "aq1S9z4reTSQAdgWHGD2zDaS39sjGrAxbR31vxJ2F4F",
-      "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m",
-      "6MZszp7ihPjUeoi8RJs9NNC4jBxi7beiqvXHJhxd7fe",
-      "smt2rJAFdyJJupwMKAqTNAJwvjhmiZ4JYGZmbVRw1Ho",
-      "nfq2hgS7NYemXsFaFUCe3EMXSDSfnZnAe27jC6aPP1X",
-      "smt3AFtReRGVcrP11D6bSLEaKdUmrGfaTNowMVccJeu",
+      "bmt1LryLZUMmF7ZtqESaw7wifBXLfXHQYoE4GAmrahU",
+      "oq1na8gojfdUhsfCpyjNt6h4JaDWtHf1yQj4koBWfto",
+      "cpi15BoVPKgEPw5o8wc2T816GE7b378nMXnhH3Xbq4y",
+      "bmt2UxoBxB9xWev4BkLvkGdapsz6sZGkzViPNph7VFi",
+      "oq2UkeMsJLfXt2QHzim242SUi3nvjJs8Pn7Eac9H9vg",
+      "cpi2yGapXUR3As5SjnHBAVvmApNiLsbeZpF3euWnW6B",
+      "bmt3ccLd4bqSVZVeCJnH1F6C8jNygAhaDfxDwePyyGb",
+      "oq3AxjekBWgo64gpauB6QtuZNesuv19xrhaC1ZM1THQ",
+      "cpi3mbwMpSX8FAGMZVP85AwxqCaQMfEk9Em1v8QK9Rf",
     ].map(address),
   });
   await sendTransaction([extendIx], payer);
@@ -106,21 +111,16 @@ export async function setupTestEnvironment(): Promise<TestContext> {
     authority: payer,
     payer: payer,
     addresses: [
-      "nfq3de4qt9d3wHxXWy1wcge3EXhid25mCr12bNWFdtV",
-      "smt4vjXvdjDFzvRMUxwTWnSy4c7cKkMaHuPrGsdDH7V",
-      "nfq4Ncp1vk3mFnCQ9cvwidp9k2L6fxEyCo2nerYD25A",
-      "smt5uPaQT9n6b1qAkgyonmzRxtuazA53Rddwntqistc",
-      "nfq5b5xEguPtdD6uPetZduyrB5EUqad7gcUE46rALau",
-      "smt6ukQDSPPYHSshQovmiRUjG9jGFq2hW9vgrDFk5Yz",
-      "nfq6uzaNZ5n3EWF4t64M93AWzLGt5dXTikEA9fFRktv",
-      "smt7onMFkvi3RbyhQCMajudYQkB1afAFt9CDXBQTLz6",
-      "nfq7yytdKkkLabu1KpvLsa5VPkvCT4jPWus5Yi74HTH",
-      "smt8TYxNy8SuhAdKJ8CeLtDkr2w6dgDmdz5ruiDw9Y9",
-      "nfq8vExDykci3VUSpj9R1totVst87hJfFWevNK4hiFb",
-      "smt9ReAYRF5eFjTd5gBJMn5aKwNRcmp3ub2CQr2vW7j",
-      "nfq9KFpNQL45ppP6ZG7zBpUeN18LZrNGkKyvV1kjTX2",
-      "smtAvYA5UbTRyKAkAj5kHs1CmrA42t6WkVLi4c6mA1f",
-      "nfqAroCRkcZBgsAJDNkptKpsSWyM6cgB9XpWNNiCEC4",
+      "bmt4d3p1a4YQgk9PeZv5s4DBUmbF5NxqYpk9HGjQsd8",
+      "oq4ypwvVGzCUMoiKKHWh4S1SgZJ9vCvKpcz6RT6A8dq",
+      "cpi4yyPDc4bCgHAnsenunGA8Y77j3XEDyjgfyCKgcoc",
+      "bmt5yU97jC88YXTuSukYHa8Z5Bi2ZDUtmzfkDTA2mG2",
+      "oq5oh5ZR3yGomuQgFduNDzjtGvVWfDRGLuDVjv9a96P",
+      "cpi5ZTjdgYpZ1Xr7B1cMLLUE81oTtJbNNAyKary2nV6",
+      "amt2kaJA14v3urZbZvnc5v2np8jqvc4Z8zDep5wbtzx",
+      "ACXg8a7VaqecBWrSbdu73W4Pg9gsqXJ3EXAqkHyhvVXg",
+      "r18WwUxfG8kQ69bQPAB2jV6zGNKy3GosFGctjQoV4ti",
+      "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m",
       "2cLqZJrYMuCzKdSZBoWxZ3tXoeCMmMyDiuy6UBaKnbmK",
       "5tgzUZaVtfnnSEBgmBDtJj6PdgYCnA1uaEGEUi3y5Njg",
     ].map(address),
@@ -167,6 +167,7 @@ export async function setupTestEnvironment(): Promise<TestContext> {
     rpId: undefined,
     origin: undefined,
     domainConfig: undefined,
+    payerSecretKey,
   };
 }
 
@@ -181,9 +182,24 @@ export async function createMultiWallet(
 
   const payerSeed = crypto.getRandomValues(new Uint8Array(32));
   const walletSeed = crypto.getRandomValues(new Uint8Array(32));
+  const newMemberSeed = crypto.getRandomValues(new Uint8Array(32));
 
-  const payer = await createKeyPairSignerFromPrivateKeyBytes(payerSeed);
-  const wallet = await createKeyPairSignerFromPrivateKeyBytes(walletSeed);
+  const payer = await createKeyPairSignerFromPrivateKeyBytes(payerSeed, true);
+  const wallet = await createKeyPairSignerFromPrivateKeyBytes(walletSeed, true);
+  const newMember = await createKeyPairSignerFromPrivateKeyBytes(
+    newMemberSeed,
+    true
+  );
+
+  const payerSecretKey = new Uint8Array([
+    ...payerSeed,
+    ...getAddressEncoder().encode(address(payer.address.toString())),
+  ]);
+
+  const newMemberSecretKey = new Uint8Array([
+    ...newMemberSeed,
+    ...getAddressEncoder().encode(address(newMember.address.toString())),
+  ]);
 
   // Fund the payer account
   await getSolanaRpc().requestAirdrop(payer.address, AIRDROP_AMOUNT).send();
@@ -217,7 +233,7 @@ export async function createMultiWallet(
     index: createIndex,
   });
 
-  await sendTransaction(instructions, payer);
+  await sendTransaction([instructions], payer);
 
   const instruction = await createUserAccounts({
     createUserArgs: [
@@ -241,5 +257,8 @@ export async function createMultiWallet(
     multiWalletVault,
     payer,
     wallet,
+    newMember,
+    payerSecretKey,
+    newMemberSecretKey,
   };
 }

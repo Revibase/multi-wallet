@@ -16,13 +16,13 @@ import {
   type Codec,
   type Decoder,
   type Encoder,
-} from "gill";
+} from 'gill';
 import {
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-} from ".";
+} from '.';
 
 export type Secp256r1VerifyArgsWithDomainAddress = {
   domainConfigKey: Address;
@@ -36,15 +36,15 @@ export type Secp256r1VerifyArgsWithDomainAddressArgs = {
 
 export function getSecp256r1VerifyArgsWithDomainAddressEncoder(): Encoder<Secp256r1VerifyArgsWithDomainAddressArgs> {
   return getStructEncoder([
-    ["domainConfigKey", getAddressEncoder()],
-    ["verifyArgs", getSecp256r1VerifyArgsEncoder()],
+    ['domainConfigKey', getAddressEncoder()],
+    ['verifyArgs', getSecp256r1VerifyArgsEncoder()],
   ]);
 }
 
 export function getSecp256r1VerifyArgsWithDomainAddressDecoder(): Decoder<Secp256r1VerifyArgsWithDomainAddress> {
   return getStructDecoder([
-    ["domainConfigKey", getAddressDecoder()],
-    ["verifyArgs", getSecp256r1VerifyArgsDecoder()],
+    ['domainConfigKey', getAddressDecoder()],
+    ['verifyArgs', getSecp256r1VerifyArgsDecoder()],
   ]);
 }
 

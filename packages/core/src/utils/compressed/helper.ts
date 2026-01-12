@@ -1,22 +1,4 @@
-import {
-  bn,
-  CompressedAccountResult,
-  CompressedAccountResultV2,
-  createCompressedAccountWithMerkleContextLegacy,
-  createMerkleContextLegacy,
-  encodeBN254toBase58,
-  featureFlags,
-  getStateTreeInfoByPubkey,
-  jsonRpcResultAndContext,
-  localTestActiveStateTreeInfos,
-  parseAccountData,
-  rpcRequest,
-  versionedEndpoint,
-} from "@lightprotocol/stateless.js";
-import { SolanaJSONRPCError } from "@solana/web3.js";
-import type BN from "bn.js";
-import { getU128Decoder, type Address } from "gill";
-import { create, nullable } from "superstruct";
+import { type Address } from "gill";
 import {
   fetchMaybeSettings,
   getCompressedSettingsAddressFromIndex,
@@ -28,14 +10,10 @@ import {
   type User,
 } from "../..";
 import { getSettingsFromIndex } from "../addresses";
+import { getSolanaRpc } from "../initialize";
 import {
-  getLightProtocolRpc,
-  getSolanaRpc,
-  getSolanaRpcEndpoint,
-} from "../initialize";
-import {
+  fetchCachedCompressedAccount,
   getCachedWhitelistedAddressTree,
-  getCompressedAccount,
 } from "./internal";
 
 export async function fetchUserAccountData(
@@ -60,7 +38,7 @@ export async function fetchMaybeUserAccountData(
   cachedAccounts?: Map<string, any>
 ): Promise<User | null> {
   const { address } = await getUserAccountAddress(member, userAddressTreeIndex);
-  const result = await getCompressedAccount(address, cachedAccounts);
+  const result = await fetchCachedCompressedAccount(address, cachedAccounts);
   if (!result?.data?.data) {
     return null;
   }
@@ -93,7 +71,7 @@ export async function fetchMaybeSettingsAccountData(
       index,
       settingsAddressTreeIndex
     );
-    const result = await getCompressedAccount(address, cachedAccounts);
+    const result = await fetchCachedCompressedAccount(address, cachedAccounts);
     if (!result?.data?.data) {
       throw new Error("No compressed settings account found.");
     }
@@ -112,8 +90,6 @@ export async function fetchMaybeSettingsAccountData(
     }
     return {
       ...result.data,
-      index: getU128Decoder().decode(result.data.index),
-      members: result.data.members.slice(0, result.data.membersLen),
       isCompressed: false,
     };
   }
@@ -136,58 +112,4 @@ export async function getWhitelistedAddressTreeIndexFromAddress(
     throw new Error(`Address tree not found: ${addressTree}`);
   }
   return index;
-}
-
-export async function fetchCompressedAccount(address: BN) {
-  const unsafeRes = await rpcRequest(
-    getLightProtocolRpc().compressionApiEndpoint,
-    versionedEndpoint("getCompressedAccount"),
-    {
-      hash: undefined,
-      address: address ? encodeBN254toBase58(address) : undefined,
-    }
-  );
-
-  let res;
-  if (featureFlags.isV2()) {
-    res = create(
-      unsafeRes,
-      jsonRpcResultAndContext(nullable(CompressedAccountResultV2))
-    );
-  } else {
-    res = create(
-      unsafeRes,
-      jsonRpcResultAndContext(nullable(CompressedAccountResult))
-    );
-  }
-
-  if ("error" in res) {
-    throw new SolanaJSONRPCError(
-      res.error,
-      `failed to get info for compressed account ${address ? address.toString() : ""}`
-    );
-  }
-  if (res.result.value === null) {
-    return null;
-  }
-
-  const tree = featureFlags.isV2()
-    ? (res.result.value as any).merkleContext.tree
-    : (res.result.value as any).tree!;
-
-  const stateTreeInfos = getSolanaRpcEndpoint().includes("devnet")
-    ? localTestActiveStateTreeInfos()
-    : await getLightProtocolRpc().getStateTreeInfos();
-
-  const stateTreeInfo = getStateTreeInfoByPubkey(stateTreeInfos, tree);
-  const item = res.result.value;
-
-  const compressedAccount = createCompressedAccountWithMerkleContextLegacy(
-    createMerkleContextLegacy(stateTreeInfo, item.hash, item.leafIndex),
-    item.owner,
-    bn(item.lamports),
-    item.data ? parseAccountData(item.data) : undefined,
-    item.address || undefined
-  );
-  return compressedAccount;
 }

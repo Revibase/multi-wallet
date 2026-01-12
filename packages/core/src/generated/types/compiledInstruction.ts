@@ -22,7 +22,7 @@ import {
   type Decoder,
   type Encoder,
   type ReadonlyUint8Array,
-} from "gill";
+} from 'gill';
 
 export type CompiledInstruction = {
   programAddressIndex: number;
@@ -34,23 +34,23 @@ export type CompiledInstructionArgs = CompiledInstruction;
 
 export function getCompiledInstructionEncoder(): Encoder<CompiledInstructionArgs> {
   return getStructEncoder([
-    ["programAddressIndex", getU8Encoder()],
+    ['programAddressIndex', getU8Encoder()],
     [
-      "accountIndices",
+      'accountIndices',
       addEncoderSizePrefix(getBytesEncoder(), getU32Encoder()),
     ],
-    ["data", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
+    ['data', addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
   ]);
 }
 
 export function getCompiledInstructionDecoder(): Decoder<CompiledInstruction> {
   return getStructDecoder([
-    ["programAddressIndex", getU8Decoder()],
+    ['programAddressIndex', getU8Decoder()],
     [
-      "accountIndices",
+      'accountIndices',
       addDecoderSizePrefix(getBytesDecoder(), getU32Decoder()),
     ],
-    ["data", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
+    ['data', addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
   ]);
 }
 

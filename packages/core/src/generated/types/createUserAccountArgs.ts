@@ -26,7 +26,7 @@ import {
   type Encoder,
   type Option,
   type OptionOrNullable,
-} from "gill";
+} from 'gill';
 import {
   getUserCreationArgsDecoder,
   getUserCreationArgsEncoder,
@@ -36,7 +36,7 @@ import {
   type UserCreationArgsArgs,
   type UserRole,
   type UserRoleArgs,
-} from ".";
+} from '.';
 
 export type CreateUserAccountArgs = {
   member: Address;
@@ -54,25 +54,25 @@ export type CreateUserAccountArgsArgs = {
 
 export function getCreateUserAccountArgsEncoder(): Encoder<CreateUserAccountArgsArgs> {
   return getStructEncoder([
-    ["member", getAddressEncoder()],
-    ["role", getUserRoleEncoder()],
+    ['member', getAddressEncoder()],
+    ['role', getUserRoleEncoder()],
     [
-      "transactionManagerUrl",
+      'transactionManagerUrl',
       getOptionEncoder(addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())),
     ],
-    ["userCreationArgs", getUserCreationArgsEncoder()],
+    ['userCreationArgs', getUserCreationArgsEncoder()],
   ]);
 }
 
 export function getCreateUserAccountArgsDecoder(): Decoder<CreateUserAccountArgs> {
   return getStructDecoder([
-    ["member", getAddressDecoder()],
-    ["role", getUserRoleDecoder()],
+    ['member', getAddressDecoder()],
+    ['role', getUserRoleDecoder()],
     [
-      "transactionManagerUrl",
+      'transactionManagerUrl',
       getOptionDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
     ],
-    ["userCreationArgs", getUserCreationArgsDecoder()],
+    ['userCreationArgs', getUserCreationArgsDecoder()],
   ]);
 }
 

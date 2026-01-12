@@ -9,7 +9,7 @@ pub struct TransactionBufferVote<'info> {
     #[account(
         address = transaction_buffer.multi_wallet_settings,
     )]
-    pub settings: AccountLoader<'info, Settings>,
+    pub settings: Account<'info, Settings>,
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
     #[account(mut)]
     pub transaction_buffer: Account<'info, TransactionBuffer>,
@@ -44,7 +44,7 @@ impl TransactionBufferVote<'_> {
 
         let signer =
             MemberKey::get_signer(voter, secp256r1_verify_args, instructions_sysvar.as_ref())?;
-        let settings = settings.load()?;
+
         let member = settings
             .members
             .iter()
@@ -74,7 +74,7 @@ impl TransactionBufferVote<'_> {
                     message_hash: transaction_buffer.final_buffer_hash,
                     action_type: TransactionActionType::Vote,
                 },
-                transaction_buffer.expected_secp256r1_signers.as_ref(),
+                &transaction_buffer.expected_secp256r1_signers,
             )?;
         }
 

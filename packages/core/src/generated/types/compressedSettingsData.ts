@@ -21,13 +21,13 @@ import {
   type Codec,
   type Decoder,
   type Encoder,
-} from "gill";
+} from 'gill';
 import {
   getMemberDecoder,
   getMemberEncoder,
   type Member,
   type MemberArgs,
-} from ".";
+} from '.';
 
 export type CompressedSettingsData = {
   threshold: number;
@@ -51,25 +51,25 @@ export type CompressedSettingsDataArgs = {
 
 export function getCompressedSettingsDataEncoder(): Encoder<CompressedSettingsDataArgs> {
   return getStructEncoder([
-    ["threshold", getU8Encoder()],
-    ["bump", getU8Encoder()],
-    ["index", getU128Encoder()],
-    ["multiWalletBump", getU8Encoder()],
-    ["members", getArrayEncoder(getMemberEncoder())],
-    ["settingsAddressTreeIndex", getU8Encoder()],
-    ["latestSlotNumber", getU64Encoder()],
+    ['threshold', getU8Encoder()],
+    ['bump', getU8Encoder()],
+    ['index', getU128Encoder()],
+    ['multiWalletBump', getU8Encoder()],
+    ['members', getArrayEncoder(getMemberEncoder())],
+    ['settingsAddressTreeIndex', getU8Encoder()],
+    ['latestSlotNumber', getU64Encoder()],
   ]);
 }
 
 export function getCompressedSettingsDataDecoder(): Decoder<CompressedSettingsData> {
   return getStructDecoder([
-    ["threshold", getU8Decoder()],
-    ["bump", getU8Decoder()],
-    ["index", getU128Decoder()],
-    ["multiWalletBump", getU8Decoder()],
-    ["members", getArrayDecoder(getMemberDecoder())],
-    ["settingsAddressTreeIndex", getU8Decoder()],
-    ["latestSlotNumber", getU64Decoder()],
+    ['threshold', getU8Decoder()],
+    ['bump', getU8Decoder()],
+    ['index', getU128Decoder()],
+    ['multiWalletBump', getU8Decoder()],
+    ['members', getArrayDecoder(getMemberDecoder())],
+    ['settingsAddressTreeIndex', getU8Decoder()],
+    ['latestSlotNumber', getU64Decoder()],
   ]);
 }
 

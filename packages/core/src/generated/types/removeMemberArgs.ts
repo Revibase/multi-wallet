@@ -13,7 +13,7 @@ import {
   type Codec,
   type Decoder,
   type Encoder,
-} from "gill";
+} from 'gill';
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
@@ -23,7 +23,7 @@ import {
   type MemberKeyArgs,
   type UserReadOnlyOrMutateArgs,
   type UserReadOnlyOrMutateArgsArgs,
-} from ".";
+} from '.';
 
 export type RemoveMemberArgs = {
   memberKey: MemberKey;
@@ -37,15 +37,15 @@ export type RemoveMemberArgsArgs = {
 
 export function getRemoveMemberArgsEncoder(): Encoder<RemoveMemberArgsArgs> {
   return getStructEncoder([
-    ["memberKey", getMemberKeyEncoder()],
-    ["userArgs", getUserReadOnlyOrMutateArgsEncoder()],
+    ['memberKey', getMemberKeyEncoder()],
+    ['userArgs', getUserReadOnlyOrMutateArgsEncoder()],
   ]);
 }
 
 export function getRemoveMemberArgsDecoder(): Decoder<RemoveMemberArgs> {
   return getStructDecoder([
-    ["memberKey", getMemberKeyDecoder()],
-    ["userArgs", getUserReadOnlyOrMutateArgsDecoder()],
+    ['memberKey', getMemberKeyDecoder()],
+    ['userArgs', getUserReadOnlyOrMutateArgsDecoder()],
   ]);
 }
 

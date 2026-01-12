@@ -1,7 +1,7 @@
 use crate::{
-    durable_nonce_check, state::SettingsReadonlyArgs, utils::UserRole, ChallengeArgs,
-    CompressedSettings, CompressedSettingsData, DomainConfig, KeyType, MemberKey, MultisigError,
-    Permission, ProofArgs, Secp256r1VerifyArgs, Settings, TransactionActionType, TransactionBuffer,
+    durable_nonce_check, state::SettingsReadonlyArgs, ChallengeArgs, CompressedSettings,
+    CompressedSettingsData, DomainConfig, KeyType, MemberKey, MultisigError, Permission, ProofArgs,
+    Secp256r1VerifyArgs, Settings, TransactionActionType, TransactionBuffer,
     TransactionBufferCreateArgs, MAX_BUFFER_SIZE, SEED_MULTISIG, SEED_TRANSACTION_BUFFER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
@@ -15,7 +15,10 @@ pub struct TransactionBufferCreateCompressed<'info> {
     #[account(
         init,
         payer = payer,
-        space = TransactionBuffer::size(args.final_buffer_size, args.buffer_extend_hashes.len())?,
+        space = {
+            let settings = settings_readonly_args.data.data.as_ref().ok_or(MultisigError::InvalidArguments)?;
+            TransactionBuffer::size(args.final_buffer_size, args.buffer_extend_hashes.len(), settings.members.len(), args.expected_secp256r1_signers.len())?
+        },
         seeds = [
             SEED_MULTISIG,
             {
@@ -105,27 +108,20 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
                         TransactionActionType::Create
                     },
                 },
-                None,
+                &vec![],
             )?;
         }
 
-        if UserRole::from(member.role).eq(&UserRole::TransactionManager) {
-            let expected_secp256r1_signers = args
-                .expected_secp256r1_signers
-                .as_ref()
-                .ok_or(MultisigError::InvalidArguments)?;
-
-            require!(
-                expected_secp256r1_signers
-                    .iter()
-                    .all(|f| settings.members.iter().any(|x| f
-                        .member_key
-                        .get_type()
-                        .eq(&KeyType::Secp256r1)
-                        && x.pubkey.eq(&f.member_key))),
-                MultisigError::InvalidArguments
-            );
-        }
+        require!(
+            args.expected_secp256r1_signers
+                .iter()
+                .all(|f| settings.members.iter().any(|x| f
+                    .member_key
+                    .get_type()
+                    .eq(&KeyType::Secp256r1)
+                    && x.pubkey.eq(&f.member_key))),
+            MultisigError::InvalidArguments
+        );
 
         Ok(())
     }

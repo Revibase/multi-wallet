@@ -31,10 +31,10 @@ import {
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableSignerAccount,
-} from "gill";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from 'gill';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getCreateUserAccountArgsDecoder,
   getCreateUserAccountArgsEncoder,
@@ -44,7 +44,7 @@ import {
   type CreateUserAccountArgsArgs,
   type ProofArgs,
   type ProofArgsArgs,
-} from "../types";
+} from '../types';
 
 export const CREATE_USER_ACCOUNTS_DISCRIMINATOR = new Uint8Array([5]);
 
@@ -59,7 +59,7 @@ export type CreateUserAccountsInstruction<
   TAccountPayer extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | AccountMeta<string> = "11111111111111111111111111111111",
+    | AccountMeta<string> = '11111111111111111111111111111111',
   TAccountWhitelistedAddressTrees extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
@@ -94,9 +94,9 @@ export type CreateUserAccountsInstructionDataArgs = {
 export function getCreateUserAccountsInstructionDataEncoder(): Encoder<CreateUserAccountsInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["compressedProofArgs", getProofArgsEncoder()],
-      ["createUserArgs", getArrayEncoder(getCreateUserAccountArgsEncoder())],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      ['compressedProofArgs', getProofArgsEncoder()],
+      ['createUserArgs', getArrayEncoder(getCreateUserAccountArgsEncoder())],
     ]),
     (value) => ({ ...value, discriminator: CREATE_USER_ACCOUNTS_DISCRIMINATOR })
   );
@@ -104,9 +104,9 @@ export function getCreateUserAccountsInstructionDataEncoder(): Encoder<CreateUse
 
 export function getCreateUserAccountsInstructionDataDecoder(): Decoder<CreateUserAccountsInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["compressedProofArgs", getProofArgsDecoder()],
-    ["createUserArgs", getArrayDecoder(getCreateUserAccountArgsDecoder())],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ['compressedProofArgs', getProofArgsDecoder()],
+    ['createUserArgs', getArrayDecoder(getCreateUserAccountArgsDecoder())],
   ]);
 }
 
@@ -132,9 +132,9 @@ export type CreateUserAccountsAsyncInput<
   payer: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
   whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
-  compressedProofArgs: CreateUserAccountsInstructionDataArgs["compressedProofArgs"];
-  createUserArgs: CreateUserAccountsInstructionDataArgs["createUserArgs"];
-  remainingAccounts: CreateUserAccountsInstructionExtraArgs["remainingAccounts"];
+  compressedProofArgs: CreateUserAccountsInstructionDataArgs['compressedProofArgs'];
+  createUserArgs: CreateUserAccountsInstructionDataArgs['createUserArgs'];
+  remainingAccounts: CreateUserAccountsInstructionExtraArgs['remainingAccounts'];
 };
 
 export async function getCreateUserAccountsInstructionAsync<
@@ -183,7 +183,7 @@ export async function getCreateUserAccountsInstructionAsync<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
   if (!accounts.whitelistedAddressTrees.value) {
     accounts.whitelistedAddressTrees.value = await getProgramDerivedAddress({
@@ -203,7 +203,7 @@ export async function getCreateUserAccountsInstructionAsync<
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.payer),
@@ -231,9 +231,9 @@ export type CreateUserAccountsInput<
   payer: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
   whitelistedAddressTrees: Address<TAccountWhitelistedAddressTrees>;
-  compressedProofArgs: CreateUserAccountsInstructionDataArgs["compressedProofArgs"];
-  createUserArgs: CreateUserAccountsInstructionDataArgs["createUserArgs"];
-  remainingAccounts: CreateUserAccountsInstructionExtraArgs["remainingAccounts"];
+  compressedProofArgs: CreateUserAccountsInstructionDataArgs['compressedProofArgs'];
+  createUserArgs: CreateUserAccountsInstructionDataArgs['createUserArgs'];
+  remainingAccounts: CreateUserAccountsInstructionExtraArgs['remainingAccounts'];
 };
 
 export function getCreateUserAccountsInstruction<
@@ -280,14 +280,14 @@ export function getCreateUserAccountsInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.payer),
@@ -330,7 +330,7 @@ export function parseCreateUserAccountsInstruction<
 ): ParsedCreateUserAccountsInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 3) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {

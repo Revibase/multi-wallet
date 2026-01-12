@@ -18,7 +18,7 @@ import {
   type FixedSizeDecoder,
   type FixedSizeEncoder,
   type ReadonlyUint8Array,
-} from "gill";
+} from 'gill';
 
 export type Secp256r1Pubkey = readonly [ReadonlyUint8Array];
 

@@ -37,7 +37,7 @@ import {
   type MaybeAccount,
   type MaybeEncodedAccount,
   type ReadonlyUint8Array,
-} from "gill";
+} from 'gill';
 
 export const WHITELISTED_ADDRESS_TREE_DISCRIMINATOR = new Uint8Array([
   105, 23, 173, 2, 197, 255, 80, 87,
@@ -63,9 +63,9 @@ export type WhitelistedAddressTreeArgs = {
 export function getWhitelistedAddressTreeEncoder(): Encoder<WhitelistedAddressTreeArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["whitelistedAddressTrees", getArrayEncoder(getAddressEncoder())],
-      ["bump", getU8Encoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['whitelistedAddressTrees', getArrayEncoder(getAddressEncoder())],
+      ['bump', getU8Encoder()],
     ]),
     (value) => ({
       ...value,
@@ -76,9 +76,9 @@ export function getWhitelistedAddressTreeEncoder(): Encoder<WhitelistedAddressTr
 
 export function getWhitelistedAddressTreeDecoder(): Decoder<WhitelistedAddressTree> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["whitelistedAddressTrees", getArrayDecoder(getAddressDecoder())],
-    ["bump", getU8Decoder()],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['whitelistedAddressTrees', getArrayDecoder(getAddressDecoder())],
+    ['bump', getU8Decoder()],
   ]);
 }
 

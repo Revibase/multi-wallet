@@ -1,13 +1,13 @@
-import { type Instruction, type TransactionSigner } from "gill";
+import { type TransactionSigner } from "gill";
 import {
-  getCreateMultiWalletCompressedInstructionAsync,
+  getCreateCompressedWalletInstructionAsync,
   getUserDecoder,
   type User,
-} from "../generated";
+} from "../../generated";
 import {
   getCompressedSettingsAddressFromIndex,
   getUserAccountAddress,
-} from "../utils";
+} from "../../utils";
 import {
   convertToCompressedProofArgs,
   getCompressedAccountHashes,
@@ -15,8 +15,8 @@ import {
   getCompressedAccountMutArgs,
   getNewWhitelistedAddressTreeIndex,
   getValidityProofWithRetry,
-} from "../utils/compressed/internal";
-import { PackedAccounts } from "../utils/compressed/packedAccounts";
+} from "../../utils/compressed/internal";
+import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 
 type CreateWalletArgs = {
   index: number | bigint;
@@ -98,23 +98,18 @@ export async function createWallet({
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
 
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
-  const instructions: Instruction[] = [];
 
   if (!settingsCreationArgs) {
     throw new Error("Settings creation args is missing.");
   }
 
-  instructions.push(
-    await getCreateMultiWalletCompressedInstructionAsync({
-      settingsIndex: index,
-      payer,
-      initialMember,
-      userReadonlyArgs: userMutArgs,
-      compressedProofArgs,
-      settingsCreation: settingsCreationArgs,
-      remainingAccounts,
-    })
-  );
-
-  return instructions;
+  return await getCreateCompressedWalletInstructionAsync({
+    settingsIndex: index,
+    payer,
+    initialMember,
+    userReadonlyArgs: userMutArgs,
+    compressedProofArgs,
+    settingsCreation: settingsCreationArgs,
+    remainingAccounts,
+  });
 }

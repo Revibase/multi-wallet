@@ -10,7 +10,7 @@ pub struct TransactionBufferClose<'info> {
         mut,
         address = transaction_buffer.multi_wallet_settings,
     )]
-    pub settings: AccountLoader<'info, Settings>,
+    pub settings: Account<'info, Settings>,
     /// CHECK:
     #[account(
             mut,
@@ -37,7 +37,7 @@ pub struct TransactionBufferClose<'info> {
 }
 
 impl TransactionBufferClose<'_> {
-    fn validate(&self, secp256r1_verify_args: &Option<Secp256r1VerifyArgs>) -> Result<()> {
+    fn validate(&mut self, secp256r1_verify_args: &Option<Secp256r1VerifyArgs>) -> Result<()> {
         let Self {
             closer,
             transaction_buffer,
@@ -47,7 +47,6 @@ impl TransactionBufferClose<'_> {
             settings,
             ..
         } = self;
-        let settings = &mut settings.load_mut()?;
         let signer =
             MemberKey::get_signer(closer, secp256r1_verify_args, instructions_sysvar.as_ref())?;
         // allow rent payer to become the closer after transaction has expired
@@ -77,7 +76,7 @@ impl TransactionBufferClose<'_> {
                         message_hash: transaction_buffer.final_buffer_hash,
                         action_type: TransactionActionType::Close,
                     },
-                    transaction_buffer.expected_secp256r1_signers.as_ref(),
+                    &transaction_buffer.expected_secp256r1_signers,
                 )?;
 
                 settings.latest_slot_number_check(

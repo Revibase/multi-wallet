@@ -152,7 +152,7 @@
       "docs": [
         "Applies one or more configuration changes to an existing multi-wallet."
       ],
-      "discriminator": [20],
+      "discriminator": [19],
       "accounts": [
         {
           "name": "payer",
@@ -209,30 +209,54 @@
       ]
     },
     {
-      "name": "compress_settings_account",
+      "name": "create_compressed_wallet",
       "docs": [
         "* Compressed Versions",
-        "Compress an existing settings account."
+        "Creates a new multi-wallet with the specified permissions and ownership."
       ],
-      "discriminator": [17],
+      "discriminator": [18],
       "accounts": [
-        {
-          "name": "settings",
-          "writable": true
-        },
         {
           "name": "payer",
           "writable": true,
           "signer": true
         },
         {
-          "name": "slot_hash_sysvar",
-          "optional": true,
-          "address": "SysvarS1otHashes111111111111111111111111111"
+          "name": "initial_member",
+          "signer": true
         },
         {
-          "name": "instructions_sysvar",
-          "address": "Sysvar1nstructions1111111111111111111111111"
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "global_counter",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103, 108, 111, 98, 97, 108, 95, 99, 111, 117, 110, 116, 101,
+                  114
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "whitelisted_address_trees",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  119, 104, 105, 116, 101, 108, 105, 115, 116, 101, 100, 95, 97,
+                  100, 100, 114, 101, 115, 115, 95, 116, 114, 101, 101, 115
+                ]
+              }
+            ]
+          }
         }
       ],
       "args": [
@@ -245,22 +269,24 @@
           }
         },
         {
-          "name": "settings_mut_args",
+          "name": "settings_creation",
           "type": {
             "defined": {
-              "name": "SettingsMutArgs"
+              "name": "SettingsCreationArgs"
             }
           }
         },
         {
-          "name": "secp256r1_verify_args",
+          "name": "user_readonly_args",
           "type": {
-            "vec": {
-              "defined": {
-                "name": "Secp256r1VerifyArgsWithDomainAddress"
-              }
+            "defined": {
+              "name": "UserReadOnlyArgs"
             }
           }
+        },
+        {
+          "name": "settings_index",
+          "type": "u128"
         }
       ]
     },
@@ -398,87 +424,6 @@
       "args": []
     },
     {
-      "name": "create_multi_wallet_compressed",
-      "docs": [
-        "Creates a new multi-wallet with the specified permissions and ownership."
-      ],
-      "discriminator": [19],
-      "accounts": [
-        {
-          "name": "payer",
-          "writable": true,
-          "signer": true
-        },
-        {
-          "name": "initial_member",
-          "signer": true
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "global_counter",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103, 108, 111, 98, 97, 108, 95, 99, 111, 117, 110, 116, 101,
-                  114
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "whitelisted_address_trees",
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  119, 104, 105, 116, 101, 108, 105, 115, 116, 101, 100, 95, 97,
-                  100, 100, 114, 101, 115, 115, 95, 116, 114, 101, 101, 115
-                ]
-              }
-            ]
-          }
-        }
-      ],
-      "args": [
-        {
-          "name": "compressed_proof_args",
-          "type": {
-            "defined": {
-              "name": "ProofArgs"
-            }
-          }
-        },
-        {
-          "name": "settings_creation",
-          "type": {
-            "defined": {
-              "name": "SettingsCreationArgs"
-            }
-          }
-        },
-        {
-          "name": "user_readonly_args",
-          "type": {
-            "defined": {
-              "name": "UserReadOnlyArgs"
-            }
-          }
-        },
-        {
-          "name": "settings_index",
-          "type": "u128"
-        }
-      ]
-    },
-    {
       "name": "create_user_accounts",
       "docs": [
         "Create User Account (for linking a pubkey to a multisig wallet)"
@@ -533,7 +478,7 @@
     {
       "name": "decompress_settings_account",
       "docs": ["Decompress an existing settings account."],
-      "discriminator": [18],
+      "discriminator": [17],
       "accounts": [
         {
           "name": "settings",
@@ -811,7 +756,7 @@
     },
     {
       "name": "migrate_compressed_settings",
-      "discriminator": [33],
+      "discriminator": [32],
       "accounts": [
         {
           "name": "authority",
@@ -849,7 +794,7 @@
     },
     {
       "name": "migrate_compressed_users",
-      "discriminator": [32],
+      "discriminator": [31],
       "accounts": [
         {
           "name": "authority",
@@ -891,7 +836,7 @@
         "Creates a native SOL transfer intent with on chain settings.",
         "Intents are one-step transfers that bypass the transaction buffer flow."
       ],
-      "discriminator": [30],
+      "discriminator": [29],
       "accounts": [
         {
           "name": "settings",
@@ -960,7 +905,7 @@
         "Creates a native SOL transfer intent with compressed settings verification.",
         "Intents are one-step transfers that bypass the transaction buffer flow."
       ],
-      "discriminator": [28],
+      "discriminator": [27],
       "accounts": [
         {
           "name": "payer",
@@ -1028,11 +973,16 @@
         "Creates a token transfer intent with on chain settings.",
         "Intents are one-step transfers that bypass the transaction buffer flow."
       ],
-      "discriminator": [31],
+      "discriminator": [30],
       "accounts": [
         {
           "name": "settings",
           "writable": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
         },
         {
           "name": "slot_hash_sysvar",
@@ -1045,7 +995,6 @@
         },
         {
           "name": "source",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -1066,7 +1015,7 @@
           }
         },
         {
-          "name": "source_token_account",
+          "name": "source_spl_token_account",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1094,11 +1043,44 @@
           }
         },
         {
+          "name": "source_ctoken_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "source"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114,
+                  105, 156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65,
+                  142, 128, 151, 91, 68
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114, 105,
+                156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65, 142,
+                128, 151, 91, 68
+              ]
+            }
+          }
+        },
+        {
           "name": "destination"
         },
         {
-          "name": "destination_token_account",
+          "name": "destination_spl_token_account",
           "writable": true,
+          "optional": true,
           "pda": {
             "seeds": [
               {
@@ -1125,6 +1107,39 @@
           }
         },
         {
+          "name": "destination_ctoken_token_account",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "destination"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114,
+                  105, 156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65,
+                  142, 128, 151, 91, 68
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114, 105,
+                156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65, 142,
+                128, 151, 91, 68
+              ]
+            }
+          }
+        },
+        {
           "name": "token_program"
         },
         {
@@ -1135,8 +1150,45 @@
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+          "name": "compressed_token_program_authority",
+          "address": "GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy"
+        },
+        {
+          "name": "spl_interface_pda",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [112, 111, 111, 108]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114, 105,
+                156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65, 142,
+                128, 151, 91, 68
+              ]
+            }
+          }
+        },
+        {
+          "name": "compressible_config"
+        },
+        {
+          "name": "rent_sponsor",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "compressed_token_program",
+          "address": "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m"
         }
       ],
       "args": [
@@ -1145,8 +1197,24 @@
           "type": "u64"
         },
         {
-          "name": "create_ata_if_needed",
-          "type": "bool"
+          "name": "compressed_token_account",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "CompressedTokenArgs"
+              }
+            }
+          }
+        },
+        {
+          "name": "compressed_proof_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "ProofArgs"
+              }
+            }
+          }
         },
         {
           "name": "secp256r1_verify_args",
@@ -1166,7 +1234,7 @@
         "Creates a token transfer intent with compressed settings verification.",
         "Intents are one-step transfers that bypass the transaction buffer flow."
       ],
-      "discriminator": [29],
+      "discriminator": [28],
       "accounts": [
         {
           "name": "payer",
@@ -1183,11 +1251,10 @@
           "address": "Sysvar1nstructions1111111111111111111111111"
         },
         {
-          "name": "source",
-          "writable": true
+          "name": "source"
         },
         {
-          "name": "source_token_account",
+          "name": "source_spl_token_account",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1215,11 +1282,44 @@
           }
         },
         {
+          "name": "source_ctoken_token_account",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "source"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114,
+                  105, 156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65,
+                  142, 128, 151, 91, 68
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114, 105,
+                156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65, 142,
+                128, 151, 91, 68
+              ]
+            }
+          }
+        },
+        {
           "name": "destination"
         },
         {
-          "name": "destination_token_account",
+          "name": "destination_spl_token_account",
           "writable": true,
+          "optional": true,
           "pda": {
             "seeds": [
               {
@@ -1246,6 +1346,39 @@
           }
         },
         {
+          "name": "destination_ctoken_token_account",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "destination"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114,
+                  105, 156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65,
+                  142, 128, 151, 91, 68
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114, 105,
+                156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65, 142,
+                128, 151, 91, 68
+              ]
+            }
+          }
+        },
+        {
           "name": "token_program"
         },
         {
@@ -1256,8 +1389,45 @@
           "address": "11111111111111111111111111111111"
         },
         {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+          "name": "compressed_token_program_authority",
+          "address": "GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy"
+        },
+        {
+          "name": "spl_interface_pda",
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [112, 111, 111, 108]
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114, 105,
+                156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65, 142,
+                128, 151, 91, 68
+              ]
+            }
+          }
+        },
+        {
+          "name": "compressible_config"
+        },
+        {
+          "name": "rent_sponsor",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "compressed_token_program",
+          "address": "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m"
         }
       ],
       "args": [
@@ -1266,8 +1436,14 @@
           "type": "u64"
         },
         {
-          "name": "create_ata_if_needed",
-          "type": "bool"
+          "name": "compressed_token_account",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "CompressedTokenArgs"
+              }
+            }
+          }
         },
         {
           "name": "secp256r1_verify_args",
@@ -1350,7 +1526,7 @@
     {
       "name": "transaction_buffer_close_compressed",
       "docs": ["Closes and cleans up a transaction buffer."],
-      "discriminator": [24],
+      "discriminator": [23],
       "accounts": [
         {
           "name": "payer",
@@ -1482,7 +1658,7 @@
       "docs": [
         "Creates a new transaction buffer to stage a transaction before execution."
       ],
-      "discriminator": [21],
+      "discriminator": [20],
       "accounts": [
         {
           "name": "payer",
@@ -1602,7 +1778,7 @@
     {
       "name": "transaction_buffer_execute_compressed",
       "docs": ["Executes a previously approved transaction buffer."],
-      "discriminator": [25],
+      "discriminator": [24],
       "accounts": [
         {
           "name": "payer",
@@ -1689,7 +1865,7 @@
       "docs": [
         "Extends an existing transaction buffer to allow for updated data or additional time."
       ],
-      "discriminator": [23],
+      "discriminator": [22],
       "accounts": [
         {
           "name": "transaction_buffer",
@@ -1759,7 +1935,7 @@
     {
       "name": "transaction_buffer_vote_compressed",
       "docs": ["Signs a transaction buffer to register approval."],
-      "discriminator": [22],
+      "discriminator": [21],
       "accounts": [
         {
           "name": "payer",
@@ -1846,7 +2022,7 @@
     {
       "name": "transaction_execute_compressed",
       "docs": ["Executes a staged transaction from a buffer."],
-      "discriminator": [26],
+      "discriminator": [25],
       "accounts": [
         {
           "name": "payer",
@@ -1911,7 +2087,7 @@
       "docs": [
         "Executes a transaction synchronously by directly submitting the message and verifying it."
       ],
-      "discriminator": [27],
+      "discriminator": [26],
       "accounts": [
         {
           "name": "payer",
@@ -2461,6 +2637,34 @@
       }
     },
     {
+      "name": "CompressedTokenArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "root_index",
+            "type": "u16"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "merkle_context",
+            "type": {
+              "defined": {
+                "name": "PackedMerkleContext"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "ConfigAction",
       "type": {
         "kind": "enum",
@@ -2774,7 +2978,7 @@
             "type": {
               "option": {
                 "defined": {
-                  "name": "UserMutArgs"
+                  "name": "UserReadOnlyArgs"
                 }
               }
             }
@@ -2882,6 +3086,33 @@
           {
             "name": "root_index",
             "type": "u16"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PackedMerkleContext",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "merkle_tree_pubkey_index",
+            "type": "u8"
+          },
+          {
+            "name": "queue_pubkey_index",
+            "type": "u8"
+          },
+          {
+            "name": "leaf_index",
+            "type": "u32"
+          },
+          {
+            "name": "prove_by_index",
+            "type": "bool"
           }
         ]
       }
@@ -3043,35 +3274,22 @@
     },
     {
       "name": "Settings",
-      "serialization": "bytemuck",
-      "repr": {
-        "kind": "c"
-      },
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "index",
-            "type": {
-              "array": ["u8", 16]
-            }
+            "type": "u128"
           },
           {
             "name": "members",
             "type": {
-              "array": [
-                {
-                  "defined": {
-                    "name": "Member"
-                  }
-                },
-                4
-              ]
+              "vec": {
+                "defined": {
+                  "name": "Member"
+                }
+              }
             }
-          },
-          {
-            "name": "members_len",
-            "type": "u8"
           },
           {
             "name": "threshold",
@@ -3088,12 +3306,6 @@
           {
             "name": "settings_address_tree_index",
             "type": "u8"
-          },
-          {
-            "name": "_padding",
-            "type": {
-              "array": ["u8", 3]
-            }
           },
           {
             "name": "latest_slot_number",
@@ -3292,11 +3504,9 @@
               "All Secp256r1 Signers that are expected to initiate / vote / execute this transaction (used for off-chain inspection by the transaction manager)"
             ],
             "type": {
-              "option": {
-                "vec": {
-                  "defined": {
-                    "name": "ExpectedSecp256r1Signers"
-                  }
+              "vec": {
+                "defined": {
+                  "name": "ExpectedSecp256r1Signers"
                 }
               }
             }
@@ -3343,11 +3553,9 @@
           {
             "name": "expected_secp256r1_signers",
             "type": {
-              "option": {
-                "vec": {
-                  "defined": {
-                    "name": "ExpectedSecp256r1Signers"
-                  }
+              "vec": {
+                "defined": {
+                  "name": "ExpectedSecp256r1Signers"
                 }
               }
             }

@@ -27,10 +27,10 @@ import {
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableSignerAccount,
-} from "gill";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from 'gill';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getCompressedSettingsDataDecoder,
   getCompressedSettingsDataEncoder,
@@ -44,9 +44,9 @@ import {
   type ProofArgsArgs,
   type SettingsCreationArgs,
   type SettingsCreationArgsArgs,
-} from "../types";
+} from '../types';
 
-export const MIGRATE_COMPRESSED_SETTINGS_DISCRIMINATOR = new Uint8Array([33]);
+export const MIGRATE_COMPRESSED_SETTINGS_DISCRIMINATOR = new Uint8Array([32]);
 
 export function getMigrateCompressedSettingsDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
@@ -58,7 +58,7 @@ export type MigrateCompressedSettingsInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountAuthority extends
     | string
-    | AccountMeta<string> = "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ",
+    | AccountMeta<string> = 'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ',
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -88,10 +88,10 @@ export type MigrateCompressedSettingsInstructionDataArgs = {
 export function getMigrateCompressedSettingsInstructionDataEncoder(): Encoder<MigrateCompressedSettingsInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["args", getCompressedSettingsDataEncoder()],
-      ["compressedProofArgs", getProofArgsEncoder()],
-      ["settingsCreationArgs", getSettingsCreationArgsEncoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      ['args', getCompressedSettingsDataEncoder()],
+      ['compressedProofArgs', getProofArgsEncoder()],
+      ['settingsCreationArgs', getSettingsCreationArgsEncoder()],
     ]),
     (value) => ({
       ...value,
@@ -102,10 +102,10 @@ export function getMigrateCompressedSettingsInstructionDataEncoder(): Encoder<Mi
 
 export function getMigrateCompressedSettingsInstructionDataDecoder(): Decoder<MigrateCompressedSettingsInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["args", getCompressedSettingsDataDecoder()],
-    ["compressedProofArgs", getProofArgsDecoder()],
-    ["settingsCreationArgs", getSettingsCreationArgsDecoder()],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ['args', getCompressedSettingsDataDecoder()],
+    ['compressedProofArgs', getProofArgsDecoder()],
+    ['settingsCreationArgs', getSettingsCreationArgsDecoder()],
   ]);
 }
 
@@ -127,10 +127,10 @@ export type MigrateCompressedSettingsInput<
   TAccountAuthority extends string = string,
 > = {
   authority?: TransactionSigner<TAccountAuthority>;
-  args: MigrateCompressedSettingsInstructionDataArgs["args"];
-  compressedProofArgs: MigrateCompressedSettingsInstructionDataArgs["compressedProofArgs"];
-  settingsCreationArgs: MigrateCompressedSettingsInstructionDataArgs["settingsCreationArgs"];
-  remainingAccounts: MigrateCompressedSettingsInstructionExtraArgs["remainingAccounts"];
+  args: MigrateCompressedSettingsInstructionDataArgs['args'];
+  compressedProofArgs: MigrateCompressedSettingsInstructionDataArgs['compressedProofArgs'];
+  settingsCreationArgs: MigrateCompressedSettingsInstructionDataArgs['settingsCreationArgs'];
+  remainingAccounts: MigrateCompressedSettingsInstructionExtraArgs['remainingAccounts'];
 };
 
 export function getMigrateCompressedSettingsInstruction<
@@ -161,14 +161,14 @@ export function getMigrateCompressedSettingsInstruction<
   // Resolve default values.
   if (!accounts.authority.value) {
     accounts.authority.value =
-      "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ" as Address<"AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ">;
+      'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ' as Address<'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ'>;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [getAccountMeta(accounts.authority), ...remainingAccounts],
     data: getMigrateCompressedSettingsInstructionDataEncoder().encode(
@@ -202,7 +202,7 @@ export function parseMigrateCompressedSettingsInstruction<
 ): ParsedMigrateCompressedSettingsInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 1) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {

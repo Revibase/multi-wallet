@@ -16,7 +16,7 @@ use light_sdk::{
 };
 
 #[derive(Accounts)]
-pub struct CreateMultiWalletCompressed<'info> {
+pub struct CreateCompressedWallet<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
     pub initial_member: Signer<'info>,
@@ -34,7 +34,7 @@ pub struct CreateMultiWalletCompressed<'info> {
     pub whitelisted_address_trees: Account<'info, WhitelistedAddressTree>,
 }
 
-impl<'info> CreateMultiWalletCompressed<'info> {
+impl<'info> CreateCompressedWallet<'info> {
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
         compressed_proof_args: ProofArgs,

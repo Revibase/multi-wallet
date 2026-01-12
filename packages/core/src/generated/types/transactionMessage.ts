@@ -17,7 +17,7 @@ import {
   type Codec,
   type Decoder,
   type Encoder,
-} from "gill";
+} from 'gill';
 import {
   getCompiledInstructionDecoder,
   getCompiledInstructionEncoder,
@@ -27,7 +27,7 @@ import {
   type CompiledInstructionArgs,
   type TransactionMessageAddressTableLookup,
   type TransactionMessageAddressTableLookupArgs,
-} from ".";
+} from '.';
 
 export type TransactionMessage = {
   numSigners: number;
@@ -49,13 +49,13 @@ export type TransactionMessageArgs = {
 
 export function getTransactionMessageEncoder(): Encoder<TransactionMessageArgs> {
   return getStructEncoder([
-    ["numSigners", getU8Encoder()],
-    ["numWritableSigners", getU8Encoder()],
-    ["numWritableNonSigners", getU8Encoder()],
-    ["numAccountKeys", getU8Encoder()],
-    ["instructions", getArrayEncoder(getCompiledInstructionEncoder())],
+    ['numSigners', getU8Encoder()],
+    ['numWritableSigners', getU8Encoder()],
+    ['numWritableNonSigners', getU8Encoder()],
+    ['numAccountKeys', getU8Encoder()],
+    ['instructions', getArrayEncoder(getCompiledInstructionEncoder())],
     [
-      "addressTableLookups",
+      'addressTableLookups',
       getArrayEncoder(getTransactionMessageAddressTableLookupEncoder()),
     ],
   ]);
@@ -63,13 +63,13 @@ export function getTransactionMessageEncoder(): Encoder<TransactionMessageArgs> 
 
 export function getTransactionMessageDecoder(): Decoder<TransactionMessage> {
   return getStructDecoder([
-    ["numSigners", getU8Decoder()],
-    ["numWritableSigners", getU8Decoder()],
-    ["numWritableNonSigners", getU8Decoder()],
-    ["numAccountKeys", getU8Decoder()],
-    ["instructions", getArrayDecoder(getCompiledInstructionDecoder())],
+    ['numSigners', getU8Decoder()],
+    ['numWritableSigners', getU8Decoder()],
+    ['numWritableNonSigners', getU8Decoder()],
+    ['numAccountKeys', getU8Decoder()],
+    ['instructions', getArrayDecoder(getCompiledInstructionDecoder())],
     [
-      "addressTableLookups",
+      'addressTableLookups',
       getArrayDecoder(getTransactionMessageAddressTableLookupDecoder()),
     ],
   ]);

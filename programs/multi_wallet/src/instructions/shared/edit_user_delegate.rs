@@ -26,9 +26,9 @@ pub struct EditUserDelegate<'info> {
     pub fee_payer: Signer<'info>,
     pub signer: Option<Signer<'info>>,
     #[account(mut)]
-    pub old_settings: Option<AccountLoader<'info, Settings>>,
+    pub old_settings: Option<Account<'info, Settings>>,
     #[account(mut)]
-    pub new_settings: Option<AccountLoader<'info, Settings>>,
+    pub new_settings: Option<Account<'info, Settings>>,
     /// CHECK:
     #[account(
         address = SlotHashes::id(),
@@ -141,7 +141,7 @@ impl<'info> EditUserDelegate<'info> {
                     message_hash,
                     action_type: TransactionActionType::ChangeDelegate,
                 },
-                None,
+                &vec![],
             )?;
         }
 
@@ -177,28 +177,27 @@ impl<'info> EditUserDelegate<'info> {
         );
 
         if let Some(old_delegate) = &user_account.delegated_to {
-            if let Some(old_settings) = &ctx.accounts.old_settings {
-                let settings_data = &mut old_settings.load_mut()?;
+            if let Some(old_settings) = &mut ctx.accounts.old_settings {
                 require!(
-                    u128::from_le_bytes(settings_data.index).eq(&old_delegate.index)
-                        && settings_data
+                    old_settings.index.eq(&old_delegate.index)
+                        && old_settings
                             .settings_address_tree_index
                             .eq(&old_delegate.settings_address_tree_index),
                     MultisigError::InvalidAccount
                 );
                 Self::update_delegate_flag(
-                    &mut settings_data.members,
+                    &mut old_settings.members,
                     user_account.member,
                     user_account.user_address_tree_index,
                     false,
                 )?;
                 if let Some(secp256r1_verify_args) = &secp256r1_verify_args {
-                    settings_data.latest_slot_number_check(
+                    old_settings.latest_slot_number_check(
                         vec![secp256r1_verify_args.slot_number],
                         &ctx.accounts.slot_hash_sysvar,
                     )?;
                 }
-                settings_data.invariant()?;
+                old_settings.invariant()?;
             } else if let Some(old_settings_mut_args) = old_settings_mut_args {
                 let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
                     &crate::ID,
@@ -237,28 +236,27 @@ impl<'info> EditUserDelegate<'info> {
         }
 
         if let Some(new_delegate) = &delegate_to {
-            if let Some(new_settings) = &ctx.accounts.new_settings {
-                let settings_data = &mut new_settings.load_mut()?;
+            if let Some(new_settings) = &mut ctx.accounts.new_settings {
                 require!(
-                    u128::from_le_bytes(settings_data.index).eq(&new_delegate.index)
-                        && settings_data
+                    new_settings.index.eq(&new_delegate.index)
+                        && new_settings
                             .settings_address_tree_index
                             .eq(&new_delegate.settings_address_tree_index),
                     MultisigError::InvalidAccount
                 );
                 Self::update_delegate_flag(
-                    &mut settings_data.members,
+                    &mut new_settings.members,
                     user_account.member,
                     user_account.user_address_tree_index,
                     true,
                 )?;
                 if let Some(secp256r1_verify_args) = &secp256r1_verify_args {
-                    settings_data.latest_slot_number_check(
+                    new_settings.latest_slot_number_check(
                         vec![secp256r1_verify_args.slot_number],
                         &ctx.accounts.slot_hash_sysvar,
                     )?;
                 }
-                settings_data.invariant()?;
+                new_settings.invariant()?;
             } else if let Some(new_settings_mut_args) = new_settings_mut_args {
                 let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
                     &crate::ID,

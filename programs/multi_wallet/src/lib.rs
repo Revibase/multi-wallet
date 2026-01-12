@@ -202,28 +202,8 @@ pub mod multi_wallet {
         TransactionExecuteSync::process(ctx, transaction_message, secp256r1_verify_args)
     }
 
-    /**
-     * Compressed Versions
-     */
-
-    /// Compress an existing settings account.
-    #[instruction(discriminator = 17)]
-    pub fn compress_settings_account<'info>(
-        ctx: Context<'_, '_, 'info, 'info, CompressSettingsAccount<'info>>,
-        compressed_proof_args: ProofArgs,
-        settings_mut_args: SettingsMutArgs,
-        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
-    ) -> Result<()> {
-        CompressSettingsAccount::process(
-            ctx,
-            compressed_proof_args,
-            settings_mut_args,
-            secp256r1_verify_args,
-        )
-    }
-
     /// Decompress an existing settings account.
-    #[instruction(discriminator = 18)]
+    #[instruction(discriminator = 17)]
     pub fn decompress_settings_account<'info>(
         ctx: Context<'_, '_, 'info, 'info, DecompressSettingsAccount<'info>>,
         settings_mut_args: SettingsMutArgs,
@@ -238,16 +218,20 @@ pub mod multi_wallet {
         )
     }
 
+    /**
+     * Compressed Versions
+     */
+
     /// Creates a new multi-wallet with the specified permissions and ownership.
-    #[instruction(discriminator = 19)]
-    pub fn create_multi_wallet_compressed<'info>(
-        ctx: Context<'_, '_, 'info, 'info, CreateMultiWalletCompressed<'info>>,
+    #[instruction(discriminator = 18)]
+    pub fn create_compressed_wallet<'info>(
+        ctx: Context<'_, '_, 'info, 'info, CreateCompressedWallet<'info>>,
         compressed_proof_args: ProofArgs,
         settings_creation: SettingsCreationArgs,
         user_readonly_args: UserReadOnlyArgs,
         settings_index: u128,
     ) -> Result<()> {
-        CreateMultiWalletCompressed::process(
+        CreateCompressedWallet::process(
             ctx,
             compressed_proof_args,
             settings_creation,
@@ -257,7 +241,7 @@ pub mod multi_wallet {
     }
 
     /// Applies one or more configuration changes to an existing multi-wallet.
-    #[instruction(discriminator = 20)]
+    #[instruction(discriminator = 19)]
     pub fn change_config_compressed<'info>(
         ctx: Context<'_, '_, 'info, 'info, ChangeConfigCompressed<'info>>,
         config_actions: Vec<ConfigAction>,
@@ -275,7 +259,7 @@ pub mod multi_wallet {
     }
 
     /// Creates a new transaction buffer to stage a transaction before execution.
-    #[instruction(discriminator = 21)]
+    #[instruction(discriminator = 20)]
     pub fn transaction_buffer_create_compressed<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferCreateCompressed<'info>>,
         args: TransactionBufferCreateArgs,
@@ -293,7 +277,7 @@ pub mod multi_wallet {
     }
 
     /// Signs a transaction buffer to register approval.
-    #[instruction(discriminator = 22)]
+    #[instruction(discriminator = 21)]
     pub fn transaction_buffer_vote_compressed<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferVoteCompressed<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
@@ -309,7 +293,7 @@ pub mod multi_wallet {
     }
 
     /// Extends an existing transaction buffer to allow for updated data or additional time.
-    #[instruction(discriminator = 23)]
+    #[instruction(discriminator = 22)]
     pub fn transaction_buffer_extend_compressed<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferExtendCompressed<'info>>,
         buffer: Vec<u8>,
@@ -319,7 +303,7 @@ pub mod multi_wallet {
     }
 
     /// Closes and cleans up a transaction buffer.
-    #[instruction(discriminator = 24)]
+    #[instruction(discriminator = 23)]
     pub fn transaction_buffer_close_compressed<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferCloseCompressed<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
@@ -335,7 +319,7 @@ pub mod multi_wallet {
     }
 
     /// Executes a previously approved transaction buffer.
-    #[instruction(discriminator = 25)]
+    #[instruction(discriminator = 24)]
     pub fn transaction_buffer_execute_compressed<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionBufferExecuteCompressed<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
@@ -351,7 +335,7 @@ pub mod multi_wallet {
     }
 
     /// Executes a staged transaction from a buffer.
-    #[instruction(discriminator = 26)]
+    #[instruction(discriminator = 25)]
     pub fn transaction_execute_compressed<'info>(
         ctx: Context<'_, '_, '_, 'info, TransactionExecuteCompressed<'info>>,
         settings_key: Pubkey,
@@ -360,7 +344,7 @@ pub mod multi_wallet {
     }
 
     /// Executes a transaction synchronously by directly submitting the message and verifying it.
-    #[instruction(discriminator = 27)]
+    #[instruction(discriminator = 26)]
     pub fn transaction_execute_sync_compressed<'info>(
         ctx: Context<'_, '_, 'info, 'info, TransactionExecuteSyncCompressed<'info>>,
         transaction_message: TransactionMessage,
@@ -379,7 +363,7 @@ pub mod multi_wallet {
 
     /// Creates a native SOL transfer intent with compressed settings verification.
     /// Intents are one-step transfers that bypass the transaction buffer flow.
-    #[instruction(discriminator = 28)]
+    #[instruction(discriminator = 27)]
     pub fn native_transfer_intent_compressed<'info>(
         ctx: Context<'_, '_, 'info, 'info, NativeTransferIntentCompressed<'info>>,
         amount: u64,
@@ -398,11 +382,11 @@ pub mod multi_wallet {
 
     /// Creates a token transfer intent with compressed settings verification.
     /// Intents are one-step transfers that bypass the transaction buffer flow.
-    #[instruction(discriminator = 29)]
+    #[instruction(discriminator = 28)]
     pub fn token_transfer_intent_compressed<'info>(
         ctx: Context<'_, '_, 'info, 'info, TokenTransferIntentCompressed<'info>>,
         amount: u64,
-        create_ata_if_needed: bool,
+        compressed_token_account: Option<CompressedTokenArgs>,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
         settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
@@ -410,7 +394,7 @@ pub mod multi_wallet {
         TokenTransferIntentCompressed::process(
             ctx,
             amount,
-            create_ata_if_needed,
+            compressed_token_account,
             secp256r1_verify_args,
             settings_mut_args,
             compressed_proof_args,
@@ -419,7 +403,7 @@ pub mod multi_wallet {
 
     /// Creates a native SOL transfer intent with on chain settings.
     /// Intents are one-step transfers that bypass the transaction buffer flow.
-    #[instruction(discriminator = 30)]
+    #[instruction(discriminator = 29)]
     pub fn native_transfer_intent<'info>(
         ctx: Context<'_, '_, 'info, 'info, NativeTransferIntent<'info>>,
         amount: u64,
@@ -430,17 +414,24 @@ pub mod multi_wallet {
 
     /// Creates a token transfer intent with on chain settings.
     /// Intents are one-step transfers that bypass the transaction buffer flow.
-    #[instruction(discriminator = 31)]
+    #[instruction(discriminator = 30)]
     pub fn token_transfer_intent<'info>(
         ctx: Context<'_, '_, 'info, 'info, TokenTransferIntent<'info>>,
         amount: u64,
-        create_ata_if_needed: bool,
+        compressed_token_account: Option<CompressedTokenArgs>,
+        compressed_proof_args: Option<ProofArgs>,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
-        TokenTransferIntent::process(ctx, amount, create_ata_if_needed, secp256r1_verify_args)
+        TokenTransferIntent::process(
+            ctx,
+            amount,
+            compressed_token_account,
+            compressed_proof_args,
+            secp256r1_verify_args,
+        )
     }
 
-    #[instruction(discriminator = 32)]
+    #[instruction(discriminator = 31)]
     pub fn migrate_compressed_users<'info>(
         ctx: Context<'_, '_, 'info, 'info, MigrateCompressedUser<'info>>,
         args: User,
@@ -450,7 +441,7 @@ pub mod multi_wallet {
         MigrateCompressedUser::process(ctx, args, compressed_proof_args, user_creation_args)
     }
 
-    #[instruction(discriminator = 33)]
+    #[instruction(discriminator = 32)]
     pub fn migrate_compressed_settings<'info>(
         ctx: Context<'_, '_, 'info, 'info, MigrateCompressedSettings<'info>>,
         args: CompressedSettingsData,

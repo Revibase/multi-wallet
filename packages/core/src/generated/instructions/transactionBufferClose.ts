@@ -33,16 +33,16 @@ import {
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableAccount,
-} from "gill";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from 'gill';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-} from "../types";
+} from '../types';
 
 export const TRANSACTION_BUFFER_CLOSE_DISCRIMINATOR = new Uint8Array([13]);
 
@@ -61,10 +61,10 @@ export type TransactionBufferCloseInstruction<
   TAccountCloser extends string | AccountMeta<string> = string,
   TAccountSlotHashSysvar extends
     | string
-    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+    | AccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
   TAccountInstructionsSysvar extends
     | string
-    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+    | AccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -108,9 +108,9 @@ export type TransactionBufferCloseInstructionDataArgs = {
 export function getTransactionBufferCloseInstructionDataEncoder(): Encoder<TransactionBufferCloseInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
       [
-        "secp256r1VerifyArgs",
+        'secp256r1VerifyArgs',
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
     ]),
@@ -123,8 +123,8 @@ export function getTransactionBufferCloseInstructionDataEncoder(): Encoder<Trans
 
 export function getTransactionBufferCloseInstructionDataDecoder(): Decoder<TransactionBufferCloseInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ['secp256r1VerifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
 }
 
@@ -158,8 +158,8 @@ export type TransactionBufferCloseInput<
   closer?: TransactionSigner<TAccountCloser>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  secp256r1VerifyArgs: TransactionBufferCloseInstructionDataArgs["secp256r1VerifyArgs"];
-  remainingAccounts: TransactionBufferCloseInstructionExtraArgs["remainingAccounts"];
+  secp256r1VerifyArgs: TransactionBufferCloseInstructionDataArgs['secp256r1VerifyArgs'];
+  remainingAccounts: TransactionBufferCloseInstructionExtraArgs['remainingAccounts'];
 };
 
 export function getTransactionBufferCloseInstruction<
@@ -225,18 +225,18 @@ export function getTransactionBufferCloseInstruction<
   // Resolve default values.
   if (!accounts.slotHashSysvar.value) {
     accounts.slotHashSysvar.value =
-      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
+      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
   }
   if (!accounts.instructionsSysvar.value) {
     accounts.instructionsSysvar.value =
-      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
+      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.settings),
@@ -291,7 +291,7 @@ export function parseTransactionBufferCloseInstruction<
 ): ParsedTransactionBufferCloseInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 7) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {

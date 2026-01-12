@@ -11,8 +11,8 @@ import {
   type Address,
   type SOLANA_ERROR__INSTRUCTION_ERROR__CUSTOM,
   type SolanaError,
-} from "gill";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+} from 'gill';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
 
 /** InvalidSecp256r1VerifyArg: Malformed or missing WebAuthn verification parameters. Please provide valid secp256r1 signature arguments. */
 export const MULTI_WALLET_ERROR__INVALID_SECP256R1_VERIFY_ARG = 0x1770; // 6000
@@ -183,7 +183,7 @@ export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__UNEXPECTED_SIGNER;
 
 let multiWalletErrorMessages: Record<MultiWalletError, string> | undefined;
-if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV !== 'production') {
   multiWalletErrorMessages = {
     [MULTI_WALLET_ERROR__ALREADY_DELEGATED]: `This member is already delegated to another wallet.`,
     [MULTI_WALLET_ERROR__CLIENT_DATA_HASH_MISMATCH]: `The clientDataJSON hash extracted from the signature does not match the generated hash.`,
@@ -244,11 +244,11 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export function getMultiWalletErrorMessage(code: MultiWalletError): string {
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== 'production') {
     return (multiWalletErrorMessages as Record<MultiWalletError, string>)[code];
   }
 
-  return "Error message not available in production bundles.";
+  return 'Error message not available in production bundles.';
 }
 
 export function isMultiWalletError<TProgramErrorCode extends MultiWalletError>(

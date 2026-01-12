@@ -6,3 +6,6 @@ pub use admin::*;
 
 pub mod compressed;
 pub use compressed::*;
+
+pub mod shared;
+pub use shared::*;

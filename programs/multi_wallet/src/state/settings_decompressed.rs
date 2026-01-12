@@ -1,33 +1,30 @@
 use crate::{
-    AddMemberArgs, EditMemberArgs, Member, MemberKey, MultisigSettings, RemoveMemberArgs,
-    MAXIMUM_AMOUNT_OF_MEMBERS, SEED_MULTISIG,
+    error::MultisigError, AddMemberArgs, EditMemberArgs, Member, MemberKey, MultisigSettings,
+    RemoveMemberArgs, SEED_MULTISIG,
 };
 use anchor_lang::prelude::*;
+use std::collections::HashSet;
 
-#[account(zero_copy)]
+#[account]
 pub struct Settings {
-    pub index: [u8; 16],
-    pub members: [Member; MAXIMUM_AMOUNT_OF_MEMBERS],
-    pub members_len: u8,
+    pub index: u128,
+    pub members: Vec<Member>,
     pub threshold: u8,
     pub multi_wallet_bump: u8,
     pub bump: u8,
     pub settings_address_tree_index: u8,
-    pub _padding: [u8; 3],
     pub latest_slot_number: u64,
 }
 
 impl Settings {
-    pub fn size() -> usize {
+    pub fn size(member_len: usize) -> usize {
         8  + // anchor account discriminator
         16  + // index
-        MAXIMUM_AMOUNT_OF_MEMBERS * Member::INIT_SPACE +// members
-        1 +  // members len
+        member_len * Member::INIT_SPACE +// members
         1  + // threshold
         1  + // multi_wallet bump
         1  + // settings bump
         1  + // settings_address_tree_index
-        3  + // unused padding
         8 // latest slot number
     }
     pub fn edit_permissions(&mut self, members: Vec<EditMemberArgs>) -> Result<()> {
@@ -77,6 +74,10 @@ impl Settings {
 }
 
 impl MultisigSettings for Settings {
+    fn is_compressed(&self) -> Result<bool> {
+        Ok(false)
+    }
+
     fn set_threshold(&mut self, value: u8) -> Result<()> {
         self.threshold = value;
         Ok(())
@@ -96,43 +97,26 @@ impl MultisigSettings for Settings {
     }
 
     fn get_members(&self) -> Result<Vec<Member>> {
-        Ok(self.members[0..self.members_len as usize].to_vec())
+        Ok(self.members.to_vec())
     }
 
     fn extend_members(&mut self, members: Vec<Member>) -> Result<()> {
-        for member in members {
-            self.members[self.members_len as usize] = member;
-            self.members_len += 1;
-        }
+        self.members.extend(members);
         Ok(())
     }
 
     fn delete_members(&mut self, members: Vec<MemberKey>) -> Result<()> {
-        for member in members {
-            if let Some(pos) = self.members[0..self.members_len as usize]
-                .iter()
-                .position(|m| m.pubkey.eq(&member))
-            {
-                // Shift everything left from pos
-                for i in pos..(self.members_len - 1) as usize {
-                    self.members[i] = self.members[i + 1];
-                }
-                // Fill last item with default value
-                self.members[(self.members_len - 1) as usize] = Member::default();
-                self.members_len -= 1;
-            }
+        let existing: HashSet<_> = self.members.iter().map(|m| m.pubkey).collect();
+        if members.iter().any(|m| !existing.contains(&m)) {
+            return err!(MultisigError::InvalidArguments);
         }
+        let to_delete: HashSet<_> = members.into_iter().map(|m| m).collect();
+        self.members.retain(|m| !to_delete.contains(&m.pubkey));
         Ok(())
     }
 
     fn set_members(&mut self, members: Vec<Member>) -> Result<()> {
-        for (index, member) in members.iter().enumerate() {
-            self.members[index] = *member;
-        }
-        for i in members.len()..MAXIMUM_AMOUNT_OF_MEMBERS {
-            self.members[i] = Member::default();
-        }
-        self.members_len = members.len() as u8;
+        self.members = members;
         Ok(())
     }
 }

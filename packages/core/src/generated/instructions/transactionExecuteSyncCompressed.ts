@@ -30,10 +30,10 @@ import {
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableSignerAccount,
-} from "gill";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from 'gill';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getProofArgsDecoder,
   getProofArgsEncoder,
@@ -51,10 +51,10 @@ import {
   type SettingsMutArgsArgs,
   type TransactionMessage,
   type TransactionMessageArgs,
-} from "../types";
+} from '../types';
 
 export const TRANSACTION_EXECUTE_SYNC_COMPRESSED_DISCRIMINATOR = new Uint8Array(
-  [27]
+  [26]
 );
 
 export function getTransactionExecuteSyncCompressedDiscriminatorBytes() {
@@ -68,10 +68,10 @@ export type TransactionExecuteSyncCompressedInstruction<
   TAccountPayer extends string | AccountMeta<string> = string,
   TAccountSlotHashSysvar extends
     | string
-    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+    | AccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
   TAccountInstructionsSysvar extends
     | string
-    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+    | AccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -109,14 +109,14 @@ export type TransactionExecuteSyncCompressedInstructionDataArgs = {
 export function getTransactionExecuteSyncCompressedInstructionDataEncoder(): Encoder<TransactionExecuteSyncCompressedInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["transactionMessage", getTransactionMessageEncoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      ['transactionMessage', getTransactionMessageEncoder()],
       [
-        "secp256r1VerifyArgs",
+        'secp256r1VerifyArgs',
         getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
       ],
-      ["settingsMutArgs", getSettingsMutArgsEncoder()],
-      ["compressedProofArgs", getProofArgsEncoder()],
+      ['settingsMutArgs', getSettingsMutArgsEncoder()],
+      ['compressedProofArgs', getProofArgsEncoder()],
     ]),
     (value) => ({
       ...value,
@@ -127,14 +127,14 @@ export function getTransactionExecuteSyncCompressedInstructionDataEncoder(): Enc
 
 export function getTransactionExecuteSyncCompressedInstructionDataDecoder(): Decoder<TransactionExecuteSyncCompressedInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["transactionMessage", getTransactionMessageDecoder()],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ['transactionMessage', getTransactionMessageDecoder()],
     [
-      "secp256r1VerifyArgs",
+      'secp256r1VerifyArgs',
       getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
     ],
-    ["settingsMutArgs", getSettingsMutArgsDecoder()],
-    ["compressedProofArgs", getProofArgsDecoder()],
+    ['settingsMutArgs', getSettingsMutArgsDecoder()],
+    ['compressedProofArgs', getProofArgsDecoder()],
   ]);
 }
 
@@ -160,11 +160,11 @@ export type TransactionExecuteSyncCompressedInput<
   payer: TransactionSigner<TAccountPayer>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  transactionMessage: TransactionExecuteSyncCompressedInstructionDataArgs["transactionMessage"];
-  secp256r1VerifyArgs: TransactionExecuteSyncCompressedInstructionDataArgs["secp256r1VerifyArgs"];
-  settingsMutArgs: TransactionExecuteSyncCompressedInstructionDataArgs["settingsMutArgs"];
-  compressedProofArgs: TransactionExecuteSyncCompressedInstructionDataArgs["compressedProofArgs"];
-  remainingAccounts: TransactionExecuteSyncCompressedInstructionExtraArgs["remainingAccounts"];
+  transactionMessage: TransactionExecuteSyncCompressedInstructionDataArgs['transactionMessage'];
+  secp256r1VerifyArgs: TransactionExecuteSyncCompressedInstructionDataArgs['secp256r1VerifyArgs'];
+  settingsMutArgs: TransactionExecuteSyncCompressedInstructionDataArgs['settingsMutArgs'];
+  compressedProofArgs: TransactionExecuteSyncCompressedInstructionDataArgs['compressedProofArgs'];
+  remainingAccounts: TransactionExecuteSyncCompressedInstructionExtraArgs['remainingAccounts'];
 };
 
 export function getTransactionExecuteSyncCompressedInstruction<
@@ -211,18 +211,18 @@ export function getTransactionExecuteSyncCompressedInstruction<
   // Resolve default values.
   if (!accounts.slotHashSysvar.value) {
     accounts.slotHashSysvar.value =
-      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
+      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
   }
   if (!accounts.instructionsSysvar.value) {
     accounts.instructionsSysvar.value =
-      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
+      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.payer),
@@ -265,7 +265,7 @@ export function parseTransactionExecuteSyncCompressedInstruction<
 ): ParsedTransactionExecuteSyncCompressedInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 3) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {

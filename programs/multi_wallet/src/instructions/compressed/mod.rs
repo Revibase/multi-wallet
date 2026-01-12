@@ -22,11 +22,5 @@ pub use transaction_execute_sync::*;
 pub mod transaction_execute;
 pub use transaction_execute::*;
 
-pub mod compress_settings;
-pub use compress_settings::*;
-
-pub mod create_multi_wallet;
-pub use create_multi_wallet::*;
-
 pub mod intents;
 pub use intents::*;

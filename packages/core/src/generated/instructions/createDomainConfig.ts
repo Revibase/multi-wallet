@@ -39,10 +39,10 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from "gill";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from 'gill';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getProofArgsDecoder,
   getProofArgsEncoder,
@@ -52,7 +52,7 @@ import {
   type ProofArgsArgs,
   type UserCreationArgs,
   type UserCreationArgsArgs,
-} from "../types";
+} from '../types';
 
 export const CREATE_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([0]);
 
@@ -69,7 +69,7 @@ export type CreateDomainConfigInstruction<
   TAccountAuthority extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | AccountMeta<string> = "11111111111111111111111111111111",
+    | AccountMeta<string> = '11111111111111111111111111111111',
   TAccountWhitelistedAddressTrees extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
@@ -115,16 +115,16 @@ export type CreateDomainConfigInstructionDataArgs = {
 export function getCreateDomainConfigInstructionDataEncoder(): Encoder<CreateDomainConfigInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["rpId", addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      ['rpId', addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
       [
-        "origins",
+        'origins',
         getArrayEncoder(
           addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())
         ),
       ],
-      ["authorityCreationArgs", getUserCreationArgsEncoder()],
-      ["compressedProofArgs", getProofArgsEncoder()],
+      ['authorityCreationArgs', getUserCreationArgsEncoder()],
+      ['compressedProofArgs', getProofArgsEncoder()],
     ]),
     (value) => ({ ...value, discriminator: CREATE_DOMAIN_CONFIG_DISCRIMINATOR })
   );
@@ -132,14 +132,14 @@ export function getCreateDomainConfigInstructionDataEncoder(): Encoder<CreateDom
 
 export function getCreateDomainConfigInstructionDataDecoder(): Decoder<CreateDomainConfigInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["rpId", addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ['rpId', addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
     [
-      "origins",
+      'origins',
       getArrayDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
     ],
-    ["authorityCreationArgs", getUserCreationArgsDecoder()],
-    ["compressedProofArgs", getProofArgsDecoder()],
+    ['authorityCreationArgs', getUserCreationArgsDecoder()],
+    ['compressedProofArgs', getProofArgsDecoder()],
   ]);
 }
 
@@ -169,11 +169,11 @@ export type CreateDomainConfigAsyncInput<
   authority: TransactionSigner<TAccountAuthority>;
   systemProgram?: Address<TAccountSystemProgram>;
   whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
-  rpId: CreateDomainConfigInstructionDataArgs["rpId"];
-  origins: CreateDomainConfigInstructionDataArgs["origins"];
-  authorityCreationArgs: CreateDomainConfigInstructionDataArgs["authorityCreationArgs"];
-  compressedProofArgs: CreateDomainConfigInstructionDataArgs["compressedProofArgs"];
-  remainingAccounts: CreateDomainConfigInstructionExtraArgs["remainingAccounts"];
+  rpId: CreateDomainConfigInstructionDataArgs['rpId'];
+  origins: CreateDomainConfigInstructionDataArgs['origins'];
+  authorityCreationArgs: CreateDomainConfigInstructionDataArgs['authorityCreationArgs'];
+  compressedProofArgs: CreateDomainConfigInstructionDataArgs['compressedProofArgs'];
+  remainingAccounts: CreateDomainConfigInstructionExtraArgs['remainingAccounts'];
 };
 
 export async function getCreateDomainConfigInstructionAsync<
@@ -230,7 +230,7 @@ export async function getCreateDomainConfigInstructionAsync<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
   if (!accounts.whitelistedAddressTrees.value) {
     accounts.whitelistedAddressTrees.value = await getProgramDerivedAddress({
@@ -250,7 +250,7 @@ export async function getCreateDomainConfigInstructionAsync<
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.domainConfig),
@@ -286,11 +286,11 @@ export type CreateDomainConfigInput<
   authority: TransactionSigner<TAccountAuthority>;
   systemProgram?: Address<TAccountSystemProgram>;
   whitelistedAddressTrees: Address<TAccountWhitelistedAddressTrees>;
-  rpId: CreateDomainConfigInstructionDataArgs["rpId"];
-  origins: CreateDomainConfigInstructionDataArgs["origins"];
-  authorityCreationArgs: CreateDomainConfigInstructionDataArgs["authorityCreationArgs"];
-  compressedProofArgs: CreateDomainConfigInstructionDataArgs["compressedProofArgs"];
-  remainingAccounts: CreateDomainConfigInstructionExtraArgs["remainingAccounts"];
+  rpId: CreateDomainConfigInstructionDataArgs['rpId'];
+  origins: CreateDomainConfigInstructionDataArgs['origins'];
+  authorityCreationArgs: CreateDomainConfigInstructionDataArgs['authorityCreationArgs'];
+  compressedProofArgs: CreateDomainConfigInstructionDataArgs['compressedProofArgs'];
+  remainingAccounts: CreateDomainConfigInstructionExtraArgs['remainingAccounts'];
 };
 
 export function getCreateDomainConfigInstruction<
@@ -345,14 +345,14 @@ export function getCreateDomainConfigInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.domainConfig),
@@ -401,7 +401,7 @@ export function parseCreateDomainConfigInstruction<
 ): ParsedCreateDomainConfigInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 5) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {

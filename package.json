@@ -9,10 +9,12 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.31.1",
-    "@lightprotocol/stateless.js": "0.22.1-alpha.1",
+    "@lightprotocol/compressed-token": "0.22.1-alpha.8",
+    "@lightprotocol/stateless.js": "0.22.1-alpha.7",
     "@noble/curves": "2.0.1",
     "@noble/hashes": "2.0.1",
     "@revibase/core": "workspace:*",
+    "@solana/web3.js": "^1.98.4",
     "gill": "0.14.0"
   },
   "devDependencies": {

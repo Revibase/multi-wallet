@@ -175,7 +175,7 @@ impl Secp256r1VerifyArgs {
     fn extract_webauthn_signed_message_from_instruction(
         &self,
         instructions_sysvar: &UncheckedAccount,
-        expected_secp256r1_signers: Option<&Vec<ExpectedSecp256r1Signers>>,
+        expected_secp256r1_signers: &[ExpectedSecp256r1Signers],
     ) -> Result<([u8; 32], [u8; 32])> {
         let instruction = instructions::get_instruction_relative(-1, instructions_sysvar)?;
 
@@ -184,7 +184,11 @@ impl Secp256r1VerifyArgs {
             MultisigError::InvalidSecp256r1Instruction
         );
 
-        let num_signatures = instruction.data[0];
+        let data = instruction.data.as_slice();
+
+        let num_signatures = *data
+            .get(0)
+            .ok_or(MultisigError::InvalidSecp256r1Instruction)?;
 
         require!(
             self.signed_message_index < num_signatures,
@@ -206,7 +210,7 @@ impl Secp256r1VerifyArgs {
         let message_end = message_offset + offsets.message_data_size as usize;
         let message = &instruction.data[message_offset..message_end];
 
-        if let Some(expected_secp256r1_signers) = expected_secp256r1_signers {
+        if !expected_secp256r1_signers.is_empty() {
             let public_key_offset = offsets.public_key_offset as usize;
             let public_key_end = public_key_offset + COMPRESSED_PUBKEY_SERIALIZED_SIZE;
 
@@ -231,7 +235,7 @@ impl Secp256r1VerifyArgs {
             .try_into()
             .map_err(|_| MultisigError::InvalidSignatureOffsets)?;
 
-        let client_data_hash: [u8; 32] = message[37..]
+        let client_data_hash: [u8; 32] = message[(message.len() - 32)..]
             .try_into()
             .map_err(|_| MultisigError::InvalidSignatureOffsets)?;
 
@@ -287,7 +291,7 @@ impl Secp256r1VerifyArgs {
         domain_config: &Option<AccountLoader<'info, DomainConfig>>,
         instructions_sysvar: &UncheckedAccount<'info>,
         challenge_args: ChallengeArgs,
-        expected_secp256r1_signers: Option<&Vec<ExpectedSecp256r1Signers>>,
+        expected_secp256r1_signers: &[ExpectedSecp256r1Signers],
     ) -> Result<()> {
         let domain_data = domain_config
             .as_ref()

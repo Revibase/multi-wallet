@@ -34,10 +34,10 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from "gill";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from 'gill';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getProofArgsDecoder,
   getProofArgsEncoder,
@@ -59,7 +59,7 @@ import {
   type SettingsMutArgsArgs,
   type UserMutArgs,
   type UserMutArgsArgs,
-} from "../types";
+} from '../types';
 
 export const EDIT_USER_DELEGATE_DISCRIMINATOR = new Uint8Array([7]);
 
@@ -77,10 +77,10 @@ export type EditUserDelegateInstruction<
   TAccountNewSettings extends string | AccountMeta<string> = string,
   TAccountSlotHashSysvar extends
     | string
-    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
+    | AccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
   TAccountInstructionsSysvar extends
     | string
-    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
+    | AccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
   TAccountDomainConfig extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
@@ -136,16 +136,16 @@ export type EditUserDelegateInstructionDataArgs = {
 export function getEditUserDelegateInstructionDataEncoder(): Encoder<EditUserDelegateInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["userMutArgs", getUserMutArgsEncoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      ['userMutArgs', getUserMutArgsEncoder()],
       [
-        "secp256r1VerifyArgs",
+        'secp256r1VerifyArgs',
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
       ],
-      ["delegateTo", getOptionEncoder(getSettingsIndexWithAddressEncoder())],
-      ["oldSettingsMutArgs", getOptionEncoder(getSettingsMutArgsEncoder())],
-      ["newSettingsMutArgs", getOptionEncoder(getSettingsMutArgsEncoder())],
-      ["compressedProofArgs", getProofArgsEncoder()],
+      ['delegateTo', getOptionEncoder(getSettingsIndexWithAddressEncoder())],
+      ['oldSettingsMutArgs', getOptionEncoder(getSettingsMutArgsEncoder())],
+      ['newSettingsMutArgs', getOptionEncoder(getSettingsMutArgsEncoder())],
+      ['compressedProofArgs', getProofArgsEncoder()],
     ]),
     (value) => ({ ...value, discriminator: EDIT_USER_DELEGATE_DISCRIMINATOR })
   );
@@ -153,13 +153,13 @@ export function getEditUserDelegateInstructionDataEncoder(): Encoder<EditUserDel
 
 export function getEditUserDelegateInstructionDataDecoder(): Decoder<EditUserDelegateInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["userMutArgs", getUserMutArgsDecoder()],
-    ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
-    ["delegateTo", getOptionDecoder(getSettingsIndexWithAddressDecoder())],
-    ["oldSettingsMutArgs", getOptionDecoder(getSettingsMutArgsDecoder())],
-    ["newSettingsMutArgs", getOptionDecoder(getSettingsMutArgsDecoder())],
-    ["compressedProofArgs", getProofArgsDecoder()],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ['userMutArgs', getUserMutArgsDecoder()],
+    ['secp256r1VerifyArgs', getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
+    ['delegateTo', getOptionDecoder(getSettingsIndexWithAddressDecoder())],
+    ['oldSettingsMutArgs', getOptionDecoder(getSettingsMutArgsDecoder())],
+    ['newSettingsMutArgs', getOptionDecoder(getSettingsMutArgsDecoder())],
+    ['compressedProofArgs', getProofArgsDecoder()],
   ]);
 }
 
@@ -193,13 +193,13 @@ export type EditUserDelegateInput<
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   domainConfig?: Address<TAccountDomainConfig>;
-  userMutArgs: EditUserDelegateInstructionDataArgs["userMutArgs"];
-  secp256r1VerifyArgs: EditUserDelegateInstructionDataArgs["secp256r1VerifyArgs"];
-  delegateTo: EditUserDelegateInstructionDataArgs["delegateTo"];
-  oldSettingsMutArgs: EditUserDelegateInstructionDataArgs["oldSettingsMutArgs"];
-  newSettingsMutArgs: EditUserDelegateInstructionDataArgs["newSettingsMutArgs"];
-  compressedProofArgs: EditUserDelegateInstructionDataArgs["compressedProofArgs"];
-  remainingAccounts: EditUserDelegateInstructionExtraArgs["remainingAccounts"];
+  userMutArgs: EditUserDelegateInstructionDataArgs['userMutArgs'];
+  secp256r1VerifyArgs: EditUserDelegateInstructionDataArgs['secp256r1VerifyArgs'];
+  delegateTo: EditUserDelegateInstructionDataArgs['delegateTo'];
+  oldSettingsMutArgs: EditUserDelegateInstructionDataArgs['oldSettingsMutArgs'];
+  newSettingsMutArgs: EditUserDelegateInstructionDataArgs['newSettingsMutArgs'];
+  compressedProofArgs: EditUserDelegateInstructionDataArgs['compressedProofArgs'];
+  remainingAccounts: EditUserDelegateInstructionExtraArgs['remainingAccounts'];
 };
 
 export function getEditUserDelegateInstruction<
@@ -262,18 +262,18 @@ export function getEditUserDelegateInstruction<
   // Resolve default values.
   if (!accounts.slotHashSysvar.value) {
     accounts.slotHashSysvar.value =
-      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
+      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
   }
   if (!accounts.instructionsSysvar.value) {
     accounts.instructionsSysvar.value =
-      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
+      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.feePayer),
@@ -328,7 +328,7 @@ export function parseEditUserDelegateInstruction<
 ): ParsedEditUserDelegateInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 7) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {

@@ -1,5 +1,5 @@
 use crate::{
-    state::{SettingsIndexWithAddress, UserMutArgs, WhitelistedAddressTree},
+    state::{SettingsIndexWithAddress, UserReadOnlyArgs, WhitelistedAddressTree},
     utils::{UserRole, SEED_WHITELISTED_ADDRESS_TREE},
     CompressedSettings, DomainConfig, Member, MemberKey, MultisigError, MultisigSettings,
     Permission, Permissions, ProofArgs, Secp256r1Pubkey, SettingsMutArgs, User, UserCreationArgs,
@@ -18,7 +18,7 @@ use light_sdk::{
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct LinkWalletArgs {
     pub settings_mut_args: SettingsMutArgs,
-    pub transaction_manager: Option<UserMutArgs>,
+    pub transaction_manager: Option<UserReadOnlyArgs>,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -108,10 +108,11 @@ impl<'info> CreateDomainUserAccount<'info> {
             let mut permissions = vec![Permission::VoteTransaction, Permission::ExecuteTransaction];
 
             if let Some(transaction_manger) = link_wallet_args.transaction_manager {
-                let transaction_manager_account = LightAccount::<User>::new_mut(
+                let transaction_manager_account = LightAccount::<User>::new_read_only(
                     &crate::ID,
                     &transaction_manger.account_meta,
                     transaction_manger.data,
+                    light_cpi_accounts.tree_pubkeys().unwrap().as_slice(),
                 )
                 .map_err(ProgramError::from)?;
 

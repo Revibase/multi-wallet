@@ -43,16 +43,16 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from "gill";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from 'gill';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getNewAuthorityArgsDecoder,
   getNewAuthorityArgsEncoder,
   type NewAuthorityArgs,
   type NewAuthorityArgsArgs,
-} from "../types";
+} from '../types';
 
 export const EDIT_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([1]);
 
@@ -70,7 +70,7 @@ export type EditDomainConfigInstruction<
   TAccountWhitelistedAddressTrees extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | AccountMeta<string> = "11111111111111111111111111111111",
+    | AccountMeta<string> = '11111111111111111111111111111111',
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -111,16 +111,16 @@ export type EditDomainConfigInstructionDataArgs = {
 export function getEditDomainConfigInstructionDataEncoder(): Encoder<EditDomainConfigInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
       [
-        "newOrigins",
+        'newOrigins',
         getOptionEncoder(
           getArrayEncoder(
             addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())
           )
         ),
       ],
-      ["newAuthorityArgs", getOptionEncoder(getNewAuthorityArgsEncoder())],
+      ['newAuthorityArgs', getOptionEncoder(getNewAuthorityArgsEncoder())],
     ]),
     (value) => ({ ...value, discriminator: EDIT_DOMAIN_CONFIG_DISCRIMINATOR })
   );
@@ -128,14 +128,14 @@ export function getEditDomainConfigInstructionDataEncoder(): Encoder<EditDomainC
 
 export function getEditDomainConfigInstructionDataDecoder(): Decoder<EditDomainConfigInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
     [
-      "newOrigins",
+      'newOrigins',
       getOptionDecoder(
         getArrayDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder()))
       ),
     ],
-    ["newAuthorityArgs", getOptionDecoder(getNewAuthorityArgsDecoder())],
+    ['newAuthorityArgs', getOptionDecoder(getNewAuthorityArgsDecoder())],
   ]);
 }
 
@@ -165,9 +165,9 @@ export type EditDomainConfigAsyncInput<
   newAuthority?: TransactionSigner<TAccountNewAuthority>;
   whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
   systemProgram?: Address<TAccountSystemProgram>;
-  newOrigins: EditDomainConfigInstructionDataArgs["newOrigins"];
-  newAuthorityArgs: EditDomainConfigInstructionDataArgs["newAuthorityArgs"];
-  remainingAccounts: EditDomainConfigInstructionExtraArgs["remainingAccounts"];
+  newOrigins: EditDomainConfigInstructionDataArgs['newOrigins'];
+  newAuthorityArgs: EditDomainConfigInstructionDataArgs['newAuthorityArgs'];
+  remainingAccounts: EditDomainConfigInstructionExtraArgs['remainingAccounts'];
 };
 
 export async function getEditDomainConfigInstructionAsync<
@@ -237,14 +237,14 @@ export async function getEditDomainConfigInstructionAsync<
   }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.domainConfig),
@@ -280,9 +280,9 @@ export type EditDomainConfigInput<
   newAuthority?: TransactionSigner<TAccountNewAuthority>;
   whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
   systemProgram?: Address<TAccountSystemProgram>;
-  newOrigins: EditDomainConfigInstructionDataArgs["newOrigins"];
-  newAuthorityArgs: EditDomainConfigInstructionDataArgs["newAuthorityArgs"];
-  remainingAccounts: EditDomainConfigInstructionExtraArgs["remainingAccounts"];
+  newOrigins: EditDomainConfigInstructionDataArgs['newOrigins'];
+  newAuthorityArgs: EditDomainConfigInstructionDataArgs['newAuthorityArgs'];
+  remainingAccounts: EditDomainConfigInstructionExtraArgs['remainingAccounts'];
 };
 
 export function getEditDomainConfigInstruction<
@@ -337,14 +337,14 @@ export function getEditDomainConfigInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.domainConfig),
@@ -393,7 +393,7 @@ export function parseEditDomainConfigInstruction<
 ): ParsedEditDomainConfigInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 5) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {

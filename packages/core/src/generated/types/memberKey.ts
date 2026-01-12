@@ -20,7 +20,7 @@ import {
   type FixedSizeDecoder,
   type FixedSizeEncoder,
   type ReadonlyUint8Array,
-} from "gill";
+} from 'gill';
 
 export type MemberKey = { keyType: number; key: ReadonlyUint8Array };
 
@@ -28,15 +28,15 @@ export type MemberKeyArgs = MemberKey;
 
 export function getMemberKeyEncoder(): FixedSizeEncoder<MemberKeyArgs> {
   return getStructEncoder([
-    ["keyType", getU8Encoder()],
-    ["key", fixEncoderSize(getBytesEncoder(), 33)],
+    ['keyType', getU8Encoder()],
+    ['key', fixEncoderSize(getBytesEncoder(), 33)],
   ]);
 }
 
 export function getMemberKeyDecoder(): FixedSizeDecoder<MemberKey> {
   return getStructDecoder([
-    ["keyType", getU8Decoder()],
-    ["key", fixDecoderSize(getBytesDecoder(), 33)],
+    ['keyType', getU8Decoder()],
+    ['key', fixDecoderSize(getBytesDecoder(), 33)],
   ]);
 }
 

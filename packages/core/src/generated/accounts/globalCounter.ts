@@ -33,7 +33,7 @@ import {
   type MaybeAccount,
   type MaybeEncodedAccount,
   type ReadonlyUint8Array,
-} from "gill";
+} from 'gill';
 
 export const GLOBAL_COUNTER_DISCRIMINATOR = new Uint8Array([
   42, 206, 176, 58, 175, 129, 130, 233,
@@ -55,8 +55,8 @@ export type GlobalCounterArgs = { index: number | bigint };
 export function getGlobalCounterEncoder(): FixedSizeEncoder<GlobalCounterArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["index", getU128Encoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['index', getU128Encoder()],
     ]),
     (value) => ({ ...value, discriminator: GLOBAL_COUNTER_DISCRIMINATOR })
   );
@@ -64,8 +64,8 @@ export function getGlobalCounterEncoder(): FixedSizeEncoder<GlobalCounterArgs> {
 
 export function getGlobalCounterDecoder(): FixedSizeDecoder<GlobalCounter> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["index", getU128Decoder()],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['index', getU128Decoder()],
   ]);
 }
 

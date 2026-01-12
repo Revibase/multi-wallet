@@ -27,13 +27,13 @@ import {
   type InstructionWithData,
   type ReadonlyUint8Array,
   type WritableAccount,
-} from "gill";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from 'gill';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 
 export const TRANSACTION_EXECUTE_COMPRESSED_DISCRIMINATOR = new Uint8Array([
-  26,
+  25,
 ]);
 
 export function getTransactionExecuteCompressedDiscriminatorBytes() {
@@ -73,8 +73,8 @@ export type TransactionExecuteCompressedInstructionDataArgs = {
 export function getTransactionExecuteCompressedInstructionDataEncoder(): FixedSizeEncoder<TransactionExecuteCompressedInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["settingsKey", getAddressEncoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      ['settingsKey', getAddressEncoder()],
     ]),
     (value) => ({
       ...value,
@@ -85,8 +85,8 @@ export function getTransactionExecuteCompressedInstructionDataEncoder(): FixedSi
 
 export function getTransactionExecuteCompressedInstructionDataDecoder(): FixedSizeDecoder<TransactionExecuteCompressedInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["settingsKey", getAddressDecoder()],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ['settingsKey', getAddressDecoder()],
   ]);
 }
 
@@ -110,8 +110,8 @@ export type TransactionExecuteCompressedInput<
 > = {
   payer: Address<TAccountPayer>;
   transactionBuffer: Address<TAccountTransactionBuffer>;
-  settingsKey: TransactionExecuteCompressedInstructionDataArgs["settingsKey"];
-  remainingAccounts: TransactionExecuteCompressedInstructionExtraArgs["remainingAccounts"];
+  settingsKey: TransactionExecuteCompressedInstructionDataArgs['settingsKey'];
+  remainingAccounts: TransactionExecuteCompressedInstructionExtraArgs['remainingAccounts'];
 };
 
 export function getTransactionExecuteCompressedInstruction<
@@ -155,7 +155,7 @@ export function getTransactionExecuteCompressedInstruction<
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.payer),
@@ -195,7 +195,7 @@ export function parseTransactionExecuteCompressedInstruction<
 ): ParsedTransactionExecuteCompressedInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 2) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {

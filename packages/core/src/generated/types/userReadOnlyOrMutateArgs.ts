@@ -19,7 +19,7 @@ import {
   type Encoder,
   type GetDiscriminatedUnionVariant,
   type GetDiscriminatedUnionVariantContent,
-} from "gill";
+} from 'gill';
 import {
   getUserMutArgsDecoder,
   getUserMutArgsEncoder,
@@ -29,28 +29,28 @@ import {
   type UserMutArgsArgs,
   type UserReadOnlyArgs,
   type UserReadOnlyArgsArgs,
-} from ".";
+} from '.';
 
 export type UserReadOnlyOrMutateArgs =
-  | { __kind: "Read"; fields: readonly [UserReadOnlyArgs] }
-  | { __kind: "Mutate"; fields: readonly [UserMutArgs] };
+  | { __kind: 'Read'; fields: readonly [UserReadOnlyArgs] }
+  | { __kind: 'Mutate'; fields: readonly [UserMutArgs] };
 
 export type UserReadOnlyOrMutateArgsArgs =
-  | { __kind: "Read"; fields: readonly [UserReadOnlyArgsArgs] }
-  | { __kind: "Mutate"; fields: readonly [UserMutArgsArgs] };
+  | { __kind: 'Read'; fields: readonly [UserReadOnlyArgsArgs] }
+  | { __kind: 'Mutate'; fields: readonly [UserMutArgsArgs] };
 
 export function getUserReadOnlyOrMutateArgsEncoder(): Encoder<UserReadOnlyOrMutateArgsArgs> {
   return getDiscriminatedUnionEncoder([
     [
-      "Read",
+      'Read',
       getStructEncoder([
-        ["fields", getTupleEncoder([getUserReadOnlyArgsEncoder()])],
+        ['fields', getTupleEncoder([getUserReadOnlyArgsEncoder()])],
       ]),
     ],
     [
-      "Mutate",
+      'Mutate',
       getStructEncoder([
-        ["fields", getTupleEncoder([getUserMutArgsEncoder()])],
+        ['fields', getTupleEncoder([getUserMutArgsEncoder()])],
       ]),
     ],
   ]);
@@ -59,15 +59,15 @@ export function getUserReadOnlyOrMutateArgsEncoder(): Encoder<UserReadOnlyOrMuta
 export function getUserReadOnlyOrMutateArgsDecoder(): Decoder<UserReadOnlyOrMutateArgs> {
   return getDiscriminatedUnionDecoder([
     [
-      "Read",
+      'Read',
       getStructDecoder([
-        ["fields", getTupleDecoder([getUserReadOnlyArgsDecoder()])],
+        ['fields', getTupleDecoder([getUserReadOnlyArgsDecoder()])],
       ]),
     ],
     [
-      "Mutate",
+      'Mutate',
       getStructDecoder([
-        ["fields", getTupleDecoder([getUserMutArgsDecoder()])],
+        ['fields', getTupleDecoder([getUserMutArgsDecoder()])],
       ]),
     ],
   ]);
@@ -85,27 +85,27 @@ export function getUserReadOnlyOrMutateArgsCodec(): Codec<
 
 // Data Enum Helpers.
 export function userReadOnlyOrMutateArgs(
-  kind: "Read",
+  kind: 'Read',
   data: GetDiscriminatedUnionVariantContent<
     UserReadOnlyOrMutateArgsArgs,
-    "__kind",
-    "Read"
-  >["fields"]
-): GetDiscriminatedUnionVariant<UserReadOnlyOrMutateArgsArgs, "__kind", "Read">;
+    '__kind',
+    'Read'
+  >['fields']
+): GetDiscriminatedUnionVariant<UserReadOnlyOrMutateArgsArgs, '__kind', 'Read'>;
 export function userReadOnlyOrMutateArgs(
-  kind: "Mutate",
+  kind: 'Mutate',
   data: GetDiscriminatedUnionVariantContent<
     UserReadOnlyOrMutateArgsArgs,
-    "__kind",
-    "Mutate"
-  >["fields"]
+    '__kind',
+    'Mutate'
+  >['fields']
 ): GetDiscriminatedUnionVariant<
   UserReadOnlyOrMutateArgsArgs,
-  "__kind",
-  "Mutate"
+  '__kind',
+  'Mutate'
 >;
 export function userReadOnlyOrMutateArgs<
-  K extends UserReadOnlyOrMutateArgsArgs["__kind"],
+  K extends UserReadOnlyOrMutateArgsArgs['__kind'],
   Data,
 >(kind: K, data?: Data) {
   return Array.isArray(data)
@@ -114,7 +114,7 @@ export function userReadOnlyOrMutateArgs<
 }
 
 export function isUserReadOnlyOrMutateArgs<
-  K extends UserReadOnlyOrMutateArgs["__kind"],
+  K extends UserReadOnlyOrMutateArgs['__kind'],
 >(
   kind: K,
   value: UserReadOnlyOrMutateArgs

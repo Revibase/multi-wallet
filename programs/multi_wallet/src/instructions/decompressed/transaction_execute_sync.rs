@@ -10,7 +10,7 @@ use light_sdk::light_hasher::{Hasher, Sha256};
 #[derive(Accounts)]
 pub struct TransactionExecuteSync<'info> {
     #[account(mut)]
-    pub settings: AccountLoader<'info, Settings>,
+    pub settings: Account<'info, Settings>,
     /// CHECK:
     #[account(
         address = SlotHashes::id()
@@ -43,7 +43,6 @@ impl<'info> TransactionExecuteSync<'info> {
         let mut execute = false;
         let mut vote_count = 0;
 
-        let settings = settings.load()?;
         let secp256r1_member_keys: Vec<(MemberKey, &Secp256r1VerifyArgsWithDomainAddress)> =
             secp256r1_verify_args
                 .iter()
@@ -106,7 +105,7 @@ impl<'info> TransactionExecuteSync<'info> {
                         message_hash: transaction_message_hash,
                         action_type: TransactionActionType::Sync,
                     },
-                    None,
+                    &vec![],
                 )?;
             }
         }
@@ -133,7 +132,7 @@ impl<'info> TransactionExecuteSync<'info> {
         transaction_message: TransactionMessage,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
-        let settings = &mut ctx.accounts.settings.load_mut()?;
+        let settings = &mut ctx.accounts.settings;
         let vault_transaction_message =
             transaction_message.convert_to_vault_transaction_message(ctx.remaining_accounts)?;
         vault_transaction_message.validate()?;
@@ -150,7 +149,7 @@ impl<'info> TransactionExecuteSync<'info> {
             .get(num_lookups..message_end_index)
             .ok_or(MultisigError::InvalidNumberOfAccounts)?;
 
-        let settings_key = ctx.accounts.settings.key();
+        let settings_key = settings.key();
         let vault_signer_seed: &[&[u8]] = &[
             SEED_MULTISIG,
             settings_key.as_ref(),

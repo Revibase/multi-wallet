@@ -13,7 +13,7 @@ use light_sdk::light_hasher::{Hasher, Sha256};
 #[derive(Accounts)]
 pub struct NativeTransferIntent<'info> {
     #[account(mut)]
-    pub settings: AccountLoader<'info, Settings>,
+    pub settings: Account<'info, Settings>,
     /// CHECK:
     #[account(
         address = SlotHashes::id()
@@ -34,7 +34,7 @@ pub struct NativeTransferIntent<'info> {
             settings.key().as_ref(),
             SEED_VAULT,
         ],
-        bump = settings.load()?.multi_wallet_bump,
+        bump = settings.multi_wallet_bump,
     )]
     pub source: UncheckedAccount<'info>,
 
@@ -68,8 +68,7 @@ impl<'info> NativeTransferIntent<'info> {
         let mut vote_count = 0;
         let mut are_delegates = true;
 
-        let settings_data = settings.load()?;
-        let threshold = settings_data.threshold as usize;
+        let threshold = settings.threshold as usize;
         let secp256r1_member_keys: Vec<(MemberKey, &Secp256r1VerifyArgsWithDomainAddress)> =
             secp256r1_verify_args
                 .iter()
@@ -85,7 +84,7 @@ impl<'info> NativeTransferIntent<'info> {
                 })
                 .collect();
 
-        for member in &settings_data.members {
+        for member in &settings.members {
             let has_permission = |perm| member.permissions.has(perm);
 
             let secp256r1_signer = secp256r1_member_keys
@@ -134,7 +133,7 @@ impl<'info> NativeTransferIntent<'info> {
                         message_hash,
                         action_type: TransactionActionType::TransferIntent,
                     },
-                    None,
+                    &vec![],
                 )?;
             }
         }
@@ -162,8 +161,8 @@ impl<'info> NativeTransferIntent<'info> {
         amount: u64,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
-        let settings = &mut ctx.accounts.settings.load_mut()?;
-        let settings_key = ctx.accounts.settings.key();
+        let settings = &mut ctx.accounts.settings;
+        let settings_key = settings.key();
         let signer_seeds: &[&[u8]] = &[
             SEED_MULTISIG,
             settings_key.as_ref(),

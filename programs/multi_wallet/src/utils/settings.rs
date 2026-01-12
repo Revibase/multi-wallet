@@ -5,7 +5,7 @@ use crate::{
 use anchor_lang::prelude::*;
 use std::collections::{HashMap, HashSet};
 
-pub const MAXIMUM_AMOUNT_OF_MEMBERS: usize = 4;
+pub const MAXIMUM_AMOUNT_OF_MEMBERS_FOR_COMPRESSED_SETTINGS: usize = 4;
 
 pub trait MultisigSettings {
     fn set_threshold(&mut self, value: u8) -> Result<()>;
@@ -16,6 +16,7 @@ pub trait MultisigSettings {
     fn get_threshold(&self) -> Result<u8>;
     fn get_members(&self) -> Result<Vec<Member>>;
     fn get_latest_slot_number(&self) -> Result<u64>;
+    fn is_compressed(&self) -> Result<bool>;
 
     fn latest_slot_number_check(
         &mut self,
@@ -69,10 +70,12 @@ pub trait MultisigSettings {
         let member_count = members.len();
         let threshold = self.get_threshold()?;
         require!(member_count > 0, MultisigError::EmptyMembers);
-        require!(
-            member_count <= MAXIMUM_AMOUNT_OF_MEMBERS,
-            MultisigError::TooManyMembers
-        );
+        if self.is_compressed()? {
+            require!(
+                member_count <= MAXIMUM_AMOUNT_OF_MEMBERS_FOR_COMPRESSED_SETTINGS,
+                MultisigError::TooManyMembers
+            );
+        }
         require!(threshold > 0, MultisigError::InvalidThreshold);
 
         let mut seen: HashSet<MemberKey> = std::collections::HashSet::new();
@@ -92,43 +95,48 @@ pub trait MultisigSettings {
             if p.has(Permission::ExecuteTransaction) {
                 permission_counts.executors += 1;
             }
-            if UserRole::from(member.role).eq(&UserRole::PermanentMember) {
-                permission_counts.permanent_members += 1;
-                require!(
-                    member.is_delegate == 1,
-                    MultisigError::InvalidPermanentMemberConfig
-                );
-            } else if UserRole::from(member.role).eq(&UserRole::TransactionManager) {
-                permission_counts.transaction_manager += 1;
-                require!(
-                    p.has(Permission::InitiateTransaction),
-                    MultisigError::InvalidTransactionManagerPermission
-                );
-                require!(
-                    !p.has(Permission::VoteTransaction),
-                    MultisigError::InvalidTransactionManagerPermission
-                );
-                require!(
-                    !p.has(Permission::ExecuteTransaction),
-                    MultisigError::InvalidTransactionManagerPermission
-                );
-                require!(
-                    member.is_delegate == 0,
-                    MultisigError::InvalidTransactionManagerConfig
-                );
-                require!(
-                    member.pubkey.get_type().eq(&KeyType::Ed25519),
-                    MultisigError::InvalidTransactionManagerConfig
-                );
-            } else if UserRole::from(member.role).eq(&UserRole::Administrator) {
-                require!(
-                    member.pubkey.get_type().eq(&KeyType::Ed25519),
-                    MultisigError::InvalidAdministratorConfig
-                );
-                require!(
-                    member.is_delegate == 0,
-                    MultisigError::InvalidAdministratorConfig
-                );
+
+            let role = UserRole::from(member.role);
+
+            match role {
+                UserRole::PermanentMember => {
+                    permission_counts.permanent_members += 1;
+                    require!(
+                        member.is_delegate == 1,
+                        MultisigError::InvalidPermanentMemberConfig
+                    );
+                }
+                UserRole::TransactionManager => {
+                    permission_counts.transaction_manager += 1;
+
+                    // must be initiator only (no vote/execute)
+                    require!(
+                        p.has(Permission::InitiateTransaction)
+                            && !p.has(Permission::VoteTransaction)
+                            && !p.has(Permission::ExecuteTransaction),
+                        MultisigError::InvalidTransactionManagerPermission
+                    );
+
+                    require!(
+                        member.is_delegate == 0,
+                        MultisigError::InvalidTransactionManagerConfig
+                    );
+                    require!(
+                        member.pubkey.get_type() == KeyType::Ed25519,
+                        MultisigError::InvalidTransactionManagerConfig
+                    );
+                }
+                UserRole::Administrator => {
+                    require!(
+                        member.pubkey.get_type() == KeyType::Ed25519,
+                        MultisigError::InvalidAdministratorConfig
+                    );
+                    require!(
+                        member.is_delegate == 0,
+                        MultisigError::InvalidAdministratorConfig
+                    );
+                }
+                _ => {}
             }
         }
 
@@ -161,18 +169,19 @@ pub trait MultisigSettings {
     }
 
     fn add_members<'a>(&mut self, new_members: Vec<AddMemberArgs>) -> Result<Vec<AddMemberArgs>> {
-        let mut new_member_data = vec![];
-        for member in &new_members {
-            let role = member.user_readonly_args.data.role;
-            let user_address_tree_index = member.user_readonly_args.data.user_address_tree_index;
-            new_member_data.push(Member {
-                pubkey: member.member_key,
-                permissions: member.permissions,
-                role: role.to_u8(),
-                user_address_tree_index,
-                is_delegate: UserRole::from(role).eq(&UserRole::PermanentMember).into(),
-            });
-        }
+        let new_member_data = new_members
+            .iter()
+            .map(|member| {
+                let data = &member.user_readonly_args.data;
+                Member {
+                    pubkey: member.member_key,
+                    permissions: member.permissions,
+                    role: data.role.to_u8(),
+                    user_address_tree_index: data.user_address_tree_index,
+                    is_delegate: false.into(),
+                }
+            })
+            .collect();
 
         self.extend_members(new_member_data)?;
 
@@ -183,20 +192,6 @@ pub trait MultisigSettings {
         &mut self,
         member_pubkeys: Vec<RemoveMemberArgs>,
     ) -> Result<Vec<RemoveMemberArgs>> {
-        let members = self.get_members()?;
-
-        if let Some(existing_perm_member) = members
-            .iter()
-            .find(|m| UserRole::from(m.role).eq(&UserRole::PermanentMember))
-        {
-            require!(
-                !member_pubkeys
-                    .iter()
-                    .any(|f| f.member_key.eq(&existing_perm_member.pubkey)),
-                MultisigError::PermanentMember
-            );
-        }
-
         let keys_to_delete = member_pubkeys.iter().map(|f| f.member_key).collect();
 
         self.delete_members(keys_to_delete)?;
@@ -205,28 +200,28 @@ pub trait MultisigSettings {
     }
 
     fn edit_permissions(&mut self, new_members: Vec<EditMemberArgs>) -> Result<()> {
-        let mut current_members_map: HashMap<MemberKey, Member> = self
-            .get_members()?
-            .into_iter()
-            .map(|m| (m.pubkey, m))
-            .collect();
+        let mut members = self.get_members()?;
 
-        for member in new_members {
-            let pubkey = member.member_key;
-            let existing_member = current_members_map
-                .get_mut(&pubkey)
+        let mut idx: HashMap<MemberKey, usize> = HashMap::with_capacity(members.len());
+        for (i, m) in members.iter().enumerate() {
+            idx.insert(m.pubkey, i);
+        }
+
+        for nm in new_members {
+            let i = *idx
+                .get(&nm.member_key)
                 .ok_or(MultisigError::InvalidArguments)?;
+            let existing = &mut members[i];
 
             require!(
-                UserRole::from(existing_member.role).ne(&UserRole::TransactionManager),
+                UserRole::from(existing.role) != UserRole::TransactionManager,
                 MultisigError::InvalidTransactionManagerPermission
             );
 
-            // update permissions in place
-            existing_member.permissions = member.permissions;
+            existing.permissions = nm.permissions;
         }
 
-        self.set_members(current_members_map.into_values().collect())?;
+        self.set_members(members)?;
 
         Ok(())
     }

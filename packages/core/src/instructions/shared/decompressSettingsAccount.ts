@@ -4,25 +4,25 @@ import {
   type TransactionSigner,
 } from "gill";
 import {
-  getCompressSettingsAccountInstruction,
+  getDecompressSettingsAccountInstruction,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
-} from "../generated";
-import { SignedSecp256r1Key } from "../types";
-import { getSettingsFromIndex } from "../utils";
+} from "../../generated";
+import { SignedSecp256r1Key } from "../../types";
+import { getSettingsFromIndex } from "../../utils";
 import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
-} from "../utils/compressed/internal";
+} from "../../utils/compressed/internal";
 import {
   extractSecp256r1VerificationArgs,
   getDeduplicatedSigners,
-} from "../utils/transaction/internal";
+} from "../../utils/transaction/internal";
 import {
   getSecp256r1VerifyInstruction,
   type Secp256r1VerifyInput,
-} from "./secp256r1Verify";
+} from "../secp256r1Verify";
 
-export async function compressSettingsAccount({
+export async function decompressSettingsAccount({
   index,
   settingsAddressTreeIndex,
   payer,
@@ -35,7 +35,6 @@ export async function compressSettingsAccount({
   signers: (SignedSecp256r1Key | TransactionSigner)[];
   cachedAccounts?: Map<string, any>;
 }) {
-  const settings = await getSettingsFromIndex(index);
   const { packedAccounts, proof, settingsMutArgs } =
     await constructSettingsProofArgs(
       true,
@@ -76,7 +75,6 @@ export async function compressSettingsAccount({
       }
     }
   }
-
   packedAccounts.addPreAccounts(
     dedupSigners
       .filter((x) => "address" in x)
@@ -92,21 +90,20 @@ export async function compressSettingsAccount({
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
-
   const instructions = [];
   if (secp256r1VerifyInput.length > 0) {
     instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
   }
+  const settings = await getSettingsFromIndex(index);
   instructions.push(
-    getCompressSettingsAccountInstruction({
+    getDecompressSettingsAccountInstruction({
       settings,
+      payer,
       settingsMutArgs,
       compressedProofArgs,
-      payer,
       secp256r1VerifyArgs,
       remainingAccounts,
     })
   );
-
   return instructions;
 }

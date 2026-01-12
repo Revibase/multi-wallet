@@ -63,7 +63,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
       domainConfig: ctx.domainConfig,
       createUserArgs: {
         member: secp256r1Key,
-        role: UserRole.PermanentMember,
+        role: UserRole.Member,
         index: ctx.index,
         transactionManager: {
           member: transactionManager.address,

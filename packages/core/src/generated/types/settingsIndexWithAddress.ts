@@ -17,7 +17,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from "gill";
+} from 'gill';
 
 export type SettingsIndexWithAddress = {
   index: bigint;
@@ -31,15 +31,15 @@ export type SettingsIndexWithAddressArgs = {
 
 export function getSettingsIndexWithAddressEncoder(): FixedSizeEncoder<SettingsIndexWithAddressArgs> {
   return getStructEncoder([
-    ["index", getU128Encoder()],
-    ["settingsAddressTreeIndex", getU8Encoder()],
+    ['index', getU128Encoder()],
+    ['settingsAddressTreeIndex', getU8Encoder()],
   ]);
 }
 
 export function getSettingsIndexWithAddressDecoder(): FixedSizeDecoder<SettingsIndexWithAddress> {
   return getStructDecoder([
-    ["index", getU128Decoder()],
-    ["settingsAddressTreeIndex", getU8Decoder()],
+    ['index', getU128Decoder()],
+    ['settingsAddressTreeIndex', getU8Decoder()],
   ]);
 }
 

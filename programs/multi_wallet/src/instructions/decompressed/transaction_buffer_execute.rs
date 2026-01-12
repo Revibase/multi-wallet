@@ -10,7 +10,7 @@ pub struct TransactionBufferExecute<'info> {
         mut,
         address = transaction_buffer.multi_wallet_settings,
     )]
-    pub settings: AccountLoader<'info, Settings>,
+    pub settings: Account<'info, Settings>,
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
     pub executor: Option<Signer<'info>>,
     #[account(mut)]
@@ -28,7 +28,7 @@ pub struct TransactionBufferExecute<'info> {
 }
 
 impl<'info> TransactionBufferExecute<'info> {
-    fn validate(&self, secp256r1_verify_args: &Option<Secp256r1VerifyArgs>) -> Result<()> {
+    fn validate(&mut self, secp256r1_verify_args: &Option<Secp256r1VerifyArgs>) -> Result<()> {
         let Self {
             settings,
             transaction_buffer,
@@ -41,7 +41,6 @@ impl<'info> TransactionBufferExecute<'info> {
 
         transaction_buffer.validate_hash()?;
         transaction_buffer.validate_size()?;
-        let settings = &mut settings.load_mut()?;
         let members = settings.get_members()?;
         if transaction_buffer.preauthorize_execution {
             let vote_count = members
@@ -106,7 +105,7 @@ impl<'info> TransactionBufferExecute<'info> {
                     message_hash: transaction_buffer.final_buffer_hash,
                     action_type: TransactionActionType::Execute,
                 },
-                transaction_buffer.expected_secp256r1_signers.as_ref(),
+                &transaction_buffer.expected_secp256r1_signers,
             )?;
             settings.latest_slot_number_check(
                 vec![secp256r1_verify_data.slot_number],
