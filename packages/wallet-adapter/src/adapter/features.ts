@@ -65,13 +65,11 @@ export const RevibaseSignAndSendTokenTransfer =
 export type RevibaseSignAndSendTokenTransferMethod = (input: {
   amount: number | bigint;
   destination: Address;
-  createAtaIfNeeded?: boolean;
   mint?: Address;
   tokenProgram?: Address;
   cachedAccounts?: Map<string, any>;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   signer?: string | undefined;
-  popUp?: Window | null | undefined;
 }) => Promise<string>;
 export type RevibaseSignAndSendTokenTransferFeature = {
   /** Name of the feature. */
@@ -88,13 +86,11 @@ export const RevibaseBuildTokenTransferTransaction =
 export type RevibaseBuildTokenTransferTransactionMethod = (input: {
   amount: number | bigint;
   destination: Address;
-  createAtaIfNeeded?: boolean;
   mint?: Address;
   tokenProgram?: Address;
   cachedAccounts?: Map<string, any>;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   signer?: string | undefined;
-  popUp?: Window | null | undefined;
 }) => Promise<TransactionDetails>;
 export type RevibaseBuildTokenTransferTransactionFeature = {
   /** Name of the feature. */

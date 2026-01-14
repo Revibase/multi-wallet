@@ -6,8 +6,8 @@ export const HEARTBEAT_INTERVAL = 2000; // 2s
 // How long to wait for MessageChannel connection before starting fallback polling
 export const CONNECT_GRACE_MS = 3000; // 3s
 
-// After a close signal, poll briefly to catch a persisted result, then fail.
-export const CLOSE_POLL_GRACE_MS = 30000; // 30s
+// After a close signal, poll briefly to catch any persisted result, then fail.
+export const CLOSE_POLL_GRACE_MS = 10000; // 10s
 
 // Polling settings
 export const POLL_INITIAL_DELAY_MS = 1000; // 1s

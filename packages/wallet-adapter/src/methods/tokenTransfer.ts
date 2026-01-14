@@ -27,7 +27,6 @@ export async function signAndSendTokenTransfer(input: {
   destination: Address;
   payer: TransactionSigner;
   provider: RevibaseProvider;
-  createAtaIfNeeded?: boolean;
   mint?: Address;
   tokenProgram?: Address;
   cachedAccounts?: Map<string, any>;
@@ -48,7 +47,6 @@ export const buildTokenTransferInstruction = async (input: {
   destination: Address;
   payer: TransactionSigner;
   provider: RevibaseProvider;
-  createAtaIfNeeded?: boolean;
   mint?: Address;
   tokenProgram?: Address;
   cachedAccounts?: Map<string, any>;
@@ -65,7 +63,6 @@ export const buildTokenTransferInstruction = async (input: {
     cachedAccounts = new Map<string, any>(),
     signer,
     provider,
-    createAtaIfNeeded = true,
   } = input;
   provider.openBlankPopUp();
   const authResponse = await signTransactionWithPasskey({
@@ -124,7 +121,6 @@ export const buildTokenTransferInstruction = async (input: {
         index: settingsIndexWithAddress.index,
         settingsAddressTreeIndex:
           settingsIndexWithAddress.settingsAddressTreeIndex,
-        createAtaIfNeeded,
         amount,
         signers,
         destination,
