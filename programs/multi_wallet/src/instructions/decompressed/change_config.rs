@@ -189,9 +189,9 @@ impl<'info> ChangeConfig<'info> {
         }
 
         resize_account_if_necessary(
-            &settings.to_account_info(),
-            &ctx.accounts.payer.to_account_info(),
-            &ctx.accounts.system_program.to_account_info(),
+            settings.as_ref(),
+            &ctx.accounts.payer,
+            &ctx.accounts.system_program,
             Settings::size(settings.get_members()?.len()),
         )?;
 

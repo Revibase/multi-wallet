@@ -1,43 +1,17 @@
 use crate::{
     durable_nonce_check,
     state::ProofArgs,
-    utils::{CompressedTokenArgs, SourceType},
+    utils::{SourceCompressedTokenArgs, SourceType, TokenTransfer},
     ChallengeArgs, DomainConfig, MemberKey, MultisigError, Permission,
     Secp256r1VerifyArgsWithDomainAddress, Settings, TransactionActionType, LIGHT_CPI_SIGNER,
     SEED_MULTISIG, SEED_VAULT,
 };
-use anchor_lang::{
-    prelude::*,
-    solana_program::{
-        program::{invoke, invoke_signed},
-        sysvar::SysvarId,
-    },
-};
-use anchor_spl::{
-    associated_token::{self},
-    token_interface::{transfer_checked, Mint, TokenAccount, TransferChecked},
-};
-use light_ctoken_interface::instructions::transfer2::MultiInputTokenDataWithContext;
-use light_ctoken_sdk::{
-    compressed_token::{
-        transfer2::{
-            create_transfer2_instruction, Transfer2AccountsMetaConfig, Transfer2Config,
-            Transfer2Inputs,
-        },
-        CTokenAccount2,
-    },
-    ctoken::{
-        self, CompressibleParamsCpi, CreateAssociatedCTokenAccountCpi, TransferCTokenCpi,
-        TransferCTokenToSplCpi, TransferSplToCtokenCpi, COMPRESSIBLE_CONFIG_V1,
-        CTOKEN_CPI_AUTHORITY,
-    },
-    spl_interface::{derive_spl_interface_pda, SplInterfacePda},
-    ValidityProof,
-};
-use light_ctoken_sdk::{ctoken::CTOKEN_PROGRAM_ID, spl_interface::CreateSplInterfacePda};
+use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
+use anchor_spl::associated_token::{self};
+use light_ctoken_sdk::ctoken::CTOKEN_CPI_AUTHORITY;
+use light_ctoken_sdk::ctoken::{COMPRESSIBLE_CONFIG_V1, CTOKEN_PROGRAM_ID};
 use light_sdk::{
     cpi::v2::CpiAccounts,
-    instruction::PackedMerkleContext,
     light_hasher::{Hasher, Sha256},
 };
 
@@ -268,7 +242,7 @@ impl<'info> TokenTransferIntent<'info> {
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
         amount: u64,
-        compressed_token_account: Option<CompressedTokenArgs>,
+        source_compressed_token_account: Option<SourceCompressedTokenArgs>,
         compressed_proof_args: Option<ProofArgs>,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
@@ -280,62 +254,118 @@ impl<'info> TokenTransferIntent<'info> {
             &[ctx.accounts.settings.multi_wallet_bump],
         ];
 
-        let mut spl_interface_pda_data = None;
-        if let Some(spl_interface_pda) = &ctx.accounts.spl_interface_pda {
-            if spl_interface_pda.data_is_empty() {
-                let mint = ctx
-                    .remaining_accounts
-                    .iter()
-                    .find(|f| f.key().eq(ctx.accounts.mint.key))
-                    .ok_or(MultisigError::MissingAccount)?;
-                let ix = CreateSplInterfacePda::new(
-                    ctx.accounts.payer.key(),
-                    ctx.accounts.mint.key(),
-                    ctx.accounts.token_program.key(),
-                )
-                .instruction();
-                invoke(
-                    &ix,
-                    &[
-                        ctx.accounts.payer.to_account_info(),
-                        spl_interface_pda.to_account_info(),
-                        ctx.accounts.system_program.to_account_info(),
-                        mint.to_account_info(),
-                        ctx.accounts.token_program.to_account_info(),
-                        ctx.accounts
-                            .compressed_token_program_authority
-                            .to_account_info(),
-                    ],
-                )?;
-            }
-            spl_interface_pda_data = Some(derive_spl_interface_pda(ctx.accounts.mint.key, 0))
+        let mut light_cpi_accounts = None;
+
+        if let Some(compressed_proof_args) = &compressed_proof_args {
+            let account_infos = CpiAccounts::new(
+                &ctx.accounts.payer,
+                &ctx.remaining_accounts
+                    [compressed_proof_args.light_cpi_accounts_start_index as usize..],
+                LIGHT_CPI_SIGNER,
+            );
+            light_cpi_accounts = Some(account_infos)
         }
 
-        let source_type = load_ata(
-            &ctx,
+        let token_transfer = TokenTransfer {
+            source: &ctx.accounts.source,
+            destination: &ctx.accounts.destination,
+            mint: &ctx.accounts.mint,
+            payer: &ctx.accounts.payer,
+            source_spl_token_account: &ctx.accounts.source_spl_token_account,
+            source_ctoken_token_account: &ctx.accounts.source_ctoken_token_account,
+            destination_spl_token_account: ctx.accounts.destination_spl_token_account.as_deref(),
+            destination_ctoken_token_account: ctx
+                .accounts
+                .destination_ctoken_token_account
+                .as_deref(),
+            spl_interface_pda: ctx.accounts.spl_interface_pda.as_deref(),
+            token_program: &ctx.accounts.token_program,
+            compressed_token_program_authority: &ctx.accounts.compressed_token_program_authority,
+            compressible_config: &ctx.accounts.compressible_config,
+            rent_sponsor: ctx.accounts.rent_sponsor.as_deref(),
+            system_program: &ctx.accounts.system_program,
+            destination_ctoken_bump: ctx.bumps.destination_ctoken_token_account,
+        };
+
+        let spl_interface_pda_data =
+            token_transfer.create_spl_interface_pda_if_needed(ctx.remaining_accounts)?;
+
+        let source_type = token_transfer.load_ata(
             amount,
-            &compressed_token_account,
-            &compressed_proof_args,
+            &source_compressed_token_account,
+            light_cpi_accounts.as_ref(),
+            compressed_proof_args.as_ref(),
             &spl_interface_pda_data,
             signer_seeds,
         )?;
 
-        if source_type.eq(&SourceType::Spl)
-            && ctx.accounts.destination_ctoken_token_account.is_some()
-        {
-            spl_to_ctoken_transfer(&ctx, amount, &spl_interface_pda_data, signer_seeds)?;
-        } else if source_type.eq(&SourceType::Spl)
-            && ctx.accounts.destination_spl_token_account.is_some()
-        {
-            spl_to_spl_transfer(&ctx, amount, signer_seeds)?;
-        } else if source_type.eq(&SourceType::CToken)
-            && ctx.accounts.destination_ctoken_token_account.is_some()
-        {
-            ctoken_to_ctoken_transfer(&ctx, amount, signer_seeds)?;
-        } else if source_type.eq(&SourceType::CToken)
-            && ctx.accounts.destination_spl_token_account.is_some()
-        {
-            ctoken_to_spl_transfer(&ctx, amount, &spl_interface_pda_data, signer_seeds)?;
+        let has_dst_spl = ctx.accounts.destination_spl_token_account.is_some();
+        let has_dst_ctoken = ctx.accounts.destination_ctoken_token_account.is_some();
+
+        match (source_type, has_dst_spl, has_dst_ctoken) {
+            (SourceType::Spl, true, false) => {
+                token_transfer.spl_to_spl_transfer(amount, signer_seeds)?;
+            }
+            (SourceType::Spl, false, true) => {
+                token_transfer.spl_to_ctoken_transfer(
+                    amount,
+                    &spl_interface_pda_data,
+                    signer_seeds,
+                )?;
+            }
+
+            (SourceType::CToken, true, false) => {
+                let destination_token_account = ctx
+                    .accounts
+                    .destination_spl_token_account
+                    .as_ref()
+                    .ok_or(MultisigError::MissingAccount)?;
+                token_transfer.ctoken_to_spl_transfer(
+                    amount,
+                    &spl_interface_pda_data,
+                    signer_seeds,
+                    destination_token_account,
+                )?;
+            }
+            (SourceType::CToken, false, true) => {
+                token_transfer.ctoken_to_ctoken_transfer(amount, signer_seeds)?;
+            }
+
+            (SourceType::CompressedToken, false, true) => {
+                let destination_token_account = ctx
+                    .accounts
+                    .destination_ctoken_token_account
+                    .as_ref()
+                    .ok_or(MultisigError::MissingAccount)?;
+                token_transfer.create_destination_ctoken_ata()?;
+                token_transfer.compressed_token_to_ctoken_transfer(
+                    &source_compressed_token_account,
+                    light_cpi_accounts.as_ref(),
+                    compressed_proof_args.as_ref(),
+                    signer_seeds,
+                    amount,
+                    destination_token_account,
+                )?;
+            }
+
+            (SourceType::CompressedToken, true, false) => {
+                let destination_token_account = ctx
+                    .accounts
+                    .destination_spl_token_account
+                    .as_ref()
+                    .ok_or(MultisigError::MissingAccount)?;
+                token_transfer.compressed_token_to_spl_transfer(
+                    &source_compressed_token_account,
+                    light_cpi_accounts.as_ref(),
+                    compressed_proof_args.as_ref(),
+                    signer_seeds,
+                    &spl_interface_pda_data,
+                    amount,
+                    destination_token_account,
+                )?;
+            }
+
+            _ => return err!(MultisigError::InvalidArguments),
         }
 
         let settings = &mut ctx.accounts.settings;
@@ -351,558 +381,4 @@ impl<'info> TokenTransferIntent<'info> {
 
         Ok(())
     }
-}
-
-fn spl_to_spl_transfer<'info>(
-    ctx: &Context<'_, '_, 'info, 'info, TokenTransferIntent<'info>>,
-    amount: u64,
-    signer_seeds: &[&[u8]],
-) -> Result<()> {
-    let destination_token_account = ctx
-        .accounts
-        .destination_spl_token_account
-        .as_ref()
-        .ok_or(MultisigError::MissingAccount)?;
-
-    let mint = Mint::try_deserialize(&mut ctx.accounts.mint.data.borrow().as_ref())?;
-    transfer_checked(
-        CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            TransferChecked {
-                from: ctx.accounts.source_spl_token_account.to_account_info(),
-                mint: ctx.accounts.mint.to_account_info(),
-                to: destination_token_account.to_account_info(),
-                authority: ctx.accounts.source.to_account_info(),
-            },
-        )
-        .with_signer(&[signer_seeds]),
-        amount,
-        mint.decimals,
-    )?;
-
-    Ok(())
-}
-
-fn spl_to_ctoken_transfer<'info>(
-    ctx: &Context<'_, '_, 'info, 'info, TokenTransferIntent<'info>>,
-    amount: u64,
-    spl_interface_pda_data: &Option<SplInterfacePda>,
-    signer_seeds: &[&[u8]],
-) -> Result<()> {
-    let destination_token_account = ctx
-        .accounts
-        .destination_ctoken_token_account
-        .as_ref()
-        .ok_or(MultisigError::MissingAccount)?;
-    let bump = ctx
-        .bumps
-        .destination_ctoken_token_account
-        .ok_or(MultisigError::MissingAccount)?;
-    let rent_sponsor = ctx
-        .accounts
-        .rent_sponsor
-        .as_ref()
-        .ok_or(MultisigError::MissingAccount)?;
-    let spl_interface_pda = ctx
-        .accounts
-        .spl_interface_pda
-        .as_ref()
-        .ok_or(MultisigError::MissingAccount)?;
-    let spl_interface_pda_data = spl_interface_pda_data
-        .as_ref()
-        .ok_or(MultisigError::MissingAccount)?;
-
-    CreateAssociatedCTokenAccountCpi {
-        owner: ctx.accounts.destination.to_account_info(),
-        mint: ctx.accounts.mint.to_account_info(),
-        payer: ctx.accounts.payer.to_account_info(),
-        associated_token_account: destination_token_account.to_account_info(),
-        system_program: ctx.accounts.system_program.to_account_info(),
-        bump,
-        compressible: Some(CompressibleParamsCpi::new(
-            ctx.accounts.compressible_config.to_account_info(),
-            rent_sponsor.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
-        )),
-        idempotent: true,
-    }
-    .invoke()?;
-
-    TransferSplToCtokenCpi {
-        amount,
-        spl_interface_pda_bump: spl_interface_pda_data.bump,
-        source_spl_token_account: ctx.accounts.source_spl_token_account.to_account_info(),
-        destination_ctoken_account: destination_token_account.to_account_info(),
-        authority: ctx.accounts.source.to_account_info(),
-        mint: ctx.accounts.mint.to_account_info(),
-        payer: ctx.accounts.payer.to_account_info(),
-        spl_interface_pda: spl_interface_pda.to_account_info(),
-        spl_token_program: ctx.accounts.token_program.to_account_info(),
-        compressed_token_program_authority: ctx
-            .accounts
-            .compressed_token_program_authority
-            .to_account_info(),
-    }
-    .invoke_signed(&[signer_seeds])?;
-
-    Ok(())
-}
-
-fn ctoken_to_ctoken_transfer<'info>(
-    ctx: &Context<'_, '_, 'info, 'info, TokenTransferIntent<'info>>,
-    amount: u64,
-    signer_seeds: &[&[u8]],
-) -> Result<()> {
-    let destination_token_account = ctx
-        .accounts
-        .destination_ctoken_token_account
-        .as_ref()
-        .ok_or(MultisigError::MissingAccount)?;
-    let bump = ctx
-        .bumps
-        .destination_ctoken_token_account
-        .ok_or(MultisigError::MissingAccount)?;
-    let rent_sponsor = ctx
-        .accounts
-        .rent_sponsor
-        .as_ref()
-        .ok_or(MultisigError::MissingAccount)?;
-
-    CreateAssociatedCTokenAccountCpi {
-        owner: ctx.accounts.destination.to_account_info(),
-        mint: ctx.accounts.mint.to_account_info(),
-        payer: ctx.accounts.payer.to_account_info(),
-        associated_token_account: destination_token_account.to_account_info(),
-        system_program: ctx.accounts.system_program.to_account_info(),
-        bump,
-        compressible: Some(CompressibleParamsCpi::new(
-            ctx.accounts.compressible_config.to_account_info(),
-            rent_sponsor.to_account_info(),
-            ctx.accounts.system_program.to_account_info(),
-        )),
-        idempotent: true,
-    }
-    .invoke()?;
-
-    TransferCTokenCpi {
-        amount,
-        source: ctx.accounts.source_ctoken_token_account.to_account_info(),
-        destination: destination_token_account.to_account_info(),
-        authority: ctx.accounts.source.to_account_info(),
-        max_top_up: None,
-    }
-    .invoke_signed(&[signer_seeds])?;
-
-    Ok(())
-}
-
-fn ctoken_to_spl_transfer<'info>(
-    ctx: &Context<'_, '_, 'info, 'info, TokenTransferIntent<'info>>,
-    amount: u64,
-    spl_interface_pda_data: &Option<SplInterfacePda>,
-    signer_seeds: &[&[u8]],
-) -> Result<()> {
-    let destination_token_account = ctx
-        .accounts
-        .destination_spl_token_account
-        .as_ref()
-        .ok_or(MultisigError::MissingAccount)?;
-    let spl_interface_pda = ctx
-        .accounts
-        .spl_interface_pda
-        .as_ref()
-        .ok_or(MultisigError::MissingAccount)?;
-    let spl_interface_pda_data = spl_interface_pda_data
-        .as_ref()
-        .ok_or(MultisigError::MissingAccount)?;
-
-    TransferCTokenToSplCpi {
-        source_ctoken_account: ctx.accounts.source_ctoken_token_account.to_account_info(),
-        destination_spl_token_account: destination_token_account.to_account_info(),
-        amount,
-        authority: ctx.accounts.source.to_account_info(),
-        mint: ctx.accounts.mint.to_account_info(),
-        payer: ctx.accounts.payer.to_account_info(),
-        spl_interface_pda: spl_interface_pda.to_account_info(),
-        spl_interface_pda_bump: spl_interface_pda_data.bump,
-        spl_token_program: ctx.accounts.token_program.to_account_info(),
-        compressed_token_program_authority: ctx
-            .accounts
-            .compressed_token_program_authority
-            .to_account_info(),
-    }
-    .invoke_signed(&[signer_seeds])?;
-
-    Ok(())
-}
-
-// should load into spl ata if exist, else load into ctoken ata
-fn load_ata<'info>(
-    ctx: &Context<'_, '_, 'info, 'info, TokenTransferIntent<'info>>,
-    amount: u64,
-    compressed_token_account: &Option<CompressedTokenArgs>,
-    compressed_proof_args: &Option<ProofArgs>,
-    spl_interface_pda_data: &Option<SplInterfacePda>,
-    signer_seeds: &[&[u8]],
-) -> Result<SourceType> {
-    let spl_token_account = TokenAccount::try_deserialize(
-        &mut ctx.accounts.source_spl_token_account.data.borrow().as_ref(),
-    )
-    .map_or(None, |f| Some(f));
-    let spl_balance = if spl_token_account.is_some() {
-        spl_token_account.unwrap().amount
-    } else {
-        0
-    };
-
-    let ctoken_balance =
-        ctoken::CToken::try_from_slice(&ctx.accounts.source_ctoken_token_account.data.borrow())
-            .map(|f| f.amount)
-            .unwrap_or(0);
-
-    let compressed_token_balance = compressed_token_account.as_ref().map_or(0, |f| f.amount);
-
-    let total = spl_balance
-        .saturating_add(ctoken_balance)
-        .saturating_add(compressed_token_balance);
-    if total < amount {
-        return Err(ProgramError::InsufficientFunds.into());
-    }
-
-    // Fast path: already enough SPL
-    if spl_balance >= amount {
-        return Ok(SourceType::Spl);
-    }
-
-    // If SPL ATA exists → consolidate into SPL and return Spl
-    if spl_token_account.is_some() {
-        // If SPL+CToken still insufficient, decompress compressed into SPL
-        if spl_balance.saturating_add(ctoken_balance) < amount {
-            decompress_to_spl(
-                ctx,
-                compressed_token_account,
-                compressed_proof_args,
-                signer_seeds,
-                compressed_token_balance,
-                spl_interface_pda_data,
-            )?;
-        }
-
-        // Move all CToken into SPL (if any)
-        if ctoken_balance != 0 {
-            let spl_interface_pda = ctx
-                .accounts
-                .spl_interface_pda
-                .as_ref()
-                .ok_or(MultisigError::MissingAccount)?;
-            let spl_interface_pda_data = spl_interface_pda_data
-                .as_ref()
-                .ok_or(MultisigError::MissingAccount)?;
-            TransferCTokenToSplCpi {
-                source_ctoken_account: ctx.accounts.source_ctoken_token_account.to_account_info(),
-                destination_spl_token_account: ctx
-                    .accounts
-                    .source_spl_token_account
-                    .to_account_info(),
-                amount: ctoken_balance,
-                authority: ctx.accounts.source.to_account_info(),
-                mint: ctx.accounts.mint.to_account_info(),
-                payer: ctx.accounts.payer.to_account_info(),
-                spl_interface_pda: spl_interface_pda.to_account_info(),
-                spl_interface_pda_bump: spl_interface_pda_data.bump,
-                spl_token_program: ctx.accounts.token_program.to_account_info(),
-                compressed_token_program_authority: ctx
-                    .accounts
-                    .compressed_token_program_authority
-                    .to_account_info(),
-            }
-            .invoke_signed(&[signer_seeds])?;
-        }
-
-        return Ok(SourceType::Spl);
-    }
-
-    // Else SPL ATA doesn't exist → ensure enough CToken (decompress into CToken path)
-    if ctoken_balance < amount {
-        decompress_to_ctoken(
-            ctx,
-            compressed_token_account,
-            compressed_proof_args,
-            signer_seeds,
-            compressed_token_balance,
-        )?;
-    }
-
-    Ok(SourceType::CToken)
-}
-
-fn decompress_to_spl<'info>(
-    ctx: &Context<'_, '_, 'info, 'info, TokenTransferIntent<'info>>,
-    compressed_token_account: &Option<CompressedTokenArgs>,
-    compressed_proof_args: &Option<ProofArgs>,
-    signer_seeds: &[&[u8]],
-    compressed_token_balance: u64,
-    spl_interface_pda_data: &Option<SplInterfacePda>,
-) -> Result<()> {
-    let compressed_proof_args = compressed_proof_args
-        .as_ref()
-        .ok_or(MultisigError::InvalidArguments)?;
-    let compressed_token_account = compressed_token_account
-        .as_ref()
-        .ok_or(MultisigError::InvalidArguments)?;
-    let light_cpi_accounts = CpiAccounts::new(
-        &ctx.accounts.payer,
-        &ctx.remaining_accounts[compressed_proof_args.light_cpi_accounts_start_index as usize..],
-        LIGHT_CPI_SIGNER,
-    );
-    let spl_interface_pda = ctx
-        .accounts
-        .spl_interface_pda
-        .as_ref()
-        .ok_or(MultisigError::MissingAccount)?;
-    let spl_interface_pda_data = spl_interface_pda_data
-        .as_ref()
-        .ok_or(MultisigError::MissingAccount)?;
-
-    let tree_ai = light_cpi_accounts
-        .get_tree_account_info(
-            compressed_token_account
-                .merkle_context
-                .merkle_tree_pubkey_index as usize,
-        )
-        .map_err(|_| ErrorCode::AccountNotEnoughKeys)?
-        .to_account_info();
-    let queue_ai = light_cpi_accounts
-        .get_tree_account_info(compressed_token_account.merkle_context.queue_pubkey_index as usize)
-        .map_err(|_| ErrorCode::AccountNotEnoughKeys)?
-        .to_account_info();
-
-    let mut packed_accounts = Vec::new();
-    let tree_index = packed_accounts.len();
-    packed_accounts.push(AccountMeta::new(tree_ai.key(), false));
-    let queue_index = packed_accounts.len();
-    packed_accounts.push(AccountMeta::new(queue_ai.key(), false));
-    let mint_index = packed_accounts.len();
-    packed_accounts.push(AccountMeta::new_readonly(ctx.accounts.mint.key(), false));
-    let owner_index = packed_accounts.len();
-    packed_accounts.push(AccountMeta::new_readonly(ctx.accounts.source.key(), true));
-    let source_index = packed_accounts.len();
-    packed_accounts.push(AccountMeta::new(
-        ctx.accounts.source_spl_token_account.key(),
-        false,
-    ));
-    let pool_account_index = packed_accounts.len();
-    packed_accounts.push(AccountMeta::new(spl_interface_pda.key(), false));
-    packed_accounts.push(AccountMeta::new_readonly(
-        ctx.accounts.token_program.key(),
-        false,
-    ));
-
-    let mut token_accounts = CTokenAccount2::new(vec![MultiInputTokenDataWithContext {
-        owner: owner_index as u8,
-        amount: compressed_token_account.amount,
-        has_delegate: false,
-        delegate: 0,
-        mint: mint_index as u8,
-        version: compressed_token_account.version,
-        merkle_context: PackedMerkleContext {
-            merkle_tree_pubkey_index: tree_index as u8,
-            queue_pubkey_index: queue_index as u8,
-            leaf_index: compressed_token_account.merkle_context.leaf_index,
-            prove_by_index: compressed_token_account.merkle_context.prove_by_index,
-        },
-        root_index: compressed_token_account.root_index,
-    }])
-    .map_err(|_| MultisigError::InvalidAccount)?;
-
-    token_accounts
-        .decompress_spl(
-            compressed_token_balance,
-            source_index as u8,
-            pool_account_index as u8,
-            spl_interface_pda_data.index,
-            spl_interface_pda_data.bump,
-        )
-        .map_err(|_| MultisigError::InvalidAccount)?;
-
-    // account infos
-    let mut account_info = Vec::new();
-    account_info.push(light_cpi_accounts.account_infos()[0].to_account_info());
-    account_info.push(light_cpi_accounts.fee_payer().to_account_info());
-    account_info.push(
-        ctx.accounts
-            .compressed_token_program_authority
-            .to_account_info(),
-    );
-    account_info.push(
-        light_cpi_accounts
-            .registered_program_pda()
-            .unwrap()
-            .to_account_info(),
-    );
-    account_info.push(
-        light_cpi_accounts
-            .account_compression_authority()
-            .unwrap()
-            .to_account_info(),
-    );
-    account_info.push(
-        light_cpi_accounts
-            .account_compression_program()
-            .unwrap()
-            .to_account_info(),
-    );
-    account_info.push(
-        light_cpi_accounts
-            .system_program()
-            .unwrap()
-            .to_account_info(),
-    );
-
-    account_info.push(tree_ai);
-    account_info.push(queue_ai);
-    account_info.push(ctx.accounts.mint.to_account_info());
-    account_info.push(ctx.accounts.source.to_account_info());
-    account_info.push(ctx.accounts.source_spl_token_account.to_account_info());
-    account_info.push(spl_interface_pda.to_account_info());
-    account_info.push(ctx.accounts.token_program.to_account_info());
-
-    let ix = create_transfer2_instruction(Transfer2Inputs {
-        token_accounts: vec![token_accounts],
-        validity_proof: ValidityProof(compressed_proof_args.proof),
-        transfer_config: Transfer2Config::new(),
-        meta_config: Transfer2AccountsMetaConfig::new(ctx.accounts.payer.key(), packed_accounts),
-        in_lamports: None,
-        out_lamports: None,
-        output_queue: queue_index as u8,
-    })
-    .map_err(|_| MultisigError::InvalidAccount)?;
-
-    invoke_signed(&ix, &account_info, &[signer_seeds])?;
-    Ok(())
-}
-
-fn decompress_to_ctoken<'info>(
-    ctx: &Context<'_, '_, 'info, 'info, TokenTransferIntent<'info>>,
-    compressed_token_account: &Option<CompressedTokenArgs>,
-    compressed_proof_args: &Option<ProofArgs>,
-    signer_seeds: &[&[u8]],
-    compressed_token_balance: u64,
-) -> Result<()> {
-    let compressed_proof_args = compressed_proof_args
-        .as_ref()
-        .ok_or(MultisigError::InvalidArguments)?;
-    let compressed_token_account = compressed_token_account
-        .as_ref()
-        .ok_or(MultisigError::InvalidArguments)?;
-    let light_cpi_accounts = CpiAccounts::new(
-        &ctx.accounts.payer,
-        &ctx.remaining_accounts[compressed_proof_args.light_cpi_accounts_start_index as usize..],
-        LIGHT_CPI_SIGNER,
-    );
-    let tree_ai = light_cpi_accounts
-        .get_tree_account_info(
-            compressed_token_account
-                .merkle_context
-                .merkle_tree_pubkey_index as usize,
-        )
-        .map_err(|_| ErrorCode::AccountNotEnoughKeys)?
-        .to_account_info();
-    let queue_ai = light_cpi_accounts
-        .get_tree_account_info(compressed_token_account.merkle_context.queue_pubkey_index as usize)
-        .map_err(|_| ErrorCode::AccountNotEnoughKeys)?
-        .to_account_info();
-
-    let mut packed_accounts = Vec::new();
-    let tree_index = packed_accounts.len();
-    packed_accounts.push(AccountMeta::new(tree_ai.key(), false));
-    let queue_index = packed_accounts.len();
-    packed_accounts.push(AccountMeta::new(queue_ai.key(), false));
-    let mint_index = packed_accounts.len();
-    packed_accounts.push(AccountMeta::new_readonly(ctx.accounts.mint.key(), false));
-    let owner_index = packed_accounts.len();
-    packed_accounts.push(AccountMeta::new_readonly(ctx.accounts.source.key(), true));
-    let source_index = packed_accounts.len();
-    packed_accounts.push(AccountMeta::new(
-        ctx.accounts.source_ctoken_token_account.key(),
-        false,
-    ));
-    packed_accounts.push(AccountMeta::new_readonly(
-        ctx.accounts.token_program.key(),
-        false,
-    ));
-
-    let mut token_accounts = CTokenAccount2::new(vec![MultiInputTokenDataWithContext {
-        owner: owner_index as u8,
-        amount: compressed_token_account.amount,
-        has_delegate: false,
-        delegate: 0,
-        mint: mint_index as u8,
-        version: compressed_token_account.version,
-        merkle_context: PackedMerkleContext {
-            merkle_tree_pubkey_index: tree_index as u8,
-            queue_pubkey_index: queue_index as u8,
-            leaf_index: compressed_token_account.merkle_context.leaf_index,
-            prove_by_index: compressed_token_account.merkle_context.prove_by_index,
-        },
-        root_index: compressed_token_account.root_index,
-    }])
-    .map_err(|_| MultisigError::InvalidAccount)?;
-
-    token_accounts
-        .decompress_ctoken(compressed_token_balance, source_index as u8)
-        .map_err(|_| MultisigError::InvalidAccount)?;
-
-    let mut account_info = Vec::new();
-    account_info.push(light_cpi_accounts.account_infos()[0].to_account_info());
-    account_info.push(light_cpi_accounts.fee_payer().to_account_info());
-    account_info.push(
-        ctx.accounts
-            .compressed_token_program_authority
-            .to_account_info(),
-    );
-    account_info.push(
-        light_cpi_accounts
-            .registered_program_pda()
-            .unwrap()
-            .to_account_info(),
-    );
-    account_info.push(
-        light_cpi_accounts
-            .account_compression_authority()
-            .unwrap()
-            .to_account_info(),
-    );
-    account_info.push(
-        light_cpi_accounts
-            .account_compression_program()
-            .unwrap()
-            .to_account_info(),
-    );
-    account_info.push(
-        light_cpi_accounts
-            .system_program()
-            .unwrap()
-            .to_account_info(),
-    );
-
-    account_info.push(tree_ai);
-    account_info.push(queue_ai);
-    account_info.push(ctx.accounts.mint.to_account_info());
-    account_info.push(ctx.accounts.source.to_account_info());
-    account_info.push(ctx.accounts.source_ctoken_token_account.to_account_info());
-
-    let ix = create_transfer2_instruction(Transfer2Inputs {
-        token_accounts: vec![token_accounts],
-        validity_proof: ValidityProof(compressed_proof_args.proof),
-        transfer_config: Transfer2Config::new(),
-        meta_config: Transfer2AccountsMetaConfig::new(ctx.accounts.payer.key(), packed_accounts),
-        in_lamports: None,
-        out_lamports: None,
-        output_queue: queue_index as u8,
-    })
-    .map_err(|_| MultisigError::InvalidAccount)?;
-
-    invoke_signed(&ix, &account_info, &[signer_seeds])?;
-    Ok(())
 }

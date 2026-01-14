@@ -220,6 +220,7 @@ export async function createTransactionChallenge(
           {
             encoding: "base64",
             commitment: "confirmed",
+            dataSlice: { offset: 8, length: 40 },
           }
         )
         .send()
@@ -228,10 +229,8 @@ export async function createTransactionChallenge(
       throw new Error("Unable to fetch slot sysvar");
     }
     const slotHashData = getBase64Encoder().encode(slotSysvarData[0]);
-    slotNumber = getU64Decoder()
-      .decode(slotHashData.subarray(8, 16))
-      .toString();
-    slotHashBytes = slotHashData.subarray(16, 48);
+    slotNumber = getU64Decoder().decode(slotHashData.subarray(0, 8)).toString();
+    slotHashBytes = slotHashData.subarray(8, 40);
     slotHash = getBase58Decoder().decode(slotHashBytes);
   } else {
     slotHashBytes = new Uint8Array(getBase58Encoder().encode(slotHash));

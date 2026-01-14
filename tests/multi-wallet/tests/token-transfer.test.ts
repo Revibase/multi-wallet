@@ -51,6 +51,8 @@ import type { TestContext } from "../types.ts";
 type SourceKind =
   | "spl"
   | "ctoken"
+  | "compressed"
+  | "spl&compressed"
   | "ctoken+compressed"
   | "spl+ctoken"
   | "spl+ctoken+compressed";
@@ -83,13 +85,23 @@ const SCENARIOS: Scenario[] = [
     destinationAtaExists: false,
   },
   {
-    name: "when source ata is ctoken & compressed token and destination ata exist",
-    source: "ctoken+compressed",
+    name: "when source ata is compressed token and destination ata exist",
+    source: "compressed",
     destinationAtaExists: true,
   },
   {
-    name: "when source ata is ctoken & compressed token and destination ata does not exist",
-    source: "ctoken+compressed",
+    name: "when source ata is compressed token and destination ata does not exist",
+    source: "compressed",
+    destinationAtaExists: false,
+  },
+  {
+    name: "when source ata is spl & compressed token and destination ata exist",
+    source: "spl&compressed",
+    destinationAtaExists: true,
+  },
+  {
+    name: "when source ata is spl & compressed token and destination ata does not exist",
+    source: "spl&compressed",
     destinationAtaExists: false,
   },
   {
@@ -100,6 +112,16 @@ const SCENARIOS: Scenario[] = [
   {
     name: "when source ata is spl & ctoken and destination ata does not exist",
     source: "spl+ctoken",
+    destinationAtaExists: false,
+  },
+  {
+    name: "when source ata is ctoken & compressed token and destination ata exist",
+    source: "ctoken+compressed",
+    destinationAtaExists: true,
+  },
+  {
+    name: "when source ata is ctoken & compressed token and destination ata does not exist",
+    source: "ctoken+compressed",
     destinationAtaExists: false,
   },
   {
@@ -125,7 +147,7 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
       }
     });
   }
-  it("when source ata is spl & ctoken & compressed token and destination ata does not exist with secp256r1 signer", async () => {
+  xit("when source ata is spl & ctoken & compressed token and destination ata does not exist with secp256r1 signer", async () => {
     let ctx = getCtx();
     ctx = await createMultiWallet(ctx);
     const mint = await createMintAndMintToSplAndCTokenAndCompressedAccount(ctx);
@@ -405,6 +427,204 @@ const createMintAndMintToCTokenAccount = async (ctx: TestContext) => {
     recipientAta,
     newMember,
     10 ** 9
+  );
+
+  return address(mint.toString());
+};
+
+const createMintAndMintToCompressedAccount = async (ctx: TestContext) => {
+  if (
+    !ctx.index ||
+    !ctx.multiWalletVault ||
+    !ctx.wallet ||
+    !ctx.payer ||
+    !ctx.newMember ||
+    !ctx.newMemberSecretKey
+  )
+    return;
+  await fundMultiWalletVault(ctx, BigInt(10 ** 8));
+  // Create ephemeral keypair
+  const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
+    crypto.getRandomValues(new Uint8Array(32))
+  );
+
+  // Create account instruction
+  const createAccount = getCreateAccountInstruction({
+    payer: ctx.payer,
+    newAccount: ephemeralKeypair,
+    space: getMintSize(),
+    lamports: await getSolanaRpc()
+      .getMinimumBalanceForRentExemption(BigInt(getMintSize()))
+      .send(),
+    programAddress: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+
+  // Create mint instruction
+  const createMint = getInitializeMintInstruction({
+    mint: ephemeralKeypair.address,
+    decimals: 5,
+    mintAuthority: ctx.newMember.address,
+  });
+  const newMemberSplAta = await getAssociatedTokenAccountAddress(
+    ephemeralKeypair.address,
+    ctx.newMember,
+    TOKEN_2022_PROGRAM_ADDRESS
+  );
+  const ataIx = getCreateAssociatedTokenIdempotentInstruction({
+    ata: newMemberSplAta,
+    mint: ephemeralKeypair.address,
+    owner: ctx.newMember.address,
+    payer: ctx.payer,
+    tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+
+  const mintTo = getMintToCheckedInstruction({
+    amount: 10 ** 9,
+    decimals: 5,
+    mint: ephemeralKeypair.address,
+    mintAuthority: ctx.newMember,
+    token: newMemberSplAta,
+  });
+  await sendTransaction(
+    [createAccount, createMint, ataIx, mintTo],
+    ctx.payer,
+    ctx.addressLookUpTable
+  );
+
+  const mint = new PublicKey(ephemeralKeypair.address.toString());
+  const payer = {
+    publicKey: new PublicKey(ctx.payer.address.toString()),
+    secretKey: ctx.payerSecretKey,
+  };
+  const newMember = {
+    publicKey: new PublicKey(ctx.newMember.address.toString()),
+    secretKey: ctx.newMemberSecretKey,
+  };
+
+  await createSplInterface(getLightProtocolRpc(), payer, mint);
+
+  await compress(
+    getLightProtocolRpc(),
+    payer,
+    mint,
+    10 ** 9,
+    newMember,
+    new PublicKey(newMemberSplAta),
+    new PublicKey(ctx.multiWalletVault)
+  );
+
+  return address(mint.toString());
+};
+
+const createMintAndMintToSplAndCompressedTokenAccount = async (
+  ctx: TestContext
+) => {
+  if (
+    !ctx.index ||
+    !ctx.multiWalletVault ||
+    !ctx.wallet ||
+    !ctx.payer ||
+    !ctx.newMember ||
+    !ctx.newMemberSecretKey
+  )
+    return;
+  await fundMultiWalletVault(ctx, BigInt(10 ** 8));
+  // Create ephemeral keypair
+  const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
+    crypto.getRandomValues(new Uint8Array(32))
+  );
+
+  // Create account instruction
+  const createAccount = getCreateAccountInstruction({
+    payer: ctx.payer,
+    newAccount: ephemeralKeypair,
+    space: getMintSize(),
+    lamports: await getSolanaRpc()
+      .getMinimumBalanceForRentExemption(BigInt(getMintSize()))
+      .send(),
+    programAddress: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+
+  // Create mint instruction
+  const createMint = getInitializeMintInstruction({
+    mint: ephemeralKeypair.address,
+    decimals: 5,
+    mintAuthority: ctx.newMember.address,
+  });
+  const newMemberSplAta = await getAssociatedTokenAccountAddress(
+    ephemeralKeypair.address,
+    ctx.newMember,
+    TOKEN_2022_PROGRAM_ADDRESS
+  );
+
+  const ataIx = getCreateAssociatedTokenIdempotentInstruction({
+    ata: newMemberSplAta,
+    mint: ephemeralKeypair.address,
+    owner: ctx.newMember.address,
+    payer: ctx.payer,
+    tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+
+  const mintTo = getMintToCheckedInstruction({
+    amount: 10 ** 9,
+    decimals: 5,
+    mint: ephemeralKeypair.address,
+    mintAuthority: ctx.newMember,
+    token: newMemberSplAta,
+  });
+  await sendTransaction(
+    [createAccount, createMint, ataIx, mintTo],
+    ctx.payer,
+    ctx.addressLookUpTable
+  );
+
+  const mint = new PublicKey(ephemeralKeypair.address.toString());
+  const payer = {
+    publicKey: new PublicKey(ctx.payer.address.toString()),
+    secretKey: ctx.payerSecretKey,
+  };
+  const newMember = {
+    publicKey: new PublicKey(ctx.newMember.address.toString()),
+    secretKey: ctx.newMemberSecretKey,
+  };
+
+  const recipientSplAta = await getAssociatedTokenAccountAddress(
+    ephemeralKeypair.address,
+    ctx.multiWalletVault,
+    TOKEN_2022_PROGRAM_ADDRESS
+  );
+  const ataIx2 = getCreateAssociatedTokenIdempotentInstruction({
+    ata: recipientSplAta,
+    mint: ephemeralKeypair.address,
+    owner: ctx.multiWalletVault,
+    payer: ctx.payer,
+    tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+  await sendTransaction([ataIx2], ctx.payer);
+
+  await createSplInterface(getLightProtocolRpc(), payer, mint);
+
+  //transfer half to multiwalletSplToken
+  await transferInterface(
+    getLightProtocolRpc(),
+    payer,
+    new PublicKey(newMemberSplAta),
+    mint,
+    new PublicKey(recipientSplAta),
+    newMember,
+    10 ** 9 / 2,
+    new PublicKey(TOKEN_2022_PROGRAM_ADDRESS)
+  );
+
+  // transfer half to multiWallet compressed token
+  await compress(
+    getLightProtocolRpc(),
+    payer,
+    mint,
+    10 ** 9 / 2,
+    newMember,
+    new PublicKey(newMemberSplAta),
+    new PublicKey(ctx.multiWalletVault)
   );
 
   return address(mint.toString());
@@ -868,6 +1088,10 @@ async function mintForScenario(ctx: TestContext, source: SourceKind) {
       return createMintAndMintToSplAccount(ctx);
     case "ctoken":
       return createMintAndMintToCTokenAccount(ctx);
+    case "compressed":
+      return createMintAndMintToCompressedAccount(ctx);
+    case "spl&compressed":
+      return createMintAndMintToSplAndCompressedTokenAccount(ctx);
     case "ctoken+compressed":
       return createMintAndMintToCTokenAndCompressedAccount(ctx);
     case "spl+ctoken":

@@ -386,7 +386,7 @@ pub mod multi_wallet {
     pub fn token_transfer_intent_compressed<'info>(
         ctx: Context<'_, '_, 'info, 'info, TokenTransferIntentCompressed<'info>>,
         amount: u64,
-        compressed_token_account: Option<CompressedTokenArgs>,
+        source_compressed_token_account: Option<SourceCompressedTokenArgs>,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
         settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
@@ -394,7 +394,7 @@ pub mod multi_wallet {
         TokenTransferIntentCompressed::process(
             ctx,
             amount,
-            compressed_token_account,
+            source_compressed_token_account,
             secp256r1_verify_args,
             settings_mut_args,
             compressed_proof_args,
@@ -418,14 +418,14 @@ pub mod multi_wallet {
     pub fn token_transfer_intent<'info>(
         ctx: Context<'_, '_, 'info, 'info, TokenTransferIntent<'info>>,
         amount: u64,
-        compressed_token_account: Option<CompressedTokenArgs>,
+        source_compressed_token_account: Option<SourceCompressedTokenArgs>,
         compressed_proof_args: Option<ProofArgs>,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
         TokenTransferIntent::process(
             ctx,
             amount,
-            compressed_token_account,
+            source_compressed_token_account,
             compressed_proof_args,
             secp256r1_verify_args,
         )

@@ -27,21 +27,21 @@ import {
   type PackedMerkleContextArgs,
 } from '.';
 
-export type CompressedTokenArgs = {
+export type SourceCompressedTokenArgs = {
   version: number;
   rootIndex: number;
   amount: bigint;
   merkleContext: PackedMerkleContext;
 };
 
-export type CompressedTokenArgsArgs = {
+export type SourceCompressedTokenArgsArgs = {
   version: number;
   rootIndex: number;
   amount: number | bigint;
   merkleContext: PackedMerkleContextArgs;
 };
 
-export function getCompressedTokenArgsEncoder(): FixedSizeEncoder<CompressedTokenArgsArgs> {
+export function getSourceCompressedTokenArgsEncoder(): FixedSizeEncoder<SourceCompressedTokenArgsArgs> {
   return getStructEncoder([
     ['version', getU8Encoder()],
     ['rootIndex', getU16Encoder()],
@@ -50,7 +50,7 @@ export function getCompressedTokenArgsEncoder(): FixedSizeEncoder<CompressedToke
   ]);
 }
 
-export function getCompressedTokenArgsDecoder(): FixedSizeDecoder<CompressedTokenArgs> {
+export function getSourceCompressedTokenArgsDecoder(): FixedSizeDecoder<SourceCompressedTokenArgs> {
   return getStructDecoder([
     ['version', getU8Decoder()],
     ['rootIndex', getU16Decoder()],
@@ -59,12 +59,12 @@ export function getCompressedTokenArgsDecoder(): FixedSizeDecoder<CompressedToke
   ]);
 }
 
-export function getCompressedTokenArgsCodec(): FixedSizeCodec<
-  CompressedTokenArgsArgs,
-  CompressedTokenArgs
+export function getSourceCompressedTokenArgsCodec(): FixedSizeCodec<
+  SourceCompressedTokenArgsArgs,
+  SourceCompressedTokenArgs
 > {
   return combineCodec(
-    getCompressedTokenArgsEncoder(),
-    getCompressedTokenArgsDecoder()
+    getSourceCompressedTokenArgsEncoder(),
+    getSourceCompressedTokenArgsDecoder()
   );
 }

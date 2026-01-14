@@ -54,7 +54,7 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
             MemberKey::get_signer(voter, secp256r1_verify_args, instructions_sysvar.as_ref())?;
         let (settings, settings_key) =
             CompressedSettings::verify_readonly_compressed_settings_account(
-                &payer.to_account_info(),
+                &payer,
                 settings_readonly_args,
                 &remaining_accounts,
                 compressed_proof_args,

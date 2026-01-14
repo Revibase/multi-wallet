@@ -95,7 +95,6 @@ export type TransactionActionType =
   | "vote"
   | "sync"
   | "close"
-  | "compress"
   | "decompress"
   | "transfer_intent"
   | "change_delegate"

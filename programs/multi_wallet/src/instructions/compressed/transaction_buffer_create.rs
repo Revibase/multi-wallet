@@ -142,7 +142,7 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
 
         let (settings, settings_key) =
             CompressedSettings::verify_readonly_compressed_settings_account(
-                &payer.to_account_info(),
+                &payer,
                 &settings_readonly_args,
                 ctx.remaining_accounts,
                 &compressed_proof_args,

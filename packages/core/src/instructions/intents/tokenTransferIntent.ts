@@ -5,13 +5,13 @@ import {
   type ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
 import { PublicKey } from "@solana/web3.js";
-import BN from "bn.js";
 import {
   AccountRole,
   address,
   getAddressEncoder,
   getBase64Encoder,
   getProgramDerivedAddress,
+  getU64Decoder,
   getUtf8Encoder,
   none,
   some,
@@ -29,9 +29,9 @@ import {
   getTokenTransferIntentCompressedInstruction,
   getTokenTransferIntentInstruction,
   type CompressedSettings,
-  type CompressedTokenArgsArgs,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
   type SettingsMutArgs,
+  type SourceCompressedTokenArgsArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
 import {
@@ -144,18 +144,20 @@ export async function tokenTransferIntent({
     : BigInt(0);
 
   let cTokenBalance = BigInt(0);
+  let sourceCtokenExist = true;
   if (splBalance < BigInt(amount)) {
-    const sourceCTokenAccount = await fetchCachedAccountInfo(
+    const sourceCTokenAtaInfo = await fetchCachedAccountInfo(
       sourceCtokenAta,
       cachedAccounts
     );
-    cTokenBalance = sourceCTokenAccount.value
+    sourceCtokenExist = !!sourceCTokenAtaInfo.value;
+    cTokenBalance = sourceCtokenExist
       ? BigInt(
-          parseTokenData(
+          parseTokenAmount(
             new Uint8Array(
-              getBase64Encoder().encode(sourceCTokenAccount.value.data[0])
+              getBase64Encoder().encode(sourceCTokenAtaInfo.value!.data[0])
             )
-          )?.amount.toNumber() ?? 0
+          )?.amount ?? 0
         )
       : BigInt(0);
   }
@@ -169,10 +171,10 @@ export async function tokenTransferIntent({
 
   const requireSplInterface =
     (sourceSplExists &&
-      (cTokenBalance > BigInt(0) ||
-        splBalance + cTokenBalance < BigInt(amount) ||
-        !!destinationCtokenTokenAccount)) ||
-    (!sourceSplExists && !!destinationSplTokenAccount);
+      (splBalance + cTokenBalance < BigInt(amount) ||
+        cTokenBalance > BigInt(0) ||
+        !destinationSplExists)) ||
+    (!sourceSplExists && destinationSplExists);
 
   const requireRentSponsor = !!destinationCtokenTokenAccount;
 
@@ -236,7 +238,7 @@ export async function tokenTransferIntent({
     }
   }
 
-  const compressedTokenAccount: OptionOrNullable<CompressedTokenArgsArgs> =
+  const sourceCompressedTokenAccount: OptionOrNullable<SourceCompressedTokenArgsArgs> =
     compressedAccount && parsed && proof
       ? some({
           amount: parsed.amount.toNumber(),
@@ -314,7 +316,7 @@ export async function tokenTransferIntent({
         mint,
         tokenProgram,
         remainingAccounts,
-        compressedTokenAccount,
+        sourceCompressedTokenAccount,
         compressibleConfig,
         splInterfacePda: requireSplInterface ? splInterfacePda : undefined,
         rentSponsor: requireRentSponsor ? rentSponsor : undefined,
@@ -334,7 +336,7 @@ export async function tokenTransferIntent({
         tokenProgram,
         remainingAccounts,
         payer,
-        compressedTokenAccount,
+        sourceCompressedTokenAccount,
         compressedProofArgs,
         sourceSplTokenAccount: sourceSplAta,
         sourceCtokenTokenAccount: sourceCtokenAta,
@@ -462,43 +464,14 @@ function getVersionFromDiscriminator(
   // Default to ShaFlat
   return TokenDataVersion.ShaFlat;
 }
-function parseTokenData(data: Uint8Array): {
-  mint: PublicKey;
-  owner: PublicKey;
-  amount: BN;
-  delegate: PublicKey | null;
-  state: number;
-  tlv: Uint8Array | null;
+function parseTokenAmount(data: Uint8Array): {
+  amount: number | bigint;
 } | null {
   if (!data || data.length === 0) return null;
-
   try {
-    let offset = 0;
-    const mint = new PublicKey(data.slice(offset, offset + 32));
-    offset += 32;
-    const owner = new PublicKey(data.slice(offset, offset + 32));
-    offset += 32;
-    const amount = new BN(data.slice(offset, offset + 8), "le");
-    offset += 8;
-    const delegateOption = data[offset];
-    offset += 1;
-    const delegate = delegateOption
-      ? new PublicKey(data.slice(offset, offset + 32))
-      : null;
-    offset += 32;
-    const state = data[offset];
-    offset += 1;
-    const tlvOption = data[offset];
-    offset += 1;
-    const tlv = tlvOption ? data.slice(offset) : null;
-
+    const amount = getU64Decoder().decode(data.slice(64, 72));
     return {
-      mint,
-      owner,
       amount,
-      delegate,
-      state,
-      tlv,
     };
   } catch (error) {
     console.error("Token data parsing error:", error);

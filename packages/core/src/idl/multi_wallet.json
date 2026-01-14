@@ -1197,11 +1197,11 @@
           "type": "u64"
         },
         {
-          "name": "compressed_token_account",
+          "name": "source_compressed_token_account",
           "type": {
             "option": {
               "defined": {
-                "name": "CompressedTokenArgs"
+                "name": "SourceCompressedTokenArgs"
               }
             }
           }
@@ -1436,11 +1436,11 @@
           "type": "u64"
         },
         {
-          "name": "compressed_token_account",
+          "name": "source_compressed_token_account",
           "type": {
             "option": {
               "defined": {
-                "name": "CompressedTokenArgs"
+                "name": "SourceCompressedTokenArgs"
               }
             }
           }
@@ -2637,34 +2637,6 @@
       }
     },
     {
-      "name": "CompressedTokenArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "version",
-            "type": "u8"
-          },
-          {
-            "name": "root_index",
-            "type": "u16"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "merkle_context",
-            "type": {
-              "defined": {
-                "name": "PackedMerkleContext"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "ConfigAction",
       "type": {
         "kind": "enum",
@@ -3392,6 +3364,34 @@
             "type": {
               "defined": {
                 "name": "CompressedSettings"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SourceCompressedTokenArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "root_index",
+            "type": "u16"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "merkle_context",
+            "type": {
+              "defined": {
+                "name": "PackedMerkleContext"
               }
             }
           }

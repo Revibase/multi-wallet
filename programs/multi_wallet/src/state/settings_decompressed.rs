@@ -30,10 +30,7 @@ impl Settings {
     pub fn edit_permissions(&mut self, members: Vec<EditMemberArgs>) -> Result<()> {
         MultisigSettings::edit_permissions(self, members)
     }
-    pub fn add_members<'a>(
-        &mut self,
-        new_members: Vec<AddMemberArgs>,
-    ) -> Result<Vec<AddMemberArgs>> {
+    pub fn add_members(&mut self, new_members: Vec<AddMemberArgs>) -> Result<Vec<AddMemberArgs>> {
         MultisigSettings::add_members(self, new_members)
     }
 

@@ -48,22 +48,22 @@ import {
   type ResolvedAccount,
 } from '../shared';
 import {
-  getCompressedTokenArgsDecoder,
-  getCompressedTokenArgsEncoder,
   getProofArgsDecoder,
   getProofArgsEncoder,
   getSecp256r1VerifyArgsWithDomainAddressDecoder,
   getSecp256r1VerifyArgsWithDomainAddressEncoder,
   getSettingsMutArgsDecoder,
   getSettingsMutArgsEncoder,
-  type CompressedTokenArgs,
-  type CompressedTokenArgsArgs,
+  getSourceCompressedTokenArgsDecoder,
+  getSourceCompressedTokenArgsEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgsWithDomainAddress,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
   type SettingsMutArgs,
   type SettingsMutArgsArgs,
+  type SourceCompressedTokenArgs,
+  type SourceCompressedTokenArgsArgs,
 } from '../types';
 
 export const TOKEN_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR = new Uint8Array([
@@ -177,7 +177,7 @@ export type TokenTransferIntentCompressedInstruction<
 export type TokenTransferIntentCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   amount: bigint;
-  compressedTokenAccount: Option<CompressedTokenArgs>;
+  sourceCompressedTokenAccount: Option<SourceCompressedTokenArgs>;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
   settingsMutArgs: SettingsMutArgs;
   compressedProofArgs: ProofArgs;
@@ -185,7 +185,7 @@ export type TokenTransferIntentCompressedInstructionData = {
 
 export type TokenTransferIntentCompressedInstructionDataArgs = {
   amount: number | bigint;
-  compressedTokenAccount: OptionOrNullable<CompressedTokenArgsArgs>;
+  sourceCompressedTokenAccount: OptionOrNullable<SourceCompressedTokenArgsArgs>;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
   settingsMutArgs: SettingsMutArgsArgs;
   compressedProofArgs: ProofArgsArgs;
@@ -197,8 +197,8 @@ export function getTokenTransferIntentCompressedInstructionDataEncoder(): Encode
       ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
       ['amount', getU64Encoder()],
       [
-        'compressedTokenAccount',
-        getOptionEncoder(getCompressedTokenArgsEncoder()),
+        'sourceCompressedTokenAccount',
+        getOptionEncoder(getSourceCompressedTokenArgsEncoder()),
       ],
       [
         'secp256r1VerifyArgs',
@@ -219,8 +219,8 @@ export function getTokenTransferIntentCompressedInstructionDataDecoder(): Decode
     ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
     ['amount', getU64Decoder()],
     [
-      'compressedTokenAccount',
-      getOptionDecoder(getCompressedTokenArgsDecoder()),
+      'sourceCompressedTokenAccount',
+      getOptionDecoder(getSourceCompressedTokenArgsDecoder()),
     ],
     [
       'secp256r1VerifyArgs',
@@ -282,7 +282,7 @@ export type TokenTransferIntentCompressedAsyncInput<
   rentSponsor?: Address<TAccountRentSponsor>;
   compressedTokenProgram?: Address<TAccountCompressedTokenProgram>;
   amount: TokenTransferIntentCompressedInstructionDataArgs['amount'];
-  compressedTokenAccount: TokenTransferIntentCompressedInstructionDataArgs['compressedTokenAccount'];
+  sourceCompressedTokenAccount: TokenTransferIntentCompressedInstructionDataArgs['sourceCompressedTokenAccount'];
   secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs['secp256r1VerifyArgs'];
   settingsMutArgs: TokenTransferIntentCompressedInstructionDataArgs['settingsMutArgs'];
   compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs['compressedProofArgs'];
@@ -591,7 +591,7 @@ export type TokenTransferIntentCompressedInput<
   rentSponsor?: Address<TAccountRentSponsor>;
   compressedTokenProgram?: Address<TAccountCompressedTokenProgram>;
   amount: TokenTransferIntentCompressedInstructionDataArgs['amount'];
-  compressedTokenAccount: TokenTransferIntentCompressedInstructionDataArgs['compressedTokenAccount'];
+  sourceCompressedTokenAccount: TokenTransferIntentCompressedInstructionDataArgs['sourceCompressedTokenAccount'];
   secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs['secp256r1VerifyArgs'];
   settingsMutArgs: TokenTransferIntentCompressedInstructionDataArgs['settingsMutArgs'];
   compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs['compressedProofArgs'];
