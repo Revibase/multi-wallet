@@ -20,7 +20,7 @@ impl Settings {
     pub fn size(member_len: usize) -> usize {
         8  + // anchor account discriminator
         16  + // index
-        member_len * Member::INIT_SPACE +// members
+        4 + (member_len * Member::INIT_SPACE) +// members (Vec prefix + elements)
         1  + // threshold
         1  + // multi_wallet bump
         1  + // settings bump
@@ -55,7 +55,7 @@ impl Settings {
 
     pub fn latest_slot_number_check(
         &mut self,
-        slot_numbers: Vec<u64>,
+        slot_numbers: &[u64],
         sysvar_slot_history: &Option<UncheckedAccount>,
     ) -> Result<()> {
         MultisigSettings::latest_slot_number_check(self, slot_numbers, sysvar_slot_history)
@@ -105,9 +105,9 @@ impl MultisigSettings for Settings {
     fn delete_members(&mut self, members: Vec<MemberKey>) -> Result<()> {
         let existing: HashSet<_> = self.members.iter().map(|m| m.pubkey).collect();
         if members.iter().any(|m| !existing.contains(&m)) {
-            return err!(MultisigError::InvalidArguments);
+            return err!(MultisigError::MemberNotFound);
         }
-        let to_delete: HashSet<_> = members.into_iter().map(|m| m).collect();
+        let to_delete: HashSet<_> = HashSet::from_iter(members);
         self.members.retain(|m| !to_delete.contains(&m.pubkey));
         Ok(())
     }

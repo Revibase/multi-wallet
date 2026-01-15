@@ -10,10 +10,7 @@ use light_ctoken_sdk::{
         },
         CTokenAccount2,
     },
-    ctoken::{
-        self, CompressibleParamsCpi, CreateAssociatedCTokenAccountCpi, TransferCTokenCpi,
-        TransferCTokenToSplCpi, TransferSplToCtokenCpi,
-    },
+    ctoken::{self, CompressibleParamsCpi, CreateAssociatedCTokenAccountCpi},
     spl_interface::{derive_spl_interface_pda, CreateSplInterfacePda, SplInterfacePda},
 };
 use light_sdk::{
@@ -23,6 +20,7 @@ use light_sdk::{
 
 use crate::error::MultisigError;
 use crate::state::ProofArgs;
+use crate::utils::{TransferCTokenCpi, TransferCTokenToSplCpi, TransferSplToCtokenCpi};
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct SourceCompressedTokenArgs {
@@ -71,20 +69,18 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
             &mut self.source_spl_token_account.data.borrow().as_ref(),
         )
         .map_or(None, |f| Some(f));
-        let spl_balance = if spl_token_account.is_some() {
-            spl_token_account.as_ref().unwrap().amount
-        } else {
-            0
-        };
+        let spl_balance = spl_token_account
+            .as_ref()
+            .map(|acc| acc.amount)
+            .unwrap_or(0);
         let ctoken_account =
             ctoken::CToken::try_from_slice(&self.source_ctoken_token_account.data.borrow())
                 .map_or(None, |f| Some(f));
 
-        let ctoken_balance = if ctoken_account.is_some() {
-            ctoken_account.as_ref().unwrap().amount
-        } else {
-            0
-        };
+        let ctoken_balance = ctoken_account
+            .as_ref()
+            .map(|acc| acc.amount)
+            .unwrap_or(0);
 
         let compressed_token_balance = source_compressed_token_account
             .as_ref()
@@ -160,10 +156,10 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
     ) -> Result<()> {
         let light_cpi_accounts = light_cpi_accounts
             .as_ref()
-            .ok_or(MultisigError::InvalidArguments)?;
+            .ok_or(MultisigError::MissingLightCpiAccounts)?;
         let source_compressed_token_account = source_compressed_token_account
             .as_ref()
-            .ok_or(MultisigError::InvalidArguments)?;
+            .ok_or(MultisigError::MissingCompressedTokenAccount)?;
         let tree_ai = light_cpi_accounts
             .get_tree_account_info(
                 source_compressed_token_account
@@ -183,14 +179,14 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
         let spl_interface_pda = self
             .spl_interface_pda
             .as_ref()
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MissingSplInterfacePda)?;
         let spl_interface_pda_data = spl_interface_pda_data
             .as_ref()
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MissingSplInterfacePda)?;
 
         let compressed_proof_args = compressed_proof_args
             .as_ref()
-            .ok_or(MultisigError::InvalidArguments)?;
+            .ok_or(MultisigError::MissingCompressedProofArgs)?;
 
         // packed metas
         let mut packed_accounts = Vec::new();
@@ -225,7 +221,7 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
             },
             root_index: source_compressed_token_account.root_index,
         }])
-        .map_err(|_| MultisigError::InvalidAccount)?;
+        .map_err(|_| MultisigError::LightCpiAccountError)?;
 
         token_accounts
             .decompress_spl(
@@ -235,7 +231,7 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
                 spl_interface_pda_data.index,
                 spl_interface_pda_data.bump,
             )
-            .map_err(|_| MultisigError::InvalidAccount)?;
+            .map_err(|_| MultisigError::LightCpiAccountError)?;
 
         // account infos
         let mut account_info = Vec::new();
@@ -245,25 +241,25 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
         account_info.push(
             light_cpi_accounts
                 .registered_program_pda()
-                .unwrap()
+                .map_err(|_| MultisigError::LightCpiAccountError)?
                 .to_account_info(),
         );
         account_info.push(
             light_cpi_accounts
                 .account_compression_authority()
-                .unwrap()
+                .map_err(|_| MultisigError::LightCpiAccountError)?
                 .to_account_info(),
         );
         account_info.push(
             light_cpi_accounts
                 .account_compression_program()
-                .unwrap()
+                .map_err(|_| MultisigError::LightCpiAccountError)?
                 .to_account_info(),
         );
         account_info.push(
             light_cpi_accounts
                 .system_program()
-                .unwrap()
+                .map_err(|_| MultisigError::LightCpiAccountError)?
                 .to_account_info(),
         );
 
@@ -284,7 +280,7 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
             out_lamports: None,
             output_queue: queue_index as u8,
         })
-        .map_err(|_| MultisigError::InvalidAccount)?;
+        .map_err(|_| MultisigError::LightCpiAccountError)?;
 
         invoke_signed(&ix, &account_info, &[signer_seeds])?;
         Ok(())
@@ -301,10 +297,10 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
     ) -> Result<()> {
         let light_cpi_accounts = light_cpi_accounts
             .as_ref()
-            .ok_or(MultisigError::InvalidArguments)?;
+            .ok_or(MultisigError::MissingLightCpiAccounts)?;
         let source_compressed_token_account = source_compressed_token_account
             .as_ref()
-            .ok_or(MultisigError::InvalidArguments)?;
+            .ok_or(MultisigError::MissingCompressedTokenAccount)?;
         let tree_ai = light_cpi_accounts
             .get_tree_account_info(
                 source_compressed_token_account
@@ -322,7 +318,7 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
 
         let compressed_proof_args = compressed_proof_args
             .as_ref()
-            .ok_or(MultisigError::InvalidArguments)?;
+            .ok_or(MultisigError::MissingCompressedProofArgs)?;
 
         let mut packed_accounts = Vec::new();
         let tree_index = packed_accounts.len();
@@ -356,11 +352,11 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
             },
             root_index: source_compressed_token_account.root_index,
         }])
-        .map_err(|_| MultisigError::InvalidAccount)?;
+        .map_err(|_| MultisigError::LightCpiAccountError)?;
 
         token_accounts
             .decompress_ctoken(amount, recipient_index as u8)
-            .map_err(|_| MultisigError::InvalidAccount)?;
+            .map_err(|_| MultisigError::LightCpiAccountError)?;
 
         let mut account_info = Vec::new();
         account_info.push(light_cpi_accounts.account_infos()[0].to_account_info());
@@ -369,25 +365,25 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
         account_info.push(
             light_cpi_accounts
                 .registered_program_pda()
-                .unwrap()
+                .map_err(|_| MultisigError::LightCpiAccountError)?
                 .to_account_info(),
         );
         account_info.push(
             light_cpi_accounts
                 .account_compression_authority()
-                .unwrap()
+                .map_err(|_| MultisigError::LightCpiAccountError)?
                 .to_account_info(),
         );
         account_info.push(
             light_cpi_accounts
                 .account_compression_program()
-                .unwrap()
+                .map_err(|_| MultisigError::LightCpiAccountError)?
                 .to_account_info(),
         );
         account_info.push(
             light_cpi_accounts
                 .system_program()
-                .unwrap()
+                .map_err(|_| MultisigError::LightCpiAccountError)?
                 .to_account_info(),
         );
 
@@ -406,7 +402,7 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
             out_lamports: None,
             output_queue: queue_index as u8,
         })
-        .map_err(|_| MultisigError::InvalidAccount)?;
+        .map_err(|_| MultisigError::LightCpiAccountError)?;
 
         invoke_signed(&ix, &account_info, &[signer_seeds])?;
         Ok(())
@@ -416,7 +412,7 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
         let destination_token_account = self
             .destination_spl_token_account
             .as_ref()
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MissingCompressedTokenAccount)?;
         let mint = Mint::try_deserialize(&mut self.mint.data.borrow().as_ref())?;
         transfer_checked(
             CpiContext::new(
@@ -447,14 +443,14 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
         let destination_token_account = self
             .destination_ctoken_token_account
             .as_ref()
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MissingCompressedTokenAccount)?;
         let spl_interface_pda = self
             .spl_interface_pda
             .as_ref()
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MissingSplInterfacePda)?;
         let spl_interface_pda_data = spl_interface_pda_data
             .as_ref()
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MissingSplInterfacePda)?;
 
         TransferSplToCtokenCpi {
             amount,
@@ -469,6 +465,7 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
             compressed_token_program_authority: self
                 .compressed_token_program_authority
                 .to_account_info(),
+            system_program: self.system_program.to_account_info(),
         }
         .invoke_signed(&[signer_seeds])?;
 
@@ -481,7 +478,7 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
         let destination_token_account = self
             .destination_ctoken_token_account
             .as_ref()
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MissingCompressedTokenAccount)?;
 
         TransferCTokenCpi {
             amount,
@@ -489,6 +486,7 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
             destination: destination_token_account.to_account_info(),
             authority: self.source.to_account_info(),
             max_top_up: None,
+            system_program: self.system_program.to_account_info(),
         }
         .invoke_signed(&[signer_seeds])?;
 
@@ -505,10 +503,10 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
         let spl_interface_pda = self
             .spl_interface_pda
             .as_ref()
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MissingSplInterfacePda)?;
         let spl_interface_pda_data = spl_interface_pda_data
             .as_ref()
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MissingSplInterfacePda)?;
         TransferCTokenToSplCpi {
             source_ctoken_account: self.source_ctoken_token_account.to_account_info(),
             destination_spl_token_account: destination_token_account.to_account_info(),
@@ -522,6 +520,7 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
             compressed_token_program_authority: self
                 .compressed_token_program_authority
                 .to_account_info(),
+            system_program: self.system_program.to_account_info(),
         }
         .invoke_signed(&[signer_seeds])?;
 
@@ -532,14 +531,14 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
         let destination_ctoken_token_account = self
             .destination_ctoken_token_account
             .as_ref()
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MissingCompressedTokenAccount)?;
         let rent_sponsor = self
             .rent_sponsor
             .as_ref()
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MissingCompressedTokenAccount)?;
         let bump = self
             .destination_ctoken_bump
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MissingCompressedTokenAccount)?;
 
         CreateAssociatedCTokenAccountCpi {
             owner: self.destination.to_account_info(),
@@ -569,7 +568,7 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
                 let mint = remaining_accounts
                     .iter()
                     .find(|f| f.key().eq(self.mint.key))
-                    .ok_or(MultisigError::MissingAccount)?;
+                    .ok_or(MultisigError::MissingCompressedTokenAccount)?;
                 let ix = CreateSplInterfacePda::new(
                     self.payer.key(),
                     self.mint.key(),

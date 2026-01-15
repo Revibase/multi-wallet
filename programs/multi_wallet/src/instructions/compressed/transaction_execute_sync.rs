@@ -100,7 +100,8 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
 
                 let mut writer = Vec::new();
                 vault_transaction_message.serialize(&mut writer)?;
-                let transaction_message_hash = Sha256::hash(&writer).unwrap();
+                let transaction_message_hash = Sha256::hash(&writer)
+                    .map_err(|_| MultisigError::HashComputationFailed)?;
 
                 let account_loader = DomainConfig::extract_domain_config_account(
                     remaining_accounts,
@@ -116,7 +117,7 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
                         message_hash: transaction_message_hash,
                         action_type: TransactionActionType::Sync,
                     },
-                    &vec![],
+                    &[],
                 )?;
             }
         }
@@ -177,7 +178,7 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
         let settings_data = settings_account
             .data
             .as_ref()
-            .ok_or(MultisigError::InvalidAccount)?;
+            .ok_or(MultisigError::SettingsKeyMismatch)?;
 
         let settings_key =
             Settings::get_settings_key_from_index(settings_data.index, settings_data.bump)?;
@@ -211,13 +212,9 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
 
         executable_message.execute_message(vault_signer_seed, protected_accounts)?;
 
-        settings_account.latest_slot_number_check(
-            secp256r1_verify_args
-                .iter()
-                .map(|f| f.verify_args.slot_number)
-                .collect(),
-            &ctx.accounts.slot_hash_sysvar,
-        )?;
+        let mut slot_numbers = Vec::with_capacity(secp256r1_verify_args.len());
+        slot_numbers.extend(secp256r1_verify_args.iter().map(|f| f.verify_args.slot_number));
+        settings_account.latest_slot_number_check(&slot_numbers, &ctx.accounts.slot_hash_sysvar)?;
 
         settings_account.invariant()?;
 

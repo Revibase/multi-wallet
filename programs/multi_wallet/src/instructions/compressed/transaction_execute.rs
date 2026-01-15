@@ -10,7 +10,7 @@ pub struct TransactionExecuteCompressed<'info> {
     /// CHECK:
     #[account(
         mut,
-        constraint = payer.key() == transaction_buffer.payer @MultisigError::InvalidAccount
+        constraint = payer.key() == transaction_buffer.payer @MultisigError::PayerMismatch
     )]
     pub payer: UncheckedAccount<'info>,
     #[account(
@@ -32,7 +32,7 @@ impl<'info> TransactionExecuteCompressed<'info> {
         );
 
         require!(
-            Clock::get().unwrap().unix_timestamp as u64 <= transaction_buffer.valid_till,
+            Clock::get()?.unix_timestamp as u64 <= transaction_buffer.valid_till,
             MultisigError::TransactionHasExpired
         );
 

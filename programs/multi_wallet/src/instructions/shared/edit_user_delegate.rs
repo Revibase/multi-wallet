@@ -55,7 +55,7 @@ impl<'info> EditUserDelegate<'info> {
                 return Ok(());
             }
         }
-        return err!(MultisigError::InvalidAccount);
+        return err!(MultisigError::MemberNotFound);
     }
 
     fn validate(
@@ -95,7 +95,7 @@ impl<'info> EditUserDelegate<'info> {
 
             let instructions_sysvar = instructions_sysvar
                 .as_ref()
-                .ok_or(MultisigError::MissingAccount)?;
+                .ok_or(MultisigError::MissingInstructionsSysvar)?;
 
             let given_domain_config = domain_config
                 .as_ref()
@@ -108,10 +108,11 @@ impl<'info> EditUserDelegate<'info> {
 
             require!(
                 expected_domain_config.eq(&given_domain_config.key()),
-                MultisigError::DomainConfigIsMissing
+                MultisigError::DomainConfigKeyMismatch
             );
 
-            let mut buffer = vec![];
+            // Pre-allocate buffer: 2 u128 values = 32 bytes
+            let mut buffer = Vec::with_capacity(32);
             buffer.extend_from_slice(
                 old_settings_delegate
                     .as_ref()
@@ -126,7 +127,8 @@ impl<'info> EditUserDelegate<'info> {
                     .to_le_bytes()
                     .as_ref(),
             );
-            let message_hash = Sha256::hash(&buffer).unwrap();
+            let message_hash = Sha256::hash(&buffer)
+                .map_err(|_| MultisigError::HashComputationFailed)?;
 
             secp256r1_verify_data.verify_webauthn(
                 slot_hash_sysvar,
@@ -136,12 +138,12 @@ impl<'info> EditUserDelegate<'info> {
                     account: Pubkey::from(
                         user_account
                             .address()
-                            .ok_or(MultisigError::InvalidAccount)?,
+                            .ok_or(MultisigError::MissingUserAccountAddress)?,
                     ),
                     message_hash,
                     action_type: TransactionActionType::ChangeDelegate,
                 },
-                &vec![],
+                &[],
             )?;
         }
 
@@ -183,7 +185,7 @@ impl<'info> EditUserDelegate<'info> {
                         && old_settings
                             .settings_address_tree_index
                             .eq(&old_delegate.settings_address_tree_index),
-                    MultisigError::InvalidAccount
+                    MultisigError::SettingsKeyMismatch
                 );
                 Self::update_delegate_flag(
                     &mut old_settings.members,
@@ -193,7 +195,7 @@ impl<'info> EditUserDelegate<'info> {
                 )?;
                 if let Some(secp256r1_verify_args) = &secp256r1_verify_args {
                     old_settings.latest_slot_number_check(
-                        vec![secp256r1_verify_args.slot_number],
+                        &[secp256r1_verify_args.slot_number],
                         &ctx.accounts.slot_hash_sysvar,
                     )?;
                 }
@@ -208,13 +210,13 @@ impl<'info> EditUserDelegate<'info> {
                 let settings_data = settings_account
                     .data
                     .as_mut()
-                    .ok_or(MultisigError::InvalidArguments)?;
+                    .ok_or(MultisigError::MissingSettingsData)?;
                 require!(
                     settings_data.index.eq(&old_delegate.index)
                         && settings_data
                             .settings_address_tree_index
                             .eq(&old_delegate.settings_address_tree_index),
-                    MultisigError::InvalidArguments
+                    MultisigError::SettingsKeyMismatch
                 );
                 Self::update_delegate_flag(
                     &mut settings_data.members,
@@ -224,14 +226,14 @@ impl<'info> EditUserDelegate<'info> {
                 )?;
                 if let Some(secp256r1_verify_args) = &secp256r1_verify_args {
                     settings_account.latest_slot_number_check(
-                        vec![secp256r1_verify_args.slot_number],
+                        &[secp256r1_verify_args.slot_number],
                         &ctx.accounts.slot_hash_sysvar,
                     )?;
                 }
                 settings_account.invariant()?;
                 cpi_accounts = cpi_accounts.with_light_account(settings_account)?;
             } else {
-                return err!(MultisigError::MissingAccount);
+                return err!(MultisigError::MissingSettingsAccountForDelegate);
             }
         }
 
@@ -242,7 +244,7 @@ impl<'info> EditUserDelegate<'info> {
                         && new_settings
                             .settings_address_tree_index
                             .eq(&new_delegate.settings_address_tree_index),
-                    MultisigError::InvalidAccount
+                    MultisigError::SettingsKeyMismatch
                 );
                 Self::update_delegate_flag(
                     &mut new_settings.members,
@@ -252,7 +254,7 @@ impl<'info> EditUserDelegate<'info> {
                 )?;
                 if let Some(secp256r1_verify_args) = &secp256r1_verify_args {
                     new_settings.latest_slot_number_check(
-                        vec![secp256r1_verify_args.slot_number],
+                        &[secp256r1_verify_args.slot_number],
                         &ctx.accounts.slot_hash_sysvar,
                     )?;
                 }
@@ -267,13 +269,13 @@ impl<'info> EditUserDelegate<'info> {
                 let settings_data = settings_account
                     .data
                     .as_mut()
-                    .ok_or(MultisigError::InvalidArguments)?;
+                    .ok_or(MultisigError::MissingSettingsData)?;
                 require!(
                     settings_data.index.eq(&new_delegate.index)
                         && settings_data
                             .settings_address_tree_index
                             .eq(&new_delegate.settings_address_tree_index),
-                    MultisigError::InvalidArguments
+                    MultisigError::SettingsKeyMismatch
                 );
                 Self::update_delegate_flag(
                     &mut settings_data.members,
@@ -283,14 +285,14 @@ impl<'info> EditUserDelegate<'info> {
                 )?;
                 if let Some(secp256r1_verify_args) = &secp256r1_verify_args {
                     settings_account.latest_slot_number_check(
-                        vec![secp256r1_verify_args.slot_number],
+                        &[secp256r1_verify_args.slot_number],
                         &ctx.accounts.slot_hash_sysvar,
                     )?;
                 }
                 settings_account.invariant()?;
                 cpi_accounts = cpi_accounts.with_light_account(settings_account)?;
             } else {
-                return err!(MultisigError::MissingAccount);
+                return err!(MultisigError::MissingSettingsAccountForDelegate);
             }
         }
 

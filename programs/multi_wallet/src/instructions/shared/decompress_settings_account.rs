@@ -28,7 +28,7 @@ pub struct DecompressSettingsAccount<'info> {
         space = Settings::size(MAXIMUM_AMOUNT_OF_MEMBERS_FOR_COMPRESSED_SETTINGS), 
         seeds = [
             SEED_MULTISIG,  
-            settings_mut_args.data.data.as_ref().ok_or(MultisigError::InvalidArguments)?.index.to_le_bytes().as_ref()
+            settings_mut_args.data.data.as_ref().ok_or(MultisigError::MissingSettingsData)?.index.to_le_bytes().as_ref()
         ],
         bump
     )]
@@ -71,7 +71,7 @@ impl<'info> DecompressSettingsAccount<'info> {
             .data
             .data
             .as_ref()
-            .ok_or(MultisigError::InvalidArguments)?;
+            .ok_or(MultisigError::MissingSettingsData)?;
         let threshold = settings_data.threshold as usize;
         let secp256r1_member_keys: Vec<(MemberKey, &Secp256r1VerifyArgsWithDomainAddress)> =
             secp256r1_verify_args
@@ -124,10 +124,11 @@ impl<'info> DecompressSettingsAccount<'info> {
                     instructions_sysvar,
                     ChallengeArgs {
                         account: settings.key(),
-                        message_hash: Sha256::hash(&settings.key().to_bytes()).unwrap(),
+                        message_hash: Sha256::hash(&settings.key().to_bytes())
+                            .map_err(|_| MultisigError::HashComputationFailed)?,
                         action_type: TransactionActionType::Decompress,
                     },
-                    &vec![],
+                    &[],
                 )?;
             }
         }
@@ -174,7 +175,7 @@ impl<'info> DecompressSettingsAccount<'info> {
         let settings_data = settings_account
             .data
             .as_ref()
-            .ok_or(MultisigError::InvalidArguments)?;
+            .ok_or(MultisigError::MissingSettingsData)?;
         settings.set_threshold(settings_data.threshold)?;
         settings.set_members(settings_data.members.clone())?;
         settings.set_latest_slot_number(settings_data.latest_slot_number)?;
@@ -183,13 +184,9 @@ impl<'info> DecompressSettingsAccount<'info> {
         settings.index = settings_data.index;
         settings.settings_address_tree_index = settings_data.settings_address_tree_index;
 
-        settings.latest_slot_number_check(
-            secp256r1_verify_args
-                .iter()
-                .map(|f| f.verify_args.slot_number)
-                .collect(),
-            &ctx.accounts.slot_hash_sysvar,
-        )?;
+        let mut slot_numbers = Vec::with_capacity(secp256r1_verify_args.len());
+        slot_numbers.extend(secp256r1_verify_args.iter().map(|f| f.verify_args.slot_number));
+        settings.latest_slot_number_check(&slot_numbers, &ctx.accounts.slot_hash_sysvar)?;
         settings.invariant()?;
 
         settings_account.data = None;

@@ -108,7 +108,7 @@ impl<'info> TransactionBufferExecute<'info> {
                 &transaction_buffer.expected_secp256r1_signers,
             )?;
             settings.latest_slot_number_check(
-                vec![secp256r1_verify_data.slot_number],
+                &[secp256r1_verify_data.slot_number],
                 slot_hash_sysvar,
             )?;
         }

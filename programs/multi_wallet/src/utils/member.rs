@@ -82,9 +82,12 @@ impl MemberKey {
     pub fn to_pubkey(&self) -> Result<Pubkey> {
         require!(
             self.get_type() == KeyType::Ed25519,
-            MultisigError::InvalidArguments
+            MultisigError::InvalidMemberKeyFormat
         );
-        Ok(Pubkey::new_from_array(self.key[1..].try_into().unwrap()))
+        Ok(Pubkey::new_from_array(
+            self.key[1..].try_into()
+                .map_err(|_| MultisigError::InvalidMemberKeyFormat)?
+        ))
     }
 
     pub fn convert_ed25519(pubkey: &Pubkey) -> Result<MemberKey> {
@@ -101,10 +104,10 @@ impl MemberKey {
         match KeyType::from(self.key_type) {
             KeyType::Ed25519 => self.key[1..]
                 .try_into()
-                .map_err(|_| error!(MultisigError::InvalidArguments)),
+                .map_err(|_| error!(MultisigError::InvalidMemberKeyFormat)),
             KeyType::Secp256r1 => self.key[1..]
                 .try_into()
-                .map_err(|_| error!(MultisigError::InvalidArguments)),
+                .map_err(|_| error!(MultisigError::InvalidMemberKeyFormat)),
         }
     }
 

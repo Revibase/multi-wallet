@@ -101,7 +101,7 @@ impl TransactionBufferCreate<'_> {
                         TransactionActionType::Create
                     },
                 },
-                &vec![],
+                &[],
             )?;
         }
 

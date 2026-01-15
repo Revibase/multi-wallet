@@ -79,7 +79,11 @@ impl TransactionBuffer {
         self.final_buffer_size = args.final_buffer_size;
         self.buffer = Vec::new();
         self.bump = bump;
-        self.valid_till = Clock::get().unwrap().unix_timestamp as u64 + TRANSACTION_TIME_LIMIT;
+        self.valid_till = Clock::get()?
+            .unix_timestamp
+            .checked_add(TRANSACTION_TIME_LIMIT as i64)
+            .and_then(|ts| u64::try_from(ts).ok())
+            .ok_or(MultisigError::InvalidArguments)?;
         self.voters = Vec::new();
         self.expected_secp256r1_signers = args.expected_secp256r1_signers.clone();
         Ok(())
@@ -116,7 +120,8 @@ impl TransactionBuffer {
     }
 
     pub fn validate_hash(&self) -> Result<()> {
-        let message_buffer_hash = Sha256::hash(&self.buffer).unwrap();
+        let message_buffer_hash = Sha256::hash(&self.buffer)
+            .map_err(|_| MultisigError::HashComputationFailed)?;
         require!(
             message_buffer_hash == self.final_buffer_hash,
             MultisigError::FinalBufferHashMismatch

@@ -200,7 +200,8 @@ impl<'info> TokenTransferIntentCompressed<'info> {
                 buffer.extend_from_slice(amount.to_le_bytes().as_ref());
                 buffer.extend_from_slice(destination.key().as_ref());
                 buffer.extend_from_slice(mint.key().as_ref());
-                let message_hash = Sha256::hash(&buffer).unwrap();
+                let message_hash = Sha256::hash(&buffer)
+                    .map_err(|_| MultisigError::HashComputationFailed)?;
 
                 secp256r1_verify_data.verify_args.verify_webauthn(
                     slot_hash_sysvar,
@@ -211,7 +212,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
                         message_hash,
                         action_type: TransactionActionType::TransferIntent,
                     },
-                    &vec![],
+                    &[],
                 )?;
             }
         }
@@ -257,7 +258,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
         let settings_data = settings_account
             .data
             .as_ref()
-            .ok_or(MultisigError::InvalidAccount)?;
+            .ok_or(MultisigError::MissingSettingsData)?;
 
         let settings_key =
             Settings::get_settings_key_from_index(settings_data.index, settings_data.bump)?;
@@ -280,7 +281,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
             .map_err(ProgramError::from)?;
         require!(
             ctx.accounts.source.key().eq(&multi_wallet),
-            MultisigError::InvalidAccount
+            MultisigError::SourceAccountMismatch
         );
 
         let token_transfer = TokenTransfer {
@@ -335,7 +336,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
                     .accounts
                     .destination_spl_token_account
                     .as_ref()
-                    .ok_or(MultisigError::MissingAccount)?;
+                    .ok_or(MultisigError::MissingDestinationTokenAccount)?;
                 token_transfer.ctoken_to_spl_transfer(
                     amount,
                     &spl_interface_pda_data,
@@ -352,7 +353,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
                     .accounts
                     .destination_ctoken_token_account
                     .as_ref()
-                    .ok_or(MultisigError::MissingAccount)?;
+                    .ok_or(MultisigError::MissingDestinationTokenAccount)?;
                 token_transfer.create_destination_ctoken_ata()?;
                 token_transfer.compressed_token_to_ctoken_transfer(
                     &source_compressed_token_account,
@@ -369,7 +370,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
                     .accounts
                     .destination_spl_token_account
                     .as_ref()
-                    .ok_or(MultisigError::MissingAccount)?;
+                    .ok_or(MultisigError::MissingDestinationTokenAccount)?;
                 token_transfer.compressed_token_to_spl_transfer(
                     &source_compressed_token_account,
                     Some(&light_cpi_accounts),
@@ -381,16 +382,12 @@ impl<'info> TokenTransferIntentCompressed<'info> {
                 )?;
             }
 
-            _ => return err!(MultisigError::InvalidArguments),
+            _ => return err!(MultisigError::InvalidTokenSourceType),
         }
 
-        settings_account.latest_slot_number_check(
-            secp256r1_verify_args
-                .iter()
-                .map(|f| f.verify_args.slot_number)
-                .collect(),
-            &ctx.accounts.slot_hash_sysvar,
-        )?;
+        let mut slot_numbers = Vec::with_capacity(secp256r1_verify_args.len());
+        slot_numbers.extend(secp256r1_verify_args.iter().map(|f| f.verify_args.slot_number));
+        settings_account.latest_slot_number_check(&slot_numbers, &ctx.accounts.slot_hash_sysvar)?;
 
         settings_account.invariant()?;
 

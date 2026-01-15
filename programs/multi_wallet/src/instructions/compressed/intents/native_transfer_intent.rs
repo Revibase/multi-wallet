@@ -124,7 +124,8 @@ impl<'info> NativeTransferIntentCompressed<'info> {
                 buffer.extend_from_slice(amount.to_le_bytes().as_ref());
                 buffer.extend_from_slice(destination.key().as_ref());
                 buffer.extend_from_slice(system_program.key().as_ref());
-                let message_hash = Sha256::hash(&buffer).unwrap();
+                let message_hash =
+                    Sha256::hash(&buffer).map_err(|_| MultisigError::HashComputationFailed)?;
 
                 secp256r1_verify_data.verify_args.verify_webauthn(
                     slot_hash_sysvar,
@@ -135,7 +136,7 @@ impl<'info> NativeTransferIntentCompressed<'info> {
                         message_hash,
                         action_type: TransactionActionType::TransferIntent,
                     },
-                    &vec![],
+                    &[],
                 )?;
             }
         }
@@ -181,7 +182,7 @@ impl<'info> NativeTransferIntentCompressed<'info> {
         let settings_data = settings_account
             .data
             .as_ref()
-            .ok_or(MultisigError::InvalidAccount)?;
+            .ok_or(MultisigError::MissingSettingsData)?;
 
         let settings_key =
             Settings::get_settings_key_from_index(settings_data.index, settings_data.bump)?;
@@ -204,7 +205,7 @@ impl<'info> NativeTransferIntentCompressed<'info> {
             .map_err(ProgramError::from)?;
         require!(
             ctx.accounts.source.key().eq(&multi_wallet),
-            MultisigError::InvalidAccount
+            MultisigError::SourceAccountMismatch
         );
 
         transfer(
@@ -219,13 +220,13 @@ impl<'info> NativeTransferIntentCompressed<'info> {
             amount,
         )?;
 
-        settings_account.latest_slot_number_check(
+        let mut slot_numbers = Vec::with_capacity(secp256r1_verify_args.len());
+        slot_numbers.extend(
             secp256r1_verify_args
                 .iter()
-                .map(|f| f.verify_args.slot_number)
-                .collect(),
-            &ctx.accounts.slot_hash_sysvar,
-        )?;
+                .map(|f| f.verify_args.slot_number),
+        );
+        settings_account.latest_slot_number_check(&slot_numbers, &ctx.accounts.slot_hash_sysvar)?;
 
         settings_account.invariant()?;
 

@@ -58,9 +58,14 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
         transaction_buffer.validate_hash()?;
         transaction_buffer.validate_size()?;
 
+        let start_index = compressed_proof_args.light_cpi_accounts_start_index as usize;
+        require!(
+            start_index <= remaining_accounts.len(),
+            MultisigError::InvalidNumberOfAccounts
+        );
         let light_cpi_accounts = CpiAccounts::new(
             payer,
-            &remaining_accounts[compressed_proof_args.light_cpi_accounts_start_index as usize..],
+            &remaining_accounts[start_index..],
             LIGHT_CPI_SIGNER,
         );
 
@@ -151,7 +156,7 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
             )?;
 
             settings_account.latest_slot_number_check(
-                vec![secp256r1_verify_data.slot_number],
+                &[secp256r1_verify_data.slot_number],
                 &slot_hash_sysvar,
             )?;
         }

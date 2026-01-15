@@ -45,7 +45,7 @@ pub enum MultisigError {
     #[msg("Only one permanent member is allowed per wallet.")]
     OnlyOnePermanentMemberAllowed,
 
-    #[msg("User with Permanent Member role requires a must have a delegated wallet.")]
+    #[msg("User with Permanent Member role must have a delegated wallet.")]
     InvalidPermanentMemberConfig,
 
     #[msg("Only one transaction manager is allowed per wallet.")]
@@ -157,7 +157,7 @@ pub enum MultisigError {
     #[msg("The specified slot number was not found in the provided slot history.")]
     SlotNumberNotFound,
 
-    #[msg("The specified slot number is not recent.")]
+    #[msg("The specified slot number is not recent enough. Slot must be within the recent slot history window.")]
     InvalidSlotNumber,
 
     #[msg(
@@ -174,6 +174,90 @@ pub enum MultisigError {
     #[msg("The given origin index is not in the whitelisted origins.")]
     OriginIndexOutOfBounds,
 
-    #[msg("Address Tree supplied is not part of the whitelisted address trees")]
+    #[msg("Address Tree supplied is not part of the whitelisted address trees.")]
     InvalidAddressTree,
+
+    #[msg("Compressed settings data is missing. The settings account must be initialized with data.")]
+    MissingSettingsData,
+
+    #[msg("Failed to compute hash. This may indicate a system error.")]
+    HashComputationFailed,
+
+    #[msg("Slot numbers list is empty. At least one slot number is required for validation.")]
+    EmptySlotNumbers,
+
+    #[msg("Member key conversion failed. The provided key format is invalid.")]
+    InvalidMemberKeyFormat,
+
+    #[msg("Compressed proof arguments are missing. Required for compressed account operations.")]
+    MissingCompressedProofArgs,
+
+    #[msg("Light CPI accounts are missing. Required for compressed account operations.")]
+    MissingLightCpiAccounts,
+
+    #[msg("Member not found in settings. Cannot remove a member that does not exist.")]
+    MemberNotFound,
+
+    #[msg("Settings key mismatch. The provided settings key does not match the expected value.")]
+    SettingsKeyMismatch,
+
+    #[msg("Payer account mismatch. The provided payer does not match the transaction buffer payer.")]
+    PayerMismatch,
+
+    #[msg("Missing compressed token account. Required for token transfer operations.")]
+    MissingCompressedTokenAccount,
+
+    #[msg("Missing SPL interface PDA. Required for token transfer operations.")]
+    MissingSplInterfacePda,
+
+    #[msg("Missing instructions sysvar account. Required for secp256r1 signature verification.")]
+    MissingInstructionsSysvar,
+
+    #[msg("Light CPI account operation failed. The account may be invalid or uninitialized.")]
+    LightCpiAccountError,
+
+    #[msg("Invalid source type for token transfer. The source account type is not supported.")]
+    InvalidTokenSourceType,
+
+    #[msg("Source account mismatch. The provided source account does not match the expected wallet vault address.")]
+    SourceAccountMismatch,
+
+    #[msg("Member not found in settings members list. Cannot update delegate flag for a non-existent member.")]
+    MemberNotFoundInSettings,
+
+    #[msg("Invalid account index in transaction message. The account index is out of bounds.")]
+    InvalidAccountIndex,
+
+    #[msg("Domain configuration account key mismatch. The provided domain config does not match the expected value.")]
+    DomainConfigKeyMismatch,
+
+    #[msg("User account address is missing. Required for secp256r1 signature verification.")]
+    MissingUserAccountAddress,
+
+    #[msg("Clock sysvar access failed. This may indicate a system error.")]
+    ClockSysvarAccessFailed,
+
+    #[msg("Unauthorized: Only the admin account is allowed to perform this action.")]
+    UnauthorizedAdminOnly,
+
+    #[msg("Invalid user configuration. Transaction manager URL must be empty for non-transaction-manager users.")]
+    InvalidUserTransactionManagerConfig,
+
+    #[msg("Missing destination token account. Required for token transfer operations.")]
+    MissingDestinationTokenAccount,
+
+    #[msg("Missing source token account. Required for token transfer operations.")]
+    MissingSourceTokenAccount,
+
+    #[msg("Missing settings account. Required for delegate operations on compressed wallets.")]
+    MissingSettingsAccountForDelegate,
+
+    #[msg("Missing new authority account. Required for domain configuration updates.")]
+    MissingNewAuthority,
+
+    #[msg("Missing whitelisted address trees account. Required for domain configuration updates.")]
+    MissingWhitelistedAddressTrees,
+
+    #[msg("Duplicate address tree detected. This address tree is already in the whitelist.")]
+    DuplicateAddressTree,
 }

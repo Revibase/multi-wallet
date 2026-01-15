@@ -1,4 +1,6 @@
-use crate::{state::WhitelistedAddressTree, utils::SEED_WHITELISTED_ADDRESS_TREE};
+use crate::{
+    state::WhitelistedAddressTree, utils::SEED_WHITELISTED_ADDRESS_TREE, MultisigError,
+};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -21,9 +23,17 @@ impl<'info> AddWhitelistedAddressTrees<'info> {
         #[cfg(feature = "mainnet")]
         require!(
             ctx.accounts.payer.key().eq(&crate::ADMIN),
-            crate::MultisigError::InvalidAccount
+            crate::MultisigError::UnauthorizedAdminOnly
         );
         let account = &mut ctx.accounts.whitelisted_address_trees;
+        require!(
+            account.whitelisted_address_trees.len() < WhitelistedAddressTree::MAX_WHITELISTED_ADDRESS_TREES,
+            MultisigError::MaxLengthExceeded
+        );
+        require!(
+            !account.whitelisted_address_trees.contains(&address_tree),
+            MultisigError::DuplicateAddressTree
+        );
         account.whitelisted_address_trees.push(address_tree);
         account.bump = ctx.bumps.whitelisted_address_trees;
 

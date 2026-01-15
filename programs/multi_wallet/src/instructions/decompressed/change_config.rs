@@ -4,7 +4,7 @@ use crate::{
     utils::{
         durable_nonce_check, resize_account_if_necessary, ChallengeArgs, MemberKey,
         MultisigSettings, Permission, Secp256r1VerifyArgsWithDomainAddress, TransactionActionType,
-        SEED_MULTISIG, SEED_VAULT,
+        SEED_MULTISIG,
     },
     ConfigAction, LIGHT_CPI_SIGNER,
 };
@@ -33,16 +33,6 @@ pub struct ChangeConfig<'info> {
     pub settings: Account<'info, Settings>,
     #[account(mut)]
     pub payer: Signer<'info>,
-    /// CHECK:
-    #[account(
-        seeds = [
-            SEED_MULTISIG,
-            settings.key().as_ref(),
-            SEED_VAULT,
-        ],
-        bump = settings.multi_wallet_bump
-    )]
-    pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
     /// CHECK:
     #[account(
@@ -119,7 +109,8 @@ impl<'info> ChangeConfig<'info> {
             if let Some((_, secp256r1_verify_data)) = secp256r1_signer {
                 let mut writer = Vec::new();
                 config_actions.serialize(&mut writer)?;
-                let message_hash = Sha256::hash(&writer).unwrap();
+                let message_hash = Sha256::hash(&writer)
+                    .map_err(|_| MultisigError::HashComputationFailed)?;
 
                 let account_loader = DomainConfig::extract_domain_config_account(
                     ctx.remaining_accounts,
@@ -135,7 +126,7 @@ impl<'info> ChangeConfig<'info> {
                         message_hash,
                         action_type: TransactionActionType::ChangeConfig,
                     },
-                    &vec![],
+                    &[],
                 )?;
             }
         }
@@ -195,19 +186,15 @@ impl<'info> ChangeConfig<'info> {
             Settings::size(settings.get_members()?.len()),
         )?;
 
-        settings.latest_slot_number_check(
-            secp256r1_verify_args
-                .iter()
-                .map(|f| f.verify_args.slot_number)
-                .collect(),
-            &ctx.accounts.slot_hash_sysvar,
-        )?;
+        let mut slot_numbers = Vec::with_capacity(secp256r1_verify_args.len());
+        slot_numbers.extend(secp256r1_verify_args.iter().map(|f| f.verify_args.slot_number));
+        settings.latest_slot_number_check(&slot_numbers, &ctx.accounts.slot_hash_sysvar)?;
 
         settings.invariant()?;
 
         if !delegate_ops.is_empty() {
             let compressed_proof_args =
-                compressed_proof_args.ok_or(MultisigError::InvalidArguments)?;
+                compressed_proof_args.ok_or(MultisigError::MissingCompressedProofArgs)?;
             let light_cpi_accounts = CpiAccounts::new(
                 &payer,
                 &remaining_accounts

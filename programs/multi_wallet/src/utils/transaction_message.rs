@@ -38,16 +38,17 @@ impl TransactionMessage {
         let message_address_table_loopups: Vec<MessageAddressTableLookup> = self
             .address_table_lookups
             .iter()
-            .map(|f| MessageAddressTableLookup {
-                lookup_table_address: remaining_accounts
-                    .get(f.lookup_table_address_index as usize)
-                    .ok_or(MultisigError::InvalidNumberOfAccounts)
-                    .unwrap()
-                    .key(),
-                writable_indexes: f.writable_indexes.clone(),
-                readonly_indexes: f.readonly_indexes.clone(),
+            .map(|f| {
+                Ok(MessageAddressTableLookup {
+                    lookup_table_address: remaining_accounts
+                        .get(f.lookup_table_address_index as usize)
+                        .ok_or(MultisigError::InvalidNumberOfAccounts)?
+                        .key(),
+                    writable_indexes: f.writable_indexes.clone(),
+                    readonly_indexes: f.readonly_indexes.clone(),
+                })
             })
-            .collect::<Vec<MessageAddressTableLookup>>();
+            .collect::<Result<Vec<MessageAddressTableLookup>>>()?;
 
         Ok(VaultTransactionMessage {
             num_signers: self.num_signers,

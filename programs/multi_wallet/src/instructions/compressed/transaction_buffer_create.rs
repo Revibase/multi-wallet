@@ -108,7 +108,7 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
                         TransactionActionType::Create
                     },
                 },
-                &vec![],
+                &[],
             )?;
         }
 

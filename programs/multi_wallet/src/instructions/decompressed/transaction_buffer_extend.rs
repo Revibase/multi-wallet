@@ -18,13 +18,15 @@ impl TransactionBufferExtend<'_> {
             transaction_buffer, ..
         } = self;
 
-        let current_buffer_size = transaction_buffer.buffer.len() as u16;
+        let current_buffer_size = u16::try_from(transaction_buffer.buffer.len())
+            .map_err(|_| MultisigError::FinalBufferSizeExceeded)?;
         let remaining_space = transaction_buffer
             .final_buffer_size
             .checked_sub(current_buffer_size)
             .ok_or(MultisigError::FinalBufferSizeExceeded)?;
 
-        let new_data_size = buffer.len() as u16;
+        let new_data_size = u16::try_from(buffer.len())
+            .map_err(|_| MultisigError::FinalBufferSizeExceeded)?;
         require!(
             new_data_size <= remaining_space,
             MultisigError::FinalBufferSizeExceeded
@@ -35,7 +37,8 @@ impl TransactionBufferExtend<'_> {
             .get(0)
             .ok_or(MultisigError::InvalidBuffer)?;
 
-        let current_buffer_hash = Sha256::hash(&buffer).unwrap();
+        let current_buffer_hash = Sha256::hash(&buffer)
+            .map_err(|_| MultisigError::HashComputationFailed)?;
 
         require!(
             required_buffer_hash.eq(&current_buffer_hash),
@@ -51,8 +54,10 @@ impl TransactionBufferExtend<'_> {
 
         transaction_buffer.buffer.extend_from_slice(&buffer);
 
-        transaction_buffer.buffer_extend_hashes =
-            transaction_buffer.buffer_extend_hashes[1..].to_vec();
+        // Remove the first hash that was just consumed
+        if !transaction_buffer.buffer_extend_hashes.is_empty() {
+            transaction_buffer.buffer_extend_hashes.remove(0);
+        }
 
         transaction_buffer.invariant()?;
 

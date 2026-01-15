@@ -14,7 +14,7 @@ pub struct TransactionBufferClose<'info> {
     /// CHECK:
     #[account(
             mut,
-            constraint = payer.key() == transaction_buffer.payer @MultisigError::InvalidAccount
+            constraint = payer.key() == transaction_buffer.payer @MultisigError::PayerMismatch
         )]
     pub payer: UncheckedAccount<'info>,
     pub domain_config: Option<AccountLoader<'info, DomainConfig>>,
@@ -50,7 +50,7 @@ impl TransactionBufferClose<'_> {
         let signer =
             MemberKey::get_signer(closer, secp256r1_verify_args, instructions_sysvar.as_ref())?;
         // allow rent payer to become the closer after transaction has expired
-        if !(Clock::get().unwrap().unix_timestamp as u64 > transaction_buffer.valid_till
+        if !(Clock::get()?.unix_timestamp as u64 > transaction_buffer.valid_till
             && signer.get_type().eq(&KeyType::Ed25519)
             && MemberKey::convert_ed25519(&transaction_buffer.payer)?.eq(&signer))
         {
@@ -65,7 +65,7 @@ impl TransactionBufferClose<'_> {
 
                 let instructions_sysvar = instructions_sysvar
                     .as_ref()
-                    .ok_or(MultisigError::MissingAccount)?;
+                    .ok_or(MultisigError::MissingInstructionsSysvar)?;
 
                 secp256r1_verify_data.verify_webauthn(
                     slot_hash_sysvar,
@@ -80,7 +80,7 @@ impl TransactionBufferClose<'_> {
                 )?;
 
                 settings.latest_slot_number_check(
-                    vec![secp256r1_verify_data.slot_number],
+                    &[secp256r1_verify_data.slot_number],
                     slot_hash_sysvar,
                 )?;
             }

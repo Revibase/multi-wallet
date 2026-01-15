@@ -47,6 +47,79 @@ pub struct ExpectedSecp256r1Signers {
 }
 
 impl Secp256r1VerifyArgs {
+    /// Safely reads signature offsets from instruction data with bounds checking
+    fn read_signature_offsets(
+        data: &[u8],
+        signed_message_index: u8,
+        _num_signatures: u8,
+    ) -> Result<Secp256r1SignatureOffsets> {
+        // Calculate offset start position
+        let start = signed_message_index
+            .saturating_mul(SIGNATURE_OFFSETS_SERIALIZED_SIZE as u8)
+            .saturating_add(SIGNATURE_OFFSETS_START as u8);
+        let start_usize = start as usize;
+        let end_usize = start_usize
+            .checked_add(SIGNATURE_OFFSETS_SERIALIZED_SIZE)
+            .ok_or(MultisigError::InvalidSignatureOffsets)?;
+
+        // Bounds check before unsafe read
+        require!(
+            end_usize <= data.len(),
+            MultisigError::InvalidSignatureOffsets
+        );
+
+        // Safe unaligned read with bounds verified
+        let offsets = unsafe {
+            core::ptr::read_unaligned(
+                data.as_ptr().add(start_usize) as *const Secp256r1SignatureOffsets
+            )
+        };
+
+        Ok(offsets)
+    }
+
+    /// Validates and extracts message data from instruction with bounds checking
+    fn extract_message_data<'a>(
+        data: &'a [u8],
+        offsets: &Secp256r1SignatureOffsets,
+    ) -> Result<&'a [u8]> {
+        let message_offset = offsets.message_data_offset as usize;
+        let message_size = offsets.message_data_size as usize;
+        let message_end = message_offset
+            .checked_add(message_size)
+            .ok_or(MultisigError::InvalidSignatureOffsets)?;
+
+        // Bounds check
+        require!(
+            message_end <= data.len(),
+            MultisigError::InvalidSignatureOffsets
+        );
+
+        // WebAuthn message must be at least 64 bytes (32 for rp_id_hash + 32 for client_data_hash)
+        require!(message_size >= 64, MultisigError::InvalidSignatureOffsets);
+
+        Ok(&data[message_offset..message_end])
+    }
+
+    /// Validates and extracts public key from instruction with bounds checking
+    fn extract_public_key_data<'a>(
+        data: &'a [u8],
+        offsets: &Secp256r1SignatureOffsets,
+    ) -> Result<&'a [u8]> {
+        let public_key_offset = offsets.public_key_offset as usize;
+        let public_key_end = public_key_offset
+            .checked_add(COMPRESSED_PUBKEY_SERIALIZED_SIZE)
+            .ok_or(MultisigError::InvalidSecp256r1PublicKey)?;
+
+        // Bounds check
+        require!(
+            public_key_end <= data.len(),
+            MultisigError::InvalidSecp256r1PublicKey
+        );
+
+        Ok(&data[public_key_offset..public_key_end])
+    }
+
     // Taken from Webauthn Spec: https://w3c.github.io/webauthn/#ccdtostring
     fn ccd_to_string(value: &str, output: &mut Vec<u8>) {
         output.push(b'"');
@@ -133,6 +206,9 @@ impl Secp256r1VerifyArgs {
             .try_borrow_data()
             .map_err(|_| MultisigError::InvalidSysvarDataFormat)?;
 
+        // Validate minimum data size (8 bytes for num_slot_hashes + 8 bytes for first_slot)
+        require!(data.len() >= 16, MultisigError::InvalidSysvarDataFormat);
+
         let num_slot_hashes = u64::from_le_bytes(
             data[..8]
                 .try_into()
@@ -153,7 +229,24 @@ impl Secp256r1VerifyArgs {
             return err!(MultisigError::SlotNumberNotFound);
         }
 
-        let pos = 8 + offset * 40;
+        // Each slot entry is 40 bytes (8 bytes slot + 32 bytes hash)
+        let pos = 8usize
+            .checked_add(
+                offset
+                    .checked_mul(40)
+                    .ok_or(MultisigError::InvalidSysvarDataFormat)?,
+            )
+            .ok_or(MultisigError::InvalidSysvarDataFormat)?;
+
+        // Validate bounds: need 8 bytes for slot + 32 bytes for hash
+        let required_size = pos
+            .checked_add(40)
+            .ok_or(MultisigError::InvalidSysvarDataFormat)?;
+
+        require!(
+            required_size <= data.len(),
+            MultisigError::InvalidSysvarDataFormat
+        );
 
         let slot = u64::from_le_bytes(
             data[pos..pos + 8]
@@ -195,42 +288,40 @@ impl Secp256r1VerifyArgs {
             MultisigError::SignatureIndexOutOfBounds
         );
 
-        let start: u8 = self
-            .signed_message_index
-            .saturating_mul(SIGNATURE_OFFSETS_SERIALIZED_SIZE as u8)
-            .saturating_add(SIGNATURE_OFFSETS_START as u8);
+        // Use safe helper function to read offsets
+        let offsets =
+            Self::read_signature_offsets(data, self.signed_message_index, num_signatures)?;
 
-        let offsets = unsafe {
-            core::ptr::read_unaligned(
-                instruction.data.as_ptr().add(start as usize) as *const Secp256r1SignatureOffsets
-            )
-        };
+        // Extract and validate message data
+        let message = Self::extract_message_data(data, &offsets)?;
 
-        let message_offset = offsets.message_data_offset as usize;
-        let message_end = message_offset + offsets.message_data_size as usize;
-        let message = &instruction.data[message_offset..message_end];
-
+        // Verify expected signers if provided
         if !expected_secp256r1_signers.is_empty() {
-            let public_key_offset = offsets.public_key_offset as usize;
-            let public_key_end = public_key_offset + COMPRESSED_PUBKEY_SERIALIZED_SIZE;
+            let public_key_bytes = Self::extract_public_key_data(data, &offsets)?;
 
             let extracted_pubkey = MemberKey::convert_secp256r1(&Secp256r1Pubkey(
-                instruction.data[public_key_offset..public_key_end]
+                public_key_bytes
                     .try_into()
                     .map_err(|_| MultisigError::InvalidSecp256r1PublicKey)?,
             ))?;
+
             let extracted_message_hash = expected_secp256r1_signers
                 .iter()
                 .find(|f| f.member_key.eq(&extracted_pubkey))
                 .ok_or(MultisigError::MalformedSignedMessage)?
                 .message_hash;
 
+            let computed_hash =
+                Sha256::hash(message).map_err(|_| MultisigError::HashComputationFailed)?;
+
             require!(
-                extracted_message_hash.eq(&Sha256::hash(message).unwrap()),
+                extracted_message_hash.eq(&computed_hash),
                 MultisigError::ExpectedMessageHashMismatch
             );
         }
 
+        // Extract rp_id_hash (first 32 bytes) and client_data_hash (last 32 bytes)
+        // Message size is already validated to be >= 64 bytes in extract_message_data
         let rp_id_hash: [u8; 32] = message[..32]
             .try_into()
             .map_err(|_| MultisigError::InvalidSignatureOffsets)?;
@@ -248,7 +339,7 @@ impl Secp256r1VerifyArgs {
     ) -> Result<Secp256r1Pubkey> {
         let instructions_sysvar = instructions_sysvar
             .as_ref()
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MissingInstructionsSysvar)?;
         let instruction = instructions::get_instruction_relative(-1, instructions_sysvar)?;
 
         require!(
@@ -256,29 +347,24 @@ impl Secp256r1VerifyArgs {
             MultisigError::InvalidSecp256r1Instruction
         );
 
-        let num_signatures = instruction.data[0];
+        let data = instruction.data.as_slice();
+        let num_signatures = *data
+            .get(0)
+            .ok_or(MultisigError::InvalidSecp256r1Instruction)?;
 
         require!(
             self.signed_message_index < num_signatures,
             MultisigError::SignatureIndexOutOfBounds
         );
 
-        let start: u8 = self
-            .signed_message_index
-            .saturating_mul(SIGNATURE_OFFSETS_SERIALIZED_SIZE as u8)
-            .saturating_add(SIGNATURE_OFFSETS_START as u8);
+        // Use safe helper function to read offsets
+        let offsets =
+            Self::read_signature_offsets(data, self.signed_message_index, num_signatures)?;
 
-        let offsets = unsafe {
-            core::ptr::read_unaligned(
-                instruction.data.as_ptr().add(start as usize) as *const Secp256r1SignatureOffsets
-            )
-        };
+        // Extract and validate public key data
+        let public_key_bytes = Self::extract_public_key_data(data, &offsets)?;
 
-        let public_key_offset = offsets.public_key_offset as usize;
-        let public_key_end = public_key_offset + COMPRESSED_PUBKEY_SERIALIZED_SIZE;
-
-        let extracted_pubkey: [u8; COMPRESSED_PUBKEY_SERIALIZED_SIZE] = instruction.data
-            [public_key_offset..public_key_end]
+        let extracted_pubkey: [u8; COMPRESSED_PUBKEY_SERIALIZED_SIZE] = public_key_bytes
             .try_into()
             .map_err(|_| MultisigError::InvalidSecp256r1PublicKey)?;
 
@@ -321,19 +407,21 @@ impl Secp256r1VerifyArgs {
             .get(self.origin_index as usize)
             .ok_or(MultisigError::OriginIndexOutOfBounds)?;
 
-        let mut buffer = vec![];
+        let mut buffer = Vec::new();
         buffer.extend_from_slice(challenge_args.action_type.to_bytes());
         buffer.extend_from_slice(challenge_args.account.as_ref());
         buffer.extend_from_slice(&challenge_args.message_hash);
         buffer.extend_from_slice(&slot_hash);
         buffer.extend_from_slice(self.client_and_device_hash.as_ref());
 
-        let expected_challenge = Sha256::hash(&buffer).unwrap();
+        let expected_challenge =
+            Sha256::hash(&buffer).map_err(|_| MultisigError::HashComputationFailed)?;
 
         let generated_client_data_json =
             self.generate_client_data_json(expected_origin, expected_challenge)?;
 
-        let expected_client_data_hash = Sha256::hash(&generated_client_data_json).unwrap();
+        let expected_client_data_hash = Sha256::hash(&generated_client_data_json)
+            .map_err(|_| MultisigError::HashComputationFailed)?;
 
         if client_data_hash.ne(&expected_client_data_hash) {
             msg!(

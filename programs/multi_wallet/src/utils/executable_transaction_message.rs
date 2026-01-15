@@ -82,14 +82,16 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
         for lookup in message.address_table_lookups.iter() {
             let lookup_table_data = &lookup_tables
                 .get(&lookup.lookup_table_address)
-                .unwrap()
+                .ok_or(MultisigError::InvalidAccount)?
                 .data
                 .borrow()[..];
             let lookup_table = AddressLookupTable::deserialize(lookup_table_data)
                 .map_err(|_| MultisigError::InvalidAccount)?;
 
             for (i, index_in_lookup_table) in lookup.writable_indexes.iter().enumerate() {
-                let index = message_indexes_cursor + i;
+                let index = message_indexes_cursor
+                    .checked_add(i)
+                    .ok_or(MultisigError::InvalidTransactionMessage)?;
                 let loaded_account_info = &message_account_infos
                     .get(index)
                     .ok_or(MultisigError::InvalidNumberOfAccounts)?;
@@ -112,10 +114,14 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
 
                 writable_accounts.push(*loaded_account_info);
             }
-            message_indexes_cursor += lookup.writable_indexes.len();
+            message_indexes_cursor = message_indexes_cursor
+                .checked_add(lookup.writable_indexes.len())
+                .ok_or(MultisigError::InvalidTransactionMessage)?;
 
             for (i, index_in_lookup_table) in lookup.readonly_indexes.iter().enumerate() {
-                let index = message_indexes_cursor + i;
+                let index = message_indexes_cursor
+                    .checked_add(i)
+                    .ok_or(MultisigError::InvalidTransactionMessage)?;
                 let loaded_account_info = &message_account_infos
                     .get(index)
                     .ok_or(MultisigError::InvalidNumberOfAccounts)?;
@@ -133,7 +139,9 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
 
                 readonly_accounts.push(*loaded_account_info);
             }
-            message_indexes_cursor += lookup.readonly_indexes.len();
+            message_indexes_cursor = message_indexes_cursor
+                .checked_add(lookup.readonly_indexes.len())
+                .ok_or(MultisigError::InvalidTransactionMessage)?;
         }
 
         Ok(Self {
@@ -149,7 +157,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
         vault_seeds: &[&[u8]],
         protected_accounts: &[Pubkey],
     ) -> Result<()> {
-        for (ix, account_infos) in self.to_instructions_and_accounts().iter() {
+        for (ix, account_infos) in self.to_instructions_and_accounts()?.iter() {
             for account_meta in ix.accounts.iter().filter(|m| m.is_writable) {
                 require!(
                     !protected_accounts.contains(&account_meta.pubkey),
@@ -193,7 +201,9 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
         index < self.loaded_writable_accounts.len()
     }
 
-    pub fn to_instructions_and_accounts(mut self) -> Vec<(Instruction, Vec<AccountInfo<'info>>)> {
+    pub fn to_instructions_and_accounts(
+        mut self,
+    ) -> Result<Vec<(Instruction, Vec<AccountInfo<'info>>)>> {
         let mut executable_instructions = vec![];
 
         for ms_compiled_instruction in core::mem::take(&mut self.message.instructions) {
@@ -202,7 +212,9 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 .iter()
                 .map(|account_index| {
                     let account_index = usize::from(*account_index);
-                    let account_info = self.get_account_by_index(account_index).unwrap();
+                    let account_info = self
+                        .get_account_by_index(account_index)
+                        .map_err(|_| MultisigError::InvalidAccountIndex)?;
                     let is_signer = self.message.is_signer_index(account_index);
 
                     let account_meta = if self.is_writable_index(account_index) {
@@ -211,13 +223,13 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                         AccountMeta::new_readonly(*account_info.key, is_signer)
                     };
 
-                    (account_info.to_account_info(), account_meta)
+                    Ok((account_info.to_account_info(), account_meta))
                 })
-                .collect();
+                .collect::<Result<Vec<_>>>()?;
 
             let ix_program_account_info = self
                 .get_account_by_index(usize::from(ms_compiled_instruction.program_address_index))
-                .unwrap();
+                .map_err(|_| MultisigError::InvalidAccountIndex)?;
 
             let ix = Instruction {
                 program_id: *ix_program_account_info.key,
@@ -237,6 +249,6 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
             executable_instructions.push((ix, account_infos));
         }
 
-        executable_instructions
+        Ok(executable_instructions)
     }
 }

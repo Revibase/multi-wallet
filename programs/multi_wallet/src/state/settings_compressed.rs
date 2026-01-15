@@ -90,7 +90,7 @@ impl CompressedSettings {
 
     pub fn latest_slot_number_check(
         &mut self,
-        slot_numbers: Vec<u64>,
+        slot_numbers: &[u64],
         sysvar_slot_history: &Option<UncheckedAccount>,
     ) -> Result<()> {
         MultisigSettings::latest_slot_number_check(self, slot_numbers, sysvar_slot_history)
@@ -136,7 +136,7 @@ impl CompressedSettings {
             .data
             .data
             .as_ref()
-            .ok_or(MultisigError::InvalidArguments)?;
+            .ok_or(MultisigError::MissingSettingsData)?;
 
         let settings_key =
             Settings::get_settings_key_from_index(settings_data.index, settings_data.bump)?;
@@ -151,7 +151,10 @@ impl CompressedSettings {
             &crate::ID,
             &settings_readonly_args.account_meta,
             settings_readonly_args.data.clone(),
-            light_cpi_accounts.tree_pubkeys().unwrap().as_slice(),
+            light_cpi_accounts
+                .tree_pubkeys()
+                .map_err(|_| MultisigError::MissingLightCpiAccounts)?
+                .as_slice(),
         )?;
 
         LightSystemProgramCpi::new_cpi(
@@ -188,7 +191,7 @@ impl MultisigSettings for CompressedSettings {
         if let Some(data) = &self.data {
             Ok(data.latest_slot_number)
         } else {
-            err!(MultisigError::InvalidArguments)
+            err!(MultisigError::MissingSettingsData)
         }
     }
 
@@ -196,7 +199,7 @@ impl MultisigSettings for CompressedSettings {
         if let Some(data) = &self.data {
             Ok(data.threshold)
         } else {
-            err!(MultisigError::InvalidArguments)
+            err!(MultisigError::MissingSettingsData)
         }
     }
 
@@ -204,7 +207,7 @@ impl MultisigSettings for CompressedSettings {
         if let Some(data) = &self.data {
             Ok(data.members.clone())
         } else {
-            err!(MultisigError::InvalidArguments)
+            err!(MultisigError::MissingSettingsData)
         }
     }
 
@@ -219,9 +222,9 @@ impl MultisigSettings for CompressedSettings {
         if let Some(data) = &mut self.data {
             let existing: HashSet<_> = data.members.iter().map(|m| m.pubkey).collect();
             if members.iter().any(|m| !existing.contains(&m)) {
-                return err!(MultisigError::InvalidArguments);
+                return err!(MultisigError::MemberNotFound);
             }
-            let to_delete: HashSet<_> = members.into_iter().map(|m| m).collect();
+            let to_delete: HashSet<_> = HashSet::from_iter(members);
             data.members.retain(|m| !to_delete.contains(&m.pubkey));
         }
         Ok(())

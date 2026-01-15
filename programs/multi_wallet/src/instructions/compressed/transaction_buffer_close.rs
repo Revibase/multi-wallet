@@ -60,9 +60,14 @@ impl<'info> TransactionBufferCloseCompressed<'info> {
             ..
         } = self;
 
+        let start_index = compressed_proof_args.light_cpi_accounts_start_index as usize;
+        require!(
+            start_index <= remaining_accounts.len(),
+            MultisigError::InvalidNumberOfAccounts
+        );
         let light_cpi_accounts = CpiAccounts::new(
             payer,
-            &remaining_accounts[compressed_proof_args.light_cpi_accounts_start_index as usize..],
+            &remaining_accounts[start_index..],
             LIGHT_CPI_SIGNER,
         );
 
@@ -76,20 +81,20 @@ impl<'info> TransactionBufferCloseCompressed<'info> {
         let settings_data = settings_account
             .data
             .as_ref()
-            .ok_or(MultisigError::InvalidAccount)?;
+            .ok_or(MultisigError::MissingSettingsData)?;
 
         let settings_key =
             Settings::get_settings_key_from_index(settings_data.index, settings_data.bump)?;
 
         require!(
             settings_key.eq(&transaction_buffer.multi_wallet_settings),
-            MultisigError::InvalidAccount
+            MultisigError::SettingsKeyMismatch
         );
         let signer =
             MemberKey::get_signer(closer, secp256r1_verify_args, instructions_sysvar.as_ref())?;
 
         // allow rent payer to become the closer after transaction has expired
-        if !(Clock::get().unwrap().unix_timestamp as u64 > transaction_buffer.valid_till
+        if !(Clock::get()?.unix_timestamp as u64 > transaction_buffer.valid_till
             && signer.get_type().eq(&KeyType::Ed25519)
             && MemberKey::convert_ed25519(&transaction_buffer.payer)?.eq(&signer))
         {
@@ -104,7 +109,7 @@ impl<'info> TransactionBufferCloseCompressed<'info> {
 
                 let instructions_sysvar = instructions_sysvar
                     .as_ref()
-                    .ok_or(MultisigError::MissingAccount)?;
+                    .ok_or(MultisigError::MissingInstructionsSysvar)?;
 
                 secp256r1_verify_data.verify_webauthn(
                     slot_hash_sysvar,
@@ -119,7 +124,7 @@ impl<'info> TransactionBufferCloseCompressed<'info> {
                 )?;
 
                 settings_account.latest_slot_number_check(
-                    vec![secp256r1_verify_data.slot_number],
+                    &[secp256r1_verify_data.slot_number],
                     &slot_hash_sysvar,
                 )?;
             }

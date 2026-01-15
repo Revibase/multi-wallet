@@ -55,13 +55,13 @@ impl<'info> EditDomainConfig<'info> {
                 .accounts
                 .new_authority
                 .as_ref()
-                .ok_or(MultisigError::MissingAccount)?;
+                .ok_or(MultisigError::MissingNewAuthority)?;
 
             let whitelisted_address_trees = ctx
                 .accounts
                 .whitelisted_address_trees
                 .as_ref()
-                .ok_or(MultisigError::MissingAccount)?;
+                .ok_or(MultisigError::MissingWhitelistedAddressTrees)?;
 
             let light_cpi_accounts = CpiAccounts::new(
                 &ctx.accounts.authority,
@@ -108,8 +108,8 @@ impl<'info> EditDomainConfig<'info> {
             domain_config.authority = new_authority.key();
         }
 
-        if args.new_origins.is_some() {
-            domain_config.write_origins(args.new_origins.unwrap())?;
+        if let Some(new_origins) = args.new_origins {
+            domain_config.write_origins(new_origins)?;
         }
 
         Ok(())

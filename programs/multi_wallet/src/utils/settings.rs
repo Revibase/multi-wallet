@@ -20,12 +20,18 @@ pub trait MultisigSettings {
 
     fn latest_slot_number_check(
         &mut self,
-        slot_numbers: Vec<u64>,
+        slot_numbers: &[u64],
         sysvar_slot_history: &Option<UncheckedAccount>,
     ) -> Result<()> {
         if !slot_numbers.is_empty() {
-            let min_slot_number = slot_numbers.iter().min().unwrap();
-            let max_slot_number = slot_numbers.iter().max().unwrap();
+            let min_slot_number = slot_numbers
+                .iter()
+                .min()
+                .ok_or(MultisigError::EmptySlotNumbers)?;
+            let max_slot_number = slot_numbers
+                .iter()
+                .max()
+                .ok_or(MultisigError::EmptySlotNumbers)?;
             let sysvar_slot_history = sysvar_slot_history
                 .as_ref()
                 .ok_or(MultisigError::MissingSysvarSlotHistory)?;
@@ -78,7 +84,7 @@ pub trait MultisigSettings {
         }
         require!(threshold > 0, MultisigError::InvalidThreshold);
 
-        let mut seen: HashSet<MemberKey> = std::collections::HashSet::new();
+        let mut seen: HashSet<MemberKey> = HashSet::with_capacity(member_count);
         let mut permission_counts = PermissionCounts::default();
 
         for member in members {
@@ -181,7 +187,7 @@ pub trait MultisigSettings {
                     is_delegate: false.into(),
                 }
             })
-            .collect();
+            .collect::<Vec<_>>();
 
         self.extend_members(new_member_data)?;
 
@@ -192,7 +198,7 @@ pub trait MultisigSettings {
         &mut self,
         member_pubkeys: Vec<RemoveMemberArgs>,
     ) -> Result<Vec<RemoveMemberArgs>> {
-        let keys_to_delete = member_pubkeys.iter().map(|f| f.member_key).collect();
+        let keys_to_delete: Vec<MemberKey> = member_pubkeys.iter().map(|f| f.member_key).collect();
 
         self.delete_members(keys_to_delete)?;
 
@@ -210,7 +216,7 @@ pub trait MultisigSettings {
         for nm in new_members {
             let i = *idx
                 .get(&nm.member_key)
-                .ok_or(MultisigError::InvalidArguments)?;
+                .ok_or(MultisigError::MemberNotFound)?;
             let existing = &mut members[i];
 
             require!(

@@ -9,6 +9,9 @@ pub struct WhitelistedAddressTree {
 }
 
 impl WhitelistedAddressTree {
+    /// Matches the fixed allocation in `size()` (512 bytes / 32 bytes per pubkey = 16 pubkeys).
+    pub const MAX_WHITELISTED_ADDRESS_TREES: usize = 16;
+
     pub fn size() -> usize {
         8 + 4 + 512 + 1
     }

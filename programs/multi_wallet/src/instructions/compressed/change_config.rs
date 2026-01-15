@@ -107,7 +107,8 @@ impl<'info> ChangeConfigCompressed<'info> {
 
                 let mut writer = Vec::new();
                 config_actions.serialize(&mut writer)?;
-                let message_hash = Sha256::hash(&writer).unwrap();
+                let message_hash = Sha256::hash(&writer)
+                    .map_err(|_| MultisigError::HashComputationFailed)?;
 
                 secp256r1_verify_data.verify_args.verify_webauthn(
                     slot_hash_sysvar,
@@ -118,7 +119,7 @@ impl<'info> ChangeConfigCompressed<'info> {
                         message_hash,
                         action_type: TransactionActionType::ChangeConfig,
                     },
-                    &vec![],
+                    &[],
                 )?;
             }
         }
@@ -157,7 +158,7 @@ impl<'info> ChangeConfigCompressed<'info> {
         let settings_data = settings
             .data
             .as_ref()
-            .ok_or(MultisigError::InvalidArguments)?;
+            .ok_or(MultisigError::MissingSettingsData)?;
 
         let settings_index = settings_data.index;
         let settings_address_tree_index = settings_data.settings_address_tree_index;
@@ -196,19 +197,20 @@ impl<'info> ChangeConfigCompressed<'info> {
             }
         }
 
-        settings.latest_slot_number_check(
-            secp256r1_verify_args
-                .iter()
-                .map(|f| f.verify_args.slot_number)
-                .collect(),
-            &ctx.accounts.slot_hash_sysvar,
-        )?;
+        let mut slot_numbers = Vec::with_capacity(secp256r1_verify_args.len());
+        slot_numbers.extend(secp256r1_verify_args.iter().map(|f| f.verify_args.slot_number));
+        settings.latest_slot_number_check(&slot_numbers, &ctx.accounts.slot_hash_sysvar)?;
 
         settings.invariant()?;
 
+        let start_index = compressed_proof_args.light_cpi_accounts_start_index as usize;
+        require!(
+            start_index <= remaining_accounts.len(),
+            MultisigError::InvalidNumberOfAccounts
+        );
         let light_cpi_accounts = CpiAccounts::new(
             &payer,
-            &remaining_accounts[compressed_proof_args.light_cpi_accounts_start_index as usize..],
+            &remaining_accounts[start_index..],
             LIGHT_CPI_SIGNER,
         );
 

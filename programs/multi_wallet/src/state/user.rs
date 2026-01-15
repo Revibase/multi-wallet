@@ -68,7 +68,7 @@ impl User {
         } else {
             require!(
                 self.transaction_manager_url.is_none(),
-                MultisigError::InvalidAccount
+                MultisigError::InvalidUserTransactionManagerConfig
             )
         }
 
@@ -173,7 +173,10 @@ impl User {
             &crate::ID,
             &user_readonly_args.account_meta,
             user_readonly_args.data,
-            light_cpi_accounts.tree_pubkeys().unwrap().as_slice(),
+            light_cpi_accounts
+                .tree_pubkeys()
+                .map_err(|_| MultisigError::MissingLightCpiAccounts)?
+                .as_slice(),
         )
         .map_err(ProgramError::from)?;
         if user_account.role.eq(&UserRole::PermanentMember) {
@@ -214,7 +217,10 @@ impl User {
                     &crate::ID,
                     &user_readonly_args.account_meta,
                     user_readonly_args.data,
-                    light_cpi_accounts.tree_pubkeys().unwrap().as_slice(),
+                    light_cpi_accounts
+                .tree_pubkeys()
+                .map_err(|_| MultisigError::MissingLightCpiAccounts)?
+                .as_slice(),
                 )
                 .map_err(ProgramError::from)?;
 

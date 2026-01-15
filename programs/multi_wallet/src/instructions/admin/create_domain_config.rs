@@ -1,4 +1,5 @@
 use crate::{
+    error::MultisigError,
     state::{DomainConfig, ProofArgs, User, UserCreationArgs, WhitelistedAddressTree},
     utils::{MemberKey, UserRole, SEED_DOMAIN_CONFIG, SEED_WHITELISTED_ADDRESS_TREE},
     LIGHT_CPI_SIGNER,
@@ -29,7 +30,9 @@ pub struct CreateDomainConfig<'info> {
         payer = payer,
         space = DomainConfig::size(),
         seeds = [SEED_DOMAIN_CONFIG, {
-            Sha256::hash(args.rp_id.as_bytes()).unwrap().as_ref()
+            Sha256::hash(args.rp_id.as_bytes())
+                .expect("Failed to hash rp_id for domain config seeds")
+                .as_ref()
         }],
         bump,
     )]
@@ -53,7 +56,7 @@ impl<'info> CreateDomainConfig<'info> {
         #[cfg(feature = "mainnet")]
         require!(
             ctx.accounts.payer.key().eq(&crate::ADMIN),
-            crate::MultisigError::InvalidAccount
+            crate::MultisigError::UnauthorizedAdminOnly
         );
 
         let light_cpi_accounts = CpiAccounts::new(
@@ -97,7 +100,8 @@ impl<'info> CreateDomainConfig<'info> {
         .invoke(light_cpi_accounts)?;
 
         let domain_config = &mut ctx.accounts.domain_config.load_init()?;
-        domain_config.rp_id_hash = Sha256::hash(args.rp_id.as_bytes()).unwrap();
+        domain_config.rp_id_hash = Sha256::hash(args.rp_id.as_bytes())
+            .map_err(|_| MultisigError::HashComputationFailed)?;
         domain_config.write_rp_id(args.rp_id)?;
         domain_config.write_origins(args.origins)?;
         domain_config.authority = ctx.accounts.authority.key();

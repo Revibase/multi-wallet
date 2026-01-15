@@ -86,7 +86,7 @@ impl<'info> CreateDomainUserAccount<'info> {
             let settings_data = settings_account
                 .data
                 .as_ref()
-                .ok_or(MultisigError::InvalidArguments)?;
+                .ok_or(MultisigError::MissingSettingsData)?;
 
             delegated_to = Some(SettingsIndexWithAddress {
                 index: settings_data.index,
@@ -100,7 +100,7 @@ impl<'info> CreateDomainUserAccount<'info> {
                         .pubkey
                         .eq(&MemberKey::convert_ed25519(ctx.accounts.authority.key)?)
                     && UserRole::from(settings_data.members[0].role).eq(&UserRole::Administrator),
-                MultisigError::InvalidArguments
+                MultisigError::ExpectedAdministratorRoleMismatch
             );
 
             let mut new_members = Vec::new();
@@ -112,7 +112,10 @@ impl<'info> CreateDomainUserAccount<'info> {
                     &crate::ID,
                     &transaction_manger.account_meta,
                     transaction_manger.data,
-                    light_cpi_accounts.tree_pubkeys().unwrap().as_slice(),
+                    light_cpi_accounts
+                        .tree_pubkeys()
+                        .map_err(|_| MultisigError::MissingLightCpiAccounts)?
+                        .as_slice(),
                 )
                 .map_err(ProgramError::from)?;
 
