@@ -7,8 +7,25 @@ import {
   bufferToBase64URLString,
   type TransactionAuthenticationResponse,
 } from "@revibase/core";
+import { WalletTransactionError } from "./errors.js";
 import type { RevibaseProvider } from "src/provider";
 
+/**
+ * Signs a transaction using WebAuthn passkey authentication.
+ *
+ * This function initiates a two-phase authentication flow:
+ * 1. Start phase: Client signs a challenge and sends it to the provider
+ * 2. Complete phase: Provider responds with authentication data, client signs the completion
+ *
+ * @param input - Transaction signing parameters
+ * @param input.transactionActionType - Type of transaction action (sync, execute, etc.)
+ * @param input.transactionAddress - Address of the transaction account
+ * @param input.transactionMessageBytes - Serialized transaction message bytes
+ * @param input.signer - Optional signer public key
+ * @param input.provider - Revibase provider instance
+ * @returns Transaction authentication response with signatures
+ * @throws {WalletTransactionError} If transaction signing fails
+ */
 export async function signTransactionWithPasskey({
   transactionActionType,
   transactionAddress,

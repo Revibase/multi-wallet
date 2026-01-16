@@ -2,8 +2,23 @@ import type {
   CompleteMessageRequest,
   StartMessageRequest,
 } from "@revibase/core";
+import { WalletVerificationError } from "./errors.js";
 import type { RevibaseProvider } from "src/provider";
 
+/**
+ * Signs and verifies a message using WebAuthn passkey authentication.
+ *
+ * This function initiates a two-phase authentication flow:
+ * 1. Start phase: Client signs a challenge and sends it to the provider
+ * 2. Complete phase: Provider responds with authentication data, client verifies and processes
+ *
+ * @param input - Message signing parameters
+ * @param input.message - Optional message to sign. If not provided, a default sign-in message is used
+ * @param input.signer - Optional signer public key
+ * @param input.provider - Revibase provider instance
+ * @returns User information and verification result
+ * @throws {WalletVerificationError} If message signing or verification fails
+ */
 export async function signAndVerifyMessageWithPasskey({
   message,
   signer,

@@ -22,8 +22,28 @@ import {
   estimateTransactionSizeExceedLimit,
   simulateSecp256r1Signer,
 } from "src/utils/internal";
+import { WalletNotConnectedError } from "src/utils/errors";
 import { signTransactionWithPasskey } from "src/utils/signTransactionWithPasskey";
 
+/**
+ * Builds a transaction or transaction bundle based on the provided instructions.
+ *
+ * This function handles both regular transactions and bundles (for large transactions).
+ * It automatically determines whether to use a bundle based on transaction size estimation.
+ *
+ * @param input - Transaction building parameters
+ * @param input.instructions - Array of instructions to include in the transaction
+ * @param input.signer - Public key of the signer
+ * @param input.payer - Transaction signer for paying fees
+ * @param input.settingsIndexWithAddress - Settings account information
+ * @param input.provider - Revibase provider instance
+ * @param input.addressesByLookupTableAddress - Optional address lookup tables
+ * @param input.additionalSigners - Optional additional transaction signers
+ * @param input.cachedAccounts - Optional cache for account data
+ * @returns Array of transaction details (single item for sync, multiple for bundle)
+ * @throws {WalletNotConnectedError} If wallet is not connected
+ * @throws {WalletTransactionError} If transaction building fails
+ */
 export const buildTransaction = async (input: {
   instructions: Instruction[];
   signer: string;

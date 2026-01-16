@@ -10,7 +10,20 @@ import {
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import { REVIBASE_AUTH_URL, REVIBASE_RP_ID } from "src/utils/consts";
+import { WalletVerificationError } from "src/utils/errors";
 
+/**
+ * Processes and verifies a complete message authentication request.
+ *
+ * This function verifies the WebAuthn authentication response and extracts user information
+ * from the verified message payload.
+ *
+ * @param request - Complete message request with authentication data
+ * @param expectedOrigin - Expected origin for verification (defaults to REVIBASE_AUTH_URL)
+ * @param expectedRPID - Expected Relying Party ID for verification (defaults to REVIBASE_RP_ID)
+ * @returns User information including public key, wallet address, and settings
+ * @throws {WalletVerificationError} If message verification fails or user has no delegated wallet
+ */
 export async function processMessage(
   request: CompleteMessageRequest,
   expectedOrigin = REVIBASE_AUTH_URL,
@@ -38,12 +51,14 @@ export async function processMessage(
   });
 
   if (!verified) {
-    throw new Error("Unable to verify message");
+    throw new WalletVerificationError("Unable to verify message");
   }
   const settingsIndexWithAddress: SettingsIndexWithAddressArgs | undefined =
     request.data.payload.additionalInfo.settingsIndexWithAddress;
   if (!settingsIndexWithAddress) {
-    throw new Error("User does not have a delegated wallet address.");
+    throw new WalletVerificationError(
+      "User does not have a delegated wallet address."
+    );
   }
   const walletAddress = await getWalletAddressFromIndex(
     settingsIndexWithAddress.index

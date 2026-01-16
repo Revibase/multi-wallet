@@ -1,5 +1,6 @@
 import {
   base64URLStringToBuffer,
+  pollJitoBundleConfirmation,
   prepareTransactionBundle,
   signAndSendBundledTransactions,
   type CompleteTransactionRequest,
@@ -70,5 +71,9 @@ export async function processBundledTransaction(
       : lookupTableAddresses,
   }));
 
-  return signAndSendBundledTransactions(bundlesWithLookupTables);
+  const bundleId = await signAndSendBundledTransactions(
+    bundlesWithLookupTables
+  );
+
+  return pollJitoBundleConfirmation(bundleId);
 }

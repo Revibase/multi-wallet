@@ -25,6 +25,7 @@ export async function processMessage(
   expectedRPID = REVIBASE_RP_ID
 ) {
   const { payload } = request.data;
+
   const message = payload.message;
   const expectedChallenge = createMessageChallenge(
     message,

@@ -1,5 +1,5 @@
-import type { SettingsIndexWithAddressArgs } from "@revibase/core";
 import {
+  pollJitoBundleConfirmation,
   signAndSendBundledTransactions,
   signAndSendTransaction,
 } from "@revibase/core";
@@ -11,11 +11,39 @@ import {
 } from "src/methods/tokenTransfer";
 import type { RevibaseProvider } from "src/provider";
 import { REVIBASE_API_URL } from "src/utils/consts";
+import {
+  WalletConnectionError,
+  WalletNotConnectedError,
+  WalletTransactionError,
+  WalletVerificationError,
+} from "src/utils/errors";
 import { getRandomPayer } from "src/utils/helper";
 import { createSignInMessageText } from "src/utils/internal";
 import { signAndVerifyMessageWithPasskey } from "src/utils/signAndVerifyMessageWithPasskey";
+import {
+  getStoredAccount,
+  removeStoredAccount,
+  setStoredAccount,
+} from "src/utils/storage";
 import type { Revibase, RevibaseEvent } from "./window";
 
+/**
+ * Creates a Revibase wallet adapter instance.
+ *
+ * The adapter provides methods for connecting, signing messages, and building/sending transactions.
+ * It manages wallet state and persists account information to localStorage.
+ *
+ * @param provider - The Revibase provider instance for handling authentication
+ * @param feePayer - Optional transaction signer to use as fee payer. If not provided, a random payer will be fetched.
+ * @returns A configured Revibase adapter instance
+ *
+ * @example
+ * ```ts
+ * const provider = new RevibaseProvider({ onClientAuthorizationCallback });
+ * const adapter = createRevibaseAdapter(provider);
+ * await adapter.connect();
+ * ```
+ */
 export function createRevibaseAdapter(
   provider: RevibaseProvider,
   feePayer?: TransactionSigner
@@ -35,51 +63,57 @@ export function createRevibaseAdapter(
     });
   }
 
-  const account = window.localStorage.getItem("Revibase:account");
-  const { publicKey, member, settingsIndexWithAddress } = account
-    ? (JSON.parse(account) as {
-        publicKey: string | null;
-        member: string | null;
-        settingsIndexWithAddress: SettingsIndexWithAddressArgs | null;
-      })
-    : { publicKey: null, member: null, settingsIndexWithAddress: null };
+  // Safely retrieve stored account data
+  const storedAccount = getStoredAccount();
+  const publicKey = storedAccount?.publicKey ?? null;
+  const member = storedAccount?.member ?? null;
+  const settingsIndexWithAddress =
+    storedAccount?.settingsIndexWithAddress ?? null;
 
   return {
     publicKey,
     member,
     settingsIndexWithAddress,
     connect: async function () {
-      const message = createSignInMessageText({
-        domain: window.location.origin,
-        nonce: crypto.randomUUID(),
-      });
-      const { user } = await this.signMessage(message);
-      if (!user) {
-        throw Error("Failed to verify signed message");
+      try {
+        const message = createSignInMessageText({
+          domain: window.location.origin,
+          nonce: crypto.randomUUID(),
+        });
+        const { user } = await this.signMessage(message);
+        if (!user) {
+          throw new WalletVerificationError("Failed to verify signed message");
+        }
+        this.publicKey = user.walletAddress;
+        this.member = user.publicKey;
+        this.settingsIndexWithAddress = user.settingsIndexWithAddress;
+
+        // Store account data
+        setStoredAccount({
+          publicKey: this.publicKey,
+          member: this.member,
+          settingsIndexWithAddress: this.settingsIndexWithAddress,
+        });
+
+        emit("connect");
+        emit("accountChanged");
+      } catch (error) {
+        if (
+          error instanceof WalletVerificationError ||
+          error instanceof WalletConnectionError
+        ) {
+          throw error;
+        }
+        throw new WalletConnectionError(
+          `Connection failed: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
-      this.publicKey = user.walletAddress;
-      this.member = user.publicKey;
-      this.settingsIndexWithAddress = user.settingsIndexWithAddress;
-      window.localStorage.setItem(
-        "Revibase:account",
-        JSON.stringify(
-          {
-            publicKey: this.publicKey,
-            member: this.member,
-            settingsIndexWithAddress: this.settingsIndexWithAddress,
-          },
-          (key, value) =>
-            typeof value === "bigint" ? Number(value.toString()) : value
-        )
-      );
-      emit("connect");
-      emit("accountChanged");
     },
     disconnect: async function () {
       this.publicKey = null;
       this.member = null;
       this.settingsIndexWithAddress = null;
-      window.localStorage.removeItem("Revibase:account");
+      removeStoredAccount();
       emit("disconnect");
     },
     signMessage: async function (input) {
@@ -91,7 +125,7 @@ export function createRevibaseAdapter(
     },
     buildTokenTransfer: async function (input) {
       if (!this.member || !this.settingsIndexWithAddress || !this.publicKey) {
-        throw new Error("Wallet is not connected");
+        throw new WalletNotConnectedError();
       }
       const payer = feePayer ?? (await getRandomPayer(REVIBASE_API_URL));
       return buildTokenTransferInstruction({
@@ -103,7 +137,7 @@ export function createRevibaseAdapter(
     },
     signAndSendTokenTransfer: async function (input) {
       if (!this.member || !this.settingsIndexWithAddress || !this.publicKey) {
-        throw new Error("Wallet is not connected");
+        throw new WalletNotConnectedError();
       }
       const payer = feePayer ?? (await getRandomPayer(REVIBASE_API_URL));
       return signAndSendTokenTransfer({
@@ -115,7 +149,7 @@ export function createRevibaseAdapter(
     },
     buildTransaction: async function (input) {
       if (!this.member || !this.settingsIndexWithAddress || !this.publicKey) {
-        throw new Error("Wallet is not connected");
+        throw new WalletNotConnectedError();
       }
       const payer = feePayer ?? (await getRandomPayer(REVIBASE_API_URL));
       return buildTransaction({
@@ -129,12 +163,13 @@ export function createRevibaseAdapter(
     signAndSendTransaction: async function (input) {
       const transactions = await this.buildTransaction(input);
       if (!transactions.length) {
-        throw new Error("Unable to build transaction");
+        throw new WalletTransactionError("Unable to build transaction");
       }
       if (transactions.length === 1) {
         return signAndSendTransaction(transactions[0]);
       } else {
-        return signAndSendBundledTransactions(transactions);
+        const bundleId = await signAndSendBundledTransactions(transactions);
+        return pollJitoBundleConfirmation(bundleId);
       }
     },
 

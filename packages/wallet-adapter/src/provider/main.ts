@@ -3,6 +3,7 @@ import type {
   StartTransactionRequest,
 } from "@revibase/core";
 import { bufferToBase64URLString } from "@revibase/core";
+import { WalletProviderError } from "src/utils/errors";
 import type { ClientAuthorizationCallback } from "src/utils";
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
 import {
@@ -24,6 +25,18 @@ import {
 /**
  * RevibaseProvider handles the communication between the client application
  * and the Revibase authentication provider using popup windows and MessageChannel.
+ *
+ * The provider manages authentication flows, popup windows, and fallback polling
+ * mechanisms to ensure reliable communication with the authentication service.
+ *
+ * @example
+ * ```ts
+ * const provider = new RevibaseProvider({
+ *   onClientAuthorizationCallback: async (request) => {
+ *     // Handle authorization
+ *   }
+ * });
+ * ```
  */
 export class RevibaseProvider {
   private readonly pending = new Map<string, Pending>();
@@ -43,12 +56,14 @@ export class RevibaseProvider {
    * Opens a blank popup window for authentication.
    * The popup will be reused for subsequent navigation.
    *
-   * @throws {Error} If popup is blocked by the browser
+   * @throws {WalletProviderError} If popup is blocked by the browser
    */
   openBlankPopUp(): void {
     this.popUp = createPopUp();
     if (!this.popUp) {
-      throw new Error("Popup blocked. Please enable popups.");
+      throw new WalletProviderError(
+        "Popup blocked. Please enable popups in your browser settings."
+      );
     }
   }
 
@@ -62,6 +77,16 @@ export class RevibaseProvider {
    * @returns The response from the provider
    * @throws {Error} If called outside browser, if another flow is in progress, or if timeout occurs
    */
+  /**
+   * Sends a payload to the provider and waits for the response.
+   * Opens a popup window and handles communication via MessageChannel with polling fallback.
+   *
+   * @param payload - Start message or transaction request
+   * @param signature - Client signature for the payload
+   * @param timeoutMs - Timeout in milliseconds (defaults to DEFAULT_TIMEOUT)
+   * @returns The response from the provider
+   * @throws {WalletProviderError} If called outside browser, if another flow is in progress, or if timeout occurs
+   */
   async sendPayloadToProvider({
     payload,
     signature,
@@ -72,11 +97,19 @@ export class RevibaseProvider {
     timeoutMs?: number;
   }): Promise<unknown> {
     if (typeof window === "undefined") {
-      throw new Error("Provider can only be used in a browser environment");
+      throw new WalletProviderError(
+        "Provider can only be used in a browser environment"
+      );
     }
 
     if (this.pending.size > 0) {
-      throw new Error("An authorization flow is already in progress");
+      throw new WalletProviderError(
+        "An authorization flow is already in progress"
+      );
+    }
+
+    if (timeoutMs <= 0) {
+      throw new WalletProviderError("Timeout must be greater than 0");
     }
 
     const rid = bufferToBase64URLString(
@@ -98,10 +131,12 @@ export class RevibaseProvider {
 
         // Route through unified cleanup path if available
         if (entry.cancel) {
-          entry.cancel(new Error("Authentication timed out"));
+          entry.cancel(
+            new WalletProviderError("Authentication timed out")
+          );
         } else {
           this.pending.delete(rid);
-          reject(new Error("Authentication timed out"));
+          reject(new WalletProviderError("Authentication timed out"));
         }
       }, timeoutMs);
 
@@ -225,13 +260,17 @@ export class RevibaseProvider {
           try {
             popup.location.replace(startUrl);
           } catch {
-            throw new Error("Unable to navigate popup to provider URL");
+            throw new WalletProviderError(
+              "Unable to navigate popup to provider URL"
+            );
           }
         }
       }
 
       if (!popup) {
-        throw new Error("Popup blocked. Please enable popups.");
+        throw new WalletProviderError(
+          "Popup blocked. Please enable popups in your browser settings."
+        );
       }
       popupReady = true;
       return popup;
@@ -266,7 +305,7 @@ export class RevibaseProvider {
           if (result.status === "complete") {
             succeed(result.payload);
           } else if (result.status === "error") {
-            fail(new Error(result.error));
+            fail(new WalletProviderError(result.error));
           }
           // pending/timeout => do nothing; caller decides next step
         } finally {
@@ -303,9 +342,17 @@ export class RevibaseProvider {
       ensurePolling(briefUntil)
         .then(() => {
           if (!finished)
-            fail(new Error("User closed the authentication window"));
+            fail(
+              new WalletProviderError(
+                "User closed the authentication window"
+              )
+            );
         })
-        .catch(() => fail(new Error("User closed the authentication window")));
+        .catch(() =>
+          fail(
+            new WalletProviderError("User closed the authentication window")
+          )
+        );
     }, HEARTBEAT_INTERVAL);
 
     const onConnect = (event: MessageEvent) => {
@@ -335,7 +382,7 @@ export class RevibaseProvider {
             break;
 
           case "popup-error":
-            fail(new Error(ev.data.error));
+            fail(new WalletProviderError(ev.data.error));
             break;
 
           case "popup-closed": {
@@ -352,11 +399,19 @@ export class RevibaseProvider {
             ensurePolling(briefUntil)
               .then(() => {
                 if (!finished) {
-                  fail(new Error("User closed the authentication window"));
+                  fail(
+                    new WalletProviderError(
+                      "User closed the authentication window"
+                    )
+                  );
                 }
               })
               .catch(() => {
-                fail(new Error("User closed the authentication window"));
+                fail(
+                  new WalletProviderError(
+                    "User closed the authentication window"
+                  )
+                );
               });
             break;
           }
