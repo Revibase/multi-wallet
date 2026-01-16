@@ -39,11 +39,19 @@ import {
   TOKEN_2022_PROGRAM_ADDRESS,
 } from "gill/programs";
 import {
+  TEST_AMOUNT_LARGE,
+  TEST_AMOUNT_MEDIUM,
+  TEST_MINT_DECIMALS,
+  TEST_TRANSACTION_MANAGER_URL,
+} from "../constants.ts";
+import {
+  assertTestContext,
   createMultiWallet,
   fundMultiWalletVault,
   generateSecp256r1KeyPair,
   mockAuthenticationResponse,
   sendTransaction,
+  withErrorHandling,
 } from "../helpers/index.ts";
 import { addPayerAsNewMember } from "../helpers/transaction.ts";
 import type { TestContext } from "../types.ts";
@@ -139,131 +147,133 @@ const SCENARIOS: Scenario[] = [
 export function runTokenTransferTest(getCtx: () => TestContext) {
   for (const s of SCENARIOS) {
     it(s.name, async () => {
-      try {
+      await withErrorHandling(`token transfer: ${s.name}`, async () => {
         await runScenario(getCtx, s);
-      } catch (error) {
-        console.error(`[${s.name}] Test failed:`, error);
-        throw error;
-      }
+      });
     });
   }
   xit("when source ata is spl & ctoken & compressed token and destination ata does not exist with secp256r1 signer", async () => {
-    let ctx = getCtx();
-    ctx = await createMultiWallet(ctx);
-    const mint = await createMintAndMintToSplAndCTokenAndCompressedAccount(ctx);
-    if (
-      !ctx.index ||
-      !ctx.multiWalletVault ||
-      !ctx.wallet ||
-      !ctx.payer ||
-      !mint ||
-      !ctx.domainConfig
-    )
-      return;
+    await withErrorHandling(
+      "token transfer with Secp256r1 signer",
+      async () => {
+        let ctx = getCtx();
+        ctx = await createMultiWallet(ctx);
+        const mint =
+          await createMintAndMintToSplAndCTokenAndCompressedAccount(ctx);
+        assertTestContext(ctx, [
+          "index",
+          "multiWalletVault",
+          "wallet",
+          "payer",
+          "domainConfig",
+        ]);
 
-    //create transaction manger
-    const transactionManager = await createKeyPairSignerFromPrivateKeyBytes(
-      crypto.getRandomValues(new Uint8Array(32))
+        if (!mint) {
+          throw new Error("Failed to create mint for Secp256r1 test");
+        }
+
+        // Create transaction manager
+        const transactionManager = await createKeyPairSignerFromPrivateKeyBytes(
+          crypto.getRandomValues(new Uint8Array(32))
+        );
+        const createUserAccountIx = await createUserAccounts({
+          payer: ctx.payer,
+          createUserArgs: [
+            {
+              member: transactionManager,
+              role: UserRole.TransactionManager,
+              transactionManagerUrl: TEST_TRANSACTION_MANAGER_URL,
+            },
+          ],
+        });
+
+        await sendTransaction(
+          [createUserAccountIx],
+          ctx.payer,
+          ctx.addressLookUpTable
+        );
+
+        const secp256r1Keys = generateSecp256r1KeyPair();
+
+        // Create Secp256r1Key and add member to an existing wallet owned by the authority together with a transaction manager
+        const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey);
+        const createDomainUserAccountIx = await createDomainUserAccounts({
+          payer: ctx.payer,
+          authority: ctx.wallet,
+          domainConfig: ctx.domainConfig!,
+          createUserArgs: {
+            member: secp256r1Key,
+            role: UserRole.PermanentMember,
+            index: ctx.index,
+            transactionManager: {
+              member: transactionManager.address,
+            },
+          },
+        });
+
+        await sendTransaction(
+          [createDomainUserAccountIx],
+          ctx.payer,
+          ctx.addressLookUpTable
+        );
+
+        await fundMultiWalletVault(ctx, BigInt(TEST_AMOUNT_MEDIUM));
+
+        const signedSigner = await mockAuthenticationResponse(
+          {
+            transactionActionType: "transfer_intent",
+            transactionAddress: TOKEN_2022_PROGRAM_ADDRESS.toString(),
+            transactionMessageBytes: new Uint8Array([
+              ...getU64Encoder().encode(BigInt(TEST_AMOUNT_LARGE)),
+              ...getAddressEncoder().encode(ctx.wallet.address),
+              ...getAddressEncoder().encode(mint),
+            ]),
+          },
+          secp256r1Keys.privateKey,
+          secp256r1Keys.publicKey,
+          ctx
+        );
+
+        const tokenTransfer = await tokenTransferIntent({
+          index: ctx.index,
+          payer: ctx.payer,
+          signers: [signedSigner, transactionManager],
+          destination: ctx.wallet.address,
+          amount: TEST_AMOUNT_LARGE,
+          compressed: ctx.compressed,
+          mint,
+          tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+        });
+
+        await sendTransaction(
+          [...tokenTransfer],
+          ctx.payer,
+          ctx.addressLookUpTable
+        );
+
+        const ata = getAssociatedTokenAddressInterface(
+          new PublicKey(mint),
+          new PublicKey(ctx.wallet.address)
+        );
+        const { parsed } = await getAtaInterface(
+          getLightProtocolRpc(),
+          new PublicKey(ata),
+          new PublicKey(ctx.wallet.address),
+          new PublicKey(mint)
+        );
+
+        expect(
+          Number(parsed.amount),
+          "Token balance should match the transferred amount"
+        ).to.equal(TEST_AMOUNT_LARGE);
+      }
     );
-    const createUserAccountIx = await createUserAccounts({
-      payer: ctx.payer,
-      createUserArgs: [
-        {
-          member: transactionManager,
-          role: UserRole.TransactionManager,
-          transactionManagerUrl: "https://xyz.com",
-        },
-      ],
-    });
-
-    await sendTransaction(
-      [createUserAccountIx],
-      ctx.payer,
-      ctx.addressLookUpTable
-    );
-
-    const secp256r1Keys = generateSecp256r1KeyPair();
-
-    // Create Secp256r1Key and add member to an existing wallet owned by the authority together with a transaction manager
-    const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey);
-    const createDomainUserAccountIx = await createDomainUserAccounts({
-      payer: ctx.payer,
-      authority: ctx.wallet,
-      domainConfig: ctx.domainConfig,
-      createUserArgs: {
-        member: secp256r1Key,
-        role: UserRole.PermanentMember,
-        index: ctx.index,
-        transactionManager: {
-          member: transactionManager.address,
-        },
-      },
-    });
-
-    await sendTransaction(
-      [createDomainUserAccountIx],
-      ctx.payer,
-      ctx.addressLookUpTable
-    );
-
-    await fundMultiWalletVault(ctx, BigInt(10 ** 8));
-
-    try {
-      const signedSigner = await mockAuthenticationResponse(
-        {
-          transactionActionType: "transfer_intent",
-          transactionAddress: TOKEN_2022_PROGRAM_ADDRESS.toString(),
-          transactionMessageBytes: new Uint8Array([
-            ...getU64Encoder().encode(BigInt(10 ** 9)),
-            ...getAddressEncoder().encode(ctx.wallet.address),
-            ...getAddressEncoder().encode(mint),
-          ]),
-        },
-        secp256r1Keys.privateKey,
-        secp256r1Keys.publicKey,
-        ctx
-      );
-
-      const tokenTransfer = await tokenTransferIntent({
-        index: ctx.index,
-        payer: ctx.payer,
-        signers: [signedSigner, transactionManager],
-        destination: ctx.wallet.address,
-        amount: 10 ** 9,
-        compressed: ctx.compressed,
-        mint,
-        tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
-      });
-
-      await sendTransaction(
-        [...tokenTransfer],
-        ctx.payer,
-        ctx.addressLookUpTable
-      );
-      const ata = getAssociatedTokenAddressInterface(
-        new PublicKey(mint),
-        new PublicKey(ctx.wallet.address)
-      );
-      const { parsed } = await getAtaInterface(
-        getLightProtocolRpc(),
-        new PublicKey(ata),
-        new PublicKey(ctx.wallet.address),
-        new PublicKey(mint)
-      );
-      expect(Number(parsed.amount)).to.equal(
-        10 ** 9,
-        "Incorrect token balance"
-      );
-    } catch (error) {
-      console.error("Test failed:", error);
-      throw error;
-    }
   });
 }
 
 const createMintAndMintToSplAccount = async (ctx: TestContext) => {
-  if (!ctx.index || !ctx.multiWalletVault || !ctx.wallet || !ctx.payer) return;
-  await fundMultiWalletVault(ctx, BigInt(10 ** 8));
+  assertTestContext(ctx, ["index", "multiWalletVault", "wallet", "payer"]);
+  await fundMultiWalletVault(ctx, BigInt(TEST_AMOUNT_MEDIUM));
   // Create ephemeral keypair
   const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
     crypto.getRandomValues(new Uint8Array(32))
@@ -283,7 +293,7 @@ const createMintAndMintToSplAccount = async (ctx: TestContext) => {
   // Create mint instruction
   const createMint = getInitializeMintInstruction({
     mint: ephemeralKeypair.address,
-    decimals: 5,
+    decimals: TEST_MINT_DECIMALS,
     mintAuthority: ctx.payer.address,
   });
   const ata = await getAssociatedTokenAccountAddress(
@@ -300,8 +310,8 @@ const createMintAndMintToSplAccount = async (ctx: TestContext) => {
   });
 
   const mintTo = getMintToCheckedInstruction({
-    amount: 10 ** 9,
-    decimals: 5,
+    amount: TEST_AMOUNT_LARGE,
+    decimals: TEST_MINT_DECIMALS,
     mint: ephemeralKeypair.address,
     mintAuthority: ctx.payer,
     token: ata,
@@ -1065,7 +1075,7 @@ const createMintAndMintToSplAndCTokenAndCompressedAccount = async (
 };
 
 async function createDestinationAta(mint: Address, ctx: TestContext) {
-  if (!ctx.wallet || !ctx.payer) return;
+  assertTestContext(ctx, ["wallet", "payer"]);
   const destinationAta = await getAssociatedTokenAccountAddress(
     mint,
     ctx.wallet.address,
@@ -1157,13 +1167,13 @@ async function ensureDelegate(ctx: TestContext) {
 }
 
 async function doTokenTransfer(ctx: TestContext, mint: Address) {
-  if (!ctx.index || !ctx.payer || !ctx.wallet) return;
+  assertTestContext(ctx, ["index", "payer", "wallet"]);
   const tokenTransfer = await tokenTransferIntent({
     index: ctx.index,
     payer: ctx.payer,
     signers: [ctx.payer],
     destination: ctx.wallet.address,
-    amount: 10 ** 9,
+    amount: TEST_AMOUNT_LARGE,
     compressed: ctx.compressed,
     mint,
     tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
@@ -1175,10 +1185,13 @@ async function doTokenTransfer(ctx: TestContext, mint: Address) {
 async function runScenario(getCtx: () => TestContext, s: Scenario) {
   let ctx = getCtx();
   ctx = await createMultiWallet(ctx);
+  assertTestContext(ctx, ["index", "multiWalletVault", "wallet", "payer"]);
 
   const mint = await mintForScenario(ctx, s.source);
 
-  if (!mint) throw new Error("Mint does not exist.");
+  if (!mint) {
+    throw new Error(`Failed to create mint for scenario: ${s.name}`);
+  }
 
   if (s.destinationAtaExists) {
     await createDestinationAta(mint, ctx);
@@ -1188,5 +1201,8 @@ async function runScenario(getCtx: () => TestContext, s: Scenario) {
   await doTokenTransfer(ctx, mint);
 
   const amount = await fetchVaultAtaAmount(ctx, mint, s.destinationAtaExists);
-  expect(amount).to.equal(10 ** 9, "Incorrect token balance");
+  expect(
+    amount,
+    `Token balance should be ${TEST_AMOUNT_LARGE} after transfer for scenario: ${s.name}`
+  ).to.equal(TEST_AMOUNT_LARGE);
 }

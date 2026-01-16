@@ -1,9 +1,10 @@
-import type {
-  BN254,
-  ValidityProofWithContext,
+import {
+  encodeBN254toBase58,
+  type BN254,
+  type ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
 import { equalBytes } from "@noble/curves/utils.js";
-import { type Address } from "gill";
+import { getBase58Encoder, type Address } from "gill";
 import {
   getCompressedSettingsDecoder,
   getUserDecoder,
@@ -230,7 +231,9 @@ async function buildConfigActions({
             return userMutArgs.find((arg) =>
               equalBytes(
                 new Uint8Array(arg.accountMeta.address),
-                new Uint8Array(r.address.toArray("le", 8))
+                new Uint8Array(
+                  getBase58Encoder().encode(encodeBN254toBase58(r.address))
+                )
               )
             );
           });
@@ -256,7 +259,9 @@ async function buildConfigActions({
                 const found = userMutArgs.find((arg) =>
                   equalBytes(
                     new Uint8Array(arg.accountMeta.address),
-                    new Uint8Array(r.address.toArray("le", 8))
+                    new Uint8Array(
+                      getBase58Encoder().encode(encodeBN254toBase58(r.address))
+                    )
                   )
                 );
                 if (!found) throw new Error("Unable to find user account");

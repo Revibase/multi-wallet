@@ -1,36 +1,46 @@
 import { fetchSettingsAccountData, getSolanaRpc } from "@revibase/core";
 import { expect } from "chai";
 import { address } from "gill";
-import { WALLET_TRANSFER_AMOUNT } from "../constants.ts";
-import { createMultiWallet, fundMultiWalletVault } from "../helpers/index.ts";
+import { TEST_AMOUNT_SMALL, WALLET_TRANSFER_AMOUNT } from "../constants.ts";
+import {
+  assertTestContext,
+  createMultiWallet,
+  fundMultiWalletVault,
+  withErrorHandling,
+} from "../helpers/index.ts";
 import type { TestContext } from "../types.ts";
 
 export function runWalletCreationTests(getCtx: () => TestContext) {
   it("should create a multi-wallet with correct initial state", async () => {
-    let ctx = getCtx();
-    // Create the multi-wallet
-    ctx = await createMultiWallet(ctx);
-    if (!ctx.index || !ctx.multiWalletVault) return;
-    // Verify wallet settings
-    const accountData = await fetchSettingsAccountData(ctx.index);
+    await withErrorHandling("create multi-wallet", async () => {
+      let ctx = getCtx();
+      ctx = await createMultiWallet(ctx);
+      assertTestContext(ctx, ["index", "multiWalletVault"]);
 
-    expect(accountData.members.length).to.equal(
-      1,
-      "Should have only one member initially"
-    );
-    expect(accountData.threshold).to.equal(1, "Should be a single-sig wallet");
+      // Verify wallet settings
+      const accountData = await fetchSettingsAccountData(ctx.index);
 
-    // Fund the wallet
-    await fundMultiWalletVault(ctx, BigInt(10 ** 9 * 0.01));
+      expect(
+        accountData.members.length,
+        "Wallet should have exactly one member initially"
+      ).to.equal(1);
+      expect(
+        accountData.threshold,
+        "Wallet should be configured as a single-signature wallet"
+      ).to.equal(1);
 
-    // Verify wallet balance
-    const vaultBalance = await getSolanaRpc()
-      .getBalance(address(ctx.multiWalletVault))
-      .send();
+      // Fund the wallet
+      await fundMultiWalletVault(ctx, BigInt(TEST_AMOUNT_SMALL * 10));
 
-    expect(vaultBalance.value).to.equal(
-      WALLET_TRANSFER_AMOUNT,
-      "Wallet should have the correct balance"
-    );
+      // Verify wallet balance
+      const vaultBalance = await getSolanaRpc()
+        .getBalance(address(ctx.multiWalletVault))
+        .send();
+
+      expect(
+        vaultBalance.value,
+        "Wallet should have the expected balance after funding"
+      ).to.equal(WALLET_TRANSFER_AMOUNT);
+    });
   });
 }

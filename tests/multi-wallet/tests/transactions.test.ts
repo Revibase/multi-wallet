@@ -18,50 +18,56 @@ import {
   getMintSize,
   TOKEN_2022_PROGRAM_ADDRESS,
 } from "gill/programs";
-import { createMultiWallet, sendTransaction } from "../helpers/index.ts";
+import { MEDIUM_TRANSFER_AMOUNT, TEST_MINT_DECIMALS } from "../constants.ts";
+import {
+  assertTestContext,
+  createMultiWallet,
+  sendTransaction,
+  withErrorHandling,
+} from "../helpers/index.ts";
 import { fundMultiWalletVault } from "../helpers/transaction.ts";
 import type { TestContext } from "../types.ts";
 
 export function runTransactionTests(getCtx: () => TestContext) {
-  it("should handle ephemeral transactions", async () => {
-    let ctx = getCtx();
-    ctx = await createMultiWallet(ctx);
-    if (!ctx.index || !ctx.multiWalletVault || !ctx.wallet || !ctx.payer)
-      return;
-    // Fund the wallet for transaction
-    await fundMultiWalletVault(ctx, BigInt(10 ** 9 * 0.3));
+  it("should successfully handle ephemeral transactions with mint creation", async () => {
+    await withErrorHandling("ephemeral transaction with mint", async () => {
+      let ctx = getCtx();
+      ctx = await createMultiWallet(ctx);
+      assertTestContext(ctx, ["index", "multiWalletVault", "wallet", "payer"]);
 
-    // Create ephemeral keypair
-    const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
-      crypto.getRandomValues(new Uint8Array(32))
-    );
+      // Fund the wallet for transaction
+      await fundMultiWalletVault(ctx, MEDIUM_TRANSFER_AMOUNT);
 
-    // Create account instruction
-    const createAccount = getCreateAccountInstruction({
-      payer: createNoopSigner(address(ctx.multiWalletVault)),
-      newAccount: ephemeralKeypair,
-      space: getMintSize(),
-      lamports: await getSolanaRpc()
-        .getMinimumBalanceForRentExemption(BigInt(getMintSize()))
-        .send(),
-      programAddress: TOKEN_2022_PROGRAM_ADDRESS,
-    });
+      // Create ephemeral keypair
+      const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
+        crypto.getRandomValues(new Uint8Array(32))
+      );
 
-    // Create mint instruction
-    const createMint = getInitializeMintInstruction({
-      mint: ephemeralKeypair.address,
-      decimals: 5,
-      mintAuthority: ctx.multiWalletVault,
-    });
+      // Create account instruction
+      const createAccount = getCreateAccountInstruction({
+        payer: createNoopSigner(address(ctx.multiWalletVault)),
+        newAccount: ephemeralKeypair,
+        space: getMintSize(),
+        lamports: await getSolanaRpc()
+          .getMinimumBalanceForRentExemption(BigInt(getMintSize()))
+          .send(),
+        programAddress: TOKEN_2022_PROGRAM_ADDRESS,
+      });
 
-    // Prepare transaction message
-    const transactionMessageBytes = prepareTransactionMessage({
-      payer: ctx.multiWalletVault,
-      instructions: [createAccount, createMint],
-      addressesByLookupTableAddress: ctx.addressLookUpTable,
-    });
+      // Create mint instruction
+      const createMint = getInitializeMintInstruction({
+        mint: ephemeralKeypair.address,
+        decimals: TEST_MINT_DECIMALS,
+        mintAuthority: ctx.multiWalletVault,
+      });
 
-    try {
+      // Prepare transaction message
+      const transactionMessageBytes = prepareTransactionMessage({
+        payer: ctx.multiWalletVault,
+        instructions: [createAccount, createMint],
+        addressesByLookupTableAddress: ctx.addressLookUpTable,
+      });
+
       // Prepare transaction
       const result = await prepareTransactionSync({
         compressed: ctx.compressed,
@@ -76,6 +82,7 @@ export function runTransactionTests(getCtx: () => TestContext) {
         ctx.payer,
         result.addressesByLookupTableAddress
       );
+
       // Verify transaction was successful
       const accountData = await fetchSettingsAccountData(ctx.index);
       const userAccountData = await fetchUserAccountData(ctx.wallet.address);
@@ -83,38 +90,40 @@ export function runTransactionTests(getCtx: () => TestContext) {
         userAccountData.delegatedTo.__option === "Some"
           ? userAccountData.delegatedTo.value
           : null;
-      expect(settingsIndex).to.equal(
-        null,
-        "User should be associated with the correct settings"
-      );
-      const walletAddress = await getWalletAddressFromIndex(ctx.index);
-      expect(walletAddress.toString()).to.equal(
-        ctx.multiWalletVault.toString(),
-        "User should be associated with the correct vault"
-      );
 
-      expect(accountData.members.length).to.be.greaterThan(
-        0,
-        "Should have at least one member"
-      );
-      expect(accountData.threshold).to.be.greaterThan(
-        0,
-        "Threshold should be at least 1"
-      );
+      expect(
+        settingsIndex,
+        "User should not be delegated after ephemeral transaction"
+      ).to.be.null;
+
+      const walletAddress = await getWalletAddressFromIndex(ctx.index);
+      expect(
+        walletAddress.toString(),
+        "Wallet address should match the vault address"
+      ).to.equal(ctx.multiWalletVault.toString());
+
+      expect(
+        accountData.members.length,
+        "Wallet should have at least one member"
+      ).to.be.greaterThan(0);
+
+      expect(
+        accountData.threshold,
+        "Wallet threshold should be at least 1"
+      ).to.be.greaterThan(0);
 
       // Verify mint account was created
       const mintAccount = await getSolanaRpc()
         .getAccountInfo(ephemeralKeypair.address)
         .send();
 
-      expect(mintAccount.value).to.not.be.null;
-      expect(mintAccount.value?.owner.toString()).to.equal(
-        TOKEN_2022_PROGRAM_ADDRESS.toString(),
+      expect(mintAccount.value, "Mint account should exist after creation").to
+        .not.be.null;
+
+      expect(
+        mintAccount.value?.owner.toString(),
         "Mint account should be owned by token program"
-      );
-    } catch (error) {
-      console.error("Test failed:", error);
-      throw error;
-    }
+      ).to.equal(TOKEN_2022_PROGRAM_ADDRESS.toString());
+    });
   });
 }

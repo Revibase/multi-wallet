@@ -5,33 +5,38 @@ import {
   getSolanaRpc,
 } from "@revibase/core";
 import { expect } from "chai";
-import { createMultiWallet, sendTransaction } from "../helpers/index.ts";
+import {
+  assertTestContext,
+  createMultiWallet,
+  sendTransaction,
+  withErrorHandling,
+} from "../helpers/index.ts";
 import type { TestContext } from "../types.ts";
 
 export function runDecompressionTests(getCtx: () => TestContext) {
-  it("should handle decompress settings account", async () => {
-    let ctx = getCtx();
-    ctx = await createMultiWallet(ctx);
-    if (!ctx.index || !ctx.payer || !ctx.wallet) return;
-    const decompressIxs = await decompressSettingsAccount({
-      index: ctx.index,
-      payer: ctx.payer,
-      signers: [ctx.wallet],
-    });
+  it("should successfully decompress settings account and verify it exists", async () => {
+    await withErrorHandling("decompress settings account", async () => {
+      let ctx = getCtx();
+      ctx = await createMultiWallet(ctx);
+      assertTestContext(ctx, ["index", "payer", "wallet"]);
 
-    try {
+      const decompressIxs = await decompressSettingsAccount({
+        index: ctx.index,
+        payer: ctx.payer,
+        signers: [ctx.wallet],
+      });
+
       await sendTransaction(
         [...decompressIxs],
         ctx.payer,
         ctx.addressLookUpTable
       );
+
       const settings = await getSettingsFromIndex(ctx.index);
       const settingsData = await fetchMaybeSettings(getSolanaRpc(), settings);
 
-      expect(settingsData.exists).equal(true, "Settings account should exist");
-    } catch (error) {
-      console.error("Test failed:", error);
-      throw error;
-    }
+      expect(settingsData.exists, "Settings account should exist after decompression").to.be
+        .true;
+    });
   });
 }

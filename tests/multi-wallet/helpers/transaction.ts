@@ -26,11 +26,9 @@ import {
   getSetComputeUnitLimitInstruction,
   getTransferSolInstruction,
 } from "gill/programs";
+import { TEST_COMPUTE_UNIT_LIMIT, TEST_TRANSACTION_DELAY_MS } from "../constants.ts";
+import { assertTestContext, delay } from "./test-utils.ts";
 import type { TestContext } from "../types.ts";
-
-function delay(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 /**
  * Sends a transaction with the given instructions
@@ -55,7 +53,7 @@ export async function sendTransaction(
       (tx) => {
         return prependTransactionMessageInstruction(
           getSetComputeUnitLimitInstruction({
-            units: 800_000,
+            units: TEST_COMPUTE_UNIT_LIMIT,
           }),
           tx
         );
@@ -76,7 +74,7 @@ export async function sendTransaction(
       commitment: "confirmed",
       skipPreflight: true,
     });
-    await delay(3000);
+    await delay(TEST_TRANSACTION_DELAY_MS);
     return signature;
   } catch (error) {
     console.log(signature);
@@ -123,7 +121,8 @@ export async function fundMultiWalletVault(
 }
 
 export async function addPayerAsNewMember(ctx: TestContext) {
-  if (!ctx.index || !ctx.multiWalletVault || !ctx.payer || !ctx.wallet) return;
+  assertTestContext(ctx, ["index", "multiWalletVault", "payer", "wallet"]);
+
   const changeConfigArgs = await prepareChangeConfigArgs({
     compressed: ctx.compressed,
     index: ctx.index,

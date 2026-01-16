@@ -1,8 +1,11 @@
 import { setupTestEnvironment } from "./helpers/index.ts";
 import { runDecompressionTests } from "./tests/decompression.test.ts";
+import { runErrorCasesTests } from "./tests/error-cases.test.ts";
 import { runMemberManagementTests } from "./tests/member-management.test.ts";
 import { runNativeTransferTest } from "./tests/native-transfer.test.ts";
+import { runPermissionsTests } from "./tests/permissions.test.ts";
 import { runSecp256r1Tests } from "./tests/secp256r1.test.ts";
+import { runThresholdManagementTests } from "./tests/threshold-management.test.ts";
 import { runTokenTransferTest } from "./tests/token-transfer.test.ts";
 import { runTransactionManagerTests } from "./tests/transaction-manager.test.ts";
 import { runTransactionTests } from "./tests/transactions.test.ts";
@@ -22,6 +25,14 @@ describe("Multi Wallet Tests", function () {
 
   describe("Member Management", () => {
     runMemberManagementTests(() => ctx);
+  });
+
+  describe("Threshold Management", () => {
+    runThresholdManagementTests(() => ctx);
+  });
+
+  describe("Permissions Management", () => {
+    runPermissionsTests(() => ctx);
   });
 
   describe("Secp256r1 Key Management", () => {
@@ -46,5 +57,9 @@ describe("Multi Wallet Tests", function () {
 
   describe("Token Transfer Intent Test", () => {
     runTokenTransferTest(() => ctx);
+  });
+
+  describe("Error Cases and Validation", () => {
+    runErrorCasesTests(() => ctx);
   });
 });
