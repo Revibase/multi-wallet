@@ -11,7 +11,6 @@ import {
   getUtf8Encoder,
   type Address,
 } from "gill";
-import { fetchDomainConfig } from "../../generated";
 import {
   SignedSecp256r1Key,
   type CompleteMessageRequest,
@@ -118,7 +117,7 @@ export async function getSignedSecp256r1Key(
 
   const clientDataJsonParsed = JSON.parse(
     new TextDecoder().decode(base64URLStringToBuffer(clientDataJSON))
-  ) as Record<string, any>;
+  ) as Record<string, unknown>;
 
   const truncatedClientDataJson = extractAdditionalFields(clientDataJsonParsed);
 
@@ -151,15 +150,8 @@ export async function getSignedSecp256r1Key(
   });
 }
 
-export async function getOriginIndex(domainConfig: Address, origin: string) {
-  const { data } = await fetchDomainConfig(getSolanaRpc(), domainConfig);
-  const origins = parseOrigins(new Uint8Array(data.origins), data.numOrigins);
-  const index = origins.findIndex((x) => x === origin);
-  if (index === -1) {
-    throw new Error("Origin not found in domain config");
-  }
-  return index;
-}
+import { NotFoundError } from "../../errors";
+import { fetchDomainConfig } from "../../generated";
 
 export function getClientAndDeviceHash(
   clientOrigin: string,
@@ -226,7 +218,10 @@ export async function createTransactionChallenge(
         .send()
     ).value?.data;
     if (!slotSysvarData) {
-      throw new Error("Unable to fetch slot sysvar");
+      throw new NotFoundError(
+        "Slot sysvar",
+        "Unable to fetch slot sysvar data"
+      );
     }
     const slotHashData = getBase64Encoder().encode(slotSysvarData[0]);
     slotNumber = getU64Decoder().decode(slotHashData.subarray(0, 8)).toString();
@@ -290,4 +285,14 @@ export function base64URLStringToBuffer(base64URLString: string) {
     bytes[i] = binary.charCodeAt(i);
   }
   return buffer;
+}
+
+export async function getOriginIndex(domainConfig: Address, origin: string) {
+  const { data } = await fetchDomainConfig(getSolanaRpc(), domainConfig);
+  const origins = parseOrigins(new Uint8Array(data.origins), data.numOrigins);
+  const index = origins.findIndex((x) => x === origin);
+  if (index === -1) {
+    throw new Error("Origin not found in domain config");
+  }
+  return index;
 }

@@ -13,6 +13,12 @@ import {
   type TransactionMessageWithFeePayer,
 } from "gill";
 import { estimateComputeUnitLimitFactory } from "gill/programs";
+import {
+  DEFAULT_JITO_BLOCK_ENGINE_URL,
+  DEFAULT_JITO_TIPS_URL,
+  DEFAULT_PRIORITY_LVL,
+} from "../constants";
+import { NotInitializedError } from "../errors";
 import type { JitoTipsConfig } from "../types";
 
 featureFlags.version = VERSION.V2;
@@ -24,7 +30,7 @@ type RevibaseGlobalState = {
   sendAndConfirm?: SendAndConfirmTransactionWithSignersFunction;
   computeEstimate?: (
     tx: BaseTransactionMessage & TransactionMessageWithFeePayer,
-    cfg?: any
+    cfg?: { commitment?: "processed" | "confirmed" | "finalized" }
   ) => Promise<number>;
   jitoTipsConfig?: JitoTipsConfig | null;
 };
@@ -32,48 +38,59 @@ type RevibaseGlobalState = {
 const state: RevibaseGlobalState = {};
 
 export function getSolanaRpcEndpoint() {
-  if (!state.solanaRpcEndpoint) throw new Error("Rpc is not initialized yet.");
+  if (!state.solanaRpcEndpoint) {
+    throw new NotInitializedError("RPC endpoint");
+  }
   return state.solanaRpcEndpoint;
 }
 
 export function getLightProtocolRpc() {
-  if (!state.lightProtocolRpc) throw new Error("Rpc is not initialized yet");
+  if (!state.lightProtocolRpc) {
+    throw new NotInitializedError("Light Protocol RPC");
+  }
   return state.lightProtocolRpc;
 }
 
 export function getSolanaRpc() {
-  if (!state.solanaRpc) throw new Error("Rpc is not initialized yet");
+  if (!state.solanaRpc) {
+    throw new NotInitializedError("Solana RPC");
+  }
   return state.solanaRpc;
 }
 
 export function getSendAndConfirmTransaction() {
-  if (!state.sendAndConfirm) throw new Error("Rpc is not initialized yet.");
+  if (!state.sendAndConfirm) {
+    throw new NotInitializedError("Send and confirm transaction function");
+  }
   return state.sendAndConfirm;
 }
 
 export function getComputeBudgetEstimate() {
-  if (!state.computeEstimate) throw new Error("Rpc is not initialized yet");
+  if (!state.computeEstimate) {
+    throw new NotInitializedError("Compute budget estimate function");
+  }
   return state.computeEstimate;
 }
 
 export function getJitoTipsConfig() {
   if (!state.jitoTipsConfig) {
     return {
-      blockEngineUrl: "https://mainnet.block-engine.jito.wtf/api/v1",
-      getJitoTipsUrl: "https://bundles.jito.wtf/api/v1/bundles/tip_floor",
-      priority: "landed_tips_75th_percentile",
+      blockEngineUrl: DEFAULT_JITO_BLOCK_ENGINE_URL,
+      getJitoTipsUrl: DEFAULT_JITO_TIPS_URL,
+      priority: DEFAULT_PRIORITY_LVL,
     };
   }
 
   return state.jitoTipsConfig;
 }
 
-export function uninitialize() {
-  Object.keys(state).forEach((key) => {
-    (state as any)[key] = undefined;
-  });
-}
-
+/**
+ * Initializes the SDK with RPC endpoints and configuration
+ * @param rpcEndpoint - Solana RPC endpoint URL
+ * @param proverEndpoint - Optional prover endpoint URL
+ * @param compressionApiEndpoint - Optional compression API endpoint URL
+ * @param jitoTipsConfig - Optional Jito tips configuration
+ */
 export function initialize({
   rpcEndpoint,
   proverEndpoint,
@@ -84,7 +101,7 @@ export function initialize({
   proverEndpoint?: string;
   compressionApiEndpoint?: string;
   jitoTipsConfig?: JitoTipsConfig;
-}) {
+}): void {
   state.solanaRpcEndpoint = rpcEndpoint;
   state.lightProtocolRpc = createRpc(
     rpcEndpoint,

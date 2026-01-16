@@ -11,7 +11,6 @@ import {
   type WithCursor,
 } from "@lightprotocol/stateless.js";
 import type { PublicKey } from "@solana/web3.js";
-import BN from "bn.js";
 import {
   some,
   type AccountInfoBase,
@@ -21,6 +20,11 @@ import {
   type OptionOrNullable,
   type Slot,
 } from "gill";
+import {
+  DEFAULT_NETWORK_RETRY_DELAY_MS,
+  DEFAULT_NETWORK_RETRY_MAX_RETRIES,
+} from "../../constants";
+import { NotFoundError, ValidationError } from "../../errors";
 import {
   fetchWhitelistedAddressTree,
   getCompressedSettingsDecoder,
@@ -32,52 +36,42 @@ import {
   getCompressedSettingsAddressFromIndex,
   getWhitelistedAddressTreesAddress,
 } from "../addresses";
+import {
+  createAccountInfoCacheKey,
+  createCompressedAccountCacheKey,
+  createTokenAccountCacheKey,
+  getCachedOrFetch,
+} from "../cache";
 import { getLightProtocolRpc, getSolanaRpc } from "../initialize";
+import { retryWithBackoff } from "../retry";
 import { PackedAccounts } from "./packedAccounts";
 
+import type { AccountCache } from "../../types";
+
 export async function fetchCachedCompressedAccount(
-  address: BN,
-  cachedAccounts?: Map<string, any>
+  address: BN254,
+  cachedAccounts?: AccountCache
 ): Promise<CompressedAccount | null> {
-  let result = cachedAccounts?.get(address.toString());
-  if (result) {
-    return result;
-  } else {
-    const compressedAccount =
-      await getLightProtocolRpc().getCompressedAccount(address);
-    if (compressedAccount) {
-      cachedAccounts?.set(address.toString(), compressedAccount);
-    }
-    return compressedAccount;
-  }
+  const key = createCompressedAccountCacheKey(address);
+  return getCachedOrFetch(cachedAccounts, key, () =>
+    getLightProtocolRpc().getCompressedAccount(address)
+  );
 }
 
 export async function fetchCachedCompressedTokenAccountsByOwner(
   owner: PublicKey,
   options?: GetCompressedTokenAccountsByOwnerOrDelegateOptions,
-  cachedAccounts?: Map<string, any>
+  cachedAccounts?: AccountCache
 ): Promise<WithCursor<ParsedTokenAccount[]>> {
-  const key =
-    owner.toString() + (options?.mint ? options?.mint.toString() : "");
-  let result = cachedAccounts?.get(key);
-  if (result) {
-    return result;
-  } else {
-    const compressedAccount =
-      await getLightProtocolRpc().getCompressedTokenAccountsByOwner(
-        owner,
-        options
-      );
-    if (compressedAccount) {
-      cachedAccounts?.set(key, compressedAccount);
-    }
-    return compressedAccount;
-  }
+  const key = createTokenAccountCacheKey(owner, options?.mint);
+  return getCachedOrFetch(cachedAccounts, key, () =>
+    getLightProtocolRpc().getCompressedTokenAccountsByOwner(owner, options)
+  );
 }
 
 export async function fetchCachedAccountInfo(
   address: Address,
-  cachedAccounts?: Map<string, any>
+  cachedAccounts?: AccountCache
 ): Promise<
   Readonly<{
     context: Readonly<{
@@ -91,23 +85,15 @@ export async function fetchCachedAccountInfo(
       | null;
   }>
 > {
-  let result = cachedAccounts?.get(address.toString());
-  if (result) {
-    return result;
-  } else {
-    const accountInfo = await getSolanaRpc()
-      .getAccountInfo(address, { encoding: "base64" })
-      .send();
-    if (accountInfo) {
-      cachedAccounts?.set(address.toString(), accountInfo);
-    }
-    return accountInfo;
-  }
+  const key = createAccountInfoCacheKey(address);
+  return getCachedOrFetch(cachedAccounts, key, () =>
+    getSolanaRpc().getAccountInfo(address, { encoding: "base64" }).send()
+  );
 }
 
 export async function getCompressedAccountHashes(
   addresses: { address: BN254; type: "Settings" | "User" }[],
-  cachedAccounts?: Map<string, any>
+  cachedAccounts?: AccountCache
 ) {
   const compressedAccounts = await Promise.all(
     addresses.map(async (x) =>
@@ -120,7 +106,10 @@ export async function getCompressedAccountHashes(
     .filter((x) => x.data !== null && x.address !== null);
 
   if (filtered.length !== addresses.length) {
-    throw new Error("Unable to find compressed account.");
+    throw new NotFoundError(
+      "Compressed account",
+      `Expected ${addresses.length} accounts but found ${filtered.length}`
+    );
   }
 
   return filtered.map((x, index) => ({
@@ -151,9 +140,9 @@ export function convertToCompressedProofArgs(
 
 export async function getCompressedAccountInitArgs(
   packedAccounts: PackedAccounts,
-  treeInfos: TreeInfo[],
-  roots: BN[],
-  rootIndices: number[],
+  treeInfos: ValidityProofWithContext["treeInfos"],
+  roots: ValidityProofWithContext["roots"],
+  rootIndices: ValidityProofWithContext["rootIndices"],
   newAddresses: (AddressWithTree & { type: "User" | "Settings" })[]
 ) {
   if (newAddresses.length === 0) return [];
@@ -209,7 +198,7 @@ export function getCompressedAccountMutArgs<T>(
   ).stateTrees;
 
   if (!stateTreeInfo) {
-    throw new Error("Unable to parsed data.");
+    throw new ValidationError("Unable to parse state tree data");
   }
 
   const mutArgs = hashes.map((x, index) => ({
@@ -229,7 +218,7 @@ export async function constructSettingsProofArgs(
   index: number | bigint,
   settingsAddressTreeIndex?: number,
   simulateProof?: boolean,
-  cachedAccounts?: Map<string, any>
+  cachedAccounts?: AccountCache
 ) {
   let settingsReadonlyArgs: SettingsReadonlyArgs | null = null;
   let settingsMutArgs: SettingsMutArgs | null = null;
@@ -279,7 +268,7 @@ export async function constructSettingsProofArgs(
     ).stateTrees;
 
     if (!stateTreeInfo) {
-      throw new Error("Unable to parsed data.");
+      throw new ValidationError("Unable to parse state tree data");
     }
 
     settingsReadonlyArgs = {
@@ -302,32 +291,28 @@ export async function constructSettingsProofArgs(
   return { settingsReadonlyArgs, proof, packedAccounts, settingsMutArgs };
 }
 
+/**
+ * Gets validity proof with retry logic using exponential backoff
+ * @param hashes - Hash with tree information
+ * @param newAddresses - New addresses to include
+ * @param maxRetries - Maximum number of retry attempts (default: 10)
+ * @param initialDelayMs - Initial delay between retries in milliseconds (default: 400)
+ * @returns Validity proof with context
+ * @throws {RetryExhaustedError} If all retry attempts are exhausted
+ */
 export async function getValidityProofWithRetry(
   hashes?: HashWithTree[] | undefined,
   newAddresses?: AddressWithTree[],
-  retry = 10,
-  delay = 400
-) {
-  let attempt = 1;
-  while (attempt < retry) {
-    try {
-      const proof = await getLightProtocolRpc().getValidityProofV0(
-        hashes,
-        newAddresses
-      );
-      return proof;
-    } catch (error) {
-      console.error(`Attempt ${attempt}, Get Validity Proof failed. ${error}`);
-      attempt++;
-      if (attempt >= retry) {
-        throw new Error(
-          `Failed to get validity proof after ${retry} attempts: ${error}`
-        );
-      }
-      await new Promise((resolve) => setTimeout(resolve, delay));
+  maxRetries = DEFAULT_NETWORK_RETRY_MAX_RETRIES,
+  initialDelayMs = DEFAULT_NETWORK_RETRY_DELAY_MS
+): Promise<ValidityProofWithContext> {
+  return retryWithBackoff(
+    () => getLightProtocolRpc().getValidityProofV0(hashes, newAddresses),
+    {
+      maxRetries,
+      initialDelayMs,
     }
-  }
-  throw new Error(`Failed to get validity proof after ${retry} attempts`);
+  );
 }
 export async function getNewWhitelistedAddressTreeIndex() {
   const addressTrees = await getCachedWhitelistedAddressTree();

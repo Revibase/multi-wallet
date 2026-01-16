@@ -13,9 +13,12 @@ import {
   getUtf8Encoder,
   type Address,
 } from "gill";
+import { MAX_TRANSACTION_BUFFER_INDEX } from "../../constants";
+import { ValidationError } from "../../errors";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
 import { Secp256r1Key } from "../../types";
 import { getWhitelistedAddressTreeFromIndex } from "../compressed/helper";
+import { requireInRange } from "../validation";
 
 export async function getCompressedSettingsAddressFromIndex(
   index: number | bigint,
@@ -77,11 +80,8 @@ export async function getDomainConfigAddress({
     if (rpId) {
       rpIdHash = sha256(new Uint8Array(getUtf8Encoder().encode(rpId)));
     } else {
-      throw new Error("RpId not found.");
+      throw new ValidationError("Either rpId or rpIdHash must be provided");
     }
-  }
-  if (!rpIdHash) {
-    throw new Error("RpIdHash not found.");
   }
   const [domainConfig] = await getProgramDerivedAddress({
     programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
@@ -109,14 +109,20 @@ export async function getWhitelistedAddressTreesAddress() {
   return whitelistedAddressTrees;
 }
 
+/**
+ * Gets transaction buffer address from settings, creator, and index
+ * @param settings - Settings address
+ * @param creator - Creator address or Secp256r1Key
+ * @param buffer_index - Buffer index (0-255)
+ * @returns Transaction buffer address
+ * @throws {ValidationError} If buffer_index exceeds maximum
+ */
 export async function getTransactionBufferAddress(
   settings: Address,
   creator: Address | Secp256r1Key,
   buffer_index: number
-) {
-  if (buffer_index > 255) {
-    throw new Error("Index cannot be greater than 255.");
-  }
+): Promise<Address> {
+  requireInRange(buffer_index, 0, MAX_TRANSACTION_BUFFER_INDEX, "buffer_index");
   const [transactionBuffer] = await getProgramDerivedAddress({
     programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
     seeds: [

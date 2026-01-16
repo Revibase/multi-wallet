@@ -1,5 +1,8 @@
-import type { ValidityProofWithContext } from "@lightprotocol/stateless.js";
-import BN from "bn.js";
+import type {
+  BN254,
+  ValidityProofWithContext,
+} from "@lightprotocol/stateless.js";
+import { equalBytes } from "@noble/curves/utils.js";
 import { type Address } from "gill";
 import {
   getCompressedSettingsDecoder,
@@ -94,7 +97,7 @@ export async function prepareChangeConfigArgs({
 }
 
 async function prepareUserAccounts(configActionsArgs: ConfigurationArgs[]) {
-  const result: { address: BN; type: "User" }[] = [];
+  const result: { address: BN254; type: "User" }[] = [];
 
   for (const action of configActionsArgs) {
     switch (action.type) {
@@ -137,7 +140,7 @@ async function prepareProofAndMutArgs({
   cachedAccounts,
 }: {
   packedAccounts: PackedAccounts;
-  userAccounts: { address: BN; type: "User" }[];
+  userAccounts: { address: BN254; type: "User" }[];
   compressed: boolean;
   index: number | bigint;
   settingsAddressTreeIndex?: number;
@@ -145,7 +148,7 @@ async function prepareProofAndMutArgs({
 }) {
   await packedAccounts.addSystemAccounts();
 
-  const addresses: { address: BN; type: "Settings" | "User" }[] = [];
+  const addresses: { address: BN254; type: "Settings" | "User" }[] = [];
   if (compressed) {
     const settingsAddr = (
       await getCompressedSettingsAddressFromIndex(
@@ -225,7 +228,10 @@ async function buildConfigActions({
             m.userAddressTreeIndex
           ).then((r) => {
             return userMutArgs.find((arg) =>
-              new BN(new Uint8Array(arg.accountMeta.address)).eq(r.address)
+              equalBytes(
+                new Uint8Array(arg.accountMeta.address),
+                new Uint8Array(r.address.toArray("le", 8))
+              )
             );
           });
           if (!userArgs) throw new Error("Unable to find user account");
@@ -248,7 +254,10 @@ async function buildConfigActions({
             getUserAccountAddress(m.member, m.userAddressTreeIndex).then(
               (r) => {
                 const found = userMutArgs.find((arg) =>
-                  new BN(new Uint8Array(arg.accountMeta.address)).eq(r.address)
+                  equalBytes(
+                    new Uint8Array(arg.accountMeta.address),
+                    new Uint8Array(r.address.toArray("le", 8))
+                  )
                 );
                 if (!found) throw new Error("Unable to find user account");
                 return convertRemoveMember({

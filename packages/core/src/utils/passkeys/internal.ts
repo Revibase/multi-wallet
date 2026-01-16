@@ -17,11 +17,11 @@ export function hexToUint8Array(hex: string): Uint8Array {
   return bytes;
 }
 export function extractAdditionalFields(
-  clientData: Record<string, any>
+  clientData: Record<string, unknown>
 ): Uint8Array {
   const knownKeys = new Set(["type", "challenge", "origin", "crossOrigin"]);
 
-  const remaining: Record<string, any> = {};
+  const remaining: Record<string, unknown> = {};
   for (const key in clientData) {
     if (!knownKeys.has(key)) {
       remaining[key] = clientData[key];

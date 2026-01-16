@@ -7,6 +7,7 @@ import {
   executeTransactionSync,
   type Secp256r1VerifyInput,
 } from "../instructions";
+import type { AccountCache } from "../types";
 import { SignedSecp256r1Key, type TransactionDetails } from "../types";
 
 interface CreateTransactionSyncArgs {
@@ -19,7 +20,7 @@ interface CreateTransactionSyncArgs {
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   compressed?: boolean;
   simulateProof?: boolean;
-  cachedAccounts?: Map<string, any>;
+  cachedAccounts?: AccountCache;
 }
 
 export async function prepareTransactionSync({

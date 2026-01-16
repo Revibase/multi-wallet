@@ -10,6 +10,7 @@ import {
   getAddressEncoder,
   getBlockhashDecoder,
   type Instruction,
+  none,
   type OptionOrNullable,
   pipe,
   prependTransactionMessageInstructions,
@@ -25,20 +26,40 @@ import {
   getSetComputeUnitLimitInstruction,
   getTransferSolInstruction,
 } from "gill/programs";
-import type { MemberKey, Secp256r1VerifyArgs } from "../../generated";
+import {
+  DEFAULT_COMPUTE_UNITS,
+  JITO_TIP_ACCOUNTS,
+  MIN_COMPUTE_UNITS,
+  TRANSACTION_SIZE_LIMIT,
+} from "../../constants";
+import { BundleError, NetworkError, ValidationError } from "../../errors";
+import type { MemberKey, Secp256r1VerifyArgsArgs } from "../../generated";
 import {
   KeyType,
   Secp256r1Key,
   SignedSecp256r1Key,
   type TransactionDetails,
 } from "../../types";
+import {
+  DEFAULT_NETWORK_RETRY_DELAY_MS,
+  DEFAULT_NETWORK_RETRY_MAX_RETRIES,
+} from "../../constants";
+import { parseJson, validateResponse } from "../async";
 import { getSolanaRpc } from "../initialize";
 import { getSecp256r1Message } from "../passkeys/internal";
+import { retryFetch } from "../retry";
+import { requireNonEmpty } from "../validation";
 
+/**
+ * Creates an encoded bundle of transactions
+ * @param bundle - Array of transaction details with optional compute units
+ * @param isSimulate - Whether this is for simulation (uses random blockhash)
+ * @returns Array of encoded transactions
+ */
 export async function createEncodedBundle(
   bundle: (TransactionDetails & { unitsConsumed?: number })[],
   isSimulate = false
-) {
+): Promise<any[]> {
   const latestBlockHash = isSimulate
     ? {
         blockhash: getBlockhashDecoder().decode(
@@ -64,8 +85,8 @@ export async function createEncodedBundle(
             : tx,
         async (tx) => {
           const computeUnits =
-            Math.ceil((x.unitsConsumed ?? 0) * 1.1) || 800000;
-          return computeUnits > 200000
+            Math.ceil((x.unitsConsumed ?? 0) * 1.1) || DEFAULT_COMPUTE_UNITS;
+          return computeUnits > MIN_COMPUTE_UNITS
             ? prependTransactionMessageInstructions(
                 [
                   getSetComputeUnitLimitInstruction({
@@ -85,10 +106,16 @@ export async function createEncodedBundle(
     })
   );
 }
+/**
+ * Gets median priority fees for writable accounts
+ * @param connection - Solana RPC connection
+ * @param accounts - Array of account metadata
+ * @returns Median priority fee in microlamports
+ */
 export async function getMedianPriorityFees(
   connection: Rpc<SolanaRpcApi>,
   accounts: AccountMeta[]
-) {
+): Promise<number> {
   const recentFees = await connection
     .getRecentPrioritizationFees(
       accounts
@@ -111,78 +138,116 @@ export async function getMedianPriorityFees(
   }
 }
 
-export async function simulateBundle(bundle: string[], connectionUrl: string) {
-  if (bundle.length === 0) {
-    throw new Error("Bundle is empty.");
-  }
+/**
+ * Simulates a bundle of transactions to estimate compute units
+ * @param bundle - Array of base64-encoded transaction strings
+ * @param connectionUrl - RPC endpoint URL
+ * @returns Array of compute units consumed per transaction
+ * @throws {ValidationError} If bundle is empty or transactions exceed size limit
+ * @throws {NetworkError} If simulation request fails
+ * @throws {BundleError} If simulation fails
+ */
+export async function simulateBundle(
+  bundle: string[],
+  connectionUrl: string
+): Promise<number[]> {
+  requireNonEmpty(bundle, "bundle");
 
+  // Validate transaction sizes
   for (let i = 0; i < bundle.length; i++) {
-    if (bundle[i].length > 1644) {
-      throw new Error(
-        `Transaction ${i} exceeds maximum length, ${bundle[i].length}. Retry again.`
+    if (bundle[i].length > TRANSACTION_SIZE_LIMIT) {
+      throw new ValidationError(
+        `Transaction ${i} exceeds maximum length of ${TRANSACTION_SIZE_LIMIT} bytes (actual: ${bundle[i].length} bytes)`
       );
     }
-    console.log(`Transaction ${i} length: ${bundle[i].length}`);
   }
 
-  const response = await fetch(connectionUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: "2",
-      method: "simulateBundle",
-      params: [
-        {
-          encodedTransactions: bundle,
+  const response = await retryFetch(
+    () =>
+      fetch(connectionUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        {
-          skipSigVerify: true,
-          replaceRecentBlockhash: true,
-          preExecutionAccountsConfigs: bundle.map(() => ({
-            encoding: "base64",
-            addresses: [],
-          })),
-          postExecutionAccountsConfigs: bundle.map(() => ({
-            encoding: "base64",
-            addresses: [],
-          })),
-        },
-      ],
-    }),
-  });
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: "2",
+          method: "simulateBundle",
+          params: [
+            {
+              encodedTransactions: bundle,
+            },
+            {
+              skipSigVerify: true,
+              replaceRecentBlockhash: true,
+              preExecutionAccountsConfigs: bundle.map(() => ({
+                encoding: "base64",
+                addresses: [],
+              })),
+              postExecutionAccountsConfigs: bundle.map(() => ({
+                encoding: "base64",
+                addresses: [],
+              })),
+            },
+          ],
+        }),
+      }),
+    {
+      maxRetries: DEFAULT_NETWORK_RETRY_MAX_RETRIES,
+      initialDelayMs: DEFAULT_NETWORK_RETRY_DELAY_MS,
+    }
+  );
 
-  if (!response.ok) {
-    console.error(await response.json());
-    throw new Error("Failed to simulate bundle");
-  }
-  const { result, error } = await response.json();
+  await validateResponse(response, connectionUrl);
+  const data = await parseJson<{
+    result?: {
+      value: {
+        transactionResults: { unitsConsumed: number }[];
+        summary:
+          | string
+          | {
+              failed?: {
+                error: {
+                  TransactionFailure: [unknown, string];
+                };
+              };
+            };
+      };
+    };
+    error?: unknown;
+  }>(response);
 
-  if (!result || error) {
-    console.error(error ?? result);
-    throw new Error(
-      `Unable to simulate bundle: ${JSON.stringify(error ?? result)}`
+  if (!data.result || data.error) {
+    throw new BundleError(
+      `Unable to simulate bundle: ${JSON.stringify(data.error ?? data.result)}`
     );
   }
-  if (typeof result.value.summary !== "string" && result.value.summary.failed) {
-    const { TransactionFailure } = result.value.summary.failed.error;
+
+  if (
+    typeof data.result.value.summary !== "string" &&
+    data.result.value.summary.failed
+  ) {
+    const { TransactionFailure } = data.result.value.summary.failed.error;
     const [, programError] = TransactionFailure;
-    console.error(error ?? result);
-    throw new Error(`Simulation failed: ${programError}`);
+    throw new BundleError(`Simulation failed: ${programError}`);
   }
 
-  return result.value.transactionResults.map((x: any) => x.unitsConsumed);
+  return data.result.value.transactionResults.map((x) => x.unitsConsumed);
 }
 
+/**
+ * Extracts secp256r1 verification arguments from a signer
+ * @param signer - Optional signer (SignedSecp256r1Key or TransactionSigner)
+ * @param index - Message index for verification
+ * @returns Extracted verification arguments
+ */
 export function extractSecp256r1VerificationArgs(
   signer?: SignedSecp256r1Key | TransactionSigner,
   index = 0
 ) {
   const secp256r1PublicKey =
     signer instanceof SignedSecp256r1Key ? signer : undefined;
-  const verifyArgs: OptionOrNullable<Secp256r1VerifyArgs> =
+  const verifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs> =
     secp256r1PublicKey?.verifyArgs && index !== -1
       ? some({
           signedMessageIndex: index,
@@ -193,7 +258,7 @@ export function extractSecp256r1VerificationArgs(
           crossOrigin: secp256r1PublicKey.crossOrigin,
           clientAndDeviceHash: secp256r1PublicKey.clientAndDeviceHash,
         })
-      : null;
+      : none();
 
   const domainConfig = secp256r1PublicKey?.domainConfig
     ? secp256r1PublicKey.domainConfig
@@ -202,8 +267,7 @@ export function extractSecp256r1VerificationArgs(
     ? secp256r1PublicKey.signature
     : undefined;
   const message =
-    secp256r1PublicKey?.authData &&
-    secp256r1PublicKey.verifyArgs?.clientDataJson
+    secp256r1PublicKey?.authData && secp256r1PublicKey.verifyArgs.clientDataJson
       ? getSecp256r1Message(secp256r1PublicKey.authResponse)
       : undefined;
   const publicKey = secp256r1PublicKey?.toBuffer();
@@ -216,6 +280,11 @@ export function extractSecp256r1VerificationArgs(
     publicKey,
   };
 }
+/**
+ * Converts a public key to a member key format
+ * @param pubkey - Public key in various formats
+ * @returns Member key with key type and encoded key
+ */
 export function convertPubkeyToMemberkey(
   pubkey: TransactionSigner | Address | Secp256r1Key
 ): MemberKey {
@@ -244,9 +313,15 @@ function getPubkeyString(pubkey: TransactionSigner | SignedSecp256r1Key) {
     return pubkey.address.toString();
   }
 }
+/**
+ * Deduplicates signers and validates constraints
+ * @param signers - Array of signers to deduplicate
+ * @returns Deduplicated array of signers
+ * @throws {ValidationError} If more than one Secp256r1 signer is present
+ */
 export function getDeduplicatedSigners(
   signers: (SignedSecp256r1Key | TransactionSigner)[]
-) {
+): (SignedSecp256r1Key | TransactionSigner)[] {
   const hashSet = new Set();
   const dedupSigners: (SignedSecp256r1Key | TransactionSigner)[] = [];
   for (const signer of signers) {
@@ -257,14 +332,23 @@ export function getDeduplicatedSigners(
   }
 
   // due to current tx size limit (can be removed once tx size limit increases)
-  if (dedupSigners.filter((x) => x instanceof SignedSecp256r1Key).length > 1) {
-    throw new Error(
-      "More than 1 Secp256r1 signers in an instruction is not supported."
+  const secp256r1Signers = dedupSigners.filter(
+    (x) => x instanceof SignedSecp256r1Key
+  );
+  if (secp256r1Signers.length > 1) {
+    throw new ValidationError(
+      `More than 1 Secp256r1 signers in an instruction is not supported (found ${secp256r1Signers.length})`
     );
   }
   return dedupSigners;
 }
 
+/**
+ * Creates a Jito tip instruction
+ * @param payer - The transaction signer paying the tip
+ * @param tipAmount - Amount in lamports to tip
+ * @returns Instruction to transfer SOL to a random Jito tip account
+ */
 export function addJitoTip({
   payer,
   tipAmount,
@@ -272,16 +356,6 @@ export function addJitoTip({
   payer: TransactionSigner;
   tipAmount: number;
 }): Instruction {
-  const JITO_TIP_ACCOUNTS = [
-    "HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe",
-    "ADaUMid9yfUytqMBgopwjb2DTLSokTSzL1zt6iGPaS49",
-    "96gYZGLnJYVFmbjzopPSU6QiEV5fGqZNyN9nmNhvrZU5",
-    "Cw8CFyM9FkoMi7K7Crf6HNQqf4uEMzpKw6QNghXLvLkY",
-    "DfXygSm4jCyNCybVYYK6DwvWqjKee8pbDmJGcLWNDXjh",
-    "ADuUkR4vqLUMWXxW9gh6D6L8pMSawimctcNZ5pGwDcEt",
-    "3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT",
-    "DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL",
-  ];
   const tipAccount =
     JITO_TIP_ACCOUNTS[Math.floor(Math.random() * JITO_TIP_ACCOUNTS.length)];
   return getTransferSolInstruction({

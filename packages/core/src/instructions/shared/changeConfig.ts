@@ -67,7 +67,7 @@ export async function changeConfig({
       packedAccounts.addPreAccounts([
         { address: domainConfig, role: AccountRole.READONLY },
       ]);
-      if (verifyArgs?.__option === "Some") {
+      if (verifyArgs.__option === "Some") {
         secp256r1VerifyArgs.push({
           domainConfigKey: domainConfig,
           verifyArgs: verifyArgs.value,

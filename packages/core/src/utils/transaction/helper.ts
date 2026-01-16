@@ -1,29 +1,26 @@
+/**
+ * Transaction manager utilities for handling multi-signature transactions
+ */
+
 import {
   address,
-  appendTransactionMessageInstructions,
-  compressTransactionMessageUsingAddressLookupTables,
-  createTransactionMessage,
   getBase58Decoder,
   getBase58Encoder,
   getBase64Decoder,
   getBase64EncodedWireTransaction,
-  getSignatureFromTransaction,
   getU32Decoder,
   getU32Encoder,
-  pipe,
-  prependTransactionMessageInstructions,
-  setTransactionMessageFeePayerSigner,
-  setTransactionMessageLifetimeUsingBlockhash,
-  signTransactionMessageWithSigners,
   type Address,
   type ReadonlyUint8Array,
   type SignatureBytes,
   type TransactionSigner,
 } from "gill";
 import {
-  getSetComputeUnitLimitInstruction,
-  getSetComputeUnitPriceInstruction,
-} from "gill/programs";
+  NetworkError,
+  NotFoundError,
+  PermissionError,
+  ValidationError,
+} from "../../errors";
 import {
   getConfigActionDecoder,
   getConfigActionEncoder,
@@ -32,220 +29,29 @@ import {
   type ConfigAction,
   type MemberKey,
 } from "../../generated";
+import type { AccountCache } from "../../types";
 import {
   KeyType,
   Permission,
   Permissions,
   type TransactionAuthDetails,
-  type TransactionDetails,
 } from "../../types";
+import {
+  DEFAULT_NETWORK_RETRY_DELAY_MS,
+  DEFAULT_NETWORK_RETRY_MAX_RETRIES,
+} from "../../constants";
 import { fetchUserAccountData } from "../compressed";
-import {
-  getComputeBudgetEstimate,
-  getJitoTipsConfig,
-  getSendAndConfirmTransaction,
-  getSolanaRpc,
-  getSolanaRpcEndpoint,
-} from "../initialize";
-import {
-  createEncodedBundle,
-  getMedianPriorityFees,
-  simulateBundle,
-} from "./internal";
-
-export async function signAndSendBundledTransactions(
-  bundle: TransactionDetails[]
-) {
-  const simulationBundle = await createEncodedBundle(bundle, true);
-  const computeUnits = await simulateBundle(
-    simulationBundle.map(getBase64EncodedWireTransaction),
-    getSolanaRpcEndpoint()
-  );
-  const encodedBundle = await createEncodedBundle(
-    bundle.map((x, index) => ({
-      ...x,
-      unitsConsumed: computeUnits[index],
-    }))
-  );
-  const bundleId = await sendJitoBundle(
-    encodedBundle.map(getBase64EncodedWireTransaction)
-  );
-  return bundleId;
-}
+import { retryFetch } from "../retry";
 
 /**
- * By default, median priority fees are added to the transaction
+ * Retrieves transaction manager configuration for a signer
+ * @param signer - The signer's public key as a string
+ * @param settingsData - Compressed settings data
+ * @returns Transaction manager configuration or empty object if not needed
+ * @throws {ValidationError} If threshold > 1 (not supported)
+ * @throws {NotFoundError} If signer is not found in members
+ * @throws {PermissionError} If signer lacks required permissions
  */
-export async function signAndSendTransaction({
-  instructions,
-  payer,
-  addressesByLookupTableAddress,
-}: TransactionDetails) {
-  const latestBlockHash = await getSolanaRpc().getLatestBlockhash().send();
-  const tx = await pipe(
-    createTransactionMessage({ version: 0 }),
-    (tx) => appendTransactionMessageInstructions(instructions, tx),
-    (tx) => setTransactionMessageFeePayerSigner(payer, tx),
-    (tx) =>
-      setTransactionMessageLifetimeUsingBlockhash(latestBlockHash.value, tx),
-    (tx) =>
-      addressesByLookupTableAddress
-        ? compressTransactionMessageUsingAddressLookupTables(
-            tx,
-            addressesByLookupTableAddress
-          )
-        : tx,
-    async (tx) => {
-      const [estimatedUnits, priorityFees] = await Promise.all([
-        getComputeBudgetEstimate()(tx),
-        getMedianPriorityFees(
-          getSolanaRpc(),
-          tx.instructions.flatMap((x) => x.accounts ?? [])
-        ),
-      ]);
-      const computeUnits = Math.ceil(estimatedUnits * 1.1);
-      return prependTransactionMessageInstructions(
-        [
-          ...(computeUnits > 200000
-            ? [
-                getSetComputeUnitLimitInstruction({
-                  units: computeUnits,
-                }),
-              ]
-            : []),
-          ...(priorityFees > 0
-            ? [
-                getSetComputeUnitPriceInstruction({
-                  microLamports: priorityFees,
-                }),
-              ]
-            : []),
-        ],
-        tx
-      );
-    },
-    async (tx) => await signTransactionMessageWithSigners(await tx)
-  );
-  await getSendAndConfirmTransaction()(tx, {
-    commitment: "confirmed",
-    skipPreflight: true,
-  });
-
-  return getSignatureFromTransaction(tx);
-}
-
-export async function sendJitoBundle(
-  serializedTransactions: string[],
-  maxRetries = 10,
-  delayMs = 1000,
-  jitoTipsConfig = getJitoTipsConfig()
-): Promise<string> {
-  const { blockEngineUrl: jitoBlockEngineUrl } = jitoTipsConfig;
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const response = await fetch(`${jitoBlockEngineUrl}/bundles`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "sendBundle",
-        params: [
-          serializedTransactions,
-          {
-            encoding: "base64",
-          },
-        ],
-      }),
-    });
-
-    if (response.status === 429) {
-      if (attempt < maxRetries) {
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-        continue;
-      }
-    }
-
-    const data = await response.json();
-
-    if (data.error) {
-      throw new Error(
-        `Error sending bundles: ${JSON.stringify(data.error, null, 2)}`
-      );
-    }
-
-    return data.result as string;
-  }
-
-  throw new Error("Failed to send bundle after retries.");
-}
-export async function pollJitoBundleConfirmation(
-  bundleId: string,
-  maxRetries = 30,
-  delayMs = 3000,
-  jitoTipsConfig = getJitoTipsConfig()
-): Promise<string> {
-  const { blockEngineUrl: jitoBlockEngineUrl } = jitoTipsConfig;
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const response = await fetch(`${jitoBlockEngineUrl}/getBundleStatuses`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: 1,
-        method: "getBundleStatuses",
-        params: [[bundleId]],
-      }),
-    });
-
-    if (response.status === 429) {
-      if (attempt < maxRetries) {
-        await new Promise((resolve) => setTimeout(resolve, delayMs));
-        continue;
-      }
-    }
-
-    const data = await response.json();
-
-    if (data.error) {
-      throw new Error(
-        `Error sending bundles: ${JSON.stringify(data.error, null, 2)}`
-      );
-    }
-
-    const results = data.result as {
-      context: {
-        slot: number;
-      };
-      value: {
-        bundle_id: string;
-        transactions: string[];
-        slot: number;
-        confirmation_status: "processed" | "confirmed" | "finalized";
-        err: {
-          Ok: null;
-        };
-      }[];
-    };
-
-    if (results.value.length) {
-      const value = results.value[0];
-      if (
-        value.confirmation_status === "confirmed" ||
-        value.confirmation_status === "finalized"
-      ) {
-        return value.transactions[value.transactions.length - 1];
-      }
-    }
-
-    if (attempt < maxRetries) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-      continue;
-    }
-  }
-
-  throw new Error("Failed to get bundle status after retries.");
-}
-
 export function retrieveTransactionManager(
   signer: string,
   settingsData: CompressedSettingsData & {
@@ -253,16 +59,23 @@ export function retrieveTransactionManager(
   }
 ) {
   if (settingsData.threshold > 1) {
-    throw new Error(
+    throw new ValidationError(
       "Multi-signature transactions with threshold > 1 are not supported yet."
     );
   }
-  const { permissions } =
-    settingsData.members.find(
-      (m) => convertMemberKeyToString(m.pubkey) === signer
-    ) ?? {};
+  const member = settingsData.members.find(
+    (m) => convertMemberKeyToString(m.pubkey) === signer
+  );
+  if (!member) {
+    throw new NotFoundError("Member", `Signer ${signer} not found in settings`);
+  }
+
+  const { permissions } = member;
   if (!permissions) {
-    throw new Error("No permissions found for the current member.");
+    throw new NotFoundError(
+      "Permissions",
+      "No permissions found for the current member"
+    );
   }
   const hasInitiate = Permissions.has(
     permissions,
@@ -278,7 +91,14 @@ export function retrieveTransactionManager(
     return {};
   }
   if (!hasVote || !hasExecute) {
-    throw new Error("Signer lacks the required Vote/Execute permissions.");
+    throw new PermissionError(
+      "Signer lacks the required Vote/Execute permissions.",
+      ["VoteTransaction", "ExecuteTransaction"],
+      [
+        hasVote ? "VoteTransaction" : undefined,
+        hasExecute ? "ExecuteTransaction" : undefined,
+      ].filter(Boolean) as string[]
+    );
   }
 
   // Otherwise, require a transaction manager + vote + execute rights
@@ -286,7 +106,10 @@ export function retrieveTransactionManager(
     (m) => m.role === UserRole.TransactionManager
   );
   if (!transactionManager) {
-    throw new Error("No transaction manager available in wallet.");
+    throw new NotFoundError(
+      "Transaction manager",
+      "No transaction manager available in wallet"
+    );
   }
 
   return {
@@ -296,6 +119,13 @@ export function retrieveTransactionManager(
     userAddressTreeIndex: transactionManager.userAddressTreeIndex,
   };
 }
+
+/**
+ * Gets a signed transaction manager signer
+ * @param params - Parameters including auth responses, transaction manager address, etc.
+ * @returns Transaction signer or null if no transaction manager is needed
+ * @throws {NotFoundError} If transaction manager endpoint is missing
+ */
 export async function getSignedTransactionManager({
   authResponses,
   transactionManagerAddress,
@@ -307,8 +137,8 @@ export async function getSignedTransactionManager({
   transactionManagerAddress?: Address;
   transactionMessageBytes?: ReadonlyUint8Array;
   userAddressTreeIndex?: number;
-  cachedAccounts?: Map<string, any>;
-}) {
+  cachedAccounts?: AccountCache;
+}): Promise<TransactionSigner | null> {
   if (!transactionManagerAddress) return null;
   const userAccountData = await fetchUserAccountData(
     transactionManagerAddress,
@@ -317,8 +147,9 @@ export async function getSignedTransactionManager({
   );
 
   if (userAccountData.transactionManagerUrl.__option === "None") {
-    throw new Error(
-      "Transaction manager endpoint is missing for this account."
+    throw new NotFoundError(
+      "Transaction manager endpoint",
+      "Transaction manager endpoint is missing for this account"
     );
   }
 
@@ -330,6 +161,14 @@ export async function getSignedTransactionManager({
   );
 }
 
+/**
+ * Creates a transaction manager signer that signs transactions via HTTP
+ * @param address - Transaction manager address
+ * @param url - Transaction manager endpoint URL
+ * @param authResponses - Optional authentication responses
+ * @param transactionMessageBytes - Optional transaction message bytes
+ * @returns Transaction signer
+ */
 export function createTransactionManagerSigner(
   address: Address,
   url: string,
@@ -356,18 +195,37 @@ export function createTransactionManagerSigner(
         payload.authResponses = authResponses;
       }
 
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      const response = await retryFetch(
+        () =>
+          fetch(url, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }),
+        {
+          maxRetries: DEFAULT_NETWORK_RETRY_MAX_RETRIES,
+          initialDelayMs: DEFAULT_NETWORK_RETRY_DELAY_MS,
+        }
+      );
+
+      if (!response.ok) {
+        throw new NetworkError(
+          `Transaction manager request failed: ${response.statusText}`,
+          response.status,
+          url
+        );
+      }
 
       const data = (await response.json()) as
         | { signatures: string[] }
         | { error: string };
 
       if ("error" in data) {
-        throw new Error(data.error);
+        throw new NetworkError(
+          `Transaction manager error: ${data.error}`,
+          response.status,
+          url
+        );
       }
 
       return data.signatures.map((sig) => ({
@@ -376,14 +234,28 @@ export function createTransactionManagerSigner(
     },
   };
 }
-export function convertMemberKeyToString(memberKey: MemberKey) {
+
+/**
+ * Converts a member key to its string representation
+ * @param memberKey - Member key to convert
+ * @returns Base58-encoded public key string
+ */
+export function convertMemberKeyToString(memberKey: MemberKey): string {
   if (memberKey.keyType === KeyType.Ed25519) {
     return getBase58Decoder().decode(memberKey.key.subarray(1, 33));
   } else {
     return getBase58Decoder().decode(memberKey.key);
   }
 }
-export function serializeConfigActions(configActions: ConfigAction[]) {
+
+/**
+ * Serializes config actions to bytes
+ * @param configActions - Array of config actions to serialize
+ * @returns Serialized config actions as Uint8Array
+ */
+export function serializeConfigActions(
+  configActions: ConfigAction[]
+): Uint8Array {
   const encodedActions = configActions.map((x) =>
     getConfigActionEncoder().encode(x)
   );
@@ -408,6 +280,12 @@ export function serializeConfigActions(configActions: ConfigAction[]) {
   return serializedConfigActions;
 }
 
+/**
+ * Deserializes config actions from bytes
+ * @param bytes - Serialized config actions
+ * @returns Array of config actions
+ * @throws {ValidationError} If there are trailing bytes
+ */
 export function deserializeConfigActions(bytes: Uint8Array): ConfigAction[] {
   let offset = 0;
   const [count, u32offset] = getU32Decoder().read(bytes, offset);
@@ -421,7 +299,9 @@ export function deserializeConfigActions(bytes: Uint8Array): ConfigAction[] {
   }
 
   if (offset !== bytes.length) {
-    throw new Error(`Trailing bytes: ${bytes.length - offset}`);
+    throw new ValidationError(
+      `Trailing bytes detected: expected ${bytes.length} bytes but consumed ${offset}`
+    );
   }
   return out;
 }

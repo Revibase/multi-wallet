@@ -1,4 +1,4 @@
-import type BN from "bn.js";
+import type { BN254 } from "@lightprotocol/stateless.js";
 import {
   none,
   some,
@@ -68,7 +68,7 @@ export async function editUserDelegate({
   );
 
   const addresses: {
-    address: BN;
+    address: BN254;
     type: "Settings" | "User";
   }[] = [];
   addresses.push({
