@@ -21,26 +21,47 @@ import {
   type PopupPortMessage,
 } from "./utils";
 
+/**
+ * RevibaseProvider handles the communication between the client application
+ * and the Revibase authentication provider using popup windows and MessageChannel.
+ */
 export class RevibaseProvider {
-  private pending = new Map<string, Pending>();
-  public onClientAuthorizationCallback: ClientAuthorizationCallback;
-  private providerOrigin: string;
-  private providerFetchResultUrl: string;
-  private popUp: Window | null;
+  private readonly pending = new Map<string, Pending>();
+  public readonly onClientAuthorizationCallback: ClientAuthorizationCallback;
+  private readonly providerOrigin: string;
+  private readonly providerFetchResultUrl: string;
+  private popUp: Window | null = null;
 
   constructor(opts: Options) {
     this.onClientAuthorizationCallback = opts.onClientAuthorizationCallback;
     this.providerOrigin = opts.providerOrigin ?? REVIBASE_AUTH_URL;
     this.providerFetchResultUrl =
       opts.providerFetchResultUrl ?? `${this.providerOrigin}/api/getResult`;
-    this.popUp = null;
   }
 
-  openBlankPopUp() {
+  /**
+   * Opens a blank popup window for authentication.
+   * The popup will be reused for subsequent navigation.
+   *
+   * @throws {Error} If popup is blocked by the browser
+   */
+  openBlankPopUp(): void {
     this.popUp = createPopUp();
-    if (!this.popUp) throw new Error("Popup blocked. Please enable popups.");
+    if (!this.popUp) {
+      throw new Error("Popup blocked. Please enable popups.");
+    }
   }
 
+  /**
+   * Sends a payload to the provider and waits for the response.
+   * Opens a popup window and handles communication via MessageChannel with polling fallback.
+   *
+   * @param payload - Start message or transaction request
+   * @param signature - Client signature for the payload
+   * @param timeoutMs - Timeout in milliseconds (defaults to DEFAULT_TIMEOUT)
+   * @returns The response from the provider
+   * @throws {Error} If called outside browser, if another flow is in progress, or if timeout occurs
+   */
   async sendPayloadToProvider({
     payload,
     signature,
@@ -49,7 +70,7 @@ export class RevibaseProvider {
     payload: StartMessageRequest | StartTransactionRequest;
     signature: string;
     timeoutMs?: number;
-  }): Promise<any> {
+  }): Promise<unknown> {
     if (typeof window === "undefined") {
       throw new Error("Provider can only be used in a browser environment");
     }
@@ -70,14 +91,15 @@ export class RevibaseProvider {
     );
     url.searchParams.set("sig", signature);
 
-    return new Promise((resolve, reject) => {
+    return new Promise<unknown>((resolve, reject) => {
       const timeoutId = setTimeout(() => {
         const entry = this.pending.get(rid);
         if (!entry) return;
 
         // Route through unified cleanup path if available
-        if (entry.cancel) entry.cancel(new Error("Authentication timed out"));
-        else {
+        if (entry.cancel) {
+          entry.cancel(new Error("Authentication timed out"));
+        } else {
           this.pending.delete(rid);
           reject(new Error("Authentication timed out"));
         }
@@ -95,9 +117,12 @@ export class RevibaseProvider {
   }
 
   /**
-   * Communicate with the popup using MessageChannel.
-   * Fallback to polling if we never connect, or if popup closes and we need the result.
-   */ private openWebPopup(params: {
+   * Communicates with the popup using MessageChannel.
+   * Falls back to polling if connection fails or popup closes.
+   *
+   * @private
+   */
+  private openWebPopup(params: {
     startUrl: string;
     origin: string;
     rid: string;
@@ -123,21 +148,23 @@ export class RevibaseProvider {
 
     const deadlineMs = Date.now() + timeoutMs;
 
-    const abortActivePoll = () => {
+    const abortActivePoll = (): void => {
       try {
         activePollAbort?.abort();
-      } catch {}
+      } catch {
+        // Ignore abort errors
+      }
       activePollAbort = null;
     };
 
-    const clearKickoff = () => {
+    const clearKickoff = (): void => {
       if (pollKickoff) {
         clearTimeout(pollKickoff);
         pollKickoff = null;
       }
     };
 
-    const cleanup = () => {
+    const cleanup = (): void => {
       window.removeEventListener("message", onConnect);
 
       clearKickoff();
@@ -145,18 +172,24 @@ export class RevibaseProvider {
 
       try {
         port?.close();
-      } catch {}
+      } catch {
+        // Ignore close errors
+      }
       port = null;
 
       try {
-        if (popup && !popup.closed) popup.close();
-      } catch {}
+        if (popup && !popup.closed) {
+          popup.close();
+        }
+      } catch {
+        // Ignore close errors
+      }
       this.popUp = null;
 
       clearInterval(heartbeatId);
     };
 
-    const fail = (err: Error) => {
+    const fail = (err: Error): void => {
       if (finished) return;
       finished = true;
       clearTimeout(entry.timeoutId);
@@ -165,7 +198,7 @@ export class RevibaseProvider {
       entry.reject(err);
     };
 
-    const succeed = (payload: any) => {
+    const succeed = (payload: unknown): void => {
       if (finished) return;
       finished = true;
       clearTimeout(entry.timeoutId);
@@ -177,17 +210,18 @@ export class RevibaseProvider {
     entry.cancel = fail;
 
     const ensurePopupOpenedAndNavigated = (): Window => {
-      // open or reuse popup
+      // Open or reuse popup
       if (!popup) {
         popup = createPopUp(startUrl);
       } else {
         // MUST navigate (no silent fallback)
         try {
-          // location access can throw; if it does, we still try replace
-          if (popup.location.href !== startUrl)
+          // Location access can throw; if it does, we still try replace
+          if (popup.location.href !== startUrl) {
             popup.location.replace(startUrl);
+          }
         } catch {
-          // if replace throws too, we consider navigation failed
+          // If replace throws too, we consider navigation failed
           try {
             popup.location.replace(startUrl);
           } catch {
@@ -196,7 +230,9 @@ export class RevibaseProvider {
         }
       }
 
-      if (!popup) throw new Error("Popup blocked. Please enable popups.");
+      if (!popup) {
+        throw new Error("Popup blocked. Please enable popups.");
+      }
       popupReady = true;
       return popup;
     };
@@ -207,10 +243,12 @@ export class RevibaseProvider {
      * Never polls while connected (we prefer MessageChannel).
      */
     const ensurePolling = (untilMs: number = deadlineMs): Promise<void> => {
-      if (finished) return Promise.resolve();
-      if (!popupReady) return Promise.resolve(); // should not happen, but safe
-      if (connected) return Promise.resolve();
-      if (pollInFlight) return pollInFlight;
+      if (finished || !popupReady || connected) {
+        return Promise.resolve();
+      }
+      if (pollInFlight) {
+        return pollInFlight;
+      }
 
       pollInFlight = (async () => {
         try {
@@ -225,8 +263,11 @@ export class RevibaseProvider {
 
           if (finished) return;
 
-          if (result.status === "complete") succeed(result.payload);
-          else if (result.status === "error") fail(new Error(result.error));
+          if (result.status === "complete") {
+            succeed(result.payload);
+          } else if (result.status === "error") {
+            fail(new Error(result.error));
+          }
           // pending/timeout => do nothing; caller decides next step
         } finally {
           pollInFlight = null;
@@ -287,7 +328,7 @@ export class RevibaseProvider {
 
       port.postMessage({ type: "popup-init" });
 
-      port.onmessage = (ev: MessageEvent<PopupPortMessage>) => {
+      port.onmessage = (ev: MessageEvent<PopupPortMessage>): void => {
         switch (ev.data.type) {
           case "popup-complete":
             succeed(ev.data.payload);
@@ -310,12 +351,13 @@ export class RevibaseProvider {
 
             ensurePolling(briefUntil)
               .then(() => {
-                if (!finished)
+                if (!finished) {
                   fail(new Error("User closed the authentication window"));
+                }
               })
-              .catch(() =>
-                fail(new Error("User closed the authentication window"))
-              );
+              .catch(() => {
+                fail(new Error("User closed the authentication window"));
+              });
             break;
           }
         }
@@ -355,20 +397,28 @@ export class RevibaseProvider {
         return { status: "pending" };
       }
 
-      let json: any = null;
+      let json: unknown = null;
       try {
         json = (await res.json()) as PollResponse;
       } catch {
         return { status: "pending" };
       }
 
-      if (json?.status === "complete")
-        return { status: "complete", payload: json.payload };
-      if (json?.status === "error")
+      // Validate response structure
+      if (!json || typeof json !== "object") {
+        return { status: "pending" };
+      }
+
+      const response = json as Record<string, unknown>;
+      if (response.status === "complete") {
+        return { status: "complete", payload: response.payload };
+      }
+      if (response.status === "error") {
         return {
           status: "error",
-          error: String(json.error ?? "Unknown error"),
+          error: String(response.error ?? "Unknown error"),
         };
+      }
 
       return { status: "pending" };
     };
@@ -395,7 +445,14 @@ export class RevibaseProvider {
   }
 }
 
-function jitter(ms: number, pct = 0.3) {
+/**
+ * Adds jitter to a delay value to prevent thundering herd problems.
+ *
+ * @param ms - Base delay in milliseconds
+ * @param pct - Percentage of jitter (default 0.3 = 30%)
+ * @returns Jittered delay value
+ */
+function jitter(ms: number, pct = 0.3): number {
   const delta = ms * pct;
   const v = ms + (Math.random() * 2 - 1) * delta;
   return Math.max(0, Math.round(v));

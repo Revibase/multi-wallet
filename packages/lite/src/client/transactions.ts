@@ -1,11 +1,9 @@
 import type {
   CompleteTransactionRequest,
-  StartTransactionRequest,
   TransactionPayloadWithBase64MessageBytes,
 } from "@revibase/core";
 import {
   bufferToBase64URLString,
-  getSettingsFromIndex,
   prepareTransactionMessage,
 } from "@revibase/core";
 import {
@@ -14,9 +12,20 @@ import {
   type Instruction,
 } from "gill";
 import type { RevibaseProvider } from "src/provider/main";
-import { estimateTransactionSizeExceedLimit } from "src/utils/internal";
-import type { User } from "src/utils/types";
+import type {
+  StartTransactionRequestWithOptionalType,
+  User,
+} from "src/utils/types";
 
+/**
+ * Executes a transaction using the Revibase provider.
+ * Automatically determines whether to use bundling based on transaction size.
+ *
+ * @param provider - Revibase provider instance
+ * @param args - Transaction arguments including instructions, signer, and optional lookup tables
+ * @returns Transaction signature
+ * @throws {Error} If transaction execution fails
+ */
 export async function executeTransaction(
   provider: RevibaseProvider,
   args: {
@@ -33,41 +42,36 @@ export async function executeTransaction(
     instructions,
     addressesByLookupTableAddress,
   });
-  const useBundle = estimateTransactionSizeExceedLimit(
-    instructions,
-    addressesByLookupTableAddress
-  );
-  const settings = await getSettingsFromIndex(
-    signer.settingsIndexWithAddress.index
-  );
 
   const redirectOrigin = window.origin;
 
-  const transactionPayload: TransactionPayloadWithBase64MessageBytes = {
-    transactionActionType: useBundle
-      ? signer.hasTxManager
-        ? "execute"
-        : "create_with_preauthorized_execution"
-      : "sync",
-    transactionAddress: settings,
+  const transactionPayloadWithoutType: Omit<
+    TransactionPayloadWithBase64MessageBytes,
+    "transactionActionType" | "transactionAddress"
+  > = {
     transactionMessageBytes: bufferToBase64URLString(
       new Uint8Array(transactionMessageBytes)
     ),
   };
 
-  const payload: StartTransactionRequest = {
+  const payload: StartTransactionRequestWithOptionalType = {
     phase: "start",
     data: {
       type: "transaction" as const,
-      payload: transactionPayload,
+      payload: transactionPayloadWithoutType,
     },
     redirectOrigin,
-    signer: signer.publicKey,
+    signer,
   };
 
-  const { signature } = await provider.onClientAuthorizationCallback(payload);
+  const { signature, transactionPayload } =
+    await provider.onClientAuthorizationCallback(payload);
   const response = (await provider.sendPayloadToProvider({
-    payload,
+    payload: {
+      ...payload,
+      signer: signer.publicKey,
+      data: { ...payload.data, payload: transactionPayload },
+    },
     signature,
   })) as CompleteTransactionRequest;
 

@@ -57,13 +57,11 @@ export type Pending = {
  *
  * This helper creates a centered, resizable popup on desktop, and a full-screen view on mobile.
  *
- * @param url - The URL to load in the popup.
- * @returns A reference to the newly created popup window, or `null` if blocked by the browser.
- *
- * @throws {Error} If called outside a browser environment.
- *
+ * @param url - The URL to load in the popup (optional, can be set later)
+ * @returns A reference to the newly created popup window, or `null` if blocked by the browser
+ * @throws {Error} If called outside a browser environment
  */
-export function createPopUp(url?: string) {
+export function createPopUp(url?: string): Window | null {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }

@@ -2,22 +2,39 @@ import type { TransactionPayloadWithBase64MessageBytes } from "@revibase/core";
 import {
   bufferToBase64URLString,
   type CompleteTransactionRequest,
-  type StartTransactionRequest,
 } from "@revibase/core";
 import { address, getAddressEncoder, getU64Encoder } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 import type { RevibaseProvider } from "src/provider/main";
+import type { StartTransactionRequestWithOptionalType, User } from "src/utils";
 
+/**
+ * Transfers tokens (native SOL or SPL tokens) using the Revibase provider.
+ *
+ * @param provider - Revibase provider instance
+ * @param args - Transfer arguments including amount, destination, and optional mint/token program
+ * @returns Transaction signature
+ * @throws {Error} If transfer fails
+ */
 export async function transferTokens(
   provider: RevibaseProvider,
   args: {
     amount: number | bigint;
     destination: string;
-    signer?: string;
+    signer?: User;
     mint?: string;
     tokenProgram?: string;
   }
-) {
+): Promise<{ txSig: string }> {
+  // Validate inputs
+  if (args.amount <= 0) {
+    throw new Error("Transfer amount must be greater than 0");
+  }
+
+  if (!args.destination || typeof args.destination !== "string") {
+    throw new Error("Destination address is required");
+  }
+
   provider.openBlankPopUp();
 
   const {
@@ -41,7 +58,7 @@ export async function transferTokens(
     ),
   };
 
-  const payload: StartTransactionRequest = {
+  const payload: StartTransactionRequestWithOptionalType = {
     phase: "start",
     data: {
       type: "transaction" as const,
@@ -52,8 +69,13 @@ export async function transferTokens(
   };
 
   const { signature } = await provider.onClientAuthorizationCallback(payload);
+
   const response = (await provider.sendPayloadToProvider({
-    payload,
+    payload: {
+      ...payload,
+      signer: signer?.publicKey,
+      data: { ...payload.data, payload: transactionPayload },
+    },
     signature,
   })) as CompleteTransactionRequest;
 

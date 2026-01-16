@@ -3,14 +3,22 @@ import {
   bufferToBase64URLString,
   convertPubkeyCompressedToCose,
   createMessageChallenge,
-  fetchSettingsAccountData,
   getWalletAddressFromIndex,
-  UserRole,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import { REVIBASE_AUTH_URL, REVIBASE_RP_ID } from "src/utils/consts";
 import { getSettingsIndexWithAddress } from "src/utils/internal";
 
+/**
+ * Processes a WebAuthn message authentication request.
+ * Verifies the authentication response and returns user information.
+ *
+ * @param request - Complete message request
+ * @param expectedOrigin - Expected origin for WebAuthn verification (defaults to REVIBASE_AUTH_URL)
+ * @param expectedRPID - Expected RP ID for WebAuthn verification (defaults to REVIBASE_RP_ID)
+ * @returns User information including public key, wallet address, and settings
+ * @throws {Error} If message verification fails or user has no delegated wallet
+ */
 export async function processMessage(
   request: CompleteMessageRequest,
   expectedOrigin = REVIBASE_AUTH_URL,
@@ -38,24 +46,17 @@ export async function processMessage(
   });
 
   if (!verified) {
-    throw new Error("Unable to verify message");
+    throw new Error("WebAuthn message verification failed");
   }
   const settingsIndexWithAddress = await getSettingsIndexWithAddress(request);
   const walletAddress = await getWalletAddressFromIndex(
     settingsIndexWithAddress.index
   );
-  const settings = await fetchSettingsAccountData(
-    settingsIndexWithAddress.index,
-    settingsIndexWithAddress.settingsAddressTreeIndex
-  );
-  const hasTxManager = settings.members.some(
-    (x) => x.role === UserRole.TransactionManager
-  );
+
   const user = {
     publicKey: payload.signer,
     walletAddress,
     settingsIndexWithAddress,
-    hasTxManager,
     ...payload.additionalInfo,
   };
   return user;

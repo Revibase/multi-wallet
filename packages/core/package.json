@@ -40,6 +40,7 @@
     "@noble/curves": "2.0.1",
     "@noble/hashes": "2.0.1",
     "@simplewebauthn/browser": "13.2.2",
+    "bn.js": "^5.2.2",
     "gill": "^0.14.0"
   },
   "peerDependencies": {

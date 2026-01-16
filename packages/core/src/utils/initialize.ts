@@ -15,8 +15,8 @@ import {
 import { estimateComputeUnitLimitFactory } from "gill/programs";
 import {
   DEFAULT_JITO_BLOCK_ENGINE_URL,
+  DEFAULT_JITO_TIP_PRIORITY,
   DEFAULT_JITO_TIPS_URL,
-  DEFAULT_PRIORITY_LVL,
 } from "../constants";
 import { NotInitializedError } from "../errors";
 import type { JitoTipsConfig } from "../types";
@@ -77,7 +77,7 @@ export function getJitoTipsConfig() {
     return {
       blockEngineUrl: DEFAULT_JITO_BLOCK_ENGINE_URL,
       getJitoTipsUrl: DEFAULT_JITO_TIPS_URL,
-      priority: DEFAULT_PRIORITY_LVL,
+      priority: DEFAULT_JITO_TIP_PRIORITY,
     };
   }
 

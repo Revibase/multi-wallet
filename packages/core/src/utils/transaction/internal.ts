@@ -27,7 +27,8 @@ import {
   getTransferSolInstruction,
 } from "gill/programs";
 import {
-  DEFAULT_COMPUTE_UNITS,
+  DEFAULT_NETWORK_RETRY_DELAY_MS,
+  DEFAULT_NETWORK_RETRY_MAX_RETRIES,
   JITO_TIP_ACCOUNTS,
   MIN_COMPUTE_UNITS,
   TRANSACTION_SIZE_LIMIT,
@@ -40,10 +41,6 @@ import {
   SignedSecp256r1Key,
   type TransactionDetails,
 } from "../../types";
-import {
-  DEFAULT_NETWORK_RETRY_DELAY_MS,
-  DEFAULT_NETWORK_RETRY_MAX_RETRIES,
-} from "../../constants";
 import { parseJson, validateResponse } from "../async";
 import { getSolanaRpc } from "../initialize";
 import { getSecp256r1Message } from "../passkeys/internal";
@@ -84,8 +81,7 @@ export async function createEncodedBundle(
               )
             : tx,
         async (tx) => {
-          const computeUnits =
-            Math.ceil((x.unitsConsumed ?? 0) * 1.1) || DEFAULT_COMPUTE_UNITS;
+          const computeUnits = Math.ceil((x.unitsConsumed ?? 0) * 1.1);
           return computeUnits > MIN_COMPUTE_UNITS
             ? prependTransactionMessageInstructions(
                 [

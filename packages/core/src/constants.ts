@@ -12,7 +12,6 @@ export const TRANSACTION_SIZE_LIMIT = 1644;
  */
 export const MIN_COMPUTE_UNITS = 200000;
 export const COMPUTE_UNIT_MULTIPLIER = 1.1;
-export const DEFAULT_COMPUTE_UNITS = 800000;
 
 /**
  * Retry configuration
@@ -53,7 +52,7 @@ export const DEFAULT_JITO_BLOCK_ENGINE_URL =
   "https://mainnet.block-engine.jito.wtf/api/v1";
 export const DEFAULT_JITO_TIPS_URL =
   "https://bundles.jito.wtf/api/v1/bundles/tip_floor";
-export const DEFAULT_PRIORITY_LVL = "landed_tips_75th_percentile";
+export const DEFAULT_JITO_TIP_PRIORITY = "landed_tips_75th_percentile";
 
 /**
  * Transaction buffer index limits

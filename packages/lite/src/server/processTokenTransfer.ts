@@ -1,11 +1,6 @@
 import {
   base64URLStringToBuffer,
-  createClientAuthorizationCompleteRequestChallenge,
-  fetchSettingsAccountData,
-  getSignedSecp256r1Key,
-  getSignedTransactionManager,
   nativeTransferIntent,
-  retrieveTransactionManager,
   signAndSendTransaction,
   tokenTransferIntent,
   type CompleteTransactionRequest,
@@ -13,111 +8,84 @@ import {
 import {
   address,
   getAddressDecoder,
-  getBase58Decoder,
   getU64Decoder,
   type TransactionSigner,
 } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
-import { REVIBASE_API_URL } from "src/utils/consts";
-import { getRandomPayer } from "src/utils/helper";
-import {
-  getAddressByLookUpTable,
-  getSettingsIndexWithAddress,
-} from "src/utils/internal";
+import { getAddressByLookUpTable } from "src/utils/internal";
+import { getTransactionSigners, prepareTransactionContext } from "./shared";
 
+/**
+ * Processes a token transfer transaction.
+ * Handles both native SOL transfers and SPL token transfers.
+ *
+ * @param request - Complete transaction request
+ * @param privateKey - Ed25519 private key for signing
+ * @param feePayer - Optional fee payer (defaults to random payer from API)
+ * @returns Transaction signature
+ * @throws {Error} If transaction action type is not "transfer_intent"
+ */
 export async function processTokenTransfer(
   request: CompleteTransactionRequest,
   privateKey: CryptoKey,
   feePayer?: TransactionSigner
-) {
+): Promise<string> {
   const { transactionActionType, transactionMessageBytes, transactionAddress } =
     request.data.payload.transactionPayload;
+
   if (transactionActionType !== "transfer_intent") {
-    throw new Error("Transaction Action not allowed.");
+    throw new Error("Transaction action type must be 'transfer_intent'");
   }
 
-  const challenge = createClientAuthorizationCompleteRequestChallenge(request);
-  const signature = getBase58Decoder().decode(
-    new Uint8Array(
-      await crypto.subtle.sign(
-        { name: "Ed25519" },
-        privateKey,
-        new Uint8Array(challenge)
-      )
-    )
+  const context = await prepareTransactionContext(
+    request,
+    privateKey,
+    feePayer
   );
-  const authResponse = {
-    ...request.data.payload,
-    clientSignature: {
-      ...request.data.payload.clientSignature,
-      signature,
-    },
-  };
   const message = new Uint8Array(
     base64URLStringToBuffer(transactionMessageBytes)
   );
+
   const amount = getU64Decoder().decode(message.slice(0, 8));
   const destination = getAddressDecoder().decode(message.slice(8, 40));
   const mint = getAddressDecoder().decode(message.slice(40, 72));
-  const cachedAccounts = new Map();
-  const settingsIndexWithAddress = await getSettingsIndexWithAddress(
-    request,
-    cachedAccounts
+
+  const signers = getTransactionSigners(
+    context.signedSigner,
+    context.transactionManagerSigner
   );
-  const [payer, settingsData, signedSigner] = await Promise.all([
-    feePayer ?? (await getRandomPayer(REVIBASE_API_URL)),
-    fetchSettingsAccountData(
-      settingsIndexWithAddress.index,
-      settingsIndexWithAddress.settingsAddressTreeIndex,
-      cachedAccounts
-    ),
-    getSignedSecp256r1Key(authResponse),
-  ]);
 
-  const { transactionManagerAddress, userAddressTreeIndex } =
-    retrieveTransactionManager(request.data.payload.signer, settingsData);
-
-  const transactionManagerSigner = await getSignedTransactionManager({
-    authResponses: [authResponse],
-    transactionManagerAddress,
-    userAddressTreeIndex,
-    cachedAccounts,
-  });
-
-  const signers = transactionManagerSigner
-    ? [signedSigner, transactionManagerSigner]
-    : [signedSigner];
-
+  const cachedAccounts = new Map();
   const instructions =
     mint !== SYSTEM_PROGRAM_ADDRESS
       ? await tokenTransferIntent({
-          payer,
-          index: settingsIndexWithAddress.index,
+          payer: context.payer,
+          index: context.settingsIndexWithAddress.index,
           settingsAddressTreeIndex:
-            settingsIndexWithAddress.settingsAddressTreeIndex,
+            context.settingsIndexWithAddress.settingsAddressTreeIndex,
           amount,
           signers,
           destination,
           mint,
           tokenProgram: address(transactionAddress),
-          compressed: settingsData.isCompressed,
+          compressed: context.settingsData.isCompressed,
           cachedAccounts,
         })
       : await nativeTransferIntent({
-          payer,
-          index: settingsIndexWithAddress.index,
+          payer: context.payer,
+          index: context.settingsIndexWithAddress.index,
           settingsAddressTreeIndex:
-            settingsIndexWithAddress.settingsAddressTreeIndex,
+            context.settingsIndexWithAddress.settingsAddressTreeIndex,
           amount,
           signers,
           destination,
-          compressed: settingsData.isCompressed,
+          compressed: context.settingsData.isCompressed,
           cachedAccounts,
         });
 
   return signAndSendTransaction({
     instructions,
-    payer,
+    payer: context.payer,
     addressesByLookupTableAddress: getAddressByLookUpTable(),
   });
 }

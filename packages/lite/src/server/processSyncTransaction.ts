@@ -1,100 +1,70 @@
 import {
   base64URLStringToBuffer,
-  createClientAuthorizationCompleteRequestChallenge,
-  fetchSettingsAccountData,
-  getSignedSecp256r1Key,
-  getSignedTransactionManager,
   prepareTransactionSync,
-  retrieveTransactionManager,
   signAndSendTransaction,
   type CompleteTransactionRequest,
 } from "@revibase/core";
-import { getBase58Decoder, type TransactionSigner } from "gill";
-import { REVIBASE_API_URL } from "src/utils/consts";
-import { getRandomPayer } from "src/utils/helper";
-import {
-  getAddressByLookUpTable,
-  getSettingsIndexWithAddress,
-} from "src/utils/internal";
+import type { TransactionSigner } from "gill";
+import { getAddressByLookUpTable } from "src/utils/internal";
+import { getTransactionSigners, prepareTransactionContext } from "./shared";
 
+/**
+ * Processes a synchronous transaction.
+ * Used for transactions that don't require bundling.
+ *
+ * @param request - Complete transaction request
+ * @param privateKey - Ed25519 private key for signing
+ * @param feePayer - Optional fee payer (defaults to random payer from API)
+ * @returns Transaction signature
+ * @throws {Error} If transaction action type is not "sync"
+ */
 export async function processSyncTransaction(
   request: CompleteTransactionRequest,
   privateKey: CryptoKey,
   feePayer?: TransactionSigner
-) {
+): Promise<string> {
   const { transactionActionType, transactionMessageBytes } =
     request.data.payload.transactionPayload;
+
   if (transactionActionType !== "sync") {
-    throw new Error("Transaction Action not allowed.");
+    throw new Error("Transaction action type must be 'sync'");
   }
 
-  const challenge = createClientAuthorizationCompleteRequestChallenge(request);
-  const signature = getBase58Decoder().decode(
-    new Uint8Array(
-      await crypto.subtle.sign(
-        { name: "Ed25519" },
-        privateKey,
-        new Uint8Array(challenge)
-      )
-    )
-  );
-  const authResponse = {
-    ...request.data.payload,
-    clientSignature: {
-      ...request.data.payload.clientSignature,
-      signature,
-    },
-  };
-  const cachedAccounts = new Map();
-  const settingsIndexWithAddress = await getSettingsIndexWithAddress(
+  const context = await prepareTransactionContext(
     request,
-    cachedAccounts
+    privateKey,
+    feePayer
   );
-  const [payer, settingsData, signedSigner] = await Promise.all([
-    feePayer ?? (await getRandomPayer(REVIBASE_API_URL)),
-    fetchSettingsAccountData(
-      settingsIndexWithAddress.index,
-      settingsIndexWithAddress.settingsAddressTreeIndex,
-      cachedAccounts
-    ),
-    getSignedSecp256r1Key(authResponse),
-  ]);
+  const signers = getTransactionSigners(
+    context.signedSigner,
+    context.transactionManagerSigner
+  );
 
-  const { transactionManagerAddress, userAddressTreeIndex } =
-    retrieveTransactionManager(request.data.payload.signer, settingsData);
+  const transactionMessageBytesBuffer = new Uint8Array(
+    base64URLStringToBuffer(transactionMessageBytes)
+  );
 
-  const transactionManagerSigner = await getSignedTransactionManager({
-    authResponses: [authResponse],
-    transactionManagerAddress,
-    transactionMessageBytes: new Uint8Array(
-      base64URLStringToBuffer(transactionMessageBytes)
-    ),
-    userAddressTreeIndex,
-    cachedAccounts,
-  });
-  const signers = transactionManagerSigner
-    ? [signedSigner, transactionManagerSigner]
-    : [signedSigner];
-
+  const cachedAccounts = new Map();
   const { instructions, addressesByLookupTableAddress } =
     await prepareTransactionSync({
-      compressed: settingsData.isCompressed,
+      compressed: context.settingsData.isCompressed,
       signers,
-      payer,
-      transactionMessageBytes: new Uint8Array(
-        base64URLStringToBuffer(transactionMessageBytes)
-      ),
-      index: settingsIndexWithAddress.index,
+      payer: context.payer,
+      transactionMessageBytes: transactionMessageBytesBuffer,
+      index: context.settingsIndexWithAddress.index,
       settingsAddressTreeIndex:
-        settingsIndexWithAddress.settingsAddressTreeIndex,
+        context.settingsIndexWithAddress.settingsAddressTreeIndex,
       cachedAccounts,
     });
 
+  const lookupTableAddresses = getAddressByLookUpTable();
+  const mergedAddresses = addressesByLookupTableAddress
+    ? { ...addressesByLookupTableAddress, ...lookupTableAddresses }
+    : lookupTableAddresses;
+
   return signAndSendTransaction({
     instructions,
-    payer,
-    addressesByLookupTableAddress: addressesByLookupTableAddress
-      ? { ...addressesByLookupTableAddress, ...getAddressByLookUpTable() }
-      : getAddressByLookUpTable(),
+    payer: context.payer,
+    addressesByLookupTableAddress: mergedAddresses,
   });
 }
