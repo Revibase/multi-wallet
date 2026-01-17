@@ -1,4 +1,4 @@
-import type { SettingsIndexWithAddressArgs } from "@revibase/core";
+import z from "zod";
 import { WalletStorageError } from "./errors.js";
 
 /**
@@ -9,12 +9,18 @@ const STORAGE_KEY = "Revibase:account";
 /**
  * Type definition for stored account data
  */
-export interface StoredAccountData {
-  publicKey: string | null;
-  member: string | null;
-  settingsIndexWithAddress: SettingsIndexWithAddressArgs | null;
-}
 
+const StoredAccountDataSchema = z.object({
+  publicKey: z.string().nullable(),
+  member: z.string().nullable(),
+  settingsIndexWithAddress: z
+    .object({
+      index: z.number(),
+      settingsAddressTreeIndex: z.number(),
+    })
+    .nullable(),
+});
+export type StoredAccountData = z.infer<typeof StoredAccountDataSchema>;
 /**
  * Safely retrieves account data from localStorage
  *
@@ -31,21 +37,8 @@ export function getStoredAccount(): StoredAccountData | null {
     if (!stored) {
       return null;
     }
-
-    const parsed = JSON.parse(stored) as unknown;
-
-    // Validate structure
-    if (
-      !parsed ||
-      typeof parsed !== "object" ||
-      !("publicKey" in parsed) ||
-      !("member" in parsed) ||
-      !("settingsIndexWithAddress" in parsed)
-    ) {
-      return null;
-    }
-
-    return parsed as StoredAccountData;
+    const parsed = StoredAccountDataSchema.parse(JSON.parse(stored) as unknown);
+    return parsed;
   } catch (error) {
     // If JSON parsing fails, clear corrupted data
     try {
@@ -54,7 +47,7 @@ export function getStoredAccount(): StoredAccountData | null {
       // Ignore cleanup errors
     }
     throw new WalletStorageError(
-      `Failed to parse stored account data: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to parse stored account data: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
@@ -72,12 +65,12 @@ export function setStoredAccount(data: StoredAccountData): void {
 
   try {
     const serialized = JSON.stringify(data, (key, value) =>
-      typeof value === "bigint" ? Number(value.toString()) : value
+      typeof value === "bigint" ? Number(value.toString()) : value,
     );
     window.localStorage.setItem(STORAGE_KEY, serialized);
   } catch (error) {
     throw new WalletStorageError(
-      `Failed to store account data: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to store account data: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
@@ -96,7 +89,7 @@ export function removeStoredAccount(): void {
     window.localStorage.removeItem(STORAGE_KEY);
   } catch (error) {
     throw new WalletStorageError(
-      `Failed to remove account data: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to remove account data: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }

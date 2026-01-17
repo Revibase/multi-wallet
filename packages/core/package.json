@@ -1,6 +1,6 @@
 {
   "name": "@revibase/core",
-  "version": "0.0.39",
+  "version": "0.0.41",
   "scripts": {
     "build": "rimraf dist && tsup",
     "clean": "rimraf dist",
@@ -41,7 +41,8 @@
     "@noble/hashes": "2.0.1",
     "@simplewebauthn/browser": "13.2.2",
     "bn.js": "^5.2.2",
-    "gill": "^0.14.0"
+    "gill": "^0.14.0",
+    "zod": "^4.3.5"
   },
   "peerDependencies": {
     "@lightprotocol/stateless.js": "0.22.1-alpha.7",

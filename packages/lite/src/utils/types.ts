@@ -1,41 +1,48 @@
-import type {
-  CompleteMessageRequest,
-  CompleteTransactionRequest,
-  StartMessageRequest,
-  TransactionActionType,
-  TransactionPayloadWithBase64MessageBytes,
+import {
+  TransactionActionTypeSchema,
+  TransactionPayloadWithBase64MessageBytesSchema,
+  type CompleteMessageRequest,
+  type CompleteTransactionRequest,
+  type StartMessageRequest,
+  type TransactionPayloadWithBase64MessageBytes,
 } from "@revibase/core";
+import z from "zod";
 
-export type User = {
-  publicKey: string;
-  walletAddress: string;
-  settingsIndexWithAddress: {
-    index: number | bigint;
-    settingsAddressTreeIndex: number;
-  };
-  username?: string;
-  image?: string;
-};
+export const UserSchema = z.object({
+  publicKey: z.string(),
+  walletAddress: z.string(),
+  settingsIndexWithAddress: z.object({
+    index: z.number(),
+    settingsAddressTreeIndex: z.number(),
+  }),
+  username: z.string(),
+  image: z.string(),
+});
+export type User = z.infer<typeof UserSchema>;
 
-export type StartTransactionRequestWithOptionalType = {
-  phase: "start";
-  redirectOrigin: string;
-  signer?: User;
-  data: {
-    type: "transaction";
-    payload: Omit<
-      TransactionPayloadWithBase64MessageBytes,
-      "transactionActionType" | "transactionAddress"
-    > & {
-      transactionActionType?: TransactionActionType;
-      transactionAddress?: string;
-    };
-  };
-};
+export const StartTransactionRequestWithOptionalTypeSchema = z
+  .object({
+    phase: z.literal("start"),
+    redirectOrigin: z.string(),
+    signer: UserSchema.optional(),
+    data: z
+      .object({
+        type: z.literal("transaction"),
+        payload: TransactionPayloadWithBase64MessageBytesSchema.extend({
+          transactionActionType: TransactionActionTypeSchema.optional(),
+          transactionAddress: z.string().optional(),
+        }),
+      })
+      .strict(),
+  })
+  .strict();
+export type StartTransactionRequestWithOptionalType = z.infer<
+  typeof StartTransactionRequestWithOptionalTypeSchema
+>;
 
 export type ClientAuthorizationCallback = {
   (
-    request: StartMessageRequest
+    request: StartMessageRequest,
   ): Promise<{ id?: string; message: string; signature: string }>;
   (request: StartTransactionRequestWithOptionalType): Promise<{
     signature: string;

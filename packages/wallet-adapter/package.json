@@ -1,6 +1,6 @@
 {
   "name": "@revibase/wallet-adapter",
-  "version": "0.0.23",
+  "version": "0.0.25",
   "scripts": {
     "build": "rimraf dist && tsup",
     "clean": "rimraf dist",
@@ -38,7 +38,8 @@
   "dependencies": {
     "@revibase/core": "workspace:*",
     "@simplewebauthn/server": "^13.2.2",
-    "@wallet-standard/core": "^1.1.1"
+    "@wallet-standard/core": "^1.1.1",
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "@types/node": "24.3.1",

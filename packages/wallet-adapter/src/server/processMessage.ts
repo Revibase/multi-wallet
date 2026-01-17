@@ -27,7 +27,7 @@ import { WalletVerificationError } from "src/utils/errors";
 export async function processMessage(
   request: CompleteMessageRequest,
   expectedOrigin = REVIBASE_AUTH_URL,
-  expectedRPID = REVIBASE_RP_ID
+  expectedRPID = REVIBASE_RP_ID,
 ) {
   const { payload } = request.data;
   const message = payload.message;
@@ -35,7 +35,7 @@ export async function processMessage(
     message,
     payload.clientSignature.clientOrigin,
     payload.deviceSignature.publicKey,
-    payload.nonce
+    payload.nonce,
   );
   const { verified } = await verifyAuthenticationResponse({
     response: payload.authResponse,
@@ -53,15 +53,15 @@ export async function processMessage(
   if (!verified) {
     throw new WalletVerificationError("Unable to verify message");
   }
-  const settingsIndexWithAddress: SettingsIndexWithAddressArgs | undefined =
-    request.data.payload.additionalInfo.settingsIndexWithAddress;
+  const settingsIndexWithAddress = request.data.payload.additionalInfo
+    .settingsIndexWithAddress as SettingsIndexWithAddressArgs | undefined;
   if (!settingsIndexWithAddress) {
     throw new WalletVerificationError(
-      "User does not have a delegated wallet address."
+      "User does not have a delegated wallet address.",
     );
   }
   const walletAddress = await getWalletAddressFromIndex(
-    settingsIndexWithAddress.index
+    settingsIndexWithAddress.index,
   );
 
   const user = {
