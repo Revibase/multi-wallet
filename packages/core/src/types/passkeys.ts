@@ -32,7 +32,7 @@ export const TransactionPayloadWithBase64MessageBytesSchema = z
   })
   .strict();
 
-const AuthenticationContextSchema = z
+export const AuthenticationContextSchema = z
   .object({
     authResponse: z.custom<AuthenticationResponseJSON>(),
     nonce: z.string(),
@@ -58,15 +58,15 @@ const AuthenticationContextSchema = z
   })
   .strict();
 
-const BaseResponseSchema = z
+export const BaseResponseSchema = z
   .object({
     signer: z.string(),
     userAddressTreeIndex: z.number().optional(),
-    additionalInfo: z.looseObject({}),
+    additionalInfo: z.looseObject({}).optional(),
   })
   .strict();
 
-const TransactionDetailsSchema = z
+export const TransactionDetailsSchema = z
   .object({
     transactionPayload: TransactionPayloadWithBase64MessageBytesSchema,
     slotHash: z.string(),
@@ -75,8 +75,6 @@ const TransactionDetailsSchema = z
     crossOrigin: z.boolean(),
   })
   .strict();
-
-type TransactionDetails = z.infer<typeof TransactionDetailsSchema>;
 
 export const StartMessageRequestSchema = z
   .object({
@@ -113,7 +111,7 @@ export const CompleteMessageRequestSchema = z
       .object({
         type: z.literal("message"),
         payload: BaseResponseSchema.extend(
-          AuthenticationContextSchema.shape
+          AuthenticationContextSchema.shape,
         ).extend({
           id: z.string().optional(),
           message: z.string(),
@@ -166,6 +164,7 @@ export type CompleteMessageRequest = z.infer<
 
 type AuthenticationContext = z.infer<typeof AuthenticationContextSchema>;
 type BaseResponse = z.infer<typeof BaseResponseSchema>;
+type TransactionDetails = z.infer<typeof TransactionDetailsSchema>;
 export type TransactionAuthenticationResponse = TransactionDetails &
   AuthenticationContext &
   BaseResponse;

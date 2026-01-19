@@ -58,7 +58,7 @@ import {
 } from "../secp256r1Verify";
 
 const compressibleConfig = address(
-  "ACXg8a7VaqecBWrSbdu73W4Pg9gsqXJ3EXAqkHyhvVXg"
+  "ACXg8a7VaqecBWrSbdu73W4Pg9gsqXJ3EXAqkHyhvVXg",
 );
 const rentSponsor = address("r18WwUxfG8kQ69bQPAB2jV6zGNKy3GosFGctjQoV4ti");
 
@@ -131,7 +131,7 @@ export async function tokenTransferIntent({
         compressed,
         index,
         settingsAddressTreeIndex,
-        cachedAccounts
+        cachedAccounts,
       ),
     ]);
   const destinationSplExists = !!destinationSplAtaInfo.value;
@@ -139,7 +139,7 @@ export async function tokenTransferIntent({
 
   const splBalance = sourceSplExists
     ? getTokenDecoder().decode(
-        getBase64Encoder().encode(sourceSplAtaInfo.value.data[0])
+        getBase64Encoder().encode(sourceSplAtaInfo.value.data[0]),
       ).amount
     : BigInt(0);
 
@@ -148,16 +148,16 @@ export async function tokenTransferIntent({
   if (splBalance < BigInt(amount)) {
     const sourceCTokenAtaInfo = await fetchCachedAccountInfo(
       sourceCtokenAta,
-      cachedAccounts
+      cachedAccounts,
     );
     sourceCtokenExist = !!sourceCTokenAtaInfo.value;
     cTokenBalance = sourceCtokenExist
       ? BigInt(
           parseTokenAmount(
             new Uint8Array(
-              getBase64Encoder().encode(sourceCTokenAtaInfo.value!.data[0])
-            )
-          )?.amount ?? 0
+              getBase64Encoder().encode(sourceCTokenAtaInfo.value!.data[0]),
+            ),
+          )?.amount ?? 0,
         )
       : BigInt(0);
   }
@@ -186,14 +186,21 @@ export async function tokenTransferIntent({
         splBalance,
         cTokenBalance,
         BigInt(amount),
-        cachedAccounts
+        cachedAccounts,
       ),
       checkIfSplInterfaceNeedsToBeInitialized(
         requireSplInterface,
         splInterfacePda,
-        cachedAccounts
+        cachedAccounts,
       ),
     ]);
+
+  if (
+    splBalance + cTokenBalance + BigInt(parsed?.amount.toNumber() ?? 0) <
+    BigInt(amount)
+  ) {
+    throw new Error("Insufficient balance");
+  }
 
   let settingsMutArgs: SettingsMutArgs | null = null;
   let proof: ValidityProofWithContext | null = null;
@@ -233,7 +240,7 @@ export async function tokenTransferIntent({
         proof.rootIndices.slice(start),
         proof.proveByIndices.slice(start),
         hashesWithTree.slice(start),
-        getCompressedSettingsDecoder()
+        getCompressedSettingsDecoder(),
       )[0];
     }
   }
@@ -245,16 +252,16 @@ export async function tokenTransferIntent({
           merkleContext: {
             leafIndex: compressedAccount.leafIndex,
             merkleTreePubkeyIndex: packedAccounts.insertOrGet(
-              compressedAccount.treeInfo.tree.toString()
+              compressedAccount.treeInfo.tree.toString(),
             ),
             queuePubkeyIndex: packedAccounts.insertOrGet(
-              compressedAccount.treeInfo.queue.toString()
+              compressedAccount.treeInfo.queue.toString(),
             ),
             proveByIndex: compressedAccount.proveByIndex,
           },
           rootIndex: proof.rootIndices[0],
           version: getVersionFromDiscriminator(
-            compressedAccount.data?.discriminator
+            compressedAccount.data?.discriminator,
           ),
         })
       : none();
@@ -320,7 +327,7 @@ export async function tokenTransferIntent({
         compressibleConfig,
         splInterfacePda: requireSplInterface ? splInterfacePda : undefined,
         rentSponsor: requireRentSponsor ? rentSponsor : undefined,
-      })
+      }),
     );
   } else {
     instructions.push(
@@ -343,7 +350,7 @@ export async function tokenTransferIntent({
         compressibleConfig,
         splInterfacePda: requireSplInterface ? splInterfacePda : undefined,
         rentSponsor: requireRentSponsor ? rentSponsor : undefined,
-      })
+      }),
     );
   }
 
@@ -353,13 +360,13 @@ export async function tokenTransferIntent({
 async function checkIfSplInterfaceNeedsToBeInitialized(
   requireSplInterface: boolean,
   splInterfacePda: Address,
-  cachedAccounts?: Map<string, any>
+  cachedAccounts?: Map<string, any>,
 ) {
   let needsInitialization = false;
   if (requireSplInterface) {
     const { value } = await fetchCachedAccountInfo(
       splInterfacePda,
-      cachedAccounts
+      cachedAccounts,
     );
     needsInitialization = !value;
   }
@@ -372,7 +379,7 @@ async function getCompressedTokenAccount(
   splBalance: bigint,
   cTokenBalance: bigint,
   total: bigint,
-  cachedAccounts?: Map<string, any>
+  cachedAccounts?: Map<string, any>,
 ) {
   if (splBalance + cTokenBalance >= total) {
     return {};
@@ -380,7 +387,7 @@ async function getCompressedTokenAccount(
   const compressedResult = await fetchCachedCompressedTokenAccountsByOwner(
     new PublicKey(walletAddress),
     { mint: new PublicKey(mint) },
-    cachedAccounts
+    cachedAccounts,
   );
 
   const compressedAccount =
@@ -406,18 +413,18 @@ async function getCompressedSettings(
   compressed: boolean,
   index: number | bigint,
   settingsAddressTreeIndex?: number,
-  cachedAccounts?: Map<string, any>
+  cachedAccounts?: Map<string, any>,
 ) {
   if (!compressed) return null;
   const { address: settingsAddress } =
     await getCompressedSettingsAddressFromIndex(
       index,
-      settingsAddressTreeIndex
+      settingsAddressTreeIndex,
     );
   const settings = (
     await getCompressedAccountHashes(
       [{ address: settingsAddress, type: "Settings" }],
-      cachedAccounts
+      cachedAccounts,
     )
   )[0];
 
@@ -440,7 +447,7 @@ enum TokenDataVersion {
  * Get token data version from compressed account discriminator.
  */
 function getVersionFromDiscriminator(
-  discriminator: number[] | undefined
+  discriminator: number[] | undefined,
 ): number {
   if (!discriminator || discriminator.length < 8) {
     // Default to ShaFlat for new accounts without discriminator

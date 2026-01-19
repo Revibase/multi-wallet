@@ -17,6 +17,7 @@ import {
 import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
+  fetchCachedAccountInfo,
 } from "../../utils/compressed/internal";
 import {
   extractSecp256r1VerificationArgs,
@@ -50,14 +51,21 @@ export async function nativeTransferIntent({
   const settings = await getSettingsFromIndex(index);
   const walletAddress = await getWalletAddressFromSettings(settings);
 
-  const { packedAccounts, proof, settingsMutArgs } =
-    await constructSettingsProofArgs(
-      compressed,
-      index,
-      settingsAddressTreeIndex,
-      false,
-      cachedAccounts
-    );
+  const [{ packedAccounts, proof, settingsMutArgs }, { value }] =
+    await Promise.all([
+      constructSettingsProofArgs(
+        compressed,
+        index,
+        settingsAddressTreeIndex,
+        false,
+        cachedAccounts,
+      ),
+      fetchCachedAccountInfo(walletAddress, cachedAccounts),
+    ]);
+
+  if ((value?.lamports ?? 0) < BigInt(amount)) {
+    throw new Error("Insufficient balance");
+  }
 
   const secp256r1VerifyInput: Secp256r1VerifyInput = [];
   const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];
@@ -101,7 +109,7 @@ export async function nativeTransferIntent({
     }
     const compressedProofArgs = convertToCompressedProofArgs(
       proof,
-      systemOffset
+      systemOffset,
     );
     instructions.push(
       getNativeTransferIntentCompressedInstruction({
@@ -113,7 +121,7 @@ export async function nativeTransferIntent({
         source: walletAddress,
         destination,
         remainingAccounts,
-      })
+      }),
     );
   } else {
     instructions.push(
@@ -124,7 +132,7 @@ export async function nativeTransferIntent({
         destination,
         settings,
         remainingAccounts,
-      })
+      }),
     );
   }
 
