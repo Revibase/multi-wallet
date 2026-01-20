@@ -62,6 +62,7 @@ impl<'info> EditUserDelegate<'info> {
         &self,
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
         user_account: &LightAccount<User>,
+        account: Pubkey,
         old_settings_delegate: &Option<SettingsIndexWithAddress>,
         new_settings_delegate: &Option<SettingsIndexWithAddress>,
     ) -> Result<()> {
@@ -127,19 +128,21 @@ impl<'info> EditUserDelegate<'info> {
                     .to_le_bytes()
                     .as_ref(),
             );
-            let message_hash = Sha256::hash(&buffer)
-                .map_err(|_| MultisigError::HashComputationFailed)?;
+            buffer.extend_from_slice(
+                user_account
+                    .address()
+                    .ok_or(MultisigError::MissingUserAccountAddress)?
+                    .as_ref(),
+            );
+            let message_hash =
+                Sha256::hash(&buffer).map_err(|_| MultisigError::HashComputationFailed)?;
 
             secp256r1_verify_data.verify_webauthn(
                 slot_hash_sysvar,
                 domain_config,
                 instructions_sysvar,
                 ChallengeArgs {
-                    account: Pubkey::from(
-                        user_account
-                            .address()
-                            .ok_or(MultisigError::MissingUserAccountAddress)?,
-                    ),
+                    account,
                     message_hash,
                     action_type: TransactionActionType::ChangeDelegate,
                 },
@@ -166,18 +169,12 @@ impl<'info> EditUserDelegate<'info> {
         )
         .map_err(ProgramError::from)?;
 
-        ctx.accounts.validate(
-            &secp256r1_verify_args,
-            &user_account,
-            &user_account.delegated_to,
-            &delegate_to,
-        )?;
-
         let mut cpi_accounts = LightSystemProgramCpi::new_cpi(
             LIGHT_CPI_SIGNER,
             ValidityProof(compressed_proof_args.proof),
         );
 
+        let mut account: Option<Pubkey> = None;
         if let Some(old_delegate) = &user_account.delegated_to {
             if let Some(old_settings) = &mut ctx.accounts.old_settings {
                 require!(
@@ -199,6 +196,7 @@ impl<'info> EditUserDelegate<'info> {
                         &ctx.accounts.slot_hash_sysvar,
                     )?;
                 }
+                account = Some(old_settings.key());
                 old_settings.invariant()?;
             } else if let Some(old_settings_mut_args) = old_settings_mut_args {
                 let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
@@ -224,12 +222,17 @@ impl<'info> EditUserDelegate<'info> {
                     user_account.user_address_tree_index,
                     false,
                 )?;
+                account = Some(Settings::get_settings_key_from_index(
+                    settings_data.index,
+                    settings_data.bump,
+                )?);
                 if let Some(secp256r1_verify_args) = &secp256r1_verify_args {
                     settings_account.latest_slot_number_check(
                         &[secp256r1_verify_args.slot_number],
                         &ctx.accounts.slot_hash_sysvar,
                     )?;
                 }
+
                 settings_account.invariant()?;
                 cpi_accounts = cpi_accounts.with_light_account(settings_account)?;
             } else {
@@ -258,6 +261,9 @@ impl<'info> EditUserDelegate<'info> {
                         &ctx.accounts.slot_hash_sysvar,
                     )?;
                 }
+                if account.is_none() {
+                    account = Some(new_settings.key());
+                }
                 new_settings.invariant()?;
             } else if let Some(new_settings_mut_args) = new_settings_mut_args {
                 let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
@@ -283,18 +289,33 @@ impl<'info> EditUserDelegate<'info> {
                     user_account.user_address_tree_index,
                     true,
                 )?;
+                if account.is_none() {
+                    account = Some(Settings::get_settings_key_from_index(
+                        settings_data.index,
+                        settings_data.bump,
+                    )?);
+                }
                 if let Some(secp256r1_verify_args) = &secp256r1_verify_args {
                     settings_account.latest_slot_number_check(
                         &[secp256r1_verify_args.slot_number],
                         &ctx.accounts.slot_hash_sysvar,
                     )?;
                 }
+
                 settings_account.invariant()?;
                 cpi_accounts = cpi_accounts.with_light_account(settings_account)?;
             } else {
                 return err!(MultisigError::MissingSettingsAccountForDelegate);
             }
         }
+
+        ctx.accounts.validate(
+            &secp256r1_verify_args,
+            &user_account,
+            account.ok_or(MultisigError::InvalidArguments)?,
+            &user_account.delegated_to,
+            &delegate_to,
+        )?;
 
         user_account.delegated_to = delegate_to;
 

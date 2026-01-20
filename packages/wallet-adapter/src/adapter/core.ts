@@ -46,7 +46,7 @@ import type { Revibase, RevibaseEvent } from "./window";
  */
 export function createRevibaseAdapter(
   provider: RevibaseProvider,
-  feePayer?: TransactionSigner
+  feePayer?: TransactionSigner,
 ): Revibase {
   // 👇 Event listener map
   const listeners: {
@@ -80,7 +80,10 @@ export function createRevibaseAdapter(
           domain: window.location.origin,
           nonce: crypto.randomUUID(),
         });
-        const { user } = await this.signMessage(message);
+        const { user } = await signAndVerifyMessageWithPasskey({
+          message,
+          provider,
+        });
         if (!user) {
           throw new WalletVerificationError("Failed to verify signed message");
         }
@@ -105,7 +108,7 @@ export function createRevibaseAdapter(
           throw error;
         }
         throw new WalletConnectionError(
-          `Connection failed: ${error instanceof Error ? error.message : String(error)}`
+          `Connection failed: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
     },
@@ -115,13 +118,6 @@ export function createRevibaseAdapter(
       this.settingsIndexWithAddress = null;
       removeStoredAccount();
       emit("disconnect");
-    },
-    signMessage: async function (input) {
-      return await signAndVerifyMessageWithPasskey({
-        signer: this.member ?? undefined,
-        message: input,
-        provider,
-      });
     },
     buildTokenTransfer: async function (input) {
       if (!this.member || !this.settingsIndexWithAddress || !this.publicKey) {
@@ -176,7 +172,7 @@ export function createRevibaseAdapter(
     on: function <E extends keyof RevibaseEvent>(
       event: E,
       listener: RevibaseEvent[E],
-      context?: any
+      context?: any,
     ): void {
       if (!listeners[event]) {
         listeners[event] = [];
@@ -186,10 +182,10 @@ export function createRevibaseAdapter(
     off: function <E extends keyof RevibaseEvent>(
       event: E,
       listener: RevibaseEvent[E],
-      context?: any
+      context?: any,
     ): void {
       listeners[event] = listeners[event]?.filter(
-        (l) => l.fn !== listener || l.ctx !== context
+        (l) => l.fn !== listener || l.ctx !== context,
       );
     },
   };

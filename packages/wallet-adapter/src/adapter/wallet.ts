@@ -20,8 +20,6 @@ import type {
   RevibaseSignAndSendTokenTransferMethod,
   RevibaseSignAndSendTransactionFeature,
   RevibaseSignAndSendTransactionMethod,
-  RevibaseSignMessageFeature,
-  RevibaseSignMessageMethod,
 } from "./features.js";
 import { icon } from "./icon.js";
 import { type Revibase, RevibaseWalletAccount } from "./window.js";
@@ -62,7 +60,6 @@ export class RevibaseWallet implements Wallet {
   get features(): StandardConnectFeature &
     StandardDisconnectFeature &
     StandardEventsFeature &
-    RevibaseSignMessageFeature &
     RevibaseBuildTransactionFeature &
     RevibaseSignAndSendTransactionFeature &
     RevibaseBuildTokenTransferTransactionFeature &
@@ -96,10 +93,6 @@ export class RevibaseWallet implements Wallet {
       "revibase:BuildTokenTransferTransaction": {
         version: "1.0.0",
         buildTokenTransferTransaction: this.#buildTokenTransferTransaction,
-      },
-      "revibase:SignMessage": {
-        version: "1.0.0",
-        signMessage: this.#signMessage,
       },
       "revibase:": {
         revibase: this.#revibase,
@@ -141,10 +134,10 @@ export class RevibaseWallet implements Wallet {
 
   #off<E extends StandardEventsNames>(
     event: E,
-    listener: StandardEventsListeners[E]
+    listener: StandardEventsListeners[E],
   ): void {
     this.#listeners[event] = this.#listeners[event]?.filter(
-      (existingListener) => listener !== existingListener
+      (existingListener) => listener !== existingListener,
     );
   }
 
@@ -154,7 +147,7 @@ export class RevibaseWallet implements Wallet {
     const settingsIndexWithAddress = this.#revibase.settingsIndexWithAddress;
     if (pubKey && member && settingsIndexWithAddress) {
       const publicKey = new Uint8Array(
-        getAddressEncoder().encode(address(pubKey))
+        getAddressEncoder().encode(address(pubKey)),
       );
       const account = this.#account;
       if (
@@ -168,11 +161,11 @@ export class RevibaseWallet implements Wallet {
             publicKey,
             chains: this.chains,
             features: Object.keys(
-              this.features
+              this.features,
             ) as readonly `${string}:${string}`[],
           },
           member,
-          settingsIndexWithAddress
+          settingsIndexWithAddress,
         );
         this.#emit("change", { accounts: this.accounts });
       }
@@ -217,7 +210,7 @@ export class RevibaseWallet implements Wallet {
   };
 
   #signAndSendTokenTransfer: RevibaseSignAndSendTokenTransferMethod = (
-    input
+    input,
   ) => {
     return this.#revibase.signAndSendTokenTransfer(input);
   };
@@ -226,8 +219,4 @@ export class RevibaseWallet implements Wallet {
     (input) => {
       return this.#revibase.buildTokenTransfer(input);
     };
-
-  #signMessage: RevibaseSignMessageMethod = (input) => {
-    return this.#revibase.signMessage(input);
-  };
 }

@@ -5,7 +5,6 @@ import type {
   Instruction,
   TransactionSigner,
 } from "gill";
-import type { User } from "src/utils/types";
 
 export const RevibaseSignAndSendTransaction = "revibase:SignAndSendTransaction";
 export type RevibaseSignAndSendTransactionMethod = (input: {
@@ -99,26 +98,5 @@ export type RevibaseBuildTokenTransferTransactionFeature = {
     readonly version: "1.0.0";
 
     readonly buildTokenTransferTransaction: RevibaseBuildTokenTransferTransactionMethod;
-  };
-};
-
-export const RevibaseSignMessage = "revibase:SignMessage";
-export type RevibaseSignMessageMethod = (message: string) => Promise<{
-  user: User | null;
-}>;
-export type RevibaseSignMessageFeature = {
-  /** Name of the feature. */
-  readonly [RevibaseSignMessage]: {
-    /** Version of the feature API. */
-    readonly version: "1.0.0";
-
-    /**
-     * Sign transactions using the account's secret key.
-     *
-     * @param message message to be signed
-     *
-     * @return Message Authentication Response.
-     */
-    readonly signMessage: RevibaseSignMessageMethod;
   };
 };

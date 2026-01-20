@@ -10,7 +10,6 @@ import type {
   RevibaseBuildTransactionMethod,
   RevibaseSignAndSendTokenTransferMethod,
   RevibaseSignAndSendTransactionMethod,
-  RevibaseSignMessageMethod,
 } from "./features";
 
 export interface RevibaseEvent {
@@ -23,12 +22,12 @@ export interface RevibaseEventEmitter {
   on<E extends keyof RevibaseEvent>(
     event: E,
     listener: RevibaseEvent[E],
-    context?: any
+    context?: any,
   ): void;
   off<E extends keyof RevibaseEvent>(
     event: E,
     listener: RevibaseEvent[E],
-    context?: any
+    context?: any,
   ): void;
 }
 
@@ -42,7 +41,6 @@ export interface Revibase extends RevibaseEventEmitter {
   buildTransaction: RevibaseBuildTransactionMethod;
   signAndSendTokenTransfer: RevibaseSignAndSendTokenTransferMethod;
   buildTokenTransfer: RevibaseBuildTokenTransferTransactionMethod;
-  signMessage: RevibaseSignMessageMethod;
 }
 
 export class RevibaseWalletAccount extends ReadonlyWalletAccount {
@@ -52,7 +50,7 @@ export class RevibaseWalletAccount extends ReadonlyWalletAccount {
   constructor(
     account: WalletAccount,
     member: string | null,
-    settingsIndexWithAddress: SettingsIndexWithAddressArgs
+    settingsIndexWithAddress: SettingsIndexWithAddressArgs,
   ) {
     super(account);
     this.member = member;

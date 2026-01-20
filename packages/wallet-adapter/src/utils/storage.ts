@@ -15,7 +15,7 @@ const StoredAccountDataSchema = z.object({
   member: z.string().nullable(),
   settingsIndexWithAddress: z
     .object({
-      index: z.number(),
+      index: z.union([z.number(), z.bigint()]),
       settingsAddressTreeIndex: z.number(),
     })
     .nullable(),

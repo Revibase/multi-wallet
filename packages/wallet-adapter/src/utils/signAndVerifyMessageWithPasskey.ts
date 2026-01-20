@@ -2,8 +2,8 @@ import type {
   CompleteMessageRequest,
   StartMessageRequest,
 } from "@revibase/core";
-import { WalletVerificationError } from "./errors.js";
 import type { RevibaseProvider } from "src/provider";
+import { WalletVerificationError } from "./errors.js";
 
 /**
  * Signs and verifies a message using WebAuthn passkey authentication.
@@ -21,11 +21,9 @@ import type { RevibaseProvider } from "src/provider";
  */
 export async function signAndVerifyMessageWithPasskey({
   message,
-  signer,
   provider,
 }: {
-  message?: string;
-  signer?: string;
+  message: string;
   provider: RevibaseProvider;
 }) {
   provider.openBlankPopUp();
@@ -34,7 +32,6 @@ export async function signAndVerifyMessageWithPasskey({
     phase: "start",
     data: { type: "message" as const, payload: message },
     redirectOrigin,
-    signer,
   };
 
   const {
