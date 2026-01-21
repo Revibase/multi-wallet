@@ -22,7 +22,7 @@ anchor-lang = {version = "0.31.1", features = ["init-if-needed"]}
 anchor-spl = "0.31.1"
 bytemuck = {version = "1.23.0",  features = ["min_const_generics"]}
 base64 = "0.22.1"
-light-sdk = {version = "0.17.1", features = ["anchor", "v2"] }
-light-ctoken-sdk = "0.2.1"
-light-ctoken-interface = "0.1.1"
+light-sdk = {version = "0.18.0", features = ["anchor", "v2"] }
+light-token = {version="0.3.0", features = ["anchor"] }
+light-token-interface = "0.2.0"
 solana-address-lookup-table-interface = {version ="3.0.0", features = ["bytemuck", "bincode"]}

@@ -1,14 +1,13 @@
 use crate::{
     durable_nonce_check,
     state::{Settings, SettingsMutArgs},
-    utils::{SourceCompressedTokenArgs, SourceType, TokenTransfer},
+    utils::{CompressedTokenArgs, SourceType, SplInterfacePdaArgs, TokenTransfer},
     ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig, MemberKey,
     MultisigError, Permission, ProofArgs, Secp256r1VerifyArgsWithDomainAddress,
-    TransactionActionType, LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
+    TransactionActionType, ID, LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use anchor_spl::associated_token::{self};
-use light_ctoken_sdk::ctoken::{COMPRESSIBLE_CONFIG_V1, CTOKEN_CPI_AUTHORITY, CTOKEN_PROGRAM_ID};
 use light_sdk::{
     cpi::{
         v2::{CpiAccounts, LightSystemProgramCpi},
@@ -18,8 +17,14 @@ use light_sdk::{
     light_hasher::{Hasher, Sha256},
     LightAccount,
 };
+use light_token::{
+    constants::LIGHT_TOKEN_PROGRAM_ID,
+    instruction::{COMPRESSIBLE_CONFIG_V1, LIGHT_TOKEN_CPI_AUTHORITY},
+};
+use light_token_interface::find_spl_interface_pda_with_index;
 
 #[derive(Accounts)]
+#[instruction(spl_interface_pda_args: Option<SplInterfacePdaArgs>)]
 pub struct TokenTransferIntentCompressed<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -52,11 +57,11 @@ pub struct TokenTransferIntentCompressed<'info> {
         mut,
         seeds = [
             source.key().as_ref(),
-            CTOKEN_PROGRAM_ID.as_ref(),
+            LIGHT_TOKEN_PROGRAM_ID.as_ref(),
             mint.key().as_ref(),
         ],
         bump,
-        seeds::program = CTOKEN_PROGRAM_ID
+        seeds::program = LIGHT_TOKEN_PROGRAM_ID
     )]
     pub source_ctoken_token_account: UncheckedAccount<'info>,
     /// CHECK:
@@ -78,11 +83,11 @@ pub struct TokenTransferIntentCompressed<'info> {
         mut,
         seeds = [
             destination.key().as_ref(),
-            CTOKEN_PROGRAM_ID.as_ref(),
+            LIGHT_TOKEN_PROGRAM_ID.as_ref(),
             mint.key().as_ref(),
         ],
         bump,
-        seeds::program = CTOKEN_PROGRAM_ID
+        seeds::program = LIGHT_TOKEN_PROGRAM_ID
     )]
     pub destination_ctoken_token_account: Option<UncheckedAccount<'info>>,
     /// CHECK:
@@ -92,18 +97,19 @@ pub struct TokenTransferIntentCompressed<'info> {
     pub system_program: Program<'info, System>,
     /// CHECK:
     #[account(
-        address = CTOKEN_CPI_AUTHORITY
+        address = LIGHT_TOKEN_CPI_AUTHORITY
     )]
     pub compressed_token_program_authority: UncheckedAccount<'info>,
     /// CHECK:
     #[account(
         mut,
-        seeds = [
-            b"pool".as_ref(),
-            mint.key().as_ref(),
-        ],
-        bump,
-        seeds::program = CTOKEN_PROGRAM_ID
+        address = {
+            if let Some(args) = &spl_interface_pda_args {
+                find_spl_interface_pda_with_index(mint.key, args.index, args.restricted).0
+            }else{
+                ID
+            }
+        }
     )]
     pub spl_interface_pda: Option<UncheckedAccount<'info>>,
     /// CHECK:
@@ -116,7 +122,7 @@ pub struct TokenTransferIntentCompressed<'info> {
     pub rent_sponsor: Option<UncheckedAccount<'info>>,
     /// CHECK:
     #[account(
-        address = CTOKEN_PROGRAM_ID,
+        address = LIGHT_TOKEN_PROGRAM_ID,
     )]
     pub compressed_token_program: UncheckedAccount<'info>,
 }
@@ -200,8 +206,8 @@ impl<'info> TokenTransferIntentCompressed<'info> {
                 buffer.extend_from_slice(amount.to_le_bytes().as_ref());
                 buffer.extend_from_slice(destination.key().as_ref());
                 buffer.extend_from_slice(mint.key().as_ref());
-                let message_hash = Sha256::hash(&buffer)
-                    .map_err(|_| MultisigError::HashComputationFailed)?;
+                let message_hash =
+                    Sha256::hash(&buffer).map_err(|_| MultisigError::HashComputationFailed)?;
 
                 secp256r1_verify_data.verify_args.verify_webauthn(
                     slot_hash_sysvar,
@@ -236,8 +242,9 @@ impl<'info> TokenTransferIntentCompressed<'info> {
 
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
+        spl_interface_pda_args: Option<SplInterfacePdaArgs>,
         amount: u64,
-        source_compressed_token_account: Option<SourceCompressedTokenArgs>,
+        source_compressed_token_accounts: Option<Vec<CompressedTokenArgs>>,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
         settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
@@ -303,6 +310,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
             rent_sponsor: ctx.accounts.rent_sponsor.as_deref(),
             system_program: &ctx.accounts.system_program,
             destination_ctoken_bump: ctx.bumps.destination_ctoken_token_account,
+            spl_interface_pda_args,
         };
 
         let spl_interface_pda_data =
@@ -310,7 +318,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
 
         let source_type = token_transfer.load_ata(
             amount,
-            &source_compressed_token_account,
+            &source_compressed_token_accounts,
             Some(&light_cpi_accounts),
             Some(&compressed_proof_args),
             &spl_interface_pda_data,
@@ -356,7 +364,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
                     .ok_or(MultisigError::MissingDestinationTokenAccount)?;
                 token_transfer.create_destination_ctoken_ata()?;
                 token_transfer.compressed_token_to_ctoken_transfer(
-                    &source_compressed_token_account,
+                    &source_compressed_token_accounts,
                     Some(&light_cpi_accounts),
                     Some(&compressed_proof_args),
                     signer_seeds,
@@ -372,7 +380,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
                     .as_ref()
                     .ok_or(MultisigError::MissingDestinationTokenAccount)?;
                 token_transfer.compressed_token_to_spl_transfer(
-                    &source_compressed_token_account,
+                    &source_compressed_token_accounts,
                     Some(&light_cpi_accounts),
                     Some(&compressed_proof_args),
                     signer_seeds,
@@ -386,7 +394,11 @@ impl<'info> TokenTransferIntentCompressed<'info> {
         }
 
         let mut slot_numbers = Vec::with_capacity(secp256r1_verify_args.len());
-        slot_numbers.extend(secp256r1_verify_args.iter().map(|f| f.verify_args.slot_number));
+        slot_numbers.extend(
+            secp256r1_verify_args
+                .iter()
+                .map(|f| f.verify_args.slot_number),
+        );
         settings_account.latest_slot_number_check(&slot_numbers, &ctx.accounts.slot_hash_sysvar)?;
 
         settings_account.invariant()?;

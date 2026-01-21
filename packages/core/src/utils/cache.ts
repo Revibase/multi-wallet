@@ -10,22 +10,9 @@ import type { AccountCache, CachedAccountData } from "../types";
  * @returns Cache key string
  */
 export function createCompressedAccountCacheKey(
-  address: { toString(): string } | string
+  address: { toString(): string } | string,
 ): string {
   return typeof address === "string" ? address : address.toString();
-}
-
-/**
- * Creates a cache key for token account lookups
- * @param owner - Token account owner address
- * @param mint - Optional mint address
- * @returns Cache key string
- */
-export function createTokenAccountCacheKey(
-  owner: { toString(): string },
-  mint?: { toString(): string }
-): string {
-  return owner.toString() + (mint ? mint.toString() : "");
 }
 
 /**
@@ -49,7 +36,7 @@ export function createAccountInfoCacheKey(address: {
 export async function getCachedOrFetch<T extends CachedAccountData>(
   cache: AccountCache | undefined,
   key: string,
-  fetcher: () => Promise<T>
+  fetcher: () => Promise<T>,
 ): Promise<T> {
   const cached = cache?.get(key);
   if (cached) {

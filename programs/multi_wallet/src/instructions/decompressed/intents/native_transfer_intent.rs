@@ -122,8 +122,8 @@ impl<'info> NativeTransferIntent<'info> {
                 buffer.extend_from_slice(amount.to_le_bytes().as_ref());
                 buffer.extend_from_slice(destination.key().as_ref());
                 buffer.extend_from_slice(system_program.key().as_ref());
-                let message_hash = Sha256::hash(&buffer)
-                    .map_err(|_| MultisigError::HashComputationFailed)?;
+                let message_hash =
+                    Sha256::hash(&buffer).map_err(|_| MultisigError::HashComputationFailed)?;
 
                 secp256r1_verify_data.verify_args.verify_webauthn(
                     slot_hash_sysvar,
@@ -184,7 +184,11 @@ impl<'info> NativeTransferIntent<'info> {
         )?;
 
         let mut slot_numbers = Vec::with_capacity(secp256r1_verify_args.len());
-        slot_numbers.extend(secp256r1_verify_args.iter().map(|f| f.verify_args.slot_number));
+        slot_numbers.extend(
+            secp256r1_verify_args
+                .iter()
+                .map(|f| f.verify_args.slot_number),
+        );
         settings.latest_slot_number_check(&slot_numbers, &ctx.accounts.slot_hash_sysvar)?;
 
         settings.invariant()?;

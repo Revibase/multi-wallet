@@ -385,16 +385,18 @@ pub mod multi_wallet {
     #[instruction(discriminator = 28)]
     pub fn token_transfer_intent_compressed<'info>(
         ctx: Context<'_, '_, 'info, 'info, TokenTransferIntentCompressed<'info>>,
+        spl_interface_pda_args: Option<SplInterfacePdaArgs>,
         amount: u64,
-        source_compressed_token_account: Option<SourceCompressedTokenArgs>,
+        source_compressed_token_accounts: Option<Vec<CompressedTokenArgs>>,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
         settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TokenTransferIntentCompressed::process(
             ctx,
+            spl_interface_pda_args,
             amount,
-            source_compressed_token_account,
+            source_compressed_token_accounts,
             secp256r1_verify_args,
             settings_mut_args,
             compressed_proof_args,
@@ -417,15 +419,17 @@ pub mod multi_wallet {
     #[instruction(discriminator = 30)]
     pub fn token_transfer_intent<'info>(
         ctx: Context<'_, '_, 'info, 'info, TokenTransferIntent<'info>>,
+        spl_interface_pda_args: Option<SplInterfacePdaArgs>,
         amount: u64,
-        source_compressed_token_account: Option<SourceCompressedTokenArgs>,
+        source_compressed_token_accounts: Option<Vec<CompressedTokenArgs>>,
         compressed_proof_args: Option<ProofArgs>,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
     ) -> Result<()> {
         TokenTransferIntent::process(
             ctx,
+            spl_interface_pda_args,
             amount,
-            source_compressed_token_account,
+            source_compressed_token_accounts,
             compressed_proof_args,
             secp256r1_verify_args,
         )

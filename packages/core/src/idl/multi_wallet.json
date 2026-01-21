@@ -1134,27 +1134,7 @@
         {
           "name": "spl_interface_pda",
           "writable": true,
-          "optional": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [112, 111, 111, 108]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114, 105,
-                156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65, 142,
-                128, 151, 91, 68
-              ]
-            }
-          }
+          "optional": true
         },
         {
           "name": "compressible_config"
@@ -1171,15 +1151,27 @@
       ],
       "args": [
         {
+          "name": "spl_interface_pda_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "SplInterfacePdaArgs"
+              }
+            }
+          }
+        },
+        {
           "name": "amount",
           "type": "u64"
         },
         {
-          "name": "source_compressed_token_account",
+          "name": "source_compressed_token_accounts",
           "type": {
             "option": {
-              "defined": {
-                "name": "SourceCompressedTokenArgs"
+              "vec": {
+                "defined": {
+                  "name": "CompressedTokenArgs"
+                }
               }
             }
           }
@@ -1373,27 +1365,7 @@
         {
           "name": "spl_interface_pda",
           "writable": true,
-          "optional": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [112, 111, 111, 108]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114, 105,
-                156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65, 142,
-                128, 151, 91, 68
-              ]
-            }
-          }
+          "optional": true
         },
         {
           "name": "compressible_config"
@@ -1410,15 +1382,27 @@
       ],
       "args": [
         {
+          "name": "spl_interface_pda_args",
+          "type": {
+            "option": {
+              "defined": {
+                "name": "SplInterfacePdaArgs"
+              }
+            }
+          }
+        },
+        {
           "name": "amount",
           "type": "u64"
         },
         {
-          "name": "source_compressed_token_account",
+          "name": "source_compressed_token_accounts",
           "type": {
             "option": {
-              "defined": {
-                "name": "SourceCompressedTokenArgs"
+              "vec": {
+                "defined": {
+                  "name": "CompressedTokenArgs"
+                }
               }
             }
           }
@@ -2593,6 +2577,27 @@
       }
     },
     {
+      "name": "AdditionalMetadata",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "key",
+            "docs": ["The key of the metadata"],
+            "type": "bytes"
+          },
+          {
+            "name": "value",
+            "docs": ["The value of the metadata"],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
       "name": "CompiledInstruction",
       "type": {
         "kind": "struct",
@@ -2661,6 +2666,45 @@
             "type": {
               "array": ["u8", 32]
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompressedOnlyExtension",
+      "docs": [
+        "CompressedOnly extension for compressed token accounts.",
+        "This extension marks a compressed account as decompress-only (cannot be transferred).",
+        "It stores the delegated amount from the source Token account when it was compressed-and-closed."
+      ],
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "delegated_amount",
+            "docs": [
+              "The delegated amount from the source Token account's delegate field.",
+              "When decompressing, the decompression amount must match this value."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "withheld_transfer_fee",
+            "docs": [
+              "Withheld transfer fee amount from the source Token account."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "is_ata",
+            "docs": [
+              "Whether the source was an ATA (1) or regular token account (0).",
+              "When is_ata=1, decompress must verify ATA derivation matches."
+            ],
+            "type": "u8"
           }
         ]
       }
@@ -2750,6 +2794,187 @@
           {
             "name": "latest_slot_number",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompressedTokenArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "version",
+            "type": "u8"
+          },
+          {
+            "name": "root_index",
+            "type": "u16"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "merkle_context",
+            "type": {
+              "defined": {
+                "name": "PackedMerkleContext"
+              }
+            }
+          },
+          {
+            "name": "tlv",
+            "type": {
+              "option": {
+                "vec": {
+                  "defined": {
+                    "name": "ExtensionStruct"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "has_delegate",
+            "type": "bool"
+          },
+          {
+            "name": "is_frozen",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompressibleExtension",
+      "docs": [
+        "Compressible extension for token accounts.",
+        "This extension contains compression configuration and timing data."
+      ],
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "decimals_option",
+            "docs": ["Option discriminator for decimals (0 = None, 1 = Some)"],
+            "type": "u8"
+          },
+          {
+            "name": "decimals",
+            "docs": ["Token decimals (only valid when decimals_option == 1)"],
+            "type": "u8"
+          },
+          {
+            "name": "compression_only",
+            "docs": [
+              "Whether this account is compression-only (cannot decompress)"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "is_ata",
+            "docs": [
+              "Whether the source account is an ATA (1 = ATA, 0 = regular account)",
+              "Used during compress_and_close to set is_ata in CompressedOnlyExtension"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "info",
+            "docs": ["Compression configuration and timing data"],
+            "type": {
+              "defined": {
+                "name": "CompressionInfo"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "CompressionInfo",
+      "docs": ["Compressible extension for ctoken accounts."],
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "config_account_version",
+            "type": "u16"
+          },
+          {
+            "name": "compress_to_pubkey",
+            "docs": ["Compress to account pubkey instead of account owner."],
+            "type": "u8"
+          },
+          {
+            "name": "account_version",
+            "docs": [
+              "Version of the compressed token account when ctoken account is",
+              "compressed and closed. (The account_version specifies the hashing scheme.)"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "lamports_per_write",
+            "docs": [
+              "Lamports amount the account is topped up with at every write",
+              "by the fee payer."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "compression_authority",
+            "docs": ["Authority that can compress and close the account."],
+            "type": {
+              "array": ["u8", 32]
+            }
+          },
+          {
+            "name": "rent_sponsor",
+            "docs": [
+              "Recipient for rent exemption lamports up on account closure."
+            ],
+            "type": {
+              "array": ["u8", 32]
+            }
+          },
+          {
+            "name": "last_claimed_slot",
+            "docs": ["Last slot rent was claimed from this account."],
+            "type": "u64"
+          },
+          {
+            "name": "rent_exemption_paid",
+            "docs": [
+              "Rent exemption lamports paid at account creation.",
+              "Used instead of querying the Rent sysvar to ensure rent sponsor",
+              "gets back exactly what they paid regardless of future rent changes."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "_reserved",
+            "docs": ["Reserved for future use."],
+            "type": "u32"
+          },
+          {
+            "name": "rent_config",
+            "docs": [
+              "Rent function parameters,",
+              "used to calculate whether the account is compressible."
+            ],
+            "type": {
+              "defined": {
+                "name": "RentConfig"
+              }
+            }
           }
         ]
       }
@@ -3035,6 +3260,165 @@
       }
     },
     {
+      "name": "ExtensionStruct",
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Placeholder0"
+          },
+          {
+            "name": "Placeholder1"
+          },
+          {
+            "name": "Placeholder2"
+          },
+          {
+            "name": "Placeholder3"
+          },
+          {
+            "name": "Placeholder4"
+          },
+          {
+            "name": "Placeholder5"
+          },
+          {
+            "name": "Placeholder6"
+          },
+          {
+            "name": "Placeholder7"
+          },
+          {
+            "name": "Placeholder8"
+          },
+          {
+            "name": "Placeholder9"
+          },
+          {
+            "name": "Placeholder10"
+          },
+          {
+            "name": "Placeholder11"
+          },
+          {
+            "name": "Placeholder12"
+          },
+          {
+            "name": "Placeholder13"
+          },
+          {
+            "name": "Placeholder14"
+          },
+          {
+            "name": "Placeholder15"
+          },
+          {
+            "name": "Placeholder16"
+          },
+          {
+            "name": "Placeholder17"
+          },
+          {
+            "name": "Placeholder18"
+          },
+          {
+            "name": "TokenMetadata",
+            "fields": [
+              {
+                "defined": {
+                  "name": "TokenMetadata"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Placeholder20"
+          },
+          {
+            "name": "Placeholder21"
+          },
+          {
+            "name": "Placeholder22"
+          },
+          {
+            "name": "Placeholder23"
+          },
+          {
+            "name": "Placeholder24"
+          },
+          {
+            "name": "Placeholder25"
+          },
+          {
+            "name": "Placeholder26"
+          },
+          {
+            "name": "PausableAccount",
+            "fields": [
+              {
+                "defined": {
+                  "name": "PausableAccountExtension"
+                }
+              }
+            ]
+          },
+          {
+            "name": "PermanentDelegateAccount",
+            "fields": [
+              {
+                "defined": {
+                  "name": "PermanentDelegateAccountExtension"
+                }
+              }
+            ]
+          },
+          {
+            "name": "TransferFeeAccount",
+            "fields": [
+              {
+                "defined": {
+                  "name": "TransferFeeAccountExtension"
+                }
+              }
+            ]
+          },
+          {
+            "name": "TransferHookAccount",
+            "fields": [
+              {
+                "defined": {
+                  "name": "TransferHookAccountExtension"
+                }
+              }
+            ]
+          },
+          {
+            "name": "CompressedOnly",
+            "fields": [
+              {
+                "defined": {
+                  "name": "CompressedOnlyExtension"
+                }
+              }
+            ]
+          },
+          {
+            "name": "Compressible",
+            "fields": [
+              {
+                "defined": {
+                  "name": "CompressibleExtension"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "name": "GlobalCounter",
       "serialization": "bytemuck",
       "repr": {
@@ -3236,6 +3620,40 @@
       }
     },
     {
+      "name": "PausableAccountExtension",
+      "docs": [
+        "Marker extension indicating the account belongs to a pausable mint.",
+        "This is a zero-size marker (no data) that indicates the token account's",
+        "mint has the SPL Token 2022 Pausable extension.",
+        "",
+        "When present, token operations must check the SPL mint's PausableConfig",
+        "to determine if the mint is paused before allowing transfers."
+      ],
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct"
+      }
+    },
+    {
+      "name": "PermanentDelegateAccountExtension",
+      "docs": [
+        "Marker extension indicating the account belongs to a mint with permanent delegate.",
+        "This is a zero-size marker (no data) that indicates the token account's",
+        "mint has the SPL Token 2022 Permanent Delegate extension.",
+        "",
+        "When present, token operations must check the SPL mint's PermanentDelegate",
+        "to determine the delegate authority before allowing transfers/burns."
+      ],
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct"
+      }
+    },
+    {
       "name": "Permissions",
       "docs": ["Bitmask for permissions."],
       "repr": {
@@ -3293,6 +3711,48 @@
                 "name": "UserReadOnlyOrMutateArgs"
               }
             }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RentConfig",
+      "docs": [
+        "Rent function parameters,",
+        "used to calculate whether the account is compressible."
+      ],
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "base_rent",
+            "docs": [
+              "Base rent constant: rent = base_rent + num_bytes * lamports_per_byte_per_epoch"
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "compression_cost",
+            "type": "u16"
+          },
+          {
+            "name": "lamports_per_byte_per_epoch",
+            "type": "u8"
+          },
+          {
+            "name": "max_funded_epochs",
+            "type": "u8"
+          },
+          {
+            "name": "max_top_up",
+            "docs": [
+              "Maximum lamports that can be charged per top-up operation.",
+              "Protects against griefing by accounts with high lamports_per_write."
+            ],
+            "type": "u16"
           }
         ]
       }
@@ -3489,27 +3949,72 @@
       }
     },
     {
-      "name": "SourceCompressedTokenArgs",
+      "name": "SplInterfacePdaArgs",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "version",
+            "name": "index",
             "type": "u8"
           },
           {
-            "name": "root_index",
-            "type": "u16"
+            "name": "restricted",
+            "type": "bool"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TokenMetadata",
+      "docs": ["Used for onchain serialization"],
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "update_authority",
+            "docs": [
+              "The authority that can sign to update the metadata",
+              "None if zero"
+            ],
+            "type": "pubkey"
           },
           {
-            "name": "amount",
-            "type": "u64"
+            "name": "mint",
+            "docs": [
+              "The associated mint, used to counter spoofing to be sure that metadata",
+              "belongs to a particular mint"
+            ],
+            "type": "pubkey"
           },
           {
-            "name": "merkle_context",
+            "name": "name",
+            "docs": ["The longer name of the token"],
+            "type": "bytes"
+          },
+          {
+            "name": "symbol",
+            "docs": ["The shortened symbol for the token"],
+            "type": "bytes"
+          },
+          {
+            "name": "uri",
+            "docs": ["The URI pointing to richer metadata"],
+            "type": "bytes"
+          },
+          {
+            "name": "additional_metadata",
+            "docs": [
+              "Any additional metadata about the token as key-value pairs. The program",
+              "must avoid storing the same key twice."
+            ],
             "type": {
-              "defined": {
-                "name": "PackedMerkleContext"
+              "vec": {
+                "defined": {
+                  "name": "AdditionalMetadata"
+                }
               }
             }
           }
@@ -3741,6 +4246,54 @@
           {
             "name": "readonly_indexes",
             "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransferFeeAccountExtension",
+      "docs": [
+        "Transfer fee extension for Token accounts.",
+        "Stores withheld fees that accumulate during transfers.",
+        "Mirrors SPL Token-2022's TransferFeeAmount extension."
+      ],
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "withheld_amount",
+            "docs": [
+              "Amount withheld during transfers, to be harvested on decompress"
+            ],
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransferHookAccountExtension",
+      "docs": [
+        "Extension indicating the account belongs to a mint with transfer hook.",
+        "Contains a `transferring` flag used as a reentrancy guard during hook CPI.",
+        "Consistent with SPL Token-2022 TransferHookAccount layout."
+      ],
+      "repr": {
+        "kind": "c"
+      },
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "transferring",
+            "docs": [
+              "Flag to indicate that the account is in the middle of a transfer.",
+              "Used as reentrancy guard when transfer hook program is called via CPI.",
+              "Always false at rest since we only support nil program_id (no hook invoked)."
+            ],
+            "type": "u8"
           }
         ]
       }

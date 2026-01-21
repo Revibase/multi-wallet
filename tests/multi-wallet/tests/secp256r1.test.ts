@@ -40,7 +40,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         ]);
 
         const transactionManager = await createKeyPairSignerFromPrivateKeyBytes(
-          crypto.getRandomValues(new Uint8Array(32))
+          crypto.getRandomValues(new Uint8Array(32)),
         );
         const createUserAccountIx = await createUserAccounts({
           payer: ctx.payer,
@@ -56,7 +56,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         await sendTransaction(
           [createUserAccountIx],
           ctx.payer,
-          ctx.addressLookUpTable
+          ctx.addressLookUpTable,
         );
 
         const secp256r1Keys = generateSecp256r1KeyPair();
@@ -80,7 +80,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         await sendTransaction(
           [createDomainUserAccountDataIx],
           ctx.payer,
-          ctx.addressLookUpTable
+          ctx.addressLookUpTable,
         );
 
         // Verify Secp256r1Key was added as member
@@ -93,23 +93,23 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
 
         expect(
           settingsIndex?.index,
-          "Secp256r1 user should be associated with the correct settings index"
+          "Secp256r1 user should be associated with the correct settings index",
         ).to.equal(ctx.index);
 
         const walletAddress = await getWalletAddressFromIndex(ctx.index);
         expect(
           walletAddress.toString(),
-          "User should be associated with the correct vault address"
+          "User should be associated with the correct vault address",
         ).to.equal(ctx.multiWalletVault.toString());
 
         expect(
           accountData.members.length,
-          "Wallet should have exactly two members after adding Secp256r1 member"
+          "Wallet should have exactly two members after adding Secp256r1 member",
         ).to.equal(2);
         expect(accountData.threshold, "Wallet threshold should be 1").to.equal(
-          1
+          1,
         );
-      }
+      },
     );
   });
 
@@ -128,7 +128,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         ]);
 
         const transactionManager = await createKeyPairSignerFromPrivateKeyBytes(
-          crypto.getRandomValues(new Uint8Array(32))
+          crypto.getRandomValues(new Uint8Array(32)),
         );
         const createUserAccountIx = await createUserAccounts({
           payer: ctx.payer,
@@ -144,7 +144,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         await sendTransaction(
           [createUserAccountIx],
           ctx.payer,
-          ctx.addressLookUpTable
+          ctx.addressLookUpTable,
         );
 
         const secp256r1Keys = generateSecp256r1KeyPair();
@@ -165,7 +165,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         await sendTransaction(
           [createDomainUserAccountDataIx],
           ctx.payer,
-          ctx.addressLookUpTable
+          ctx.addressLookUpTable,
         );
 
         const changeConfigArgs = await prepareChangeConfigArgs({
@@ -190,13 +190,13 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
             transactionAddress: (
               await getSettingsFromIndex(ctx.index)
             ).toString(),
-            transactionMessageBytes: serializeConfigActions(
-              changeConfigArgs.configActions
+            transactionMessageBytes: new Uint8Array(
+              serializeConfigActions(changeConfigArgs.configActions),
             ),
           },
           secp256r1Keys.privateKey,
           secp256r1Keys.publicKey,
-          ctx
+          ctx,
         );
 
         const instructions = await changeConfig({
@@ -211,9 +211,9 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         const accountData = await fetchSettingsAccountData(ctx.index);
         expect(
           accountData.members.length,
-          "Wallet should have at least two members after adding payer"
+          "Wallet should have at least two members after adding payer",
         ).to.be.at.least(2);
-      }
+      },
     );
   });
 }

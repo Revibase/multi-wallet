@@ -65,11 +65,8 @@ impl<'info> TransactionBufferCloseCompressed<'info> {
             start_index <= remaining_accounts.len(),
             MultisigError::InvalidNumberOfAccounts
         );
-        let light_cpi_accounts = CpiAccounts::new(
-            payer,
-            &remaining_accounts[start_index..],
-            LIGHT_CPI_SIGNER,
-        );
+        let light_cpi_accounts =
+            CpiAccounts::new(payer, &remaining_accounts[start_index..], LIGHT_CPI_SIGNER);
 
         let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
             &crate::ID,

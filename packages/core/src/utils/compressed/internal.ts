@@ -3,14 +3,10 @@ import {
   type AddressWithTree,
   type BN254,
   type CompressedAccount,
-  type GetCompressedTokenAccountsByOwnerOrDelegateOptions,
   type HashWithTree,
-  type ParsedTokenAccount,
   type TreeInfo,
   type ValidityProofWithContext,
-  type WithCursor,
 } from "@lightprotocol/stateless.js";
-import type { PublicKey } from "@solana/web3.js";
 import {
   some,
   type AccountInfoBase,
@@ -39,7 +35,6 @@ import {
 import {
   createAccountInfoCacheKey,
   createCompressedAccountCacheKey,
-  createTokenAccountCacheKey,
   getCachedOrFetch,
 } from "../cache";
 import { getLightProtocolRpc, getSolanaRpc } from "../initialize";
@@ -50,28 +45,17 @@ import type { AccountCache } from "../../types";
 
 export async function fetchCachedCompressedAccount(
   address: BN254,
-  cachedAccounts?: AccountCache
+  cachedAccounts?: AccountCache,
 ): Promise<CompressedAccount | null> {
   const key = createCompressedAccountCacheKey(address);
   return getCachedOrFetch(cachedAccounts, key, () =>
-    getLightProtocolRpc().getCompressedAccount(address)
-  );
-}
-
-export async function fetchCachedCompressedTokenAccountsByOwner(
-  owner: PublicKey,
-  options?: GetCompressedTokenAccountsByOwnerOrDelegateOptions,
-  cachedAccounts?: AccountCache
-): Promise<WithCursor<ParsedTokenAccount[]>> {
-  const key = createTokenAccountCacheKey(owner, options?.mint);
-  return getCachedOrFetch(cachedAccounts, key, () =>
-    getLightProtocolRpc().getCompressedTokenAccountsByOwner(owner, options)
+    getLightProtocolRpc().getCompressedAccount(address),
   );
 }
 
 export async function fetchCachedAccountInfo(
   address: Address,
-  cachedAccounts?: AccountCache
+  cachedAccounts?: AccountCache,
 ): Promise<
   Readonly<{
     context: Readonly<{
@@ -87,18 +71,18 @@ export async function fetchCachedAccountInfo(
 > {
   const key = createAccountInfoCacheKey(address);
   return getCachedOrFetch(cachedAccounts, key, () =>
-    getSolanaRpc().getAccountInfo(address, { encoding: "base64" }).send()
+    getSolanaRpc().getAccountInfo(address, { encoding: "base64" }).send(),
   );
 }
 
 export async function getCompressedAccountHashes(
   addresses: { address: BN254; type: "Settings" | "User" }[],
-  cachedAccounts?: AccountCache
+  cachedAccounts?: AccountCache,
 ) {
   const compressedAccounts = await Promise.all(
     addresses.map(async (x) =>
-      fetchCachedCompressedAccount(x.address, cachedAccounts)
-    )
+      fetchCachedCompressedAccount(x.address, cachedAccounts),
+    ),
   );
 
   const filtered = compressedAccounts
@@ -108,7 +92,7 @@ export async function getCompressedAccountHashes(
   if (filtered.length !== addresses.length) {
     throw new NotFoundError(
       "Compressed account",
-      `Expected ${addresses.length} accounts but found ${filtered.length}`
+      `Expected ${addresses.length} accounts but found ${filtered.length}`,
     );
   }
 
@@ -122,7 +106,7 @@ export async function getCompressedAccountHashes(
 
 export function convertToCompressedProofArgs(
   validityProof: ValidityProofWithContext | null,
-  offset: number
+  offset: number,
 ) {
   const proof: OptionOrNullable<CompressedProof> =
     validityProof?.compressedProof
@@ -143,7 +127,7 @@ export async function getCompressedAccountInitArgs(
   treeInfos: ValidityProofWithContext["treeInfos"],
   roots: ValidityProofWithContext["roots"],
   rootIndices: ValidityProofWithContext["rootIndices"],
-  newAddresses: (AddressWithTree & { type: "User" | "Settings" })[]
+  newAddresses: (AddressWithTree & { type: "User" | "Settings" })[],
 ) {
   if (newAddresses.length === 0) return [];
   const newAddressProofInputs = newAddresses.map((x, index) => ({
@@ -155,7 +139,7 @@ export async function getCompressedAccountInitArgs(
 
   const { addressTrees } = packedAccounts.packTreeInfos(
     [],
-    newAddressProofInputs
+    newAddressProofInputs,
   );
   const outputStateTreeIndex = await packedAccounts.getOutputTreeIndex();
 
@@ -179,7 +163,7 @@ export function getCompressedAccountMutArgs<T>(
     data: CompressedAccount["data"];
     address: CompressedAccount["address"];
   })[],
-  decoder: Decoder<T>
+  decoder: Decoder<T>,
 ) {
   const accountProofInputs: AccountProofInput[] = [];
   for (let index = 0; index < treeInfos.length; index++) {
@@ -194,7 +178,7 @@ export function getCompressedAccountMutArgs<T>(
 
   const stateTreeInfo = packedAccounts.packTreeInfos(
     accountProofInputs,
-    []
+    [],
   ).stateTrees;
 
   if (!stateTreeInfo) {
@@ -218,7 +202,7 @@ export async function constructSettingsProofArgs(
   index: number | bigint,
   settingsAddressTreeIndex?: number,
   simulateProof?: boolean,
-  cachedAccounts?: AccountCache
+  cachedAccounts?: AccountCache,
 ) {
   let settingsReadonlyArgs: SettingsReadonlyArgs | null = null;
   let settingsMutArgs: SettingsMutArgs | null = null;
@@ -228,12 +212,12 @@ export async function constructSettingsProofArgs(
     await packedAccounts.addSystemAccounts();
     const { address } = await getCompressedSettingsAddressFromIndex(
       index,
-      settingsAddressTreeIndex
+      settingsAddressTreeIndex,
     );
     const settings = (
       await getCompressedAccountHashes(
         [{ address, type: "Settings" }],
-        cachedAccounts
+        cachedAccounts,
       )
     )[0];
     if (simulateProof) {
@@ -264,7 +248,7 @@ export async function constructSettingsProofArgs(
           hash: settings.hash,
         },
       ],
-      []
+      [],
     ).stateTrees;
 
     if (!stateTreeInfo) {
@@ -304,14 +288,14 @@ export async function getValidityProofWithRetry(
   hashes?: HashWithTree[] | undefined,
   newAddresses?: AddressWithTree[],
   maxRetries = DEFAULT_NETWORK_RETRY_MAX_RETRIES,
-  initialDelayMs = DEFAULT_NETWORK_RETRY_DELAY_MS
+  initialDelayMs = DEFAULT_NETWORK_RETRY_DELAY_MS,
 ): Promise<ValidityProofWithContext> {
   return retryWithBackoff(
     () => getLightProtocolRpc().getValidityProofV0(hashes, newAddresses),
     {
       maxRetries,
       initialDelayMs,
-    }
+    },
   );
 }
 export async function getNewWhitelistedAddressTreeIndex() {
@@ -324,9 +308,49 @@ export async function getCachedWhitelistedAddressTree() {
   if (!cachedWhitelistedAddressTrees) {
     const { data } = await fetchWhitelistedAddressTree(
       getSolanaRpc(),
-      await getWhitelistedAddressTreesAddress()
+      await getWhitelistedAddressTreesAddress(),
     );
     cachedWhitelistedAddressTrees = data.whitelistedAddressTrees;
   }
   return cachedWhitelistedAddressTrees;
+}
+/**
+ * Token data version enum - mirrors Rust TokenDataVersion
+ * Used for compressed token account hashing strategy
+ */
+enum TokenDataVersion {
+  /** V1: Poseidon hash with little-endian amount, discriminator [2,0,0,0,0,0,0,0] */
+  V1 = 1,
+  /** V2: Poseidon hash with big-endian amount, discriminator [0,0,0,0,0,0,0,3] */
+  V2 = 2,
+  /** ShaFlat: SHA256 hash of borsh-serialized data, discriminator [0,0,0,0,0,0,0,4] */
+  ShaFlat = 3,
+}
+/**
+ * Get token data version from compressed account discriminator.
+ */
+export function getVersionFromDiscriminator(
+  discriminator: number[] | undefined,
+): number {
+  if (!discriminator || discriminator.length < 8) {
+    // Default to ShaFlat for new accounts without discriminator
+    return TokenDataVersion.ShaFlat;
+  }
+
+  // V1 has discriminator[0] = 2
+  if (discriminator[0] === 2) {
+    return TokenDataVersion.V1;
+  }
+
+  // V2 and ShaFlat have version in discriminator[7]
+  const versionByte = discriminator[7];
+  if (versionByte === 3) {
+    return TokenDataVersion.V2;
+  }
+  if (versionByte === 4) {
+    return TokenDataVersion.ShaFlat;
+  }
+
+  // Default to ShaFlat
+  return TokenDataVersion.ShaFlat;
 }

@@ -218,9 +218,9 @@ impl User {
                     &user_readonly_args.account_meta,
                     user_readonly_args.data,
                     light_cpi_accounts
-                .tree_pubkeys()
-                .map_err(|_| MultisigError::MissingLightCpiAccounts)?
-                .as_slice(),
+                        .tree_pubkeys()
+                        .map_err(|_| MultisigError::MissingLightCpiAccounts)?
+                        .as_slice(),
                 )
                 .map_err(ProgramError::from)?;
 

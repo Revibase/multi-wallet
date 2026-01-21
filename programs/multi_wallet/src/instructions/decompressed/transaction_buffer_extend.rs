@@ -25,8 +25,8 @@ impl TransactionBufferExtend<'_> {
             .checked_sub(current_buffer_size)
             .ok_or(MultisigError::FinalBufferSizeExceeded)?;
 
-        let new_data_size = u16::try_from(buffer.len())
-            .map_err(|_| MultisigError::FinalBufferSizeExceeded)?;
+        let new_data_size =
+            u16::try_from(buffer.len()).map_err(|_| MultisigError::FinalBufferSizeExceeded)?;
         require!(
             new_data_size <= remaining_space,
             MultisigError::FinalBufferSizeExceeded
@@ -37,8 +37,8 @@ impl TransactionBufferExtend<'_> {
             .get(0)
             .ok_or(MultisigError::InvalidBuffer)?;
 
-        let current_buffer_hash = Sha256::hash(&buffer)
-            .map_err(|_| MultisigError::HashComputationFailed)?;
+        let current_buffer_hash =
+            Sha256::hash(&buffer).map_err(|_| MultisigError::HashComputationFailed)?;
 
         require!(
             required_buffer_hash.eq(&current_buffer_hash),

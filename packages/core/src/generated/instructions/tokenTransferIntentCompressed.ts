@@ -48,22 +48,26 @@ import {
   type ResolvedAccount,
 } from '../shared';
 import {
+  getCompressedTokenArgsDecoder,
+  getCompressedTokenArgsEncoder,
   getProofArgsDecoder,
   getProofArgsEncoder,
   getSecp256r1VerifyArgsWithDomainAddressDecoder,
   getSecp256r1VerifyArgsWithDomainAddressEncoder,
   getSettingsMutArgsDecoder,
   getSettingsMutArgsEncoder,
-  getSourceCompressedTokenArgsDecoder,
-  getSourceCompressedTokenArgsEncoder,
+  getSplInterfacePdaArgsDecoder,
+  getSplInterfacePdaArgsEncoder,
+  type CompressedTokenArgs,
+  type CompressedTokenArgsArgs,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgsWithDomainAddress,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
   type SettingsMutArgs,
   type SettingsMutArgsArgs,
-  type SourceCompressedTokenArgs,
-  type SourceCompressedTokenArgsArgs,
+  type SplInterfacePdaArgs,
+  type SplInterfacePdaArgsArgs,
 } from '../types';
 
 export const TOKEN_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR = new Uint8Array([
@@ -176,16 +180,20 @@ export type TokenTransferIntentCompressedInstruction<
 
 export type TokenTransferIntentCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
+  splInterfacePdaArgs: Option<SplInterfacePdaArgs>;
   amount: bigint;
-  sourceCompressedTokenAccount: Option<SourceCompressedTokenArgs>;
+  sourceCompressedTokenAccounts: Option<Array<CompressedTokenArgs>>;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
   settingsMutArgs: SettingsMutArgs;
   compressedProofArgs: ProofArgs;
 };
 
 export type TokenTransferIntentCompressedInstructionDataArgs = {
+  splInterfacePdaArgs: OptionOrNullable<SplInterfacePdaArgsArgs>;
   amount: number | bigint;
-  sourceCompressedTokenAccount: OptionOrNullable<SourceCompressedTokenArgsArgs>;
+  sourceCompressedTokenAccounts: OptionOrNullable<
+    Array<CompressedTokenArgsArgs>
+  >;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
   settingsMutArgs: SettingsMutArgsArgs;
   compressedProofArgs: ProofArgsArgs;
@@ -195,10 +203,14 @@ export function getTokenTransferIntentCompressedInstructionDataEncoder(): Encode
   return transformEncoder(
     getStructEncoder([
       ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      [
+        'splInterfacePdaArgs',
+        getOptionEncoder(getSplInterfacePdaArgsEncoder()),
+      ],
       ['amount', getU64Encoder()],
       [
-        'sourceCompressedTokenAccount',
-        getOptionEncoder(getSourceCompressedTokenArgsEncoder()),
+        'sourceCompressedTokenAccounts',
+        getOptionEncoder(getArrayEncoder(getCompressedTokenArgsEncoder())),
       ],
       [
         'secp256r1VerifyArgs',
@@ -217,10 +229,11 @@ export function getTokenTransferIntentCompressedInstructionDataEncoder(): Encode
 export function getTokenTransferIntentCompressedInstructionDataDecoder(): Decoder<TokenTransferIntentCompressedInstructionData> {
   return getStructDecoder([
     ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ['splInterfacePdaArgs', getOptionDecoder(getSplInterfacePdaArgsDecoder())],
     ['amount', getU64Decoder()],
     [
-      'sourceCompressedTokenAccount',
-      getOptionDecoder(getSourceCompressedTokenArgsDecoder()),
+      'sourceCompressedTokenAccounts',
+      getOptionDecoder(getArrayDecoder(getCompressedTokenArgsDecoder())),
     ],
     [
       'secp256r1VerifyArgs',
@@ -281,8 +294,9 @@ export type TokenTransferIntentCompressedAsyncInput<
   compressibleConfig: Address<TAccountCompressibleConfig>;
   rentSponsor?: Address<TAccountRentSponsor>;
   compressedTokenProgram?: Address<TAccountCompressedTokenProgram>;
+  splInterfacePdaArgs: TokenTransferIntentCompressedInstructionDataArgs['splInterfacePdaArgs'];
   amount: TokenTransferIntentCompressedInstructionDataArgs['amount'];
-  sourceCompressedTokenAccount: TokenTransferIntentCompressedInstructionDataArgs['sourceCompressedTokenAccount'];
+  sourceCompressedTokenAccounts: TokenTransferIntentCompressedInstructionDataArgs['sourceCompressedTokenAccounts'];
   secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs['secp256r1VerifyArgs'];
   settingsMutArgs: TokenTransferIntentCompressedInstructionDataArgs['settingsMutArgs'];
   compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs['compressedProofArgs'];
@@ -487,16 +501,6 @@ export async function getTokenTransferIntentCompressedInstructionAsync<
     accounts.compressedTokenProgramAuthority.value =
       'GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy' as Address<'GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy'>;
   }
-  if (!accounts.splInterfacePda.value) {
-    accounts.splInterfacePda.value = await getProgramDerivedAddress({
-      programAddress:
-        'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m' as Address<'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m'>,
-      seeds: [
-        getBytesEncoder().encode(new Uint8Array([112, 111, 111, 108])),
-        getAddressEncoder().encode(expectAddress(accounts.mint.value)),
-      ],
-    });
-  }
   if (!accounts.compressedTokenProgram.value) {
     accounts.compressedTokenProgram.value =
       'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m' as Address<'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m'>;
@@ -590,8 +594,9 @@ export type TokenTransferIntentCompressedInput<
   compressibleConfig: Address<TAccountCompressibleConfig>;
   rentSponsor?: Address<TAccountRentSponsor>;
   compressedTokenProgram?: Address<TAccountCompressedTokenProgram>;
+  splInterfacePdaArgs: TokenTransferIntentCompressedInstructionDataArgs['splInterfacePdaArgs'];
   amount: TokenTransferIntentCompressedInstructionDataArgs['amount'];
-  sourceCompressedTokenAccount: TokenTransferIntentCompressedInstructionDataArgs['sourceCompressedTokenAccount'];
+  sourceCompressedTokenAccounts: TokenTransferIntentCompressedInstructionDataArgs['sourceCompressedTokenAccounts'];
   secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs['secp256r1VerifyArgs'];
   settingsMutArgs: TokenTransferIntentCompressedInstructionDataArgs['settingsMutArgs'];
   compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs['compressedProofArgs'];

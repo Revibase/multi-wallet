@@ -42,12 +42,3 @@ pub use user_role::*;
 
 pub mod compressed_token;
 pub use compressed_token::*;
-
-pub mod transfer_ctoken_to_spl;
-pub use transfer_ctoken_to_spl::*;
-
-pub mod transfer_ctoken_to_ctoken;
-pub use transfer_ctoken_to_ctoken::*;
-
-pub mod transfer_spl_to_ctoken;
-pub use transfer_spl_to_ctoken::*;

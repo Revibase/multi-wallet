@@ -2,6 +2,7 @@ import {
   CTOKEN_PROGRAM_ID,
   type CompressedAccount,
   type HashWithTree,
+  type ParsedTokenAccount,
   type ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
 import { PublicKey } from "@solana/web3.js";
@@ -9,9 +10,11 @@ import {
   AccountRole,
   address,
   getAddressEncoder,
+  getArrayDecoder,
   getBase64Encoder,
   getProgramDerivedAddress,
   getU64Decoder,
+  getU8Encoder,
   getUtf8Encoder,
   none,
   some,
@@ -21,31 +24,35 @@ import {
   type TransactionSigner,
 } from "gill";
 import {
+  AccountState,
   getAssociatedTokenAccountAddress,
   getTokenDecoder,
 } from "gill/programs";
 import {
   getCompressedSettingsDecoder,
+  getExtensionStructDecoder,
   getTokenTransferIntentCompressedInstruction,
   getTokenTransferIntentInstruction,
   type CompressedSettings,
+  type CompressedTokenArgsArgs,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
   type SettingsMutArgs,
-  type SourceCompressedTokenArgsArgs,
+  type SplInterfacePdaArgsArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
 import {
   getCompressedSettingsAddressFromIndex,
+  getLightProtocolRpc,
   getSettingsFromIndex,
   getWalletAddressFromSettings,
 } from "../../utils";
 import {
   convertToCompressedProofArgs,
   fetchCachedAccountInfo,
-  fetchCachedCompressedTokenAccountsByOwner,
   getCompressedAccountHashes,
   getCompressedAccountMutArgs,
   getValidityProofWithRetry,
+  getVersionFromDiscriminator,
 } from "../../utils/compressed/internal";
 import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 import {
@@ -62,6 +69,8 @@ const compressibleConfig = address(
 );
 const rentSponsor = address("r18WwUxfG8kQ69bQPAB2jV6zGNKy3GosFGctjQoV4ti");
 
+const ctokenProgramAddress = address(CTOKEN_PROGRAM_ID.toString());
+
 export async function tokenTransferIntent({
   index,
   settingsAddressTreeIndex,
@@ -72,6 +81,7 @@ export async function tokenTransferIntent({
   amount,
   payer,
   tokenProgram,
+  splInterfacePdaArgs = { index: 0, restricted: false },
   compressed = false,
 }: {
   index: number | bigint;
@@ -82,12 +92,37 @@ export async function tokenTransferIntent({
   signers: (TransactionSigner | SignedSecp256r1Key)[];
   tokenProgram: Address;
   payer: TransactionSigner;
+  splInterfacePdaArgs?: SplInterfacePdaArgsArgs;
   compressed?: boolean;
   cachedAccounts?: Map<string, any>;
 }) {
   const dedupSigners = getDeduplicatedSigners(signers);
   const settings = await getSettingsFromIndex(index);
   const walletAddress = await getWalletAddressFromSettings(settings);
+
+  const getCtokenAta = (owner: Address) =>
+    getProgramDerivedAddress({
+      seeds: [
+        getAddressEncoder().encode(owner),
+        getAddressEncoder().encode(ctokenProgramAddress),
+        getAddressEncoder().encode(mint),
+      ],
+      programAddress: ctokenProgramAddress,
+    });
+
+  const getSplInterfaceSeeds = () => {
+    const baseSeeds = [
+      getUtf8Encoder().encode("pool"),
+      getAddressEncoder().encode(mint),
+    ];
+    if (splInterfacePdaArgs.restricted) {
+      baseSeeds.push(getUtf8Encoder().encode("restricted"));
+    }
+    if (splInterfacePdaArgs.index > 0) {
+      baseSeeds.push(getU8Encoder().encode(splInterfacePdaArgs.index));
+    }
+    return baseSeeds;
+  };
 
   const [
     sourceSplAta,
@@ -97,45 +132,35 @@ export async function tokenTransferIntent({
     [splInterfacePda],
   ] = await Promise.all([
     getAssociatedTokenAccountAddress(mint, walletAddress, tokenProgram),
-    getProgramDerivedAddress({
-      seeds: [
-        getAddressEncoder().encode(walletAddress),
-        getAddressEncoder().encode(address(CTOKEN_PROGRAM_ID.toString())),
-        getAddressEncoder().encode(mint),
-      ],
-      programAddress: address(CTOKEN_PROGRAM_ID.toString()),
-    }),
+    getCtokenAta(walletAddress),
     getAssociatedTokenAccountAddress(mint, destination, tokenProgram),
+    getCtokenAta(destination),
     getProgramDerivedAddress({
-      seeds: [
-        getAddressEncoder().encode(destination),
-        getAddressEncoder().encode(address(CTOKEN_PROGRAM_ID.toString())),
-        getAddressEncoder().encode(mint),
-      ],
-      programAddress: address(CTOKEN_PROGRAM_ID.toString()),
-    }),
-    getProgramDerivedAddress({
-      seeds: [
-        getUtf8Encoder().encode("pool"),
-        getAddressEncoder().encode(mint),
-      ],
-      programAddress: address(CTOKEN_PROGRAM_ID.toString()),
+      seeds: getSplInterfaceSeeds(),
+      programAddress: ctokenProgramAddress,
     }),
   ]);
 
-  const [destinationSplAtaInfo, sourceSplAtaInfo, compressedSettings] =
-    await Promise.all([
-      fetchCachedAccountInfo(destinationSplAta, cachedAccounts),
-      fetchCachedAccountInfo(sourceSplAta, cachedAccounts),
-      getCompressedSettings(
-        compressed,
-        index,
-        settingsAddressTreeIndex,
-        cachedAccounts,
-      ),
-    ]);
+  const [
+    destinationSplAtaInfo,
+    sourceSplAtaInfo,
+    sourceCTokenAtaInfo,
+    compressedSettings,
+  ] = await Promise.all([
+    fetchCachedAccountInfo(destinationSplAta, cachedAccounts),
+    fetchCachedAccountInfo(sourceSplAta, cachedAccounts),
+    fetchCachedAccountInfo(sourceCtokenAta, cachedAccounts),
+    getCompressedSettings(
+      compressed,
+      index,
+      settingsAddressTreeIndex,
+      cachedAccounts,
+    ),
+  ]);
+
   const destinationSplExists = !!destinationSplAtaInfo.value;
   const sourceSplExists = !!sourceSplAtaInfo.value;
+  const sourceCtokenExist = !!sourceCTokenAtaInfo.value;
 
   const splBalance = sourceSplExists
     ? getTokenDecoder().decode(
@@ -143,25 +168,17 @@ export async function tokenTransferIntent({
       ).amount
     : BigInt(0);
 
-  let cTokenBalance = BigInt(0);
-  let sourceCtokenExist = true;
-  if (splBalance < BigInt(amount)) {
-    const sourceCTokenAtaInfo = await fetchCachedAccountInfo(
-      sourceCtokenAta,
-      cachedAccounts,
-    );
-    sourceCtokenExist = !!sourceCTokenAtaInfo.value;
-    cTokenBalance = sourceCtokenExist
-      ? BigInt(
-          parseTokenAmount(
-            new Uint8Array(
-              getBase64Encoder().encode(sourceCTokenAtaInfo.value!.data[0]),
-            ),
-          )?.amount ?? 0,
-        )
-      : BigInt(0);
-  }
+  const cTokenBalance = sourceCtokenExist
+    ? BigInt(
+        parseTokenAmount(
+          new Uint8Array(
+            getBase64Encoder().encode(sourceCTokenAtaInfo.value!.data[0]),
+          ),
+        )?.amount ?? 0,
+      )
+    : BigInt(0);
 
+  // Determine destination accounts (mutually exclusive)
   const destinationSplTokenAccount = destinationSplExists
     ? destinationSplAta
     : undefined;
@@ -176,17 +193,17 @@ export async function tokenTransferIntent({
         !destinationSplExists)) ||
     (!sourceSplExists && destinationSplExists);
 
-  const requireRentSponsor = !!destinationCtokenTokenAccount;
+  const requireRentSponsor = !destinationSplExists;
 
-  const [{ parsed, compressedAccount }, splInterfaceNeedsInitialization] =
+  const [compressedTokenAccounts, splInterfaceNeedsInitialization] =
     await Promise.all([
-      getCompressedTokenAccount(
+      getCompressedTokenAccounts(
         walletAddress,
         mint,
         splBalance,
         cTokenBalance,
         BigInt(amount),
-        cachedAccounts,
+        compressed ? 3 : 4,
       ),
       checkIfSplInterfaceNeedsToBeInitialized(
         requireSplInterface,
@@ -195,8 +212,13 @@ export async function tokenTransferIntent({
       ),
     ]);
 
+  const compressedTotalBalance = compressedTokenAccounts.reduce(
+    (balance, x) => balance + x.parsed.amount.toNumber(),
+    0,
+  );
+
   if (
-    splBalance + cTokenBalance + BigInt(parsed?.amount.toNumber() ?? 0) <
+    splBalance + cTokenBalance + BigInt(compressedTotalBalance) <
     BigInt(amount)
   ) {
     throw new Error("Insufficient balance");
@@ -212,27 +234,29 @@ export async function tokenTransferIntent({
     ]);
   }
 
-  if (compressedSettings || compressedAccount) {
+  if (compressedSettings || compressedTokenAccounts.length) {
     await packedAccounts.addSystemAccounts();
     const hashesWithTree: (HashWithTree & {
       data: CompressedAccount["data"];
       address: CompressedAccount["address"];
     })[] = [];
-    if (compressedAccount) {
-      hashesWithTree.push({
-        hash: compressedAccount.hash,
-        tree: compressedAccount.treeInfo.tree,
-        queue: compressedAccount.treeInfo.queue,
-        data: compressedAccount.data,
-        address: compressedAccount.address,
-      });
+    if (compressedTokenAccounts.length) {
+      hashesWithTree.push(
+        ...compressedTokenAccounts.map((x) => ({
+          hash: x.compressedAccount.hash,
+          tree: x.compressedAccount.treeInfo.tree,
+          queue: x.compressedAccount.treeInfo.queue,
+          data: x.compressedAccount.data,
+          address: x.compressedAccount.address,
+        })),
+      );
     }
     if (compressedSettings) {
       hashesWithTree.push(compressedSettings);
     }
     proof = await getValidityProofWithRetry(hashesWithTree, []);
     if (compressedSettings) {
-      const start = compressedAccount ? 1 : 0;
+      const start = compressedTokenAccounts.length;
       settingsMutArgs = getCompressedAccountMutArgs<CompressedSettings>(
         packedAccounts,
         proof.treeInfos.slice(start),
@@ -245,25 +269,38 @@ export async function tokenTransferIntent({
     }
   }
 
-  const sourceCompressedTokenAccount: OptionOrNullable<SourceCompressedTokenArgsArgs> =
-    compressedAccount && parsed && proof
-      ? some({
-          amount: parsed.amount.toNumber(),
-          merkleContext: {
-            leafIndex: compressedAccount.leafIndex,
-            merkleTreePubkeyIndex: packedAccounts.insertOrGet(
-              compressedAccount.treeInfo.tree.toString(),
+  const sourceCompressedTokenAccounts: OptionOrNullable<
+    CompressedTokenArgsArgs[]
+  > =
+    compressedTokenAccounts.length && proof
+      ? some(
+          compressedTokenAccounts.map((x, index) => ({
+            isFrozen: x.parsed.state === AccountState.Frozen,
+            hasDelegate: x.parsed.delegate != null,
+            amount: x.parsed.amount.toNumber(),
+            merkleContext: {
+              leafIndex: x.compressedAccount.leafIndex,
+              merkleTreePubkeyIndex: packedAccounts.insertOrGet(
+                x.compressedAccount.treeInfo.tree.toString(),
+              ),
+              queuePubkeyIndex: packedAccounts.insertOrGet(
+                x.compressedAccount.treeInfo.queue.toString(),
+              ),
+              proveByIndex: x.compressedAccount.proveByIndex,
+            },
+            rootIndex: proof.rootIndices[index],
+            version: getVersionFromDiscriminator(
+              x.compressedAccount.data?.discriminator,
             ),
-            queuePubkeyIndex: packedAccounts.insertOrGet(
-              compressedAccount.treeInfo.queue.toString(),
-            ),
-            proveByIndex: compressedAccount.proveByIndex,
-          },
-          rootIndex: proof.rootIndices[0],
-          version: getVersionFromDiscriminator(
-            compressedAccount.data?.discriminator,
-          ),
-        })
+            tlv: x.parsed.tlv
+              ? some(
+                  getArrayDecoder(getExtensionStructDecoder()).decode(
+                    x.parsed.tlv,
+                  ),
+                )
+              : none(),
+          })),
+        )
       : none();
 
   const secp256r1VerifyInput: Secp256r1VerifyInput = [];
@@ -301,7 +338,36 @@ export async function tokenTransferIntent({
   if (secp256r1VerifyInput.length > 0) {
     instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
   }
+
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
+
+  const splInterfacePdaValue = requireSplInterface
+    ? splInterfacePda
+    : undefined;
+  const rentSponsorValue = requireRentSponsor ? rentSponsor : undefined;
+  const splInterfacePdaArgsValue: OptionOrNullable<SplInterfacePdaArgsArgs> =
+    requireSplInterface ? some(splInterfacePdaArgs) : none();
+
+  const commonParams = {
+    amount,
+    secp256r1VerifyArgs,
+    source: walletAddress,
+    destination,
+    sourceCtokenTokenAccount: sourceCtokenAta,
+    sourceSplTokenAccount: sourceSplAta,
+    destinationCtokenTokenAccount,
+    destinationSplTokenAccount,
+    mint,
+    tokenProgram,
+    remainingAccounts,
+    payer,
+    sourceCompressedTokenAccounts,
+    compressedProofArgs,
+    compressibleConfig,
+    splInterfacePda: splInterfacePdaValue,
+    rentSponsor: rentSponsorValue,
+    splInterfacePdaArgs: splInterfacePdaArgsValue,
+  };
 
   if (compressed) {
     if (!settingsMutArgs) {
@@ -309,47 +375,15 @@ export async function tokenTransferIntent({
     }
     instructions.push(
       getTokenTransferIntentCompressedInstruction({
-        amount,
+        ...commonParams,
         settingsMutArgs,
-        compressedProofArgs,
-        payer,
-        secp256r1VerifyArgs,
-        source: walletAddress,
-        destination,
-        sourceCtokenTokenAccount: sourceCtokenAta,
-        sourceSplTokenAccount: sourceSplAta,
-        destinationCtokenTokenAccount,
-        destinationSplTokenAccount,
-        mint,
-        tokenProgram,
-        remainingAccounts,
-        sourceCompressedTokenAccount,
-        compressibleConfig,
-        splInterfacePda: requireSplInterface ? splInterfacePda : undefined,
-        rentSponsor: requireRentSponsor ? rentSponsor : undefined,
       }),
     );
   } else {
     instructions.push(
       getTokenTransferIntentInstruction({
-        amount,
-        secp256r1VerifyArgs,
-        source: walletAddress,
-        destination,
-        destinationCtokenTokenAccount,
-        destinationSplTokenAccount,
+        ...commonParams,
         settings,
-        mint,
-        tokenProgram,
-        remainingAccounts,
-        payer,
-        sourceCompressedTokenAccount,
-        compressedProofArgs,
-        sourceSplTokenAccount: sourceSplAta,
-        sourceCtokenTokenAccount: sourceCtokenAta,
-        compressibleConfig,
-        splInterfacePda: requireSplInterface ? splInterfacePda : undefined,
-        rentSponsor: requireRentSponsor ? rentSponsor : undefined,
       }),
     );
   }
@@ -362,51 +396,70 @@ async function checkIfSplInterfaceNeedsToBeInitialized(
   splInterfacePda: Address,
   cachedAccounts?: Map<string, any>,
 ) {
-  let needsInitialization = false;
-  if (requireSplInterface) {
-    const { value } = await fetchCachedAccountInfo(
-      splInterfacePda,
-      cachedAccounts,
-    );
-    needsInitialization = !value;
-  }
-  return needsInitialization;
+  if (!requireSplInterface) return false;
+  const { value } = await fetchCachedAccountInfo(
+    splInterfacePda,
+    cachedAccounts,
+  );
+  return !value;
 }
 
-async function getCompressedTokenAccount(
+async function getCompressedTokenAccounts(
   walletAddress: string,
   mint: string,
   splBalance: bigint,
   cTokenBalance: bigint,
   total: bigint,
-  cachedAccounts?: Map<string, any>,
+  maxInputs: number,
 ) {
-  if (splBalance + cTokenBalance >= total) {
-    return {};
+  const transferAmount = total - splBalance - cTokenBalance;
+  if (transferAmount <= 0) {
+    return [];
   }
-  const compressedResult = await fetchCachedCompressedTokenAccountsByOwner(
-    new PublicKey(walletAddress),
-    { mint: new PublicKey(mint) },
-    cachedAccounts,
-  );
+  const compressedResult =
+    await getLightProtocolRpc().getCompressedTokenAccountsByOwner(
+      new PublicKey(walletAddress),
+      { mint: new PublicKey(mint) },
+    );
 
-  const compressedAccount =
-    compressedResult.items.length > 0 ? compressedResult.items[0] : null;
+  const accounts = compressedResult.items
+    .filter(
+      (x) =>
+        !!x.compressedAccount.data?.data.length &&
+        x.compressedAccount.owner.equals(CTOKEN_PROGRAM_ID) &&
+        !x.parsed.amount.isZero(),
+    )
+    .sort((a, b) => b.parsed.amount.cmp(a.parsed.amount));
 
-  if (!compressedAccount) {
-    return {};
-  }
-  if (!compressedAccount.compressedAccount.data?.data.length) {
-    return {};
-  }
-  if (!compressedAccount.compressedAccount.owner.equals(CTOKEN_PROGRAM_ID)) {
-    return {};
+  if (accounts.length === 0) {
+    return [];
   }
 
-  return {
-    compressedAccount: compressedAccount.compressedAccount,
-    parsed: compressedAccount.parsed,
-  };
+  // Select accounts up to maxInputs or until we have enough balance
+  let accumulatedAmount = BigInt(0);
+  const selectedAccounts: ParsedTokenAccount[] = [];
+
+  for (const account of accounts) {
+    if (
+      selectedAccounts.length >= maxInputs ||
+      accumulatedAmount >= transferAmount
+    ) {
+      break;
+    }
+    accumulatedAmount += BigInt(account.parsed.amount.toNumber());
+    selectedAccounts.push(account);
+  }
+
+  if (accumulatedAmount < transferAmount) {
+    if (selectedAccounts.length >= maxInputs) {
+      throw new Error(
+        `Transaction size limit exceeded. Consider multiple transfers to transfer full balance.`,
+      );
+    }
+    throw new Error(`Insufficient balance.`);
+  }
+
+  return selectedAccounts;
 }
 
 async function getCompressedSettings(
@@ -431,46 +484,6 @@ async function getCompressedSettings(
   return settings;
 }
 
-/**
- * Token data version enum - mirrors Rust TokenDataVersion
- * Used for compressed token account hashing strategy
- */
-enum TokenDataVersion {
-  /** V1: Poseidon hash with little-endian amount, discriminator [2,0,0,0,0,0,0,0] */
-  V1 = 1,
-  /** V2: Poseidon hash with big-endian amount, discriminator [0,0,0,0,0,0,0,3] */
-  V2 = 2,
-  /** ShaFlat: SHA256 hash of borsh-serialized data, discriminator [0,0,0,0,0,0,0,4] */
-  ShaFlat = 3,
-}
-/**
- * Get token data version from compressed account discriminator.
- */
-function getVersionFromDiscriminator(
-  discriminator: number[] | undefined,
-): number {
-  if (!discriminator || discriminator.length < 8) {
-    // Default to ShaFlat for new accounts without discriminator
-    return TokenDataVersion.ShaFlat;
-  }
-
-  // V1 has discriminator[0] = 2
-  if (discriminator[0] === 2) {
-    return TokenDataVersion.V1;
-  }
-
-  // V2 and ShaFlat have version in discriminator[7]
-  const versionByte = discriminator[7];
-  if (versionByte === 3) {
-    return TokenDataVersion.V2;
-  }
-  if (versionByte === 4) {
-    return TokenDataVersion.ShaFlat;
-  }
-
-  // Default to ShaFlat
-  return TokenDataVersion.ShaFlat;
-}
 function parseTokenAmount(data: Uint8Array): {
   amount: number | bigint;
 } | null {

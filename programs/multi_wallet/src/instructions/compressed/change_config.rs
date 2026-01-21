@@ -107,8 +107,8 @@ impl<'info> ChangeConfigCompressed<'info> {
 
                 let mut writer = Vec::new();
                 config_actions.serialize(&mut writer)?;
-                let message_hash = Sha256::hash(&writer)
-                    .map_err(|_| MultisigError::HashComputationFailed)?;
+                let message_hash =
+                    Sha256::hash(&writer).map_err(|_| MultisigError::HashComputationFailed)?;
 
                 secp256r1_verify_data.verify_args.verify_webauthn(
                     slot_hash_sysvar,
@@ -198,7 +198,11 @@ impl<'info> ChangeConfigCompressed<'info> {
         }
 
         let mut slot_numbers = Vec::with_capacity(secp256r1_verify_args.len());
-        slot_numbers.extend(secp256r1_verify_args.iter().map(|f| f.verify_args.slot_number));
+        slot_numbers.extend(
+            secp256r1_verify_args
+                .iter()
+                .map(|f| f.verify_args.slot_number),
+        );
         settings.latest_slot_number_check(&slot_numbers, &ctx.accounts.slot_hash_sysvar)?;
 
         settings.invariant()?;
@@ -208,11 +212,8 @@ impl<'info> ChangeConfigCompressed<'info> {
             start_index <= remaining_accounts.len(),
             MultisigError::InvalidNumberOfAccounts
         );
-        let light_cpi_accounts = CpiAccounts::new(
-            &payer,
-            &remaining_accounts[start_index..],
-            LIGHT_CPI_SIGNER,
-        );
+        let light_cpi_accounts =
+            CpiAccounts::new(&payer, &remaining_accounts[start_index..], LIGHT_CPI_SIGNER);
 
         let account_infos = User::handle_user_delegates(
             delegate_ops,

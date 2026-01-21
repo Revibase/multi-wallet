@@ -1,6 +1,4 @@
-use crate::{
-    state::WhitelistedAddressTree, utils::SEED_WHITELISTED_ADDRESS_TREE, MultisigError,
-};
+use crate::{state::WhitelistedAddressTree, utils::SEED_WHITELISTED_ADDRESS_TREE, MultisigError};
 use anchor_lang::prelude::*;
 
 #[derive(Accounts)]
@@ -27,7 +25,8 @@ impl<'info> AddWhitelistedAddressTrees<'info> {
         );
         let account = &mut ctx.accounts.whitelisted_address_trees;
         require!(
-            account.whitelisted_address_trees.len() < WhitelistedAddressTree::MAX_WHITELISTED_ADDRESS_TREES,
+            account.whitelisted_address_trees.len()
+                < WhitelistedAddressTree::MAX_WHITELISTED_ADDRESS_TREES,
             MultisigError::MaxLengthExceeded
         );
         require!(

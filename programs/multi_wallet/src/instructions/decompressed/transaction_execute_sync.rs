@@ -89,8 +89,8 @@ impl<'info> TransactionExecuteSync<'info> {
 
                 let mut writer = Vec::new();
                 vault_transaction_message.serialize(&mut writer)?;
-                let transaction_message_hash = Sha256::hash(&writer)
-                    .map_err(|_| MultisigError::HashComputationFailed)?;
+                let transaction_message_hash =
+                    Sha256::hash(&writer).map_err(|_| MultisigError::HashComputationFailed)?;
 
                 let account_loader = DomainConfig::extract_domain_config_account(
                     ctx.remaining_accounts,
@@ -173,7 +173,11 @@ impl<'info> TransactionExecuteSync<'info> {
         executable_message.execute_message(vault_signer_seed, protected_accounts)?;
 
         let mut slot_numbers = Vec::with_capacity(secp256r1_verify_args.len());
-        slot_numbers.extend(secp256r1_verify_args.iter().map(|f| f.verify_args.slot_number));
+        slot_numbers.extend(
+            secp256r1_verify_args
+                .iter()
+                .map(|f| f.verify_args.slot_number),
+        );
         settings.latest_slot_number_check(&slot_numbers, &ctx.accounts.slot_hash_sysvar)?;
 
         settings.invariant()?;

@@ -45,7 +45,7 @@
     "zod": "^4.3.5"
   },
   "peerDependencies": {
-    "@lightprotocol/stateless.js": "0.22.1-alpha.7",
+    "@lightprotocol/stateless.js": "0.22.1-alpha.8",
     "@solana/web3.js": "^1.98.4"
   },
   "devDependencies": {

@@ -185,7 +185,11 @@ impl<'info> DecompressSettingsAccount<'info> {
         settings.settings_address_tree_index = settings_data.settings_address_tree_index;
 
         let mut slot_numbers = Vec::with_capacity(secp256r1_verify_args.len());
-        slot_numbers.extend(secp256r1_verify_args.iter().map(|f| f.verify_args.slot_number));
+        slot_numbers.extend(
+            secp256r1_verify_args
+                .iter()
+                .map(|f| f.verify_args.slot_number),
+        );
         settings.latest_slot_number_check(&slot_numbers, &ctx.accounts.slot_hash_sysvar)?;
         settings.invariant()?;
 

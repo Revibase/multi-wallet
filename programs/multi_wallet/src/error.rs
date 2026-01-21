@@ -177,7 +177,9 @@ pub enum MultisigError {
     #[msg("Address Tree supplied is not part of the whitelisted address trees.")]
     InvalidAddressTree,
 
-    #[msg("Compressed settings data is missing. The settings account must be initialized with data.")]
+    #[msg(
+        "Compressed settings data is missing. The settings account must be initialized with data."
+    )]
     MissingSettingsData,
 
     #[msg("Failed to compute hash. This may indicate a system error.")]
@@ -201,7 +203,9 @@ pub enum MultisigError {
     #[msg("Settings key mismatch. The provided settings key does not match the expected value.")]
     SettingsKeyMismatch,
 
-    #[msg("Payer account mismatch. The provided payer does not match the transaction buffer payer.")]
+    #[msg(
+        "Payer account mismatch. The provided payer does not match the transaction buffer payer."
+    )]
     PayerMismatch,
 
     #[msg("Missing compressed token account. Required for token transfer operations.")]

@@ -85,8 +85,9 @@ impl MemberKey {
             MultisigError::InvalidMemberKeyFormat
         );
         Ok(Pubkey::new_from_array(
-            self.key[1..].try_into()
-                .map_err(|_| MultisigError::InvalidMemberKeyFormat)?
+            self.key[1..]
+                .try_into()
+                .map_err(|_| MultisigError::InvalidMemberKeyFormat)?,
         ))
     }
 

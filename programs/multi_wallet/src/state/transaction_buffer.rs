@@ -120,8 +120,8 @@ impl TransactionBuffer {
     }
 
     pub fn validate_hash(&self) -> Result<()> {
-        let message_buffer_hash = Sha256::hash(&self.buffer)
-            .map_err(|_| MultisigError::HashComputationFailed)?;
+        let message_buffer_hash =
+            Sha256::hash(&self.buffer).map_err(|_| MultisigError::HashComputationFailed)?;
         require!(
             message_buffer_hash == self.final_buffer_hash,
             MultisigError::FinalBufferHashMismatch

@@ -48,18 +48,22 @@ import {
   type ResolvedAccount,
 } from '../shared';
 import {
+  getCompressedTokenArgsDecoder,
+  getCompressedTokenArgsEncoder,
   getProofArgsDecoder,
   getProofArgsEncoder,
   getSecp256r1VerifyArgsWithDomainAddressDecoder,
   getSecp256r1VerifyArgsWithDomainAddressEncoder,
-  getSourceCompressedTokenArgsDecoder,
-  getSourceCompressedTokenArgsEncoder,
+  getSplInterfacePdaArgsDecoder,
+  getSplInterfacePdaArgsEncoder,
+  type CompressedTokenArgs,
+  type CompressedTokenArgsArgs,
   type ProofArgs,
   type ProofArgsArgs,
   type Secp256r1VerifyArgsWithDomainAddress,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
-  type SourceCompressedTokenArgs,
-  type SourceCompressedTokenArgsArgs,
+  type SplInterfacePdaArgs,
+  type SplInterfacePdaArgsArgs,
 } from '../types';
 
 export const TOKEN_TRANSFER_INTENT_DISCRIMINATOR = new Uint8Array([30]);
@@ -174,15 +178,19 @@ export type TokenTransferIntentInstruction<
 
 export type TokenTransferIntentInstructionData = {
   discriminator: ReadonlyUint8Array;
+  splInterfacePdaArgs: Option<SplInterfacePdaArgs>;
   amount: bigint;
-  sourceCompressedTokenAccount: Option<SourceCompressedTokenArgs>;
+  sourceCompressedTokenAccounts: Option<Array<CompressedTokenArgs>>;
   compressedProofArgs: Option<ProofArgs>;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
 };
 
 export type TokenTransferIntentInstructionDataArgs = {
+  splInterfacePdaArgs: OptionOrNullable<SplInterfacePdaArgsArgs>;
   amount: number | bigint;
-  sourceCompressedTokenAccount: OptionOrNullable<SourceCompressedTokenArgsArgs>;
+  sourceCompressedTokenAccounts: OptionOrNullable<
+    Array<CompressedTokenArgsArgs>
+  >;
   compressedProofArgs: OptionOrNullable<ProofArgsArgs>;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
 };
@@ -191,10 +199,14 @@ export function getTokenTransferIntentInstructionDataEncoder(): Encoder<TokenTra
   return transformEncoder(
     getStructEncoder([
       ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      [
+        'splInterfacePdaArgs',
+        getOptionEncoder(getSplInterfacePdaArgsEncoder()),
+      ],
       ['amount', getU64Encoder()],
       [
-        'sourceCompressedTokenAccount',
-        getOptionEncoder(getSourceCompressedTokenArgsEncoder()),
+        'sourceCompressedTokenAccounts',
+        getOptionEncoder(getArrayEncoder(getCompressedTokenArgsEncoder())),
       ],
       ['compressedProofArgs', getOptionEncoder(getProofArgsEncoder())],
       [
@@ -212,10 +224,11 @@ export function getTokenTransferIntentInstructionDataEncoder(): Encoder<TokenTra
 export function getTokenTransferIntentInstructionDataDecoder(): Decoder<TokenTransferIntentInstructionData> {
   return getStructDecoder([
     ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ['splInterfacePdaArgs', getOptionDecoder(getSplInterfacePdaArgsDecoder())],
     ['amount', getU64Decoder()],
     [
-      'sourceCompressedTokenAccount',
-      getOptionDecoder(getSourceCompressedTokenArgsDecoder()),
+      'sourceCompressedTokenAccounts',
+      getOptionDecoder(getArrayDecoder(getCompressedTokenArgsDecoder())),
     ],
     ['compressedProofArgs', getOptionDecoder(getProofArgsDecoder())],
     [
@@ -277,8 +290,9 @@ export type TokenTransferIntentAsyncInput<
   compressibleConfig: Address<TAccountCompressibleConfig>;
   rentSponsor?: Address<TAccountRentSponsor>;
   compressedTokenProgram?: Address<TAccountCompressedTokenProgram>;
+  splInterfacePdaArgs: TokenTransferIntentInstructionDataArgs['splInterfacePdaArgs'];
   amount: TokenTransferIntentInstructionDataArgs['amount'];
-  sourceCompressedTokenAccount: TokenTransferIntentInstructionDataArgs['sourceCompressedTokenAccount'];
+  sourceCompressedTokenAccounts: TokenTransferIntentInstructionDataArgs['sourceCompressedTokenAccounts'];
   compressedProofArgs: TokenTransferIntentInstructionDataArgs['compressedProofArgs'];
   secp256r1VerifyArgs: TokenTransferIntentInstructionDataArgs['secp256r1VerifyArgs'];
   remainingAccounts: TokenTransferIntentInstructionExtraArgs['remainingAccounts'];
@@ -500,16 +514,6 @@ export async function getTokenTransferIntentInstructionAsync<
     accounts.compressedTokenProgramAuthority.value =
       'GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy' as Address<'GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy'>;
   }
-  if (!accounts.splInterfacePda.value) {
-    accounts.splInterfacePda.value = await getProgramDerivedAddress({
-      programAddress:
-        'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m' as Address<'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m'>,
-      seeds: [
-        getBytesEncoder().encode(new Uint8Array([112, 111, 111, 108])),
-        getAddressEncoder().encode(expectAddress(accounts.mint.value)),
-      ],
-    });
-  }
   if (!accounts.compressedTokenProgram.value) {
     accounts.compressedTokenProgram.value =
       'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m' as Address<'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m'>;
@@ -607,8 +611,9 @@ export type TokenTransferIntentInput<
   compressibleConfig: Address<TAccountCompressibleConfig>;
   rentSponsor?: Address<TAccountRentSponsor>;
   compressedTokenProgram?: Address<TAccountCompressedTokenProgram>;
+  splInterfacePdaArgs: TokenTransferIntentInstructionDataArgs['splInterfacePdaArgs'];
   amount: TokenTransferIntentInstructionDataArgs['amount'];
-  sourceCompressedTokenAccount: TokenTransferIntentInstructionDataArgs['sourceCompressedTokenAccount'];
+  sourceCompressedTokenAccounts: TokenTransferIntentInstructionDataArgs['sourceCompressedTokenAccounts'];
   compressedProofArgs: TokenTransferIntentInstructionDataArgs['compressedProofArgs'];
   secp256r1VerifyArgs: TokenTransferIntentInstructionDataArgs['secp256r1VerifyArgs'];
   remainingAccounts: TokenTransferIntentInstructionExtraArgs['remainingAccounts'];
