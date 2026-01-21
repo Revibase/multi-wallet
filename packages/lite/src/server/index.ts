@@ -1,15 +1,10 @@
 import type {
-  CompleteMessageRequest,
-  CompleteTransactionRequest,
   StartMessageRequest,
   StartTransactionRequest,
   TransactionPayloadWithBase64MessageBytes,
 } from "@revibase/core";
 import {
   base64URLStringToBuffer,
-  CompleteMessageRequestSchema,
-  CompleteTransactionRequestSchema,
-  createClientAuthorizationStartRequestChallenge,
   fetchSettingsAccountData,
   getSettingsFromIndex,
   StartMessageRequestSchema,
@@ -18,11 +13,14 @@ import {
 import {
   createNoopSigner,
   getAddressDecoder,
-  getBase58Decoder,
   type TransactionSigner,
 } from "gill";
 import {
+  CompleteMessageRequestSchema,
+  CompleteTransactionRequestSchema,
   StartTransactionRequestWithOptionalTypeSchema,
+  type CompleteMessageRequest,
+  type CompleteTransactionRequest,
   type StartTransactionRequestWithOptionalType,
   type User,
 } from "src/utils";
@@ -34,7 +32,9 @@ import {
 } from "src/utils/internal";
 import z from "zod";
 import { processBundledTransaction } from "./processBundledTransaction";
+import { processGetResult } from "./processGetResult";
 import { processMessage } from "./processMessage";
+import { processStartRequest } from "./processStartRequest";
 import { processSyncTransaction } from "./processSyncTransaction";
 import { processTokenTransfer } from "./processTokenTransfer";
 
@@ -45,8 +45,8 @@ import { processTokenTransfer } from "./processTokenTransfer";
  * @param request - Start or complete request (message or transaction)
  * @param privateKey - Ed25519 private key for signing
  * @param feePayer - Optional fee payer for transactions
- * @param expectedOrigin - Expected origin for WebAuthn verification
- * @param expectedRPID - Expected RP ID for WebAuthn verification
+ * @param providerOrigin - Auth Provider origin for WebAuthn verification
+ * @param rpId - Auth Provider RP ID for WebAuthn verification
  * @returns Result containing signature, message, user, or transaction signature
  * @throws {Error} If request phase or type is invalid
  */
@@ -54,18 +54,18 @@ export async function processClientAuthCallback({
   request,
   privateKey,
   feePayer,
-  expectedOrigin,
-  expectedRPID,
+  providerOrigin,
+  rpId,
 }: {
   request:
     | StartTransactionRequestWithOptionalType
     | StartMessageRequest
-    | CompleteTransactionRequest
-    | CompleteMessageRequest;
+    | CompleteMessageRequest
+    | CompleteTransactionRequest;
   privateKey: CryptoKey;
   feePayer?: TransactionSigner;
-  expectedOrigin?: string;
-  expectedRPID?: string;
+  providerOrigin?: string;
+  rpId?: string;
 }) {
   const parsedResult = z
     .union([
@@ -76,42 +76,32 @@ export async function processClientAuthCallback({
     ])
     .parse(request);
 
-  // Start Request
   if (parsedResult.phase === "start") {
     const { data, signer } = parsedResult;
-    let challenge: Uint8Array;
-
     if (data.type === "message") {
       const message =
         data.payload ??
         createSignInMessageText({
           nonce: crypto.randomUUID(),
         });
-      challenge = createClientAuthorizationStartRequestChallenge({
+      const messageRequest: StartMessageRequest = {
         ...parsedResult,
         signer: getSignerFromRequest(parsedResult),
         data: { ...data, payload: message },
+      };
+      return await processStartRequest({
+        request: messageRequest,
+        privateKey,
+        providerOrigin,
       });
-      const signature = getBase58Decoder().decode(
-        new Uint8Array(
-          await crypto.subtle.sign(
-            { name: "Ed25519" },
-            privateKey,
-            new Uint8Array(challenge),
-          ),
-        ),
-      );
-      return { signature, message };
     }
 
-    // Transaction start request
     if (data.type !== "transaction") {
       throw new Error(
         `Unsupported request type: ${(data as { type: string }).type}`,
       );
     }
 
-    // Validate that signer is a User object for transaction requests
     if (
       !signer ||
       typeof signer !== "object" ||
@@ -134,37 +124,32 @@ export async function processClientAuthCallback({
       },
     };
 
-    challenge =
-      createClientAuthorizationStartRequestChallenge(transactionRequest);
-    const signature = getBase58Decoder().decode(
-      new Uint8Array(
-        await crypto.subtle.sign(
-          { name: "Ed25519" },
-          privateKey,
-          new Uint8Array(challenge),
-        ),
-      ),
-    );
-
-    return { signature, transactionPayload };
+    return await processStartRequest({
+      request: transactionRequest,
+      providerOrigin,
+      privateKey,
+    });
   }
 
-  // Complete Request
-  if (parsedResult.data.type === "message") {
+  const result = await processGetResult({
+    rid: parsedResult.data.rid,
+    providerOrigin,
+    privateKey,
+  });
+
+  if (result.data.type === "message") {
     const user = await processMessage(
-      { phase: "complete", data: parsedResult.data },
-      expectedOrigin,
-      expectedRPID,
+      { phase: "complete", data: result.data },
+      providerOrigin,
+      rpId,
     );
     return { user };
   }
 
-  // Transaction complete request
-  const { transactionActionType } =
-    parsedResult.data.payload.transactionPayload;
+  const { transactionActionType } = result.data.payload.transactionPayload;
   const completeRequest = {
     phase: "complete" as const,
-    data: parsedResult.data,
+    data: result.data,
   };
 
   switch (transactionActionType) {
@@ -199,6 +184,7 @@ export async function processClientAuthCallback({
       );
   }
 }
+
 function getSignerFromRequest(
   request: StartTransactionRequestWithOptionalType | StartMessageRequest,
 ): string | undefined {

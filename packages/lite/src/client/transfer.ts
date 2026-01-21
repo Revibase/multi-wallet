@@ -1,8 +1,5 @@
 import type { TransactionPayloadWithBase64MessageBytes } from "@revibase/core";
-import {
-  bufferToBase64URLString,
-  type CompleteTransactionRequest,
-} from "@revibase/core";
+import { bufferToBase64URLString } from "@revibase/core";
 import { address, getAddressEncoder, getU64Encoder } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 import type { RevibaseProvider } from "src/provider/main";
@@ -24,7 +21,7 @@ export async function transferTokens(
     signer?: User;
     mint?: string;
     tokenProgram?: string;
-  }
+  },
 ): Promise<{ txSig: string }> {
   // Validate inputs
   if (args.amount <= 0) {
@@ -54,7 +51,7 @@ export async function transferTokens(
         ...getU64Encoder().encode(amount),
         ...getAddressEncoder().encode(address(destination)),
         ...getAddressEncoder().encode(address(mint ?? SYSTEM_PROGRAM_ADDRESS)),
-      ])
+      ]),
     ),
   };
 
@@ -68,22 +65,14 @@ export async function transferTokens(
     signer,
   };
 
-  const { signature } = await provider.onClientAuthorizationCallback(payload);
+  const { rid } = await provider.onClientAuthorizationCallback(payload);
 
-  const response = (await provider.sendPayloadToProvider({
-    payload: {
-      ...payload,
-      signer: signer?.publicKey,
-      data: { ...payload.data, payload: transactionPayload },
-    },
-    signature,
-  })) as CompleteTransactionRequest;
+  await provider.sendPayloadToProvider({
+    rid,
+  });
 
   return await provider.onClientAuthorizationCallback({
-    ...response,
-    data: {
-      ...response.data,
-      payload: { ...response.data.payload, transactionPayload },
-    },
+    phase: "complete",
+    data: { type: "transaction", rid },
   });
 }

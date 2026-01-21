@@ -1,7 +1,4 @@
-import type {
-  CompleteTransactionRequest,
-  TransactionPayloadWithBase64MessageBytes,
-} from "@revibase/core";
+import type { TransactionPayloadWithBase64MessageBytes } from "@revibase/core";
 import {
   bufferToBase64URLString,
   prepareTransactionMessage,
@@ -32,7 +29,7 @@ export async function executeTransaction(
     instructions: Instruction[];
     signer: User;
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
-  }
+  },
 ): Promise<{ txSig: string }> {
   provider.openBlankPopUp();
 
@@ -50,7 +47,7 @@ export async function executeTransaction(
     "transactionActionType" | "transactionAddress"
   > = {
     transactionMessageBytes: bufferToBase64URLString(
-      new Uint8Array(transactionMessageBytes)
+      new Uint8Array(transactionMessageBytes),
     ),
   };
 
@@ -64,22 +61,13 @@ export async function executeTransaction(
     signer,
   };
 
-  const { signature, transactionPayload } =
-    await provider.onClientAuthorizationCallback(payload);
-  const response = (await provider.sendPayloadToProvider({
-    payload: {
-      ...payload,
-      signer: signer.publicKey,
-      data: { ...payload.data, payload: transactionPayload },
-    },
-    signature,
-  })) as CompleteTransactionRequest;
+  const { rid } = await provider.onClientAuthorizationCallback(payload);
+  await provider.sendPayloadToProvider({
+    rid,
+  });
 
   return await provider.onClientAuthorizationCallback({
-    ...response,
-    data: {
-      ...response.data,
-      payload: { ...response.data.payload, transactionPayload },
-    },
+    phase: "complete",
+    data: { type: "transaction", rid },
   });
 }

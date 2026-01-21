@@ -22,7 +22,7 @@ import { getSettingsIndexWithAddress } from "src/utils/internal";
 export async function processMessage(
   request: CompleteMessageRequest,
   expectedOrigin = REVIBASE_AUTH_URL,
-  expectedRPID = REVIBASE_RP_ID
+  expectedRPID = REVIBASE_RP_ID,
 ) {
   const { payload } = request.data;
 
@@ -31,7 +31,7 @@ export async function processMessage(
     message,
     payload.clientSignature.clientOrigin,
     payload.deviceSignature.publicKey,
-    payload.nonce
+    payload.nonce,
   );
   const { verified } = await verifyAuthenticationResponse({
     response: payload.authResponse,
@@ -51,7 +51,7 @@ export async function processMessage(
   }
   const settingsIndexWithAddress = await getSettingsIndexWithAddress(request);
   const walletAddress = await getWalletAddressFromIndex(
-    settingsIndexWithAddress.index
+    settingsIndexWithAddress.index,
   );
 
   const user = {

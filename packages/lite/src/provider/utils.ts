@@ -3,20 +3,12 @@ import type { ClientAuthorizationCallback } from "src/utils";
 export type CallbackStatus = "ok" | "error" | "cancel";
 export const DEFAULT_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 export const HEARTBEAT_INTERVAL = 2000; // 2s
-// How long to wait for MessageChannel connection before starting fallback polling
-export const CONNECT_GRACE_MS = 3000; // 3s
 
-// After a close signal, poll briefly to catch any persisted result, then fail.
-export const CLOSE_POLL_GRACE_MS = 10000; // 10s
-
-// Polling settings
-export const POLL_INITIAL_DELAY_MS = 1000; // 1s
-export const POLL_MAX_DELAY_MS = 4000; // 4s
-export const POLL_BACKOFF = 1.7;
 export type PopupPortMessage =
   | { type: "popup-complete"; payload: any }
   | { type: "popup-error"; error: string }
   | { type: "popup-closed" };
+
 export type PopupConnectMessage = {
   type: "popup-connect";
   rid: string;
@@ -37,11 +29,6 @@ export type Options = {
    * Used to open and communicate with the authorization popup.
    */
   providerOrigin?: string;
-  /**
-   * Endpoint used to fetch the result as a fallback
-   * when MessageChannel communication is unavailable or interrupted.
-   */
-  providerFetchResultUrl?: string;
 };
 
 export type Pending = {

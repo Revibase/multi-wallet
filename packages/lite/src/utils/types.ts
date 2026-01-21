@@ -1,10 +1,7 @@
 import {
   TransactionActionTypeSchema,
   TransactionPayloadWithBase64MessageBytesSchema,
-  type CompleteMessageRequest,
-  type CompleteTransactionRequest,
   type StartMessageRequest,
-  type TransactionPayloadWithBase64MessageBytes,
 } from "@revibase/core";
 import z from "zod";
 
@@ -40,14 +37,33 @@ export type StartTransactionRequestWithOptionalType = z.infer<
   typeof StartTransactionRequestWithOptionalTypeSchema
 >;
 
+export const CompleteMessageRequestSchema = z.object({
+  phase: z.literal("complete"),
+  data: z.object({
+    type: z.literal("message"),
+    rid: z.string(),
+  }),
+});
+
+export type CompleteMessageRequest = z.infer<
+  typeof CompleteMessageRequestSchema
+>;
+
+export const CompleteTransactionRequestSchema = z.object({
+  phase: z.literal("complete"),
+  data: z.object({
+    type: z.literal("transaction"),
+    rid: z.string(),
+  }),
+});
+
+export type CompleteTransactionRequest = z.infer<
+  typeof CompleteTransactionRequestSchema
+>;
+
 export type ClientAuthorizationCallback = {
-  (
-    request: StartMessageRequest,
-  ): Promise<{ id?: string; message: string; signature: string }>;
-  (request: StartTransactionRequestWithOptionalType): Promise<{
-    signature: string;
-    transactionPayload: TransactionPayloadWithBase64MessageBytes;
-  }>;
+  (request: StartMessageRequest): Promise<{ rid: string }>;
+  (request: StartTransactionRequestWithOptionalType): Promise<{ rid: string }>;
   (request: CompleteMessageRequest): Promise<{ user: User }>;
   (request: CompleteTransactionRequest): Promise<{ txSig: string }>;
 };
