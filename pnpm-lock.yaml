@@ -12,8 +12,8 @@ importers:
         specifier: 0.31.1
         version: 0.31.1(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
       '@lightprotocol/compressed-token':
-        specifier: 0.22.1-alpha.8
-        version: 0.22.1-alpha.8(@coral-xyz/borsh@0.31.1(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)))(@lightprotocol/stateless.js@0.22.1-alpha.7(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)))(@solana/spl-token@0.4.14(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.2)(utf-8-validate@5.0.10))(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
+        specifier: 0.22.1-alpha.9
+        version: 0.22.1-alpha.9(@coral-xyz/borsh@0.31.1(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)))(@lightprotocol/stateless.js@0.22.1-alpha.7(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)))(@solana/spl-token@0.4.14(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.2)(utf-8-validate@5.0.10))(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
       '@lightprotocol/stateless.js':
         specifier: 0.22.1-alpha.7
         version: 0.22.1-alpha.7(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))
@@ -431,11 +431,11 @@ packages:
   '@levischuck/tiny-cbor@0.3.2':
     resolution: {integrity: sha512-v15eUU94R54eghlKZJtO/hwJmYC7w4ZIj/ybAJT2tMKdcrJNlXm7axCHS8xrQiC1wPlAQNemiwEpuBUaFGwJlQ==}
 
-  '@lightprotocol/compressed-token@0.22.1-alpha.8':
-    resolution: {integrity: sha512-//61fslf34VXmJWavSRxGhYsOChWowG7DPCqtX+z1tvQg010v1MRTc2rN14HypfLHSy5ma8Ha1PImb3R4S4p+A==}
+  '@lightprotocol/compressed-token@0.22.1-alpha.9':
+    resolution: {integrity: sha512-+D+Dt2wiXvKx+nwmc4La7b/WmOtw0XNQY52Ge+ipIB9xfA7YfUFS5IXj1IjNolpv0kj3PtLn7MDnpYOFGz/xmg==}
     peerDependencies:
       '@coral-xyz/borsh': ^0.29.0
-      '@lightprotocol/stateless.js': 0.22.1-alpha.7
+      '@lightprotocol/stateless.js': 0.22.1-alpha.8
       '@solana/spl-token': '>=0.3.9'
       '@solana/web3.js': '>=1.73.5'
 
@@ -2279,7 +2279,7 @@ snapshots:
 
   '@levischuck/tiny-cbor@0.3.2': {}
 
-  '@lightprotocol/compressed-token@0.22.1-alpha.8(@coral-xyz/borsh@0.31.1(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)))(@lightprotocol/stateless.js@0.22.1-alpha.7(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)))(@solana/spl-token@0.4.14(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.2)(utf-8-validate@5.0.10))(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)':
+  '@lightprotocol/compressed-token@0.22.1-alpha.9(@coral-xyz/borsh@0.31.1(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)))(@lightprotocol/stateless.js@0.22.1-alpha.7(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)))(@solana/spl-token@0.4.14(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.2)(utf-8-validate@5.0.10))(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@coral-xyz/borsh': 0.31.1(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))
       '@lightprotocol/stateless.js': 0.22.1-alpha.7(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))

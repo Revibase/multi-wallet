@@ -9,7 +9,7 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.31.1",
-    "@lightprotocol/compressed-token": "0.22.1-alpha.8",
+    "@lightprotocol/compressed-token": "0.22.1-alpha.9",
     "@lightprotocol/stateless.js": "0.22.1-alpha.7",
     "@noble/curves": "2.0.1",
     "@noble/hashes": "2.0.1",

@@ -26,18 +26,14 @@ import {
   createKeyPairSignerFromPrivateKeyBytes,
   getAddressEncoder,
   getU64Encoder,
-  some,
   type Address,
 } from "gill";
 import {
-  extension,
   fetchToken,
   getAssociatedTokenAccountAddress,
   getCreateAccountInstruction,
   getCreateAssociatedTokenIdempotentInstruction,
-  getInitializeMetadataPointerInstruction,
   getInitializeMintInstruction,
-  getInitializeTokenMetadataInstruction,
   getMintSize,
   getMintToCheckedInstruction,
   TOKEN_2022_PROGRAM_ADDRESS,
@@ -462,57 +458,19 @@ const createMintAndMintToCompressedAccount = async (ctx: TestContext) => {
     crypto.getRandomValues(new Uint8Array(32)),
   );
 
-  const metadataExtension = extension("TokenMetadata", {
-    updateAuthority: some(ctx.newMember.address),
-    mint: ephemeralKeypair.address,
-    name: "OPOS",
-    symbol: "OPS",
-    uri: "https://raw.githubusercontent.com/solana-developers/opos-asset/main/assets/DeveloperPortal/metadata.json",
-    additionalMetadata: new Map().set("description", "Only possible on Solana"),
-  });
-
-  const metadataPointerExtension = extension("MetadataPointer", {
-    authority: ctx.newMember.address,
-    metadataAddress: ephemeralKeypair.address, // can also point to another account if desired
-  });
-  const spaceWithoutTokenMetadataExtension = BigInt(
-    getMintSize([metadataPointerExtension]),
-  );
-  const spaceWithTokenMetadataExtension = BigInt(
-    getMintSize([metadataPointerExtension, metadataExtension]),
-  );
-  const rent = await getSolanaRpc()
-    .getMinimumBalanceForRentExemption(spaceWithTokenMetadataExtension)
-    .send();
-
   // Create account instruction
-  const createMintAccountInstruction = getCreateAccountInstruction({
+  const createAccount = getCreateAccountInstruction({
     payer: ctx.payer,
     newAccount: ephemeralKeypair,
-    space: spaceWithoutTokenMetadataExtension,
-    lamports: rent,
+    space: getMintSize(),
+    lamports: await getSolanaRpc()
+      .getMinimumBalanceForRentExemption(BigInt(getMintSize()))
+      .send(),
     programAddress: TOKEN_2022_PROGRAM_ADDRESS,
   });
 
-  const initializeMetadataInstruction = getInitializeTokenMetadataInstruction({
-    metadata: ephemeralKeypair.address, // Account address that holds the metadata
-    updateAuthority: ctx.newMember.address, // Authority that can update the metadata
-    mint: ephemeralKeypair.address, // Mint Account address
-    mintAuthority: ctx.newMember, // Designated Mint Authority
-    name: "OPOS",
-    symbol: "OPS",
-    uri: "https://raw.githubusercontent.com/solana-developers/opos-asset/main/assets/DeveloperPortal/metadata.json",
-  });
-
-  const initializeMetadataPointerInstruction =
-    getInitializeMetadataPointerInstruction({
-      mint: ephemeralKeypair.address,
-      authority: ctx.newMember.address,
-      metadataAddress: ephemeralKeypair.address,
-    });
-
   // Create mint instruction
-  const initializeMintInstruction = getInitializeMintInstruction({
+  const createMint = getInitializeMintInstruction({
     mint: ephemeralKeypair.address,
     decimals: 5,
     mintAuthority: ctx.newMember.address,
@@ -539,14 +497,7 @@ const createMintAndMintToCompressedAccount = async (ctx: TestContext) => {
     token: newMemberSplAta,
   });
   await sendTransaction(
-    [
-      createMintAccountInstruction,
-      initializeMetadataPointerInstruction,
-      initializeMintInstruction,
-      initializeMetadataInstruction,
-      ataIx,
-      mintTo,
-    ],
+    [createAccount, createMint, ataIx, mintTo],
     ctx.payer,
     ctx.addressLookUpTable,
   );
