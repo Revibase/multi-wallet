@@ -77,7 +77,6 @@ export async function processClientAuthCallback({
   if (parsedResult.phase === "start") {
     const { data, signer } = parsedResult;
 
-    // Handle message requests (fast path)
     if (data.type === "message") {
       return await processStartRequest({
         request: {
@@ -98,25 +97,10 @@ export async function processClientAuthCallback({
       });
     }
 
-    // Validate transaction type early
-    if (data.type !== "transaction") {
-      throw new Error(
-        `Unsupported request type: ${(data as { type: string }).type}`,
-      );
-    }
-
-    // Validate signer early before expensive operations
-    if (
-      !signer ||
-      typeof signer !== "object" ||
-      !("settingsIndexWithAddress" in signer)
-    ) {
-      throw new Error(
-        "Transaction start request requires a User signer object",
-      );
-    }
-
-    const { transactionPayload } = await getTransactionPayload(data, signer);
+    const { transactionPayload } = await getTransactionPayload(
+      data.payload,
+      signer,
+    );
 
     return await processStartRequest({
       request: {
@@ -134,14 +118,12 @@ export async function processClientAuthCallback({
     });
   }
 
-  // Get result and process based on type
   const result = await processGetResult({
     rid: parsedResult.data.rid,
     providerOrigin,
     privateKey,
   });
 
-  // Handle message completion
   if (result.data.type === "message") {
     return {
       user: await processMessage(
@@ -152,7 +134,6 @@ export async function processClientAuthCallback({
     };
   }
 
-  // Handle transaction completion
   const completeRequest = {
     phase: "complete" as const,
     data: result.data,
@@ -160,7 +141,6 @@ export async function processClientAuthCallback({
 
   const { transactionActionType } = result.data.payload.transactionPayload;
 
-  // Route to appropriate transaction processor
   switch (transactionActionType) {
     case "transfer_intent":
       return {
@@ -195,68 +175,35 @@ export async function processClientAuthCallback({
 }
 
 async function getTransactionPayload(
-  data: StartCustomTransactionRequest["data"],
-  signer: User,
+  payload: StartCustomTransactionRequest["data"]["payload"],
+  signer?: User,
 ): Promise<{ transactionPayload: TransactionPayloadWithBase64MessageBytes }> {
-  const payload = data.payload;
-
-  // Early validation - fail fast
-  if (!payload || typeof payload !== "object") {
-    throw new Error("Invalid transaction payload: payload must be an object");
-  }
-
-  if (
-    !payload.transactionMessageBytes ||
-    typeof payload.transactionMessageBytes !== "string"
-  ) {
-    throw new Error(
-      "Invalid transaction payload: transactionMessageBytes is required and must be a string",
-    );
-  }
-
-  // Fast path: if both transactionAddress and transactionActionType are provided, use them directly
   if (payload.transactionAddress && payload.transactionActionType) {
     return {
       transactionPayload: payload as TransactionPayloadWithBase64MessageBytes,
     };
   }
 
-  // Validate signer early
-  const settingsIndexWithAddress = signer.settingsIndexWithAddress;
-  if (
-    !settingsIndexWithAddress ||
-    typeof settingsIndexWithAddress !== "object"
-  ) {
-    throw new Error("Invalid signer: settingsIndexWithAddress is required");
+  if (!signer?.settingsIndexWithAddress) {
+    throw new Error("Signer must be provided for this action.");
   }
 
-  // Decode base64 early and fetch data in parallel
-  let transactionMessageBytes: Uint8Array;
-  try {
-    transactionMessageBytes = new Uint8Array(
-      base64URLStringToBuffer(payload.transactionMessageBytes),
-    );
-  } catch (error) {
-    throw new Error(
-      `Invalid transaction message bytes: ${error instanceof Error ? error.message : "Failed to decode base64"}`,
-    );
-  }
+  const transactionMessageBytes = new Uint8Array(
+    base64URLStringToBuffer(payload.transactionMessageBytes),
+  );
 
-  const lookupTable = getAddressByLookUpTable();
   const [settings, settingsAddress] = await Promise.all([
     fetchSettingsAccountData(
-      settingsIndexWithAddress.index,
-      settingsIndexWithAddress.settingsAddressTreeIndex,
+      signer.settingsIndexWithAddress.index,
+      signer.settingsIndexWithAddress.settingsAddressTreeIndex,
     ),
-    getSettingsFromIndex(settingsIndexWithAddress.index),
+    getSettingsFromIndex(signer.settingsIndexWithAddress.index),
   ]);
 
-  // Find transaction manager (synchronous operation)
   const txManager = settings.members.find(
     (x) => x.role === UserRole.TransactionManager,
   );
 
-  // Prepare signers array (synchronous)
   const signers = [
     simulateSecp256r1Signer(),
     ...(txManager
@@ -264,17 +211,17 @@ async function getTransactionPayload(
       : []),
   ];
 
-  // Estimate transaction size
   const useBundle = await estimateTransactionSizeExceedLimit({
     signers,
     compressed: settings.isCompressed,
     payer: createNoopSigner(
       getAddressDecoder().decode(crypto.getRandomValues(new Uint8Array(32))),
     ),
-    index: settingsIndexWithAddress.index,
-    settingsAddressTreeIndex: settingsIndexWithAddress.settingsAddressTreeIndex,
+    index: signer.settingsIndexWithAddress.index,
+    settingsAddressTreeIndex:
+      signer.settingsIndexWithAddress.settingsAddressTreeIndex,
     transactionMessageBytes,
-    addressesByLookupTableAddress: lookupTable,
+    addressesByLookupTableAddress: getAddressByLookUpTable(),
   });
 
   return {
