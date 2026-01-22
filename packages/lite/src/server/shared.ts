@@ -4,13 +4,13 @@
  */
 
 import {
-  base64URLStringToBuffer,
-  createClientAuthorizationCompleteRequestChallenge,
-  fetchSettingsAccountData,
-  getSignedSecp256r1Key,
-  getSignedTransactionManager,
-  retrieveTransactionManager,
-  type CompleteTransactionRequest,
+    base64URLStringToBuffer,
+    createClientAuthorizationCompleteRequestChallenge,
+    fetchSettingsAccountData,
+    getSignedSecp256r1Key,
+    getSignedTransactionManager,
+    retrieveTransactionManager,
+    type CompleteTransactionRequest,
 } from "@revibase/core";
 import { getBase58Decoder, type TransactionSigner } from "gill";
 import { REVIBASE_API_URL } from "src/utils/consts";

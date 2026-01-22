@@ -5,14 +5,12 @@ import {
 } from "@revibase/core";
 import {
   address,
+  getBase64Decoder,
   type AddressesByLookupTableAddress,
   type Instruction,
 } from "gill";
 import type { RevibaseProvider } from "src/provider/main";
-import type {
-  StartTransactionRequestWithOptionalType,
-  User,
-} from "src/utils/types";
+import type { StartCustomTransactionRequest, User } from "src/utils/types";
 
 /**
  * Executes a transaction using the Revibase provider.
@@ -30,17 +28,14 @@ export async function executeTransaction(
     signer: User;
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
+  rid?: string,
 ): Promise<{ txSig: string }> {
-  provider.openBlankPopUp();
-
   const { instructions, signer, addressesByLookupTableAddress } = args;
   const transactionMessageBytes = prepareTransactionMessage({
     payer: address(signer.walletAddress),
     instructions,
     addressesByLookupTableAddress,
   });
-
-  const redirectOrigin = window.origin;
 
   const transactionPayloadWithoutType: Omit<
     TransactionPayloadWithBase64MessageBytes,
@@ -51,20 +46,29 @@ export async function executeTransaction(
     ),
   };
 
-  const payload: StartTransactionRequestWithOptionalType = {
+  const redirectOrigin = window.origin;
+  rid =
+    rid ??
+    getBase64Decoder().decode(crypto.getRandomValues(new Uint8Array(16)));
+
+  const payload: StartCustomTransactionRequest = {
     phase: "start",
     data: {
       type: "transaction" as const,
       payload: transactionPayloadWithoutType,
+      rid,
     },
     redirectOrigin,
     signer,
   };
 
-  const { rid } = await provider.onClientAuthorizationCallback(payload);
-  await provider.sendPayloadToProvider({
-    rid,
-  });
+  await Promise.all([
+    provider.onClientAuthorizationCallback(payload),
+    provider.sendPayloadToProvider({
+      rid,
+      redirectOrigin,
+    }),
+  ]);
 
   return await provider.onClientAuthorizationCallback({
     phase: "complete",

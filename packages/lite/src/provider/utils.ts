@@ -1,7 +1,6 @@
 import type { ClientAuthorizationCallback } from "src/utils";
 
-export type CallbackStatus = "ok" | "error" | "cancel";
-export const DEFAULT_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+export const DEFAULT_TIMEOUT = 10 * 60 * 1000; // 10 minutes
 export const HEARTBEAT_INTERVAL = 2000; // 2s
 
 export type PopupPortMessage =
@@ -13,11 +12,6 @@ export type PopupConnectMessage = {
   type: "popup-connect";
   rid: string;
 };
-export type PollResponse =
-  | { status: "timeout" }
-  | { status: "pending" }
-  | { status: "complete"; payload: any }
-  | { status: "error"; error: string };
 
 export type Options = {
   /**

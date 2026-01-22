@@ -1,9 +1,14 @@
 import type { TransactionPayloadWithBase64MessageBytes } from "@revibase/core";
 import { bufferToBase64URLString } from "@revibase/core";
-import { address, getAddressEncoder, getU64Encoder } from "gill";
+import {
+  address,
+  getAddressEncoder,
+  getBase64Decoder,
+  getU64Encoder,
+} from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 import type { RevibaseProvider } from "src/provider/main";
-import type { StartTransactionRequestWithOptionalType, User } from "src/utils";
+import type { StartCustomTransactionRequest, User } from "src/utils";
 
 /**
  * Transfers tokens (native SOL or SPL tokens) using the Revibase provider.
@@ -32,8 +37,6 @@ export async function transferTokens(
     throw new Error("Destination address is required");
   }
 
-  provider.openBlankPopUp();
-
   const {
     mint,
     tokenProgram = TOKEN_PROGRAM_ADDRESS,
@@ -41,7 +44,6 @@ export async function transferTokens(
     destination,
     signer,
   } = args;
-  const redirectOrigin = window.origin;
 
   const transactionPayload: TransactionPayloadWithBase64MessageBytes = {
     transactionActionType: "transfer_intent",
@@ -55,21 +57,28 @@ export async function transferTokens(
     ),
   };
 
-  const payload: StartTransactionRequestWithOptionalType = {
+  const redirectOrigin = window.origin;
+  const rid = getBase64Decoder().decode(
+    crypto.getRandomValues(new Uint8Array(16)),
+  );
+  const payload: StartCustomTransactionRequest = {
     phase: "start",
     data: {
       type: "transaction" as const,
       payload: transactionPayload,
+      rid,
     },
     redirectOrigin,
     signer,
   };
 
-  const { rid } = await provider.onClientAuthorizationCallback(payload);
-
-  await provider.sendPayloadToProvider({
-    rid,
-  });
+  await Promise.all([
+    provider.onClientAuthorizationCallback(payload),
+    provider.sendPayloadToProvider({
+      rid,
+      redirectOrigin,
+    }),
+  ]);
 
   return await provider.onClientAuthorizationCallback({
     phase: "complete",

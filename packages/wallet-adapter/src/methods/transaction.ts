@@ -22,7 +22,6 @@ import {
   estimateTransactionSizeExceedLimit,
   simulateSecp256r1Signer,
 } from "src/utils/internal";
-import { WalletNotConnectedError } from "src/utils/errors";
 import { signTransactionWithPasskey } from "src/utils/signTransactionWithPasskey";
 
 /**
@@ -50,6 +49,7 @@ export const buildTransaction = async (input: {
   payer: TransactionSigner;
   settingsIndexWithAddress: SettingsIndexWithAddressArgs;
   provider: RevibaseProvider;
+  rid?: string;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   additionalSigners?: TransactionSigner[];
   cachedAccounts?: Map<string, any>;
@@ -63,13 +63,13 @@ export const buildTransaction = async (input: {
     settingsIndexWithAddress,
     provider,
     cachedAccounts = new Map(),
+    rid,
   } = input;
-  provider.openBlankPopUp();
   const [settingsData, settings, transactionMessageBytes] = await Promise.all([
     fetchSettingsAccountData(
       settingsIndexWithAddress.index,
       settingsIndexWithAddress.settingsAddressTreeIndex,
-      cachedAccounts
+      cachedAccounts,
     ),
     getSettingsFromIndex(settingsIndexWithAddress.index),
     prepareTransactionMessage({
@@ -101,6 +101,7 @@ export const buildTransaction = async (input: {
   if (useBundle) {
     const [authResponse, jitoBundlesTipAmount] = await Promise.all([
       signTransactionWithPasskey({
+        rid,
         signer,
         transactionActionType: transactionManagerAddress
           ? "execute"
@@ -137,6 +138,7 @@ export const buildTransaction = async (input: {
     });
   } else {
     const authResponse = await signTransactionWithPasskey({
+      rid,
       signer,
       transactionActionType: "sync",
       transactionAddress: settings.toString(),

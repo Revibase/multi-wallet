@@ -1,13 +1,8 @@
-import type {
-  StartMessageRequest,
-  StartTransactionRequest,
-  TransactionPayloadWithBase64MessageBytes,
-} from "@revibase/core";
+import type { TransactionPayloadWithBase64MessageBytes } from "@revibase/core";
 import {
   base64URLStringToBuffer,
   fetchSettingsAccountData,
   getSettingsFromIndex,
-  StartMessageRequestSchema,
   UserRole,
 } from "@revibase/core";
 import {
@@ -18,10 +13,12 @@ import {
 import {
   CompleteMessageRequestSchema,
   CompleteTransactionRequestSchema,
-  StartTransactionRequestWithOptionalTypeSchema,
+  StartCustomMessageRequestSchema,
+  StartCustomTransactionRequestSchema,
   type CompleteMessageRequest,
   type CompleteTransactionRequest,
-  type StartTransactionRequestWithOptionalType,
+  type StartCustomMessageRequest,
+  type StartCustomTransactionRequest,
   type User,
 } from "src/utils";
 import {
@@ -45,8 +42,8 @@ import { processTokenTransfer } from "./processTokenTransfer";
  * @param request - Start or complete request (message or transaction)
  * @param privateKey - Ed25519 private key for signing
  * @param feePayer - Optional fee payer for transactions
- * @param providerOrigin - Auth Provider origin for WebAuthn verification
- * @param rpId - Auth Provider RP ID for WebAuthn verification
+ * @param providerOrigin - Optional expected origin for verification
+ * @param rpId - Optional expected Relying Party ID for verification
  * @returns Result containing signature, message, user, or transaction signature
  * @throws {Error} If request phase or type is invalid
  */
@@ -58,19 +55,20 @@ export async function processClientAuthCallback({
   rpId,
 }: {
   request:
-    | StartTransactionRequestWithOptionalType
-    | StartMessageRequest
+    | StartCustomTransactionRequest
+    | StartCustomMessageRequest
     | CompleteMessageRequest
     | CompleteTransactionRequest;
   privateKey: CryptoKey;
   feePayer?: TransactionSigner;
   providerOrigin?: string;
   rpId?: string;
-}) {
+}): Promise<{ rid: string } | { user: User } | { txSig: string }> {
+  // Parse and validate early to fail fast
   const parsedResult = z
     .union([
-      StartTransactionRequestWithOptionalTypeSchema,
-      StartMessageRequestSchema,
+      StartCustomTransactionRequestSchema,
+      StartCustomMessageRequestSchema,
       CompleteTransactionRequestSchema,
       CompleteMessageRequestSchema,
     ])
@@ -78,30 +76,36 @@ export async function processClientAuthCallback({
 
   if (parsedResult.phase === "start") {
     const { data, signer } = parsedResult;
+
+    // Handle message requests (fast path)
     if (data.type === "message") {
-      const message =
-        data.payload ??
-        createSignInMessageText({
-          nonce: crypto.randomUUID(),
-        });
-      const messageRequest: StartMessageRequest = {
-        ...parsedResult,
-        signer: getSignerFromRequest(parsedResult),
-        data: { ...data, payload: message },
-      };
       return await processStartRequest({
-        request: messageRequest,
+        request: {
+          phase: "start",
+          redirectOrigin: parsedResult.redirectOrigin,
+          signer: parsedResult.signer?.publicKey,
+          data: {
+            type: "message",
+            payload: createSignInMessageText({
+              domain: parsedResult.redirectOrigin,
+              nonce: crypto.randomUUID(),
+            }),
+          },
+        },
         privateKey,
         providerOrigin,
+        rid: data.rid,
       });
     }
 
+    // Validate transaction type early
     if (data.type !== "transaction") {
       throw new Error(
         `Unsupported request type: ${(data as { type: string }).type}`,
       );
     }
 
+    // Validate signer early before expensive operations
     if (
       !signer ||
       typeof signer !== "object" ||
@@ -114,70 +118,75 @@ export async function processClientAuthCallback({
 
     const { transactionPayload } = await getTransactionPayload(data, signer);
 
-    const transactionRequest: StartTransactionRequest = {
-      phase: "start",
-      redirectOrigin: parsedResult.redirectOrigin,
-      signer: getSignerFromRequest(parsedResult),
-      data: {
-        type: "transaction",
-        payload: transactionPayload,
-      },
-    };
-
     return await processStartRequest({
-      request: transactionRequest,
+      request: {
+        phase: "start",
+        redirectOrigin: parsedResult.redirectOrigin,
+        signer: parsedResult.signer?.publicKey,
+        data: {
+          type: "transaction",
+          payload: transactionPayload,
+        },
+      },
       providerOrigin,
       privateKey,
+      rid: data.rid,
     });
   }
 
+  // Get result and process based on type
   const result = await processGetResult({
     rid: parsedResult.data.rid,
     providerOrigin,
     privateKey,
   });
 
+  // Handle message completion
   if (result.data.type === "message") {
-    const user = await processMessage(
-      { phase: "complete", data: result.data },
-      providerOrigin,
-      rpId,
-    );
-    return { user };
+    return {
+      user: await processMessage(
+        { phase: "complete", data: result.data },
+        providerOrigin,
+        rpId,
+      ),
+    };
   }
 
-  const { transactionActionType } = result.data.payload.transactionPayload;
+  // Handle transaction completion
   const completeRequest = {
     phase: "complete" as const,
     data: result.data,
-  };
+  } as const;
 
+  const { transactionActionType } = result.data.payload.transactionPayload;
+
+  // Route to appropriate transaction processor
   switch (transactionActionType) {
-    case "transfer_intent": {
-      const txSig = await processTokenTransfer(
-        completeRequest,
-        privateKey,
-        feePayer,
-      );
-      return { txSig };
-    }
-    case "sync": {
-      const txSig = await processSyncTransaction(
-        completeRequest,
-        privateKey,
-        feePayer,
-      );
-      return { txSig };
-    }
+    case "transfer_intent":
+      return {
+        txSig: await processTokenTransfer(
+          completeRequest,
+          privateKey,
+          feePayer,
+        ),
+      };
+    case "sync":
+      return {
+        txSig: await processSyncTransaction(
+          completeRequest,
+          privateKey,
+          feePayer,
+        ),
+      };
     case "execute":
-    case "create_with_preauthorized_execution": {
-      const txSig = await processBundledTransaction(
-        completeRequest,
-        privateKey,
-        feePayer,
-      );
-      return { txSig };
-    }
+    case "create_with_preauthorized_execution":
+      return {
+        txSig: await processBundledTransaction(
+          completeRequest,
+          privateKey,
+          feePayer,
+        ),
+      };
     default:
       throw new Error(
         `Unsupported transaction action type: ${transactionActionType}`,
@@ -185,54 +194,43 @@ export async function processClientAuthCallback({
   }
 }
 
-function getSignerFromRequest(
-  request: StartTransactionRequestWithOptionalType | StartMessageRequest,
-): string | undefined {
-  return request.signer
-    ? typeof request.signer === "string"
-      ? request.signer
-      : request.signer.publicKey
-    : undefined;
-}
-
 async function getTransactionPayload(
-  data: StartTransactionRequestWithOptionalType["data"],
+  data: StartCustomTransactionRequest["data"],
   signer: User,
 ): Promise<{ transactionPayload: TransactionPayloadWithBase64MessageBytes }> {
-  // Validate payload structure
-  if (!data.payload || typeof data.payload !== "object") {
+  const payload = data.payload;
+
+  // Early validation - fail fast
+  if (!payload || typeof payload !== "object") {
     throw new Error("Invalid transaction payload: payload must be an object");
   }
 
   if (
-    !data.payload.transactionMessageBytes ||
-    typeof data.payload.transactionMessageBytes !== "string"
+    !payload.transactionMessageBytes ||
+    typeof payload.transactionMessageBytes !== "string"
   ) {
     throw new Error(
       "Invalid transaction payload: transactionMessageBytes is required and must be a string",
     );
   }
 
-  // If both transactionAddress and transactionActionType are provided, use them directly
-  if (data.payload.transactionAddress && data.payload.transactionActionType) {
+  // Fast path: if both transactionAddress and transactionActionType are provided, use them directly
+  if (payload.transactionAddress && payload.transactionActionType) {
     return {
-      transactionPayload:
-        data.payload as TransactionPayloadWithBase64MessageBytes,
+      transactionPayload: payload as TransactionPayloadWithBase64MessageBytes,
     };
   }
 
-  // Validate signer has required properties
+  // Validate signer early
+  const settingsIndexWithAddress = signer.settingsIndexWithAddress;
   if (
-    !signer.settingsIndexWithAddress ||
-    typeof signer.settingsIndexWithAddress !== "object"
+    !settingsIndexWithAddress ||
+    typeof settingsIndexWithAddress !== "object"
   ) {
     throw new Error("Invalid signer: settingsIndexWithAddress is required");
   }
 
-  const payload = data.payload;
-  const settingsIndexWithAddress = signer.settingsIndexWithAddress;
-
-  // Decode base64 transaction message bytes to Uint8Array
+  // Decode base64 early and fetch data in parallel
   let transactionMessageBytes: Uint8Array;
   try {
     transactionMessageBytes = new Uint8Array(
@@ -244,6 +242,7 @@ async function getTransactionPayload(
     );
   }
 
+  const lookupTable = getAddressByLookUpTable();
   const [settings, settingsAddress] = await Promise.all([
     fetchSettingsAccountData(
       settingsIndexWithAddress.index,
@@ -252,17 +251,22 @@ async function getTransactionPayload(
     getSettingsFromIndex(settingsIndexWithAddress.index),
   ]);
 
+  // Find transaction manager (synchronous operation)
   const txManager = settings.members.find(
     (x) => x.role === UserRole.TransactionManager,
   );
 
+  // Prepare signers array (synchronous)
+  const signers = [
+    simulateSecp256r1Signer(),
+    ...(txManager
+      ? [createNoopSigner(getAddressDecoder().decode(txManager.pubkey.key))]
+      : []),
+  ];
+
+  // Estimate transaction size
   const useBundle = await estimateTransactionSizeExceedLimit({
-    signers: [
-      simulateSecp256r1Signer(),
-      ...(txManager
-        ? [createNoopSigner(getAddressDecoder().decode(txManager.pubkey.key))]
-        : []),
-    ],
+    signers,
     compressed: settings.isCompressed,
     payer: createNoopSigner(
       getAddressDecoder().decode(crypto.getRandomValues(new Uint8Array(32))),
@@ -270,19 +274,18 @@ async function getTransactionPayload(
     index: settingsIndexWithAddress.index,
     settingsAddressTreeIndex: settingsIndexWithAddress.settingsAddressTreeIndex,
     transactionMessageBytes,
-    addressesByLookupTableAddress: getAddressByLookUpTable(),
+    addressesByLookupTableAddress: lookupTable,
   });
 
-  const transactionActionType = useBundle
-    ? txManager
-      ? "execute"
-      : "create_with_preauthorized_execution"
-    : "sync";
-
-  const transactionPayload: TransactionPayloadWithBase64MessageBytes = {
-    transactionMessageBytes: payload.transactionMessageBytes,
-    transactionActionType,
-    transactionAddress: settingsAddress.toString(),
+  return {
+    transactionPayload: {
+      transactionMessageBytes: payload.transactionMessageBytes,
+      transactionActionType: useBundle
+        ? txManager
+          ? "execute"
+          : "create_with_preauthorized_execution"
+        : "sync",
+      transactionAddress: settingsAddress.toString(),
+    },
   };
-  return { transactionPayload };
 }

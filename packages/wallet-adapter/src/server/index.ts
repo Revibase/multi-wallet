@@ -1,22 +1,23 @@
-import type {
-  CompleteMessageRequest,
-  CompleteTransactionRequest,
-  StartMessageRequest,
-  StartTransactionRequest,
-} from "@revibase/core";
 import {
-  CompleteMessageRequestSchema,
-  CompleteTransactionRequestSchema,
   createClientAuthorizationCompleteRequestChallenge,
-  createClientAuthorizationStartRequestChallenge,
-  StartMessageRequestSchema,
-  StartTransactionRequestSchema,
+  type TransactionAuthenticationResponse,
 } from "@revibase/core";
 import { getBase58Decoder } from "gill";
-import { WalletVerificationError } from "src/utils/errors";
+import {
+  CompleteCustomMessageRequestSchema,
+  CompleteCustomTransactionRequestSchema,
+  StartCustomMessageRequestSchema,
+  StartCustomTransactionRequestSchema,
+  type CompleteCustomMessageRequest,
+  type CompleteCustomTransactionRequest,
+  type StartCustomMessageRequest,
+  type StartCustomTransactionRequest,
+} from "src/utils";
 import { createSignInMessageText } from "src/utils/internal";
 import z from "zod";
+import { processGetResult } from "./processGetResult";
 import { processMessage } from "./processMessage";
+import { processStartRequest } from "./processStartRequest";
 
 /**
  * Processes client authorization callbacks for both message and transaction requests.
@@ -27,84 +28,92 @@ import { processMessage } from "./processMessage";
  *
  * @param request - Authorization request (start or complete phase)
  * @param privateKey - Ed25519 private key for signing challenges
- * @param expectedOrigin - Optional expected origin for verification
- * @param expectedRPID - Optional expected Relying Party ID for verification
+ * @param providerOrigin - Optional expected origin for verification
+ * @param rpId - Optional expected Relying Party ID for verification
  * @returns Signature and optional message/user data depending on request phase and type
  * @throws {WalletVerificationError} If verification fails
  */
 export async function processClientAuthCallback({
   request,
   privateKey,
-  expectedOrigin,
-  expectedRPID,
+  providerOrigin,
+  rpId,
 }: {
   request:
-    | StartTransactionRequest
-    | StartMessageRequest
-    | CompleteTransactionRequest
-    | CompleteMessageRequest;
+    | StartCustomTransactionRequest
+    | StartCustomMessageRequest
+    | CompleteCustomMessageRequest
+    | CompleteCustomTransactionRequest;
   privateKey: CryptoKey;
-  expectedOrigin?: string;
-  expectedRPID?: string;
+  providerOrigin?: string;
+  rpId?: string;
 }) {
   const parsedResult = z
     .union([
-      StartMessageRequestSchema,
-      StartTransactionRequestSchema,
-      CompleteTransactionRequestSchema,
-      CompleteMessageRequestSchema,
+      StartCustomMessageRequestSchema,
+      StartCustomTransactionRequestSchema,
+      CompleteCustomTransactionRequestSchema,
+      CompleteCustomMessageRequestSchema,
     ])
     .parse(request);
 
   if (parsedResult.phase === "start") {
     const { data } = parsedResult;
     if (data.type === "message") {
-      const message =
-        data.payload ??
-        createSignInMessageText({
-          nonce: crypto.randomUUID(),
-        });
-      const challenge = createClientAuthorizationStartRequestChallenge({
-        ...parsedResult,
-        data: { ...data, payload: message },
+      return await processStartRequest({
+        request: {
+          phase: "start",
+          redirectOrigin: parsedResult.redirectOrigin,
+          signer: parsedResult.signer,
+          data: {
+            type: "message",
+            payload: createSignInMessageText({
+              domain: parsedResult.redirectOrigin,
+              nonce: crypto.randomUUID(),
+            }),
+          },
+        },
+        privateKey,
+        providerOrigin,
+        rid: data.rid,
       });
-      const signature = getBase58Decoder().decode(
-        new Uint8Array(
-          await crypto.subtle.sign(
-            { name: "Ed25519" },
-            privateKey,
-            new Uint8Array(challenge),
-          ),
-        ),
-      );
-      return { signature, message };
     } else {
-      const challenge =
-        createClientAuthorizationStartRequestChallenge(parsedResult);
-      const signature = getBase58Decoder().decode(
-        new Uint8Array(
-          await crypto.subtle.sign(
-            { name: "Ed25519" },
-            privateKey,
-            new Uint8Array(challenge),
-          ),
-        ),
-      );
-      return { signature };
+      return await processStartRequest({
+        request: {
+          phase: "start",
+          redirectOrigin: parsedResult.redirectOrigin,
+          signer: parsedResult.signer,
+          data: {
+            type: "transaction",
+            payload: data.payload,
+          },
+        },
+        providerOrigin,
+        privateKey,
+        rid: data.rid,
+      });
     }
   }
 
+  // Get result and process based on type
+  const result = await processGetResult({
+    rid: parsedResult.data.rid,
+    providerOrigin,
+    privateKey,
+  });
+
   // Complete Request
-  if (parsedResult.data.type === "message") {
-    const user = await processMessage(
-      { phase: "complete", data: parsedResult.data },
-      expectedOrigin,
-      expectedRPID,
-    );
-    return { user };
+  if (result.data.type === "message") {
+    return {
+      user: await processMessage(
+        { phase: "complete", data: result.data },
+        providerOrigin,
+        rpId,
+      ),
+    };
   }
-  const challenge =
-    createClientAuthorizationCompleteRequestChallenge(parsedResult);
+
+  const challenge = createClientAuthorizationCompleteRequestChallenge(result);
   const signature = getBase58Decoder().decode(
     new Uint8Array(
       await crypto.subtle.sign(
@@ -115,5 +124,13 @@ export async function processClientAuthCallback({
     ),
   );
 
-  return { signature };
+  const authResponse: TransactionAuthenticationResponse = {
+    ...result.data.payload,
+    clientSignature: {
+      ...result.data.payload.clientSignature,
+      signature,
+    },
+  };
+
+  return { authResponse };
 }

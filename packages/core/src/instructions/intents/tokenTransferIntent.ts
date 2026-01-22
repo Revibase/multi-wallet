@@ -1,5 +1,4 @@
 import {
-  CTOKEN_PROGRAM_ID,
   type CompressedAccount,
   type HashWithTree,
   type ParsedTokenAccount,
@@ -69,7 +68,9 @@ const compressibleConfig = address(
 );
 const rentSponsor = address("r18WwUxfG8kQ69bQPAB2jV6zGNKy3GosFGctjQoV4ti");
 
-const ctokenProgramAddress = address(CTOKEN_PROGRAM_ID.toString());
+const ctokenProgramAddress = address(
+  "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m",
+);
 
 export async function tokenTransferIntent({
   index,
@@ -426,7 +427,8 @@ async function getCompressedTokenAccounts(
     .filter(
       (x) =>
         !!x.compressedAccount.data?.data.length &&
-        x.compressedAccount.owner.equals(CTOKEN_PROGRAM_ID) &&
+        x.compressedAccount.owner.toString() ===
+          ctokenProgramAddress.toString() &&
         !x.parsed.amount.isZero(),
     )
     .sort((a, b) => b.parsed.amount.cmp(a.parsed.amount));

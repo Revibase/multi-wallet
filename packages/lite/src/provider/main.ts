@@ -1,3 +1,4 @@
+import { getBase64Decoder } from "gill";
 import type { ClientAuthorizationCallback } from "src/utils";
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
 import {
@@ -26,16 +27,25 @@ export class RevibaseProvider {
   }
 
   /**
-   * Opens a blank popup window for authentication.
+   * Opens a popup window for authentication.
    * The popup will be reused for subsequent navigation.
    *
    * @throws {Error} If popup is blocked by the browser
    */
-  openBlankPopUp(): void {
-    this.popUp = createPopUp();
+  openPopUp() {
+    const redirectOrigin = window.origin;
+    const rid = getBase64Decoder().decode(
+      crypto.getRandomValues(new Uint8Array(16)),
+    );
+    const url = new URL(this.providerOrigin);
+    url.searchParams.set("rid", rid);
+    url.searchParams.set("redirectOrigin", redirectOrigin);
+
+    this.popUp = createPopUp(url.toString());
     if (!this.popUp) {
       throw new Error("Popup blocked. Please enable popups.");
     }
+    return { rid };
   }
 
   /**
@@ -49,9 +59,11 @@ export class RevibaseProvider {
    */
   async sendPayloadToProvider({
     rid,
+    redirectOrigin,
     timeoutMs = DEFAULT_TIMEOUT,
   }: {
     rid: string;
+    redirectOrigin: string;
     timeoutMs?: number;
   }): Promise<{ rid: string }> {
     if (typeof window === "undefined") {
@@ -64,7 +76,7 @@ export class RevibaseProvider {
 
     const url = new URL(this.providerOrigin);
     url.searchParams.set("rid", rid);
-    url.searchParams.set("redirectOrigin", window.location.origin);
+    url.searchParams.set("redirectOrigin", redirectOrigin);
 
     return new Promise<{ rid: string }>((resolve, reject) => {
       const timeoutId = setTimeout(() => {
@@ -86,7 +98,6 @@ export class RevibaseProvider {
         startUrl: url.toString(),
         origin: url.origin,
         rid,
-        timeoutMs,
       });
     });
   }
@@ -101,9 +112,8 @@ export class RevibaseProvider {
     startUrl: string;
     origin: string;
     rid: string;
-    timeoutMs: number;
   }) {
-    const { startUrl, origin, rid, timeoutMs } = params;
+    const { startUrl, origin, rid } = params;
 
     const entry = this.pending.get(rid);
     if (!entry) return;

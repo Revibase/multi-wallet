@@ -15,30 +15,34 @@ import {
  * @returns Transaction signer that can sign transactions on behalf of the payer
  * @throws {Error} If the API request fails or returns an error
  */
+
+const payerCache = new Map<string, TransactionSigner>();
+
 export async function getRandomPayer(
-  payerEndpoint: string
+  payerEndpoint: string,
 ): Promise<TransactionSigner> {
-  const response = await fetch(`${payerEndpoint}/getRandomPayer`);
-  
+  // Check cache first
+  const cached = payerCache.get(payerEndpoint);
+  if (cached) return cached;
+
+  // Fetch new payer
+  const response = await fetch(`${payerEndpoint}/getRandomPayer`, {
+    signal: AbortSignal.timeout(5000), // 5s timeout
+  });
+
   if (!response.ok) {
-    throw new Error(
-      `Failed to fetch random payer: ${response.status} ${response.statusText}`
-    );
+    throw new Error(`Failed to get random payer: ${response.statusText}`);
   }
 
   const { randomPayer } = (await response.json()) as { randomPayer: string };
 
-  if (!randomPayer) {
-    throw new Error("Invalid response: randomPayer is missing");
-  }
-
-  return {
+  const payer: TransactionSigner = {
     address: address(randomPayer),
     async signTransactions(transactions) {
       const payload = {
         publicKey: randomPayer,
         transactions: transactions.map((tx) =>
-          getBase64Decoder().decode(getTransactionEncoder().encode(tx))
+          getBase64Decoder().decode(getTransactionEncoder().encode(tx)),
         ),
       };
 
@@ -46,11 +50,12 @@ export async function getRandomPayer(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000), // 10s timeout
       });
 
       if (!signResponse.ok) {
         throw new Error(
-          `Failed to sign transactions: ${signResponse.status} ${signResponse.statusText}`
+          `Failed to sign transactions: ${signResponse.statusText}`,
         );
       }
 
@@ -59,18 +64,18 @@ export async function getRandomPayer(
         | { error: string };
 
       if ("error" in data) {
-        throw new Error(`Transaction signing failed: ${data.error}`);
-      }
-
-      if (!Array.isArray(data.signatures)) {
-        throw new Error("Invalid response: signatures must be an array");
+        throw new Error(data.error);
       }
 
       return data.signatures.map((sig) => ({
         [address(randomPayer)]: getBase58Encoder().encode(
-          sig
+          sig,
         ) as SignatureBytes,
       }));
     },
   };
+
+  // Cache the payer for this endpoint
+  payerCache.set(payerEndpoint, payer);
+  return payer;
 }

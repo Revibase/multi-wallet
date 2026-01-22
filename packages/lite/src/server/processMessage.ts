@@ -6,6 +6,7 @@ import {
   getWalletAddressFromIndex,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
+import { UserSchema } from "src/utils";
 import { REVIBASE_AUTH_URL, REVIBASE_RP_ID } from "src/utils/consts";
 import { getSettingsIndexWithAddress } from "src/utils/internal";
 
@@ -60,5 +61,6 @@ export async function processMessage(
     settingsIndexWithAddress,
     ...payload.additionalInfo,
   };
-  return user;
+
+  return UserSchema.parse(user);
 }

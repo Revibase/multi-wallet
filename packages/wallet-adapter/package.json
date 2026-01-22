@@ -1,6 +1,6 @@
 {
   "name": "@revibase/wallet-adapter",
-  "version": "0.0.25",
+  "version": "0.0.26",
   "scripts": {
     "build": "rimraf dist && tsup",
     "clean": "rimraf dist",

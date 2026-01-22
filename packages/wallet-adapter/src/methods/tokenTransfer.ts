@@ -78,7 +78,7 @@ export const buildTokenTransferInstruction = async (input: {
   tokenProgram?: Address;
   cachedAccounts?: Map<string, any>;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
-  signer?: string | undefined;
+  signer?: string;
 }) => {
   const {
     amount,
@@ -91,7 +91,6 @@ export const buildTokenTransferInstruction = async (input: {
     signer,
     provider,
   } = input;
-  provider.openBlankPopUp();
   const authResponse = await signTransactionWithPasskey({
     transactionActionType: "transfer_intent",
     transactionAddress: mint ? tokenProgram : SYSTEM_PROGRAM_ADDRESS,
@@ -105,25 +104,25 @@ export const buildTokenTransferInstruction = async (input: {
   });
 
   let settingsIndexWithAddress: SettingsIndexWithAddressArgs;
-  if (!authResponse.additionalInfo.settingsIndexWithAddress) {
+  if (!authResponse.additionalInfo?.settingsIndexWithAddress) {
     const userAccountData = await fetchUserAccountData(
       new Secp256r1Key(authResponse.signer),
       authResponse.userAddressTreeIndex,
-      cachedAccounts
+      cachedAccounts,
     );
     if (userAccountData.delegatedTo.__option === "None") {
       throw new WalletTransactionError("User has no delegated wallet");
     }
     settingsIndexWithAddress = userAccountData.delegatedTo.value;
   } else {
-    settingsIndexWithAddress =
-      authResponse.additionalInfo.settingsIndexWithAddress;
+    settingsIndexWithAddress = authResponse.additionalInfo
+      .settingsIndexWithAddress as SettingsIndexWithAddressArgs;
   }
   const [settingsData, signedSigner] = await Promise.all([
     fetchSettingsAccountData(
       settingsIndexWithAddress.index,
       settingsIndexWithAddress.settingsAddressTreeIndex,
-      cachedAccounts
+      cachedAccounts,
     ),
     getSignedSecp256r1Key(authResponse),
   ]);

@@ -8,98 +8,78 @@ import {
   type TransactionSigner,
 } from "gill";
 import { REVIBASE_LOOKUP_TABLE_ADDRESS } from "./consts.js";
-import { WalletProviderError } from "./errors.js";
 
 /**
- * Fetches a random payer from the specified endpoint and creates a transaction signer.
+ * Fetches a random payer from the API and returns a transaction signer.
+ * The payer can be used to pay transaction fees.
  *
- * The payer can be used to pay transaction fees when the user's wallet doesn't have sufficient funds.
- *
- * @param payerEndpoint - Base URL of the payer service endpoint
- * @returns A transaction signer that can sign transactions on behalf of the random payer
- * @throws {WalletProviderError} If the payer fetch or sign operation fails
- *
- * @example
- * ```ts
- * const payer = await getRandomPayer("https://api.revibase.com");
- * ```
+ * @param payerEndpoint - Base URL of the payer API endpoint
+ * @returns Transaction signer that can sign transactions on behalf of the payer
+ * @throws {Error} If the API request fails or returns an error
  */
+
+const payerCache = new Map<string, TransactionSigner>();
+
 export async function getRandomPayer(
-  payerEndpoint: string
+  payerEndpoint: string,
 ): Promise<TransactionSigner> {
-  if (!payerEndpoint || typeof payerEndpoint !== "string") {
-    throw new WalletProviderError("Invalid payer endpoint");
-  }
-  let response: Response;
-  try {
-    response = await fetch(`${payerEndpoint}/getRandomPayer`);
-    if (!response.ok) {
-      throw new WalletProviderError(
-        `Failed to fetch random payer: ${response.statusText}`
-      );
-    }
-  } catch (error) {
-    throw new WalletProviderError(
-      `Network error while fetching payer: ${error instanceof Error ? error.message : String(error)}`
-    );
+  // Check cache first
+  const cached = payerCache.get(payerEndpoint);
+  if (cached) return cached;
+
+  // Fetch new payer
+  const response = await fetch(`${payerEndpoint}/getRandomPayer`, {
+    signal: AbortSignal.timeout(5000), // 5s timeout
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to get random payer: ${response.statusText}`);
   }
 
-  let data: { randomPayer: string };
-  try {
-    data = (await response.json()) as { randomPayer: string };
-    if (!data.randomPayer || typeof data.randomPayer !== "string") {
-      throw new Error("Invalid response format");
-    }
-  } catch (error) {
-    throw new WalletProviderError(
-      `Failed to parse payer response: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
+  const { randomPayer } = (await response.json()) as { randomPayer: string };
 
-  const { randomPayer } = data;
-
-  return {
+  const payer: TransactionSigner = {
     address: address(randomPayer),
     async signTransactions(transactions) {
       const payload = {
         publicKey: randomPayer,
         transactions: transactions.map((tx) =>
-          getBase64Decoder().decode(getTransactionEncoder().encode(tx))
+          getBase64Decoder().decode(getTransactionEncoder().encode(tx)),
         ),
       };
 
-      const response = await fetch(`${payerEndpoint}/sign`, {
+      const signResponse = await fetch(`${payerEndpoint}/sign`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(10000), // 10s timeout
       });
 
-      let data: { signatures: string[] } | { error: string };
-      try {
-        data = (await response.json()) as
-          | { signatures: string[] }
-          | { error: string };
-      } catch (error) {
-        throw new WalletProviderError(
-          `Failed to parse sign response: ${error instanceof Error ? error.message : String(error)}`
+      if (!signResponse.ok) {
+        throw new Error(
+          `Failed to sign transactions: ${signResponse.statusText}`,
         );
       }
 
-      if ("error" in data) {
-        throw new WalletProviderError(data.error);
-      }
+      const data = (await signResponse.json()) as
+        | { signatures: string[] }
+        | { error: string };
 
-      if (!Array.isArray(data.signatures)) {
-        throw new WalletProviderError("Invalid signatures format");
+      if ("error" in data) {
+        throw new Error(data.error);
       }
 
       return data.signatures.map((sig) => ({
         [address(randomPayer)]: getBase58Encoder().encode(
-          sig
+          sig,
         ) as SignatureBytes,
       }));
     },
   };
+
+  // Cache the payer for this endpoint
+  payerCache.set(payerEndpoint, payer);
+  return payer;
 }
 
 /**

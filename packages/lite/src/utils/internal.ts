@@ -69,18 +69,18 @@ export function createSignInMessageText(input: {
  */
 export async function getSettingsIndexWithAddress(
   request: CompleteMessageRequest | CompleteTransactionRequest,
-  cachedAccounts?: Map<string, any>
+  cachedAccounts?: Map<string, any>,
 ): Promise<SettingsIndexWithAddressArgs> {
   const { additionalInfo } = request.data.payload;
 
-  if (additionalInfo.settingsIndexWithAddress) {
-    return additionalInfo.settingsIndexWithAddress;
+  if (additionalInfo?.settingsIndexWithAddress) {
+    return additionalInfo.settingsIndexWithAddress as SettingsIndexWithAddressArgs;
   }
 
   const userAccountData = await fetchUserAccountData(
     new Secp256r1Key(request.data.payload.signer),
     request.data.payload.userAddressTreeIndex,
-    cachedAccounts
+    cachedAccounts,
   );
 
   if (userAccountData.delegatedTo.__option === "None") {
@@ -129,17 +129,17 @@ export async function estimateTransactionSizeExceedLimit({
       setTransactionMessageLifetimeUsingBlockhash(
         {
           blockhash: getBlockhashDecoder().decode(
-            crypto.getRandomValues(new Uint8Array(32))
+            crypto.getRandomValues(new Uint8Array(32)),
           ),
           lastValidBlockHeight: BigInt(Number.MAX_SAFE_INTEGER),
         },
-        tx
+        tx,
       ),
     (tx) =>
       result.addressesByLookupTableAddress
         ? compressTransactionMessageUsingAddressLookupTables(
             tx,
-            result.addressesByLookupTableAddress
+            result.addressesByLookupTableAddress,
           )
         : tx,
     (tx) =>
@@ -152,10 +152,10 @@ export async function estimateTransactionSizeExceedLimit({
             microLamports: 1000,
           }),
         ],
-        tx
+        tx,
       ),
 
-    (tx) => compileTransaction(tx)
+    (tx) => compileTransaction(tx),
   );
   const txSize = getBase64EncodedWireTransaction(tx).length;
   console.log("Estimated Tx Size: ", txSize);
@@ -172,7 +172,7 @@ export function simulateSecp256r1Signer() {
     crossOrigin: false,
     authData,
     domainConfig: getAddressDecoder().decode(
-      crypto.getRandomValues(new Uint8Array(32))
+      crypto.getRandomValues(new Uint8Array(32)),
     ),
     signature,
     verifyArgs: {
@@ -205,14 +205,14 @@ export function simulateSecp256r1Signer() {
  * @throws {Error} If the API request fails or returns invalid data
  */
 export async function estimateJitoTips(
-  jitoTipsConfig = getJitoTipsConfig()
+  jitoTipsConfig = getJitoTipsConfig(),
 ): Promise<number> {
   const { getJitoTipsUrl: estimateJitoTipsEndpoint, priority } = jitoTipsConfig;
 
   const response = await fetch(estimateJitoTipsEndpoint);
   if (!response.ok) {
     throw new Error(
-      `Failed to fetch Jito tips: ${response.status} ${response.statusText}`
+      `Failed to fetch Jito tips: ${response.status} ${response.statusText}`,
     );
   }
 

@@ -9,6 +9,7 @@ import {
   getWalletAddressFromIndex,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
+import { UserSchema } from "src/utils";
 import { REVIBASE_AUTH_URL, REVIBASE_RP_ID } from "src/utils/consts";
 import { WalletVerificationError } from "src/utils/errors";
 
@@ -54,7 +55,7 @@ export async function processMessage(
     throw new WalletVerificationError("Unable to verify message");
   }
   const settingsIndexWithAddress = request.data.payload.additionalInfo
-    .settingsIndexWithAddress as SettingsIndexWithAddressArgs | undefined;
+    ?.settingsIndexWithAddress as SettingsIndexWithAddressArgs | undefined;
   if (!settingsIndexWithAddress) {
     throw new WalletVerificationError(
       "User does not have a delegated wallet address.",
@@ -70,5 +71,5 @@ export async function processMessage(
     settingsIndexWithAddress,
     ...payload.additionalInfo,
   };
-  return user;
+  return UserSchema.parse(user);
 }

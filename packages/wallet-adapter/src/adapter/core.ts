@@ -18,8 +18,7 @@ import {
   WalletVerificationError,
 } from "src/utils/errors";
 import { getRandomPayer } from "src/utils/helper";
-import { createSignInMessageText } from "src/utils/internal";
-import { signAndVerifyMessageWithPasskey } from "src/utils/signAndVerifyMessageWithPasskey";
+import { signInWithPasskey } from "src/utils/signInWithPasskey";
 import {
   getStoredAccount,
   removeStoredAccount,
@@ -76,12 +75,7 @@ export function createRevibaseAdapter(
     settingsIndexWithAddress,
     connect: async function () {
       try {
-        const message = createSignInMessageText({
-          domain: window.location.origin,
-          nonce: crypto.randomUUID(),
-        });
-        const { user } = await signAndVerifyMessageWithPasskey({
-          message,
+        const { user } = await signInWithPasskey({
           provider,
         });
         if (!user) {
@@ -147,9 +141,11 @@ export function createRevibaseAdapter(
       if (!this.member || !this.settingsIndexWithAddress || !this.publicKey) {
         throw new WalletNotConnectedError();
       }
+      const { rid } = provider.openPopUp();
       const payer = feePayer ?? (await getRandomPayer(REVIBASE_API_URL));
       return buildTransaction({
         ...input,
+        rid,
         signer: this.member,
         settingsIndexWithAddress: this.settingsIndexWithAddress,
         payer,

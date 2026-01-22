@@ -1,14 +1,12 @@
-import type {
-  CompleteTransactionRequest,
-  StartTransactionRequest,
-  TransactionPayload,
-} from "@revibase/core";
+import type { TransactionPayload } from "@revibase/core";
 import {
   bufferToBase64URLString,
   type TransactionAuthenticationResponse,
 } from "@revibase/core";
-import { WalletTransactionError } from "./errors.js";
+import { getBase64Decoder } from "gill";
 import type { RevibaseProvider } from "src/provider";
+import { WalletTransactionError } from "./errors.js";
+import type { StartCustomTransactionRequest } from "./types.js";
 
 /**
  * Signs a transaction using WebAuthn passkey authentication.
@@ -31,12 +29,11 @@ export async function signTransactionWithPasskey({
   transactionAddress,
   transactionMessageBytes,
   signer,
+  rid,
   provider,
-}: {
-  transactionActionType: TransactionPayload["transactionActionType"];
-  transactionAddress: TransactionPayload["transactionAddress"];
-  transactionMessageBytes: TransactionPayload["transactionMessageBytes"];
+}: TransactionPayload & {
   signer?: string;
+  rid?: string;
   provider: RevibaseProvider;
 }): Promise<TransactionAuthenticationResponse> {
   const transactionPayload = {
@@ -45,37 +42,32 @@ export async function signTransactionWithPasskey({
     transactionMessageBytes: bufferToBase64URLString(transactionMessageBytes),
   };
   const redirectOrigin = window.origin;
+  rid =
+    rid ??
+    getBase64Decoder().decode(crypto.getRandomValues(new Uint8Array(16)));
 
-  const payload: StartTransactionRequest = {
+  const payload: StartCustomTransactionRequest = {
     phase: "start",
     data: {
       type: "transaction" as const,
       payload: transactionPayload,
+      rid,
     },
     redirectOrigin,
     signer,
   };
-  const { signature } = await provider.onClientAuthorizationCallback(payload);
-  const response = (await provider.sendPayloadToProvider({
-    payload,
-    signature,
-  })) as CompleteTransactionRequest;
+  await Promise.all([
+    provider.onClientAuthorizationCallback(payload),
+    provider.sendPayloadToProvider({
+      rid,
+      redirectOrigin,
+    }),
+  ]);
 
-  const { signature: finalSignature } =
-    await provider.onClientAuthorizationCallback({
-      ...response,
-      data: {
-        ...response.data,
-        payload: { ...response.data.payload, transactionPayload },
-      },
-    });
+  const { authResponse } = await provider.onClientAuthorizationCallback({
+    phase: "complete",
+    data: { type: "transaction", rid },
+  });
 
-  return {
-    ...response.data.payload,
-    transactionPayload,
-    clientSignature: {
-      ...response.data.payload.clientSignature,
-      signature: finalSignature,
-    },
-  };
+  return authResponse;
 }
