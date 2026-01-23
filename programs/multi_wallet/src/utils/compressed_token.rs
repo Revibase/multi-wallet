@@ -633,6 +633,8 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
             destination: destination_token_account.to_account_info(),
             authority: self.source.to_account_info(),
             max_top_up: None,
+            system_program: self.system_program.to_account_info(),
+            fee_payer: Some(self.payer.to_account_info()),
         }
         .invoke_signed(&[signer_seeds])?;
 

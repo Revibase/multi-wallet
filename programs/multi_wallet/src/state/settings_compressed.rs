@@ -48,7 +48,7 @@ pub struct SettingsCreationArgs {
     pub output_state_tree_index: u8,
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize)]
+#[derive(AnchorDeserialize, AnchorSerialize, Debug)]
 pub struct SettingsMutArgs {
     pub account_meta: CompressedAccountMeta,
     pub data: CompressedSettings,

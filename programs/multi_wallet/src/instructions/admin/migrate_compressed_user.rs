@@ -4,6 +4,7 @@ use anchor_lang::prelude::*;
 use light_sdk::cpi::v2::{CpiAccounts, LightSystemProgramCpi};
 use light_sdk::cpi::{InvokeLightSystemProgram, LightCpiInstruction};
 use light_sdk::instruction::ValidityProof;
+use light_sdk::PackedAddressTreeInfoExt;
 
 #[derive(Accounts)]
 pub struct MigrateCompressedUser<'info> {
@@ -28,13 +29,14 @@ impl<'info> MigrateCompressedUser<'info> {
             LIGHT_CPI_SIGNER,
         );
 
-        let address_tree = &user_creation_args
-            .address_tree_info
-            .get_tree_pubkey(&light_cpi_accounts)
-            .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
+        let address_tree = PackedAddressTreeInfoExt::get_tree_pubkey(
+            &user_creation_args.address_tree_info,
+            &light_cpi_accounts,
+        )
+        .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
 
         let (account_info, new_address_params) =
-            User::create_user_account(user_creation_args, address_tree, args, Some(0))?;
+            User::create_user_account(user_creation_args, &address_tree, args, Some(0))?;
 
         account_info.invariant()?;
 

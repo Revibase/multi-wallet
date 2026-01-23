@@ -4,6 +4,7 @@ use anchor_lang::prelude::*;
 use light_sdk::cpi::v2::{CpiAccounts, LightSystemProgramCpi};
 use light_sdk::cpi::{InvokeLightSystemProgram, LightCpiInstruction};
 use light_sdk::instruction::ValidityProof;
+use light_sdk::PackedAddressTreeInfoExt;
 
 #[derive(Accounts)]
 pub struct MigrateCompressedSettings<'info> {
@@ -28,15 +29,16 @@ impl<'info> MigrateCompressedSettings<'info> {
             LIGHT_CPI_SIGNER,
         );
 
-        let address_tree = &settings_creation_args
-            .address_tree_info
-            .get_tree_pubkey(&light_cpi_accounts)
-            .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
+        let address_tree = PackedAddressTreeInfoExt::get_tree_pubkey(
+            &settings_creation_args.address_tree_info,
+            &light_cpi_accounts,
+        )
+        .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
 
         let (settings_account, settings_new_address) =
             CompressedSettings::create_compressed_settings_account(
                 settings_creation_args,
-                address_tree,
+                &address_tree,
                 args,
                 Some(0),
             )?;

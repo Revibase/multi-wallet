@@ -10,6 +10,7 @@ use light_sdk::{
         InvokeLightSystemProgram, LightCpiInstruction,
     },
     instruction::ValidityProof,
+    PackedAddressTreeInfoExt,
 };
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
@@ -62,16 +63,16 @@ impl<'info> CreateUserAccounts<'info> {
                 MultisigError::NoSignerFound
             );
 
-            let address_tree = &args
-                .user_creation_args
-                .address_tree_info
-                .get_tree_pubkey(&light_cpi_accounts)
-                .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
+            let address_tree = PackedAddressTreeInfoExt::get_tree_pubkey(
+                &args.user_creation_args.address_tree_info,
+                &light_cpi_accounts,
+            )
+            .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
 
             let user_address_tree_index = ctx
                 .accounts
                 .whitelisted_address_trees
-                .extract_address_tree_index(address_tree)?;
+                .extract_address_tree_index(&address_tree)?;
 
             let user = User {
                 member: MemberKey::convert_ed25519(&args.member)?,
@@ -86,7 +87,7 @@ impl<'info> CreateUserAccounts<'info> {
 
             let (account_info, new_address_params) = User::create_user_account(
                 args.user_creation_args,
-                address_tree,
+                &address_tree,
                 user,
                 Some(cpi.account_infos.len() as u8),
             )?;

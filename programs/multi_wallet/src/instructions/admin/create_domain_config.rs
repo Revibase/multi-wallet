@@ -12,6 +12,7 @@ use light_sdk::{
     },
     instruction::ValidityProof,
     light_hasher::{Hasher, Sha256},
+    PackedAddressTreeInfoExt,
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -66,16 +67,16 @@ impl<'info> CreateDomainConfig<'info> {
             LIGHT_CPI_SIGNER,
         );
 
-        let address_tree = &args
-            .authority_creation_args
-            .address_tree_info
-            .get_tree_pubkey(&light_cpi_accounts)
-            .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
+        let address_tree = PackedAddressTreeInfoExt::get_tree_pubkey(
+            &args.authority_creation_args.address_tree_info,
+            &light_cpi_accounts,
+        )
+        .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
 
         let user_address_tree_index = ctx
             .accounts
             .whitelisted_address_trees
-            .extract_address_tree_index(address_tree)?;
+            .extract_address_tree_index(&address_tree)?;
 
         let user = User {
             member: MemberKey::convert_ed25519(&ctx.accounts.authority.key())?,
@@ -89,7 +90,7 @@ impl<'info> CreateDomainConfig<'info> {
         user.invariant()?;
 
         let (account_info, new_address_params) =
-            User::create_user_account(args.authority_creation_args, address_tree, user, Some(0))?;
+            User::create_user_account(args.authority_creation_args, &address_tree, user, Some(0))?;
 
         LightSystemProgramCpi::new_cpi(
             LIGHT_CPI_SIGNER,

@@ -162,6 +162,13 @@ impl<'info> EditUserDelegate<'info> {
         new_settings_mut_args: Option<SettingsMutArgs>,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
+        let light_cpi_accounts = CpiAccounts::new(
+            &ctx.accounts.fee_payer,
+            &ctx.remaining_accounts
+                [compressed_proof_args.light_cpi_accounts_start_index as usize..],
+            LIGHT_CPI_SIGNER,
+        );
+
         let mut user_account = LightAccount::<User>::new_mut(
             &crate::ID,
             &user_mut_args.account_meta,
@@ -272,10 +279,12 @@ impl<'info> EditUserDelegate<'info> {
                     new_settings_mut_args.data,
                 )
                 .map_err(ProgramError::from)?;
+
                 let settings_data = settings_account
                     .data
                     .as_mut()
                     .ok_or(MultisigError::MissingSettingsData)?;
+
                 require!(
                     settings_data.index.eq(&new_delegate.index)
                         && settings_data
@@ -320,13 +329,6 @@ impl<'info> EditUserDelegate<'info> {
         user_account.delegated_to = delegate_to;
 
         user_account.invariant()?;
-
-        let light_cpi_accounts = CpiAccounts::new(
-            &ctx.accounts.fee_payer,
-            &ctx.remaining_accounts
-                [compressed_proof_args.light_cpi_accounts_start_index as usize..],
-            LIGHT_CPI_SIGNER,
-        );
 
         cpi_accounts
             .with_light_account(user_account)?

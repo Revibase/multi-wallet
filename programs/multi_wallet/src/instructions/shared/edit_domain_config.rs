@@ -11,6 +11,7 @@ use light_sdk::{
         InvokeLightSystemProgram, LightCpiInstruction,
     },
     instruction::ValidityProof,
+    PackedAddressTreeInfoExt,
 };
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
@@ -69,15 +70,14 @@ impl<'info> EditDomainConfig<'info> {
                     [args.compressed_proof_args.light_cpi_accounts_start_index as usize..],
                 LIGHT_CPI_SIGNER,
             );
-
-            let address_tree = &args
-                .authority_creation_args
-                .address_tree_info
-                .get_tree_pubkey(&light_cpi_accounts)
-                .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
+            let address_tree = PackedAddressTreeInfoExt::get_tree_pubkey(
+                &args.authority_creation_args.address_tree_info,
+                &light_cpi_accounts,
+            )
+            .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
 
             let user_address_tree_index =
-                whitelisted_address_trees.extract_address_tree_index(address_tree)?;
+                whitelisted_address_trees.extract_address_tree_index(&address_tree)?;
 
             let user = User {
                 member: MemberKey::convert_ed25519(&new_authority.key())?,
@@ -92,7 +92,7 @@ impl<'info> EditDomainConfig<'info> {
 
             let (account_info, new_address_params) = User::create_user_account(
                 args.authority_creation_args,
-                address_tree,
+                &address_tree,
                 user,
                 Some(0),
             )?;

@@ -13,6 +13,7 @@ use light_sdk::{
         InvokeLightSystemProgram, LightCpiInstruction,
     },
     instruction::ValidityProof,
+    PackedAddressTreeInfoExt,
 };
 
 #[derive(Accounts)]
@@ -63,20 +64,21 @@ impl<'info> CreateCompressedWallet<'info> {
                 [compressed_proof_args.light_cpi_accounts_start_index as usize..],
             LIGHT_CPI_SIGNER,
         );
-        let address_tree = &settings_creation
-            .address_tree_info
-            .get_tree_pubkey(&light_cpi_accounts)
-            .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
+        let address_tree = PackedAddressTreeInfoExt::get_tree_pubkey(
+            &settings_creation.address_tree_info,
+            &light_cpi_accounts,
+        )
+        .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
 
         let settings_address_tree_index = ctx
             .accounts
             .whitelisted_address_trees
-            .extract_address_tree_index(address_tree)?;
+            .extract_address_tree_index(&address_tree)?;
 
         let (mut settings_account, settings_new_address) =
             CompressedSettings::create_compressed_settings_account(
                 settings_creation,
-                address_tree,
+                &address_tree,
                 CompressedSettingsData {
                     threshold: 1,
                     bump,
