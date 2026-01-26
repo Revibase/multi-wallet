@@ -40,7 +40,7 @@ export function runTransactionTests(getCtx: () => TestContext) {
 
       // Create ephemeral keypair
       const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
-        crypto.getRandomValues(new Uint8Array(32))
+        crypto.getRandomValues(new Uint8Array(32)),
       );
 
       // Create account instruction
@@ -80,36 +80,34 @@ export function runTransactionTests(getCtx: () => TestContext) {
       await sendTransaction(
         [...result.instructions],
         ctx.payer,
-        result.addressesByLookupTableAddress
+        result.addressesByLookupTableAddress,
       );
 
       // Verify transaction was successful
       const accountData = await fetchSettingsAccountData(ctx.index);
       const userAccountData = await fetchUserAccountData(ctx.wallet.address);
       const settingsIndex =
-        userAccountData.delegatedTo.__option === "Some"
-          ? userAccountData.delegatedTo.value
-          : null;
+        userAccountData.wallets.find((x) => x.isDelegate) ?? null;
 
       expect(
         settingsIndex,
-        "User should not be delegated after ephemeral transaction"
+        "User should not be delegated after ephemeral transaction",
       ).to.be.null;
 
       const walletAddress = await getWalletAddressFromIndex(ctx.index);
       expect(
         walletAddress.toString(),
-        "Wallet address should match the vault address"
+        "Wallet address should match the vault address",
       ).to.equal(ctx.multiWalletVault.toString());
 
       expect(
         accountData.members.length,
-        "Wallet should have at least one member"
+        "Wallet should have at least one member",
       ).to.be.greaterThan(0);
 
       expect(
         accountData.threshold,
-        "Wallet threshold should be at least 1"
+        "Wallet threshold should be at least 1",
       ).to.be.greaterThan(0);
 
       // Verify mint account was created
@@ -122,7 +120,7 @@ export function runTransactionTests(getCtx: () => TestContext) {
 
       expect(
         mintAccount.value?.owner.toString(),
-        "Mint account should be owned by token program"
+        "Mint account should be owned by token program",
       ).to.equal(TOKEN_2022_PROGRAM_ADDRESS.toString());
     });
   });

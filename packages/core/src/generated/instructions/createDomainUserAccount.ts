@@ -7,9 +7,13 @@
  */
 
 import {
+  addDecoderSizePrefix,
+  addEncoderSizePrefix,
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
+  getArrayDecoder,
+  getArrayEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getOptionDecoder,
@@ -17,6 +21,8 @@ import {
   getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
+  getU32Decoder,
+  getU32Encoder,
   transformEncoder,
   type AccountMeta,
   type AccountSignerMeta,
@@ -45,6 +51,8 @@ import {
   getProofArgsEncoder,
   getSecp256r1PubkeyDecoder,
   getSecp256r1PubkeyEncoder,
+  getTransportsDecoder,
+  getTransportsEncoder,
   getUserCreationArgsDecoder,
   getUserCreationArgsEncoder,
   getUserRoleDecoder,
@@ -55,6 +63,8 @@ import {
   type ProofArgsArgs,
   type Secp256r1Pubkey,
   type Secp256r1PubkeyArgs,
+  type Transports,
+  type TransportsArgs,
   type UserCreationArgs,
   type UserCreationArgsArgs,
   type UserRole,
@@ -103,6 +113,8 @@ export type CreateDomainUserAccountInstructionData = {
   compressedProofArgs: ProofArgs;
   member: Secp256r1Pubkey;
   role: UserRole;
+  credentialId: ReadonlyUint8Array;
+  transports: Array<Transports>;
   userAccountCreationArgs: UserCreationArgs;
   linkWalletArgs: Option<LinkWalletArgs>;
 };
@@ -111,6 +123,8 @@ export type CreateDomainUserAccountInstructionDataArgs = {
   compressedProofArgs: ProofArgsArgs;
   member: Secp256r1PubkeyArgs;
   role: UserRoleArgs;
+  credentialId: ReadonlyUint8Array;
+  transports: Array<TransportsArgs>;
   userAccountCreationArgs: UserCreationArgsArgs;
   linkWalletArgs: OptionOrNullable<LinkWalletArgsArgs>;
 };
@@ -122,6 +136,11 @@ export function getCreateDomainUserAccountInstructionDataEncoder(): Encoder<Crea
       ['compressedProofArgs', getProofArgsEncoder()],
       ['member', getSecp256r1PubkeyEncoder()],
       ['role', getUserRoleEncoder()],
+      [
+        'credentialId',
+        addEncoderSizePrefix(getBytesEncoder(), getU32Encoder()),
+      ],
+      ['transports', getArrayEncoder(getTransportsEncoder())],
       ['userAccountCreationArgs', getUserCreationArgsEncoder()],
       ['linkWalletArgs', getOptionEncoder(getLinkWalletArgsEncoder())],
     ]),
@@ -138,6 +157,8 @@ export function getCreateDomainUserAccountInstructionDataDecoder(): Decoder<Crea
     ['compressedProofArgs', getProofArgsDecoder()],
     ['member', getSecp256r1PubkeyDecoder()],
     ['role', getUserRoleDecoder()],
+    ['credentialId', addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
+    ['transports', getArrayDecoder(getTransportsDecoder())],
     ['userAccountCreationArgs', getUserCreationArgsDecoder()],
     ['linkWalletArgs', getOptionDecoder(getLinkWalletArgsDecoder())],
   ]);
@@ -170,6 +191,8 @@ export type CreateDomainUserAccountAsyncInput<
   compressedProofArgs: CreateDomainUserAccountInstructionDataArgs['compressedProofArgs'];
   member: CreateDomainUserAccountInstructionDataArgs['member'];
   role: CreateDomainUserAccountInstructionDataArgs['role'];
+  credentialId: CreateDomainUserAccountInstructionDataArgs['credentialId'];
+  transports: CreateDomainUserAccountInstructionDataArgs['transports'];
   userAccountCreationArgs: CreateDomainUserAccountInstructionDataArgs['userAccountCreationArgs'];
   linkWalletArgs: CreateDomainUserAccountInstructionDataArgs['linkWalletArgs'];
   remainingAccounts: CreateDomainUserAccountInstructionExtraArgs['remainingAccounts'];
@@ -276,6 +299,8 @@ export type CreateDomainUserAccountInput<
   compressedProofArgs: CreateDomainUserAccountInstructionDataArgs['compressedProofArgs'];
   member: CreateDomainUserAccountInstructionDataArgs['member'];
   role: CreateDomainUserAccountInstructionDataArgs['role'];
+  credentialId: CreateDomainUserAccountInstructionDataArgs['credentialId'];
+  transports: CreateDomainUserAccountInstructionDataArgs['transports'];
   userAccountCreationArgs: CreateDomainUserAccountInstructionDataArgs['userAccountCreationArgs'];
   linkWalletArgs: CreateDomainUserAccountInstructionDataArgs['linkWalletArgs'];
   remainingAccounts: CreateDomainUserAccountInstructionExtraArgs['remainingAccounts'];

@@ -16,10 +16,10 @@ import {
 } from 'gill';
 
 export enum UserRole {
-  Member,
-  PermanentMember,
   TransactionManager,
   Administrator,
+  PermanentMember,
+  Member,
 }
 
 export type UserRoleArgs = UserRole;

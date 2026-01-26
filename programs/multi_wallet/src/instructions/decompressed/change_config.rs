@@ -1,6 +1,6 @@
 use crate::{
     error::MultisigError,
-    state::{DomainConfig, Ops, ProofArgs, Settings, SettingsIndexWithAddress, User},
+    state::{DomainConfig, ProofArgs, Settings, SettingsIndexWithAddress, User, UserWalletOperation},
     utils::{
         durable_nonce_check, resize_account_if_necessary, ChallengeArgs, MemberKey,
         MultisigSettings, Permission, Secp256r1VerifyArgsWithDomainAddress, TransactionActionType,
@@ -159,7 +159,7 @@ impl<'info> ChangeConfig<'info> {
         let payer = &ctx.accounts.payer;
         let remaining_accounts = ctx.remaining_accounts;
 
-        let mut delegate_ops: Vec<Ops> = vec![];
+        let mut wallet_operations: Vec<UserWalletOperation> = vec![];
         for action in config_actions {
             match action {
                 ConfigAction::EditPermissions(members) => {
@@ -167,11 +167,11 @@ impl<'info> ChangeConfig<'info> {
                 }
                 ConfigAction::AddMembers(members) => {
                     let ops = settings.add_members(members)?;
-                    delegate_ops.extend(ops.into_iter().map(Ops::Add));
+                    wallet_operations.extend(ops.into_iter().map(UserWalletOperation::Add));
                 }
                 ConfigAction::RemoveMembers(members) => {
                     let ops = settings.remove_members(members)?;
-                    delegate_ops.extend(ops.into_iter().map(Ops::Remove));
+                    wallet_operations.extend(ops.into_iter().map(UserWalletOperation::Remove));
                 }
                 ConfigAction::SetThreshold(new_threshold) => {
                     settings.set_threshold(new_threshold)?;
@@ -196,7 +196,7 @@ impl<'info> ChangeConfig<'info> {
 
         settings.invariant()?;
 
-        if !delegate_ops.is_empty() {
+        if !wallet_operations.is_empty() {
             let compressed_proof_args =
                 compressed_proof_args.ok_or(MultisigError::MissingCompressedProofArgs)?;
             let light_cpi_accounts = CpiAccounts::new(
@@ -205,8 +205,8 @@ impl<'info> ChangeConfig<'info> {
                     [compressed_proof_args.light_cpi_accounts_start_index as usize..],
                 LIGHT_CPI_SIGNER,
             );
-            let account_infos = User::handle_user_delegates(
-                delegate_ops,
+            let account_infos = User::process_user_wallet_operations(
+                wallet_operations,
                 SettingsIndexWithAddress {
                     index: settings.index,
                     settings_address_tree_index: settings.settings_address_tree_index,
@@ -219,8 +219,9 @@ impl<'info> ChangeConfig<'info> {
                 ValidityProof(compressed_proof_args.proof),
             );
 
-            for f in account_infos {
-                cpi = cpi.with_light_account(f)?;
+            for user_account in account_infos {
+                user_account.invariant()?;
+                cpi = cpi.with_light_account(user_account)?;
             }
 
             cpi.invoke(light_cpi_accounts)?;

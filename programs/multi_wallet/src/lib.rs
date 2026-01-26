@@ -228,14 +228,14 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, CreateCompressedWallet<'info>>,
         compressed_proof_args: ProofArgs,
         settings_creation: SettingsCreationArgs,
-        user_readonly_args: UserReadOnlyArgs,
+        user_args: UserReadOnlyOrMutateArgs,
         settings_index: u128,
     ) -> Result<()> {
         CreateCompressedWallet::process(
             ctx,
             compressed_proof_args,
             settings_creation,
-            user_readonly_args,
+            user_args,
             settings_index,
         )
     }

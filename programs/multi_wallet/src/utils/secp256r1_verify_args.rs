@@ -68,7 +68,15 @@ impl Secp256r1VerifyArgs {
             MultisigError::InvalidSignatureOffsets
         );
 
-        // Safe unaligned read with bounds verified
+        // Verify struct size matches expected serialized size
+        // Secp256r1SignatureOffsets has 7 u16 fields = 14 bytes
+        const EXPECTED_STRUCT_SIZE: usize = core::mem::size_of::<Secp256r1SignatureOffsets>();
+        require!(
+            EXPECTED_STRUCT_SIZE == SIGNATURE_OFFSETS_SERIALIZED_SIZE,
+            MultisigError::InvalidSignatureOffsets
+        );
+
+        // Safe unaligned read with bounds verified and size validated
         let offsets = unsafe {
             core::ptr::read_unaligned(
                 data.as_ptr().add(start_usize) as *const Secp256r1SignatureOffsets

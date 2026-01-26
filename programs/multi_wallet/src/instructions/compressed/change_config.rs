@@ -1,7 +1,8 @@
 use crate::{
     error::MultisigError,
     state::{
-        CompressedSettings, CompressedSettingsData, DomainConfig, Ops, ProofArgs, Settings,
+        CompressedSettings, CompressedSettingsData, DomainConfig, ProofArgs, Settings,
+        UserWalletOperation,
         SettingsIndexWithAddress, SettingsMutArgs, User,
     },
     utils::{
@@ -176,7 +177,7 @@ impl<'info> ChangeConfigCompressed<'info> {
         let payer: &Signer<'info> = &ctx.accounts.payer;
         let remaining_accounts = ctx.remaining_accounts;
 
-        let mut delegate_ops: Vec<Ops> = vec![];
+        let mut wallet_operations: Vec<UserWalletOperation> = vec![];
 
         for action in config_actions {
             match action {
@@ -185,11 +186,11 @@ impl<'info> ChangeConfigCompressed<'info> {
                 }
                 ConfigAction::AddMembers(members) => {
                     let ops = settings.add_members(members)?;
-                    delegate_ops.extend(ops.into_iter().map(Ops::Add));
+                    wallet_operations.extend(ops.into_iter().map(UserWalletOperation::Add));
                 }
                 ConfigAction::RemoveMembers(members) => {
                     let ops = settings.remove_members(members)?;
-                    delegate_ops.extend(ops.into_iter().map(Ops::Remove));
+                    wallet_operations.extend(ops.into_iter().map(UserWalletOperation::Remove));
                 }
                 ConfigAction::SetThreshold(new_threshold) => {
                     settings.set_threshold(new_threshold)?;
@@ -215,8 +216,8 @@ impl<'info> ChangeConfigCompressed<'info> {
         let light_cpi_accounts =
             CpiAccounts::new(&payer, &remaining_accounts[start_index..], LIGHT_CPI_SIGNER);
 
-        let account_infos = User::handle_user_delegates(
-            delegate_ops,
+        let account_infos = User::process_user_wallet_operations(
+            wallet_operations,
             SettingsIndexWithAddress {
                 index: settings_index,
                 settings_address_tree_index,
@@ -230,8 +231,9 @@ impl<'info> ChangeConfigCompressed<'info> {
         )
         .with_light_account(settings)?;
 
-        for f in account_infos {
-            cpi = cpi.with_light_account(f)?;
+        for user_account in account_infos {
+            user_account.invariant()?;
+            cpi = cpi.with_light_account(user_account)?;
         }
 
         cpi.invoke(light_cpi_accounts)?;

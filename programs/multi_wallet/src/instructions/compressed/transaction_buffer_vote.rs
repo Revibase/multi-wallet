@@ -68,7 +68,7 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
             .members
             .iter()
             .find(|x| x.pubkey.eq(&signer))
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MemberNotFound)?;
 
         require!(
             member.permissions.has(Permission::VoteTransaction),
@@ -82,7 +82,7 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
 
             let instructions_sysvar = instructions_sysvar
                 .as_ref()
-                .ok_or(MultisigError::MissingAccount)?;
+                .ok_or(MultisigError::MissingInstructionsSysvar)?;
 
             secp256r1_verify_data.verify_webauthn(
                 slot_hash_sysvar,

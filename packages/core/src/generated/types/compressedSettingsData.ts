@@ -30,32 +30,32 @@ import {
 } from '.';
 
 export type CompressedSettingsData = {
-  threshold: number;
-  bump: number;
   index: bigint;
-  multiWalletBump: number;
   members: Array<Member>;
+  threshold: number;
+  multiWalletBump: number;
+  bump: number;
   settingsAddressTreeIndex: number;
   latestSlotNumber: bigint;
 };
 
 export type CompressedSettingsDataArgs = {
-  threshold: number;
-  bump: number;
   index: number | bigint;
-  multiWalletBump: number;
   members: Array<MemberArgs>;
+  threshold: number;
+  multiWalletBump: number;
+  bump: number;
   settingsAddressTreeIndex: number;
   latestSlotNumber: number | bigint;
 };
 
 export function getCompressedSettingsDataEncoder(): Encoder<CompressedSettingsDataArgs> {
   return getStructEncoder([
-    ['threshold', getU8Encoder()],
-    ['bump', getU8Encoder()],
     ['index', getU128Encoder()],
-    ['multiWalletBump', getU8Encoder()],
     ['members', getArrayEncoder(getMemberEncoder())],
+    ['threshold', getU8Encoder()],
+    ['multiWalletBump', getU8Encoder()],
+    ['bump', getU8Encoder()],
     ['settingsAddressTreeIndex', getU8Encoder()],
     ['latestSlotNumber', getU64Encoder()],
   ]);
@@ -63,11 +63,11 @@ export function getCompressedSettingsDataEncoder(): Encoder<CompressedSettingsDa
 
 export function getCompressedSettingsDataDecoder(): Decoder<CompressedSettingsData> {
   return getStructDecoder([
-    ['threshold', getU8Decoder()],
-    ['bump', getU8Decoder()],
     ['index', getU128Decoder()],
-    ['multiWalletBump', getU8Decoder()],
     ['members', getArrayDecoder(getMemberDecoder())],
+    ['threshold', getU8Decoder()],
+    ['multiWalletBump', getU8Decoder()],
+    ['bump', getU8Decoder()],
     ['settingsAddressTreeIndex', getU8Decoder()],
     ['latestSlotNumber', getU64Decoder()],
   ]);

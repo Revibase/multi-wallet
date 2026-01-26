@@ -2,6 +2,7 @@ import { type TransactionSigner } from "gill";
 import {
   getCreateCompressedWalletInstructionAsync,
   getUserDecoder,
+  UserRole,
   type User,
 } from "../../generated";
 import {
@@ -45,20 +46,20 @@ export async function createWallet({
           address: (
             await getUserAccountAddress(
               initialMember.address,
-              userAddressTreeIndex
+              userAddressTreeIndex,
             )
           ).address,
           type: "User" as const,
         },
       ],
-      cachedAccounts
-    ))
+      cachedAccounts,
+    )),
   );
   const settingsAddressTreeIndex = await getNewWhitelistedAddressTreeIndex();
   const { address: settingsAddress, addressTree } =
     await getCompressedSettingsAddressFromIndex(
       index,
-      settingsAddressTreeIndex
+      settingsAddressTreeIndex,
     );
   newAddressParams.push({
     address: settingsAddress,
@@ -71,7 +72,7 @@ export async function createWallet({
 
   const proof = await getValidityProofWithRetry(
     hashesWithTree,
-    newAddressParams
+    newAddressParams,
   );
 
   const userMutArgs = getCompressedAccountMutArgs<User>(
@@ -81,7 +82,7 @@ export async function createWallet({
     proof.rootIndices.slice(0, hashesWithTreeEndIndex),
     proof.proveByIndices.slice(0, hashesWithTreeEndIndex),
     hashesWithTree.filter((x) => x.type === "User"),
-    getUserDecoder()
+    getUserDecoder(),
   )[0];
 
   const initArgs = await getCompressedAccountInitArgs(
@@ -89,7 +90,7 @@ export async function createWallet({
     proof.treeInfos.slice(hashesWithTreeEndIndex),
     proof.roots.slice(hashesWithTreeEndIndex),
     proof.rootIndices.slice(hashesWithTreeEndIndex),
-    newAddressParams
+    newAddressParams,
   );
 
   const settingsCreationArgs =
@@ -107,7 +108,10 @@ export async function createWallet({
     settingsIndex: index,
     payer,
     initialMember,
-    userReadonlyArgs: userMutArgs,
+    userArgs:
+      userMutArgs.data.role === UserRole.Member
+        ? { __kind: "Mutate", fields: [userMutArgs] }
+        : { __kind: "Read", fields: [userMutArgs] },
     compressedProofArgs,
     settingsCreation: settingsCreationArgs,
     remainingAccounts,

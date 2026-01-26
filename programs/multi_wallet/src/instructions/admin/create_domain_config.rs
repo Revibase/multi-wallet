@@ -81,16 +81,18 @@ impl<'info> CreateDomainConfig<'info> {
         let user = User {
             member: MemberKey::convert_ed25519(&ctx.accounts.authority.key())?,
             role: UserRole::Administrator,
-            delegated_to: None,
+            wallets: vec![],
+            transports: None,
+            credential_id: None,
             domain_config: Some(ctx.accounts.domain_config.key()),
             transaction_manager_url: None,
             user_address_tree_index,
         };
 
-        user.invariant()?;
-
         let (account_info, new_address_params) =
             User::create_user_account(args.authority_creation_args, &address_tree, user, Some(0))?;
+
+        account_info.invariant()?;
 
         LightSystemProgramCpi::new_cpi(
             LIGHT_CPI_SIGNER,

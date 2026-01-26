@@ -45,4 +45,5 @@ pub struct PermissionCounts {
     pub executors: usize,
     pub permanent_members: usize,
     pub transaction_manager: usize,
+    pub administrator: usize,
 }

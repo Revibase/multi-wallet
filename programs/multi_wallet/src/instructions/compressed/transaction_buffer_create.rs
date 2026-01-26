@@ -76,7 +76,7 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
             .members
             .iter()
             .find(|x| x.pubkey.eq(&signer))
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MemberNotFound)?;
 
         require!(
             member.permissions.has(Permission::InitiateTransaction),
@@ -165,7 +165,7 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
             .members
             .iter()
             .find(|x| x.pubkey.eq(&signer))
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MemberNotFound)?;
 
         if member.permissions.has(Permission::VoteTransaction) {
             transaction_buffer.add_voter(&signer)?;

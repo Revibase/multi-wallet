@@ -19,6 +19,10 @@ import {
   type FixedSizeEncoder,
 } from 'gill';
 
+/**
+ * Packed address tree info for instruction data.
+ * Contains indices to address tree accounts and root index.
+ */
 export type PackedAddressTreeInfo = {
   addressMerkleTreePubkeyIndex: number;
   addressQueuePubkeyIndex: number;

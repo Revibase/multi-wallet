@@ -1,3 +1,4 @@
+import { base64URLStringToBuffer } from "@simplewebauthn/browser";
 import { type Address, none, some, type TransactionSigner } from "gill";
 import {
   type CompressedSettings,
@@ -6,6 +7,7 @@ import {
   getSecp256r1PubkeyDecoder,
   getUserDecoder,
   type SettingsMutArgs,
+  Transports,
   type User,
   type UserMutArgs,
   UserRole,
@@ -28,6 +30,8 @@ import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 interface UserCreationArgs {
   member: Secp256r1Key;
   role: UserRole.Member | UserRole.PermanentMember;
+  credentialId: string;
+  transports: Transports[];
   index?: number | bigint;
   settingsAddressTreeIndex?: number;
   transactionManager?: {
@@ -59,7 +63,7 @@ export async function createDomainUserAccounts({
       address: (
         await getCompressedSettingsAddressFromIndex(
           createUserArgs.index,
-          createUserArgs.settingsAddressTreeIndex
+          createUserArgs.settingsAddressTreeIndex,
         )
       ).address,
       type: "Settings" as const,
@@ -69,7 +73,7 @@ export async function createDomainUserAccounts({
         address: (
           await getUserAccountAddress(
             createUserArgs.transactionManager.member,
-            createUserArgs.transactionManager.userAddressTreeIndex
+            createUserArgs.transactionManager.userAddressTreeIndex,
           )
         ).address,
         type: "User" as const,
@@ -83,7 +87,7 @@ export async function createDomainUserAccounts({
   const userAddressTreeIndex = await getNewWhitelistedAddressTreeIndex();
   const { address, addressTree } = await getUserAccountAddress(
     createUserArgs.member,
-    userAddressTreeIndex
+    userAddressTreeIndex,
   );
   const newAddressParams = [
     {
@@ -96,14 +100,14 @@ export async function createDomainUserAccounts({
 
   const proof = await getValidityProofWithRetry(
     hashesWithTree,
-    newAddressParams
+    newAddressParams,
   );
 
   let settingsMutArgs: SettingsMutArgs | null = null;
   let transactionManagerMutArgs: UserMutArgs | null = null;
   const settingsHash = hashesWithTree.filter((x) => x.type === "Settings");
   const transactionManagerHash = hashesWithTree.filter(
-    (x) => x.type === "User"
+    (x) => x.type === "User",
   );
   if (settingsHash.length) {
     settingsMutArgs = getCompressedAccountMutArgs<CompressedSettings>(
@@ -113,7 +117,7 @@ export async function createDomainUserAccounts({
       proof.rootIndices.slice(0, 1),
       proof.proveByIndices.slice(0, 1),
       settingsHash,
-      getCompressedSettingsDecoder()
+      getCompressedSettingsDecoder(),
     )[0];
   }
   if (transactionManagerHash.length) {
@@ -124,7 +128,7 @@ export async function createDomainUserAccounts({
       proof.rootIndices.slice(1, 2),
       proof.proveByIndices.slice(1, 2),
       transactionManagerHash,
-      getUserDecoder()
+      getUserDecoder(),
     )[0];
   }
 
@@ -133,7 +137,7 @@ export async function createDomainUserAccounts({
     proof.treeInfos.slice(hashesWithTree.length),
     proof.roots.slice(hashesWithTree.length),
     proof.rootIndices.slice(hashesWithTree.length),
-    newAddressParams
+    newAddressParams,
   );
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
@@ -144,8 +148,12 @@ export async function createDomainUserAccounts({
     authority,
     compressedProofArgs,
     member: getSecp256r1PubkeyDecoder().decode(
-      createUserArgs.member.toBuffer()
+      createUserArgs.member.toBuffer(),
     ),
+    credentialId: new Uint8Array(
+      base64URLStringToBuffer(createUserArgs.credentialId),
+    ),
+    transports: createUserArgs.transports,
     role: createUserArgs.role,
     linkWalletArgs: settingsMutArgs
       ? some({

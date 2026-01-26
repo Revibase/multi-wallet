@@ -1,6 +1,6 @@
 use crate::{
-    state::{SettingsIndexWithAddress, UserReadOnlyArgs, WhitelistedAddressTree},
-    utils::{UserRole, SEED_WHITELISTED_ADDRESS_TREE},
+    state::{SettingsIndexWithAddressAndDelegateInfo, UserReadOnlyArgs, WhitelistedAddressTree},
+    utils::{bool_to_u8_delegate, Transports, UserRole, SEED_WHITELISTED_ADDRESS_TREE},
     CompressedSettings, DomainConfig, Member, MemberKey, MultisigError, MultisigSettings,
     Permission, Permissions, ProofArgs, Secp256r1Pubkey, SettingsMutArgs, User, UserCreationArgs,
     LIGHT_CPI_SIGNER,
@@ -25,6 +25,8 @@ pub struct LinkWalletArgs {
 pub struct CreateDomainUserAccountArgs {
     pub member: Secp256r1Pubkey,
     pub role: UserRole,
+    pub credential_id: Vec<u8>,
+    pub transports: Vec<Transports>,
     pub user_account_creation_args: UserCreationArgs,
     pub link_wallet_args: Option<LinkWalletArgs>,
 }
@@ -69,12 +71,20 @@ impl<'info> CreateDomainUserAccount<'info> {
             .whitelisted_address_trees
             .extract_address_tree_index(&address_tree)?;
 
+        if args.role.eq(&UserRole::PermanentMember) {
+            require!(
+                args.link_wallet_args.is_some(),
+                MultisigError::InvalidUserRole
+            );
+        }
+
         let mut cpi = LightSystemProgramCpi::new_cpi(
             LIGHT_CPI_SIGNER,
             ValidityProof(compressed_proof_args.proof),
         );
-        let mut delegated_to = None;
-        //allow domain authority to directly link user to a particular wallet owned by the domain authority
+        let mut wallets = vec![];
+        // This operation transfers ownership - the administrator is removed and replaced with new members.
+        // This is intentional as the domain authority is transferring control of the wallet.
         if let Some(link_wallet_args) = args.link_wallet_args {
             let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
                 &crate::ID,
@@ -88,9 +98,10 @@ impl<'info> CreateDomainUserAccount<'info> {
                 .as_ref()
                 .ok_or(MultisigError::MissingSettingsData)?;
 
-            delegated_to = Some(SettingsIndexWithAddress {
+            wallets.push(SettingsIndexWithAddressAndDelegateInfo {
                 index: settings_data.index,
                 settings_address_tree_index: settings_data.settings_address_tree_index,
+                is_delegate: true,
             });
 
             require!(
@@ -107,11 +118,11 @@ impl<'info> CreateDomainUserAccount<'info> {
 
             let mut permissions = vec![Permission::VoteTransaction, Permission::ExecuteTransaction];
 
-            if let Some(transaction_manger) = link_wallet_args.transaction_manager {
+            if let Some(transaction_manager) = link_wallet_args.transaction_manager {
                 let transaction_manager_account = LightAccount::<User>::new_read_only(
                     &crate::ID,
-                    &transaction_manger.account_meta,
-                    transaction_manger.data,
+                    &transaction_manager.account_meta,
+                    transaction_manager.data,
                     light_cpi_accounts
                         .tree_pubkeys()
                         .map_err(|_| MultisigError::MissingLightCpiAccounts)?
@@ -136,7 +147,7 @@ impl<'info> CreateDomainUserAccount<'info> {
                     ]),
                     role: UserRole::TransactionManager.to_u8(),
                     user_address_tree_index: transaction_manager_account.user_address_tree_index,
-                    is_delegate: false.into(),
+                    is_delegate: bool_to_u8_delegate(false),
                 });
                 cpi = cpi.with_light_account(transaction_manager_account)?;
             } else {
@@ -148,7 +159,7 @@ impl<'info> CreateDomainUserAccount<'info> {
                 permissions: Permissions::from_permissions(permissions),
                 role: args.role.to_u8(),
                 user_address_tree_index,
-                is_delegate: true.into(),
+                is_delegate: bool_to_u8_delegate(true),
             });
 
             settings_account.set_members(new_members)?;
@@ -162,12 +173,19 @@ impl<'info> CreateDomainUserAccount<'info> {
             member: MemberKey::convert_secp256r1(&args.member)?,
             role: args.role,
             domain_config: Some(ctx.accounts.domain_config.key()),
-            delegated_to,
+            credential_id: Some(args.credential_id),
+            transports: Some(args.transports),
+            wallets,
             transaction_manager_url: None,
             user_address_tree_index,
         };
 
-        user.invariant()?;
+        if user.role.eq(&UserRole::PermanentMember) {
+            require!(
+                user.wallets.len() == 1 && user.wallets[0].is_delegate,
+                MultisigError::InvalidUserRole
+            );
+        }
 
         let (account_info, new_address_params) = User::create_user_account(
             args.user_account_creation_args,
@@ -175,6 +193,8 @@ impl<'info> CreateDomainUserAccount<'info> {
             user,
             Some(cpi.account_infos.len() as u8),
         )?;
+
+        account_info.invariant()?;
 
         cpi.with_light_account(account_info)?
             .with_new_addresses(&[new_address_params])

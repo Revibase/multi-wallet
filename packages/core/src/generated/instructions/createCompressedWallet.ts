@@ -42,14 +42,14 @@ import {
   getProofArgsEncoder,
   getSettingsCreationArgsDecoder,
   getSettingsCreationArgsEncoder,
-  getUserReadOnlyArgsDecoder,
-  getUserReadOnlyArgsEncoder,
+  getUserReadOnlyOrMutateArgsDecoder,
+  getUserReadOnlyOrMutateArgsEncoder,
   type ProofArgs,
   type ProofArgsArgs,
   type SettingsCreationArgs,
   type SettingsCreationArgsArgs,
-  type UserReadOnlyArgs,
-  type UserReadOnlyArgsArgs,
+  type UserReadOnlyOrMutateArgs,
+  type UserReadOnlyOrMutateArgsArgs,
 } from '../types';
 
 export const CREATE_COMPRESSED_WALLET_DISCRIMINATOR = new Uint8Array([18]);
@@ -99,14 +99,14 @@ export type CreateCompressedWalletInstructionData = {
   discriminator: ReadonlyUint8Array;
   compressedProofArgs: ProofArgs;
   settingsCreation: SettingsCreationArgs;
-  userReadonlyArgs: UserReadOnlyArgs;
+  userArgs: UserReadOnlyOrMutateArgs;
   settingsIndex: bigint;
 };
 
 export type CreateCompressedWalletInstructionDataArgs = {
   compressedProofArgs: ProofArgsArgs;
   settingsCreation: SettingsCreationArgsArgs;
-  userReadonlyArgs: UserReadOnlyArgsArgs;
+  userArgs: UserReadOnlyOrMutateArgsArgs;
   settingsIndex: number | bigint;
 };
 
@@ -116,7 +116,7 @@ export function getCreateCompressedWalletInstructionDataEncoder(): Encoder<Creat
       ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
       ['compressedProofArgs', getProofArgsEncoder()],
       ['settingsCreation', getSettingsCreationArgsEncoder()],
-      ['userReadonlyArgs', getUserReadOnlyArgsEncoder()],
+      ['userArgs', getUserReadOnlyOrMutateArgsEncoder()],
       ['settingsIndex', getU128Encoder()],
     ]),
     (value) => ({
@@ -131,7 +131,7 @@ export function getCreateCompressedWalletInstructionDataDecoder(): Decoder<Creat
     ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
     ['compressedProofArgs', getProofArgsDecoder()],
     ['settingsCreation', getSettingsCreationArgsDecoder()],
-    ['userReadonlyArgs', getUserReadOnlyArgsDecoder()],
+    ['userArgs', getUserReadOnlyOrMutateArgsDecoder()],
     ['settingsIndex', getU128Decoder()],
   ]);
 }
@@ -164,7 +164,7 @@ export type CreateCompressedWalletAsyncInput<
   whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
   compressedProofArgs: CreateCompressedWalletInstructionDataArgs['compressedProofArgs'];
   settingsCreation: CreateCompressedWalletInstructionDataArgs['settingsCreation'];
-  userReadonlyArgs: CreateCompressedWalletInstructionDataArgs['userReadonlyArgs'];
+  userArgs: CreateCompressedWalletInstructionDataArgs['userArgs'];
   settingsIndex: CreateCompressedWalletInstructionDataArgs['settingsIndex'];
   remainingAccounts: CreateCompressedWalletInstructionExtraArgs['remainingAccounts'];
 };
@@ -293,7 +293,7 @@ export type CreateCompressedWalletInput<
   whitelistedAddressTrees: Address<TAccountWhitelistedAddressTrees>;
   compressedProofArgs: CreateCompressedWalletInstructionDataArgs['compressedProofArgs'];
   settingsCreation: CreateCompressedWalletInstructionDataArgs['settingsCreation'];
-  userReadonlyArgs: CreateCompressedWalletInstructionDataArgs['userReadonlyArgs'];
+  userArgs: CreateCompressedWalletInstructionDataArgs['userArgs'];
   settingsIndex: CreateCompressedWalletInstructionDataArgs['settingsIndex'];
   remainingAccounts: CreateCompressedWalletInstructionExtraArgs['remainingAccounts'];
 };

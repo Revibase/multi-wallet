@@ -105,8 +105,8 @@ async function prepareUserAccounts(configActionsArgs: ConfigurationArgs[]) {
       case "AddMembers": {
         const results = await Promise.all(
           action.members.map((m) =>
-            getUserAccountAddress(m.member, m.userAddressTreeIndex)
-          )
+            getUserAccountAddress(m.member, m.userAddressTreeIndex),
+          ),
         );
         for (const r of results)
           result.push({ address: r.address, type: "User" });
@@ -116,8 +116,8 @@ async function prepareUserAccounts(configActionsArgs: ConfigurationArgs[]) {
       case "RemoveMembers": {
         const results = await Promise.all(
           action.members.map((m) =>
-            getUserAccountAddress(m.member, m.userAddressTreeIndex)
-          )
+            getUserAccountAddress(m.member, m.userAddressTreeIndex),
+          ),
         );
         for (const r of results)
           result.push({ address: r.address, type: "User" });
@@ -154,7 +154,7 @@ async function prepareProofAndMutArgs({
     const settingsAddr = (
       await getCompressedSettingsAddressFromIndex(
         index,
-        settingsAddressTreeIndex
+        settingsAddressTreeIndex,
       )
     ).address;
     addresses.push({ address: settingsAddr, type: "Settings" } as any);
@@ -188,7 +188,7 @@ async function prepareProofAndMutArgs({
       proof.rootIndices.slice(0, 1),
       proof.proveByIndices.slice(0, 1),
       settingsHashes,
-      getCompressedSettingsDecoder()
+      getCompressedSettingsDecoder(),
     )[0];
   }
 
@@ -201,7 +201,7 @@ async function prepareProofAndMutArgs({
       proof.rootIndices.slice(start),
       proof.proveByIndices.slice(start),
       userHashes,
-      getUserDecoder()
+      getUserDecoder(),
     );
   }
 
@@ -226,15 +226,15 @@ async function buildConfigActions({
         for (const m of action.members) {
           const userArgs = await getUserAccountAddress(
             m.member,
-            m.userAddressTreeIndex
+            m.userAddressTreeIndex,
           ).then((r) => {
             return userMutArgs.find((arg) =>
               equalBytes(
                 new Uint8Array(arg.accountMeta.address),
                 new Uint8Array(
-                  getBase58Encoder().encode(encodeBN254toBase58(r.address))
-                )
-              )
+                  getBase58Encoder().encode(encodeBN254toBase58(r.address)),
+                ),
+              ),
             );
           });
           if (!userArgs) throw new Error("Unable to find user account");
@@ -243,7 +243,7 @@ async function buildConfigActions({
               permissionArgs: m.permissions,
               userMutArgs: userArgs,
               pubkey: m.member,
-            })
+            }),
           );
         }
 
@@ -260,19 +260,18 @@ async function buildConfigActions({
                   equalBytes(
                     new Uint8Array(arg.accountMeta.address),
                     new Uint8Array(
-                      getBase58Encoder().encode(encodeBN254toBase58(r.address))
-                    )
-                  )
+                      getBase58Encoder().encode(encodeBN254toBase58(r.address)),
+                    ),
+                  ),
                 );
                 if (!found) throw new Error("Unable to find user account");
                 return convertRemoveMember({
                   pubkey: m.member,
                   userMutArgs: found,
-                  index,
                 });
-              }
-            )
-          )
+              },
+            ),
+          ),
         );
         configActions.push({ __kind: action.type, fields: [field] });
         break;
@@ -283,7 +282,7 @@ async function buildConfigActions({
           convertEditMember({
             permissionArgs: m.permissions,
             pubkey: m.member,
-          })
+          }),
         );
 
         configActions.push({ __kind: action.type, fields: [field] });
@@ -314,24 +313,21 @@ function convertEditMember({
 function convertRemoveMember({
   pubkey,
   userMutArgs,
-  index,
 }: {
   pubkey: Address | Secp256r1Key;
   userMutArgs: UserMutArgs;
-  index: number | bigint;
 }): RemoveMemberArgs {
-  if (userMutArgs.data.role === UserRole.PermanentMember) {
+  const role = userMutArgs.data.role;
+  if (role === UserRole.PermanentMember) {
     throw new Error("Permanent Member cannot be removed from the wallet.");
   }
-  const isDelegate =
-    userMutArgs.data.delegatedTo.__option === "Some"
-      ? Number(userMutArgs.data.delegatedTo.value.index.toString()) === index
-      : false;
+
   return {
     memberKey: convertPubkeyToMemberkey(pubkey),
-    userArgs: isDelegate
-      ? { __kind: "Mutate", fields: [userMutArgs] }
-      : { __kind: "Read", fields: [userMutArgs] },
+    userArgs:
+      role === UserRole.Member
+        ? { __kind: "Mutate", fields: [userMutArgs] }
+        : { __kind: "Read", fields: [userMutArgs] },
   };
 }
 
@@ -354,7 +350,10 @@ function convertAddMember({
   return {
     memberKey: convertPubkeyToMemberkey(pubkey),
     permissions: convertPermissions(permissionArgs),
-    userReadonlyArgs: userMutArgs,
+    userArgs:
+      userMutArgs.data.role === UserRole.Member
+        ? { __kind: "Mutate", fields: [userMutArgs] }
+        : { __kind: "Read", fields: [userMutArgs] },
   };
 }
 

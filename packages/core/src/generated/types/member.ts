@@ -29,16 +29,16 @@ import {
 
 export type Member = {
   pubkey: MemberKey;
-  permissions: IPermissions;
   role: number;
+  permissions: IPermissions;
   userAddressTreeIndex: number;
   isDelegate: number;
 };
 
 export type MemberArgs = {
   pubkey: MemberKeyArgs;
-  permissions: PermissionsArgs;
   role: number;
+  permissions: PermissionsArgs;
   userAddressTreeIndex: number;
   isDelegate: number;
 };
@@ -46,8 +46,8 @@ export type MemberArgs = {
 export function getMemberEncoder(): FixedSizeEncoder<MemberArgs> {
   return getStructEncoder([
     ["pubkey", getMemberKeyEncoder()],
-    ["permissions", getPermissionsEncoder()],
     ["role", getU8Encoder()],
+    ["permissions", getPermissionsEncoder()],
     ["userAddressTreeIndex", getU8Encoder()],
     ["isDelegate", getU8Encoder()],
   ]);
@@ -56,8 +56,8 @@ export function getMemberEncoder(): FixedSizeEncoder<MemberArgs> {
 export function getMemberDecoder(): FixedSizeDecoder<Member> {
   return getStructDecoder([
     ["pubkey", getMemberKeyDecoder()],
-    ["permissions", getPermissionsDecoder()],
     ["role", getU8Decoder()],
+    ["permissions", getPermissionsDecoder()],
     ["userAddressTreeIndex", getU8Decoder()],
     ["isDelegate", getU8Decoder()],
   ]);

@@ -111,9 +111,4 @@ impl MultisigSettings for Settings {
         self.members.retain(|m| !to_delete.contains(&m.pubkey));
         Ok(())
     }
-
-    fn set_members(&mut self, members: Vec<Member>) -> Result<()> {
-        self.members = members;
-        Ok(())
-    }
 }

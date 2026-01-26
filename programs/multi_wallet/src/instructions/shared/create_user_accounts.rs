@@ -77,13 +77,13 @@ impl<'info> CreateUserAccounts<'info> {
             let user = User {
                 member: MemberKey::convert_ed25519(&args.member)?,
                 role: args.role,
-                delegated_to: None,
+                wallets: vec![],
+                credential_id: None,
+                transports: None,
                 domain_config: None,
                 transaction_manager_url: args.transaction_manager_url,
                 user_address_tree_index,
             };
-
-            user.invariant()?;
 
             let (account_info, new_address_params) = User::create_user_account(
                 args.user_creation_args,
@@ -91,6 +91,7 @@ impl<'info> CreateUserAccounts<'info> {
                 user,
                 Some(cpi.account_infos.len() as u8),
             )?;
+            account_info.invariant()?;
             cpi = cpi.with_light_account(account_info)?;
             new_addressess.push(new_address_params);
         }

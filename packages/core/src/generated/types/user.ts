@@ -12,6 +12,10 @@ import {
   combineCodec,
   getAddressDecoder,
   getAddressEncoder,
+  getArrayDecoder,
+  getArrayEncoder,
+  getBytesDecoder,
+  getBytesEncoder,
   getOptionDecoder,
   getOptionEncoder,
   getStructDecoder,
@@ -28,46 +32,65 @@ import {
   type Encoder,
   type Option,
   type OptionOrNullable,
+  type ReadonlyUint8Array,
 } from 'gill';
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
-  getSettingsIndexWithAddressDecoder,
-  getSettingsIndexWithAddressEncoder,
+  getSettingsIndexWithAddressAndDelegateInfoDecoder,
+  getSettingsIndexWithAddressAndDelegateInfoEncoder,
+  getTransportsDecoder,
+  getTransportsEncoder,
   getUserRoleDecoder,
   getUserRoleEncoder,
   type MemberKey,
   type MemberKeyArgs,
-  type SettingsIndexWithAddress,
-  type SettingsIndexWithAddressArgs,
+  type SettingsIndexWithAddressAndDelegateInfo,
+  type SettingsIndexWithAddressAndDelegateInfoArgs,
+  type Transports,
+  type TransportsArgs,
   type UserRole,
   type UserRoleArgs,
 } from '.';
 
 export type User = {
-  member: MemberKey;
   domainConfig: Option<Address>;
+  member: MemberKey;
+  credentialId: Option<ReadonlyUint8Array>;
+  transports: Option<Array<Transports>>;
+  wallets: Array<SettingsIndexWithAddressAndDelegateInfo>;
   role: UserRole;
-  delegatedTo: Option<SettingsIndexWithAddress>;
   transactionManagerUrl: Option<string>;
   userAddressTreeIndex: number;
 };
 
 export type UserArgs = {
-  member: MemberKeyArgs;
   domainConfig: OptionOrNullable<Address>;
+  member: MemberKeyArgs;
+  credentialId: OptionOrNullable<ReadonlyUint8Array>;
+  transports: OptionOrNullable<Array<TransportsArgs>>;
+  wallets: Array<SettingsIndexWithAddressAndDelegateInfoArgs>;
   role: UserRoleArgs;
-  delegatedTo: OptionOrNullable<SettingsIndexWithAddressArgs>;
   transactionManagerUrl: OptionOrNullable<string>;
   userAddressTreeIndex: number;
 };
 
 export function getUserEncoder(): Encoder<UserArgs> {
   return getStructEncoder([
-    ['member', getMemberKeyEncoder()],
     ['domainConfig', getOptionEncoder(getAddressEncoder())],
+    ['member', getMemberKeyEncoder()],
+    [
+      'credentialId',
+      getOptionEncoder(
+        addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())
+      ),
+    ],
+    ['transports', getOptionEncoder(getArrayEncoder(getTransportsEncoder()))],
+    [
+      'wallets',
+      getArrayEncoder(getSettingsIndexWithAddressAndDelegateInfoEncoder()),
+    ],
     ['role', getUserRoleEncoder()],
-    ['delegatedTo', getOptionEncoder(getSettingsIndexWithAddressEncoder())],
     [
       'transactionManagerUrl',
       getOptionEncoder(addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())),
@@ -78,10 +101,20 @@ export function getUserEncoder(): Encoder<UserArgs> {
 
 export function getUserDecoder(): Decoder<User> {
   return getStructDecoder([
-    ['member', getMemberKeyDecoder()],
     ['domainConfig', getOptionDecoder(getAddressDecoder())],
+    ['member', getMemberKeyDecoder()],
+    [
+      'credentialId',
+      getOptionDecoder(
+        addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())
+      ),
+    ],
+    ['transports', getOptionDecoder(getArrayDecoder(getTransportsDecoder()))],
+    [
+      'wallets',
+      getArrayDecoder(getSettingsIndexWithAddressAndDelegateInfoDecoder()),
+    ],
     ['role', getUserRoleDecoder()],
-    ['delegatedTo', getOptionDecoder(getSettingsIndexWithAddressDecoder())],
     [
       'transactionManagerUrl',
       getOptionDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),

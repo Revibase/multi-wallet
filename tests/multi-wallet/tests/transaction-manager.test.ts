@@ -27,7 +27,7 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
       assertTestContext(ctx, ["index", "multiWalletVault", "wallet", "payer"]);
 
       const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
-        crypto.getRandomValues(new Uint8Array(32))
+        crypto.getRandomValues(new Uint8Array(32)),
       );
       const createUserAccountIx = await createUserAccounts({
         payer: ctx.payer,
@@ -43,7 +43,7 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
       await sendTransaction(
         [createUserAccountIx],
         ctx.payer,
-        ctx.addressLookUpTable
+        ctx.addressLookUpTable,
       );
 
       const changeConfigArgs = await prepareChangeConfigArgs({
@@ -72,24 +72,22 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
 
       // Verify member was added
       const userAccountData = await fetchUserAccountData(
-        ephemeralKeypair.address
+        ephemeralKeypair.address,
       );
       const accountData = await fetchSettingsAccountData(ctx.index);
       const settingsIndex =
-        userAccountData.delegatedTo.__option === "Some"
-          ? userAccountData.delegatedTo.value
-          : null;
+        userAccountData.wallets.find((x) => x.isDelegate) ?? null;
 
       assertDefined(
         userAccountData.transactionManagerUrl.__option === "Some"
           ? userAccountData.transactionManagerUrl.value
           : null,
-        "Transaction manager URL should be set"
+        "Transaction manager URL should be set",
       );
       if (userAccountData.transactionManagerUrl.__option === "Some") {
         expect(
           userAccountData.transactionManagerUrl.value,
-          "Transaction manager URL should match the configured value"
+          "Transaction manager URL should match the configured value",
         ).to.equal(TEST_TRANSACTION_MANAGER_URL);
       }
 
@@ -98,12 +96,12 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
 
       expect(
         accountData.members.length,
-        "Wallet should have exactly two members after adding transaction manager"
+        "Wallet should have exactly two members after adding transaction manager",
       ).to.equal(2);
 
       expect(
         convertMemberKeyToString(accountData.members[1].pubkey),
-        "Second member should be the transaction manager keypair"
+        "Second member should be the transaction manager keypair",
       ).to.equal(ephemeralKeypair.address.toString());
     });
   });

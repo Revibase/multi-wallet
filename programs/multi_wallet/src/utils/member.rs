@@ -20,8 +20,8 @@ use bytemuck::{Pod, Zeroable};
 #[repr(C)]
 pub struct Member {
     pub pubkey: MemberKey,
-    pub permissions: Permissions,
     pub role: u8,
+    pub permissions: Permissions,
     pub user_address_tree_index: u8,
     pub is_delegate: u8,
 }
@@ -120,5 +120,13 @@ impl MemberKey {
 impl AsRef<[u8]> for MemberKey {
     fn as_ref(&self) -> &[u8] {
         &self.key.as_ref()
+    }
+}
+
+pub fn bool_to_u8_delegate(is_delegate: bool) -> u8 {
+    if is_delegate {
+        1
+    } else {
+        0
     }
 }

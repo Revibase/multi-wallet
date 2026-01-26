@@ -64,7 +64,7 @@ export async function editUserDelegate({
   const userAccount = await fetchUserAccountData(
     user instanceof SignedSecp256r1Key ? user : user.address,
     userAddressTreeIndex,
-    cachedAccounts
+    cachedAccounts,
   );
 
   const addresses: {
@@ -75,7 +75,7 @@ export async function editUserDelegate({
     address: (
       await getUserAccountAddress(
         user instanceof SignedSecp256r1Key ? user : user.address,
-        userAddressTreeIndex
+        userAddressTreeIndex,
       )
     ).address,
     type: "User",
@@ -85,18 +85,19 @@ export async function editUserDelegate({
   let oldSettingsIndexes: { start: number; end: number } | null = null;
   let newSettings;
   let newSettingsIndexes: { start: number; end: number } | null = null;
-  if (userAccount.delegatedTo.__option === "Some") {
+  const old_delegate = userAccount.wallets.find((x) => x.isDelegate);
+  if (old_delegate) {
     const settings = await fetchSettingsAccountData(
-      userAccount.delegatedTo.value.index,
-      userAccount.delegatedTo.value.settingsAddressTreeIndex,
-      cachedAccounts
+      old_delegate.index,
+      old_delegate.settingsAddressTreeIndex,
+      cachedAccounts,
     );
     if (settings.isCompressed) {
       addresses.push({
         address: (
           await getCompressedSettingsAddressFromIndex(
-            userAccount.delegatedTo.value.index,
-            userAccount.delegatedTo.value.settingsAddressTreeIndex
+            old_delegate.index,
+            old_delegate.settingsAddressTreeIndex,
           )
         ).address,
         type: "Settings",
@@ -106,23 +107,21 @@ export async function editUserDelegate({
         end: addresses.length,
       };
     } else {
-      oldSettings = await getSettingsFromIndex(
-        userAccount.delegatedTo.value.index
-      );
+      oldSettings = await getSettingsFromIndex(old_delegate.index);
     }
   }
   if (newDelegate) {
     const settings = await fetchSettingsAccountData(
       newDelegate.index,
       newDelegate.settingsAddressTreeIndex,
-      cachedAccounts
+      cachedAccounts,
     );
     if (settings.isCompressed) {
       addresses.push({
         address: (
           await getCompressedSettingsAddressFromIndex(
             newDelegate.index,
-            newDelegate.settingsAddressTreeIndex
+            newDelegate.settingsAddressTreeIndex,
           )
         ).address,
         type: "Settings",
@@ -141,7 +140,7 @@ export async function editUserDelegate({
 
   const hashesWithTree = await getCompressedAccountHashes(
     addresses,
-    cachedAccounts
+    cachedAccounts,
   );
   const proof = await getValidityProofWithRetry(hashesWithTree, []);
   const userMutArgs = getCompressedAccountMutArgs<User>(
@@ -151,7 +150,7 @@ export async function editUserDelegate({
     proof.rootIndices.slice(0, 1),
     proof.proveByIndices.slice(0, 1),
     hashesWithTree.slice(0, 1),
-    getUserDecoder()
+    getUserDecoder(),
   )[0];
 
   const oldSettingsMutArgs: OptionOrNullable<SettingsMutArgs> =
@@ -161,26 +160,26 @@ export async function editUserDelegate({
             packedAccounts,
             proof.treeInfos.slice(
               oldSettingsIndexes.start,
-              oldSettingsIndexes.end
+              oldSettingsIndexes.end,
             ),
             proof.leafIndices.slice(
               oldSettingsIndexes.start,
-              oldSettingsIndexes.end
+              oldSettingsIndexes.end,
             ),
             proof.rootIndices.slice(
               oldSettingsIndexes.start,
-              oldSettingsIndexes.end
+              oldSettingsIndexes.end,
             ),
             proof.proveByIndices.slice(
               oldSettingsIndexes.start,
-              oldSettingsIndexes.end
+              oldSettingsIndexes.end,
             ),
             hashesWithTree.slice(
               oldSettingsIndexes.start,
-              oldSettingsIndexes.end
+              oldSettingsIndexes.end,
             ),
-            getCompressedSettingsDecoder()
-          )[0]
+            getCompressedSettingsDecoder(),
+          )[0],
         )
       : none();
 
@@ -191,26 +190,26 @@ export async function editUserDelegate({
             packedAccounts,
             proof.treeInfos.slice(
               newSettingsIndexes.start,
-              newSettingsIndexes.end
+              newSettingsIndexes.end,
             ),
             proof.leafIndices.slice(
               newSettingsIndexes.start,
-              newSettingsIndexes.end
+              newSettingsIndexes.end,
             ),
             proof.rootIndices.slice(
               newSettingsIndexes.start,
-              newSettingsIndexes.end
+              newSettingsIndexes.end,
             ),
             proof.proveByIndices.slice(
               newSettingsIndexes.start,
-              newSettingsIndexes.end
+              newSettingsIndexes.end,
             ),
             hashesWithTree.slice(
               newSettingsIndexes.start,
-              newSettingsIndexes.end
+              newSettingsIndexes.end,
             ),
-            getCompressedSettingsDecoder()
-          )[0]
+            getCompressedSettingsDecoder(),
+          )[0],
         )
       : none();
 
@@ -235,7 +234,7 @@ export async function editUserDelegate({
       compressedProofArgs,
       userMutArgs,
       remainingAccounts,
-    })
+    }),
   );
 
   return instructions;

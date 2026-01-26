@@ -27,11 +27,11 @@ pub struct CompressedSettings {
 
 #[derive(AnchorDeserialize, AnchorSerialize, PartialEq, Debug, Clone)]
 pub struct CompressedSettingsData {
-    pub threshold: u8,
-    pub bump: u8,
     pub index: u128,
-    pub multi_wallet_bump: u8,
     pub members: Vec<Member>,
+    pub threshold: u8,
+    pub multi_wallet_bump: u8,
+    pub bump: u8,
     pub settings_address_tree_index: u8,
     pub latest_slot_number: u64,
 }
@@ -226,13 +226,6 @@ impl MultisigSettings for CompressedSettings {
             }
             let to_delete: HashSet<_> = HashSet::from_iter(members);
             data.members.retain(|m| !to_delete.contains(&m.pubkey));
-        }
-        Ok(())
-    }
-
-    fn set_members(&mut self, members: Vec<Member>) -> Result<()> {
-        if let Some(data) = &mut self.data {
-            data.members = members;
         }
         Ok(())
     }

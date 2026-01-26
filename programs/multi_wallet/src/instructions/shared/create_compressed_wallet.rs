@@ -1,10 +1,10 @@
 use crate::{
     id,
-    state::{SettingsIndexWithAddress, UserReadOnlyArgs, WhitelistedAddressTree},
+    state::{SettingsIndexWithAddress, UserReadOnlyOrMutateArgs, WhitelistedAddressTree},
     utils::{SEED_GLOBAL_COUNTER, SEED_WHITELISTED_ADDRESS_TREE},
     AddMemberArgs, CompressedSettings, CompressedSettingsData, GlobalCounter, MemberKey,
-    MultisigError, Ops, Permission, Permissions, ProofArgs, SettingsCreationArgs, User,
-    LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
+    MultisigError, Permission, Permissions, ProofArgs, SettingsCreationArgs, User,
+    UserWalletOperation, LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::prelude::*;
 use light_sdk::{
@@ -40,7 +40,7 @@ impl<'info> CreateCompressedWallet<'info> {
         ctx: Context<'_, '_, 'info, 'info, Self>,
         compressed_proof_args: ProofArgs,
         settings_creation: SettingsCreationArgs,
-        user_readonly_args: UserReadOnlyArgs,
+        user_args: UserReadOnlyOrMutateArgs,
         settings_index: u128,
     ) -> Result<()> {
         let global_counter = &mut ctx.accounts.global_counter.load_mut()?;
@@ -91,20 +91,23 @@ impl<'info> CreateCompressedWallet<'info> {
                 Some(0),
             )?;
 
-        let delegate_ops = settings_account.add_members(vec![AddMemberArgs {
+        let wallet_operations = settings_account.add_members(vec![AddMemberArgs {
             member_key: MemberKey::convert_ed25519(&ctx.accounts.initial_member.key())?,
             permissions: Permissions::from_permissions(vec![
                 Permission::InitiateTransaction,
                 Permission::VoteTransaction,
                 Permission::ExecuteTransaction,
             ]),
-            user_readonly_args,
+            user_args,
         }])?;
 
         settings_account.invariant()?;
 
-        let user_account_info = User::handle_user_delegates(
-            delegate_ops.into_iter().map(Ops::Add).collect(),
+        let account_infos = User::process_user_wallet_operations(
+            wallet_operations
+                .into_iter()
+                .map(UserWalletOperation::Add)
+                .collect(),
             SettingsIndexWithAddress {
                 index: settings_index,
                 settings_address_tree_index,
@@ -119,8 +122,9 @@ impl<'info> CreateCompressedWallet<'info> {
         .with_light_account(settings_account)?
         .with_new_addresses(&[settings_new_address]);
 
-        for account_info in user_account_info {
-            cpi = cpi.with_light_account(account_info)?;
+        for user_account in account_infos {
+            user_account.invariant()?;
+            cpi = cpi.with_light_account(user_account)?;
         }
 
         cpi.invoke(light_cpi_accounts)?;

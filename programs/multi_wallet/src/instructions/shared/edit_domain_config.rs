@@ -79,16 +79,16 @@ impl<'info> EditDomainConfig<'info> {
             let user_address_tree_index =
                 whitelisted_address_trees.extract_address_tree_index(&address_tree)?;
 
-            let user = User {
+            let user: User = User {
                 member: MemberKey::convert_ed25519(&new_authority.key())?,
                 role: UserRole::Administrator,
-                delegated_to: None,
+                wallets: vec![],
+                credential_id: None,
+                transports: None,
                 domain_config: Some(ctx.accounts.domain_config.key()),
                 transaction_manager_url: None,
                 user_address_tree_index,
             };
-
-            user.invariant()?;
 
             let (account_info, new_address_params) = User::create_user_account(
                 args.authority_creation_args,
@@ -96,6 +96,8 @@ impl<'info> EditDomainConfig<'info> {
                 user,
                 Some(0),
             )?;
+
+            account_info.invariant()?;
 
             LightSystemProgramCpi::new_cpi(
                 LIGHT_CPI_SIGNER,

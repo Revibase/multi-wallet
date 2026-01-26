@@ -1,10 +1,12 @@
 import {
+  bufferToBase64URLString,
   createDomainUserAccounts,
   createUserAccounts,
   editUserDelegate,
   getSolanaRpc,
   nativeTransferIntent,
   Secp256r1Key,
+  Transports,
   UserRole,
 } from "@revibase/core";
 import { expect } from "chai";
@@ -66,7 +68,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
         await sendTransaction(
           [...nativeTransfer],
           ctx.payer,
-          ctx.addressLookUpTable
+          ctx.addressLookUpTable,
         );
 
         const data = await getSolanaRpc()
@@ -76,9 +78,9 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
         const expectedBalance = TEST_AMOUNT_MEDIUM - TEST_AMOUNT_SMALL;
         expect(
           Number(data.value?.lamports),
-          "Wallet vault should have correct SOL balance after transfer"
+          "Wallet vault should have correct SOL balance after transfer",
         ).to.equal(expectedBalance);
-      }
+      },
     );
   });
 
@@ -97,7 +99,9 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
       await fundMultiWalletVault(ctx, BigInt(TEST_AMOUNT_MEDIUM));
 
       const secp256r1Keys = generateSecp256r1KeyPair();
-
+      const credentialId = bufferToBase64URLString(
+        crypto.getRandomValues(new Uint8Array(64)),
+      );
       // Create Secp256r1Key and add member to an existing wallet owned by the authority together with a transaction manager
       const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey);
       const createDomainUserAccountIx = await createDomainUserAccounts({
@@ -108,13 +112,15 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
           member: secp256r1Key,
           role: UserRole.Member,
           index: ctx.index,
+          credentialId,
+          transports: [Transports.Internal, Transports.Hybrid],
         },
       });
 
       await sendTransaction(
         [createDomainUserAccountIx],
         ctx.payer,
-        ctx.addressLookUpTable
+        ctx.addressLookUpTable,
       );
 
       const signedSigner = await mockAuthenticationResponse(
@@ -129,7 +135,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
         },
         secp256r1Keys.privateKey,
         secp256r1Keys.publicKey,
-        ctx
+        ctx,
       );
 
       const nativeTransfer = await nativeTransferIntent({
@@ -150,7 +156,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
       const expectedBalance = TEST_AMOUNT_MEDIUM - TEST_AMOUNT_SMALL;
       expect(
         Number(data.value?.lamports),
-        "Wallet vault should have correct balance after first transfer"
+        "Wallet vault should have correct balance after first transfer",
       ).to.equal(expectedBalance);
 
       // Attempt to submit the same intent again - should fail
@@ -168,7 +174,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
         await sendTransaction(
           duplicateTransfer,
           ctx.payer,
-          ctx.addressLookUpTable
+          ctx.addressLookUpTable,
         );
       } catch (error) {
         duplicateIntentFailed = true;
@@ -176,7 +182,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
 
       expect(
         duplicateIntentFailed,
-        "Submitting the same intent twice should fail"
+        "Submitting the same intent twice should fail",
       ).to.be.true;
     });
   });
@@ -199,7 +205,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
 
         // Create transaction manager
         const transactionManager = await createKeyPairSignerFromPrivateKeyBytes(
-          crypto.getRandomValues(new Uint8Array(32))
+          crypto.getRandomValues(new Uint8Array(32)),
         );
         const createUserAccountIx = await createUserAccounts({
           payer: ctx.payer,
@@ -215,11 +221,13 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
         await sendTransaction(
           [createUserAccountIx],
           ctx.payer,
-          ctx.addressLookUpTable
+          ctx.addressLookUpTable,
         );
 
         const secp256r1Keys = generateSecp256r1KeyPair();
-
+        const credentialId = bufferToBase64URLString(
+          crypto.getRandomValues(new Uint8Array(64)),
+        );
         // Create Secp256r1Key and add member to an existing wallet owned by the authority together with a transaction manager
         const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey);
         const createDomainUserAccountIx = await createDomainUserAccounts({
@@ -233,13 +241,15 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
             transactionManager: {
               member: transactionManager.address,
             },
+            credentialId,
+            transports: [Transports.Internal, Transports.Hybrid],
           },
         });
 
         await sendTransaction(
           [createDomainUserAccountIx],
           ctx.payer,
-          ctx.addressLookUpTable
+          ctx.addressLookUpTable,
         );
 
         const signedSigner = await mockAuthenticationResponse(
@@ -254,7 +264,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
           },
           secp256r1Keys.privateKey,
           secp256r1Keys.publicKey,
-          ctx
+          ctx,
         );
 
         const nativeTransfer = await nativeTransferIntent({
@@ -269,7 +279,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
         await sendTransaction(
           [...nativeTransfer],
           ctx.payer,
-          ctx.addressLookUpTable
+          ctx.addressLookUpTable,
         );
 
         const data = await getSolanaRpc()
@@ -279,9 +289,9 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
         const expectedBalance = TEST_AMOUNT_MEDIUM - TEST_AMOUNT_SMALL;
         expect(
           Number(data.value?.lamports),
-          "Wallet vault should have correct SOL balance after Secp256r1 transfer"
+          "Wallet vault should have correct SOL balance after Secp256r1 transfer",
         ).to.equal(expectedBalance);
-      }
+      },
     );
   });
 }

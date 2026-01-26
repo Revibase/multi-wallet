@@ -19,33 +19,33 @@ import {
   getMemberKeyEncoder,
   getPermissionsDecoder,
   getPermissionsEncoder,
-  getUserReadOnlyArgsDecoder,
-  getUserReadOnlyArgsEncoder,
+  getUserReadOnlyOrMutateArgsDecoder,
+  getUserReadOnlyOrMutateArgsEncoder,
   type IPermissions,
   type MemberKey,
   type MemberKeyArgs,
   type PermissionsArgs,
-  type UserReadOnlyArgs,
-  type UserReadOnlyArgsArgs,
+  type UserReadOnlyOrMutateArgs,
+  type UserReadOnlyOrMutateArgsArgs,
 } from ".";
 
 export type AddMemberArgs = {
   memberKey: MemberKey;
   permissions: IPermissions;
-  userReadonlyArgs: UserReadOnlyArgs;
+  userArgs: UserReadOnlyOrMutateArgs;
 };
 
 export type AddMemberArgsArgs = {
   memberKey: MemberKeyArgs;
   permissions: PermissionsArgs;
-  userReadonlyArgs: UserReadOnlyArgsArgs;
+  userArgs: UserReadOnlyOrMutateArgsArgs;
 };
 
 export function getAddMemberArgsEncoder(): Encoder<AddMemberArgsArgs> {
   return getStructEncoder([
     ["memberKey", getMemberKeyEncoder()],
     ["permissions", getPermissionsEncoder()],
-    ["userReadonlyArgs", getUserReadOnlyArgsEncoder()],
+    ["userArgs", getUserReadOnlyOrMutateArgsEncoder()],
   ]);
 }
 
@@ -53,7 +53,7 @@ export function getAddMemberArgsDecoder(): Decoder<AddMemberArgs> {
   return getStructDecoder([
     ["memberKey", getMemberKeyDecoder()],
     ["permissions", getPermissionsDecoder()],
-    ["userReadonlyArgs", getUserReadOnlyArgsDecoder()],
+    ["userArgs", getUserReadOnlyOrMutateArgsDecoder()],
   ]);
 }
 

@@ -66,6 +66,9 @@ pub enum MultisigError {
     #[msg("User with Administrator role requires a valid domain config, be a ed25519 Signer and have no delegated wallet.")]
     InvalidAdministratorConfig,
 
+    #[msg("Only one administrator is allowed per wallet.")]
+    OnlyOneAdministratorAllowed,
+
     #[msg("No members provided. A multisig wallet must contain at least one member.")]
     EmptyMembers,
 
@@ -160,6 +163,12 @@ pub enum MultisigError {
     #[msg("The specified slot number is not recent enough. Slot must be within the recent slot history window.")]
     InvalidSlotNumber,
 
+    #[msg("Missing credential id.")]
+    CredentialIdIsMissing,
+
+    #[msg("Missing transports.")]
+    TransportsIsMissing,
+
     #[msg(
         "The domain configuration account is disabled. Please contact support or try again later."
     )]
@@ -246,6 +255,9 @@ pub enum MultisigError {
 
     #[msg("Invalid user configuration. Transaction manager URL must be empty for non-transaction-manager users.")]
     InvalidUserTransactionManagerConfig,
+
+    #[msg("Invalid user configuration. Credential ID and transports must be none for ed25519 members.")]
+    InvalidUserEd25519Config,
 
     #[msg("Missing destination token account. Required for token transfer operations.")]
     MissingDestinationTokenAccount,

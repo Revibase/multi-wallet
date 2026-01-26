@@ -55,6 +55,10 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
             ..
         } = self;
 
+        require!(
+            Clock::get()?.unix_timestamp as u64 <= transaction_buffer.valid_till,
+            MultisigError::TransactionHasExpired
+        );
         transaction_buffer.validate_hash()?;
         transaction_buffer.validate_size()?;
 
@@ -76,14 +80,14 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
         let settings_data = settings_account
             .data
             .as_ref()
-            .ok_or(MultisigError::InvalidAccount)?;
+            .ok_or(MultisigError::MissingSettingsData)?;
 
         let settings_key =
             Settings::get_settings_key_from_index(settings_data.index, settings_data.bump)?;
 
         require!(
             settings_key.eq(&transaction_buffer.multi_wallet_settings),
-            MultisigError::InvalidAccount
+            MultisigError::SettingsKeyMismatch
         );
         let members = settings_account.get_members()?;
         if transaction_buffer.preauthorize_execution {
@@ -111,7 +115,7 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
         let member = members
             .iter()
             .find(|x| x.pubkey.eq(&signer))
-            .ok_or(MultisigError::MissingAccount)?;
+            .ok_or(MultisigError::MemberNotFound)?;
 
         require!(
             member.permissions.has(Permission::ExecuteTransaction),
@@ -138,7 +142,7 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
 
             let instructions_sysvar = instructions_sysvar
                 .as_ref()
-                .ok_or(MultisigError::MissingAccount)?;
+                .ok_or(MultisigError::MissingInstructionsSysvar)?;
 
             secp256r1_verify_data.verify_webauthn(
                 slot_hash_sysvar,
@@ -177,6 +181,7 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
+
         if !transaction_buffer.preauthorize_execution {
             let signer = MemberKey::get_signer(
                 &ctx.accounts.executor,

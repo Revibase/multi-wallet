@@ -44,7 +44,7 @@ impl<'info> TransactionExecuteCompressed<'info> {
         let transaction_buffer = &ctx.accounts.transaction_buffer;
         require!(
             settings_key.eq(&transaction_buffer.multi_wallet_settings),
-            MultisigError::InvalidAccount
+            MultisigError::SettingsKeyMismatch
         );
         let vault_transaction_message =
             VaultTransactionMessage::deserialize(&mut transaction_buffer.buffer.as_slice())?;

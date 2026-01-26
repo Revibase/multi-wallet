@@ -10,6 +10,7 @@ import {
   transferInterface,
 } from "@lightprotocol/compressed-token/unified";
 import {
+  bufferToBase64URLString,
   createDomainUserAccounts,
   createUserAccounts,
   editUserDelegate,
@@ -17,6 +18,7 @@ import {
   getSolanaRpc,
   Secp256r1Key,
   tokenTransferIntent,
+  Transports,
   UserRole,
 } from "@revibase/core";
 import { PublicKey } from "@solana/web3.js";
@@ -194,7 +196,9 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
         );
 
         const secp256r1Keys = generateSecp256r1KeyPair();
-
+        const credentialId = bufferToBase64URLString(
+          crypto.getRandomValues(new Uint8Array(64)),
+        );
         // Create Secp256r1Key and add member to an existing wallet owned by the authority together with a transaction manager
         const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey);
         const createDomainUserAccountIx = await createDomainUserAccounts({
@@ -208,6 +212,8 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
             transactionManager: {
               member: transactionManager.address,
             },
+            credentialId,
+            transports: [Transports.Internal, Transports.Hybrid],
           },
         });
 

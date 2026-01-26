@@ -255,10 +255,10 @@
           }
         },
         {
-          "name": "user_readonly_args",
+          "name": "user_args",
           "type": {
             "defined": {
-              "name": "UserReadOnlyArgs"
+              "name": "UserReadOnlyOrMutateArgs"
             }
           }
         },
@@ -2229,316 +2229,336 @@
     },
     {
       "code": 6020,
+      "name": "OnlyOneAdministratorAllowed",
+      "msg": "Only one administrator is allowed per wallet."
+    },
+    {
+      "code": 6021,
       "name": "EmptyMembers",
       "msg": "No members provided. A multisig wallet must contain at least one member."
     },
     {
-      "code": 6021,
+      "code": 6022,
       "name": "TooManyMembers",
       "msg": "Too many members: a maximum of 4 members are supported."
     },
     {
-      "code": 6022,
+      "code": 6023,
       "name": "InvalidThreshold",
       "msg": "Invalid threshold: must be at least 1 and cannot exceed the number of voting-eligible members."
     },
     {
-      "code": 6023,
+      "code": 6024,
       "name": "InvalidTransactionMessage",
       "msg": "Malformed transaction message: structure or formatting does not match the expected layout."
     },
     {
-      "code": 6024,
+      "code": 6025,
       "name": "InvalidNumberOfAccounts",
       "msg": "Unexpected number of accounts provided for this instruction."
     },
     {
-      "code": 6025,
+      "code": 6026,
       "name": "InvalidAccount",
       "msg": "One or more provided accounts failed validation. Verify that all required accounts are included and correct."
     },
     {
-      "code": 6026,
+      "code": 6027,
       "name": "InvalidUserRole",
       "msg": "One or more provided user accounts failed validation. Verify that only users with appropriate roles are allowed to perform this action."
     },
     {
-      "code": 6027,
+      "code": 6028,
       "name": "InvalidArguments",
       "msg": "Invalid or missing instruction arguments. Ensure all required arguments are correctly provided."
     },
     {
-      "code": 6028,
+      "code": 6029,
       "name": "MissingAccount",
       "msg": "A required account is missing from the instruction context."
     },
     {
-      "code": 6029,
+      "code": 6030,
       "name": "MissingMutationUserArgs",
       "msg": "User mutation arguments are required when performing add or remove delegate operations."
     },
     {
-      "code": 6030,
+      "code": 6031,
       "name": "AlreadyDelegated",
       "msg": "This member is already delegated to another wallet."
     },
     {
-      "code": 6031,
+      "code": 6032,
       "name": "InsufficientSignerWithExecutePermission",
       "msg": "At least one signer with execute permission is required to proceed."
     },
     {
-      "code": 6032,
+      "code": 6033,
       "name": "InsufficientSignerWithInitiatePermission",
       "msg": "At least one signer with initiate permission is required to perform this action."
     },
     {
-      "code": 6033,
+      "code": 6034,
       "name": "InsufficientSignersWithVotePermission",
       "msg": "Not enough members with vote permission to meet the approval threshold."
     },
     {
-      "code": 6034,
+      "code": 6035,
       "name": "InvalidNonDelegatedSigners",
       "msg": "Only delegated members are allowed for this transaction."
     },
     {
-      "code": 6035,
+      "code": 6036,
       "name": "UnexpectedSigner",
       "msg": "Member is not part of the expected signers for this transaction."
     },
     {
-      "code": 6036,
+      "code": 6037,
       "name": "NoSignerFound",
       "msg": "No valid signer found in this transaction."
     },
     {
-      "code": 6037,
+      "code": 6038,
       "name": "UnauthorisedToCloseTransactionBuffer",
       "msg": "Only the transaction creator or rent payer may close this transaction buffer."
     },
     {
-      "code": 6038,
+      "code": 6039,
       "name": "InvalidBuffer",
       "msg": "Buffer validation failed: contents do not match the expected hash (possible tampering detected)."
     },
     {
-      "code": 6039,
+      "code": 6040,
       "name": "FinalBufferHashMismatch",
       "msg": "Final buffer hash mismatch: the serialized data may be corrupted or altered."
     },
     {
-      "code": 6040,
+      "code": 6041,
       "name": "FinalBufferSizeExceeded",
       "msg": "The serialized transaction buffer exceeds the maximum size of 10,128 bytes."
     },
     {
-      "code": 6041,
+      "code": 6042,
       "name": "FinalBufferSizeMismatch",
       "msg": "Declared buffer size does not match the actual serialized size."
     },
     {
-      "code": 6042,
+      "code": 6043,
       "name": "TransactionHasExpired",
       "msg": "This transaction has expired. It must be executed within 3 minutes of approval."
     },
     {
-      "code": 6043,
+      "code": 6044,
       "name": "TransactionNotApproved",
       "msg": "This transaction has not yet reached the required approval threshold."
     },
     {
-      "code": 6044,
+      "code": 6045,
       "name": "ProtectedAccount",
       "msg": "Writable CPI calls to protected accounts are not permitted."
     },
     {
-      "code": 6045,
+      "code": 6046,
       "name": "MaxLengthExceeded",
       "msg": "An input string exceeds the maximum allowed character length."
     },
     {
-      "code": 6046,
+      "code": 6047,
       "name": "MissingSysvarSlotHistory",
       "msg": "Missing required sysvar: Slot History must be included as an account in this instruction."
     },
     {
-      "code": 6047,
+      "code": 6048,
       "name": "InvalidSysvarDataFormat",
       "msg": "Failed to parse the Slot History sysvar: data format is invalid or corrupted."
     },
     {
-      "code": 6048,
+      "code": 6049,
       "name": "SlotNumberNotFound",
       "msg": "The specified slot number was not found in the provided slot history."
     },
     {
-      "code": 6049,
+      "code": 6050,
       "name": "InvalidSlotNumber",
       "msg": "The specified slot number is not recent enough. Slot must be within the recent slot history window."
     },
     {
-      "code": 6050,
+      "code": 6051,
+      "name": "CredentialIdIsMissing",
+      "msg": "Missing credential id."
+    },
+    {
+      "code": 6052,
+      "name": "TransportsIsMissing",
+      "msg": "Missing transports."
+    },
+    {
+      "code": 6053,
       "name": "DomainConfigIsDisabled",
       "msg": "The domain configuration account is disabled. Please contact support or try again later."
     },
     {
-      "code": 6051,
+      "code": 6054,
       "name": "DomainConfigIsMissing",
       "msg": "Missing domain configuration account."
     },
     {
-      "code": 6052,
+      "code": 6055,
       "name": "MemberDoesNotBelongToDomainConfig",
       "msg": "This member is not registered under the provided domain configuration."
     },
     {
-      "code": 6053,
+      "code": 6056,
       "name": "OriginIndexOutOfBounds",
       "msg": "The given origin index is not in the whitelisted origins."
     },
     {
-      "code": 6054,
+      "code": 6057,
       "name": "InvalidAddressTree",
       "msg": "Address Tree supplied is not part of the whitelisted address trees."
     },
     {
-      "code": 6055,
+      "code": 6058,
       "name": "MissingSettingsData",
       "msg": "Compressed settings data is missing. The settings account must be initialized with data."
     },
     {
-      "code": 6056,
+      "code": 6059,
       "name": "HashComputationFailed",
       "msg": "Failed to compute hash. This may indicate a system error."
     },
     {
-      "code": 6057,
+      "code": 6060,
       "name": "EmptySlotNumbers",
       "msg": "Slot numbers list is empty. At least one slot number is required for validation."
     },
     {
-      "code": 6058,
+      "code": 6061,
       "name": "InvalidMemberKeyFormat",
       "msg": "Member key conversion failed. The provided key format is invalid."
     },
     {
-      "code": 6059,
+      "code": 6062,
       "name": "MissingCompressedProofArgs",
       "msg": "Compressed proof arguments are missing. Required for compressed account operations."
     },
     {
-      "code": 6060,
+      "code": 6063,
       "name": "MissingLightCpiAccounts",
       "msg": "Light CPI accounts are missing. Required for compressed account operations."
     },
     {
-      "code": 6061,
+      "code": 6064,
       "name": "MemberNotFound",
       "msg": "Member not found in settings. Cannot remove a member that does not exist."
     },
     {
-      "code": 6062,
+      "code": 6065,
       "name": "SettingsKeyMismatch",
       "msg": "Settings key mismatch. The provided settings key does not match the expected value."
     },
     {
-      "code": 6063,
+      "code": 6066,
       "name": "PayerMismatch",
       "msg": "Payer account mismatch. The provided payer does not match the transaction buffer payer."
     },
     {
-      "code": 6064,
+      "code": 6067,
       "name": "MissingCompressedTokenAccount",
       "msg": "Missing compressed token account. Required for token transfer operations."
     },
     {
-      "code": 6065,
+      "code": 6068,
       "name": "MissingSplInterfacePda",
       "msg": "Missing SPL interface PDA. Required for token transfer operations."
     },
     {
-      "code": 6066,
+      "code": 6069,
       "name": "MissingInstructionsSysvar",
       "msg": "Missing instructions sysvar account. Required for secp256r1 signature verification."
     },
     {
-      "code": 6067,
+      "code": 6070,
       "name": "LightCpiAccountError",
       "msg": "Light CPI account operation failed. The account may be invalid or uninitialized."
     },
     {
-      "code": 6068,
+      "code": 6071,
       "name": "InvalidTokenSourceType",
       "msg": "Invalid source type for token transfer. The source account type is not supported."
     },
     {
-      "code": 6069,
+      "code": 6072,
       "name": "SourceAccountMismatch",
       "msg": "Source account mismatch. The provided source account does not match the expected wallet vault address."
     },
     {
-      "code": 6070,
+      "code": 6073,
       "name": "MemberNotFoundInSettings",
       "msg": "Member not found in settings members list. Cannot update delegate flag for a non-existent member."
     },
     {
-      "code": 6071,
+      "code": 6074,
       "name": "InvalidAccountIndex",
       "msg": "Invalid account index in transaction message. The account index is out of bounds."
     },
     {
-      "code": 6072,
+      "code": 6075,
       "name": "DomainConfigKeyMismatch",
       "msg": "Domain configuration account key mismatch. The provided domain config does not match the expected value."
     },
     {
-      "code": 6073,
+      "code": 6076,
       "name": "MissingUserAccountAddress",
       "msg": "User account address is missing. Required for secp256r1 signature verification."
     },
     {
-      "code": 6074,
+      "code": 6077,
       "name": "ClockSysvarAccessFailed",
       "msg": "Clock sysvar access failed. This may indicate a system error."
     },
     {
-      "code": 6075,
+      "code": 6078,
       "name": "UnauthorizedAdminOnly",
       "msg": "Unauthorized: Only the admin account is allowed to perform this action."
     },
     {
-      "code": 6076,
+      "code": 6079,
       "name": "InvalidUserTransactionManagerConfig",
       "msg": "Invalid user configuration. Transaction manager URL must be empty for non-transaction-manager users."
     },
     {
-      "code": 6077,
+      "code": 6080,
+      "name": "InvalidUserEd25519Config",
+      "msg": "Invalid user configuration. Credential ID and transports must be none for ed25519 members."
+    },
+    {
+      "code": 6081,
       "name": "MissingDestinationTokenAccount",
       "msg": "Missing destination token account. Required for token transfer operations."
     },
     {
-      "code": 6078,
+      "code": 6082,
       "name": "MissingSourceTokenAccount",
       "msg": "Missing source token account. Required for token transfer operations."
     },
     {
-      "code": 6079,
+      "code": 6083,
       "name": "MissingSettingsAccountForDelegate",
       "msg": "Missing settings account. Required for delegate operations on compressed wallets."
     },
     {
-      "code": 6080,
+      "code": 6084,
       "name": "MissingNewAuthority",
       "msg": "Missing new authority account. Required for domain configuration updates."
     },
     {
-      "code": 6081,
+      "code": 6085,
       "name": "MissingWhitelistedAddressTrees",
       "msg": "Missing whitelisted address trees account. Required for domain configuration updates."
     },
     {
-      "code": 6082,
+      "code": 6086,
       "name": "DuplicateAddressTree",
       "msg": "Duplicate address tree detected. This address tree is already in the whitelist."
     }
@@ -2566,10 +2586,10 @@
             }
           },
           {
-            "name": "user_readonly_args",
+            "name": "user_args",
             "type": {
               "defined": {
-                "name": "UserReadOnlyArgs"
+                "name": "UserReadOnlyOrMutateArgs"
               }
             }
           }
@@ -2762,20 +2782,8 @@
         "kind": "struct",
         "fields": [
           {
-            "name": "threshold",
-            "type": "u8"
-          },
-          {
-            "name": "bump",
-            "type": "u8"
-          },
-          {
             "name": "index",
             "type": "u128"
-          },
-          {
-            "name": "multi_wallet_bump",
-            "type": "u8"
           },
           {
             "name": "members",
@@ -2786,6 +2794,18 @@
                 }
               }
             }
+          },
+          {
+            "name": "threshold",
+            "type": "u8"
+          },
+          {
+            "name": "multi_wallet_bump",
+            "type": "u8"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
           },
           {
             "name": "settings_address_tree_index",
@@ -3079,6 +3099,20 @@
             "type": {
               "defined": {
                 "name": "UserRole"
+              }
+            }
+          },
+          {
+            "name": "credential_id",
+            "type": "bytes"
+          },
+          {
+            "name": "transports",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "Transports"
+                }
               }
             }
           },
@@ -3477,16 +3511,16 @@
             }
           },
           {
+            "name": "role",
+            "type": "u8"
+          },
+          {
             "name": "permissions",
             "type": {
               "defined": {
                 "name": "Permissions"
               }
             }
-          },
-          {
-            "name": "role",
-            "type": "u8"
           },
           {
             "name": "user_address_tree_index",
@@ -3546,6 +3580,13 @@
     },
     {
       "name": "PackedAddressTreeInfo",
+      "docs": [
+        "Packed address tree info for instruction data.",
+        "Contains indices to address tree accounts and root index."
+      ],
+      "repr": {
+        "kind": "c"
+      },
       "type": {
         "kind": "struct",
         "fields": [
@@ -3896,6 +3937,26 @@
           {
             "name": "settings_address_tree_index",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SettingsIndexWithAddressAndDelegateInfo",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "index",
+            "type": "u128"
+          },
+          {
+            "name": "settings_address_tree_index",
+            "type": "u8"
+          },
+          {
+            "name": "is_delegate",
+            "type": "bool"
           }
         ]
       }
@@ -4299,10 +4360,45 @@
       }
     },
     {
+      "name": "Transports",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Ble"
+          },
+          {
+            "name": "Cable"
+          },
+          {
+            "name": "Hybrid"
+          },
+          {
+            "name": "Internal"
+          },
+          {
+            "name": "Nfc"
+          },
+          {
+            "name": "SmartCard"
+          },
+          {
+            "name": "Usb"
+          }
+        ]
+      }
+    },
+    {
       "name": "User",
       "type": {
         "kind": "struct",
         "fields": [
+          {
+            "name": "domain_config",
+            "type": {
+              "option": "pubkey"
+            }
+          },
           {
             "name": "member",
             "type": {
@@ -4312,9 +4408,31 @@
             }
           },
           {
-            "name": "domain_config",
+            "name": "credential_id",
             "type": {
-              "option": "pubkey"
+              "option": "bytes"
+            }
+          },
+          {
+            "name": "transports",
+            "type": {
+              "option": {
+                "vec": {
+                  "defined": {
+                    "name": "Transports"
+                  }
+                }
+              }
+            }
+          },
+          {
+            "name": "wallets",
+            "type": {
+              "vec": {
+                "defined": {
+                  "name": "SettingsIndexWithAddressAndDelegateInfo"
+                }
+              }
             }
           },
           {
@@ -4322,16 +4440,6 @@
             "type": {
               "defined": {
                 "name": "UserRole"
-              }
-            }
-          },
-          {
-            "name": "delegated_to",
-            "type": {
-              "option": {
-                "defined": {
-                  "name": "SettingsIndexWithAddress"
-                }
               }
             }
           },
@@ -4450,16 +4558,16 @@
         "kind": "enum",
         "variants": [
           {
-            "name": "Member"
+            "name": "TransactionManager"
+          },
+          {
+            "name": "Administrator"
           },
           {
             "name": "PermanentMember"
           },
           {
-            "name": "TransactionManager"
-          },
-          {
-            "name": "Administrator"
+            "name": "Member"
           }
         ]
       }

@@ -96,6 +96,12 @@ impl DomainConfig {
                 return err!(MultisigError::MaxLengthExceeded);
             }
 
+            // Validate string length is reasonable (prevent excessive memory allocation)
+            require!(
+                str_len <= MAX_ORIGINS_LEN,
+                MultisigError::MaxLengthExceeded
+            );
+            
             let str_bytes = &self.origins[cursor..cursor + str_len];
             match from_utf8(str_bytes) {
                 Ok(s) => origins.push(s.to_string()),

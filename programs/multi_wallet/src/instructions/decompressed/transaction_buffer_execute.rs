@@ -39,6 +39,10 @@ impl<'info> TransactionBufferExecute<'info> {
             ..
         } = self;
 
+        require!(
+            Clock::get()?.unix_timestamp as u64 <= transaction_buffer.valid_till,
+            MultisigError::TransactionHasExpired
+        );
         transaction_buffer.validate_hash()?;
         transaction_buffer.validate_size()?;
         let members = settings.get_members()?;
@@ -121,6 +125,7 @@ impl<'info> TransactionBufferExecute<'info> {
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
+
         if !transaction_buffer.preauthorize_execution {
             let signer = MemberKey::get_signer(
                 &ctx.accounts.executor,

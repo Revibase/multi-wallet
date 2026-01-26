@@ -1,4 +1,5 @@
 import {
+  bufferToBase64URLString,
   changeConfig,
   convertMemberKeyToString,
   createDomainUserAccounts,
@@ -6,6 +7,7 @@ import {
   fetchUserAccountData,
   prepareChangeConfigArgs,
   Secp256r1Key,
+  Transports,
   UserRole,
 } from "@revibase/core";
 import { expect } from "chai";
@@ -33,16 +35,16 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       const userAccountData = await fetchUserAccountData(ctx.payer.address);
 
       expect(
-        userAccountData.delegatedTo.__option,
-        "New member should not be a delegate initially"
-      ).to.equal("None");
+        userAccountData.wallets.every((x) => !x.isDelegate),
+        "New member should not be a delegate initially",
+      ).to.equal(true);
       expect(
         accountData.members.length,
-        "Wallet should have exactly two members after adding payer"
+        "Wallet should have exactly two members after adding payer",
       ).to.equal(2);
       expect(
         convertMemberKeyToString(accountData.members[1].pubkey),
-        "Second member should be the payer address"
+        "Second member should be the payer address",
       ).to.equal(ctx.payer.address.toString());
     });
   });
@@ -82,9 +84,9 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       // Verify permissions were updated
       const userAccountData = await fetchUserAccountData(ctx.payer.address);
       expect(
-        userAccountData.delegatedTo.__option,
-        "Payer should not be a delegate after permission edit"
-      ).to.equal("None");
+        userAccountData.wallets.every((x) => !x.isDelegate),
+        "Payer should not be a delegate after permission edit",
+      ).to.equal(true);
     });
   });
 
@@ -124,20 +126,20 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       const userAccountData = await fetchUserAccountData(ctx.payer.address);
 
       expect(
-        userAccountData.delegatedTo.__option,
-        "Removed member should not be a delegate"
-      ).to.equal("None");
+        userAccountData.wallets.every((x) => !x.isDelegate),
+        "Removed member should not be a delegate",
+      ).to.equal(true);
       expect(
         accountData.members.length,
-        "Wallet should have exactly one member after removal"
+        "Wallet should have exactly one member after removal",
       ).to.equal(1);
       expect(
         convertMemberKeyToString(accountData.members[0].pubkey),
-        "Remaining member should be the original wallet"
+        "Remaining member should be the original wallet",
       ).to.equal(ctx.wallet.address.toString());
       expect(
         accountData.threshold,
-        "Threshold should be updated to 1 after member removal"
+        "Threshold should be updated to 1 after member removal",
       ).to.equal(1);
     });
   });
@@ -155,7 +157,9 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       ]);
 
       const secp256r1Keys = generateSecp256r1KeyPair();
-
+      const credentialId = bufferToBase64URLString(
+        crypto.getRandomValues(new Uint8Array(64)),
+      );
       // Create Secp256r1Key
       const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey);
       const createDomainUserAccountDataIx = await createDomainUserAccounts({
@@ -165,13 +169,15 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
         createUserArgs: {
           member: secp256r1Key,
           role: UserRole.Member,
+          credentialId,
+          transports: [Transports.Internal, Transports.Hybrid],
         },
       });
 
       await sendTransaction(
         [createDomainUserAccountDataIx],
         ctx.payer,
-        ctx.addressLookUpTable
+        ctx.addressLookUpTable,
       );
 
       const changeConfigArgs = await prepareChangeConfigArgs({
@@ -202,16 +208,16 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       const userAccountData = await fetchUserAccountData(secp256r1Key);
 
       expect(
-        userAccountData.delegatedTo.__option,
-        "Secp256r1 member should not be a delegate initially"
-      ).to.equal("None");
+        userAccountData.wallets.every((x) => !x.isDelegate),
+        "Secp256r1 member should not be a delegate initially",
+      ).to.equal(true);
       expect(
         accountData.members.length,
-        "Wallet should have exactly two members after adding Secp256r1 member"
+        "Wallet should have exactly two members after adding Secp256r1 member",
       ).to.equal(2);
       expect(
         convertMemberKeyToString(accountData.members[1].pubkey),
-        "Second member should be the Secp256r1 key"
+        "Second member should be the Secp256r1 key",
       ).to.equal(secp256r1Key.toString());
     });
   });

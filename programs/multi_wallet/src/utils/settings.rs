@@ -1,6 +1,8 @@
 use crate::{
-    utils::UserRole, AddMemberArgs, EditMemberArgs, KeyType, Member, MemberKey, MultisigError,
-    Permission, PermissionCounts, RemoveMemberArgs,
+    state::UserReadOnlyOrMutateArgs,
+    utils::{bool_to_u8_delegate, UserRole},
+    AddMemberArgs, EditMemberArgs, KeyType, Member, MemberKey, MultisigError, Permission,
+    PermissionCounts, RemoveMemberArgs,
 };
 use anchor_lang::prelude::*;
 use std::collections::{HashMap, HashSet};
@@ -9,7 +11,6 @@ pub const MAXIMUM_AMOUNT_OF_MEMBERS_FOR_COMPRESSED_SETTINGS: usize = 4;
 
 pub trait MultisigSettings {
     fn set_threshold(&mut self, value: u8) -> Result<()>;
-    fn set_members(&mut self, members: Vec<Member>) -> Result<()>;
     fn extend_members(&mut self, members: Vec<Member>) -> Result<()>;
     fn delete_members(&mut self, members: Vec<MemberKey>) -> Result<()>;
     fn set_latest_slot_number(&mut self, value: u64) -> Result<()>;
@@ -17,6 +18,11 @@ pub trait MultisigSettings {
     fn get_members(&self) -> Result<Vec<Member>>;
     fn get_latest_slot_number(&self) -> Result<u64>;
     fn is_compressed(&self) -> Result<bool>;
+
+    fn sort_members(&mut self) -> Result<()> {
+        self.get_members()?.sort_by_key(|m| m.role);
+        Ok(())
+    }
 
     fn latest_slot_number_check(
         &mut self,
@@ -52,14 +58,17 @@ pub trait MultisigSettings {
                     .map_err(|_| MultisigError::InvalidSysvarDataFormat)?,
             );
 
+            // Validate slot number ordering: max_slot_number must be <= first_slot
             let offset = first_slot
                 .checked_sub(*max_slot_number)
                 .ok_or(MultisigError::SlotNumberNotFound)? as usize;
 
+            // Validate offset is within bounds
             if offset >= num_slot_hashes as usize {
                 return err!(MultisigError::SlotNumberNotFound);
             }
 
+            // Validate slot numbers are in the future relative to latest_slot_number
             require!(
                 self.get_latest_slot_number()? < *min_slot_number,
                 MultisigError::InvalidSlotNumber
@@ -133,6 +142,7 @@ pub trait MultisigSettings {
                     );
                 }
                 UserRole::Administrator => {
+                    permission_counts.administrator += 1;
                     require!(
                         member.pubkey.get_type() == KeyType::Ed25519,
                         MultisigError::InvalidAdministratorConfig
@@ -157,6 +167,11 @@ pub trait MultisigSettings {
         );
 
         require!(
+            permission_counts.administrator <= 1,
+            MultisigError::OnlyOneAdministratorAllowed
+        );
+
+        require!(
             threshold as usize <= permission_counts.voters,
             MultisigError::InsufficientSignersWithVotePermission
         );
@@ -174,22 +189,36 @@ pub trait MultisigSettings {
         Ok(())
     }
 
+    fn set_members(&mut self, members: Vec<Member>) -> Result<()> {
+        let exisiting_members = self.get_members()?.iter().map(|f| f.pubkey).collect();
+        self.delete_members(exisiting_members)?;
+        self.extend_members(members)?;
+        self.sort_members()?;
+        Ok(())
+    }
+
     fn add_members<'a>(&mut self, new_members: Vec<AddMemberArgs>) -> Result<Vec<AddMemberArgs>> {
         let new_member_data = new_members
             .iter()
             .map(|member| {
-                let data = &member.user_readonly_args.data;
+                let data = match &member.user_args {
+                    UserReadOnlyOrMutateArgs::Read(user_read_only_args) => {
+                        &user_read_only_args.data
+                    }
+                    UserReadOnlyOrMutateArgs::Mutate(user_mut_args) => &user_mut_args.data,
+                };
                 Member {
                     pubkey: member.member_key,
                     permissions: member.permissions,
                     role: data.role.to_u8(),
                     user_address_tree_index: data.user_address_tree_index,
-                    is_delegate: false.into(),
+                    is_delegate: bool_to_u8_delegate(false),
                 }
             })
             .collect::<Vec<_>>();
 
         self.extend_members(new_member_data)?;
+        self.sort_members()?;
 
         Ok(new_members)
     }
@@ -201,6 +230,7 @@ pub trait MultisigSettings {
         let keys_to_delete: Vec<MemberKey> = member_pubkeys.iter().map(|f| f.member_key).collect();
 
         self.delete_members(keys_to_delete)?;
+        self.sort_members()?;
 
         Ok(member_pubkeys)
     }
@@ -228,6 +258,7 @@ pub trait MultisigSettings {
         }
 
         self.set_members(members)?;
+        self.sort_members()?;
 
         Ok(())
     }

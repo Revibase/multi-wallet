@@ -5,7 +5,8 @@ use crate::{
         SettingsMutArgs, User, UserMutArgs,
     },
     utils::{
-        ChallengeArgs, Member, MemberKey, Secp256r1VerifyArgs, TransactionActionType, UserRole,
+        bool_to_u8_delegate, ChallengeArgs, Member, MemberKey, Secp256r1VerifyArgs,
+        TransactionActionType, UserRole,
     },
     LIGHT_CPI_SIGNER,
 };
@@ -51,7 +52,7 @@ impl<'info> EditUserDelegate<'info> {
     ) -> Result<()> {
         for m in members.iter_mut() {
             if m.pubkey.eq(&user_key) && m.user_address_tree_index.eq(&user_address_tree_index) {
-                m.is_delegate = flag.into();
+                m.is_delegate = bool_to_u8_delegate(flag);
                 return Ok(());
             }
         }
@@ -182,7 +183,8 @@ impl<'info> EditUserDelegate<'info> {
         );
 
         let mut account: Option<Pubkey> = None;
-        if let Some(old_delegate) = &user_account.delegated_to {
+        let mut old_delegate_index: Option<SettingsIndexWithAddress> = None;
+        if let Some(old_delegate) = &user_account.wallets.iter().find(|f| f.is_delegate) {
             if let Some(old_settings) = &mut ctx.accounts.old_settings {
                 require!(
                     old_settings.index.eq(&old_delegate.index)
@@ -204,6 +206,10 @@ impl<'info> EditUserDelegate<'info> {
                     )?;
                 }
                 account = Some(old_settings.key());
+                old_delegate_index = Some(SettingsIndexWithAddress {
+                    index: old_settings.index,
+                    settings_address_tree_index: old_settings.settings_address_tree_index,
+                });
                 old_settings.invariant()?;
             } else if let Some(old_settings_mut_args) = old_settings_mut_args {
                 let mut settings_account = LightAccount::<CompressedSettings>::new_mut(
@@ -229,6 +235,10 @@ impl<'info> EditUserDelegate<'info> {
                     user_account.user_address_tree_index,
                     false,
                 )?;
+                old_delegate_index = Some(SettingsIndexWithAddress {
+                    index: settings_data.index,
+                    settings_address_tree_index: settings_data.settings_address_tree_index,
+                });
                 account = Some(Settings::get_settings_key_from_index(
                     settings_data.index,
                     settings_data.bump,
@@ -322,11 +332,15 @@ impl<'info> EditUserDelegate<'info> {
             &secp256r1_verify_args,
             &user_account,
             account.ok_or(MultisigError::InvalidArguments)?,
-            &user_account.delegated_to,
+            &old_delegate_index,
             &delegate_to,
         )?;
 
-        user_account.delegated_to = delegate_to;
+        user_account.wallets.iter_mut().for_each(|f| {
+            f.is_delegate = delegate_to.as_ref().map_or(false, |x| {
+                x.index == f.index && x.settings_address_tree_index == f.settings_address_tree_index
+            });
+        });
 
         user_account.invariant()?;
 

@@ -1,4 +1,5 @@
 import {
+  bufferToBase64URLString,
   changeConfig,
   createDomainUserAccounts,
   createUserAccounts,
@@ -9,6 +10,7 @@ import {
   prepareChangeConfigArgs,
   Secp256r1Key,
   serializeConfigActions,
+  Transports,
   UserRole,
 } from "@revibase/core";
 import { expect } from "chai";
@@ -60,7 +62,9 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         );
 
         const secp256r1Keys = generateSecp256r1KeyPair();
-
+        const credentialId = bufferToBase64URLString(
+          crypto.getRandomValues(new Uint8Array(64)),
+        );
         // Create Secp256r1Key
         const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey);
         const createDomainUserAccountDataIx = await createDomainUserAccounts({
@@ -74,6 +78,8 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
             transactionManager: {
               member: transactionManager.address,
             },
+            credentialId,
+            transports: [Transports.Internal, Transports.Hybrid],
           },
         });
 
@@ -87,9 +93,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         const accountData = await fetchSettingsAccountData(ctx.index);
         const userAccountData = await fetchUserAccountData(secp256r1Key);
         const settingsIndex =
-          userAccountData.delegatedTo.__option === "Some"
-            ? userAccountData.delegatedTo.value
-            : null;
+          userAccountData.wallets.find((x) => x.isDelegate) ?? null;
 
         expect(
           settingsIndex?.index,
@@ -148,7 +152,9 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         );
 
         const secp256r1Keys = generateSecp256r1KeyPair();
-
+        const credentialId = bufferToBase64URLString(
+          crypto.getRandomValues(new Uint8Array(64)),
+        );
         // Create Secp256r1Key
         const secp256r1Key = new Secp256r1Key(secp256r1Keys.publicKey);
         const createDomainUserAccountDataIx = await createDomainUserAccounts({
@@ -159,6 +165,8 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
             member: secp256r1Key,
             role: UserRole.Member,
             index: ctx.index,
+            credentialId,
+            transports: [Transports.Internal, Transports.Hybrid],
           },
         });
 
