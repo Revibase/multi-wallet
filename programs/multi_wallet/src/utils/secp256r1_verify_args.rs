@@ -214,63 +214,62 @@ impl Secp256r1VerifyArgs {
             .try_borrow_data()
             .map_err(|_| MultisigError::InvalidSysvarDataFormat)?;
 
-        // Validate minimum data size (8 bytes for num_slot_hashes + 8 bytes for first_slot)
-        require!(data.len() >= 16, MultisigError::InvalidSysvarDataFormat);
+        require!(data.len() >= 8, MultisigError::InvalidSysvarDataFormat);
 
         let num_slot_hashes = u64::from_le_bytes(
             data[..8]
                 .try_into()
                 .map_err(|_| MultisigError::InvalidSysvarDataFormat)?,
-        );
+        ) as usize;
 
-        let first_slot = u64::from_le_bytes(
-            data[8..16]
-                .try_into()
-                .map_err(|_| MultisigError::InvalidSysvarDataFormat)?,
-        );
-
-        let offset = first_slot
-            .checked_sub(self.slot_number)
-            .ok_or(MultisigError::SlotNumberNotFound)? as usize;
-
-        if offset >= num_slot_hashes as usize {
-            return err!(MultisigError::SlotNumberNotFound);
+        if num_slot_hashes == 0 {
+            return err!(MultisigError::InvalidSysvarDataFormat);
         }
 
-        // Each slot entry is 40 bytes (8 bytes slot + 32 bytes hash)
-        let pos = 8usize
-            .checked_add(
-                offset
-                    .checked_mul(40)
-                    .ok_or(MultisigError::InvalidSysvarDataFormat)?,
-            )
-            .ok_or(MultisigError::InvalidSysvarDataFormat)?;
+        // Binary search for the slot (entries are stored in descending order by slot)
+        // Each entry is 40 bytes (8 bytes slot + 32 bytes hash), starting at offset 8
+        let mut left = 0usize;
+        let mut right = num_slot_hashes;
 
-        // Validate bounds: need 8 bytes for slot + 32 bytes for hash
-        let required_size = pos
-            .checked_add(40)
-            .ok_or(MultisigError::InvalidSysvarDataFormat)?;
+        while left < right {
+            let mid = left + (right - left) / 2;
 
-        require!(
-            required_size <= data.len(),
-            MultisigError::InvalidSysvarDataFormat
-        );
+            let pos = 8usize
+                .checked_add(
+                    mid.checked_mul(40)
+                        .ok_or(MultisigError::InvalidSysvarDataFormat)?,
+                )
+                .ok_or(MultisigError::InvalidSysvarDataFormat)?;
 
-        let slot = u64::from_le_bytes(
-            data[pos..pos + 8]
-                .try_into()
-                .map_err(|_| MultisigError::InvalidSysvarDataFormat)?,
-        );
+            require!(
+                pos.checked_add(40)
+                    .ok_or(MultisigError::InvalidSysvarDataFormat)?
+                    <= data.len(),
+                MultisigError::InvalidSysvarDataFormat
+            );
 
-        if slot != self.slot_number {
-            return err!(MultisigError::SlotNumberNotFound);
+            let slot = u64::from_le_bytes(
+                data[pos..pos + 8]
+                    .try_into()
+                    .map_err(|_| MultisigError::InvalidSysvarDataFormat)?,
+            );
+
+            if slot == self.slot_number {
+                // Found the slot - extract the hash
+                let hash = &data[pos + 8..pos + 40];
+                return Ok(hash
+                    .try_into()
+                    .map_err(|_| MultisigError::InvalidSysvarDataFormat)?);
+            } else if slot > self.slot_number {
+                // Target slot is older (lower number), search right half
+                left = mid + 1;
+            } else {
+                // Target slot is newer (higher number), search left half
+                right = mid;
+            }
         }
 
-        let hash = &data[pos + 8..pos + 40];
-
-        Ok(hash
-            .try_into()
-            .map_err(|_| MultisigError::InvalidSysvarDataFormat)?)
+        err!(MultisigError::SlotNumberNotFound)
     }
 
     fn extract_webauthn_signed_message_from_instruction(
