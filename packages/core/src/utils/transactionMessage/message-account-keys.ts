@@ -16,10 +16,7 @@ export class MessageAccountKeys {
     this.staticAccountKeys = staticAccountKeys;
     this.accountKeysFromLookups = accountKeysFromLookups;
   }
-  /**
-   * Returns account key segments in order: static, lookup writable, lookup readonly
-   * @returns Array of key segments
-   */
+
   keySegments() {
     const keySegments = [this.staticAccountKeys];
     if (this.accountKeysFromLookups) {
@@ -29,11 +26,6 @@ export class MessageAccountKeys {
     return keySegments;
   }
 
-  /**
-   * Gets an account key by its index across all segments
-   * @param index - Account index
-   * @returns Account address or undefined if index is out of bounds
-   */
   get(index: number) {
     for (const keySegment of this.keySegments()) {
       if (index < keySegment.length) {
@@ -45,19 +37,11 @@ export class MessageAccountKeys {
     return;
   }
 
-  /** Total number of account keys across all segments */
   get length() {
     return this.keySegments().flat().length;
   }
 
-  /**
-   * Compiles instructions by replacing account addresses with indices
-   * @param instructions - Instructions to compile
-   * @returns Compiled instructions with account indices
-   * @throws {Error} If account index would overflow u8 or key is unknown
-   */
   compileInstructions(instructions: Instruction[]) {
-    // Validate: account indices must fit in u8 (0-255)
     const U8_MAX = 255;
     if (this.length > U8_MAX + 1) {
       throw new Error("Account index overflow encountered during compilation");

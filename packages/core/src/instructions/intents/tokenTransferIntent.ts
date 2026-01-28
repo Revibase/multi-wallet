@@ -20,6 +20,7 @@ import {
   type Address,
   type Instruction,
   type OptionOrNullable,
+  type ReadonlyUint8Array,
   type TransactionSigner,
 } from "gill";
 import {
@@ -172,14 +173,11 @@ export async function tokenTransferIntent({
   const cTokenBalance = sourceCtokenExist
     ? BigInt(
         parseTokenAmount(
-          new Uint8Array(
-            getBase64Encoder().encode(sourceCTokenAtaInfo.value!.data[0]),
-          ),
+          getBase64Encoder().encode(sourceCTokenAtaInfo.value!.data[0]),
         )?.amount ?? 0,
       )
     : BigInt(0);
 
-  // Determine destination accounts (mutually exclusive)
   const destinationSplTokenAccount = destinationSplExists
     ? destinationSplAta
     : undefined;
@@ -437,7 +435,6 @@ async function getCompressedTokenAccounts(
     return [];
   }
 
-  // Select accounts up to maxInputs or until we have enough balance
   let accumulatedAmount = BigInt(0);
   const selectedAccounts: ParsedTokenAccount[] = [];
 
@@ -486,7 +483,7 @@ async function getCompressedSettings(
   return settings;
 }
 
-function parseTokenAmount(data: Uint8Array<ArrayBuffer>): {
+function parseTokenAmount(data: ReadonlyUint8Array): {
   amount: number | bigint;
 } | null {
   if (!data || data.length === 0) return null;

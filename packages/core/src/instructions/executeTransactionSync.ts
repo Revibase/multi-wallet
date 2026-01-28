@@ -113,9 +113,6 @@ export async function executeTransactionSync({
   };
 }
 
-/**
- * Builds secp256r1 verification arguments from signers
- */
 async function buildSecp256r1VerificationArgs(
   secp256r1Signers: SignedSecp256r1Key[],
   secp256r1VerifyInput: Secp256r1VerifyInput,
@@ -151,9 +148,6 @@ async function buildSecp256r1VerificationArgs(
   return { secp256r1VerifyArgs };
 }
 
-/**
- * Builds transaction instructions based on configuration
- */
 function buildTransactionInstructions({
   secp256r1VerifyInput,
   transactionMessage,
@@ -181,7 +175,6 @@ function buildTransactionInstructions({
 }): Instruction[] {
   const instructions: Instruction[] = [];
 
-  // Add secp256r1 verification instruction if needed
   if (secp256r1VerifyInput.length > 0) {
     instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
   }
@@ -191,7 +184,6 @@ function buildTransactionInstructions({
     accountMetas,
   );
 
-  // Add transaction execution instruction
   if (compressed) {
     if (!payer || !settingsMutArgs) {
       throw new Error("Payer not found or proof args is missing.");
@@ -226,9 +218,6 @@ function buildTransactionInstructions({
   return instructions;
 }
 
-/**
- * Parses a transaction message into the format expected by instructions
- */
 function parseTransactionMessage(
   transactionMessage: CompiledTransactionMessage,
   accountMetas: AccountMeta[],

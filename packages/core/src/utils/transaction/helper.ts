@@ -1,7 +1,3 @@
-/**
- * Transaction manager utilities for handling multi-signature transactions
- */
-
 import {
   address,
   getBase58Decoder,
@@ -39,15 +35,6 @@ import {
 import { fetchUserAccountData } from "../compressed";
 import { retryFetch } from "../retry";
 
-/**
- * Retrieves transaction manager configuration for a signer
- * @param signer - The signer's public key as a string
- * @param settingsData - Compressed settings data
- * @returns Transaction manager configuration or empty object if not needed
- * @throws {ValidationError} If threshold > 1 (not supported)
- * @throws {NotFoundError} If signer is not found in members
- * @throws {PermissionError} If signer lacks required permissions
- */
 export function retrieveTransactionManager(
   signer: string,
   settingsData: CompressedSettingsData & {
@@ -82,12 +69,10 @@ export function retrieveTransactionManager(
     permissions,
     Permission.ExecuteTransaction,
   );
-  // If signer has all permissions, no transaction manager is needed
   if (hasInitiate && hasVote && hasExecute) {
     return {};
   }
 
-  // Require vote and execute permissions at minimum
   if (!hasVote || !hasExecute) {
     throw new PermissionError(
       "Signer lacks the required Vote/Execute permissions.",
@@ -99,7 +84,6 @@ export function retrieveTransactionManager(
     );
   }
 
-  // Find transaction manager member (required when signer doesn't have initiate permission)
   const transactionManager = settingsData.members.find(
     (m) => m.role === UserRole.TransactionManager,
   );
@@ -118,12 +102,6 @@ export function retrieveTransactionManager(
   };
 }
 
-/**
- * Gets a signed transaction manager signer
- * @param params - Parameters including auth responses, transaction manager address, etc.
- * @returns Transaction signer or null if no transaction manager is needed
- * @throws {NotFoundError} If transaction manager endpoint is missing
- */
 export async function getSignedTransactionManager({
   authResponses,
   transactionManagerAddress,
@@ -159,14 +137,6 @@ export async function getSignedTransactionManager({
   );
 }
 
-/**
- * Creates a transaction manager signer that signs transactions via HTTP
- * @param address - Transaction manager address
- * @param url - Transaction manager endpoint URL
- * @param authResponses - Optional authentication responses
- * @param transactionMessageBytes - Optional transaction message bytes
- * @returns Transaction signer
- */
 export function createTransactionManagerSigner(
   address: Address,
   url: string,
@@ -215,7 +185,6 @@ export function createTransactionManagerSigner(
         );
       }
 
-      // Map signatures to the expected format: { [address]: signature }
       return data.signatures.map((sig) => ({
         [address]: getBase58Encoder().encode(sig) as SignatureBytes,
       }));
@@ -223,11 +192,6 @@ export function createTransactionManagerSigner(
   };
 }
 
-/**
- * Converts a member key to its string representation
- * @param memberKey - Member key to convert
- * @returns Base58-encoded public key string
- */
 export function convertMemberKeyToString(memberKey: MemberKey): string {
   if (memberKey.keyType === KeyType.Ed25519) {
     return getBase58Decoder().decode(memberKey.key.subarray(1, 33));
@@ -236,11 +200,6 @@ export function convertMemberKeyToString(memberKey: MemberKey): string {
   }
 }
 
-/**
- * Serializes config actions to bytes
- * @param configActions - Array of config actions to serialize
- * @returns Serialized config actions as Uint8Array
- */
 export function serializeConfigActions(
   configActions: ConfigAction[],
 ): Uint8Array<ArrayBuffer> {
@@ -268,12 +227,6 @@ export function serializeConfigActions(
   return serializedConfigActions;
 }
 
-/**
- * Deserializes config actions from bytes
- * @param bytes - Serialized config actions
- * @returns Array of config actions
- * @throws {ValidationError} If there are trailing bytes
- */
 export function deserializeConfigActions(
   bytes: Uint8Array<ArrayBuffer>,
 ): ConfigAction[] {

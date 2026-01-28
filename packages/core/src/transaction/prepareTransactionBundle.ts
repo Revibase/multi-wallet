@@ -62,7 +62,6 @@ export async function prepareTransactionBundle({
   chunkSize = Math.ceil(transactionMessageBytes.length / 2),
   cachedAccounts,
 }: CreateTransactionBundleArgs): Promise<TransactionDetails[]> {
-  // --- Stage 1: Setup Addresses ---
   const settings = await getSettingsFromIndex(index);
 
   const bufferIndex = Math.floor(Math.random() * 255);
@@ -72,7 +71,6 @@ export async function prepareTransactionBundle({
     bufferIndex,
   );
 
-  // --- Stage 2: Split Transaction Message into chunks + hashing ---
   const chunks: Uint8Array<ArrayBuffer>[] = [];
   const chunksHash: Uint8Array<ArrayBuffer>[] = [];
   for (let i = 0; i < transactionMessageBytes.length; i += chunkSize) {
@@ -87,7 +85,6 @@ export async function prepareTransactionBundle({
     transactionMessageBytes as Uint8Array<ArrayBuffer>,
   );
 
-  // --- Stage 3: Derive readonly compressed proof args if necessary---
   const { settingsReadonlyArgs, settingsMutArgs, proof, packedAccounts } =
     await constructSettingsProofArgs(
       compressed,
@@ -111,7 +108,6 @@ export async function prepareTransactionBundle({
         }
       : null;
 
-  // --- Stage 4: Instruction groups ---
   const expectedSecp256r1Signers = await Promise.all(
     getDeduplicatedSigners([
       creator,
@@ -179,7 +175,6 @@ export async function prepareTransactionBundle({
       addressesByLookupTableAddress,
     });
 
-  // --- Stage 5: Assemble transactions ---
   const buildTx = (instructions: Instruction[]): TransactionDetails => ({
     payer,
     instructions,

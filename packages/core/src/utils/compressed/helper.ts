@@ -1,5 +1,4 @@
 import type { GetCompressedAccountsFilter } from "@lightprotocol/stateless.js";
-import { base64URLStringToBuffer } from "@simplewebauthn/browser";
 import { PublicKey } from "@solana/web3.js";
 import {
   getBase58Decoder,
@@ -9,6 +8,7 @@ import {
   type Base64EncodedBytes,
 } from "gill";
 import {
+  base64URLStringToBuffer,
   fetchMaybeSettings,
   getCompressedSettingsAddressFromIndex,
   getCompressedSettingsDecoder,
@@ -33,14 +33,6 @@ import {
   getCachedWhitelistedAddressTree,
 } from "./internal";
 
-/**
- * Fetches user account data, throwing if not found
- * @param member - Member address or Secp256r1Key
- * @param userAddressTreeIndex - Optional address tree index
- * @param cachedAccounts - Optional cache for account data
- * @returns User account data
- * @throws {NotFoundError} If user account is not found
- */
 export async function fetchUserAccountData(
   member: Address | Secp256r1Key,
   userAddressTreeIndex?: number,
@@ -57,13 +49,6 @@ export async function fetchUserAccountData(
   return result;
 }
 
-/**
- * Fetches user account data if it exists, returning null if not found
- * @param member - Member address or Secp256r1Key
- * @param userAddressTreeIndex - Optional address tree index
- * @param cachedAccounts - Optional cache for account data
- * @returns User account data or null if not found
- */
 export async function fetchMaybeUserAccountData(
   member: Address | Secp256r1Key,
   userAddressTreeIndex?: number,
@@ -77,12 +62,6 @@ export async function fetchMaybeUserAccountData(
   return getUserDecoder().decode(result.data.data);
 }
 
-/**
- * Fetches user account data by filtering compressed accounts
- * @param domainConfigAddress - Domain configuration address
- * @param filters - Filter criteria (member or credentialId)
- * @returns User account data or null if not found
- */
 export async function fetchUserAccountByFilters(
   domainConfigAddress: Address,
   {
@@ -117,9 +96,7 @@ export async function fetchUserAccountByFilters(
       memcmp: {
         offset: 72,
         encoding: "base58",
-        bytes: getBase58Decoder().decode(
-          new Uint8Array(base64URLStringToBuffer(credentialId)),
-        ),
+        bytes: getBase58Decoder().decode(base64URLStringToBuffer(credentialId)),
       },
     });
   } else {
@@ -135,14 +112,6 @@ export async function fetchUserAccountByFilters(
   return result.items.map((x) => getUserDecoder().decode(x.data?.data!))[0];
 }
 
-/**
- * Fetches settings account data, throwing if not found
- * @param index - Settings index
- * @param settingsAddressTreeIndex - Optional address tree index
- * @param cachedAccounts - Optional cache for account data
- * @returns Settings account data with compression flag
- * @throws {NotFoundError} If settings account is not found
- */
 export async function fetchSettingsAccountData(
   index: number | bigint,
   settingsAddressTreeIndex?: number,
@@ -159,13 +128,6 @@ export async function fetchSettingsAccountData(
   return settingsData;
 }
 
-/**
- * Fetches settings account data, trying compressed first then falling back to regular accounts
- * @param index - Settings index
- * @param settingsAddressTreeIndex - Optional address tree index
- * @param cachedAccounts - Optional cache for account data
- * @returns Settings account data with compression flag, or null if not found
- */
 export async function fetchMaybeSettingsAccountData(
   index: number | bigint,
   settingsAddressTreeIndex?: number,
@@ -186,7 +148,6 @@ export async function fetchMaybeSettingsAccountData(
     }
     return { ...data.data.value, isCompressed: true };
   } catch {
-    // Fallback to regular (non-compressed) settings account
     const result = await fetchMaybeSettings(
       getSolanaRpc(),
       await getSettingsFromIndex(index),
@@ -201,15 +162,6 @@ export async function fetchMaybeSettingsAccountData(
   }
 }
 
-/**
- * Fetches all settings accounts associated with a member
- * For administrators and transaction managers, returns all settings they manage
- * For regular members, returns only their associated wallet settings
- * @param member - Member address or Secp256r1Key
- * @param userAddressTreeIndex - Optional address tree index
- * @param cachedAccounts - Optional cache for account data
- * @returns Array of settings account data with compression flags
- */
 export async function fetchAllSettingsAccountByMember(
   member: Address | Secp256r1Key,
   userAddressTreeIndex?: number,
@@ -298,12 +250,6 @@ export async function fetchAllSettingsAccountByMember(
   }
 }
 
-/**
- * Gets whitelisted address tree by index
- * @param index - Address tree index
- * @returns Address tree address
- * @throws {ValidationError} If index is out of bounds
- */
 export async function getWhitelistedAddressTreeFromIndex(
   index: number,
 ): Promise<Address> {
@@ -317,12 +263,6 @@ export async function getWhitelistedAddressTreeFromIndex(
   return addressTrees[index];
 }
 
-/**
- * Gets whitelisted address tree index from address
- * @param addressTree - Address tree address as string
- * @returns Address tree index
- * @throws {NotFoundError} If address tree is not found
- */
 export async function getWhitelistedAddressTreeIndexFromAddress(
   addressTree: string,
 ): Promise<number> {

@@ -69,9 +69,6 @@ importers:
       '@noble/curves':
         specifier: 2.0.1
         version: 2.0.1
-      '@noble/hashes':
-        specifier: 2.0.1
-        version: 2.0.1
       '@simplewebauthn/browser':
         specifier: 13.2.2
         version: 13.2.2

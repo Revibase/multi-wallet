@@ -20,12 +20,6 @@ import { getWhitelistedAddressTreeFromIndex } from "../compressed/helper";
 import { sha256 } from "../crypto";
 import { requireInRange } from "../validation";
 
-/**
- * Derives a compressed settings account address from an index
- * @param index - Settings index
- * @param settingsAddressTreeIndex - Address tree index (default: 0)
- * @returns Compressed account address and associated address tree
- */
 export async function getCompressedSettingsAddressFromIndex(
   index: number | bigint,
   settingsAddressTreeIndex = 0,
@@ -49,12 +43,7 @@ export async function getCompressedSettingsAddressFromIndex(
     addressTree: new PublicKey(addressTree),
   };
 }
-/**
- * Derives a user account address from a member key
- * @param member - Member address or Secp256r1Key
- * @param userAddressTreeIndex - Address tree index (default: 0)
- * @returns Compressed user account address and associated address tree
- */
+
 export async function getUserAccountAddress(
   member: Address | Secp256r1Key,
   userAddressTreeIndex = 0,
@@ -81,12 +70,6 @@ export async function getUserAccountAddress(
   };
 }
 
-/**
- * Derives a domain configuration address from RP ID hash or RP ID string
- * @param params - Either rpIdHash (32-byte hash) or rpId (string to hash)
- * @returns Domain configuration account address
- * @throws {ValidationError} If neither rpIdHash nor rpId is provided
- */
 export async function getDomainConfigAddress({
   rpIdHash,
   rpId,
@@ -111,10 +94,6 @@ export async function getDomainConfigAddress({
   return domainConfig;
 }
 
-/**
- * Derives the global counter account address
- * @returns Global counter account address
- */
 export async function getGlobalCounterAddress() {
   const [globalCounter] = await getProgramDerivedAddress({
     programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
@@ -124,10 +103,6 @@ export async function getGlobalCounterAddress() {
   return globalCounter;
 }
 
-/**
- * Derives the whitelisted address trees account address
- * @returns Whitelisted address trees account address
- */
 export async function getWhitelistedAddressTreesAddress() {
   const [whitelistedAddressTrees] = await getProgramDerivedAddress({
     programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
@@ -137,14 +112,6 @@ export async function getWhitelistedAddressTreesAddress() {
   return whitelistedAddressTrees;
 }
 
-/**
- * Gets transaction buffer address from settings, creator, and index
- * @param settings - Settings address
- * @param creator - Creator address or Secp256r1Key
- * @param buffer_index - Buffer index (0-255)
- * @returns Transaction buffer address
- * @throws {ValidationError} If buffer_index exceeds maximum
- */
 export async function getTransactionBufferAddress(
   settings: Address,
   creator: Address | Secp256r1Key,
@@ -166,11 +133,7 @@ export async function getTransactionBufferAddress(
 
   return transactionBuffer;
 }
-/**
- * Derives a wallet (vault) address from a settings address
- * @param settings - Settings account address
- * @returns Wallet account address
- */
+
 export async function getWalletAddressFromSettings(settings: Address) {
   const [address] = await getProgramDerivedAddress({
     programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
@@ -183,11 +146,7 @@ export async function getWalletAddressFromSettings(settings: Address) {
 
   return address;
 }
-/**
- * Derives a settings account address from an index
- * @param index - Settings index
- * @returns Settings account address
- */
+
 export async function getSettingsFromIndex(index: number | bigint) {
   const [settings] = await getProgramDerivedAddress({
     programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
@@ -200,21 +159,12 @@ export async function getSettingsFromIndex(index: number | bigint) {
   return settings;
 }
 
-/**
- * Derives a wallet address from a settings index
- * @param index - Settings index
- * @returns Wallet account address
- */
 export async function getWalletAddressFromIndex(index: number | bigint) {
   const settings = await getSettingsFromIndex(index);
   const address = await getWalletAddressFromSettings(settings);
   return address;
 }
 
-/**
- * Derives the Light CPI signer account address
- * @returns Light CPI signer account address
- */
 export async function getLightCpiSigner() {
   const [lightCpiSigner] = await getProgramDerivedAddress({
     programAddress: MULTI_WALLET_PROGRAM_ADDRESS,

@@ -45,12 +45,6 @@ import { getSecp256r1Message } from "../passkeys/internal";
 import { retryFetch } from "../retry";
 import { requireNonEmpty } from "../validation";
 
-/**
- * Creates an encoded bundle of transactions ready for signing or simulation
- * @param bundle - Array of transaction details with optional compute units
- * @param isSimulate - Whether this is for simulation (uses random blockhash instead of fetching latest)
- * @returns Array of encoded transactions
- */
 export async function createEncodedBundle(
   bundle: (TransactionDetails & { unitsConsumed?: number })[],
   isSimulate = false,
@@ -100,12 +94,7 @@ export async function createEncodedBundle(
     }),
   );
 }
-/**
- * Gets median priority fees for writable accounts
- * @param connection - Solana RPC connection
- * @param accounts - Array of account metadata
- * @returns Median priority fee in microlamports
- */
+
 export async function getMedianPriorityFees(
   connection: Rpc<SolanaRpcApi>,
   accounts: AccountMeta[],
@@ -132,22 +121,12 @@ export async function getMedianPriorityFees(
   }
 }
 
-/**
- * Simulates a bundle of transactions to estimate compute units
- * @param bundle - Array of base64-encoded transaction strings
- * @param connectionUrl - RPC endpoint URL
- * @returns Array of compute units consumed per transaction
- * @throws {ValidationError} If bundle is empty or transactions exceed size limit
- * @throws {NetworkError} If simulation request fails
- * @throws {BundleError} If simulation fails
- */
 export async function simulateBundle(
   bundle: string[],
   connectionUrl: string,
 ): Promise<number[]> {
   requireNonEmpty(bundle, "bundle");
 
-  // Validate transaction sizes
   for (let i = 0; i < bundle.length; i++) {
     if (bundle[i].length > TRANSACTION_SIZE_LIMIT) {
       throw new ValidationError(
@@ -224,12 +203,6 @@ export async function simulateBundle(
   return data.result.value.transactionResults.map((x) => x.unitsConsumed);
 }
 
-/**
- * Extracts secp256r1 verification arguments from a signer
- * @param signer - Optional signer (SignedSecp256r1Key or TransactionSigner)
- * @param index - Message index for verification
- * @returns Extracted verification arguments
- */
 export async function extractSecp256r1VerificationArgs(
   signer?: SignedSecp256r1Key | TransactionSigner,
   index = 0,
@@ -269,11 +242,7 @@ export async function extractSecp256r1VerificationArgs(
     publicKey,
   };
 }
-/**
- * Converts a public key to a member key format
- * @param pubkey - Public key in various formats
- * @returns Member key with key type and encoded key
- */
+
 export function convertPubkeyToMemberkey(
   pubkey: TransactionSigner | Address | Secp256r1Key,
 ): MemberKey {
@@ -295,11 +264,7 @@ export function convertPubkeyToMemberkey(
     };
   }
 }
-/**
- * Extracts the public key string representation from a signer
- * @param pubkey - Signer (either SignedSecp256r1Key or TransactionSigner)
- * @returns Base58-encoded public key string
- */
+
 function getPubkeyString(pubkey: TransactionSigner | SignedSecp256r1Key) {
   if (pubkey instanceof SignedSecp256r1Key) {
     return pubkey.toString();
@@ -307,12 +272,7 @@ function getPubkeyString(pubkey: TransactionSigner | SignedSecp256r1Key) {
     return pubkey.address.toString();
   }
 }
-/**
- * Deduplicates signers and validates constraints
- * @param signers - Array of signers to deduplicate
- * @returns Deduplicated array of signers
- * @throws {ValidationError} If more than one Secp256r1 signer is present
- */
+
 export function getDeduplicatedSigners(
   signers: (SignedSecp256r1Key | TransactionSigner)[],
 ): (SignedSecp256r1Key | TransactionSigner)[] {
@@ -325,8 +285,6 @@ export function getDeduplicatedSigners(
     }
   }
 
-  // Limit: Only one Secp256r1 signer per instruction due to transaction size constraints
-  // This restriction can be removed once transaction size limits are increased
   const secp256r1Signers = dedupSigners.filter(
     (x) => x instanceof SignedSecp256r1Key,
   );
@@ -338,12 +296,6 @@ export function getDeduplicatedSigners(
   return dedupSigners;
 }
 
-/**
- * Creates a Jito tip instruction by transferring SOL to a randomly selected tip account
- * @param payer - The transaction signer paying the tip
- * @param tipAmount - Amount in lamports to tip
- * @returns Instruction to transfer SOL to a random Jito tip account
- */
 export function addJitoTip({
   payer,
   tipAmount,

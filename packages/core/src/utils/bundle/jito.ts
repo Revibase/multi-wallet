@@ -1,7 +1,3 @@
-/**
- * Jito bundle utilities for sending and polling bundles
- */
-
 import { getBase64EncodedWireTransaction } from "gill";
 import { BUNDLE_POLL_DELAY_MS, BUNDLE_POLL_MAX_RETRIES } from "../../constants";
 import { BundleError, NetworkError } from "../../errors";
@@ -12,9 +8,6 @@ import { retryFetch, retryWithBackoff, type RetryConfig } from "../retry";
 import { createEncodedBundle, simulateBundle } from "../transaction/internal";
 import { requireNonEmpty, requireNonEmptyString } from "../validation";
 
-/**
- * Bundle status response type
- */
 interface BundleStatusResponse {
   context: {
     slot: number;
@@ -30,13 +23,6 @@ interface BundleStatusResponse {
   }[];
 }
 
-/**
- * Signs and sends bundled transactions to Jito
- * @param bundle - Array of transaction details
- * @returns Bundle ID
- * @throws {BundleError} If bundle simulation or sending fails
- * @throws {ValidationError} If bundle is empty
- */
 export async function signAndSendBundledTransactions(
   bundle: TransactionDetails[],
 ): Promise<string> {
@@ -59,17 +45,6 @@ export async function signAndSendBundledTransactions(
   return bundleId;
 }
 
-/**
- * Sends a bundle of transactions to Jito with exponential backoff retry
- * @param serializedTransactions - Array of base64-encoded transaction strings
- * @param maxRetries - Maximum number of retry attempts (default: 3)
- * @param initialDelayMs - Initial delay between retries in milliseconds (default: 500)
- * @param jitoTipsConfig - Jito configuration (default: from global state)
- * @returns Bundle ID
- * @throws {BundleError} If bundle sending fails after all retries
- * @throws {NetworkError} If network request fails
- * @throws {ValidationError} If transactions array is empty
- */
 export async function sendJitoBundle(
   serializedTransactions: string[],
   jitoTipsConfig = getJitoTipsConfig(),
@@ -115,17 +90,6 @@ export async function sendJitoBundle(
   return data.result;
 }
 
-/**
- * Polls Jito for bundle confirmation status with exponential backoff
- * @param bundleId - The bundle ID to check
- * @param maxRetries - Maximum number of retry attempts (default: 30)
- * @param initialDelayMs - Initial delay between polls in milliseconds (default: 3000)
- * @param jitoTipsConfig - Jito configuration (default: from global state)
- * @returns The signature of the last transaction in the bundle
- * @throws {BundleError} If bundle polling fails after all retries
- * @throws {NetworkError} If network request fails
- * @throws {ValidationError} If bundleId is empty
- */
 export async function pollJitoBundleConfirmation(
   bundleId: string,
   maxRetries = BUNDLE_POLL_MAX_RETRIES,
@@ -163,7 +127,6 @@ export async function pollJitoBundleConfirmation(
       }
 
       if (!data.result?.value?.length) {
-        // Bundle not yet confirmed, will retry
         throw new BundleError("Bundle not yet confirmed", bundleId);
       }
 
@@ -182,7 +145,6 @@ export async function pollJitoBundleConfirmation(
         return lastTx;
       }
 
-      // Bundle is still processing, will retry
       throw new BundleError(
         `Bundle status: ${status.confirmation_status}`,
         bundleId,
@@ -191,10 +153,8 @@ export async function pollJitoBundleConfirmation(
     {
       maxRetries,
       initialDelayMs,
-      shouldRetry: (error) => {
-        // Retry on BundleError (not yet confirmed) and NetworkError
-        return error instanceof BundleError || error instanceof NetworkError;
-      },
+      shouldRetry: (error) =>
+        error instanceof BundleError || error instanceof NetworkError,
     },
   );
 }

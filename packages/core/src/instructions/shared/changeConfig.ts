@@ -76,7 +76,6 @@ export async function changeConfig({
     }
   }
 
-  // 5) Assemble final instructions
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
   const instructions = [];

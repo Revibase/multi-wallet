@@ -1,4 +1,3 @@
-import { base64URLStringToBuffer } from "@simplewebauthn/browser";
 import { type Address, none, some, type TransactionSigner } from "gill";
 import {
   type CompressedSettings,
@@ -14,6 +13,7 @@ import {
 } from "../../generated";
 import { Secp256r1Key } from "../../types";
 import {
+  base64URLStringToBuffer,
   getCompressedSettingsAddressFromIndex,
   getUserAccountAddress,
 } from "../../utils";
@@ -150,9 +150,7 @@ export async function createDomainUserAccounts({
     member: getSecp256r1PubkeyDecoder().decode(
       createUserArgs.member.toBuffer(),
     ),
-    credentialId: new Uint8Array(
-      base64URLStringToBuffer(createUserArgs.credentialId),
-    ),
+    credentialId: base64URLStringToBuffer(createUserArgs.credentialId),
     transports: createUserArgs.transports,
     role: createUserArgs.role,
     linkWalletArgs: settingsMutArgs

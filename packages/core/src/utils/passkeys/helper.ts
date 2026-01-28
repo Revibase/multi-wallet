@@ -32,18 +32,6 @@ import {
   uint8ArrayToHex,
 } from "./internal";
 
-/**
- * Converts a COSE-encoded P-256 public key (from WebAuthn) into a compressed 33-byte key.
- *
- * The COSE format (RFC 8152) includes separate `x` and `y` coordinates. This function decodes
- * those coordinates, reconstructs the elliptic curve point, and re-encodes it into compressed format.
- *
- * @param publicKey - The COSE-encoded public key as a `Uint8Array` buffer.
- * @returns The compressed public key as a Base58-decoded `Uint8Array`.
- *
- * @example
- * const compressed = convertPubkeyCoseToCompressed(coseKey);
- */
 export function convertPubkeyCoseToCompressed(
   publicKey: Uint8Array<ArrayBuffer>,
 ) {
@@ -64,18 +52,6 @@ export function convertPubkeyCoseToCompressed(
   return compressedPubKey;
 }
 
-/**
- * Converts a compressed P-256 public key into COSE format for WebAuthn compatibility.
- *
- * This function decompresses the 33-byte public key, extracts `x` and `y` coordinates,
- * and encodes them into a COSE-structured CBOR map.
- *
- * @param publicKey - The compressed public key as a Base58 string.
- * @returns The COSE-encoded public key as a `Uint8Array`.
- *
- * @example
- * const coseKey = convertPubkeyCompressedToCose("2vMsnB7P5E7EwXj1LbcfLp...");
- */
 export function convertPubkeyCompressedToCose(
   publicKey: string,
 ): Uint8Array<ArrayBuffer> {
@@ -94,25 +70,6 @@ export function convertPubkeyCompressedToCose(
   return new Uint8Array(encodeCBOR(coseDecodedPublicKey));
 }
 
-/**
- * Constructs a `SignedSecp256r1Key` object from a WebAuthn authentication response.
- *
- * This function extracts, validates, and converts all fields required for on-chain
- * secp256r1 signature verification, including:
- * - Converting signature format (DER → r||s)
- * - Extracting and truncating `clientDataJSON` to ensure deterministic hashing
- * - Computing the domain configuration address (via RP ID hash)
- *
- * Used as the main transformation step before submitting to Solana programs.
- *
- * @param payload - A `TransactionAuthenticationResponse` containing WebAuthn response data.
- * @param originIndex - The index of the origin that initiated the request (retrievable via `getOriginIndex`).
- * @param crossOrigin - Indicates whether the request originated from a different origin (per WebAuthn spec).
- * @returns A `SignedSecp256r1Key` ready for Solana transaction verification.
- *
- * @example
- * const signedKey = await getSignedSecp256r1Key(response, originIndex);
- */
 export async function getSignedSecp256r1Key(
   payload: TransactionAuthenticationResponse,
 ): Promise<SignedSecp256r1Key> {
@@ -120,7 +77,7 @@ export async function getSignedSecp256r1Key(
     payload.authResponse as AuthenticationResponseJSON
   ).response;
 
-  const authData = new Uint8Array(base64URLStringToBuffer(authenticatorData));
+  const authData = base64URLStringToBuffer(authenticatorData);
 
   const clientDataJsonParsed = JSON.parse(
     new TextDecoder().decode(base64URLStringToBuffer(clientDataJSON)),
@@ -129,7 +86,7 @@ export async function getSignedSecp256r1Key(
   const truncatedClientDataJson = extractAdditionalFields(clientDataJsonParsed);
 
   const convertedSignature = convertSignatureDERtoRS(
-    new Uint8Array(base64URLStringToBuffer(signature)),
+    base64URLStringToBuffer(signature),
   );
 
   const domainConfig = await getDomainConfigAddress({
@@ -138,7 +95,7 @@ export async function getSignedSecp256r1Key(
 
   return new SignedSecp256r1Key(payload.signer.toString(), {
     verifyArgs: {
-      clientDataJson: new Uint8Array(base64URLStringToBuffer(clientDataJSON)),
+      clientDataJson: base64URLStringToBuffer(clientDataJSON),
       truncatedClientDataJson,
       slotNumber: BigInt(payload.slotNumber),
       slotHash: getBase58Encoder().encode(
@@ -162,14 +119,6 @@ export async function getSignedSecp256r1Key(
 import { NotFoundError } from "../../errors";
 import { fetchDomainConfig } from "../../generated";
 
-/**
- * Computes a hash combining client origin, device public key, and nonce
- * Used for challenge generation and verification
- * @param clientOrigin - Origin of the client application
- * @param devicePublicKey - Device's public key (Base58-encoded)
- * @param nonce - Random nonce string
- * @returns SHA256 hash of the combined inputs
- */
 export async function getClientAndDeviceHash(
   clientOrigin: string,
   devicePublicKey: string,
@@ -179,16 +128,11 @@ export async function getClientAndDeviceHash(
     new Uint8Array([
       ...getUtf8Encoder().encode(clientOrigin),
       ...getBase58Encoder().encode(devicePublicKey),
-      ...new TextEncoder().encode(nonce),
+      ...getUtf8Encoder().encode(nonce),
     ]),
   );
 }
 
-/**
- * Creates a challenge hash for client authorization start requests
- * @param payload - Start transaction or message request payload
- * @returns SHA256 hash of the JSON-serialized payload
- */
 export async function createClientAuthorizationStartRequestChallenge(
   payload: StartTransactionRequest | StartMessageRequest,
 ): Promise<Uint8Array<ArrayBuffer>> {
@@ -197,27 +141,12 @@ export async function createClientAuthorizationStartRequestChallenge(
   );
 }
 
-/**
- * Creates a challenge hash for client authorization complete requests
- * Uses the WebAuthn message hash from the authentication response
- * @param payload - Complete transaction or message request payload
- * @returns SHA256 hash of the WebAuthn message
- */
 export async function createClientAuthorizationCompleteRequestChallenge(
   payload: CompleteTransactionRequest | CompleteMessageRequest,
 ): Promise<Uint8Array<ArrayBuffer>> {
   return getSecp256r1MessageHash(payload.data.payload.authResponse);
 }
 
-/**
- * Creates a challenge hash for message signing
- * Combines the message payload with client/device hash
- * @param payload - Message payload string
- * @param clientOrigin - Origin of the client application
- * @param devicePublicKey - Device's public key (Base58-encoded)
- * @param nonce - Random nonce string
- * @returns SHA256 hash of payload + client/device hash
- */
 export async function createMessageChallenge(
   payload: string,
   clientOrigin: string,
@@ -234,18 +163,6 @@ export async function createMessageChallenge(
   );
 }
 
-/**
- * Creates a challenge hash for transaction signing
- * Combines transaction details, slot information, and client/device hash
- * @param payload - Transaction payload with optional message bytes
- * @param clientOrigin - Origin of the client application
- * @param devicePublicKey - Device's public key (Base58-encoded)
- * @param nonce - Random nonce string
- * @param slotHash - Optional slot hash (fetched if not provided)
- * @param slotNumber - Optional slot number (fetched if not provided)
- * @returns Object containing slotNumber, slotHash, and challenge hash
- * @throws {NotFoundError} If slot sysvar cannot be fetched
- */
 export async function createTransactionChallenge(
   payload: TransactionPayloadWithBase64MessageBytes | TransactionPayload,
   clientOrigin: string,
@@ -284,7 +201,7 @@ export async function createTransactionChallenge(
 
   const transactionMessageHash = await sha256(
     typeof payload.transactionMessageBytes === "string"
-      ? new Uint8Array(base64URLStringToBuffer(payload.transactionMessageBytes))
+      ? base64URLStringToBuffer(payload.transactionMessageBytes)
       : payload.transactionMessageBytes,
   );
   const clientDeviceHash = await getClientAndDeviceHash(
@@ -304,11 +221,6 @@ export async function createTransactionChallenge(
   return { slotNumber, slotHash, challenge };
 }
 
-/**
- * Computes the SHA256 hash of the WebAuthn message
- * @param authResponse - WebAuthn authentication response
- * @returns SHA256 hash of the message
- */
 export async function getSecp256r1MessageHash(
   authResponse: AuthenticationResponseJSON,
 ): Promise<Uint8Array<ArrayBuffer>> {
@@ -316,11 +228,6 @@ export async function getSecp256r1MessageHash(
   return sha256(message);
 }
 
-/**
- * Converts a Uint8Array buffer to Base64URL string (URL-safe Base64)
- * @param buffer - Buffer to convert
- * @returns Base64URL-encoded string
- */
 export function bufferToBase64URLString(buffer: Uint8Array<ArrayBuffer>) {
   let str = "";
   for (const charCode of buffer) {
@@ -330,38 +237,22 @@ export function bufferToBase64URLString(buffer: Uint8Array<ArrayBuffer>) {
   return base64String.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-/**
- * Converts a Base64URL string to a Uint8Array buffer
- * Handles padding automatically (Base64 requires length to be multiple of 4)
- * @param base64URLString - Base64URL-encoded string
- * @returns Decoded buffer
- */
 export function base64URLStringToBuffer(base64URLString: string) {
-  // Convert from Base64URL to Base64
   const base64 = base64URLString.replace(/-/g, "+").replace(/_/g, "/");
-  // Pad with '=' until length is a multiple of 4
   const padLength = (4 - (base64.length % 4)) % 4;
   const padded = base64.padEnd(base64.length + padLength, "=");
-  // Convert to binary string then to buffer
   const binary = atob(padded);
   const buffer = new ArrayBuffer(binary.length);
   const bytes = new Uint8Array(buffer);
   for (let i = 0; i < binary.length; i++) {
     bytes[i] = binary.charCodeAt(i);
   }
-  return buffer;
+  return bytes;
 }
 
-/**
- * Gets the index of an origin in the domain configuration's origins list
- * @param domainConfig - Domain configuration account address
- * @param origin - Origin string to find
- * @returns Index of the origin in the list
- * @throws {Error} If origin is not found in domain config
- */
 export async function getOriginIndex(domainConfig: Address, origin: string) {
   const { data } = await fetchDomainConfig(getSolanaRpc(), domainConfig);
-  const origins = parseOrigins(new Uint8Array(data.origins), data.numOrigins);
+  const origins = parseOrigins(data.origins, data.numOrigins);
   const index = origins.findIndex((x) => x === origin);
   if (index === -1) {
     throw new Error("Origin not found in domain config");

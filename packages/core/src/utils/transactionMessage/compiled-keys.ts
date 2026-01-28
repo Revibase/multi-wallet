@@ -8,10 +8,7 @@ export type CompiledKeyMeta = {
 
 type KeyMetaMap = Map<Address, CompiledKeyMeta>;
 
-/**
- *  This is almost completely copy-pasted from solana-web3.js and slightly adapted to work with "wrapped" transaction messaged such as in VaultTransaction.
- *  @see https://github.com/solana-labs/solana-web3.js/blob/87d33ac68e2453b8a01cf8c425aa7623888434e8/packages/library-legacy/src/message/compiled-keys.ts
- */
+/** Adapted from solana-web3.js compiled-keys for wrapped vault transaction messages. @see https://github.com/solana-labs/solana-web3.js/blob/87d33ac68e2453b8a01cf8c425aa7623888434e8/packages/library-legacy/src/message/compiled-keys.ts */
 export class CompiledKeys {
   payer: Address;
   keyMetaMap: KeyMetaMap;
@@ -21,13 +18,6 @@ export class CompiledKeys {
     this.keyMetaMap = keyMetaMap;
   }
 
-  /**
-   * Compiles instructions into account key metadata
-   * Note: Unlike solana-web3.js, we don't mark program IDs as invoked since
-   * instructions are called via CPI, allowing program IDs to come from Address
-   * Lookup Tables. This compresses message size and avoids hitting transaction
-   * size limits during vault_transaction_create instruction calls.
-   */
   static compile(
     instructions: Array<Instruction>,
     payer: Address
@@ -51,7 +41,6 @@ export class CompiledKeys {
     payerKeyMeta.isWritable = true;
 
     for (const ix of instructions) {
-      // Don't mark program address as invoked (allows ALT compression)
       getOrInsertDefault(ix.programAddress).isInvoked = false;
       for (const accountMeta of ix.accounts ?? []) {
         const keyMeta = getOrInsertDefault(accountMeta.address);
@@ -99,7 +88,6 @@ export class CompiledKeys {
       numReadonlyNonSignerAccounts: readonlyNonSigners.length,
     };
 
-    // Validation: ensure payer is first writable signer
     if (writableSigners.length === 0) {
       throw new Error("Expected at least one writable signer key");
     }
@@ -121,12 +109,6 @@ export class CompiledKeys {
     return [header, staticAccountKeys];
   }
 
-  /**
-   * Extracts accounts that can be loaded from an address lookup table
-   * Removes extracted accounts from the key map and returns their indices
-   * @param lookupTableAddresses - Tuple of [lookup table address, account addresses]
-   * @returns Extracted lookup data with indices and drained keys, or undefined if no keys found
-   */
   extractTableLookup(lookupTableAddresses: [string, Address[]]) {
     const [writableIndexes, drainedWritableKeys] =
       this.drainKeysFoundInLookupTable(
@@ -141,7 +123,6 @@ export class CompiledKeys {
           !keyMeta.isSigner && !keyMeta.isInvoked && !keyMeta.isWritable
       );
 
-    // Don't extract lookup if no keys were found
     if (writableIndexes.length === 0 && readonlyIndexes.length === 0) {
       return;
     }
@@ -159,13 +140,6 @@ export class CompiledKeys {
     };
   }
 
-  /**
-   * Removes keys from the key map that are found in a lookup table
-   * @param lookupTableEntries - Account addresses in the lookup table
-   * @param keyMetaFilter - Filter function to determine which keys to extract
-   * @returns Tuple of [lookup table indices, drained key addresses]
-   * @throws {Error} If lookup table index exceeds 255
-   */
   private drainKeysFoundInLookupTable(
     lookupTableEntries: Array<Address>,
     keyMetaFilter: (keyMeta: CompiledKeyMeta) => boolean

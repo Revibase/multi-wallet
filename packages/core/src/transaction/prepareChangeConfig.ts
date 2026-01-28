@@ -230,10 +230,10 @@ async function buildConfigActions({
           ).then((r) => {
             return userMutArgs.find((arg) =>
               equalBytes(
-                new Uint8Array(arg.accountMeta.address),
-                new Uint8Array(
-                  getBase58Encoder().encode(encodeBN254toBase58(r.address)),
-                ),
+                arg.accountMeta.address as Uint8Array,
+                getBase58Encoder().encode(
+                  encodeBN254toBase58(r.address),
+                ) as Uint8Array,
               ),
             );
           });
@@ -258,10 +258,10 @@ async function buildConfigActions({
               (r) => {
                 const found = userMutArgs.find((arg) =>
                   equalBytes(
-                    new Uint8Array(arg.accountMeta.address),
-                    new Uint8Array(
-                      getBase58Encoder().encode(encodeBN254toBase58(r.address)),
-                    ),
+                    arg.accountMeta.address as Uint8Array,
+                    getBase58Encoder().encode(
+                      encodeBN254toBase58(r.address),
+                    ) as Uint8Array,
                   ),
                 );
                 if (!found) throw new Error("Unable to find user account");

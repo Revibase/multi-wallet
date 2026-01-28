@@ -19,26 +19,16 @@ import {
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
 import { getLightProtocolRpc } from "../initialize";
 
-/** Internal data structure for account mapping */
 interface MapData {
   index: number;
   accountMeta: AccountMeta;
 }
 
-/**
- * Manages packing of accounts for compressed account operations
- * Handles account deduplication, indexing, and tree information packing
- */
 export class PackedAccounts {
-  /** Accounts added before system accounts */
   preAccounts: AccountMeta[];
-  /** Light Protocol system accounts */
   systemAccounts: AccountMeta[];
-  /** Next available index for account mapping */
   nextIndex: number;
-  /** Map of account addresses to their indices and metadata */
   map: Map<string, MapData>;
-  /** Index of the output state tree */
   outputTreeIndex: number;
 
   constructor() {
@@ -49,20 +39,10 @@ export class PackedAccounts {
     this.outputTreeIndex = -1;
   }
 
-  /**
-   * Adds accounts that should appear before system accounts
-   * @param accounts - Accounts to add
-   */
   addPreAccounts(accounts: (AccountMeta | AccountSignerMeta)[]): void {
     this.preAccounts.push(...accounts);
   }
 
-  /**
-   * Converts boolean flags to AccountRole enum
-   * @param isSigner - Whether account is a signer
-   * @param isWritable - Whether account is writable
-   * @returns AccountRole value
-   */
   getAccountRole(isSigner: boolean, isWritable: boolean): AccountRole {
     if (isSigner) {
       return isWritable
@@ -73,9 +53,6 @@ export class PackedAccounts {
     }
   }
 
-  /**
-   * Adds Light Protocol system accounts required for compressed account operations
-   */
   async addSystemAccounts(): Promise<void> {
     this.systemAccounts.push(
       ...getLightSystemAccountMetasV2({
@@ -87,21 +64,10 @@ export class PackedAccounts {
     );
   }
 
-  /**
-   * Inserts an account or returns its existing index (defaults to writable role)
-   * @param pubkey - Account public key
-   * @returns Account index
-   */
   insertOrGet(pubkey: string): number {
     return this.insertOrGetConfig(pubkey, AccountRole.WRITABLE);
   }
 
-  /**
-   * Inserts an account with specified role or returns its existing index
-   * @param pubkey - Account public key
-   * @param role - Account role
-   * @returns Account index
-   */
   insertOrGetConfig(pubkey: string, role: AccountRole): number {
     if (!this.map.has(pubkey)) {
       const index = this.nextIndex++;
@@ -114,12 +80,6 @@ export class PackedAccounts {
     return this.map.get(pubkey)!.index;
   }
 
-  /**
-   * Packs output tree index based on tree type
-   * @param outputStateTreeInfo - State tree information
-   * @returns Index of the output tree
-   * @throws {Error} If tree type is not supported
-   */
   packOutputTreeIndex(outputStateTreeInfo: TreeInfo) {
     if (outputStateTreeInfo.treeType === TreeType.StateV1) {
       return this.insertOrGet(outputStateTreeInfo.tree.toString());
@@ -129,10 +89,6 @@ export class PackedAccounts {
     throw new Error("Tree type not supported");
   }
 
-  /**
-   * Gets the output tree index, fetching from RPC if not already set
-   * @returns Output tree index
-   */
   async getOutputTreeIndex() {
     if (this.outputTreeIndex !== -1) {
       return this.outputTreeIndex;
@@ -143,13 +99,6 @@ export class PackedAccounts {
     return outputStateTreeIndex;
   }
 
-  /**
-   * Packs tree information for account proofs and new address proofs
-   * Creates packed tree info structures with account indices
-   * @param accountProofInputs - Proof inputs for existing accounts
-   * @param newAddressProofInputs - Proof inputs for new addresses
-   * @returns Packed tree information with state and address trees
-   */
   packTreeInfos(
     accountProofInputs: AccountProofInput[],
     newAddressProofInputs: NewAddressProofInput[]
@@ -207,10 +156,6 @@ export class PackedAccounts {
     };
   }
 
-  /**
-   * Converts the account map to an array of account metas, sorted by index
-   * @returns Array of account metas in index order
-   */
   hashSetAccountsToMetas(): AccountMeta[] {
     const packedAccounts: AccountMeta[] = Array.from(this.map.entries())
       .sort((a, b) => a[1].index - b[1].index)
@@ -218,10 +163,6 @@ export class PackedAccounts {
     return packedAccounts;
   }
 
-  /**
-   * Calculates offset indices for system and packed accounts
-   * @returns Tuple of [systemAccountsStartOffset, packedAccountsStartOffset]
-   */
   getOffsets(): [number, number] {
     const systemAccountsStartOffset = this.preAccounts.length;
     const packedAccountsStartOffset =
@@ -229,10 +170,6 @@ export class PackedAccounts {
     return [systemAccountsStartOffset, packedAccountsStartOffset];
   }
 
-  /**
-   * Converts all accounts to a final account metas array with offsets
-   * @returns Account metas array and offset indices
-   */
   toAccountMetas(): {
     remainingAccounts: AccountMeta[];
     systemOffset: number;

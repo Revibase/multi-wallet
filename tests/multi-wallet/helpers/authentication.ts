@@ -20,12 +20,12 @@ export async function mockAuthenticationResponse(
   transaction: TransactionPayload,
   privateKey: Uint8Array,
   publicKey: Uint8Array,
-  ctx: TestContext
+  ctx: TestContext,
 ): Promise<SignedSecp256r1Key> {
   const nonce = crypto.randomUUID();
   const clientOrigin = "https://app.revibase.com";
   const devicePublicKey = getBase58Decoder().decode(
-    crypto.getRandomValues(new Uint8Array(32))
+    crypto.getRandomValues(new Uint8Array(32)),
   );
   const flags = new Uint8Array([0x01]); // User present
   const signCount = new Uint8Array([0, 0, 0, 1]); // Sign counter
@@ -35,7 +35,7 @@ export async function mockAuthenticationResponse(
     ...signCount,
   ]);
 
-  let challenge: Uint8Array;
+  let challenge: Uint8Array<ArrayBuffer>;
   let slotHash: string | undefined;
   let slotNumber: string | undefined;
 
@@ -43,7 +43,7 @@ export async function mockAuthenticationResponse(
     transaction,
     clientOrigin,
     devicePublicKey,
-    nonce
+    nonce,
   ));
 
   const origin = "happy";
@@ -70,12 +70,12 @@ export async function mockAuthenticationResponse(
     p256.sign(messageBuffer, privateKey, {
       format: "compact",
       lowS: true,
-    })
+    }),
   );
 
   const originIndex = await getOriginIndex(
     await getDomainConfigAddress({ rpId: ctx.rpId }),
-    origin
+    origin,
   );
 
   return await getSignedSecp256r1Key({
@@ -96,19 +96,19 @@ export async function mockAuthenticationResponse(
     transactionPayload: {
       ...transaction,
       transactionMessageBytes: getBase64Decoder().decode(
-        transaction.transactionMessageBytes
+        transaction.transactionMessageBytes,
       ),
     },
     clientSignature: {
       clientOrigin,
       signature: getBase58Decoder().decode(
-        crypto.getRandomValues(new Uint8Array(64))
+        crypto.getRandomValues(new Uint8Array(64)),
       ),
     },
     deviceSignature: {
       publicKey: devicePublicKey,
       signature: getBase58Decoder().decode(
-        crypto.getRandomValues(new Uint8Array(64))
+        crypto.getRandomValues(new Uint8Array(64)),
       ),
     },
     nonce,

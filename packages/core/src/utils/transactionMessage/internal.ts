@@ -12,14 +12,6 @@ import {
 import { getSolanaRpc } from "..";
 import { vaultTransactionMessageDeserialize } from "../../types";
 
-/**
- * Determines the account role based on message structure and account key
- * @param message - Compiled transaction message
- * @param index - Account index in the message
- * @param accountKey - Account address
- * @param vaultPda - Vault PDA address (never treated as signer)
- * @returns Account role (writable/readonly, signer/non-signer)
- */
 function getAccountRole(
   message: CompiledTransactionMessage,
   index: number,
@@ -39,12 +31,6 @@ function getAccountRole(
   }
 }
 
-/**
- * Checks if an account index corresponds to a writable account in the static account keys
- * @param message - Compiled transaction message
- * @param index - Account index
- * @returns True if the account is writable
- */
 function isStaticWritableIndex(
   message: CompiledTransactionMessage,
   index: number
@@ -61,41 +47,25 @@ function isStaticWritableIndex(
     numAccountKeys - numSignerAccounts - numReadonlyNonSignerAccounts;
 
   if (index >= numAccountKeys) {
-    // `index` is not a part of static `accountKeys`.
     return false;
   }
 
   if (index < numWritableSigners) {
-    // `index` is within the range of writable signer keys.
     return true;
   }
 
   if (index >= numSignerAccounts) {
-    // `index` is within the range of non-signer keys.
     const indexIntoNonSigners = index - numSignerAccounts;
-    // Whether `index` is within the range of writable non-signer keys.
     return indexIntoNonSigners < numWritableNonSigners;
   }
 
   return false;
 }
-/**
- * Checks if an account index corresponds to a signer account
- * @param message - Compiled transaction message
- * @param index - Account index
- * @returns True if the account is a signer
- */
+
 function isSignerIndex(message: CompiledTransactionMessage, index: number) {
   return index < message.header.numSignerAccounts;
 }
 
-/**
- * Populates all accounts required for transaction execution
- * Includes lookup table accounts, static accounts, and additional signers
- * @param params - Transaction execution parameters
- * @returns Account metas, lookup table accounts, and deserialized transaction message
- * @throws {Error} If lookup table account or address is missing
- */
 export async function accountsForTransactionExecute({
   walletAddress,
   transactionMessageBytes,
@@ -128,7 +98,6 @@ export async function accountsForTransactionExecute({
 
   const accountMetas: (AccountMeta | AccountSignerMeta)[] = [];
 
-  // Add lookup table accounts first (required for on-chain validation)
   accountMetas.push(
     ...(transactionMessage.addressTableLookups?.map((lookup) => {
       return {
@@ -138,7 +107,6 @@ export async function accountsForTransactionExecute({
     }) ?? [])
   );
 
-  // Add static account keys from the message
   for (const [
     accountIndex,
     accountKey,
@@ -154,7 +122,6 @@ export async function accountsForTransactionExecute({
     });
   }
 
-  // Add accounts loaded via address lookup tables
   if (transactionMessage.addressTableLookups) {
     for (const lookup of transactionMessage.addressTableLookups) {
       const lookupTableAccount =

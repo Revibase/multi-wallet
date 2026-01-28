@@ -226,10 +226,8 @@ export function getSecp256r1VerifyInstruction<
       message.length;
   }
 
-  // Program address.
   const programAddress = config?.programAddress ?? SECP256R1_PROGRAM_ADDRESS;
 
-  // Original args.
   const args = {
     numSignatures,
     padding: 0,
@@ -237,7 +235,6 @@ export function getSecp256r1VerifyInstruction<
     payload: input,
   };
 
-  // Resolve default values.
   const instruction = {
     accounts: [],
     programAddress,
