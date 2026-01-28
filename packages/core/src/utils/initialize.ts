@@ -1,8 +1,6 @@
 import {
   createRpc,
-  featureFlags,
   Rpc as LightProtocolRpc,
-  VERSION,
 } from "@lightprotocol/stateless.js";
 import {
   createSolanaClient,
@@ -21,8 +19,6 @@ import {
 import { NotInitializedError } from "../errors";
 import type { JitoTipsConfig } from "../types";
 
-featureFlags.version = VERSION.V2;
-
 type RevibaseGlobalState = {
   solanaRpcEndpoint?: string;
   lightProtocolRpc?: LightProtocolRpc;
@@ -30,7 +26,7 @@ type RevibaseGlobalState = {
   sendAndConfirm?: SendAndConfirmTransactionWithSignersFunction;
   computeEstimate?: (
     tx: BaseTransactionMessage & TransactionMessageWithFeePayer,
-    cfg?: { commitment?: "processed" | "confirmed" | "finalized" }
+    cfg?: { commitment?: "processed" | "confirmed" | "finalized" },
   ) => Promise<number>;
   jitoTipsConfig?: JitoTipsConfig | null;
 };
@@ -106,7 +102,7 @@ export function initialize({
   state.lightProtocolRpc = createRpc(
     rpcEndpoint,
     compressionApiEndpoint,
-    proverEndpoint
+    proverEndpoint,
   );
   const { rpc, sendAndConfirmTransaction } = createSolanaClient({
     urlOrMoniker: rpcEndpoint,

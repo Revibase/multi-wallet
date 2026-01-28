@@ -9,8 +9,8 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "0.31.1",
-    "@lightprotocol/compressed-token": "0.22.1-alpha.9",
-    "@lightprotocol/stateless.js": "0.22.1-alpha.7",
+    "@lightprotocol/compressed-token": "0.23.0-beta.1",
+    "@lightprotocol/stateless.js": "0.23.0-beta.3",
     "@noble/curves": "2.0.1",
     "@noble/hashes": "2.0.1",
     "@revibase/core": "workspace:*",
