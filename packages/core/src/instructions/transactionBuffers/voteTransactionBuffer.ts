@@ -14,7 +14,7 @@ import { SignedSecp256r1Key } from "../../types";
 import { extractSecp256r1VerificationArgs } from "../../utils/transaction/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
-export function voteTransactionBuffer({
+export async function voteTransactionBuffer({
   settings,
   voter,
   transactionBufferAddress,
@@ -31,7 +31,7 @@ export function voteTransactionBuffer({
   } | null;
 }) {
   const { domainConfig, verifyArgs, signature, publicKey, message } =
-    extractSecp256r1VerificationArgs(voter);
+    await extractSecp256r1VerificationArgs(voter);
   const instructions: Instruction[] = [];
   if (message && signature && publicKey) {
     instructions.push(
@@ -41,7 +41,7 @@ export function voteTransactionBuffer({
           signature,
           publicKey,
         },
-      ])
+      ]),
     );
   }
 
@@ -56,7 +56,7 @@ export function voteTransactionBuffer({
         payer: compressedArgs.payer,
         compressedProofArgs: compressedArgs.compressedProofArgs,
         remainingAccounts: compressedArgs.remainingAccounts,
-      })
+      }),
     );
   } else {
     instructions.push(
@@ -67,7 +67,7 @@ export function voteTransactionBuffer({
         domainConfig,
         voter: voter instanceof SignedSecp256r1Key ? undefined : voter,
         remainingAccounts: [],
-      })
+      }),
     );
   }
 

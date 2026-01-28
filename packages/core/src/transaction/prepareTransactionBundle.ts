@@ -1,4 +1,3 @@
-import { sha256 } from "@noble/hashes/sha2.js";
 import type {
   AddressesByLookupTableAddress,
   Instruction,
@@ -24,6 +23,7 @@ import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
 } from "../utils/compressed/internal";
+import { sha256 } from "../utils/crypto";
 import {
   convertPubkeyToMemberkey,
   getDeduplicatedSigners,
@@ -69,18 +69,23 @@ export async function prepareTransactionBundle({
   const transactionBufferAddress = await getTransactionBufferAddress(
     settings,
     creator instanceof SignedSecp256r1Key ? creator : creator.address,
-    bufferIndex
+    bufferIndex,
   );
 
   // --- Stage 2: Split Transaction Message into chunks + hashing ---
-  const chunks: Uint8Array[] = [];
-  const chunksHash: Uint8Array[] = [];
+  const chunks: Uint8Array<ArrayBuffer>[] = [];
+  const chunksHash: Uint8Array<ArrayBuffer>[] = [];
   for (let i = 0; i < transactionMessageBytes.length; i += chunkSize) {
-    const chunk = transactionMessageBytes.subarray(i, i + chunkSize);
+    const chunk = transactionMessageBytes.subarray(
+      i,
+      i + chunkSize,
+    ) as Uint8Array<ArrayBuffer>;
     chunks.push(chunk);
-    chunksHash.push(sha256(chunk));
+    chunksHash.push(await sha256(chunk));
   }
-  const finalBufferHash = sha256(new Uint8Array(transactionMessageBytes));
+  const finalBufferHash = await sha256(
+    transactionMessageBytes as Uint8Array<ArrayBuffer>,
+  );
 
   // --- Stage 3: Derive readonly compressed proof args if necessary---
   const { settingsReadonlyArgs, settingsMutArgs, proof, packedAccounts } =
@@ -89,7 +94,7 @@ export async function prepareTransactionBundle({
       index,
       settingsAddressTreeIndex,
       false,
-      cachedAccounts
+      cachedAccounts,
     );
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const compressedArgs =
@@ -99,7 +104,7 @@ export async function prepareTransactionBundle({
           settingsMutArgs,
           compressedProofArgs: convertToCompressedProofArgs(
             proof,
-            systemOffset
+            systemOffset,
           ),
           remainingAccounts,
           payer,
@@ -107,18 +112,20 @@ export async function prepareTransactionBundle({
       : null;
 
   // --- Stage 4: Instruction groups ---
-  const expectedSecp256r1Signers = getDeduplicatedSigners([
-    creator,
-    ...(executor ? [executor] : []),
-    ...additionalVoters,
-  ])
-    .filter((x) => x instanceof SignedSecp256r1Key)
-    .map((x) => ({
-      memberKey: convertPubkeyToMemberkey(x),
-      messageHash: getSecp256r1MessageHash(x.authResponse),
-    }));
+  const expectedSecp256r1Signers = await Promise.all(
+    getDeduplicatedSigners([
+      creator,
+      ...(executor ? [executor] : []),
+      ...additionalVoters,
+    ])
+      .filter((x) => x instanceof SignedSecp256r1Key)
+      .map(async (x) => ({
+        memberKey: convertPubkeyToMemberkey(x),
+        messageHash: await getSecp256r1MessageHash(x.authResponse),
+      })),
+  );
 
-  const createIxs = createTransactionBuffer({
+  const createIxs = await createTransactionBuffer({
     finalBufferHash,
     finalBufferSize: transactionMessageBytes.length,
     bufferIndex,
@@ -138,19 +145,21 @@ export async function prepareTransactionBundle({
       transactionBufferAddress,
       settings,
       compressed,
-    })
+    }),
   );
 
-  const voteIxs = additionalVoters.map((voter) =>
-    voteTransactionBuffer({
-      voter,
-      transactionBufferAddress,
-      settings,
-      compressedArgs,
-    })
+  const voteIxs = await Promise.all(
+    additionalVoters.map((voter) =>
+      voteTransactionBuffer({
+        voter,
+        transactionBufferAddress,
+        settings,
+        compressedArgs,
+      }),
+    ),
   );
 
-  const executeApprovalIxs = executeTransactionBuffer({
+  const executeApprovalIxs = await executeTransactionBuffer({
     compressedArgs,
     settings,
     executor,

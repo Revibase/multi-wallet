@@ -10,7 +10,7 @@ export function extendTransactionBuffer({
   settings,
   compressed = false,
 }: {
-  transactionMessageBytes: Uint8Array;
+  transactionMessageBytes: Uint8Array<ArrayBuffer>;
   transactionBufferAddress: Address;
   settings: Address;
   compressed?: boolean;

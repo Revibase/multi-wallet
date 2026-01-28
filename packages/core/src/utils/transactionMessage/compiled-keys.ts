@@ -22,9 +22,11 @@ export class CompiledKeys {
   }
 
   /**
-   * The only difference between this and the original is that we don't mark the instruction programIds as invoked.
-   * It makes sense to do because the instructions will be called via CPI, so the programIds can come from Address Lookup Tables.
-   * This allows to compress the message size and avoid hitting the tx size limit during vault_transaction_create instruction calls.
+   * Compiles instructions into account key metadata
+   * Note: Unlike solana-web3.js, we don't mark program IDs as invoked since
+   * instructions are called via CPI, allowing program IDs to come from Address
+   * Lookup Tables. This compresses message size and avoids hitting transaction
+   * size limits during vault_transaction_create instruction calls.
    */
   static compile(
     instructions: Array<Instruction>,
@@ -49,8 +51,7 @@ export class CompiledKeys {
     payerKeyMeta.isWritable = true;
 
     for (const ix of instructions) {
-      // This is the only difference from the original.
-      // getOrInsertDefault(ix.programId).isInvoked = true;
+      // Don't mark program address as invoked (allows ALT compression)
       getOrInsertDefault(ix.programAddress).isInvoked = false;
       for (const accountMeta of ix.accounts ?? []) {
         const keyMeta = getOrInsertDefault(accountMeta.address);
@@ -98,19 +99,16 @@ export class CompiledKeys {
       numReadonlyNonSignerAccounts: readonlyNonSigners.length,
     };
 
-    // sanity checks
-    {
-      if (writableSigners.length === 0) {
-        throw new Error("Expected at least one writable signer key");
-      }
+    // Validation: ensure payer is first writable signer
+    if (writableSigners.length === 0) {
+      throw new Error("Expected at least one writable signer key");
+    }
 
-      const [payerAddress] = writableSigners[0];
-
-      if (payerAddress !== this.payer) {
-        throw new Error(
-          "Expected first writable signer key to be the fee payer"
-        );
-      }
+    const [payerAddress] = writableSigners[0];
+    if (payerAddress !== this.payer) {
+      throw new Error(
+        "Expected first writable signer key to be the fee payer"
+      );
     }
 
     const staticAccountKeys = [
@@ -123,6 +121,12 @@ export class CompiledKeys {
     return [header, staticAccountKeys];
   }
 
+  /**
+   * Extracts accounts that can be loaded from an address lookup table
+   * Removes extracted accounts from the key map and returns their indices
+   * @param lookupTableAddresses - Tuple of [lookup table address, account addresses]
+   * @returns Extracted lookup data with indices and drained keys, or undefined if no keys found
+   */
   extractTableLookup(lookupTableAddresses: [string, Address[]]) {
     const [writableIndexes, drainedWritableKeys] =
       this.drainKeysFoundInLookupTable(
@@ -155,7 +159,13 @@ export class CompiledKeys {
     };
   }
 
-  /** @internal */
+  /**
+   * Removes keys from the key map that are found in a lookup table
+   * @param lookupTableEntries - Account addresses in the lookup table
+   * @param keyMetaFilter - Filter function to determine which keys to extract
+   * @returns Tuple of [lookup table indices, drained key addresses]
+   * @throws {Error} If lookup table index exceeds 255
+   */
   private drainKeysFoundInLookupTable(
     lookupTableEntries: Array<Address>,
     keyMetaFilter: (keyMeta: CompiledKeyMeta) => boolean

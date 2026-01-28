@@ -82,10 +82,12 @@ export function retrieveTransactionManager(
     permissions,
     Permission.ExecuteTransaction,
   );
-  // If signer has full signing rights, no transaction manager is needed
+  // If signer has all permissions, no transaction manager is needed
   if (hasInitiate && hasVote && hasExecute) {
     return {};
   }
+
+  // Require vote and execute permissions at minimum
   if (!hasVote || !hasExecute) {
     throw new PermissionError(
       "Signer lacks the required Vote/Execute permissions.",
@@ -97,7 +99,7 @@ export function retrieveTransactionManager(
     );
   }
 
-  // Otherwise, require a transaction manager + vote + execute rights
+  // Find transaction manager member (required when signer doesn't have initiate permission)
   const transactionManager = settingsData.members.find(
     (m) => m.role === UserRole.TransactionManager,
   );
@@ -213,6 +215,7 @@ export function createTransactionManagerSigner(
         );
       }
 
+      // Map signatures to the expected format: { [address]: signature }
       return data.signatures.map((sig) => ({
         [address]: getBase58Encoder().encode(sig) as SignatureBytes,
       }));
@@ -240,7 +243,7 @@ export function convertMemberKeyToString(memberKey: MemberKey): string {
  */
 export function serializeConfigActions(
   configActions: ConfigAction[],
-): Uint8Array {
+): Uint8Array<ArrayBuffer> {
   const encodedActions = configActions.map((x) =>
     getConfigActionEncoder().encode(x),
   );
@@ -271,7 +274,9 @@ export function serializeConfigActions(
  * @returns Array of config actions
  * @throws {ValidationError} If there are trailing bytes
  */
-export function deserializeConfigActions(bytes: Uint8Array): ConfigAction[] {
+export function deserializeConfigActions(
+  bytes: Uint8Array<ArrayBuffer>,
+): ConfigAction[] {
   let offset = 0;
   const [count, u32offset] = getU32Decoder().read(bytes, offset);
   offset = u32offset;

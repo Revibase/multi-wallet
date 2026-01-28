@@ -10,7 +10,7 @@ import { SignedSecp256r1Key } from "../../types";
 import { extractSecp256r1VerificationArgs } from "../../utils/transaction/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
-export function createTransactionBuffer({
+export async function createTransactionBuffer({
   payer,
   creator,
   bufferIndex,
@@ -23,7 +23,7 @@ export function createTransactionBuffer({
   compressedArgs,
   expectedSecp256r1Signers,
 }: {
-  finalBufferHash: Uint8Array;
+  finalBufferHash: Uint8Array<ArrayBuffer>;
   finalBufferSize: number;
   payer: TransactionSigner;
   creator: TransactionSigner | SignedSecp256r1Key;
@@ -31,7 +31,7 @@ export function createTransactionBuffer({
   bufferIndex: number;
   transactionBufferAddress: Address;
   preauthorizeExecution: boolean;
-  bufferExtendHashes: Uint8Array[];
+  bufferExtendHashes: Uint8Array<ArrayBuffer>[];
   compressedArgs: {
     settingsReadonlyArgs: SettingsReadonlyArgs;
     compressedProofArgs: ProofArgsArgs;
@@ -40,7 +40,7 @@ export function createTransactionBuffer({
   expectedSecp256r1Signers: ExpectedSecp256r1SignersArgs[];
 }) {
   const { domainConfig, verifyArgs, message, signature, publicKey } =
-    extractSecp256r1VerificationArgs(creator);
+    await extractSecp256r1VerificationArgs(creator);
   const instructions = [];
   if (message && signature && publicKey) {
     instructions.push(
@@ -50,7 +50,7 @@ export function createTransactionBuffer({
           signature,
           publicKey,
         },
-      ])
+      ]),
     );
   }
 
@@ -75,7 +75,7 @@ export function createTransactionBuffer({
         settingsReadonlyArgs,
         compressedProofArgs,
         remainingAccounts,
-      })
+      }),
     );
   } else {
     instructions.push(
@@ -95,7 +95,7 @@ export function createTransactionBuffer({
           expectedSecp256r1Signers,
         },
         remainingAccounts: [],
-      })
+      }),
     );
   }
 

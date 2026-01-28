@@ -5,22 +5,22 @@ const SECP256R1_PUBLIC_KEY_LENGTH = 33;
 type Secp256r1KeyInitData = string | Uint8Array | Array<number>;
 type SignedMessageDetails = {
   verifyArgs: {
-    clientDataJson: Uint8Array;
-    truncatedClientDataJson: Uint8Array;
+    clientDataJson: Uint8Array<ArrayBuffer>;
+    truncatedClientDataJson: Uint8Array<ArrayBuffer>;
     slotNumber: bigint;
-    slotHash: Uint8Array;
+    slotHash: Uint8Array<ArrayBuffer>;
   };
   domainConfig: Address;
-  authData: Uint8Array;
-  signature: Uint8Array;
+  authData: Uint8Array<ArrayBuffer>;
+  signature: Uint8Array<ArrayBuffer>;
   originIndex: number;
   crossOrigin: boolean;
-  clientAndDeviceHash: Uint8Array;
+  clientAndDeviceHash: Uint8Array<ArrayBuffer>;
   authResponse: AuthenticationResponseJSON;
 };
 
 export class Secp256r1Key {
-  protected _bn: Uint8Array | undefined;
+  protected _bn: Uint8Array<ArrayBuffer> | undefined;
 
   constructor(value: Secp256r1KeyInitData) {
     if (typeof value === "string") {
@@ -31,10 +31,10 @@ export class Secp256r1Key {
     this.validateKeyLength(this._bn);
   }
 
-  protected validateKeyLength(key: Uint8Array | Array<number>) {
+  protected validateKeyLength(key: Uint8Array<ArrayBuffer> | Array<number>) {
     if (key.length !== SECP256R1_PUBLIC_KEY_LENGTH) {
       throw new Error(
-        `Invalid public key length, expected ${SECP256R1_PUBLIC_KEY_LENGTH} bytes but got ${key.length}`
+        `Invalid public key length, expected ${SECP256R1_PUBLIC_KEY_LENGTH} bytes but got ${key.length}`,
       );
     }
   }

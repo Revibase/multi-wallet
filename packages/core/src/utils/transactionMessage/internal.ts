@@ -12,6 +12,14 @@ import {
 import { getSolanaRpc } from "..";
 import { vaultTransactionMessageDeserialize } from "../../types";
 
+/**
+ * Determines the account role based on message structure and account key
+ * @param message - Compiled transaction message
+ * @param index - Account index in the message
+ * @param accountKey - Account address
+ * @param vaultPda - Vault PDA address (never treated as signer)
+ * @returns Account role (writable/readonly, signer/non-signer)
+ */
 function getAccountRole(
   message: CompiledTransactionMessage,
   index: number,
@@ -30,6 +38,13 @@ function getAccountRole(
     return AccountRole.READONLY;
   }
 }
+
+/**
+ * Checks if an account index corresponds to a writable account in the static account keys
+ * @param message - Compiled transaction message
+ * @param index - Account index
+ * @returns True if the account is writable
+ */
 function isStaticWritableIndex(
   message: CompiledTransactionMessage,
   index: number
@@ -64,11 +79,23 @@ function isStaticWritableIndex(
 
   return false;
 }
+/**
+ * Checks if an account index corresponds to a signer account
+ * @param message - Compiled transaction message
+ * @param index - Account index
+ * @returns True if the account is a signer
+ */
 function isSignerIndex(message: CompiledTransactionMessage, index: number) {
   return index < message.header.numSignerAccounts;
 }
-/** Populate remaining accounts required for execution of the transaction. */
 
+/**
+ * Populates all accounts required for transaction execution
+ * Includes lookup table accounts, static accounts, and additional signers
+ * @param params - Transaction execution parameters
+ * @returns Account metas, lookup table accounts, and deserialized transaction message
+ * @throws {Error} If lookup table account or address is missing
+ */
 export async function accountsForTransactionExecute({
   walletAddress,
   transactionMessageBytes,
@@ -99,10 +126,9 @@ export async function accountsForTransactionExecute({
         )
       : {});
 
-  // Populate account metas required for execution of the transaction.
   const accountMetas: (AccountMeta | AccountSignerMeta)[] = [];
-  // First add the lookup table accounts used by the transaction. They are needed for on-chain validation.
 
+  // Add lookup table accounts first (required for on-chain validation)
   accountMetas.push(
     ...(transactionMessage.addressTableLookups?.map((lookup) => {
       return {
@@ -112,7 +138,7 @@ export async function accountsForTransactionExecute({
     }) ?? [])
   );
 
-  // Then add static account keys included into the message.
+  // Add static account keys from the message
   for (const [
     accountIndex,
     accountKey,
@@ -128,7 +154,7 @@ export async function accountsForTransactionExecute({
     });
   }
 
-  // Then add accounts that will be loaded with address lookup tables.
+  // Add accounts loaded via address lookup tables
   if (transactionMessage.addressTableLookups) {
     for (const lookup of transactionMessage.addressTableLookups) {
       const lookupTableAccount =

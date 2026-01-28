@@ -1,6 +1,5 @@
 import { decodeCBOR, encodeCBOR, type CBORType } from "@levischuck/tiny-cbor";
 import { p256 } from "@noble/curves/nist.js";
-import { sha256 } from "@noble/hashes/sha2.js";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
 import {
   address,
@@ -10,6 +9,7 @@ import {
   getU64Decoder,
   getUtf8Encoder,
   type Address,
+  type ReadonlyUint8Array,
 } from "gill";
 import {
   SignedSecp256r1Key,
@@ -22,6 +22,7 @@ import {
   type TransactionPayloadWithBase64MessageBytes,
 } from "../../types";
 import { getDomainConfigAddress } from "../addresses";
+import { sha256 } from "../crypto";
 import { getSolanaRpc } from "../initialize";
 import {
   convertSignatureDERtoRS,
@@ -44,15 +45,21 @@ import {
  * const compressed = convertPubkeyCoseToCompressed(coseKey);
  */
 export function convertPubkeyCoseToCompressed(
-  publicKey: Uint8Array<ArrayBufferLike>
+  publicKey: Uint8Array<ArrayBuffer>,
 ) {
   const decodedPublicKey = decodeCBOR(publicKey) as Map<number, CBORType>;
   const uncompressedPublicKey = p256.Point.fromAffine({
-    x: BigInt("0x" + uint8ArrayToHex(decodedPublicKey.get(-2) as Uint8Array)),
-    y: BigInt("0x" + uint8ArrayToHex(decodedPublicKey.get(-3) as Uint8Array)),
+    x: BigInt(
+      "0x" +
+        uint8ArrayToHex(decodedPublicKey.get(-2) as Uint8Array<ArrayBuffer>),
+    ),
+    y: BigInt(
+      "0x" +
+        uint8ArrayToHex(decodedPublicKey.get(-3) as Uint8Array<ArrayBuffer>),
+    ),
   });
   const compressedPubKey = getBase58Decoder().decode(
-    uncompressedPublicKey.toBytes(true)
+    uncompressedPublicKey.toBytes(true),
   );
   return compressedPubKey;
 }
@@ -70,10 +77,10 @@ export function convertPubkeyCoseToCompressed(
  * const coseKey = convertPubkeyCompressedToCose("2vMsnB7P5E7EwXj1LbcfLp...");
  */
 export function convertPubkeyCompressedToCose(
-  publicKey: string
+  publicKey: string,
 ): Uint8Array<ArrayBuffer> {
   const compressedPublicKey = p256.Point.fromBytes(
-    new Uint8Array(getBase58Encoder().encode(publicKey))
+    getBase58Encoder().encode(publicKey) as Uint8Array,
   );
   const uncompressedPublicKey = compressedPublicKey.toBytes(false);
 
@@ -107,7 +114,7 @@ export function convertPubkeyCompressedToCose(
  * const signedKey = await getSignedSecp256r1Key(response, originIndex);
  */
 export async function getSignedSecp256r1Key(
-  payload: TransactionAuthenticationResponse
+  payload: TransactionAuthenticationResponse,
 ): Promise<SignedSecp256r1Key> {
   const { authenticatorData, clientDataJSON, signature } = (
     payload.authResponse as AuthenticationResponseJSON
@@ -116,13 +123,13 @@ export async function getSignedSecp256r1Key(
   const authData = new Uint8Array(base64URLStringToBuffer(authenticatorData));
 
   const clientDataJsonParsed = JSON.parse(
-    new TextDecoder().decode(base64URLStringToBuffer(clientDataJSON))
+    new TextDecoder().decode(base64URLStringToBuffer(clientDataJSON)),
   ) as Record<string, unknown>;
 
   const truncatedClientDataJson = extractAdditionalFields(clientDataJsonParsed);
 
   const convertedSignature = convertSignatureDERtoRS(
-    new Uint8Array(base64URLStringToBuffer(signature))
+    new Uint8Array(base64URLStringToBuffer(signature)),
   );
 
   const domainConfig = await getDomainConfigAddress({
@@ -134,12 +141,14 @@ export async function getSignedSecp256r1Key(
       clientDataJson: new Uint8Array(base64URLStringToBuffer(clientDataJSON)),
       truncatedClientDataJson,
       slotNumber: BigInt(payload.slotNumber),
-      slotHash: new Uint8Array(getBase58Encoder().encode(payload.slotHash)),
+      slotHash: getBase58Encoder().encode(
+        payload.slotHash,
+      ) as Uint8Array<ArrayBuffer>,
     },
-    clientAndDeviceHash: getClientAndDeviceHash(
+    clientAndDeviceHash: await getClientAndDeviceHash(
       payload.clientSignature.clientOrigin,
       payload.deviceSignature.publicKey,
-      payload.nonce
+      payload.nonce,
     ),
     domainConfig,
     authData,
@@ -153,57 +162,99 @@ export async function getSignedSecp256r1Key(
 import { NotFoundError } from "../../errors";
 import { fetchDomainConfig } from "../../generated";
 
-export function getClientAndDeviceHash(
+/**
+ * Computes a hash combining client origin, device public key, and nonce
+ * Used for challenge generation and verification
+ * @param clientOrigin - Origin of the client application
+ * @param devicePublicKey - Device's public key (Base58-encoded)
+ * @param nonce - Random nonce string
+ * @returns SHA256 hash of the combined inputs
+ */
+export async function getClientAndDeviceHash(
   clientOrigin: string,
   devicePublicKey: string,
-  nonce: string
-) {
+  nonce: string,
+): Promise<Uint8Array<ArrayBuffer>> {
   return sha256(
     new Uint8Array([
       ...getUtf8Encoder().encode(clientOrigin),
       ...getBase58Encoder().encode(devicePublicKey),
       ...new TextEncoder().encode(nonce),
-    ])
+    ]),
   );
 }
 
-export function createClientAuthorizationStartRequestChallenge(
-  payload: StartTransactionRequest | StartMessageRequest
-) {
+/**
+ * Creates a challenge hash for client authorization start requests
+ * @param payload - Start transaction or message request payload
+ * @returns SHA256 hash of the JSON-serialized payload
+ */
+export async function createClientAuthorizationStartRequestChallenge(
+  payload: StartTransactionRequest | StartMessageRequest,
+): Promise<Uint8Array<ArrayBuffer>> {
   return sha256(
-    new Uint8Array(getUtf8Encoder().encode(JSON.stringify(payload)))
+    getUtf8Encoder().encode(JSON.stringify(payload)) as Uint8Array<ArrayBuffer>,
   );
 }
 
-export function createClientAuthorizationCompleteRequestChallenge(
-  payload: CompleteTransactionRequest | CompleteMessageRequest
-) {
+/**
+ * Creates a challenge hash for client authorization complete requests
+ * Uses the WebAuthn message hash from the authentication response
+ * @param payload - Complete transaction or message request payload
+ * @returns SHA256 hash of the WebAuthn message
+ */
+export async function createClientAuthorizationCompleteRequestChallenge(
+  payload: CompleteTransactionRequest | CompleteMessageRequest,
+): Promise<Uint8Array<ArrayBuffer>> {
   return getSecp256r1MessageHash(payload.data.payload.authResponse);
 }
 
-export function createMessageChallenge(
+/**
+ * Creates a challenge hash for message signing
+ * Combines the message payload with client/device hash
+ * @param payload - Message payload string
+ * @param clientOrigin - Origin of the client application
+ * @param devicePublicKey - Device's public key (Base58-encoded)
+ * @param nonce - Random nonce string
+ * @returns SHA256 hash of payload + client/device hash
+ */
+export async function createMessageChallenge(
   payload: string,
   clientOrigin: string,
   devicePublicKey: string,
-  nonce: string
-) {
+  nonce: string,
+): Promise<Uint8Array<ArrayBuffer>> {
+  const clientDeviceHash = await getClientAndDeviceHash(
+    clientOrigin,
+    devicePublicKey,
+    nonce,
+  );
   return sha256(
-    new Uint8Array([
-      ...getUtf8Encoder().encode(payload),
-      ...getClientAndDeviceHash(clientOrigin, devicePublicKey, nonce),
-    ])
+    new Uint8Array([...getUtf8Encoder().encode(payload), ...clientDeviceHash]),
   );
 }
 
+/**
+ * Creates a challenge hash for transaction signing
+ * Combines transaction details, slot information, and client/device hash
+ * @param payload - Transaction payload with optional message bytes
+ * @param clientOrigin - Origin of the client application
+ * @param devicePublicKey - Device's public key (Base58-encoded)
+ * @param nonce - Random nonce string
+ * @param slotHash - Optional slot hash (fetched if not provided)
+ * @param slotNumber - Optional slot number (fetched if not provided)
+ * @returns Object containing slotNumber, slotHash, and challenge hash
+ * @throws {NotFoundError} If slot sysvar cannot be fetched
+ */
 export async function createTransactionChallenge(
   payload: TransactionPayloadWithBase64MessageBytes | TransactionPayload,
   clientOrigin: string,
   devicePublicKey: string,
   nonce: string,
   slotHash?: string,
-  slotNumber?: string
+  slotNumber?: string,
 ) {
-  let slotHashBytes: Uint8Array;
+  let slotHashBytes: ReadonlyUint8Array;
   if (!slotHash || !slotNumber) {
     const slotSysvarData = (
       await getSolanaRpc()
@@ -213,14 +264,14 @@ export async function createTransactionChallenge(
             encoding: "base64",
             commitment: "confirmed",
             dataSlice: { offset: 8, length: 40 },
-          }
+          },
         )
         .send()
     ).value?.data;
     if (!slotSysvarData) {
       throw new NotFoundError(
         "Slot sysvar",
-        "Unable to fetch slot sysvar data"
+        "Unable to fetch slot sysvar data",
       );
     }
     const slotHashData = getBase64Encoder().encode(slotSysvarData[0]);
@@ -228,34 +279,49 @@ export async function createTransactionChallenge(
     slotHashBytes = slotHashData.subarray(8, 40);
     slotHash = getBase58Decoder().decode(slotHashBytes);
   } else {
-    slotHashBytes = new Uint8Array(getBase58Encoder().encode(slotHash));
+    slotHashBytes = getBase58Encoder().encode(slotHash);
   }
 
-  const challenge = sha256(
+  const transactionMessageHash = await sha256(
+    typeof payload.transactionMessageBytes === "string"
+      ? new Uint8Array(base64URLStringToBuffer(payload.transactionMessageBytes))
+      : payload.transactionMessageBytes,
+  );
+  const clientDeviceHash = await getClientAndDeviceHash(
+    clientOrigin,
+    devicePublicKey,
+    nonce,
+  );
+  const challenge = await sha256(
     new Uint8Array([
       ...getUtf8Encoder().encode(payload.transactionActionType),
       ...getBase58Encoder().encode(payload.transactionAddress),
-      ...sha256(
-        typeof payload.transactionMessageBytes === "string"
-          ? new Uint8Array(
-              base64URLStringToBuffer(payload.transactionMessageBytes)
-            )
-          : payload.transactionMessageBytes
-      ),
+      ...transactionMessageHash,
       ...slotHashBytes,
-      ...getClientAndDeviceHash(clientOrigin, devicePublicKey, nonce),
-    ])
+      ...clientDeviceHash,
+    ]),
   );
   return { slotNumber, slotHash, challenge };
 }
 
-export function getSecp256r1MessageHash(
-  authResponse: AuthenticationResponseJSON
-) {
-  return sha256(getSecp256r1Message(authResponse));
+/**
+ * Computes the SHA256 hash of the WebAuthn message
+ * @param authResponse - WebAuthn authentication response
+ * @returns SHA256 hash of the message
+ */
+export async function getSecp256r1MessageHash(
+  authResponse: AuthenticationResponseJSON,
+): Promise<Uint8Array<ArrayBuffer>> {
+  const message = await getSecp256r1Message(authResponse);
+  return sha256(message);
 }
 
-export function bufferToBase64URLString(buffer: Uint8Array) {
+/**
+ * Converts a Uint8Array buffer to Base64URL string (URL-safe Base64)
+ * @param buffer - Buffer to convert
+ * @returns Base64URL-encoded string
+ */
+export function bufferToBase64URLString(buffer: Uint8Array<ArrayBuffer>) {
   let str = "";
   for (const charCode of buffer) {
     str += String.fromCharCode(charCode);
@@ -264,21 +330,20 @@ export function bufferToBase64URLString(buffer: Uint8Array) {
   return base64String.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
+/**
+ * Converts a Base64URL string to a Uint8Array buffer
+ * Handles padding automatically (Base64 requires length to be multiple of 4)
+ * @param base64URLString - Base64URL-encoded string
+ * @returns Decoded buffer
+ */
 export function base64URLStringToBuffer(base64URLString: string) {
   // Convert from Base64URL to Base64
   const base64 = base64URLString.replace(/-/g, "+").replace(/_/g, "/");
-  /**
-   * Pad with '=' until it's a multiple of four
-   * (4 - (85 % 4 = 1) = 3) % 4 = 3 padding
-   * (4 - (86 % 4 = 2) = 2) % 4 = 2 padding
-   * (4 - (87 % 4 = 3) = 1) % 4 = 1 padding
-   * (4 - (88 % 4 = 0) = 4) % 4 = 0 padding
-   */
+  // Pad with '=' until length is a multiple of 4
   const padLength = (4 - (base64.length % 4)) % 4;
   const padded = base64.padEnd(base64.length + padLength, "=");
-  // Convert to a binary string
+  // Convert to binary string then to buffer
   const binary = atob(padded);
-  // Convert binary string to buffer
   const buffer = new ArrayBuffer(binary.length);
   const bytes = new Uint8Array(buffer);
   for (let i = 0; i < binary.length; i++) {
@@ -287,6 +352,13 @@ export function base64URLStringToBuffer(base64URLString: string) {
   return buffer;
 }
 
+/**
+ * Gets the index of an origin in the domain configuration's origins list
+ * @param domainConfig - Domain configuration account address
+ * @param origin - Origin string to find
+ * @returns Index of the origin in the list
+ * @throws {Error} If origin is not found in domain config
+ */
 export async function getOriginIndex(domainConfig: Address, origin: string) {
   const { data } = await fetchDomainConfig(getSolanaRpc(), domainConfig);
   const origins = parseOrigins(new Uint8Array(data.origins), data.numOrigins);

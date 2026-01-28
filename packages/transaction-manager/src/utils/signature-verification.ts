@@ -10,7 +10,10 @@ import type { ClientDataJSON, WellKnownCacheEntry } from "../types";
 const WELL_KNOWN_CACHE_TTL_MS = 300_000;
 const wellKnownPublicKeyCache = new Map<string, WellKnownCacheEntry>();
 
-function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
+function bytesEqual(
+  a: Uint8Array<ArrayBuffer>,
+  b: Uint8Array<ArrayBuffer>,
+): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
     if (a[i] !== b[i]) return false;
@@ -121,7 +124,7 @@ async function fetchWellKnownClientPublicKey(
 
 export async function verifyClientSignature(
   clientSignature: { clientOrigin: string; signature: string },
-  messageHash: Uint8Array,
+  messageHash: Uint8Array<ArrayBuffer>,
   wellKnownProxyUrl?: URL,
 ): Promise<void> {
   const { publicKey: jwkPublicKey } = await fetchWellKnownClientPublicKey(
@@ -157,7 +160,7 @@ export async function verifyClientSignature(
 
 export async function verifyTransactionAuthResponseWithMessageHash(
   authDetails: TransactionAuthDetails,
-  expectedMessageHash: Uint8Array,
+  expectedMessageHash: Uint8Array<ArrayBuffer>,
 ): Promise<void> {
   const {
     authResponse,

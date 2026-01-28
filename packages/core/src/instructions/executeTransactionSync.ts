@@ -66,7 +66,7 @@ export async function executeTransactionSync({
       transactionMessageBytes,
       walletAddress,
       additionalSigners: dedupSigners.filter(
-        (x) => !(x instanceof SignedSecp256r1Key)
+        (x) => !(x instanceof SignedSecp256r1Key),
       ) as TransactionSigner[],
       addressesByLookupTableAddress,
     }),
@@ -75,20 +75,20 @@ export async function executeTransactionSync({
       index,
       settingsAddressTreeIndex,
       simulateProof,
-      cachedAccounts
+      cachedAccounts,
     ),
   ]);
 
   packedAccounts.addPreAccounts(accountMetas);
 
   const secp256r1Signers = dedupSigners.filter(
-    (x) => x instanceof SignedSecp256r1Key
+    (x) => x instanceof SignedSecp256r1Key,
   );
 
-  const { secp256r1VerifyArgs } = buildSecp256r1VerificationArgs(
+  const { secp256r1VerifyArgs } = await buildSecp256r1VerificationArgs(
     secp256r1Signers,
     secp256r1VerifyInput,
-    packedAccounts
+    packedAccounts,
   );
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
@@ -116,19 +116,19 @@ export async function executeTransactionSync({
 /**
  * Builds secp256r1 verification arguments from signers
  */
-function buildSecp256r1VerificationArgs(
+async function buildSecp256r1VerificationArgs(
   secp256r1Signers: SignedSecp256r1Key[],
   secp256r1VerifyInput: Secp256r1VerifyInput,
-  packedAccounts: PackedAccounts
-): {
+  packedAccounts: PackedAccounts,
+): Promise<{
   secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[];
-} {
+}> {
   const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];
 
   for (const signer of secp256r1Signers) {
     const index = secp256r1VerifyInput.length;
     const { domainConfig, verifyArgs, signature, publicKey, message } =
-      extractSecp256r1VerificationArgs(signer, index);
+      await extractSecp256r1VerificationArgs(signer, index);
 
     if (message && signature && publicKey) {
       secp256r1VerifyInput.push({ message, signature, publicKey });
@@ -188,7 +188,7 @@ function buildTransactionInstructions({
 
   const customTransactionMessage = parseTransactionMessage(
     transactionMessage,
-    accountMetas
+    accountMetas,
   );
 
   // Add transaction execution instruction
@@ -199,7 +199,7 @@ function buildTransactionInstructions({
 
     const compressedProofArgs = convertToCompressedProofArgs(
       proof,
-      systemOffset
+      systemOffset,
     );
 
     instructions.push(
@@ -210,7 +210,7 @@ function buildTransactionInstructions({
         compressedProofArgs,
         payer,
         remainingAccounts,
-      })
+      }),
     );
   } else {
     instructions.push(
@@ -219,7 +219,7 @@ function buildTransactionInstructions({
         settings,
         transactionMessage: customTransactionMessage,
         remainingAccounts,
-      })
+      }),
     );
   }
 
@@ -231,7 +231,7 @@ function buildTransactionInstructions({
  */
 function parseTransactionMessage(
   transactionMessage: CompiledTransactionMessage,
-  accountMetas: AccountMeta[]
+  accountMetas: AccountMeta[],
 ) {
   if (transactionMessage.version === "legacy") {
     throw new Error("Only versioned transaction is allowed.");
@@ -254,7 +254,7 @@ function parseTransactionMessage(
     addressTableLookups:
       transactionMessage.addressTableLookups?.map((x) => ({
         lookupTableAddressIndex: accountMetas.findIndex(
-          (y) => y.address === x.lookupTableAddress
+          (y) => y.address === x.lookupTableAddress,
         ),
         writableIndexes: new Uint8Array(x.writableIndexes),
         readonlyIndexes: new Uint8Array(x.readonlyIndexes),

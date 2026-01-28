@@ -46,9 +46,9 @@ import { retryFetch } from "../retry";
 import { requireNonEmpty } from "../validation";
 
 /**
- * Creates an encoded bundle of transactions
+ * Creates an encoded bundle of transactions ready for signing or simulation
  * @param bundle - Array of transaction details with optional compute units
- * @param isSimulate - Whether this is for simulation (uses random blockhash)
+ * @param isSimulate - Whether this is for simulation (uses random blockhash instead of fetching latest)
  * @returns Array of encoded transactions
  */
 export async function createEncodedBundle(
@@ -230,7 +230,7 @@ export async function simulateBundle(
  * @param index - Message index for verification
  * @returns Extracted verification arguments
  */
-export function extractSecp256r1VerificationArgs(
+export async function extractSecp256r1VerificationArgs(
   signer?: SignedSecp256r1Key | TransactionSigner,
   index = 0,
 ) {
@@ -257,7 +257,7 @@ export function extractSecp256r1VerificationArgs(
     : undefined;
   const message =
     secp256r1PublicKey?.authData && secp256r1PublicKey.verifyArgs.clientDataJson
-      ? getSecp256r1Message(secp256r1PublicKey.authResponse)
+      ? await getSecp256r1Message(secp256r1PublicKey.authResponse)
       : undefined;
   const publicKey = secp256r1PublicKey?.toBuffer();
 
@@ -295,6 +295,11 @@ export function convertPubkeyToMemberkey(
     };
   }
 }
+/**
+ * Extracts the public key string representation from a signer
+ * @param pubkey - Signer (either SignedSecp256r1Key or TransactionSigner)
+ * @returns Base58-encoded public key string
+ */
 function getPubkeyString(pubkey: TransactionSigner | SignedSecp256r1Key) {
   if (pubkey instanceof SignedSecp256r1Key) {
     return pubkey.toString();
@@ -320,7 +325,8 @@ export function getDeduplicatedSigners(
     }
   }
 
-  // due to current tx size limit (can be removed once tx size limit increases)
+  // Limit: Only one Secp256r1 signer per instruction due to transaction size constraints
+  // This restriction can be removed once transaction size limits are increased
   const secp256r1Signers = dedupSigners.filter(
     (x) => x instanceof SignedSecp256r1Key,
   );
@@ -333,7 +339,7 @@ export function getDeduplicatedSigners(
 }
 
 /**
- * Creates a Jito tip instruction
+ * Creates a Jito tip instruction by transferring SOL to a randomly selected tip account
  * @param payer - The transaction signer paying the tip
  * @param tipAmount - Amount in lamports to tip
  * @returns Instruction to transfer SOL to a random Jito tip account

@@ -2,34 +2,28 @@
  * Constants used throughout the SDK
  */
 
-/**
- * Transaction size limits
- */
+/** Maximum transaction size in bytes (Solana limit) */
 export const TRANSACTION_SIZE_LIMIT = 1644;
 
-/**
- * Compute unit limits
- */
+/** Minimum compute units required for transactions */
 export const MIN_COMPUTE_UNITS = 200000;
+/** Multiplier applied to estimated compute units for safety margin */
 export const COMPUTE_UNIT_MULTIPLIER = 1.1;
 
-/**
- * Retry configuration
- */
+/** Maximum number of retries when polling for bundle confirmation */
 export const BUNDLE_POLL_MAX_RETRIES = 30;
+/** Delay between bundle confirmation polls in milliseconds */
 export const BUNDLE_POLL_DELAY_MS = 3000;
 
-/**
- * General retry configuration for network operations
- */
+/** Default maximum retry attempts for network operations */
 export const DEFAULT_NETWORK_RETRY_MAX_RETRIES = 3;
+/** Default initial delay between retries in milliseconds */
 export const DEFAULT_NETWORK_RETRY_DELAY_MS = 500;
 
-/**
- * Exponential backoff configuration
- */
+/** Base multiplier for exponential backoff calculation */
 export const EXPONENTIAL_BACKOFF_BASE = 2;
-export const BACKOFF_MAX_DELAY_MS = 30000; // 30 seconds
+/** Maximum delay cap for exponential backoff in milliseconds */
+export const BACKOFF_MAX_DELAY_MS = 30000;
 
 /**
  * Jito tip accounts

@@ -57,6 +57,13 @@ export async function fetchUserAccountData(
   return result;
 }
 
+/**
+ * Fetches user account data if it exists, returning null if not found
+ * @param member - Member address or Secp256r1Key
+ * @param userAddressTreeIndex - Optional address tree index
+ * @param cachedAccounts - Optional cache for account data
+ * @returns User account data or null if not found
+ */
 export async function fetchMaybeUserAccountData(
   member: Address | Secp256r1Key,
   userAddressTreeIndex?: number,
@@ -70,6 +77,12 @@ export async function fetchMaybeUserAccountData(
   return getUserDecoder().decode(result.data.data);
 }
 
+/**
+ * Fetches user account data by filtering compressed accounts
+ * @param domainConfigAddress - Domain configuration address
+ * @param filters - Filter criteria (member or credentialId)
+ * @returns User account data or null if not found
+ */
 export async function fetchUserAccountByFilters(
   domainConfigAddress: Address,
   {
@@ -146,6 +159,13 @@ export async function fetchSettingsAccountData(
   return settingsData;
 }
 
+/**
+ * Fetches settings account data, trying compressed first then falling back to regular accounts
+ * @param index - Settings index
+ * @param settingsAddressTreeIndex - Optional address tree index
+ * @param cachedAccounts - Optional cache for account data
+ * @returns Settings account data with compression flag, or null if not found
+ */
 export async function fetchMaybeSettingsAccountData(
   index: number | bigint,
   settingsAddressTreeIndex?: number,
@@ -166,6 +186,7 @@ export async function fetchMaybeSettingsAccountData(
     }
     return { ...data.data.value, isCompressed: true };
   } catch {
+    // Fallback to regular (non-compressed) settings account
     const result = await fetchMaybeSettings(
       getSolanaRpc(),
       await getSettingsFromIndex(index),
@@ -180,6 +201,15 @@ export async function fetchMaybeSettingsAccountData(
   }
 }
 
+/**
+ * Fetches all settings accounts associated with a member
+ * For administrators and transaction managers, returns all settings they manage
+ * For regular members, returns only their associated wallet settings
+ * @param member - Member address or Secp256r1Key
+ * @param userAddressTreeIndex - Optional address tree index
+ * @param cachedAccounts - Optional cache for account data
+ * @returns Array of settings account data with compression flags
+ */
 export async function fetchAllSettingsAccountByMember(
   member: Address | Secp256r1Key,
   userAddressTreeIndex?: number,

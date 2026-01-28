@@ -45,7 +45,10 @@ async function sha256(
   return new Uint8Array(hashBuffer);
 }
 
-function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
+function bytesEqual(
+  a: Uint8Array<ArrayBuffer>,
+  b: Uint8Array<ArrayBuffer>,
+): boolean {
   if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
     if (a[i] !== b[i]) return false;
@@ -181,7 +184,7 @@ export async function extractSettingsFromCompressed(
  */
 export async function parseTransactionMessageBytes(
   rpc: Rpc<SolanaRpcApi>,
-  transactionMessageBytes: Uint8Array,
+  transactionMessageBytes: Uint8Array<ArrayBuffer>,
 ): Promise<Instruction[]> {
   const compiledMessage = vaultTransactionMessageDeserialize(
     transactionMessageBytes,

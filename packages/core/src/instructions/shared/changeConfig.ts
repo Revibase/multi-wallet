@@ -59,7 +59,7 @@ export async function changeConfig({
   for (const x of secp256r1Signers) {
     const index = secp256r1VerifyInput.length;
     const { domainConfig, verifyArgs, signature, publicKey, message } =
-      extractSecp256r1VerificationArgs(x, index);
+      await extractSecp256r1VerificationArgs(x, index);
     if (message && signature && publicKey) {
       secp256r1VerifyInput.push({ message, signature, publicKey });
     }

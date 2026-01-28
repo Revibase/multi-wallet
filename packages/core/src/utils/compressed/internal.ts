@@ -39,6 +39,12 @@ import { PackedAccounts } from "./packedAccounts";
 
 import type { AccountCache } from "../../types";
 
+/**
+ * Fetches a compressed account with caching support
+ * @param address - Compressed account address (BN254)
+ * @param cachedAccounts - Optional cache for account data
+ * @returns Compressed account data or null if not found
+ */
 export async function fetchCachedCompressedAccount(
   address: BN254,
   cachedAccounts?: AccountCache,
@@ -49,6 +55,12 @@ export async function fetchCachedCompressedAccount(
   );
 }
 
+/**
+ * Fetches account info with caching support
+ * @param address - Account address
+ * @param cachedAccounts - Optional cache for account data
+ * @returns Account info with slot context
+ */
 export async function fetchCachedAccountInfo(
   address: Address,
   cachedAccounts?: AccountCache,
@@ -71,6 +83,13 @@ export async function fetchCachedAccountInfo(
   );
 }
 
+/**
+ * Fetches compressed account hashes and tree information for multiple accounts
+ * @param addresses - Array of compressed account addresses with their types
+ * @param cachedAccounts - Optional cache for account data
+ * @returns Array of account hashes with tree information
+ * @throws {NotFoundError} If any account is missing
+ */
 export async function getCompressedAccountHashes(
   addresses: { address: BN254; type: "Settings" | "User" }[],
   cachedAccounts?: AccountCache,
@@ -100,6 +119,12 @@ export async function getCompressedAccountHashes(
   }));
 }
 
+/**
+ * Converts a validity proof to compressed proof arguments format
+ * @param validityProof - Validity proof with context, or null
+ * @param offset - Starting index for Light CPI accounts
+ * @returns Compressed proof arguments with account index offset
+ */
 export function convertToCompressedProofArgs(
   validityProof: ValidityProofWithContext | null,
   offset: number,
@@ -118,6 +143,15 @@ export function convertToCompressedProofArgs(
   };
 }
 
+/**
+ * Generates initialization arguments for new compressed accounts
+ * @param packedAccounts - Packed accounts helper for tree operations
+ * @param treeInfos - Tree information from validity proof
+ * @param roots - Merkle tree roots
+ * @param rootIndices - Root indices in the state tree
+ * @param newAddresses - New addresses to initialize with their types
+ * @returns Array of initialization arguments, empty if no new addresses
+ */
 export async function getCompressedAccountInitArgs(
   packedAccounts: PackedAccounts,
   treeInfos: ValidityProofWithContext["treeInfos"],
@@ -149,6 +183,18 @@ export async function getCompressedAccountInitArgs(
   return creationArgs;
 }
 
+/**
+ * Generates mutation arguments for updating compressed accounts
+ * @param packedAccounts - Packed accounts helper for tree operations
+ * @param treeInfos - Tree information for each account
+ * @param leafIndices - Leaf indices in the merkle trees
+ * @param rootIndices - Root indices in the state tree
+ * @param proveByIndices - Whether to prove by index for each account
+ * @param hashes - Account hashes with data and addresses
+ * @param decoder - Decoder for account data type T
+ * @returns Array of mutation arguments with account metadata
+ * @throws {ValidationError} If state tree data cannot be parsed
+ */
 export function getCompressedAccountMutArgs<T>(
   packedAccounts: PackedAccounts,
   treeInfos: TreeInfo[],
@@ -193,6 +239,17 @@ export function getCompressedAccountMutArgs<T>(
   return mutArgs;
 }
 
+/**
+ * Constructs proof arguments for settings account operations
+ * Handles both compressed and regular settings accounts
+ * @param compressed - Whether to use compressed account format
+ * @param index - Settings index
+ * @param settingsAddressTreeIndex - Optional address tree index
+ * @param simulateProof - Whether to use simulated proof (for testing)
+ * @param cachedAccounts - Optional cache for account data
+ * @returns Proof arguments with settings data and packed accounts
+ * @throws {ValidationError} If state tree data cannot be parsed
+ */
 export async function constructSettingsProofArgs(
   compressed: boolean,
   index: number | bigint,
@@ -288,12 +345,22 @@ export async function getValidityProofWithRetry(
     getLightProtocolRpc().getValidityProofV0(hashes, newAddresses),
   );
 }
+/**
+ * Gets the index of the newest whitelisted address tree
+ * @returns Index of the last address tree in the whitelist
+ */
 export async function getNewWhitelistedAddressTreeIndex() {
   const addressTrees = await getCachedWhitelistedAddressTree();
   return addressTrees.length - 1;
 }
 
+/** Cached whitelisted address trees to avoid repeated fetches */
 let cachedWhitelistedAddressTrees: Address[] | undefined = undefined;
+
+/**
+ * Gets the whitelisted address trees, using cache if available
+ * @returns Array of whitelisted address tree addresses
+ */
 export async function getCachedWhitelistedAddressTree() {
   if (!cachedWhitelistedAddressTrees) {
     const { data } = await fetchWhitelistedAddressTree(
@@ -316,8 +383,11 @@ enum TokenDataVersion {
   /** ShaFlat: SHA256 hash of borsh-serialized data, discriminator [0,0,0,0,0,0,0,4] */
   ShaFlat = 3,
 }
+
 /**
- * Get token data version from compressed account discriminator.
+ * Determines token data version from compressed account discriminator
+ * @param discriminator - Account discriminator bytes (first 8 bytes)
+ * @returns Token data version (defaults to ShaFlat if unrecognized)
  */
 export function getVersionFromDiscriminator(
   discriminator: number[] | undefined,

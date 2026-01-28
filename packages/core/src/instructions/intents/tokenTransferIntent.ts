@@ -310,7 +310,7 @@ export async function tokenTransferIntent({
     if (x instanceof SignedSecp256r1Key) {
       const index = secp256r1VerifyInput.length;
       const { domainConfig, verifyArgs, signature, publicKey, message } =
-        extractSecp256r1VerificationArgs(x, index);
+        await extractSecp256r1VerificationArgs(x, index);
       if (message && signature && publicKey) {
         secp256r1VerifyInput.push({ message, signature, publicKey });
       }
@@ -486,7 +486,7 @@ async function getCompressedSettings(
   return settings;
 }
 
-function parseTokenAmount(data: Uint8Array): {
+function parseTokenAmount(data: Uint8Array<ArrayBuffer>): {
   amount: number | bigint;
 } | null {
   if (!data || data.length === 0) return null;

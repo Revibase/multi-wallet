@@ -46,7 +46,7 @@ export async function closeTransactionBuffer({
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const { domainConfig, verifyArgs, message, signature, publicKey } =
-    extractSecp256r1VerificationArgs(closer);
+    await extractSecp256r1VerificationArgs(closer);
 
   const instructions = [];
   if (message && signature && publicKey) {

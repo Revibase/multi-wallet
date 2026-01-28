@@ -9,7 +9,7 @@ import { SignedSecp256r1Key } from "../../types";
 import { extractSecp256r1VerificationArgs } from "../../utils/transaction/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
-export function executeTransactionBuffer({
+export async function executeTransactionBuffer({
   executor,
   transactionBufferAddress,
   settings,
@@ -26,7 +26,7 @@ export function executeTransactionBuffer({
   } | null;
 }) {
   const { domainConfig, verifyArgs, signature, message, publicKey } =
-    extractSecp256r1VerificationArgs(executor);
+    await extractSecp256r1VerificationArgs(executor);
   const instructions = [];
   if (message && signature && publicKey) {
     instructions.push(
@@ -36,7 +36,7 @@ export function executeTransactionBuffer({
           signature,
           publicKey,
         },
-      ])
+      ]),
     );
   }
 
@@ -51,7 +51,7 @@ export function executeTransactionBuffer({
         payer: compressedArgs.payer,
         compressedProofArgs: compressedArgs.compressedProofArgs,
         remainingAccounts: compressedArgs.remainingAccounts,
-      })
+      }),
     );
   } else {
     instructions.push(
@@ -62,7 +62,7 @@ export function executeTransactionBuffer({
         domainConfig,
         executor: executor instanceof SignedSecp256r1Key ? undefined : executor,
         remainingAccounts: [],
-      })
+      }),
     );
   }
 

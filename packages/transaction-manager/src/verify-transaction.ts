@@ -33,8 +33,8 @@ export async function verifyTransaction(
   transactionManagerConfig: TransactionManagerConfig,
   payload: {
     transaction: string;
-    transactionMessageBytes: string | undefined;
-    authResponses: TransactionAuthDetails[] | undefined;
+    transactionMessageBytes?: string;
+    authResponses?: TransactionAuthDetails[];
   },
   wellKnownProxyUrl?: URL,
 ) {

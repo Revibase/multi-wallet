@@ -19,6 +19,7 @@ import {
 import { NotInitializedError } from "../errors";
 import type { JitoTipsConfig } from "../types";
 
+/** Global SDK state containing initialized RPC clients and configuration */
 type RevibaseGlobalState = {
   solanaRpcEndpoint?: string;
   lightProtocolRpc?: LightProtocolRpc;
@@ -68,6 +69,10 @@ export function getComputeBudgetEstimate() {
   return state.computeEstimate;
 }
 
+/**
+ * Gets the Jito tips configuration, returning defaults if not explicitly set
+ * @returns Jito tips configuration
+ */
 export function getJitoTipsConfig() {
   if (!state.jitoTipsConfig) {
     return {

@@ -74,7 +74,7 @@ export async function sign(request: Request) {
 
 async function loadTransactionManagerPrivateKey(
   publicKey: string,
-): Promise<Uint8Array> {
+): Promise<Uint8Array<ArrayBuffer>> {
   // fetch the corresponding private key for your transaction manager public key
   // - return a 32-byte Ed25519 private key, e.g. from env/KMS.
 }
