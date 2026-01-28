@@ -16,10 +16,6 @@ import {
   type OptionOrNullable,
   type Slot,
 } from "gill";
-import {
-  DEFAULT_NETWORK_RETRY_DELAY_MS,
-  DEFAULT_NETWORK_RETRY_MAX_RETRIES,
-} from "../../constants";
 import { NotFoundError, ValidationError } from "../../errors";
 import {
   fetchWhitelistedAddressTree,
@@ -287,15 +283,9 @@ export async function constructSettingsProofArgs(
 export async function getValidityProofWithRetry(
   hashes?: HashWithTree[] | undefined,
   newAddresses?: AddressWithTree[],
-  maxRetries = DEFAULT_NETWORK_RETRY_MAX_RETRIES,
-  initialDelayMs = DEFAULT_NETWORK_RETRY_DELAY_MS,
 ): Promise<ValidityProofWithContext> {
-  return retryWithBackoff(
-    () => getLightProtocolRpc().getValidityProofV0(hashes, newAddresses),
-    {
-      maxRetries,
-      initialDelayMs,
-    },
+  return retryWithBackoff(() =>
+    getLightProtocolRpc().getValidityProofV0(hashes, newAddresses),
   );
 }
 export async function getNewWhitelistedAddressTreeIndex() {

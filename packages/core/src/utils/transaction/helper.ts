@@ -37,6 +37,7 @@ import {
   type TransactionAuthDetails,
 } from "../../types";
 import { fetchUserAccountData } from "../compressed";
+import { retryFetch } from "../retry";
 
 /**
  * Retrieves transaction manager configuration for a signer
@@ -173,22 +174,24 @@ export function createTransactionManagerSigner(
   return {
     address,
     async signTransactions(transactions) {
-      const response = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          publicKey: address.toString(),
-          payload: transactions.map((x) => ({
-            transaction: getBase64Decoder().decode(
-              getTransactionEncoder().encode(x),
-            ),
-            transactionMessageBytes: transactionMessageBytes
-              ? getBase64Decoder().decode(transactionMessageBytes)
-              : undefined,
-            authResponses,
-          })),
+      const response = await retryFetch(() =>
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            publicKey: address.toString(),
+            payload: transactions.map((x) => ({
+              transaction: getBase64Decoder().decode(
+                getTransactionEncoder().encode(x),
+              ),
+              transactionMessageBytes: transactionMessageBytes
+                ? getBase64Decoder().decode(transactionMessageBytes)
+                : undefined,
+              authResponses,
+            })),
+          }),
         }),
-      });
+      );
 
       if (!response.ok) {
         throw new NetworkError(
