@@ -18,6 +18,9 @@ export const WHITELISTED_PROGRAMS = new Set([
 export const REVIBASE_LOOKUP_TABLE_ADDRESS =
   "2c1LgZfCun82niPCgfg2cTMZmAiahraTjY4KNb1BSU4Z";
 
+/**
+ * Returns cached addresses for the Revibase lookup table.
+ */
 export function getRevibaseLookupTableAddresses(): AddressesByLookupTableAddress {
   return {
     [address(REVIBASE_LOOKUP_TABLE_ADDRESS)]: [

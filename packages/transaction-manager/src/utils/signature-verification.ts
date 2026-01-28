@@ -8,28 +8,28 @@ import { getBase58Encoder } from "gill";
 import type { ClientDataJSON, WellKnownCacheEntry } from "../types";
 
 const WELL_KNOWN_CACHE_TTL_MS = 300_000;
-const wellKnownCache = new Map<string, WellKnownCacheEntry>();
+const wellKnownPublicKeyCache = new Map<string, WellKnownCacheEntry>();
 
 function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
+  if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) {
-      return false;
-    }
+    if (a[i] !== b[i]) return false;
   }
   return true;
 }
 
 async function verifyEd25519Signature(
-  signature: string,
+  base58Signature: string,
   messageHash: Uint8Array<ArrayBuffer>,
-  publicKey: string,
+  base58PublicKey: string,
   errorMessage: string,
 ): Promise<void> {
-  const signatureBytes = new Uint8Array(getBase58Encoder().encode(signature));
-  const publicKeyBytes = new Uint8Array(getBase58Encoder().encode(publicKey));
+  const signatureBytes = new Uint8Array(
+    getBase58Encoder().encode(base58Signature),
+  );
+  const publicKeyBytes = new Uint8Array(
+    getBase58Encoder().encode(base58PublicKey),
+  );
 
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
@@ -39,14 +39,14 @@ async function verifyEd25519Signature(
     ["verify"],
   );
 
-  const isValid = await crypto.subtle.verify(
+  const isSignatureValid = await crypto.subtle.verify(
     { name: "Ed25519" },
     cryptoKey,
     signatureBytes,
     messageHash,
   );
 
-  if (!isValid) {
+  if (!isSignatureValid) {
     throw new Error(errorMessage);
   }
 }
@@ -55,15 +55,13 @@ export async function verifyAuthProviderSignature(
   authProviderSignature: { publicKey: string; signature: string } | undefined,
   messageHash: Uint8Array<ArrayBuffer>,
 ): Promise<void> {
-  if (!authProviderSignature) {
-    return;
-  }
+  if (!authProviderSignature) return;
 
   await verifyEd25519Signature(
     authProviderSignature.signature,
     messageHash,
     authProviderSignature.publicKey,
-    `Auth Provider signature verification failed for auth provider id: "${authProviderSignature.publicKey}".`,
+    `Auth provider signature verification failed for auth provider ID: "${authProviderSignature.publicKey}".`,
   );
 }
 
@@ -75,47 +73,60 @@ export async function verifyDeviceSignature(
     deviceSignature.signature,
     messageHash,
     deviceSignature.publicKey,
-    `Device signature verification failed for device id: "${deviceSignature.publicKey}".`,
+    `Device signature verification failed for device ID: "${deviceSignature.publicKey}".`,
   );
 }
 
 async function fetchWellKnownClientPublicKey(
   clientOrigin: string,
+  wellKnownProxyUrl?: URL,
 ): Promise<{ publicKey: JsonWebKey }> {
-  const now = Date.now();
-  const cached = wellKnownCache.get(clientOrigin);
+  const currentTimestamp = Date.now();
+  const cachedEntry = wellKnownPublicKeyCache.get(clientOrigin);
 
-  if (cached && now - cached.timestamp < WELL_KNOWN_CACHE_TTL_MS) {
-    return { publicKey: cached.publicKey };
+  if (
+    cachedEntry &&
+    currentTimestamp - cachedEntry.timestamp < WELL_KNOWN_CACHE_TTL_MS
+  ) {
+    return { publicKey: cachedEntry.publicKey };
   }
 
-  const response = await fetch(`${clientOrigin}/.well-known/revibase.json`);
+  const fetchUrl = wellKnownProxyUrl
+    ? `${wellKnownProxyUrl.origin}?origin=${encodeURIComponent(clientOrigin)}`
+    : `${clientOrigin}/.well-known/revibase.json`;
+
+  const response = await fetch(fetchUrl);
   if (!response.ok) {
-    throw new Error(`Failed to fetch well-known for ${clientOrigin}`);
+    throw new Error(
+      `Failed to fetch .well-known/revibase.json for ${clientOrigin}`,
+    );
   }
 
-  const data = (await response.json()) as
+  const responseData = (await response.json()) as
     | { publicKey: JsonWebKey }
     | null
     | undefined;
-  if (!data?.publicKey) {
-    throw new Error(`Invalid well-known response from ${clientOrigin}`);
+
+  if (!responseData?.publicKey) {
+    throw new Error(`Invalid .well-known response from ${clientOrigin}`);
   }
 
-  wellKnownCache.set(clientOrigin, {
-    publicKey: data.publicKey,
-    timestamp: now,
+  wellKnownPublicKeyCache.set(clientOrigin, {
+    publicKey: responseData.publicKey,
+    timestamp: currentTimestamp,
   });
 
-  return data;
+  return responseData;
 }
 
 export async function verifyClientSignature(
   clientSignature: { clientOrigin: string; signature: string },
   messageHash: Uint8Array,
+  wellKnownProxyUrl?: URL,
 ): Promise<void> {
   const { publicKey: jwkPublicKey } = await fetchWellKnownClientPublicKey(
     clientSignature.clientOrigin,
+    wellKnownProxyUrl,
   );
 
   const cryptoKey = await crypto.subtle.importKey(
@@ -130,14 +141,14 @@ export async function verifyClientSignature(
     getBase58Encoder().encode(clientSignature.signature),
   );
 
-  const isValid = await crypto.subtle.verify(
+  const isSignatureValid = await crypto.subtle.verify(
     { name: "Ed25519" },
     cryptoKey,
     signatureBytes,
     new Uint8Array(messageHash),
   );
 
-  if (!isValid) {
+  if (!isSignatureValid) {
     throw new Error(
       `Client signature verification failed for client: "${clientSignature.clientOrigin}".`,
     );

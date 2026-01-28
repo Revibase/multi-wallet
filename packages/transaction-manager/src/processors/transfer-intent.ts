@@ -14,33 +14,37 @@ import {
   verifyAndParseSigners,
 } from "../utils/transaction-parsing";
 
+/**
+ * Processes a compressed transfer intent instruction (native or token).
+ */
 export async function processCompressedTransferIntent(
-  instructionKind: MultiWalletInstruction,
+  instructionType: MultiWalletInstruction,
   instruction: Instruction,
   secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
   instructionIndex: number,
   authResponses: TransactionAuthDetails[] | undefined,
+  wellKnownProxyUrl?: URL,
 ) {
   if (!instruction.data) {
     throw new Error("Invalid instruction data.");
   }
 
-  const decoder =
-    instructionKind === MultiWalletInstruction.NativeTransferIntentCompressed
+  const instructionDataDecoder =
+    instructionType === MultiWalletInstruction.NativeTransferIntentCompressed
       ? getNativeTransferIntentCompressedInstructionDataDecoder()
       : getTokenTransferIntentCompressedInstructionDataDecoder();
 
-  const decodedData = decoder.decode(instruction.data);
+  const decodedInstructionData = instructionDataDecoder.decode(instruction.data);
 
   const settingsAddress = await extractSettingsFromCompressed(
-    decodedData.settingsMutArgs,
+    decodedInstructionData.settingsMutArgs,
     "Invalid instruction data. Settings not found.",
   );
 
   const signers = await getSecp256r1Signers(
     secp256r1VerifyDataList,
     instructionIndex,
-    decodedData.secp256r1VerifyArgs,
+    decodedInstructionData.secp256r1VerifyArgs,
   );
 
   return verifyAndParseSigners(
@@ -48,15 +52,20 @@ export async function processCompressedTransferIntent(
     settingsAddress,
     signers,
     authResponses,
+    wellKnownProxyUrl,
   );
 }
 
+/**
+ * Processes a standard transfer intent instruction (native or token).
+ */
 export async function processTransferIntent(
-  instructionKind: MultiWalletInstruction,
+  instructionType: MultiWalletInstruction,
   instruction: Instruction,
   secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
   instructionIndex: number,
   authResponses: TransactionAuthDetails[] | undefined,
+  wellKnownProxyUrl?: URL,
 ) {
   if (!instruction.data) {
     throw new Error("Invalid instruction data.");
@@ -65,23 +74,26 @@ export async function processTransferIntent(
     throw new Error("Invalid instruction accounts.");
   }
 
-  const decoder =
-    instructionKind === MultiWalletInstruction.NativeTransferIntent
+  const instructionDataDecoder =
+    instructionType === MultiWalletInstruction.NativeTransferIntent
       ? getNativeTransferIntentInstructionDataDecoder()
       : getTokenTransferIntentInstructionDataDecoder();
 
-  const decodedData = decoder.decode(instruction.data);
+  const decodedInstructionData = instructionDataDecoder.decode(instruction.data);
+
+  const settingsAddress = instruction.accounts[0].address.toString();
 
   const signers = await getSecp256r1Signers(
     secp256r1VerifyDataList,
     instructionIndex,
-    decodedData.secp256r1VerifyArgs,
+    decodedInstructionData.secp256r1VerifyArgs,
   );
 
   return verifyAndParseSigners(
     [instruction],
-    instruction.accounts[0].address.toString(),
+    settingsAddress,
     signers,
     authResponses,
+    wellKnownProxyUrl,
   );
 }

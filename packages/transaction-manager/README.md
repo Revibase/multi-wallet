@@ -1,61 +1,85 @@
+# @revibase/transaction-manager
+
+Transaction verification and processing for the Revibase multi-wallet system.
+
 ## Installation
 
 ```bash
-npm install @revibase/wallet
+npm install @revibase/transaction-manager
 ```
 
-## Quick Start
+## Usage
 
-This SDK requires a Helius RPC endpoint to connect to the Solana network.
-You can get one from Helius or any other Solana RPC provider that supports Helius features. (DAS API & Photon RPC)
+```typescript
+import { verifyTransaction } from "@revibase/transaction-manager";
+import { createSolanaRpc, getBase58Decoder } from "gill";
+import { ed25519 } from "@noble/curves/ed25519.js";
 
-## Initialize the SDK
+const rpc = createSolanaRpc("https://api.mainnet-beta.solana.com");
+const transactionManagerConfig = {
+  publicKey: "YOUR_TRANSACTION_MANAGER_PUBLIC_KEY",
+  url: "https://your-transaction-manager.com/sign",
+};
 
-```bash
-import { initializeMultiWallet } from "@revibase/wallet";
+export async function sign(request: Request) {
+  const { publicKey, payload } = await request.json();
 
-initializeMultiWallet({
-  rpcEndpoint: INSERT_YOUR_HELIUS_RPC_ENDPOINT_HERE
-});
-```
+  if (publicKey !== transactionManagerConfig.publicKey) {
+    return new Response(
+      JSON.stringify({ error: "Invalid transaction manager public key" }),
+      {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  }
 
-## Use with Solana Wallet Adapter
+  /**
+   * Load your transaction manager private key (Ed25519).
+   *
+   * Rough example only: `ed25519.sign(messageBytes, privateKey)` expects a 32-byte private key.
+   * In production, store/fetch this from secure storage (KMS/HSM), not source code.
+   */
+  const privateKey = await loadTransactionManagerPrivateKey(publicKey);
 
-Once initialized, it is now compatible with the Solana Wallet Adapter.
-Simply integrate it into your existing Solana wallet flow.
+  const signatures: string[] = [];
 
-## Example
+  for (const payloadItem of payload) {
+    const { messageBytes, verificationResults } = await verifyTransaction(
+      rpc,
+      transactionManagerConfig,
+      payloadItem,
+    );
 
-```bash
+    /**
+     * Add custom allow/deny policy (example):
+     * Only allow transfer intents (reject config changes, url edits, account creation, etc.).
+     *
+     * `verificationResults` contains:
+     * - `instructions`: the instruction(s) that will be send on chain
+     * - `verifiedSigners`: verified signers metadata
+     *
+     * make use of those parameters to build your own transaction signing policies
+     */
 
-import { useEffect } from "react";
-import { initializeMultiWallet } from "@revibase/wallet";
-import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
-import { WalletModalProvider, WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+    // Sign the Solana transaction MESSAGE bytes (Ed25519) and return base58 signatures.
+    const signatureBytes = ed25519.sign(messageBytes, privateKey);
+    signatures.push(getBase58Decoder().decode(signatureBytes));
+  }
 
-
-export default function App() {
-
-  useEffect(() => {
-    initializeMultiWallet({
-      rpcEndpoint: INSERT_YOUR_HELIUS_RPC_ENDPOINT_HERE
-    });
-  }, []);
-
-
-  return (
-    <ConnectionProvider endpoint={INSERT_YOUR_HELIUS_RPC_ENDPOINT_HERE}>
-      <WalletProvider wallets={[]} autoConnect>
-        <WalletModalProvider>
-          <div>
-            <WalletMultiButton />
-            {...}
-          </div>
-        </WalletModalProvider>
-      </WalletProvider>
-    </ConnectionProvider>
-  );
+  return new Response(JSON.stringify({ signatures }), {
+    headers: { "Content-Type": "application/json" },
+  });
 }
 
-
+async function loadTransactionManagerPrivateKey(
+  publicKey: string,
+): Promise<Uint8Array> {
+  // fetch the corresponding private key for your transaction manager public key
+  // - return a 32-byte Ed25519 private key, e.g. from env/KMS.
+}
 ```
+
+## License
+
+MIT

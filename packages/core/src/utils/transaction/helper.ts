@@ -7,7 +7,7 @@ import {
   getBase58Decoder,
   getBase58Encoder,
   getBase64Decoder,
-  getBase64EncodedWireTransaction,
+  getTransactionEncoder,
   getU32Decoder,
   getU32Encoder,
   type Address,
@@ -36,12 +36,7 @@ import {
   Permissions,
   type TransactionAuthDetails,
 } from "../../types";
-import {
-  DEFAULT_NETWORK_RETRY_DELAY_MS,
-  DEFAULT_NETWORK_RETRY_MAX_RETRIES,
-} from "../../constants";
 import { fetchUserAccountData } from "../compressed";
-import { retryFetch } from "../retry";
 
 /**
  * Retrieves transaction manager configuration for a signer
@@ -56,15 +51,15 @@ export function retrieveTransactionManager(
   signer: string,
   settingsData: CompressedSettingsData & {
     isCompressed: boolean;
-  }
+  },
 ) {
   if (settingsData.threshold > 1) {
     throw new ValidationError(
-      "Multi-signature transactions with threshold > 1 are not supported yet."
+      "Multi-signature transactions with threshold > 1 are not supported yet.",
     );
   }
   const member = settingsData.members.find(
-    (m) => convertMemberKeyToString(m.pubkey) === signer
+    (m) => convertMemberKeyToString(m.pubkey) === signer,
   );
   if (!member) {
     throw new NotFoundError("Member", `Signer ${signer} not found in settings`);
@@ -74,17 +69,17 @@ export function retrieveTransactionManager(
   if (!permissions) {
     throw new NotFoundError(
       "Permissions",
-      "No permissions found for the current member"
+      "No permissions found for the current member",
     );
   }
   const hasInitiate = Permissions.has(
     permissions,
-    Permission.InitiateTransaction
+    Permission.InitiateTransaction,
   );
   const hasVote = Permissions.has(permissions, Permission.VoteTransaction);
   const hasExecute = Permissions.has(
     permissions,
-    Permission.ExecuteTransaction
+    Permission.ExecuteTransaction,
   );
   // If signer has full signing rights, no transaction manager is needed
   if (hasInitiate && hasVote && hasExecute) {
@@ -97,24 +92,24 @@ export function retrieveTransactionManager(
       [
         hasVote ? "VoteTransaction" : undefined,
         hasExecute ? "ExecuteTransaction" : undefined,
-      ].filter(Boolean) as string[]
+      ].filter(Boolean) as string[],
     );
   }
 
   // Otherwise, require a transaction manager + vote + execute rights
   const transactionManager = settingsData.members.find(
-    (m) => m.role === UserRole.TransactionManager
+    (m) => m.role === UserRole.TransactionManager,
   );
   if (!transactionManager) {
     throw new NotFoundError(
       "Transaction manager",
-      "No transaction manager available in wallet"
+      "No transaction manager available in wallet",
     );
   }
 
   return {
     transactionManagerAddress: address(
-      convertMemberKeyToString(transactionManager.pubkey)
+      convertMemberKeyToString(transactionManager.pubkey),
     ),
     userAddressTreeIndex: transactionManager.userAddressTreeIndex,
   };
@@ -143,13 +138,13 @@ export async function getSignedTransactionManager({
   const userAccountData = await fetchUserAccountData(
     transactionManagerAddress,
     userAddressTreeIndex,
-    cachedAccounts
+    cachedAccounts,
   );
 
   if (userAccountData.transactionManagerUrl.__option === "None") {
     throw new NotFoundError(
       "Transaction manager endpoint",
-      "Transaction manager endpoint is missing for this account"
+      "Transaction manager endpoint is missing for this account",
     );
   }
 
@@ -157,7 +152,7 @@ export async function getSignedTransactionManager({
     transactionManagerAddress,
     userAccountData.transactionManagerUrl.value,
     authResponses,
-    transactionMessageBytes
+    transactionMessageBytes,
   );
 }
 
@@ -173,46 +168,33 @@ export function createTransactionManagerSigner(
   address: Address,
   url: string,
   authResponses?: TransactionAuthDetails[],
-  transactionMessageBytes?: ReadonlyUint8Array
+  transactionMessageBytes?: ReadonlyUint8Array,
 ): TransactionSigner {
   return {
     address,
     async signTransactions(transactions) {
-      const payload: Record<
-        string,
-        string | string[] | TransactionAuthDetails[]
-      > = {
-        publicKey: address.toString(),
-        transactions: transactions.map(getBase64EncodedWireTransaction),
-      };
-
-      if (transactionMessageBytes) {
-        payload.transactionMessageBytes = getBase64Decoder().decode(
-          transactionMessageBytes
-        );
-      }
-      if (authResponses) {
-        payload.authResponses = authResponses;
-      }
-
-      const response = await retryFetch(
-        () =>
-          fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          }),
-        {
-          maxRetries: DEFAULT_NETWORK_RETRY_MAX_RETRIES,
-          initialDelayMs: DEFAULT_NETWORK_RETRY_DELAY_MS,
-        }
-      );
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          publicKey: address.toString(),
+          payload: transactions.map((x) => ({
+            transaction: getBase64Decoder().decode(
+              getTransactionEncoder().encode(x),
+            ),
+            transactionMessageBytes: transactionMessageBytes
+              ? getBase64Decoder().decode(transactionMessageBytes)
+              : undefined,
+            authResponses,
+          })),
+        }),
+      });
 
       if (!response.ok) {
         throw new NetworkError(
           `Transaction manager request failed: ${response.statusText}`,
           response.status,
-          url
+          url,
         );
       }
 
@@ -224,7 +206,7 @@ export function createTransactionManagerSigner(
         throw new NetworkError(
           `Transaction manager error: ${data.error}`,
           response.status,
-          url
+          url,
         );
       }
 
@@ -254,10 +236,10 @@ export function convertMemberKeyToString(memberKey: MemberKey): string {
  * @returns Serialized config actions as Uint8Array
  */
 export function serializeConfigActions(
-  configActions: ConfigAction[]
+  configActions: ConfigAction[],
 ): Uint8Array {
   const encodedActions = configActions.map((x) =>
-    getConfigActionEncoder().encode(x)
+    getConfigActionEncoder().encode(x),
   );
 
   const totalLength = 4 + encodedActions.reduce((sum, a) => sum + a.length, 0);
@@ -268,7 +250,7 @@ export function serializeConfigActions(
 
   serializedConfigActions.set(
     getU32Encoder().encode(configActions.length),
-    offset
+    offset,
   );
   offset += 4;
 
@@ -300,7 +282,7 @@ export function deserializeConfigActions(bytes: Uint8Array): ConfigAction[] {
 
   if (offset !== bytes.length) {
     throw new ValidationError(
-      `Trailing bytes detected: expected ${bytes.length} bytes but consumed ${offset}`
+      `Trailing bytes detected: expected ${bytes.length} bytes but consumed ${offset}`,
     );
   }
   return out;

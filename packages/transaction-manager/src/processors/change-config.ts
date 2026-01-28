@@ -11,29 +11,32 @@ import {
   verifyAndParseSigners,
 } from "../utils/transaction-parsing";
 
+/**
+ * Processes a ChangeConfigCompressed instruction.
+ */
 export async function processChangeConfigCompressed(
   instruction: Instruction,
   secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
   instructionIndex: number,
   authResponses: TransactionAuthDetails[] | undefined,
+  wellKnownProxyUrl?: URL,
 ) {
   if (!instruction.data) {
     throw new Error("Invalid instruction data.");
   }
 
-  const decodedData = getChangeConfigCompressedInstructionDataDecoder().decode(
-    instruction.data,
-  );
+  const decodedInstructionData =
+    getChangeConfigCompressedInstructionDataDecoder().decode(instruction.data);
 
   const settingsAddress = await extractSettingsFromCompressed(
-    decodedData.settingsMutArgs,
+    decodedInstructionData.settingsMutArgs,
     "Invalid instruction data. Settings not found.",
   );
 
   const signers = await getSecp256r1Signers(
     secp256r1VerifyDataList,
     instructionIndex,
-    decodedData.secp256r1VerifyArgs,
+    decodedInstructionData.secp256r1VerifyArgs,
   );
 
   return verifyAndParseSigners(
@@ -41,14 +44,19 @@ export async function processChangeConfigCompressed(
     settingsAddress,
     signers,
     authResponses,
+    wellKnownProxyUrl,
   );
 }
 
+/**
+ * Processes a ChangeConfig instruction.
+ */
 export async function processChangeConfig(
   instruction: Instruction,
   secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
   instructionIndex: number,
   authResponses: TransactionAuthDetails[] | undefined,
+  wellKnownProxyUrl?: URL,
 ) {
   if (!instruction.data) {
     throw new Error("Invalid instruction data.");
@@ -57,20 +65,23 @@ export async function processChangeConfig(
     throw new Error("Invalid instruction accounts.");
   }
 
-  const decodedData = getChangeConfigInstructionDataDecoder().decode(
+  const decodedInstructionData = getChangeConfigInstructionDataDecoder().decode(
     instruction.data,
   );
+
+  const settingsAddress = instruction.accounts[0].address.toString();
 
   const signers = await getSecp256r1Signers(
     secp256r1VerifyDataList,
     instructionIndex,
-    decodedData.secp256r1VerifyArgs,
+    decodedInstructionData.secp256r1VerifyArgs,
   );
 
   return verifyAndParseSigners(
     [instruction],
-    instruction.accounts[0].address.toString(),
+    settingsAddress,
     signers,
     authResponses,
+    wellKnownProxyUrl,
   );
 }

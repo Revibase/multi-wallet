@@ -25,13 +25,20 @@ import type { Secp256r1VerifyData, TransactionManagerConfig } from "./types";
 import { SECP256R1_VERIFY_PROGRAM, WHITELISTED_PROGRAMS } from "./utils/consts";
 import { decompileTransactionMessageFetchingLookupTablesWithCache } from "./utils/transaction-parsing";
 
+/**
+ * Verifies a serialized Solana transaction for the multi-wallet system.
+ */
 export async function verifyTransaction(
   rpc: Rpc<SolanaRpcApi>,
-  transactionManager: TransactionManagerConfig,
-  transaction: string,
-  authResponses?: TransactionAuthDetails[],
-  transactionMessageBytes?: string,
+  transactionManagerConfig: TransactionManagerConfig,
+  payload: {
+    transaction: string;
+    transactionMessageBytes: string | undefined;
+    authResponses: TransactionAuthDetails[] | undefined;
+  },
+  wellKnownProxyUrl?: URL,
 ) {
+  const { transaction, transactionMessageBytes, authResponses } = payload;
   const { messageBytes } = getTransactionDecoder().decode(
     getBase64Encoder().encode(transaction),
   );
@@ -47,36 +54,37 @@ export async function verifyTransaction(
 
   const secp256r1VerifyDataList = extractSecp256r1VerifyData(instructions);
 
-  const verifiedResult = (
+  const verificationResults = (
     await Promise.all(
-      instructions.map((instruction, idx) =>
+      instructions.map((instruction, instructionIndex) =>
         processInstruction(
           rpc,
           instruction,
-          transactionManager,
-          idx,
+          transactionManagerConfig,
+          instructionIndex,
           authResponses,
           secp256r1VerifyDataList,
           transactionMessageBytes,
+          wellKnownProxyUrl,
         ),
       ),
     )
-  ).filter((x) => x !== null);
+  ).filter((result) => result !== null);
 
-  return verifiedResult;
+  return { messageBytes, verificationResults };
 }
 
 function extractSecp256r1VerifyData(
   instructions: readonly Instruction[],
 ): Secp256r1VerifyData[] {
   return instructions
-    .map((instruction, idx) => ({ instruction, idx }))
+    .map((instruction, instructionIndex) => ({ instruction, instructionIndex }))
     .filter(
       ({ instruction }) =>
         instruction.programAddress.toString() === SECP256R1_VERIFY_PROGRAM,
     )
-    .map(({ idx, instruction }) => ({
-      instructionIndex: idx,
+    .map(({ instructionIndex, instruction }) => ({
+      instructionIndex,
       data: instruction.data,
     }));
 }
@@ -84,11 +92,12 @@ function extractSecp256r1VerifyData(
 async function processInstruction(
   rpc: Rpc<SolanaRpcApi>,
   instruction: Instruction,
-  transactionManager: TransactionManagerConfig,
+  transactionManagerConfig: TransactionManagerConfig,
   instructionIndex: number,
   authResponses?: TransactionAuthDetails[],
   secp256r1VerifyDataList?: Secp256r1VerifyData[],
-  transactionMessageBytes?: string,
+  base64TransactionMessageBytes?: string,
+  wellKnownProxyUrl?: URL,
 ) {
   const programAddress = instruction.programAddress.toString();
 
@@ -104,33 +113,35 @@ async function processInstruction(
     throw new Error("Invalid instruction data.");
   }
 
-  const instructionKind = identifyMultiWalletInstruction({
+  const instructionType = identifyMultiWalletInstruction({
     data: instruction.data,
   });
 
   return routeInstruction(
     rpc,
     instruction,
-    instructionKind,
-    transactionManager,
+    instructionType,
+    transactionManagerConfig,
     instructionIndex,
     authResponses,
     secp256r1VerifyDataList,
-    transactionMessageBytes,
+    base64TransactionMessageBytes,
+    wellKnownProxyUrl,
   );
 }
 
 async function routeInstruction(
   rpc: Rpc<SolanaRpcApi>,
   instruction: Instruction,
-  instructionKind: MultiWalletInstruction,
-  transactionManager: TransactionManagerConfig,
+  instructionType: MultiWalletInstruction,
+  transactionManagerConfig: TransactionManagerConfig,
   instructionIndex: number,
   authResponses?: TransactionAuthDetails[],
   secp256r1VerifyDataList?: Secp256r1VerifyData[],
-  transactionMessageBytes?: string,
+  base64TransactionMessageBytes?: string,
+  wellKnownProxyUrl?: URL,
 ) {
-  switch (instructionKind) {
+  switch (instructionType) {
     case MultiWalletInstruction.DecompressSettingsAccount:
     case MultiWalletInstruction.TransactionBufferClose:
     case MultiWalletInstruction.TransactionBufferCloseCompressed:
@@ -142,6 +153,7 @@ async function routeInstruction(
         secp256r1VerifyDataList,
         instructionIndex,
         authResponses,
+        wellKnownProxyUrl,
       );
 
     case MultiWalletInstruction.ChangeConfigCompressed:
@@ -150,32 +162,38 @@ async function routeInstruction(
         secp256r1VerifyDataList,
         instructionIndex,
         authResponses,
+        wellKnownProxyUrl,
       );
 
     case MultiWalletInstruction.CreateUserAccounts:
-      return processCreateUserAccounts(instruction, transactionManager);
+      return processCreateUserAccounts(instruction, transactionManagerConfig);
 
     case MultiWalletInstruction.EditTransactionManagerUrl:
-      return processEditTransactionManagerUrl(instruction, transactionManager);
+      return processEditTransactionManagerUrl(
+        instruction,
+        transactionManagerConfig,
+      );
 
     case MultiWalletInstruction.NativeTransferIntent:
     case MultiWalletInstruction.TokenTransferIntent:
       return processTransferIntent(
-        instructionKind,
+        instructionType,
         instruction,
         secp256r1VerifyDataList,
         instructionIndex,
         authResponses,
+        wellKnownProxyUrl,
       );
 
     case MultiWalletInstruction.NativeTransferIntentCompressed:
     case MultiWalletInstruction.TokenTransferIntentCompressed:
       return processCompressedTransferIntent(
-        instructionKind,
+        instructionType,
         instruction,
         secp256r1VerifyDataList,
         instructionIndex,
         authResponses,
+        wellKnownProxyUrl,
       );
 
     case MultiWalletInstruction.TransactionBufferCreate:
@@ -185,12 +203,13 @@ async function routeInstruction(
       return processTransactionBufferAndExecute(
         rpc,
         instruction,
-        instructionKind,
-        transactionManager,
+        instructionType,
+        transactionManagerConfig,
         instructionIndex,
         authResponses,
         secp256r1VerifyDataList,
-        transactionMessageBytes,
+        base64TransactionMessageBytes,
+        wellKnownProxyUrl,
       );
 
     default:

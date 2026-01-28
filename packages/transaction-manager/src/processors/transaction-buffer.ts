@@ -28,15 +28,19 @@ import {
   verifyTransactionBufferHash,
 } from "../utils/transaction-parsing";
 
+/**
+ * Processes transaction buffer creation and synchronous execution instructions.
+ */
 export async function processTransactionBufferAndExecute(
   rpc: Rpc<SolanaRpcApi>,
   instruction: Instruction,
-  instructionKind: MultiWalletInstruction,
-  transactionManager: TransactionManagerConfig,
+  instructionType: MultiWalletInstruction,
+  transactionManagerConfig: TransactionManagerConfig,
   instructionIndex: number,
   authResponses?: TransactionAuthDetails[],
   secp256r1VerifyDataList?: Secp256r1VerifyData[],
-  transactionMessageBytes?: string,
+  base64TransactionMessageBytes?: string,
+  wellKnownProxyUrl?: URL,
 ) {
   if (!instruction.accounts) {
     throw new Error("Invalid instruction accounts");
@@ -45,49 +49,52 @@ export async function processTransactionBufferAndExecute(
     throw new Error("Invalid instruction data");
   }
 
-  validateTransactionManagerRole(instruction, transactionManager);
+  validateTransactionManagerAccountRole(instruction, transactionManagerConfig);
 
-  const isBufferCreate =
-    instructionKind === MultiWalletInstruction.TransactionBufferCreate ||
-    instructionKind ===
+  const isBufferCreateInstruction =
+    instructionType === MultiWalletInstruction.TransactionBufferCreate ||
+    instructionType ===
       MultiWalletInstruction.TransactionBufferCreateCompressed;
-  const isCompressed =
-    instructionKind ===
+
+  const isCompressedInstruction =
+    instructionType ===
       MultiWalletInstruction.TransactionBufferCreateCompressed ||
-    instructionKind === MultiWalletInstruction.TransactionExecuteSyncCompressed;
+    instructionType === MultiWalletInstruction.TransactionExecuteSyncCompressed;
 
-  let result: ProcessingResult;
+  let processingResult: ProcessingResult;
 
-  if (isBufferCreate) {
-    result = await processBufferCreate(
+  if (isBufferCreateInstruction) {
+    processingResult = await processBufferCreate(
       rpc,
       instruction,
-      isCompressed,
-      transactionMessageBytes,
+      isCompressedInstruction,
+      base64TransactionMessageBytes,
     );
   } else {
-    result = await processExecuteSync(
+    processingResult = await processExecuteSync(
       instruction,
-      isCompressed,
+      isCompressedInstruction,
       secp256r1VerifyDataList,
       instructionIndex,
     );
   }
 
   return verifyAndParseSigners(
-    result.instructionsToVerify,
-    result.settingsAddress,
-    result.signers,
+    processingResult.instructionsToVerify,
+    processingResult.settingsAddress,
+    processingResult.signers,
     authResponses,
+    wellKnownProxyUrl,
   );
 }
 
-function validateTransactionManagerRole(
+function validateTransactionManagerAccountRole(
   instruction: Instruction,
-  transactionManager: TransactionManagerConfig,
+  transactionManagerConfig: TransactionManagerConfig,
 ): void {
   const transactionManagerAccount = instruction.accounts?.find(
-    (account) => account.address.toString() === transactionManager.publicKey,
+    (account) =>
+      account.address.toString() === transactionManagerConfig.publicKey,
   );
 
   if (
@@ -101,85 +108,108 @@ function validateTransactionManagerRole(
 async function processBufferCreate(
   rpc: Rpc<SolanaRpcApi>,
   instruction: Instruction,
-  isCompressed: boolean,
-  transactionMessageBytes?: string,
+  isCompressedInstruction: boolean,
+  base64TransactionMessageBytes?: string,
 ): Promise<ProcessingResult> {
-  if (!transactionMessageBytes) {
+  if (!base64TransactionMessageBytes) {
     throw new Error("Missing transaction message bytes");
   }
   if (!instruction.data || !instruction.accounts) {
     throw new Error("Invalid instruction");
   }
 
-  const txBytes = new Uint8Array(
-    getBase64Encoder().encode(transactionMessageBytes),
+  const transactionMessageBytes = new Uint8Array(
+    getBase64Encoder().encode(base64TransactionMessageBytes),
   );
 
-  if (isCompressed) {
-    return processCompressedBufferCreate(rpc, instruction, txBytes);
+  if (isCompressedInstruction) {
+    return processCompressedBufferCreate(
+      rpc,
+      instruction,
+      transactionMessageBytes,
+    );
   }
 
-  return processStandardBufferCreate(rpc, instruction, txBytes);
+  return processStandardBufferCreate(rpc, instruction, transactionMessageBytes);
 }
 
 async function processCompressedBufferCreate(
   rpc: Rpc<SolanaRpcApi>,
   instruction: Instruction,
-  txBytes: Uint8Array,
+  transactionMessageBytes: Uint8Array<ArrayBuffer>,
 ): Promise<ProcessingResult> {
-  const decodedData =
+  const decodedInstructionData =
     getTransactionBufferCreateCompressedInstructionDataDecoder().decode(
       instruction.data!,
     );
 
   const settingsAddress = await extractSettingsFromCompressed(
-    decodedData.settingsReadonlyArgs,
+    decodedInstructionData.settingsReadonlyArgs,
     "Settings account is required for compressed transaction buffer create",
   );
 
-  const signers = mapExpectedSigners(decodedData.args.expectedSecp256r1Signers);
+  const expectedSigners = mapExpectedSigners(
+    decodedInstructionData.args.expectedSecp256r1Signers,
+  );
 
   const isHashValid = await verifyTransactionBufferHash(
-    decodedData.args,
-    txBytes,
+    decodedInstructionData.args,
+    transactionMessageBytes,
   );
   if (!isHashValid) {
     throw new Error("Hash mismatch.");
   }
 
-  const instructionsToVerify = await parseTransactionMessageBytes(rpc, txBytes);
+  const innerInstructions = await parseTransactionMessageBytes(
+    rpc,
+    transactionMessageBytes,
+  );
 
-  return { settingsAddress, signers, instructionsToVerify };
+  return {
+    settingsAddress,
+    signers: expectedSigners,
+    instructionsToVerify: innerInstructions,
+  };
 }
 
 async function processStandardBufferCreate(
   rpc: Rpc<SolanaRpcApi>,
   instruction: Instruction,
-  txBytes: Uint8Array,
+  transactionMessageBytes: Uint8Array<ArrayBuffer>,
 ): Promise<ProcessingResult> {
-  const decodedData = getTransactionBufferCreateInstructionDataDecoder().decode(
-    instruction.data!,
-  );
+  const decodedInstructionData =
+    getTransactionBufferCreateInstructionDataDecoder().decode(
+      instruction.data!,
+    );
 
   const settingsAddress = instruction.accounts![0].address.toString();
-  const signers = mapExpectedSigners(decodedData.args.expectedSecp256r1Signers);
+  const expectedSigners = mapExpectedSigners(
+    decodedInstructionData.args.expectedSecp256r1Signers,
+  );
 
   const isHashValid = await verifyTransactionBufferHash(
-    decodedData.args,
-    txBytes,
+    decodedInstructionData.args,
+    transactionMessageBytes,
   );
   if (!isHashValid) {
     throw new Error("Hash mismatch.");
   }
 
-  const instructionsToVerify = await parseTransactionMessageBytes(rpc, txBytes);
+  const innerInstructions = await parseTransactionMessageBytes(
+    rpc,
+    transactionMessageBytes,
+  );
 
-  return { settingsAddress, signers, instructionsToVerify };
+  return {
+    settingsAddress,
+    signers: expectedSigners,
+    instructionsToVerify: innerInstructions,
+  };
 }
 
 async function processExecuteSync(
   instruction: Instruction,
-  isCompressed: boolean,
+  isCompressedInstruction: boolean,
   secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
   instructionIndex: number,
 ): Promise<ProcessingResult> {
@@ -187,7 +217,7 @@ async function processExecuteSync(
     throw new Error("Invalid instruction");
   }
 
-  if (isCompressed) {
+  if (isCompressedInstruction) {
     return processCompressedExecuteSync(
       instruction,
       secp256r1VerifyDataList,
@@ -207,28 +237,32 @@ async function processCompressedExecuteSync(
   secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
   instructionIndex: number,
 ): Promise<ProcessingResult> {
-  const decodedData =
+  const decodedInstructionData =
     getTransactionExecuteSyncCompressedInstructionDataDecoder().decode(
       instruction.data!,
     );
 
   const settingsAddress = await extractSettingsFromCompressed(
-    decodedData.settingsMutArgs,
+    decodedInstructionData.settingsMutArgs,
     "Settings account is required for compressed transaction execute",
   );
 
   const signers = await getSecp256r1Signers(
     secp256r1VerifyDataList,
     instructionIndex,
-    decodedData.secp256r1VerifyArgs,
+    decodedInstructionData.secp256r1VerifyArgs,
   );
 
-  const instructionsToVerify = parseInnerTransaction(
+  const innerInstructions = parseInnerTransaction(
     instruction.accounts,
-    decodedData.transactionMessage,
+    decodedInstructionData.transactionMessage,
   );
 
-  return { settingsAddress, signers, instructionsToVerify };
+  return {
+    settingsAddress,
+    signers,
+    instructionsToVerify: innerInstructions,
+  };
 }
 
 async function processStandardExecuteSync(
@@ -236,22 +270,25 @@ async function processStandardExecuteSync(
   secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
   instructionIndex: number,
 ): Promise<ProcessingResult> {
-  const decodedData = getTransactionExecuteSyncInstructionDataDecoder().decode(
-    instruction.data!,
-  );
+  const decodedInstructionData =
+    getTransactionExecuteSyncInstructionDataDecoder().decode(instruction.data!);
 
   const settingsAddress = instruction.accounts![0].address.toString();
 
   const signers = await getSecp256r1Signers(
     secp256r1VerifyDataList,
     instructionIndex,
-    decodedData.secp256r1VerifyArgs,
+    decodedInstructionData.secp256r1VerifyArgs,
   );
 
-  const instructionsToVerify = parseInnerTransaction(
+  const innerInstructions = parseInnerTransaction(
     instruction.accounts,
-    decodedData.transactionMessage,
+    decodedInstructionData.transactionMessage,
   );
 
-  return { settingsAddress, signers, instructionsToVerify };
+  return {
+    settingsAddress,
+    signers,
+    instructionsToVerify: innerInstructions,
+  };
 }

@@ -46,40 +46,36 @@ async function sha256(
 }
 
 function bytesEqual(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
+  if (a.length !== b.length) return false;
   for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) {
-      return false;
-    }
+    if (a[i] !== b[i]) return false;
   }
   return true;
 }
 
+/**
+ * Extracts signer information from secp256r1 verification instructions.
+ */
 export async function getSecp256r1Signers(
   secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
   currentInstructionIndex: number,
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>,
 ): Promise<SignerInfo[]> {
-  if (!secp256r1VerifyDataList) {
-    return [];
-  }
+  if (!secp256r1VerifyDataList) return [];
 
-  const verifyData = secp256r1VerifyDataList.find(
+  const verificationData = secp256r1VerifyDataList.find(
     (entry) => entry.instructionIndex === currentInstructionIndex - 1,
   )?.data;
 
-  if (!verifyData) {
-    return [];
-  }
+  if (!verificationData) return [];
 
-  const { payload } =
-    getSecp256r1VerifyInstructionDataDecoder().decode(verifyData);
+  const { payload: signedMessages } =
+    getSecp256r1VerifyInstructionDataDecoder().decode(verificationData);
 
   return Promise.all(
     secp256r1VerifyArgs.map(async (verifyArg) => {
-      const signedMessage = payload[verifyArg.verifyArgs.signedMessageIndex];
+      const signedMessage =
+        signedMessages[verifyArg.verifyArgs.signedMessageIndex];
       const messageHash = await sha256(new Uint8Array(signedMessage.message));
       return {
         signer: new Secp256r1Key(
@@ -91,6 +87,9 @@ export async function getSecp256r1Signers(
   );
 }
 
+/**
+ * Maps expected signers from transaction buffer args to SignerInfo format.
+ */
 export function mapExpectedSigners(
   expectedSigners: ExpectedSecp256r1Signers[],
 ): SignerInfo[] {
@@ -100,33 +99,40 @@ export function mapExpectedSigners(
   }));
 }
 
+/**
+ * Verifies all signatures and returns parsed signer information.
+ */
 export async function verifyAndParseSigners(
   instructions: Instruction[],
   settingsAddress: string,
   signers: SignerInfo[],
   authResponses?: TransactionAuthDetails[],
+  wellKnownProxyUrl?: URL,
 ) {
   if (!authResponses) {
     throw new Error("Transaction Auth Response is missing");
   }
 
   if (signers.length !== authResponses.length) {
-    throw new Error("Signer and auth response length mismatch");
+    throw new Error(
+      `Signer count mismatch. Expected ${signers.length} auth responses, got ${authResponses.length}`,
+    );
   }
+
   const walletAddress = await getWalletAddressFromSettings(
     address(settingsAddress),
   );
 
   const verifiedSigners = await Promise.all(
-    signers.map(async ({ signer, messageHash }, index) => {
-      const authDetails = authResponses[index];
+    signers.map(async ({ signer, messageHash }, signerIndex) => {
+      const authDetails = authResponses[signerIndex];
       const { clientSignature, deviceSignature, authProviderSignature } =
         authDetails;
 
       await Promise.all([
         verifyTransactionAuthResponseWithMessageHash(authDetails, messageHash),
         verifyAuthProviderSignature(authProviderSignature, messageHash),
-        verifyClientSignature(clientSignature, messageHash),
+        verifyClientSignature(clientSignature, messageHash, wellKnownProxyUrl),
         verifyDeviceSignature(deviceSignature, messageHash),
       ]);
 
@@ -140,20 +146,23 @@ export async function verifyAndParseSigners(
     }),
   );
 
-  return {
-    instructions,
-    verifiedSigners,
-  };
+  return { instructions, verifiedSigners };
 }
 
+/**
+ * Verifies that transaction buffer hash matches the provided transaction bytes.
+ */
 export async function verifyTransactionBufferHash(
-  args: TransactionBufferCreateArgs,
+  bufferArgs: TransactionBufferCreateArgs,
   transactionMessageBytes: Uint8Array<ArrayBuffer>,
 ): Promise<boolean> {
   const computedHash = await sha256(transactionMessageBytes);
-  return bytesEqual(new Uint8Array(args.finalBufferHash), computedHash);
+  return bytesEqual(new Uint8Array(bufferArgs.finalBufferHash), computedHash);
 }
 
+/**
+ * Extracts the settings account address from compressed state arguments.
+ */
 export async function extractSettingsFromCompressed(
   settingsArgs: SettingsMutArgs | SettingsReadonlyArgs,
   errorMessage: string,
@@ -167,6 +176,9 @@ export async function extractSettingsFromCompressed(
   return getSettingsFromIndex(settingsOption.value.index);
 }
 
+/**
+ * Parses raw transaction message bytes into decompiled instructions.
+ */
 export async function parseTransactionMessageBytes(
   rpc: Rpc<SolanaRpcApi>,
   transactionMessageBytes: Uint8Array,
@@ -174,26 +186,30 @@ export async function parseTransactionMessageBytes(
   const compiledMessage = vaultTransactionMessageDeserialize(
     transactionMessageBytes,
   );
-  const decompiled =
+  const decompiledMessage =
     await decompileTransactionMessageFetchingLookupTablesWithCache(
       compiledMessage,
       rpc,
     );
-  return decompiled.instructions as Instruction[];
+  return decompiledMessage.instructions as Instruction[];
 }
 
+/**
+ * Parses inner transaction instructions from a synchronous execute instruction.
+ */
 export function parseInnerTransaction(
-  accounts: Instruction["accounts"],
-  compiledMessage: TransactionMessage,
+  outerInstructionAccounts: Instruction["accounts"],
+  innerTransactionMessage: TransactionMessage,
 ): Instruction[] {
-  if (!accounts) {
+  if (!outerInstructionAccounts) {
     throw new Error("Invalid instruction accounts.");
   }
 
-  const accountOffset = 3 + (compiledMessage.addressTableLookups?.length ?? 0);
-  const availableAccounts = accounts.slice(accountOffset);
+  const accountOffset =
+    3 + (innerTransactionMessage.addressTableLookups?.length ?? 0);
+  const availableAccounts = outerInstructionAccounts.slice(accountOffset);
 
-  return compiledMessage.instructions.map((compiledInstruction) => ({
+  return innerTransactionMessage.instructions.map((compiledInstruction) => ({
     accounts: [...compiledInstruction.accountIndices].map(
       (accountIndex) => availableAccounts[accountIndex],
     ),
@@ -203,6 +219,9 @@ export function parseInnerTransaction(
   }));
 }
 
+/**
+ * Decompiles a transaction message, fetching lookup table addresses with caching.
+ */
 export async function decompileTransactionMessageFetchingLookupTablesWithCache(
   compiledMessage: CompiledTransactionMessage &
     CompiledTransactionMessageWithLifetime,
@@ -238,14 +257,14 @@ async function fetchAddressesForLookupTablesWithCache(
   );
 
   if (includesRevibaseLookupTable) {
-    const otherLookupTables = lookupTableAddresses.filter(
+    const otherLookupTableAddresses = lookupTableAddresses.filter(
       (tableAddress) =>
         tableAddress.toString() !== REVIBASE_LOOKUP_TABLE_ADDRESS,
     );
 
     return {
       ...getRevibaseLookupTableAddresses(),
-      ...(await fetchAddressesForLookupTables(otherLookupTables, rpc)),
+      ...(await fetchAddressesForLookupTables(otherLookupTableAddresses, rpc)),
     };
   }
 

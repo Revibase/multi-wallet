@@ -6,63 +6,84 @@ import {
 import type { Instruction } from "gill";
 import type { TransactionManagerConfig } from "../types";
 
+/**
+ * Processes a CreateUserAccounts instruction.
+ */
 export function processCreateUserAccounts(
   instruction: Instruction,
-  transactionManager: TransactionManagerConfig,
+  transactionManagerConfig: TransactionManagerConfig,
 ) {
   if (!instruction.data) {
     throw new Error("Invalid instruction data");
   }
 
-  const decodedData = getCreateUserAccountsInstructionDataDecoder().decode(
-    instruction.data,
-  );
+  const decodedInstructionData =
+    getCreateUserAccountsInstructionDataDecoder().decode(instruction.data);
 
-  for (const userArg of decodedData.createUserArgs) {
-    if (userArg.member.toString() !== transactionManager.publicKey) {
+  for (const createUserArgs of decodedInstructionData.createUserArgs) {
+    if (
+      createUserArgs.member.toString() !== transactionManagerConfig.publicKey
+    ) {
       throw new Error(
-        `Public Key does not match ${transactionManager.publicKey}`,
+        `Member public key mismatch. Expected: ${transactionManagerConfig.publicKey}, ` +
+          `got: ${createUserArgs.member.toString()}`,
       );
     }
 
-    if (userArg.transactionManagerUrl?.__option === "None") {
-      throw new Error("Transaction endpoint cannot be empty");
+    if (createUserArgs.transactionManagerUrl?.__option === "None") {
+      throw new Error(
+        "Transaction manager URL cannot be empty when creating user accounts",
+      );
     }
 
-    if (userArg.transactionManagerUrl?.value !== transactionManager.url) {
+    if (
+      createUserArgs.transactionManagerUrl?.value !==
+      transactionManagerConfig.url
+    ) {
       throw new Error(
-        `Transaction endpoint not equal to ${transactionManager.url}`,
+        `Transaction manager URL mismatch. Expected: ${transactionManagerConfig.url}, ` +
+          `got: ${createUserArgs.transactionManagerUrl?.value}`,
       );
     }
   }
+
   return null;
 }
 
+/**
+ * Processes an EditTransactionManagerUrl instruction.
+ */
 export function processEditTransactionManagerUrl(
   instruction: Instruction,
-  transactionManager: TransactionManagerConfig,
+  transactionManagerConfig: TransactionManagerConfig,
 ) {
   if (!instruction.data) {
     throw new Error("Invalid instruction data");
   }
 
-  const decodedData =
+  const decodedInstructionData =
     getEditTransactionManagerUrlInstructionDataDecoder().decode(
       instruction.data,
     );
 
-  const memberKey = convertMemberKeyToString(
-    decodedData.userMutArgs.data.member,
+  const memberPublicKey = convertMemberKeyToString(
+    decodedInstructionData.userMutArgs.data.member,
   );
-  if (memberKey !== transactionManager.publicKey) {
+
+  if (memberPublicKey !== transactionManagerConfig.publicKey) {
     throw new Error(
-      `Public Key does not match ${transactionManager.publicKey}`,
+      `Member public key mismatch. Expected: ${transactionManagerConfig.publicKey}, ` +
+        `got: ${memberPublicKey}`,
     );
   }
 
-  if (decodedData.transactionManagerUrl !== transactionManager.url) {
+  if (
+    decodedInstructionData.transactionManagerUrl !==
+    transactionManagerConfig.url
+  ) {
     throw new Error(
-      `Transaction endpoint not equal to ${transactionManager.url}`,
+      `Transaction manager URL mismatch. Expected: ${transactionManagerConfig.url}, ` +
+        `got: ${decodedInstructionData.transactionManagerUrl}`,
     );
   }
 
