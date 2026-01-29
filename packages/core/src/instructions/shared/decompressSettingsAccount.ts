@@ -41,7 +41,7 @@ export async function decompressSettingsAccount({
       index,
       settingsAddressTreeIndex,
       false,
-      cachedAccounts
+      cachedAccounts,
     );
 
   if (!settingsMutArgs) {
@@ -51,7 +51,7 @@ export async function decompressSettingsAccount({
   const dedupSigners = getDeduplicatedSigners(signers);
 
   const secp256r1Signers = dedupSigners.filter(
-    (x) => x instanceof SignedSecp256r1Key
+    (x) => x instanceof SignedSecp256r1Key,
   );
 
   const secp256r1VerifyInput: Secp256r1VerifyInput = [];
@@ -59,7 +59,7 @@ export async function decompressSettingsAccount({
   for (const x of secp256r1Signers) {
     const index = secp256r1VerifyInput.length;
     const { domainConfig, verifyArgs, signature, publicKey, message } =
-      await extractSecp256r1VerificationArgs(x, index);
+      extractSecp256r1VerificationArgs(x, index);
     if (message && signature && publicKey) {
       secp256r1VerifyInput.push({ message, signature, publicKey });
     }
@@ -84,8 +84,8 @@ export async function decompressSettingsAccount({
             address: x.address,
             role: AccountRole.READONLY_SIGNER,
             signer: x,
-          }) as AccountSignerMeta
-      )
+          }) as AccountSignerMeta,
+      ),
   );
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
@@ -103,7 +103,7 @@ export async function decompressSettingsAccount({
       compressedProofArgs,
       secp256r1VerifyArgs,
       remainingAccounts,
-    })
+    }),
   );
   return instructions;
 }

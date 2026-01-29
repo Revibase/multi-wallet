@@ -1,7 +1,7 @@
 import { p256 } from "@noble/curves/nist.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
 import type { ReadonlyUint8Array } from "gill";
-import { sha256 } from "../crypto";
 import { base64URLStringToBuffer } from "./helper";
 
 export function uint8ArrayToHex(bytes: Uint8Array<ArrayBuffer>) {
@@ -115,15 +115,15 @@ export function convertSignatureDERtoRS(
   return new Uint8Array([...rPad, ...sPad]);
 }
 
-export async function getSecp256r1Message(
+export function getSecp256r1Message(
   authResponse: AuthenticationResponseJSON,
-): Promise<Uint8Array<ArrayBuffer>> {
+): Uint8Array<ArrayBuffer> {
   const clientDataJSON = base64URLStringToBuffer(
     authResponse.response.clientDataJSON,
   );
   const authenticatorData = base64URLStringToBuffer(
     authResponse.response.authenticatorData,
   );
-  const clientDataHash = await sha256(clientDataJSON);
+  const clientDataHash = sha256(clientDataJSON);
   return new Uint8Array([...authenticatorData, ...clientDataHash]);
 }

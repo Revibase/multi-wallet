@@ -36,6 +36,8 @@
   "homepage": "https://github.com/Revibase/multi-wallet#readme",
   "description": "",
   "dependencies": {
+    "@noble/curves": "2.0.1",
+    "@noble/hashes": "2.0.1",
     "@revibase/core": "workspace:*"
   },
   "devDependencies": {

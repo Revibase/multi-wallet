@@ -32,7 +32,7 @@ export async function closeTransactionBuffer({
 }) {
   const transactionBuffer = await fetchTransactionBuffer(
     getSolanaRpc(),
-    transactionBufferAddress
+    transactionBufferAddress,
   );
   const settings = transactionBuffer.data.multiWalletSettings;
   const { packedAccounts, proof, settingsMutArgs } =
@@ -41,12 +41,12 @@ export async function closeTransactionBuffer({
       index,
       settingsAddressTreeIndex,
       false,
-      cachedAccounts
+      cachedAccounts,
     );
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const { domainConfig, verifyArgs, message, signature, publicKey } =
-    await extractSecp256r1VerificationArgs(closer);
+    extractSecp256r1VerificationArgs(closer);
 
   const instructions = [];
   if (message && signature && publicKey) {
@@ -57,7 +57,7 @@ export async function closeTransactionBuffer({
           signature,
           publicKey,
         },
-      ])
+      ]),
     );
   }
 
@@ -67,7 +67,7 @@ export async function closeTransactionBuffer({
     }
     const compressedProofArgs = convertToCompressedProofArgs(
       proof,
-      systemOffset
+      systemOffset,
     );
 
     instructions.push(
@@ -81,7 +81,7 @@ export async function closeTransactionBuffer({
         payer,
         compressedProofArgs,
         remainingAccounts,
-      })
+      }),
     );
   } else {
     instructions.push(
@@ -93,7 +93,7 @@ export async function closeTransactionBuffer({
         payer: transactionBuffer.data.payer,
         secp256r1VerifyArgs: verifyArgs,
         remainingAccounts: [],
-      })
+      }),
     );
   }
 

@@ -50,7 +50,7 @@ export async function editUserDelegate({
   newDelegate?: SettingsIndexWithAddress;
 }) {
   const { domainConfig, verifyArgs, message, signature, publicKey } =
-    await extractSecp256r1VerificationArgs(user);
+    extractSecp256r1VerificationArgs(user);
 
   const secp256r1VerifyInput: Secp256r1VerifyInput = [];
   if (message && signature && publicKey) {

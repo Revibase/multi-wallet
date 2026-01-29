@@ -73,7 +73,7 @@ export async function nativeTransferIntent({
     if (x instanceof SignedSecp256r1Key) {
       const index = secp256r1VerifyInput.length;
       const { domainConfig, verifyArgs, signature, publicKey, message } =
-        await extractSecp256r1VerificationArgs(x, index);
+        extractSecp256r1VerificationArgs(x, index);
       if (message && signature && publicKey) {
         secp256r1VerifyInput.push({ message, signature, publicKey });
       }

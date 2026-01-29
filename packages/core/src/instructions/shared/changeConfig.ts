@@ -42,24 +42,24 @@ export async function changeConfig({
   } = changeConfigArgs;
   const dedupSigners = getDeduplicatedSigners(signers);
   const transactionSigners = dedupSigners.filter(
-    (x) => !(x instanceof SignedSecp256r1Key)
+    (x) => !(x instanceof SignedSecp256r1Key),
   ) as TransactionSigner[];
   packedAccounts.addPreAccounts(
     transactionSigners.map((x) => ({
       address: x.address,
       role: AccountRole.READONLY_SIGNER,
       signer: x,
-    }))
+    })),
   );
   const secp256r1Signers = dedupSigners.filter(
-    (x) => x instanceof SignedSecp256r1Key
+    (x) => x instanceof SignedSecp256r1Key,
   );
   const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];
   const secp256r1VerifyInput = [];
   for (const x of secp256r1Signers) {
     const index = secp256r1VerifyInput.length;
     const { domainConfig, verifyArgs, signature, publicKey, message } =
-      await extractSecp256r1VerificationArgs(x, index);
+      extractSecp256r1VerificationArgs(x, index);
     if (message && signature && publicKey) {
       secp256r1VerifyInput.push({ message, signature, publicKey });
     }
@@ -95,7 +95,7 @@ export async function changeConfig({
         settingsMutArgs,
         remainingAccounts,
         secp256r1VerifyArgs,
-      })
+      }),
     );
   } else {
     instructions.push(
@@ -106,7 +106,7 @@ export async function changeConfig({
         compressedProofArgs,
         remainingAccounts,
         secp256r1VerifyArgs,
-      })
+      }),
     );
   }
 

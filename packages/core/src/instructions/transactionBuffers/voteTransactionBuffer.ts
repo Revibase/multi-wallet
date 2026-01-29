@@ -14,7 +14,7 @@ import { SignedSecp256r1Key } from "../../types";
 import { extractSecp256r1VerificationArgs } from "../../utils/transaction/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
-export async function voteTransactionBuffer({
+export function voteTransactionBuffer({
   settings,
   voter,
   transactionBufferAddress,
@@ -31,7 +31,7 @@ export async function voteTransactionBuffer({
   } | null;
 }) {
   const { domainConfig, verifyArgs, signature, publicKey, message } =
-    await extractSecp256r1VerificationArgs(voter);
+    extractSecp256r1VerificationArgs(voter);
   const instructions: Instruction[] = [];
   if (message && signature && publicKey) {
     instructions.push(

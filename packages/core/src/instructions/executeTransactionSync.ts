@@ -85,7 +85,7 @@ export async function executeTransactionSync({
     (x) => x instanceof SignedSecp256r1Key,
   );
 
-  const { secp256r1VerifyArgs } = await buildSecp256r1VerificationArgs(
+  const { secp256r1VerifyArgs } = buildSecp256r1VerificationArgs(
     secp256r1Signers,
     secp256r1VerifyInput,
     packedAccounts,
@@ -113,19 +113,19 @@ export async function executeTransactionSync({
   };
 }
 
-async function buildSecp256r1VerificationArgs(
+function buildSecp256r1VerificationArgs(
   secp256r1Signers: SignedSecp256r1Key[],
   secp256r1VerifyInput: Secp256r1VerifyInput,
   packedAccounts: PackedAccounts,
-): Promise<{
+): {
   secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[];
-}> {
+} {
   const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];
 
   for (const signer of secp256r1Signers) {
     const index = secp256r1VerifyInput.length;
     const { domainConfig, verifyArgs, signature, publicKey, message } =
-      await extractSecp256r1VerificationArgs(signer, index);
+      extractSecp256r1VerificationArgs(signer, index);
 
     if (message && signature && publicKey) {
       secp256r1VerifyInput.push({ message, signature, publicKey });

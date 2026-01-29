@@ -1,3 +1,5 @@
+import { ed25519 } from "@noble/curves/ed25519.js";
+import { equalBytes } from "@noble/curves/utils.js";
 import {
   base64URLStringToBuffer,
   createTransactionChallenge,
@@ -10,23 +12,12 @@ import type { ClientDataJSON, WellKnownCacheEntry } from "../types";
 const WELL_KNOWN_CACHE_TTL_MS = 300_000;
 const wellKnownPublicKeyCache = new Map<string, WellKnownCacheEntry>();
 
-function bytesEqual(
-  a: Uint8Array<ArrayBuffer>,
-  b: Uint8Array<ArrayBuffer>,
-): boolean {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return false;
-  }
-  return true;
-}
-
-async function verifyEd25519Signature(
+function verifyEd25519Signature(
   base58Signature: string,
   messageHash: Uint8Array<ArrayBuffer>,
   base58PublicKey: string,
   errorMessage: string,
-): Promise<void> {
+): void {
   const signatureBytes = new Uint8Array(
     getBase58Encoder().encode(base58Signature),
   );
@@ -34,19 +25,10 @@ async function verifyEd25519Signature(
     getBase58Encoder().encode(base58PublicKey),
   );
 
-  const cryptoKey = await crypto.subtle.importKey(
-    "raw",
-    publicKeyBytes,
-    { name: "Ed25519" },
-    false,
-    ["verify"],
-  );
-
-  const isSignatureValid = await crypto.subtle.verify(
-    { name: "Ed25519" },
-    cryptoKey,
+  const isSignatureValid = ed25519.verify(
     signatureBytes,
     messageHash,
+    publicKeyBytes,
   );
 
   if (!isSignatureValid) {
@@ -54,13 +36,13 @@ async function verifyEd25519Signature(
   }
 }
 
-export async function verifyAuthProviderSignature(
+export function verifyAuthProviderSignature(
   authProviderSignature: { publicKey: string; signature: string } | undefined,
   messageHash: Uint8Array<ArrayBuffer>,
-): Promise<void> {
+): void {
   if (!authProviderSignature) return;
 
-  await verifyEd25519Signature(
+  verifyEd25519Signature(
     authProviderSignature.signature,
     messageHash,
     authProviderSignature.publicKey,
@@ -68,11 +50,11 @@ export async function verifyAuthProviderSignature(
   );
 }
 
-export async function verifyDeviceSignature(
+export function verifyDeviceSignature(
   deviceSignature: { publicKey: string; signature: string },
   messageHash: Uint8Array<ArrayBuffer>,
-): Promise<void> {
-  await verifyEd25519Signature(
+): void {
+  verifyEd25519Signature(
     deviceSignature.signature,
     messageHash,
     deviceSignature.publicKey,
@@ -132,23 +114,17 @@ export async function verifyClientSignature(
     wellKnownProxyUrl,
   );
 
-  const cryptoKey = await crypto.subtle.importKey(
-    "jwk",
-    jwkPublicKey,
-    { name: "Ed25519" },
-    true,
-    ["verify"],
+  const publicKeyBytes = new Uint8Array(
+    base64URLStringToBuffer(jwkPublicKey.x as string),
   );
-
   const signatureBytes = new Uint8Array(
     getBase58Encoder().encode(clientSignature.signature),
   );
 
-  const isSignatureValid = await crypto.subtle.verify(
-    { name: "Ed25519" },
-    cryptoKey,
+  const isSignatureValid = ed25519.verify(
     signatureBytes,
     new Uint8Array(messageHash),
+    publicKeyBytes,
   );
 
   if (!isSignatureValid) {
@@ -191,12 +167,12 @@ export async function verifyTransactionAuthResponseWithMessageHash(
     base64URLStringToBuffer(clientDataJson.challenge),
   );
 
-  if (!bytesEqual(receivedChallenge, expectedChallenge)) {
+  if (!equalBytes(receivedChallenge, expectedChallenge)) {
     throw new Error("Invalid challenge");
   }
 
   const actualMessageHash = getSecp256r1MessageHash(authResponse);
-  if (!bytesEqual(actualMessageHash, expectedMessageHash)) {
+  if (!equalBytes(actualMessageHash, expectedMessageHash)) {
     throw new Error("Invalid message hash");
   }
 }

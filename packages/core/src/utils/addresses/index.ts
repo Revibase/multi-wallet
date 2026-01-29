@@ -3,6 +3,7 @@ import {
   deriveAddressSeedV2,
   deriveAddressV2,
 } from "@lightprotocol/stateless.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { PublicKey } from "@solana/web3.js";
 import {
   getAddressEncoder,
@@ -17,7 +18,6 @@ import { ValidationError } from "../../errors";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
 import { Secp256r1Key } from "../../types";
 import { getWhitelistedAddressTreeFromIndex } from "../compressed/helper";
-import { sha256 } from "../crypto";
 import { requireInRange } from "../validation";
 
 export async function getCompressedSettingsAddressFromIndex(
@@ -79,9 +79,9 @@ export async function getDomainConfigAddress({
 }) {
   if (!rpIdHash) {
     if (rpId) {
-      rpIdHash = await sha256(
-        getUtf8Encoder().encode(rpId) as Uint8Array<ArrayBuffer>,
-      );
+      rpIdHash = sha256(
+        getUtf8Encoder().encode(rpId) as Uint8Array,
+      ) as Uint8Array<ArrayBuffer>;
     } else {
       throw new ValidationError("Either rpId or rpIdHash must be provided");
     }

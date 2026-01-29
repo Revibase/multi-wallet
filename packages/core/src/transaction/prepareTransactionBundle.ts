@@ -1,3 +1,4 @@
+import { sha256 } from "@noble/hashes/sha2.js";
 import type {
   AddressesByLookupTableAddress,
   Instruction,
@@ -23,7 +24,6 @@ import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
 } from "../utils/compressed/internal";
-import { sha256 } from "../utils/crypto";
 import {
   convertPubkeyToMemberkey,
   getDeduplicatedSigners,
@@ -79,11 +79,11 @@ export async function prepareTransactionBundle({
       i + chunkSize,
     ) as Uint8Array<ArrayBuffer>;
     chunks.push(chunk);
-    chunksHash.push(await sha256(chunk));
+    chunksHash.push(sha256(chunk) as Uint8Array<ArrayBuffer>);
   }
-  const finalBufferHash = await sha256(
-    transactionMessageBytes as Uint8Array<ArrayBuffer>,
-  );
+  const finalBufferHash = sha256(
+    transactionMessageBytes as Uint8Array,
+  ) as Uint8Array<ArrayBuffer>;
 
   const { settingsReadonlyArgs, settingsMutArgs, proof, packedAccounts } =
     await constructSettingsProofArgs(
@@ -108,20 +108,18 @@ export async function prepareTransactionBundle({
         }
       : null;
 
-  const expectedSecp256r1Signers = await Promise.all(
-    getDeduplicatedSigners([
-      creator,
-      ...(executor ? [executor] : []),
-      ...additionalVoters,
-    ])
-      .filter((x) => x instanceof SignedSecp256r1Key)
-      .map(async (x) => ({
-        memberKey: convertPubkeyToMemberkey(x),
-        messageHash: await getSecp256r1MessageHash(x.authResponse),
-      })),
-  );
+  const expectedSecp256r1Signers = getDeduplicatedSigners([
+    creator,
+    ...(executor ? [executor] : []),
+    ...additionalVoters,
+  ])
+    .filter((x) => x instanceof SignedSecp256r1Key)
+    .map((x) => ({
+      memberKey: convertPubkeyToMemberkey(x),
+      messageHash: getSecp256r1MessageHash(x.authResponse),
+    }));
 
-  const createIxs = await createTransactionBuffer({
+  const createIxs = createTransactionBuffer({
     finalBufferHash,
     finalBufferSize: transactionMessageBytes.length,
     bufferIndex,
@@ -144,18 +142,16 @@ export async function prepareTransactionBundle({
     }),
   );
 
-  const voteIxs = await Promise.all(
-    additionalVoters.map((voter) =>
-      voteTransactionBuffer({
-        voter,
-        transactionBufferAddress,
-        settings,
-        compressedArgs,
-      }),
-    ),
+  const voteIxs = additionalVoters.map((voter) =>
+    voteTransactionBuffer({
+      voter,
+      transactionBufferAddress,
+      settings,
+      compressedArgs,
+    }),
   );
 
-  const executeApprovalIxs = await executeTransactionBuffer({
+  const executeApprovalIxs = executeTransactionBuffer({
     compressedArgs,
     settings,
     executor,

@@ -1,3 +1,5 @@
+import { equalBytes } from "@noble/curves/utils.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import {
   convertMemberKeyToString,
   getSecp256r1VerifyInstructionDataDecoder,
@@ -38,24 +40,6 @@ import {
   verifyTransactionAuthResponseWithMessageHash,
 } from "./signature-verification";
 
-async function sha256(
-  data: Uint8Array<ArrayBuffer>,
-): Promise<Uint8Array<ArrayBuffer>> {
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return new Uint8Array(hashBuffer);
-}
-
-function bytesEqual(
-  a: Uint8Array<ArrayBuffer>,
-  b: Uint8Array<ArrayBuffer>,
-): boolean {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return false;
-  }
-  return true;
-}
-
 /**
  * Extracts signer information from secp256r1 verification instructions.
  */
@@ -79,7 +63,9 @@ export async function getSecp256r1Signers(
     secp256r1VerifyArgs.map(async (verifyArg) => {
       const signedMessage =
         signedMessages[verifyArg.verifyArgs.signedMessageIndex];
-      const messageHash = await sha256(new Uint8Array(signedMessage.message));
+      const messageHash = sha256(
+        new Uint8Array(signedMessage.message),
+      ) as Uint8Array<ArrayBuffer>;
       return {
         signer: new Secp256r1Key(
           new Uint8Array(signedMessage.publicKey),
@@ -159,8 +145,8 @@ export async function verifyTransactionBufferHash(
   bufferArgs: TransactionBufferCreateArgs,
   transactionMessageBytes: Uint8Array<ArrayBuffer>,
 ): Promise<boolean> {
-  const computedHash = await sha256(transactionMessageBytes);
-  return bytesEqual(new Uint8Array(bufferArgs.finalBufferHash), computedHash);
+  const computedHash = sha256(transactionMessageBytes);
+  return equalBytes(new Uint8Array(bufferArgs.finalBufferHash), computedHash);
 }
 
 /**

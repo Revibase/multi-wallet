@@ -31,7 +31,7 @@ import {
   MIN_COMPUTE_UNITS,
   TRANSACTION_SIZE_LIMIT,
 } from "../../constants";
-import { BundleError, NetworkError, ValidationError } from "../../errors";
+import { BundleError, ValidationError } from "../../errors";
 import type { MemberKey, Secp256r1VerifyArgsArgs } from "../../generated";
 import {
   KeyType,
@@ -203,7 +203,7 @@ export async function simulateBundle(
   return data.result.value.transactionResults.map((x) => x.unitsConsumed);
 }
 
-export async function extractSecp256r1VerificationArgs(
+export function extractSecp256r1VerificationArgs(
   signer?: SignedSecp256r1Key | TransactionSigner,
   index = 0,
 ) {
@@ -230,7 +230,7 @@ export async function extractSecp256r1VerificationArgs(
     : undefined;
   const message =
     secp256r1PublicKey?.authData && secp256r1PublicKey.verifyArgs.clientDataJson
-      ? await getSecp256r1Message(secp256r1PublicKey.authResponse)
+      ? getSecp256r1Message(secp256r1PublicKey.authResponse)
       : undefined;
   const publicKey = secp256r1PublicKey?.toBuffer();
 
