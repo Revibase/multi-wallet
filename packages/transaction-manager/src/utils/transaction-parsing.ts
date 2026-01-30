@@ -1,4 +1,3 @@
-import { equalBytes } from "@noble/curves/utils.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import {
   convertMemberKeyToString,
@@ -12,7 +11,6 @@ import {
   type SettingsMutArgs,
   type SettingsReadonlyArgs,
   type TransactionAuthDetails,
-  type TransactionBufferCreateArgs,
   type TransactionMessage,
 } from "@revibase/core";
 import type {
@@ -28,7 +26,7 @@ import {
   fetchAddressesForLookupTables,
   type Instruction,
 } from "gill";
-import type { Secp256r1VerifyData, SignerInfo } from "../types";
+import type { Secp256r1VerifyData, SignerInfo, VerifiedSigner } from "../types";
 import {
   getRevibaseLookupTableAddresses,
   REVIBASE_LOOKUP_TABLE_ADDRESS,
@@ -111,42 +109,29 @@ export async function verifyAndParseSigners(
   const walletAddress = await getWalletAddressFromSettings(
     address(settingsAddress),
   );
-
   const verifiedSigners = await Promise.all(
     signers.map(async ({ signer, messageHash }, signerIndex) => {
       const authDetails = authResponses[signerIndex];
-      const { clientSignature, deviceSignature, authProviderSignature } =
-        authDetails;
+      const { client, device, authProvider } = authDetails;
 
-      await Promise.all([
+      const [clientDetails] = await Promise.all([
+        verifyClientSignature(client, messageHash, wellKnownProxyUrl),
         verifyTransactionAuthResponseWithMessageHash(authDetails, messageHash),
-        verifyAuthProviderSignature(authProviderSignature, messageHash),
-        verifyClientSignature(clientSignature, messageHash, wellKnownProxyUrl),
-        verifyDeviceSignature(deviceSignature, messageHash),
+        verifyAuthProviderSignature(authProvider, messageHash),
+        verifyDeviceSignature(device, messageHash),
       ]);
 
       return {
         signer,
-        client: clientSignature.clientOrigin,
-        device: deviceSignature.publicKey,
-        authProvider: authProviderSignature?.publicKey,
         walletAddress,
-      };
+        client: { origin: client.clientOrigin, ...clientDetails },
+        device: device.jwk,
+        authProvider: authProvider?.jwk,
+      } as VerifiedSigner;
     }),
   );
 
   return { instructions, verifiedSigners };
-}
-
-/**
- * Verifies that transaction buffer hash matches the provided transaction bytes.
- */
-export async function verifyTransactionBufferHash(
-  bufferArgs: TransactionBufferCreateArgs,
-  transactionMessageBytes: Uint8Array<ArrayBuffer>,
-): Promise<boolean> {
-  const computedHash = sha256(transactionMessageBytes);
-  return equalBytes(new Uint8Array(bufferArgs.finalBufferHash), computedHash);
 }
 
 /**
@@ -170,11 +155,10 @@ export async function extractSettingsFromCompressed(
  */
 export async function parseTransactionMessageBytes(
   rpc: Rpc<SolanaRpcApi>,
-  transactionMessageBytes: Uint8Array<ArrayBuffer>,
+  transactionMessage: Uint8Array<ArrayBuffer>,
 ): Promise<Instruction[]> {
-  const compiledMessage = vaultTransactionMessageDeserialize(
-    transactionMessageBytes,
-  );
+  const compiledMessage =
+    vaultTransactionMessageDeserialize(transactionMessage);
   const decompiledMessage =
     await decompileTransactionMessageFetchingLookupTablesWithCache(
       compiledMessage,

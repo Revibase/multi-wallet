@@ -6,12 +6,15 @@ import {
   address,
   getBase58Decoder,
   getBase58Encoder,
+  getBase64Decoder,
   getBase64Encoder,
   getU64Decoder,
+  getUtf8Decoder,
   getUtf8Encoder,
   type Address,
   type ReadonlyUint8Array,
 } from "gill";
+import { canonicalize } from "json-canonicalize";
 import { NotFoundError } from "../../errors";
 import { fetchDomainConfig } from "../../generated";
 import {
@@ -105,8 +108,8 @@ export async function getSignedSecp256r1Key(
       ) as Uint8Array<ArrayBuffer>,
     },
     clientAndDeviceHash: getClientAndDeviceHash(
-      payload.clientSignature.clientOrigin,
-      payload.deviceSignature.publicKey,
+      payload.client.clientOrigin,
+      payload.device.jwk,
       payload.nonce,
     ),
     domainConfig,
@@ -120,14 +123,14 @@ export async function getSignedSecp256r1Key(
 
 export function getClientAndDeviceHash(
   clientOrigin: string,
-  devicePublicKey: string,
-  nonce: string,
+  deviceJwk: Base64URLString,
+  nonce: Base64URLString,
 ): Uint8Array<ArrayBuffer> {
   return sha256(
     new Uint8Array([
       ...getUtf8Encoder().encode(clientOrigin),
-      ...getBase58Encoder().encode(devicePublicKey),
-      ...getUtf8Encoder().encode(nonce),
+      ...getBase64Encoder().encode(deviceJwk),
+      ...getBase64Encoder().encode(nonce),
     ]),
   ) as Uint8Array<ArrayBuffer>;
 }
@@ -149,12 +152,12 @@ export async function createClientAuthorizationCompleteRequestChallenge(
 export function createMessageChallenge(
   payload: string,
   clientOrigin: string,
-  devicePublicKey: string,
-  nonce: string,
+  deviceJwk: Base64URLString,
+  nonce: Base64URLString,
 ): Uint8Array<ArrayBuffer> {
   const clientDeviceHash = getClientAndDeviceHash(
     clientOrigin,
-    devicePublicKey,
+    deviceJwk,
     nonce,
   );
   return sha256(
@@ -165,8 +168,8 @@ export function createMessageChallenge(
 export async function createTransactionChallenge(
   payload: TransactionPayloadWithBase64MessageBytes | TransactionPayload,
   clientOrigin: string,
-  devicePublicKey: string,
-  nonce: string,
+  deviceJwk: Base64URLString,
+  nonce: Base64URLString,
   slotHash?: string,
   slotNumber?: string,
 ) {
@@ -205,7 +208,7 @@ export async function createTransactionChallenge(
   );
   const clientDeviceHash = getClientAndDeviceHash(
     clientOrigin,
-    devicePublicKey,
+    deviceJwk,
     nonce,
   );
   const challenge = sha256(
@@ -236,7 +239,7 @@ export function bufferToBase64URLString(buffer: Uint8Array<ArrayBuffer>) {
   return base64String.replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
 }
 
-export function base64URLStringToBuffer(base64URLString: string) {
+export function base64URLStringToBuffer(base64URLString: Base64URLString) {
   const base64 = base64URLString.replace(/-/g, "+").replace(/_/g, "/");
   const padLength = (4 - (base64.length % 4)) % 4;
   const padded = base64.padEnd(base64.length + padLength, "=");
@@ -257,4 +260,26 @@ export async function getOriginIndex(domainConfig: Address, origin: string) {
     throw new NotFoundError("Origin", "Origin not found in domain config");
   }
   return index;
+}
+/**
+ * Converts a JSON Web Key (JWK) object into a Base64URL-encoded string.
+ *
+ * The JWK is first canonicalized (sorted and normalized) to ensure consistent
+ * encoding, then UTF-8 encoded and finally converted to Base64URL format.
+ *
+ * @param jwk - The JSON Web Key object to encode.
+ * @returns The Base64URL-encoded string representation of the JWK.
+ */
+export function convertJWKToBase64UrlString(jwk: JsonWebKey): Base64URLString {
+  return getBase64Decoder().decode(getUtf8Encoder().encode(canonicalize(jwk)));
+}
+
+/**
+ * Converts a Base64URL-encoded JWK string back into a JSON Web Key (JWK) object.
+ *
+ * @param jwk - The Base64URL-encoded string representing the JWK.
+ * @returns The decoded JSON Web Key object.
+ */
+export function convertBase64UrlStringToJWK(jwk: string): JsonWebKey {
+  return JSON.parse(getUtf8Decoder().decode(getBase64Encoder().encode(jwk)));
 }

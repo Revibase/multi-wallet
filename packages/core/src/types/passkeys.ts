@@ -28,30 +28,30 @@ export const TransactionPayloadWithBase64MessageBytesSchema = z
   .object({
     transactionActionType: TransactionActionTypeSchema,
     transactionAddress: z.string(),
-    transactionMessageBytes: z.string(),
+    transactionMessageBytes: z.base64url(),
   })
   .strict();
 
 export const AuthenticationContextSchema = z
   .object({
     authResponse: z.custom<AuthenticationResponseJSON>(),
-    nonce: z.string(),
-    clientSignature: z
+    nonce: z.base64url(),
+    client: z
       .object({
-        clientOrigin: z.string(),
-        signature: z.string(),
+        clientOrigin: z.url(),
+        jws: z.base64url(),
       })
       .strict(),
-    deviceSignature: z
+    device: z
       .object({
-        publicKey: z.string(),
-        signature: z.string(),
+        jwk: z.base64url(),
+        jws: z.base64url(),
       })
       .strict(),
-    authProviderSignature: z
+    authProvider: z
       .object({
-        publicKey: z.string(),
-        signature: z.string(),
+        jwk: z.base64url(),
+        jws: z.base64url(),
       })
       .strict()
       .optional(),
@@ -115,9 +115,9 @@ export const CompleteMessageRequestSchema = z
         ).extend({
           id: z.string().optional(),
           message: z.string(),
-          clientSignature: z
+          client: z
             .object({
-              clientOrigin: z.string(),
+              clientOrigin: z.url(),
             })
             .strict(),
         }),
@@ -135,9 +135,9 @@ export const CompleteTransactionRequestSchema = z
         payload: BaseResponseSchema.extend(AuthenticationContextSchema.shape)
           .extend(TransactionDetailsSchema.shape)
           .extend({
-            clientSignature: z
+            client: z
               .object({
-                clientOrigin: z.string(),
+                clientOrigin: z.url(),
               })
               .strict(),
           }),

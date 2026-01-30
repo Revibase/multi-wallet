@@ -75,24 +75,24 @@ export async function getCompressedAccountHashes(
   addresses: { address: BN254; type: "Settings" | "User" }[],
   cachedAccounts?: AccountCache,
 ) {
-  const compressedAccounts = await Promise.all(
-    addresses.map(async (x) =>
-      fetchCachedCompressedAccount(x.address, cachedAccounts),
-    ),
-  );
-
-  const filtered = compressedAccounts
+  const compressedAccounts = (
+    await Promise.all(
+      addresses.map((x) =>
+        fetchCachedCompressedAccount(x.address, cachedAccounts),
+      ),
+    )
+  )
     .filter((x) => x !== null)
     .filter((x) => x.data !== null && x.address !== null);
 
-  if (filtered.length !== addresses.length) {
+  if (compressedAccounts.length !== addresses.length) {
     throw new NotFoundError(
       "Compressed account",
-      `Expected ${addresses.length} accounts but found ${filtered.length}`,
+      `Expected ${addresses.length} accounts but found ${compressedAccounts.length}`,
     );
   }
 
-  return filtered.map((x, index) => ({
+  return compressedAccounts.map((x, index) => ({
     ...x,
     type: addresses[index].type,
     tree: x.treeInfo.tree,

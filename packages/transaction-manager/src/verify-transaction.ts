@@ -21,23 +21,34 @@ import {
   processTransactionBufferAndExecute,
   processTransferIntent,
 } from "./processors";
-import type { Secp256r1VerifyData, TransactionManagerConfig } from "./types";
+import type {
+  Secp256r1VerifyData,
+  TransactionManagerConfig,
+  VerificationResults,
+} from "./types";
 import { SECP256R1_VERIFY_PROGRAM, WHITELISTED_PROGRAMS } from "./utils/consts";
 import { decompileTransactionMessageFetchingLookupTablesWithCache } from "./utils/transaction-parsing";
 
 /**
- * Verifies a serialized Solana transaction for the multi-wallet system.
+ * Decode and verify a serialized Solana transaction.
+ *
+ * @param rpc - Solana RPC client used to fetch lookup tables.
+ * @param transactionManagerConfig - Public key and URL of the transaction manager.
+ * @param payload - Verification input.
+ * @param wellKnownProxyUrl - Optional proxy URL for fetching well-known client config.
+ * @returns The transaction message bytes and, per multi-wallet instruction batch,
+ *   the extracted instructions and the signers that passed verification.
  */
 export async function verifyTransaction(
   rpc: Rpc<SolanaRpcApi>,
   transactionManagerConfig: TransactionManagerConfig,
   payload: {
-    transaction: string;
-    transactionMessageBytes?: string;
+    transaction: Base64URLString;
+    transactionMessageBytes?: Base64URLString;
     authResponses?: TransactionAuthDetails[];
   },
   wellKnownProxyUrl?: URL,
-) {
+): Promise<VerificationResults> {
   const { transaction, transactionMessageBytes, authResponses } = payload;
   const { messageBytes } = getTransactionDecoder().decode(
     getBase64Encoder().encode(transaction),
@@ -71,7 +82,7 @@ export async function verifyTransaction(
     )
   ).filter((result) => result !== null);
 
-  return { messageBytes, verificationResults };
+  return { transactionMessage: messageBytes, verificationResults };
 }
 
 function extractSecp256r1VerifyData(
@@ -96,7 +107,7 @@ async function processInstruction(
   instructionIndex: number,
   authResponses?: TransactionAuthDetails[],
   secp256r1VerifyDataList?: Secp256r1VerifyData[],
-  base64TransactionMessageBytes?: string,
+  transactionMessageBytes?: Base64URLString,
   wellKnownProxyUrl?: URL,
 ) {
   const programAddress = instruction.programAddress.toString();
@@ -125,7 +136,7 @@ async function processInstruction(
     instructionIndex,
     authResponses,
     secp256r1VerifyDataList,
-    base64TransactionMessageBytes,
+    transactionMessageBytes,
     wellKnownProxyUrl,
   );
 }
@@ -138,7 +149,7 @@ async function routeInstruction(
   instructionIndex: number,
   authResponses?: TransactionAuthDetails[],
   secp256r1VerifyDataList?: Secp256r1VerifyData[],
-  base64TransactionMessageBytes?: string,
+  transactionMessageBytes?: Base64URLString,
   wellKnownProxyUrl?: URL,
 ) {
   switch (instructionType) {
@@ -208,7 +219,7 @@ async function routeInstruction(
         instructionIndex,
         authResponses,
         secp256r1VerifyDataList,
-        base64TransactionMessageBytes,
+        transactionMessageBytes,
         wellKnownProxyUrl,
       );
 

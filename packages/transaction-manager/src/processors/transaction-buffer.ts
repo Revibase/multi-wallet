@@ -13,6 +13,7 @@ import {
   type Rpc,
   type SolanaRpcApi,
 } from "gill";
+import { verifyTransactionBufferHash } from "src/utils/signature-verification";
 import type {
   ProcessingResult,
   Secp256r1VerifyData,
@@ -25,7 +26,6 @@ import {
   parseInnerTransaction,
   parseTransactionMessageBytes,
   verifyAndParseSigners,
-  verifyTransactionBufferHash,
 } from "../utils/transaction-parsing";
 
 /**
@@ -39,7 +39,7 @@ export async function processTransactionBufferAndExecute(
   instructionIndex: number,
   authResponses?: TransactionAuthDetails[],
   secp256r1VerifyDataList?: Secp256r1VerifyData[],
-  base64TransactionMessageBytes?: string,
+  transactionMessageBytes?: Base64URLString,
   wellKnownProxyUrl?: URL,
 ) {
   if (!instruction.accounts) {
@@ -68,7 +68,7 @@ export async function processTransactionBufferAndExecute(
       rpc,
       instruction,
       isCompressedInstruction,
-      base64TransactionMessageBytes,
+      transactionMessageBytes,
     );
   } else {
     processingResult = await processExecuteSync(
@@ -109,34 +109,30 @@ async function processBufferCreate(
   rpc: Rpc<SolanaRpcApi>,
   instruction: Instruction,
   isCompressedInstruction: boolean,
-  base64TransactionMessageBytes?: string,
+  transactionMessageBytes?: Base64URLString,
 ): Promise<ProcessingResult> {
-  if (!base64TransactionMessageBytes) {
+  if (!transactionMessageBytes) {
     throw new Error("Missing transaction message bytes");
   }
   if (!instruction.data || !instruction.accounts) {
     throw new Error("Invalid instruction");
   }
 
-  const transactionMessageBytes = new Uint8Array(
-    getBase64Encoder().encode(base64TransactionMessageBytes),
+  const transactionMessage = new Uint8Array(
+    getBase64Encoder().encode(transactionMessageBytes),
   );
 
   if (isCompressedInstruction) {
-    return processCompressedBufferCreate(
-      rpc,
-      instruction,
-      transactionMessageBytes,
-    );
+    return processCompressedBufferCreate(rpc, instruction, transactionMessage);
   }
 
-  return processStandardBufferCreate(rpc, instruction, transactionMessageBytes);
+  return processStandardBufferCreate(rpc, instruction, transactionMessage);
 }
 
 async function processCompressedBufferCreate(
   rpc: Rpc<SolanaRpcApi>,
   instruction: Instruction,
-  transactionMessageBytes: Uint8Array<ArrayBuffer>,
+  transactionMessage: Uint8Array<ArrayBuffer>,
 ): Promise<ProcessingResult> {
   const decodedInstructionData =
     getTransactionBufferCreateCompressedInstructionDataDecoder().decode(
@@ -154,7 +150,7 @@ async function processCompressedBufferCreate(
 
   const isHashValid = await verifyTransactionBufferHash(
     decodedInstructionData.args,
-    transactionMessageBytes,
+    transactionMessage,
   );
   if (!isHashValid) {
     throw new Error("Hash mismatch.");
@@ -162,7 +158,7 @@ async function processCompressedBufferCreate(
 
   const innerInstructions = await parseTransactionMessageBytes(
     rpc,
-    transactionMessageBytes,
+    transactionMessage,
   );
 
   return {
@@ -175,7 +171,7 @@ async function processCompressedBufferCreate(
 async function processStandardBufferCreate(
   rpc: Rpc<SolanaRpcApi>,
   instruction: Instruction,
-  transactionMessageBytes: Uint8Array<ArrayBuffer>,
+  transactionMessage: Uint8Array<ArrayBuffer>,
 ): Promise<ProcessingResult> {
   const decodedInstructionData =
     getTransactionBufferCreateInstructionDataDecoder().decode(
@@ -189,7 +185,7 @@ async function processStandardBufferCreate(
 
   const isHashValid = await verifyTransactionBufferHash(
     decodedInstructionData.args,
-    transactionMessageBytes,
+    transactionMessage,
   );
   if (!isHashValid) {
     throw new Error("Hash mismatch.");
@@ -197,7 +193,7 @@ async function processStandardBufferCreate(
 
   const innerInstructions = await parseTransactionMessageBytes(
     rpc,
-    transactionMessageBytes,
+    transactionMessage,
   );
 
   return {

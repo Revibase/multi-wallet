@@ -10,7 +10,7 @@ import {
   SignedSecp256r1Key,
   type TransactionPayload,
 } from "@revibase/core";
-import { getBase58Decoder, getBase64Decoder } from "gill";
+import { getBase64Decoder } from "gill";
 import type { TestContext } from "../types.ts";
 
 /**
@@ -22,9 +22,11 @@ export async function mockAuthenticationResponse(
   publicKey: Uint8Array,
   ctx: TestContext,
 ): Promise<SignedSecp256r1Key> {
-  const nonce = crypto.randomUUID();
+  const nonce = getBase64Decoder().decode(
+    crypto.getRandomValues(new Uint8Array(16)),
+  );
   const clientOrigin = "https://app.revibase.com";
-  const devicePublicKey = getBase58Decoder().decode(
+  const deviceJwk = getBase64Decoder().decode(
     crypto.getRandomValues(new Uint8Array(32)),
   );
   const flags = new Uint8Array([0x01]); // User present
@@ -42,7 +44,7 @@ export async function mockAuthenticationResponse(
   ({ challenge, slotHash, slotNumber } = await createTransactionChallenge(
     transaction,
     clientOrigin,
-    devicePublicKey,
+    deviceJwk,
     nonce,
   ));
 
@@ -99,15 +101,15 @@ export async function mockAuthenticationResponse(
         transaction.transactionMessageBytes,
       ),
     },
-    clientSignature: {
+    client: {
       clientOrigin,
-      signature: getBase58Decoder().decode(
+      jws: getBase64Decoder().decode(
         crypto.getRandomValues(new Uint8Array(64)),
       ),
     },
-    deviceSignature: {
-      publicKey: devicePublicKey,
-      signature: getBase58Decoder().decode(
+    device: {
+      jwk: deviceJwk,
+      jws: getBase64Decoder().decode(
         crypto.getRandomValues(new Uint8Array(64)),
       ),
     },

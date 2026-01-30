@@ -1,137 +1,77 @@
-import { ed25519 } from "@noble/curves/ed25519.js";
-import { equalBytes } from "@noble/curves/utils.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import {
   base64URLStringToBuffer,
+  convertBase64UrlStringToJWK,
   createTransactionChallenge,
   getSecp256r1MessageHash,
   type TransactionAuthDetails,
+  type TransactionBufferCreateArgs,
 } from "@revibase/core";
-import { getBase58Encoder } from "gill";
-import type { ClientDataJSON, WellKnownCacheEntry } from "../types";
+import { getUtf8Decoder } from "gill";
+import { compactVerify, importJWK } from "jose";
+import type { ClientDataJSON, WellKnownClientCacheEntry } from "../types";
+import { fetchWellKnownClient } from "./fetch-well-known";
 
-const WELL_KNOWN_CACHE_TTL_MS = 300_000;
-const wellKnownPublicKeyCache = new Map<string, WellKnownCacheEntry>();
+function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
 
-function verifyEd25519Signature(
-  base58Signature: string,
+export async function verifyAuthProviderSignature(
+  authProvider: TransactionAuthDetails["authProvider"],
   messageHash: Uint8Array<ArrayBuffer>,
-  base58PublicKey: string,
-  errorMessage: string,
-): void {
-  const signatureBytes = new Uint8Array(
-    getBase58Encoder().encode(base58Signature),
-  );
-  const publicKeyBytes = new Uint8Array(
-    getBase58Encoder().encode(base58PublicKey),
-  );
-
-  const isSignatureValid = ed25519.verify(
-    signatureBytes,
-    messageHash,
-    publicKeyBytes,
-  );
-
-  if (!isSignatureValid) {
-    throw new Error(errorMessage);
+): Promise<void> {
+  if (!authProvider) return;
+  try {
+    const key = await importJWK(convertBase64UrlStringToJWK(authProvider.jwk));
+    const result = await compactVerify(authProvider.jws, key);
+    if (!equalBytes(result.payload, messageHash)) {
+      throw new Error("Invalid Payload");
+    }
+  } catch {
+    throw new Error(`Auth provider signature verification failed`);
   }
 }
 
-export function verifyAuthProviderSignature(
-  authProviderSignature: { publicKey: string; signature: string } | undefined,
+export async function verifyDeviceSignature(
+  device: TransactionAuthDetails["device"],
   messageHash: Uint8Array<ArrayBuffer>,
-): void {
-  if (!authProviderSignature) return;
-
-  verifyEd25519Signature(
-    authProviderSignature.signature,
-    messageHash,
-    authProviderSignature.publicKey,
-    `Auth provider signature verification failed for auth provider ID: "${authProviderSignature.publicKey}".`,
-  );
-}
-
-export function verifyDeviceSignature(
-  deviceSignature: { publicKey: string; signature: string },
-  messageHash: Uint8Array<ArrayBuffer>,
-): void {
-  verifyEd25519Signature(
-    deviceSignature.signature,
-    messageHash,
-    deviceSignature.publicKey,
-    `Device signature verification failed for device ID: "${deviceSignature.publicKey}".`,
-  );
-}
-
-async function fetchWellKnownClientPublicKey(
-  clientOrigin: string,
-  wellKnownProxyUrl?: URL,
-): Promise<{ publicKey: JsonWebKey }> {
-  const currentTimestamp = Date.now();
-  const cachedEntry = wellKnownPublicKeyCache.get(clientOrigin);
-
-  if (
-    cachedEntry &&
-    currentTimestamp - cachedEntry.timestamp < WELL_KNOWN_CACHE_TTL_MS
-  ) {
-    return { publicKey: cachedEntry.publicKey };
+): Promise<void> {
+  try {
+    const key = await importJWK(convertBase64UrlStringToJWK(device.jwk));
+    const result = await compactVerify(device.jws, key);
+    if (!equalBytes(result.payload, messageHash)) {
+      throw new Error("Invalid Payload");
+    }
+  } catch {
+    throw new Error(`Device signature verification failed`);
   }
-
-  const fetchUrl = wellKnownProxyUrl
-    ? `${wellKnownProxyUrl.origin}?origin=${encodeURIComponent(clientOrigin)}`
-    : `${clientOrigin}/.well-known/revibase.json`;
-
-  const response = await fetch(fetchUrl);
-  if (!response.ok) {
-    throw new Error(
-      `Failed to fetch .well-known/revibase.json for ${clientOrigin}`,
-    );
-  }
-
-  const responseData = (await response.json()) as
-    | { publicKey: JsonWebKey }
-    | null
-    | undefined;
-
-  if (!responseData?.publicKey) {
-    throw new Error(`Invalid .well-known response from ${clientOrigin}`);
-  }
-
-  wellKnownPublicKeyCache.set(clientOrigin, {
-    publicKey: responseData.publicKey,
-    timestamp: currentTimestamp,
-  });
-
-  return responseData;
 }
 
 export async function verifyClientSignature(
-  clientSignature: { clientOrigin: string; signature: string },
+  client: TransactionAuthDetails["client"],
   messageHash: Uint8Array<ArrayBuffer>,
   wellKnownProxyUrl?: URL,
-): Promise<void> {
-  const { publicKey: jwkPublicKey } = await fetchWellKnownClientPublicKey(
-    clientSignature.clientOrigin,
+): Promise<WellKnownClientCacheEntry> {
+  const clientDetails = await fetchWellKnownClient(
+    client.clientOrigin,
     wellKnownProxyUrl,
   );
-
-  const publicKeyBytes = new Uint8Array(
-    base64URLStringToBuffer(jwkPublicKey.x as string),
-  );
-  const signatureBytes = new Uint8Array(
-    getBase58Encoder().encode(clientSignature.signature),
-  );
-
-  const isSignatureValid = ed25519.verify(
-    signatureBytes,
-    new Uint8Array(messageHash),
-    publicKeyBytes,
-  );
-
-  if (!isSignatureValid) {
-    throw new Error(
-      `Client signature verification failed for client: "${clientSignature.clientOrigin}".`,
+  try {
+    const key = await importJWK(
+      convertBase64UrlStringToJWK(clientDetails.clientJwk),
     );
+    const result = await compactVerify(client.jws, key);
+    if (!equalBytes(result.payload, messageHash)) {
+      throw new Error("Invalid Payload");
+    }
+  } catch {
+    throw new Error(`Client signature verification failed `);
   }
+
+  return clientDetails;
 }
 
 export async function verifyTransactionAuthResponseWithMessageHash(
@@ -143,21 +83,21 @@ export async function verifyTransactionAuthResponseWithMessageHash(
     transactionPayload,
     slotHash,
     slotNumber,
-    deviceSignature,
-    clientSignature,
+    device,
+    client,
     nonce,
   } = authDetails;
   const { response } = authResponse;
 
   const clientDataJsonBytes = base64URLStringToBuffer(response.clientDataJSON);
   const clientDataJson = JSON.parse(
-    new TextDecoder().decode(clientDataJsonBytes),
+    getUtf8Decoder().decode(clientDataJsonBytes),
   ) as ClientDataJSON;
 
   const { challenge: expectedChallenge } = await createTransactionChallenge(
     transactionPayload,
-    clientSignature.clientOrigin,
-    deviceSignature.publicKey,
+    client.clientOrigin,
+    device.jwk,
     nonce,
     slotHash,
     slotNumber,
@@ -175,4 +115,14 @@ export async function verifyTransactionAuthResponseWithMessageHash(
   if (!equalBytes(actualMessageHash, expectedMessageHash)) {
     throw new Error("Invalid message hash");
   }
+} /**
+ * Verifies that transaction buffer hash matches the provided transaction bytes.
+ */
+
+export async function verifyTransactionBufferHash(
+  bufferArgs: TransactionBufferCreateArgs,
+  transactionMessage: Uint8Array<ArrayBuffer>,
+): Promise<boolean> {
+  const computedHash = sha256(transactionMessage);
+  return equalBytes(new Uint8Array(bufferArgs.finalBufferHash), computedHash);
 }

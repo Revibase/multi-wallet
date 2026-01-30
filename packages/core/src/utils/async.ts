@@ -13,14 +13,13 @@ import { NetworkError } from "../errors";
  */
 export async function validateResponse(
   response: Response,
-  url?: string
+  url?: string,
 ): Promise<Response> {
   if (!response.ok) {
-    const errorText = await response.text().catch(() => response.statusText);
     throw new NetworkError(
       `Request failed: ${response.statusText} (${response.status})`,
       response.status,
-      url
+      url,
     );
   }
   return response;
@@ -39,7 +38,7 @@ export async function parseJson<T = unknown>(response: Response): Promise<T> {
     throw new NetworkError(
       `Failed to parse JSON response: ${error instanceof Error ? error.message : String(error)}`,
       response.status,
-      response.url
+      response.url,
     );
   }
 }
