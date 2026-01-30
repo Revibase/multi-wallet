@@ -28,30 +28,30 @@ export const TransactionPayloadWithBase64MessageBytesSchema = z
   .object({
     transactionActionType: TransactionActionTypeSchema,
     transactionAddress: z.string(),
-    transactionMessageBytes: z.base64url(),
+    transactionMessageBytes: z.base64(),
   })
   .strict();
 
 export const AuthenticationContextSchema = z
   .object({
     authResponse: z.custom<AuthenticationResponseJSON>(),
-    nonce: z.base64url(),
+    nonce: z.base64(),
     client: z
       .object({
         clientOrigin: z.url(),
-        jws: z.base64url(),
+        jws: z.base64(),
       })
       .strict(),
     device: z
       .object({
-        jwk: z.base64url(),
-        jws: z.base64url(),
+        jwk: z.base64(),
+        jws: z.base64(),
       })
       .strict(),
     authProvider: z
       .object({
-        jwk: z.base64url(),
-        jws: z.base64url(),
+        jwk: z.base64(),
+        jws: z.base64(),
       })
       .strict()
       .optional(),

@@ -1,8 +1,5 @@
 import type { TransactionPayloadWithBase64MessageBytes } from "@revibase/core";
-import {
-  bufferToBase64URLString,
-  prepareTransactionMessage,
-} from "@revibase/core";
+import { prepareTransactionMessage } from "@revibase/core";
 import {
   address,
   getBase64Decoder,
@@ -41,9 +38,7 @@ export async function executeTransaction(
     TransactionPayloadWithBase64MessageBytes,
     "transactionActionType" | "transactionAddress"
   > = {
-    transactionMessageBytes: bufferToBase64URLString(
-      new Uint8Array(transactionMessageBytes),
-    ),
+    transactionMessageBytes: getBase64Decoder().decode(transactionMessageBytes),
   };
 
   const redirectOrigin = window.origin;

@@ -1,11 +1,10 @@
 import {
-    base64URLStringToBuffer,
-    pollJitoBundleConfirmation,
-    prepareTransactionBundle,
-    signAndSendBundledTransactions,
-    type CompleteTransactionRequest,
+  pollJitoBundleConfirmation,
+  prepareTransactionBundle,
+  signAndSendBundledTransactions,
+  type CompleteTransactionRequest,
 } from "@revibase/core";
-import type { TransactionSigner } from "gill";
+import { getBase64Encoder, type TransactionSigner } from "gill";
 import { estimateJitoTips, getAddressByLookUpTable } from "src/utils/internal";
 import { prepareTransactionContext } from "./shared";
 
@@ -22,7 +21,7 @@ import { prepareTransactionContext } from "./shared";
 export async function processBundledTransaction(
   request: CompleteTransactionRequest,
   privateKey: CryptoKey,
-  feePayer?: TransactionSigner
+  feePayer?: TransactionSigner,
 ): Promise<string> {
   const { transactionActionType, transactionMessageBytes } =
     request.data.payload.transactionPayload;
@@ -32,20 +31,16 @@ export async function processBundledTransaction(
     transactionActionType !== "create_with_preauthorized_execution"
   ) {
     throw new Error(
-      "Transaction action type must be 'execute' or 'create_with_preauthorized_execution'"
+      "Transaction action type must be 'execute' or 'create_with_preauthorized_execution'",
     );
   }
 
   const context = await prepareTransactionContext(
     request,
     privateKey,
-    feePayer
+    feePayer,
   );
   const [jitoBundlesTipAmount] = await Promise.all([estimateJitoTips()]);
-
-  const transactionMessageBytesBuffer = new Uint8Array(
-    base64URLStringToBuffer(transactionMessageBytes)
-  );
 
   const cachedAccounts = new Map();
   const bundle = await prepareTransactionBundle({
@@ -53,7 +48,7 @@ export async function processBundledTransaction(
     index: context.settingsIndexWithAddress.index,
     settingsAddressTreeIndex:
       context.settingsIndexWithAddress.settingsAddressTreeIndex,
-    transactionMessageBytes: transactionMessageBytesBuffer,
+    transactionMessageBytes: getBase64Encoder().encode(transactionMessageBytes),
     creator: context.transactionManagerSigner ?? context.signedSigner,
     executor: context.transactionManagerSigner
       ? context.signedSigner
@@ -72,7 +67,7 @@ export async function processBundledTransaction(
   }));
 
   const bundleId = await signAndSendBundledTransactions(
-    bundlesWithLookupTables
+    bundlesWithLookupTables,
   );
 
   return pollJitoBundleConfirmation(bundleId);

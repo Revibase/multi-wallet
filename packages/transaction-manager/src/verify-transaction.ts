@@ -43,8 +43,8 @@ export async function verifyTransaction(
   rpc: Rpc<SolanaRpcApi>,
   transactionManagerConfig: TransactionManagerConfig,
   payload: {
-    transaction: Base64URLString;
-    transactionMessageBytes?: Base64URLString;
+    transaction: string;
+    transactionMessageBytes?: string;
     authResponses?: TransactionAuthDetails[];
   },
   wellKnownProxyUrl?: URL,
@@ -107,7 +107,7 @@ async function processInstruction(
   instructionIndex: number,
   authResponses?: TransactionAuthDetails[],
   secp256r1VerifyDataList?: Secp256r1VerifyData[],
-  transactionMessageBytes?: Base64URLString,
+  transactionMessageBytes?: string,
   wellKnownProxyUrl?: URL,
 ) {
   const programAddress = instruction.programAddress.toString();
@@ -149,7 +149,7 @@ async function routeInstruction(
   instructionIndex: number,
   authResponses?: TransactionAuthDetails[],
   secp256r1VerifyDataList?: Secp256r1VerifyData[],
-  transactionMessageBytes?: Base64URLString,
+  transactionMessageBytes?: string,
   wellKnownProxyUrl?: URL,
 ) {
   switch (instructionType) {

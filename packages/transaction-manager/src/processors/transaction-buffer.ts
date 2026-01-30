@@ -39,7 +39,7 @@ export async function processTransactionBufferAndExecute(
   instructionIndex: number,
   authResponses?: TransactionAuthDetails[],
   secp256r1VerifyDataList?: Secp256r1VerifyData[],
-  transactionMessageBytes?: Base64URLString,
+  transactionMessageBytes?: string,
   wellKnownProxyUrl?: URL,
 ) {
   if (!instruction.accounts) {
@@ -109,7 +109,7 @@ async function processBufferCreate(
   rpc: Rpc<SolanaRpcApi>,
   instruction: Instruction,
   isCompressedInstruction: boolean,
-  transactionMessageBytes?: Base64URLString,
+  transactionMessageBytes?: string,
 ): Promise<ProcessingResult> {
   if (!transactionMessageBytes) {
     throw new Error("Missing transaction message bytes");

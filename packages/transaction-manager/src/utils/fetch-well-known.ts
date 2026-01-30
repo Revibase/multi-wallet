@@ -28,16 +28,15 @@ export async function fetchWellKnownClient(
   }
 
   const responseData = (await response.json()) as
-    | { jwk?: Base64URLString; trustedDevices?: Base64URLString[] }
+    | Omit<WellKnownClientCacheEntry, "cachedAt">
     | null
     | undefined;
 
-  if (!responseData?.jwk) {
+  if (!responseData?.clientJwk) {
     throw new Error(`Invalid .well-known response from ${clientOrigin}`);
   }
   const result: WellKnownClientCacheEntry = {
-    clientJwk: responseData.jwk,
-    trustedDeviceJwks: responseData.trustedDevices,
+    ...responseData,
     cachedAt: currentTimestamp,
   };
   wellKnownClientCache.set(clientOrigin, result);

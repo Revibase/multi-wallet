@@ -1,6 +1,5 @@
 import type { TransactionPayloadWithBase64MessageBytes } from "@revibase/core";
 import {
-  base64URLStringToBuffer,
   fetchSettingsAccountData,
   getSettingsFromIndex,
   UserRole,
@@ -8,6 +7,7 @@ import {
 import {
   createNoopSigner,
   getAddressDecoder,
+  getBase64Encoder,
   type TransactionSigner,
 } from "gill";
 import {
@@ -188,10 +188,6 @@ async function getTransactionPayload(
     throw new Error("Signer must be provided for this action.");
   }
 
-  const transactionMessageBytes = new Uint8Array(
-    base64URLStringToBuffer(payload.transactionMessageBytes),
-  );
-
   const [settings, settingsAddress] = await Promise.all([
     fetchSettingsAccountData(
       signer.settingsIndexWithAddress.index,
@@ -220,7 +216,9 @@ async function getTransactionPayload(
     index: signer.settingsIndexWithAddress.index,
     settingsAddressTreeIndex:
       signer.settingsIndexWithAddress.settingsAddressTreeIndex,
-    transactionMessageBytes,
+    transactionMessageBytes: getBase64Encoder().encode(
+      payload.transactionMessageBytes,
+    ),
     addressesByLookupTableAddress: getAddressByLookUpTable(),
   });
 

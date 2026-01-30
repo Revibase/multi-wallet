@@ -1,10 +1,9 @@
 import {
-    base64URLStringToBuffer,
-    prepareTransactionSync,
-    signAndSendTransaction,
-    type CompleteTransactionRequest,
+  prepareTransactionSync,
+  signAndSendTransaction,
+  type CompleteTransactionRequest,
 } from "@revibase/core";
-import type { TransactionSigner } from "gill";
+import { getBase64Encoder, type TransactionSigner } from "gill";
 import { getAddressByLookUpTable } from "src/utils/internal";
 import { getTransactionSigners, prepareTransactionContext } from "./shared";
 
@@ -21,7 +20,7 @@ import { getTransactionSigners, prepareTransactionContext } from "./shared";
 export async function processSyncTransaction(
   request: CompleteTransactionRequest,
   privateKey: CryptoKey,
-  feePayer?: TransactionSigner
+  feePayer?: TransactionSigner,
 ): Promise<string> {
   const { transactionActionType, transactionMessageBytes } =
     request.data.payload.transactionPayload;
@@ -33,15 +32,11 @@ export async function processSyncTransaction(
   const context = await prepareTransactionContext(
     request,
     privateKey,
-    feePayer
+    feePayer,
   );
   const signers = getTransactionSigners(
     context.signedSigner,
-    context.transactionManagerSigner
-  );
-
-  const transactionMessageBytesBuffer = new Uint8Array(
-    base64URLStringToBuffer(transactionMessageBytes)
+    context.transactionManagerSigner,
   );
 
   const cachedAccounts = new Map();
@@ -50,7 +45,9 @@ export async function processSyncTransaction(
       compressed: context.settingsData.isCompressed,
       signers,
       payer: context.payer,
-      transactionMessageBytes: transactionMessageBytesBuffer,
+      transactionMessageBytes: getBase64Encoder().encode(
+        transactionMessageBytes,
+      ),
       index: context.settingsIndexWithAddress.index,
       settingsAddressTreeIndex:
         context.settingsIndexWithAddress.settingsAddressTreeIndex,

@@ -4,15 +4,18 @@
  */
 
 import {
-    base64URLStringToBuffer,
-    createClientAuthorizationCompleteRequestChallenge,
-    fetchSettingsAccountData,
-    getSignedSecp256r1Key,
-    getSignedTransactionManager,
-    retrieveTransactionManager,
-    type CompleteTransactionRequest,
+  createClientAuthorizationCompleteRequestChallenge,
+  fetchSettingsAccountData,
+  getSignedSecp256r1Key,
+  getSignedTransactionManager,
+  retrieveTransactionManager,
+  type CompleteTransactionRequest,
 } from "@revibase/core";
-import { getBase58Decoder, type TransactionSigner } from "gill";
+import {
+  getBase58Decoder,
+  getBase64Encoder,
+  type TransactionSigner,
+} from "gill";
 import { REVIBASE_API_URL } from "src/utils/consts";
 import { getRandomPayer } from "src/utils/helper";
 import { getSettingsIndexWithAddress } from "src/utils/internal";
@@ -41,24 +44,24 @@ export interface TransactionProcessingContext {
  */
 export async function createSignedAuthResponse(
   request: CompleteTransactionRequest,
-  privateKey: CryptoKey
+  privateKey: CryptoKey,
 ) {
   const challenge = createClientAuthorizationCompleteRequestChallenge(request);
-  const signature = getBase58Decoder().decode(
+  const jws = getBase58Decoder().decode(
     new Uint8Array(
       await crypto.subtle.sign(
         { name: "Ed25519" },
         privateKey,
-        new Uint8Array(challenge)
-      )
-    )
+        new Uint8Array(challenge),
+      ),
+    ),
   );
 
   return {
     ...request.data.payload,
-    clientSignature: {
-      ...request.data.payload.clientSignature,
-      signature,
+    client: {
+      ...request.data.payload.client,
+      jws,
     },
   };
 }
@@ -75,14 +78,14 @@ export async function createSignedAuthResponse(
 export async function prepareTransactionContext(
   request: CompleteTransactionRequest,
   privateKey: CryptoKey,
-  feePayer?: TransactionSigner
+  feePayer?: TransactionSigner,
 ): Promise<TransactionProcessingContext> {
   const authResponse = await createSignedAuthResponse(request, privateKey);
   const cachedAccounts = new Map();
 
   const settingsIndexWithAddress = await getSettingsIndexWithAddress(
     request,
-    cachedAccounts
+    cachedAccounts,
   );
 
   const [payer, settingsData, signedSigner] = await Promise.all([
@@ -90,7 +93,7 @@ export async function prepareTransactionContext(
     fetchSettingsAccountData(
       settingsIndexWithAddress.index,
       settingsIndexWithAddress.settingsAddressTreeIndex,
-      cachedAccounts
+      cachedAccounts,
     ),
     getSignedSecp256r1Key(authResponse),
   ]);
@@ -98,16 +101,12 @@ export async function prepareTransactionContext(
   const { transactionManagerAddress, userAddressTreeIndex } =
     retrieveTransactionManager(request.data.payload.signer, settingsData);
 
-  const transactionMessageBytes = new Uint8Array(
-    base64URLStringToBuffer(
-      request.data.payload.transactionPayload.transactionMessageBytes
-    )
-  );
-
   const transactionManagerSigner = await getSignedTransactionManager({
     authResponses: [authResponse],
     transactionManagerAddress,
-    transactionMessageBytes,
+    transactionMessageBytes: getBase64Encoder().encode(
+      request.data.payload.transactionPayload.transactionMessageBytes,
+    ),
     userAddressTreeIndex,
     cachedAccounts,
   });
@@ -131,7 +130,7 @@ export async function prepareTransactionContext(
  */
 export function getTransactionSigners(
   signedSigner: TransactionProcessingContext["signedSigner"],
-  transactionManagerSigner: TransactionProcessingContext["transactionManagerSigner"]
+  transactionManagerSigner: TransactionProcessingContext["transactionManagerSigner"],
 ) {
   return transactionManagerSigner
     ? [signedSigner, transactionManagerSigner]

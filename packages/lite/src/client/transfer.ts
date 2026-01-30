@@ -1,5 +1,4 @@
 import type { TransactionPayloadWithBase64MessageBytes } from "@revibase/core";
-import { bufferToBase64URLString } from "@revibase/core";
 import {
   address,
   getAddressEncoder,
@@ -48,7 +47,7 @@ export async function transferTokens(
   const transactionPayload: TransactionPayloadWithBase64MessageBytes = {
     transactionActionType: "transfer_intent",
     transactionAddress: mint ? tokenProgram : SYSTEM_PROGRAM_ADDRESS,
-    transactionMessageBytes: bufferToBase64URLString(
+    transactionMessageBytes: getBase64Decoder().decode(
       new Uint8Array([
         ...getU64Encoder().encode(amount),
         ...getAddressEncoder().encode(address(destination)),

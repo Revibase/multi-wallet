@@ -74,14 +74,14 @@ export interface ClientDataJSON {
  * explicitly trusted, plus cache metadata for freshness.
  */
 export interface WellKnownClientCacheEntry {
-  /** The client's public key, encoded as a Base64URL string in JWK format. */
-  clientJwk: Base64URLString;
+  /** The client's public key, encoded as a Base64 string in JWK format. */
+  clientJwk: string;
 
   /**
    * Optional list of device public keys trusted by this client,
-   * each encoded as a Base64URL string in JWK format.
+   * each encoded as a Base64 string in JWK format.
    */
-  trustedDeviceJwks?: Base64URLString[];
+  trustedDeviceJwks?: string[];
 
   /** Unix timestamp (milliseconds) when this entry was cached. */
   cachedAt: number;

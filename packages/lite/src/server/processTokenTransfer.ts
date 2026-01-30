@@ -1,5 +1,4 @@
 import {
-  base64URLStringToBuffer,
   nativeTransferIntent,
   signAndSendTransaction,
   tokenTransferIntent,
@@ -8,6 +7,7 @@ import {
 import {
   address,
   getAddressDecoder,
+  getBase64Encoder,
   getU64Decoder,
   type TransactionSigner,
 } from "gill";
@@ -28,7 +28,7 @@ import { getTransactionSigners, prepareTransactionContext } from "./shared";
 export async function processTokenTransfer(
   request: CompleteTransactionRequest,
   privateKey: CryptoKey,
-  feePayer?: TransactionSigner
+  feePayer?: TransactionSigner,
 ): Promise<string> {
   const { transactionActionType, transactionMessageBytes, transactionAddress } =
     request.data.payload.transactionPayload;
@@ -40,19 +40,16 @@ export async function processTokenTransfer(
   const context = await prepareTransactionContext(
     request,
     privateKey,
-    feePayer
+    feePayer,
   );
-  const message = new Uint8Array(
-    base64URLStringToBuffer(transactionMessageBytes)
-  );
-
+  const message = getBase64Encoder().encode(transactionMessageBytes);
   const amount = getU64Decoder().decode(message.slice(0, 8));
   const destination = getAddressDecoder().decode(message.slice(8, 40));
   const mint = getAddressDecoder().decode(message.slice(40, 72));
 
   const signers = getTransactionSigners(
     context.signedSigner,
-    context.transactionManagerSigner
+    context.transactionManagerSigner,
   );
 
   const cachedAccounts = new Map();

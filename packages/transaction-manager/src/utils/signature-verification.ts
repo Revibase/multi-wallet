@@ -1,7 +1,7 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import {
   base64URLStringToBuffer,
-  convertBase64UrlStringToJWK,
+  convertBase64StringToJWK,
   createTransactionChallenge,
   getSecp256r1MessageHash,
   type TransactionAuthDetails,
@@ -25,7 +25,7 @@ export async function verifyAuthProviderSignature(
 ): Promise<void> {
   if (!authProvider) return;
   try {
-    const key = await importJWK(convertBase64UrlStringToJWK(authProvider.jwk));
+    const key = await importJWK(convertBase64StringToJWK(authProvider.jwk));
     const result = await compactVerify(authProvider.jws, key);
     if (!equalBytes(result.payload, messageHash)) {
       throw new Error("Invalid Payload");
@@ -40,7 +40,7 @@ export async function verifyDeviceSignature(
   messageHash: Uint8Array<ArrayBuffer>,
 ): Promise<void> {
   try {
-    const key = await importJWK(convertBase64UrlStringToJWK(device.jwk));
+    const key = await importJWK(convertBase64StringToJWK(device.jwk));
     const result = await compactVerify(device.jws, key);
     if (!equalBytes(result.payload, messageHash)) {
       throw new Error("Invalid Payload");
@@ -61,7 +61,7 @@ export async function verifyClientSignature(
   );
   try {
     const key = await importJWK(
-      convertBase64UrlStringToJWK(clientDetails.clientJwk),
+      convertBase64StringToJWK(clientDetails.clientJwk),
     );
     const result = await compactVerify(client.jws, key);
     if (!equalBytes(result.payload, messageHash)) {
