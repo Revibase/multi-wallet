@@ -26,9 +26,12 @@ import {
   getSetComputeUnitLimitInstruction,
   getTransferSolInstruction,
 } from "gill/programs";
-import { TEST_COMPUTE_UNIT_LIMIT, TEST_TRANSACTION_DELAY_MS } from "../constants.ts";
-import { assertTestContext, delay } from "./test-utils.ts";
+import {
+  TEST_COMPUTE_UNIT_LIMIT,
+  TEST_TRANSACTION_DELAY_MS,
+} from "../constants.ts";
 import type { TestContext } from "../types.ts";
+import { assertTestContext, delay } from "./test-utils.ts";
 
 /**
  * Sends a transaction with the given instructions
@@ -36,7 +39,7 @@ import type { TestContext } from "../types.ts";
 export async function sendTransaction(
   instructions: Instruction[],
   payer: TransactionSigner,
-  addressLookupTableAccounts?: AddressesByLookupTableAddress
+  addressLookupTableAccounts?: AddressesByLookupTableAddress,
 ): Promise<string | undefined> {
   // Get latest blockhash before starting transaction
   const latestBlockHash = await getSolanaRpc().getLatestBlockhash().send();
@@ -55,17 +58,17 @@ export async function sendTransaction(
           getSetComputeUnitLimitInstruction({
             units: TEST_COMPUTE_UNIT_LIMIT,
           }),
-          tx
+          tx,
         );
       },
       (tx) =>
         addressLookupTableAccounts
           ? compressTransactionMessageUsingAddressLookupTables(
               tx,
-              addressLookupTableAccounts
+              addressLookupTableAccounts,
             )
           : tx,
-      async (tx) => await signTransactionMessageWithSigners(tx)
+      async (tx) => await signTransactionMessageWithSigners(tx),
     );
 
     console.log(getBase64EncodedWireTransaction(tx).length);
@@ -80,7 +83,7 @@ export async function sendTransaction(
     console.log(signature);
     if (isSolanaError(error) && error.cause) {
       const formattedError = JSON.stringify(error.cause, (key, value) =>
-        typeof value === "bigint" ? value.toString() : value
+        typeof value === "bigint" ? value.toString() : value,
       );
 
       try {
@@ -108,7 +111,7 @@ export async function sendTransaction(
  */
 export async function fundMultiWalletVault(
   ctx: TestContext,
-  amount: bigint
+  amount: bigint,
 ): Promise<void> {
   if (!ctx.multiWalletVault || !ctx.payer) return;
   const transfer = getTransferSolInstruction({

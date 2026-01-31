@@ -15,13 +15,13 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from 'gill';
+} from "gill";
 import {
   getPackedAddressTreeInfoDecoder,
   getPackedAddressTreeInfoEncoder,
   type PackedAddressTreeInfo,
   type PackedAddressTreeInfoArgs,
-} from '.';
+} from ".";
 
 export type UserCreationArgs = {
   addressTreeInfo: PackedAddressTreeInfo;
@@ -35,15 +35,15 @@ export type UserCreationArgsArgs = {
 
 export function getUserCreationArgsEncoder(): FixedSizeEncoder<UserCreationArgsArgs> {
   return getStructEncoder([
-    ['addressTreeInfo', getPackedAddressTreeInfoEncoder()],
-    ['outputStateTreeIndex', getU8Encoder()],
+    ["addressTreeInfo", getPackedAddressTreeInfoEncoder()],
+    ["outputStateTreeIndex", getU8Encoder()],
   ]);
 }
 
 export function getUserCreationArgsDecoder(): FixedSizeDecoder<UserCreationArgs> {
   return getStructDecoder([
-    ['addressTreeInfo', getPackedAddressTreeInfoDecoder()],
-    ['outputStateTreeIndex', getU8Decoder()],
+    ["addressTreeInfo", getPackedAddressTreeInfoDecoder()],
+    ["outputStateTreeIndex", getU8Decoder()],
   ]);
 }
 
@@ -53,6 +53,6 @@ export function getUserCreationArgsCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getUserCreationArgsEncoder(),
-    getUserCreationArgsDecoder()
+    getUserCreationArgsDecoder(),
   );
 }

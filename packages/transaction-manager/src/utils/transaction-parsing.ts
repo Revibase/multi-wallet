@@ -62,12 +62,10 @@ export async function getSecp256r1Signers(
       const signedMessage =
         signedMessages[verifyArg.verifyArgs.signedMessageIndex];
       const messageHash = sha256(
-        new Uint8Array(signedMessage.message),
+        signedMessage.message as Uint8Array,
       ) as Uint8Array<ArrayBuffer>;
       return {
-        signer: new Secp256r1Key(
-          new Uint8Array(signedMessage.publicKey),
-        ).toString(),
+        signer: new Secp256r1Key(signedMessage.publicKey).toString(),
         messageHash,
       };
     }),
@@ -82,7 +80,7 @@ export function mapExpectedSigners(
 ): SignerInfo[] {
   return expectedSigners.map((expectedSigner) => ({
     signer: convertMemberKeyToString(expectedSigner.memberKey),
-    messageHash: new Uint8Array(expectedSigner.messageHash),
+    messageHash: expectedSigner.messageHash as Uint8Array<ArrayBuffer>,
   }));
 }
 

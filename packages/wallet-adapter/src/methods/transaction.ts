@@ -107,7 +107,7 @@ export const buildTransaction = async (input: {
           ? "execute"
           : "create_with_preauthorized_execution",
         transactionAddress: settings,
-        transactionMessageBytes: new Uint8Array(transactionMessageBytes),
+        transactionMessageBytes,
         provider,
       }),
       estimateJitoTips(),
@@ -142,13 +142,13 @@ export const buildTransaction = async (input: {
       signer,
       transactionActionType: "sync",
       transactionAddress: settings.toString(),
-      transactionMessageBytes: new Uint8Array(transactionMessageBytes),
+      transactionMessageBytes,
       provider,
     });
     const [transactionManagerSigner, signedSigner] = await Promise.all([
       getSignedTransactionManager({
         authResponses: [authResponse],
-        transactionMessageBytes: new Uint8Array(transactionMessageBytes),
+        transactionMessageBytes,
         transactionManagerAddress,
         userAddressTreeIndex,
       }),

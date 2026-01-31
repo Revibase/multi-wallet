@@ -22,7 +22,7 @@ import {
   type Decoder,
   type Encoder,
   type ReadonlyUint8Array,
-} from 'gill';
+} from "gill";
 
 export type TransactionMessageAddressTableLookup = {
   lookupTableAddressIndex: number;
@@ -35,13 +35,13 @@ export type TransactionMessageAddressTableLookupArgs =
 
 export function getTransactionMessageAddressTableLookupEncoder(): Encoder<TransactionMessageAddressTableLookupArgs> {
   return getStructEncoder([
-    ['lookupTableAddressIndex', getU8Encoder()],
+    ["lookupTableAddressIndex", getU8Encoder()],
     [
-      'writableIndexes',
+      "writableIndexes",
       addEncoderSizePrefix(getBytesEncoder(), getU32Encoder()),
     ],
     [
-      'readonlyIndexes',
+      "readonlyIndexes",
       addEncoderSizePrefix(getBytesEncoder(), getU32Encoder()),
     ],
   ]);
@@ -49,13 +49,13 @@ export function getTransactionMessageAddressTableLookupEncoder(): Encoder<Transa
 
 export function getTransactionMessageAddressTableLookupDecoder(): Decoder<TransactionMessageAddressTableLookup> {
   return getStructDecoder([
-    ['lookupTableAddressIndex', getU8Decoder()],
+    ["lookupTableAddressIndex", getU8Decoder()],
     [
-      'writableIndexes',
+      "writableIndexes",
       addDecoderSizePrefix(getBytesDecoder(), getU32Decoder()),
     ],
     [
-      'readonlyIndexes',
+      "readonlyIndexes",
       addDecoderSizePrefix(getBytesDecoder(), getU32Decoder()),
     ],
   ]);
@@ -67,6 +67,6 @@ export function getTransactionMessageAddressTableLookupCodec(): Codec<
 > {
   return combineCodec(
     getTransactionMessageAddressTableLookupEncoder(),
-    getTransactionMessageAddressTableLookupDecoder()
+    getTransactionMessageAddressTableLookupDecoder(),
   );
 }

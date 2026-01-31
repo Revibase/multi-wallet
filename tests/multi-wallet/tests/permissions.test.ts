@@ -56,27 +56,27 @@ export function runPermissionsTests(getCtx: () => TestContext) {
       const accountData = await fetchSettingsAccountData(ctx.index);
       const payerMember = accountData.members.find(
         (m) =>
-          convertMemberKeyToString(m.pubkey) === ctx.payer.address.toString()
+          convertMemberKeyToString(m.pubkey) === ctx.payer.address.toString(),
       );
 
       expect(payerMember, "Payer member should exist").to.not.be.undefined;
       expect(
         Permissions.has(payerMember!.permissions, Permission.VoteTransaction),
-        "Payer should have vote permission"
+        "Payer should have vote permission",
       ).to.be.true;
       expect(
         Permissions.has(
           payerMember!.permissions,
-          Permission.InitiateTransaction
+          Permission.InitiateTransaction,
         ),
-        "Payer should not have initiate permission"
+        "Payer should not have initiate permission",
       ).to.be.false;
       expect(
         Permissions.has(
           payerMember!.permissions,
-          Permission.ExecuteTransaction
+          Permission.ExecuteTransaction,
         ),
-        "Payer should not have execute permission"
+        "Payer should not have execute permission",
       ).to.be.false;
     });
   });
@@ -114,27 +114,27 @@ export function runPermissionsTests(getCtx: () => TestContext) {
       const accountData = await fetchSettingsAccountData(ctx.index);
       const addedMember = accountData.members.find(
         (m) =>
-          convertMemberKeyToString(m.pubkey) === ctx.payer.address.toString()
+          convertMemberKeyToString(m.pubkey) === ctx.payer.address.toString(),
       );
 
       expect(addedMember, "New member should exist").to.not.be.undefined;
       expect(
         Permissions.has(
           addedMember!.permissions,
-          Permission.InitiateTransaction
+          Permission.InitiateTransaction,
         ),
-        "New member should have initiate permission"
+        "New member should have initiate permission",
       ).to.be.true;
       expect(
         Permissions.has(addedMember!.permissions, Permission.VoteTransaction),
-        "New member should not have vote permission"
+        "New member should not have vote permission",
       ).to.be.false;
       expect(
         Permissions.has(
           addedMember!.permissions,
-          Permission.ExecuteTransaction
+          Permission.ExecuteTransaction,
         ),
-        "New member should not have execute permission"
+        "New member should not have execute permission",
       ).to.be.false;
     });
   });
@@ -172,27 +172,27 @@ export function runPermissionsTests(getCtx: () => TestContext) {
       const accountData = await fetchSettingsAccountData(ctx.index);
       const addedMember = accountData.members.find(
         (m) =>
-          convertMemberKeyToString(m.pubkey) === ctx.payer.address.toString()
+          convertMemberKeyToString(m.pubkey) === ctx.payer.address.toString(),
       );
 
       expect(addedMember, "New member should exist").to.not.be.undefined;
       expect(
         Permissions.has(
           addedMember!.permissions,
-          Permission.InitiateTransaction
+          Permission.InitiateTransaction,
         ),
-        "New member should have initiate permission"
+        "New member should have initiate permission",
       ).to.be.true;
       expect(
         Permissions.has(addedMember!.permissions, Permission.VoteTransaction),
-        "New member should have vote permission"
+        "New member should have vote permission",
       ).to.be.true;
       expect(
         Permissions.has(
           addedMember!.permissions,
-          Permission.ExecuteTransaction
+          Permission.ExecuteTransaction,
         ),
-        "New member should have execute permission"
+        "New member should have execute permission",
       ).to.be.true;
     });
   });
@@ -206,10 +206,10 @@ export function runPermissionsTests(getCtx: () => TestContext) {
       await addPayerAsNewMember(ctx);
 
       const member1 = await createKeyPairSignerFromPrivateKeyBytes(
-        crypto.getRandomValues(new Uint8Array(32))
+        crypto.getRandomValues(new Uint8Array(32)),
       );
       const member2 = await createKeyPairSignerFromPrivateKeyBytes(
-        crypto.getRandomValues(new Uint8Array(32))
+        crypto.getRandomValues(new Uint8Array(32)),
       );
 
       const instruction = await createUserAccounts({
@@ -256,7 +256,7 @@ export function runPermissionsTests(getCtx: () => TestContext) {
           changeConfigArgs: addMembersArgs,
         }),
         ctx.payer,
-        ctx.addressLookUpTable
+        ctx.addressLookUpTable,
       );
 
       // Update both members' permissions
@@ -287,15 +287,17 @@ export function runPermissionsTests(getCtx: () => TestContext) {
           changeConfigArgs: editPermissionsArgs,
         }),
         ctx.payer,
-        ctx.addressLookUpTable
+        ctx.addressLookUpTable,
       );
 
       const accountData = await fetchSettingsAccountData(ctx.index);
       const updatedMember1 = accountData.members.find(
-        (m) => convertMemberKeyToString(m.pubkey) === member1.address.toString()
+        (m) =>
+          convertMemberKeyToString(m.pubkey) === member1.address.toString(),
       );
       const updatedMember2 = accountData.members.find(
-        (m) => convertMemberKeyToString(m.pubkey) === member2.address.toString()
+        (m) =>
+          convertMemberKeyToString(m.pubkey) === member2.address.toString(),
       );
 
       expect(updatedMember1, "Member 1 should exist").to.not.be.undefined;
@@ -304,31 +306,31 @@ export function runPermissionsTests(getCtx: () => TestContext) {
       expect(
         Permissions.has(
           updatedMember1!.permissions,
-          Permission.InitiateTransaction
+          Permission.InitiateTransaction,
         ),
-        "Member 1 should have initiate permission"
+        "Member 1 should have initiate permission",
       ).to.be.true;
       expect(
         Permissions.has(
           updatedMember1!.permissions,
-          Permission.VoteTransaction
+          Permission.VoteTransaction,
         ),
-        "Member 1 should not have vote permission"
+        "Member 1 should not have vote permission",
       ).to.be.false;
 
       expect(
         Permissions.has(
           updatedMember2!.permissions,
-          Permission.VoteTransaction
+          Permission.VoteTransaction,
         ),
-        "Member 2 should have vote permission"
+        "Member 2 should have vote permission",
       ).to.be.true;
       expect(
         Permissions.has(
           updatedMember2!.permissions,
-          Permission.ExecuteTransaction
+          Permission.ExecuteTransaction,
         ),
-        "Member 2 should have execute permission"
+        "Member 2 should have execute permission",
       ).to.be.true;
     });
   });

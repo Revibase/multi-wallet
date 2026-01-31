@@ -30,16 +30,16 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from 'gill';
-import { parseRemainingAccounts } from '../../hooked';
-import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
-import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
+} from "gill";
+import { parseRemainingAccounts } from "../../hooked";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 
 export const CREATE_GLOBAL_COUNTER_DISCRIMINATOR = new Uint8Array([3]);
 
 export function getCreateGlobalCounterDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    CREATE_GLOBAL_COUNTER_DISCRIMINATOR
+    CREATE_GLOBAL_COUNTER_DISCRIMINATOR,
   );
 }
 
@@ -49,7 +49,7 @@ export type CreateGlobalCounterInstruction<
   TAccountPayer extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | AccountMeta<string> = '11111111111111111111111111111111',
+    | AccountMeta<string> = "11111111111111111111111111111111",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -77,17 +77,17 @@ export type CreateGlobalCounterInstructionDataArgs = {};
 
 export function getCreateGlobalCounterInstructionDataEncoder(): FixedSizeEncoder<CreateGlobalCounterInstructionDataArgs> {
   return transformEncoder(
-    getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 1)]]),
+    getStructEncoder([["discriminator", fixEncoderSize(getBytesEncoder(), 1)]]),
     (value) => ({
       ...value,
       discriminator: CREATE_GLOBAL_COUNTER_DISCRIMINATOR,
-    })
+    }),
   );
 }
 
 export function getCreateGlobalCounterInstructionDataDecoder(): FixedSizeDecoder<CreateGlobalCounterInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
   ]);
 }
 
@@ -97,7 +97,7 @@ export function getCreateGlobalCounterInstructionDataCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getCreateGlobalCounterInstructionDataEncoder(),
-    getCreateGlobalCounterInstructionDataDecoder()
+    getCreateGlobalCounterInstructionDataDecoder(),
   );
 }
 
@@ -113,7 +113,7 @@ export type CreateGlobalCounterAsyncInput<
   globalCounter?: Address<TAccountGlobalCounter>;
   payer: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
-  remainingAccounts: CreateGlobalCounterInstructionExtraArgs['remainingAccounts'];
+  remainingAccounts: CreateGlobalCounterInstructionExtraArgs["remainingAccounts"];
 };
 
 export async function getCreateGlobalCounterInstructionAsync<
@@ -127,7 +127,7 @@ export async function getCreateGlobalCounterInstructionAsync<
     TAccountPayer,
     TAccountSystemProgram
   >,
-  config?: { programAddress?: TProgramAddress }
+  config?: { programAddress?: TProgramAddress },
 ): Promise<
   CreateGlobalCounterInstruction<
     TProgramAddress,
@@ -161,21 +161,21 @@ export async function getCreateGlobalCounterInstructionAsync<
         getBytesEncoder().encode(
           new Uint8Array([
             103, 108, 111, 98, 97, 108, 95, 99, 111, 117, 110, 116, 101, 114,
-          ])
+          ]),
         ),
       ],
     });
   }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.globalCounter),
@@ -201,7 +201,7 @@ export type CreateGlobalCounterInput<
   globalCounter: Address<TAccountGlobalCounter>;
   payer: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
-  remainingAccounts: CreateGlobalCounterInstructionExtraArgs['remainingAccounts'];
+  remainingAccounts: CreateGlobalCounterInstructionExtraArgs["remainingAccounts"];
 };
 
 export function getCreateGlobalCounterInstruction<
@@ -215,7 +215,7 @@ export function getCreateGlobalCounterInstruction<
     TAccountPayer,
     TAccountSystemProgram
   >,
-  config?: { programAddress?: TProgramAddress }
+  config?: { programAddress?: TProgramAddress },
 ): CreateGlobalCounterInstruction<
   TProgramAddress,
   TAccountGlobalCounter,
@@ -242,14 +242,14 @@ export function getCreateGlobalCounterInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.globalCounter),
@@ -286,11 +286,11 @@ export function parseCreateGlobalCounterInstruction<
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
-    InstructionWithData<ReadonlyUint8Array>
+    InstructionWithData<ReadonlyUint8Array>,
 ): ParsedCreateGlobalCounterInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 3) {
     // TODO: Coded error.
-    throw new Error('Not enough accounts');
+    throw new Error("Not enough accounts");
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -306,7 +306,7 @@ export function parseCreateGlobalCounterInstruction<
       systemProgram: getNextAccount(),
     },
     data: getCreateGlobalCounterInstructionDataDecoder().decode(
-      instruction.data
+      instruction.data,
     ),
   };
 }

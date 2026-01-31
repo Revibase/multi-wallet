@@ -110,10 +110,11 @@ export const buildTokenTransferInstruction = async (input: {
       authResponse.userAddressTreeIndex,
       cachedAccounts,
     );
-    if (userAccountData.delegatedTo.__option === "None") {
+    const delegateAccount = userAccountData.wallets.find((x) => x.isDelegate);
+    if (!delegateAccount) {
       throw new WalletTransactionError("User has no delegated wallet");
     }
-    settingsIndexWithAddress = userAccountData.delegatedTo.value;
+    settingsIndexWithAddress = delegateAccount;
   } else {
     settingsIndexWithAddress = authResponse.additionalInfo
       .settingsIndexWithAddress as SettingsIndexWithAddressArgs;

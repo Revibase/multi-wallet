@@ -13,7 +13,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from 'gill';
+} from "gill";
 
 /**
  * Marker extension indicating the account belongs to a pausable mint.
@@ -41,6 +41,6 @@ export function getPausableAccountExtensionCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getPausableAccountExtensionEncoder(),
-    getPausableAccountExtensionDecoder()
+    getPausableAccountExtensionDecoder(),
   );
 }

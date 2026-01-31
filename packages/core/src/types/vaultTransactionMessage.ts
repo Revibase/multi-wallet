@@ -35,7 +35,7 @@ const vaultTransactionMessageCodec = getStructCodec([
 ]);
 
 export function vaultTransactionMessageSerialize(
-  compiledMessage: CompiledTransactionMessage
+  compiledMessage: CompiledTransactionMessage,
 ) {
   const transactionMessageBytes = vaultTransactionMessageCodec.encode({
     numSigners: compiledMessage.header.numSignerAccounts,
@@ -68,10 +68,10 @@ export function vaultTransactionMessageSerialize(
 }
 
 export function vaultTransactionMessageDeserialize(
-  transactionMessageBytes: ReadonlyUint8Array
+  transactionMessageBytes: ReadonlyUint8Array,
 ): CompiledTransactionMessage & CompiledTransactionMessageWithLifetime {
   const vaultTransactionMessage = vaultTransactionMessageCodec.decode(
-    transactionMessageBytes
+    transactionMessageBytes,
   );
   return {
     header: {
@@ -91,7 +91,7 @@ export function vaultTransactionMessageDeserialize(
         writableIndexes: x.writableIndexes.map(Number),
         readableIndices: x.readonlyIndexes.map(Number),
         writableIndices: x.writableIndexes.map(Number),
-      })
+      }),
     ),
     instructions: vaultTransactionMessage.instructions.map((x) => ({
       accountIndices: x.accountIndices.map(Number),

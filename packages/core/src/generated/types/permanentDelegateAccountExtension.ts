@@ -13,7 +13,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from 'gill';
+} from "gill";
 
 /**
  * Marker extension indicating the account belongs to a mint with permanent delegate.
@@ -42,6 +42,6 @@ export function getPermanentDelegateAccountExtensionCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getPermanentDelegateAccountExtensionEncoder(),
-    getPermanentDelegateAccountExtensionDecoder()
+    getPermanentDelegateAccountExtensionDecoder(),
   );
 }

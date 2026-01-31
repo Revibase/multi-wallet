@@ -2,7 +2,6 @@ import { sha256 } from "@noble/hashes/sha2.js";
 import type {
   AddressesByLookupTableAddress,
   Instruction,
-  ReadonlyUint8Array,
   TransactionSigner,
 } from "gill";
 import {
@@ -33,7 +32,7 @@ interface CreateTransactionBundleArgs {
   payer: TransactionSigner;
   index: number | bigint;
   settingsAddressTreeIndex?: number;
-  transactionMessageBytes: ReadonlyUint8Array;
+  transactionMessageBytes: Uint8Array<ArrayBuffer>;
   creator: TransactionSigner | SignedSecp256r1Key;
   additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
   executor?: TransactionSigner | SignedSecp256r1Key;
@@ -74,15 +73,12 @@ export async function prepareTransactionBundle({
   const chunks: Uint8Array<ArrayBuffer>[] = [];
   const chunksHash: Uint8Array<ArrayBuffer>[] = [];
   for (let i = 0; i < transactionMessageBytes.length; i += chunkSize) {
-    const chunk = transactionMessageBytes.subarray(
-      i,
-      i + chunkSize,
-    ) as Uint8Array<ArrayBuffer>;
+    const chunk = transactionMessageBytes.subarray(i, i + chunkSize);
     chunks.push(chunk);
     chunksHash.push(sha256(chunk) as Uint8Array<ArrayBuffer>);
   }
   const finalBufferHash = sha256(
-    transactionMessageBytes as Uint8Array,
+    transactionMessageBytes,
   ) as Uint8Array<ArrayBuffer>;
 
   const { settingsReadonlyArgs, settingsMutArgs, proof, packedAccounts } =

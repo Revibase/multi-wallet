@@ -17,7 +17,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from 'gill';
+} from "gill";
 
 export type SplInterfacePdaArgs = { index: number; restricted: boolean };
 
@@ -25,15 +25,15 @@ export type SplInterfacePdaArgsArgs = SplInterfacePdaArgs;
 
 export function getSplInterfacePdaArgsEncoder(): FixedSizeEncoder<SplInterfacePdaArgsArgs> {
   return getStructEncoder([
-    ['index', getU8Encoder()],
-    ['restricted', getBooleanEncoder()],
+    ["index", getU8Encoder()],
+    ["restricted", getBooleanEncoder()],
   ]);
 }
 
 export function getSplInterfacePdaArgsDecoder(): FixedSizeDecoder<SplInterfacePdaArgs> {
   return getStructDecoder([
-    ['index', getU8Decoder()],
-    ['restricted', getBooleanDecoder()],
+    ["index", getU8Decoder()],
+    ["restricted", getBooleanDecoder()],
   ]);
 }
 
@@ -43,6 +43,6 @@ export function getSplInterfacePdaArgsCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getSplInterfacePdaArgsEncoder(),
-    getSplInterfacePdaArgsDecoder()
+    getSplInterfacePdaArgsDecoder(),
   );
 }

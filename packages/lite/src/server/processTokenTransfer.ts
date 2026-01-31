@@ -15,19 +15,9 @@ import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
 import { getAddressByLookUpTable } from "src/utils/internal";
 import { getTransactionSigners, prepareTransactionContext } from "./shared";
 
-/**
- * Processes a token transfer transaction.
- * Handles both native SOL transfers and SPL token transfers.
- *
- * @param request - Complete transaction request
- * @param privateKey - Ed25519 private key for signing
- * @param feePayer - Optional fee payer (defaults to random payer from API)
- * @returns Transaction signature
- * @throws {Error} If transaction action type is not "transfer_intent"
- */
 export async function processTokenTransfer(
   request: CompleteTransactionRequest,
-  privateKey: CryptoKey,
+  privateKey: string,
   feePayer?: TransactionSigner,
 ): Promise<string> {
   const { transactionActionType, transactionMessageBytes, transactionAddress } =

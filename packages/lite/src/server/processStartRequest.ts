@@ -1,9 +1,10 @@
 import {
+  convertBase64StringToJWK,
   createClientAuthorizationStartRequestChallenge,
   type StartMessageRequest,
   type StartTransactionRequest,
 } from "@revibase/core";
-import { getBase58Decoder } from "gill";
+import { CompactSign } from "jose";
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
 
 export async function processStartRequest({
@@ -12,21 +13,21 @@ export async function processStartRequest({
   providerOrigin = REVIBASE_AUTH_URL,
   rid,
 }: {
-  privateKey: CryptoKey;
+  privateKey: string;
   request: StartTransactionRequest | StartMessageRequest;
   rid: string;
   providerOrigin?: string;
 }): Promise<{ rid: string }> {
-  const challenge = createClientAuthorizationStartRequestChallenge(request);
-  const signature = getBase58Decoder().decode(
-    new Uint8Array(
-      await crypto.subtle.sign(
-        { name: "Ed25519" },
-        privateKey,
-        new Uint8Array(challenge),
-      ),
-    ),
-  );
+  const pKey = convertBase64StringToJWK(privateKey);
+  if (!pKey.alg) throw new Error("Property alg in JWK is missing.");
+  const signature = await new CompactSign(
+    createClientAuthorizationStartRequestChallenge(request),
+  )
+    .setProtectedHeader({
+      alg: pKey.alg,
+    })
+    .sign(pKey);
+
   const res = await fetch(`${providerOrigin}/api/startRequest`, {
     method: "POST",
     body: JSON.stringify({

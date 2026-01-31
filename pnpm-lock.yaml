@@ -127,6 +127,9 @@ importers:
       '@simplewebauthn/server':
         specifier: ^13.2.2
         version: 13.2.2
+      jose:
+        specifier: ^6.1.3
+        version: 6.1.3
       zod:
         specifier: ^4.3.5
         version: 4.3.5
@@ -186,6 +189,9 @@ importers:
       '@wallet-standard/core':
         specifier: ^1.1.1
         version: 1.1.1
+      jose:
+        specifier: ^6.1.3
+        version: 6.1.3
       zod:
         specifier: ^4.3.5
         version: 4.3.5

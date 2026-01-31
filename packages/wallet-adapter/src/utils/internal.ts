@@ -80,7 +80,7 @@ export function simulateSecp256r1Signer() {
     crossOrigin: false,
     authData,
     domainConfig: getAddressDecoder().decode(
-      crypto.getRandomValues(new Uint8Array(32))
+      crypto.getRandomValues(new Uint8Array(32)),
     ),
     signature,
     verifyArgs: {
@@ -162,17 +162,17 @@ export async function estimateTransactionSizeExceedLimit({
       setTransactionMessageLifetimeUsingBlockhash(
         {
           blockhash: getBlockhashDecoder().decode(
-            crypto.getRandomValues(new Uint8Array(32))
+            crypto.getRandomValues(new Uint8Array(32)),
           ),
           lastValidBlockHeight: BigInt(Number.MAX_SAFE_INTEGER),
         },
-        tx
+        tx,
       ),
     (tx) =>
       result.addressesByLookupTableAddress
         ? compressTransactionMessageUsingAddressLookupTables(
             tx,
-            result.addressesByLookupTableAddress
+            result.addressesByLookupTableAddress,
           )
         : tx,
     (tx) =>
@@ -185,10 +185,10 @@ export async function estimateTransactionSizeExceedLimit({
             microLamports: 1000,
           }),
         ],
-        tx
+        tx,
       ),
 
-    (tx) => compileTransaction(tx)
+    (tx) => compileTransaction(tx),
   );
   const txSize = getBase64EncodedWireTransaction(tx).length;
 
@@ -205,7 +205,7 @@ export async function estimateTransactionSizeExceedLimit({
  * @throws {Error} If the fetch or parsing fails
  */
 export async function estimateJitoTips(
-  jitoTipsConfig = getJitoTipsConfig()
+  jitoTipsConfig = getJitoTipsConfig(),
 ): Promise<number> {
   const { getJitoTipsUrl: estimateJitoTipsEndpoint, priority } = jitoTipsConfig;
 
@@ -217,7 +217,7 @@ export async function estimateJitoTips(
     }
   } catch (error) {
     throw new Error(
-      `Network error while fetching Jito tips: ${error instanceof Error ? error.message : String(error)}`
+      `Network error while fetching Jito tips: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 
@@ -226,7 +226,7 @@ export async function estimateJitoTips(
     result = await response.json();
   } catch (error) {
     throw new Error(
-      `Failed to parse Jito tips response: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to parse Jito tips response: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 

@@ -37,7 +37,7 @@ import {
   type MaybeAccount,
   type MaybeEncodedAccount,
   type ReadonlyUint8Array,
-} from 'gill';
+} from "gill";
 
 export const WHITELISTED_ADDRESS_TREE_DISCRIMINATOR = new Uint8Array([
   105, 23, 173, 2, 197, 255, 80, 87,
@@ -45,7 +45,7 @@ export const WHITELISTED_ADDRESS_TREE_DISCRIMINATOR = new Uint8Array([
 
 export function getWhitelistedAddressTreeDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 8).encode(
-    WHITELISTED_ADDRESS_TREE_DISCRIMINATOR
+    WHITELISTED_ADDRESS_TREE_DISCRIMINATOR,
   );
 }
 
@@ -63,22 +63,22 @@ export type WhitelistedAddressTreeArgs = {
 export function getWhitelistedAddressTreeEncoder(): Encoder<WhitelistedAddressTreeArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
-      ['whitelistedAddressTrees', getArrayEncoder(getAddressEncoder())],
-      ['bump', getU8Encoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["whitelistedAddressTrees", getArrayEncoder(getAddressEncoder())],
+      ["bump", getU8Encoder()],
     ]),
     (value) => ({
       ...value,
       discriminator: WHITELISTED_ADDRESS_TREE_DISCRIMINATOR,
-    })
+    }),
   );
 }
 
 export function getWhitelistedAddressTreeDecoder(): Decoder<WhitelistedAddressTree> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
-    ['whitelistedAddressTrees', getArrayDecoder(getAddressDecoder())],
-    ['bump', getU8Decoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["whitelistedAddressTrees", getArrayDecoder(getAddressDecoder())],
+    ["bump", getU8Decoder()],
   ]);
 }
 
@@ -88,24 +88,24 @@ export function getWhitelistedAddressTreeCodec(): Codec<
 > {
   return combineCodec(
     getWhitelistedAddressTreeEncoder(),
-    getWhitelistedAddressTreeDecoder()
+    getWhitelistedAddressTreeDecoder(),
   );
 }
 
 export function decodeWhitelistedAddressTree<TAddress extends string = string>(
-  encodedAccount: EncodedAccount<TAddress>
+  encodedAccount: EncodedAccount<TAddress>,
 ): Account<WhitelistedAddressTree, TAddress>;
 export function decodeWhitelistedAddressTree<TAddress extends string = string>(
-  encodedAccount: MaybeEncodedAccount<TAddress>
+  encodedAccount: MaybeEncodedAccount<TAddress>,
 ): MaybeAccount<WhitelistedAddressTree, TAddress>;
 export function decodeWhitelistedAddressTree<TAddress extends string = string>(
-  encodedAccount: EncodedAccount<TAddress> | MaybeEncodedAccount<TAddress>
+  encodedAccount: EncodedAccount<TAddress> | MaybeEncodedAccount<TAddress>,
 ):
   | Account<WhitelistedAddressTree, TAddress>
   | MaybeAccount<WhitelistedAddressTree, TAddress> {
   return decodeAccount(
     encodedAccount as MaybeEncodedAccount<TAddress>,
-    getWhitelistedAddressTreeDecoder()
+    getWhitelistedAddressTreeDecoder(),
   );
 }
 
@@ -114,12 +114,12 @@ export async function fetchWhitelistedAddressTree<
 >(
   rpc: Parameters<typeof fetchEncodedAccount>[0],
   address: Address<TAddress>,
-  config?: FetchAccountConfig
+  config?: FetchAccountConfig,
 ): Promise<Account<WhitelistedAddressTree, TAddress>> {
   const maybeAccount = await fetchMaybeWhitelistedAddressTree(
     rpc,
     address,
-    config
+    config,
   );
   assertAccountExists(maybeAccount);
   return maybeAccount;
@@ -130,7 +130,7 @@ export async function fetchMaybeWhitelistedAddressTree<
 >(
   rpc: Parameters<typeof fetchEncodedAccount>[0],
   address: Address<TAddress>,
-  config?: FetchAccountConfig
+  config?: FetchAccountConfig,
 ): Promise<MaybeAccount<WhitelistedAddressTree, TAddress>> {
   const maybeAccount = await fetchEncodedAccount(rpc, address, config);
   return decodeWhitelistedAddressTree(maybeAccount);
@@ -139,12 +139,12 @@ export async function fetchMaybeWhitelistedAddressTree<
 export async function fetchAllWhitelistedAddressTree(
   rpc: Parameters<typeof fetchEncodedAccounts>[0],
   addresses: Array<Address>,
-  config?: FetchAccountsConfig
+  config?: FetchAccountsConfig,
 ): Promise<Account<WhitelistedAddressTree>[]> {
   const maybeAccounts = await fetchAllMaybeWhitelistedAddressTree(
     rpc,
     addresses,
-    config
+    config,
   );
   assertAccountsExist(maybeAccounts);
   return maybeAccounts;
@@ -153,10 +153,10 @@ export async function fetchAllWhitelistedAddressTree(
 export async function fetchAllMaybeWhitelistedAddressTree(
   rpc: Parameters<typeof fetchEncodedAccounts>[0],
   addresses: Array<Address>,
-  config?: FetchAccountsConfig
+  config?: FetchAccountsConfig,
 ): Promise<MaybeAccount<WhitelistedAddressTree>[]> {
   const maybeAccounts = await fetchEncodedAccounts(rpc, addresses, config);
   return maybeAccounts.map((maybeAccount) =>
-    decodeWhitelistedAddressTree(maybeAccount)
+    decodeWhitelistedAddressTree(maybeAccount),
   );
 }

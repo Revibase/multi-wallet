@@ -33,10 +33,10 @@ import {
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableSignerAccount,
-} from 'gill';
-import { parseRemainingAccounts } from '../../hooked';
-import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
-import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
+} from "gill";
+import { parseRemainingAccounts } from "../../hooked";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
   getProofArgsDecoder,
   getProofArgsEncoder,
@@ -46,13 +46,13 @@ import {
   type ProofArgsArgs,
   type UserMutArgs,
   type UserMutArgsArgs,
-} from '../types';
+} from "../types";
 
 export const EDIT_TRANSACTION_MANAGER_URL_DISCRIMINATOR = new Uint8Array([6]);
 
 export function getEditTransactionManagerUrlDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    EDIT_TRANSACTION_MANAGER_URL_DISCRIMINATOR
+    EDIT_TRANSACTION_MANAGER_URL_DISCRIMINATOR,
   );
 }
 
@@ -88,30 +88,30 @@ export type EditTransactionManagerUrlInstructionDataArgs = {
 export function getEditTransactionManagerUrlInstructionDataEncoder(): Encoder<EditTransactionManagerUrlInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
-      ['userMutArgs', getUserMutArgsEncoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
+      ["userMutArgs", getUserMutArgsEncoder()],
       [
-        'transactionManagerUrl',
+        "transactionManagerUrl",
         addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder()),
       ],
-      ['compressedProofArgs', getProofArgsEncoder()],
+      ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
       ...value,
       discriminator: EDIT_TRANSACTION_MANAGER_URL_DISCRIMINATOR,
-    })
+    }),
   );
 }
 
 export function getEditTransactionManagerUrlInstructionDataDecoder(): Decoder<EditTransactionManagerUrlInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
-    ['userMutArgs', getUserMutArgsDecoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ["userMutArgs", getUserMutArgsDecoder()],
     [
-      'transactionManagerUrl',
+      "transactionManagerUrl",
       addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder()),
     ],
-    ['compressedProofArgs', getProofArgsDecoder()],
+    ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }
 
@@ -121,7 +121,7 @@ export function getEditTransactionManagerUrlInstructionDataCodec(): Codec<
 > {
   return combineCodec(
     getEditTransactionManagerUrlInstructionDataEncoder(),
-    getEditTransactionManagerUrlInstructionDataDecoder()
+    getEditTransactionManagerUrlInstructionDataDecoder(),
   );
 }
 
@@ -133,10 +133,10 @@ export type EditTransactionManagerUrlInput<
   TAccountAuthority extends string = string,
 > = {
   authority: TransactionSigner<TAccountAuthority>;
-  userMutArgs: EditTransactionManagerUrlInstructionDataArgs['userMutArgs'];
-  transactionManagerUrl: EditTransactionManagerUrlInstructionDataArgs['transactionManagerUrl'];
-  compressedProofArgs: EditTransactionManagerUrlInstructionDataArgs['compressedProofArgs'];
-  remainingAccounts: EditTransactionManagerUrlInstructionExtraArgs['remainingAccounts'];
+  userMutArgs: EditTransactionManagerUrlInstructionDataArgs["userMutArgs"];
+  transactionManagerUrl: EditTransactionManagerUrlInstructionDataArgs["transactionManagerUrl"];
+  compressedProofArgs: EditTransactionManagerUrlInstructionDataArgs["compressedProofArgs"];
+  remainingAccounts: EditTransactionManagerUrlInstructionExtraArgs["remainingAccounts"];
 };
 
 export function getEditTransactionManagerUrlInstruction<
@@ -144,7 +144,7 @@ export function getEditTransactionManagerUrlInstruction<
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
   input: EditTransactionManagerUrlInput<TAccountAuthority>,
-  config?: { programAddress?: TProgramAddress }
+  config?: { programAddress?: TProgramAddress },
 ): EditTransactionManagerUrlInstruction<TProgramAddress, TAccountAuthority> {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -168,11 +168,11 @@ export function getEditTransactionManagerUrlInstruction<
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [getAccountMeta(accounts.authority), ...remainingAccounts],
     data: getEditTransactionManagerUrlInstructionDataEncoder().encode(
-      args as EditTransactionManagerUrlInstructionDataArgs
+      args as EditTransactionManagerUrlInstructionDataArgs,
     ),
     programAddress,
   } as EditTransactionManagerUrlInstruction<
@@ -198,11 +198,11 @@ export function parseEditTransactionManagerUrlInstruction<
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
-    InstructionWithData<ReadonlyUint8Array>
+    InstructionWithData<ReadonlyUint8Array>,
 ): ParsedEditTransactionManagerUrlInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 1) {
     // TODO: Coded error.
-    throw new Error('Not enough accounts');
+    throw new Error("Not enough accounts");
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -214,7 +214,7 @@ export function parseEditTransactionManagerUrlInstruction<
     programAddress: instruction.programAddress,
     accounts: { authority: getNextAccount() },
     data: getEditTransactionManagerUrlInstructionDataDecoder().decode(
-      instruction.data
+      instruction.data,
     ),
   };
 }

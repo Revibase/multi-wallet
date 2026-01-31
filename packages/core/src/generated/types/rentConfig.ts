@@ -17,7 +17,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from 'gill';
+} from "gill";
 
 /**
  * Rent function parameters,
@@ -40,21 +40,21 @@ export type RentConfigArgs = RentConfig;
 
 export function getRentConfigEncoder(): FixedSizeEncoder<RentConfigArgs> {
   return getStructEncoder([
-    ['baseRent', getU16Encoder()],
-    ['compressionCost', getU16Encoder()],
-    ['lamportsPerBytePerEpoch', getU8Encoder()],
-    ['maxFundedEpochs', getU8Encoder()],
-    ['maxTopUp', getU16Encoder()],
+    ["baseRent", getU16Encoder()],
+    ["compressionCost", getU16Encoder()],
+    ["lamportsPerBytePerEpoch", getU8Encoder()],
+    ["maxFundedEpochs", getU8Encoder()],
+    ["maxTopUp", getU16Encoder()],
   ]);
 }
 
 export function getRentConfigDecoder(): FixedSizeDecoder<RentConfig> {
   return getStructDecoder([
-    ['baseRent', getU16Decoder()],
-    ['compressionCost', getU16Decoder()],
-    ['lamportsPerBytePerEpoch', getU8Decoder()],
-    ['maxFundedEpochs', getU8Decoder()],
-    ['maxTopUp', getU16Decoder()],
+    ["baseRent", getU16Decoder()],
+    ["compressionCost", getU16Decoder()],
+    ["lamportsPerBytePerEpoch", getU8Decoder()],
+    ["maxFundedEpochs", getU8Decoder()],
+    ["maxTopUp", getU16Decoder()],
   ]);
 }
 

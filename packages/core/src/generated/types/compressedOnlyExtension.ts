@@ -17,7 +17,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from 'gill';
+} from "gill";
 
 /**
  * CompressedOnly extension for compressed token accounts.
@@ -56,17 +56,17 @@ export type CompressedOnlyExtensionArgs = {
 
 export function getCompressedOnlyExtensionEncoder(): FixedSizeEncoder<CompressedOnlyExtensionArgs> {
   return getStructEncoder([
-    ['delegatedAmount', getU64Encoder()],
-    ['withheldTransferFee', getU64Encoder()],
-    ['isAta', getU8Encoder()],
+    ["delegatedAmount", getU64Encoder()],
+    ["withheldTransferFee", getU64Encoder()],
+    ["isAta", getU8Encoder()],
   ]);
 }
 
 export function getCompressedOnlyExtensionDecoder(): FixedSizeDecoder<CompressedOnlyExtension> {
   return getStructDecoder([
-    ['delegatedAmount', getU64Decoder()],
-    ['withheldTransferFee', getU64Decoder()],
-    ['isAta', getU8Decoder()],
+    ["delegatedAmount", getU64Decoder()],
+    ["withheldTransferFee", getU64Decoder()],
+    ["isAta", getU8Decoder()],
   ]);
 }
 
@@ -76,6 +76,6 @@ export function getCompressedOnlyExtensionCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getCompressedOnlyExtensionEncoder(),
-    getCompressedOnlyExtensionDecoder()
+    getCompressedOnlyExtensionDecoder(),
   );
 }

@@ -20,7 +20,7 @@ import {
   type Decoder,
   type Encoder,
   type ReadonlyUint8Array,
-} from 'gill';
+} from "gill";
 
 export type AdditionalMetadata = {
   /** The key of the metadata */
@@ -33,15 +33,15 @@ export type AdditionalMetadataArgs = AdditionalMetadata;
 
 export function getAdditionalMetadataEncoder(): Encoder<AdditionalMetadataArgs> {
   return getStructEncoder([
-    ['key', addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
-    ['value', addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
+    ["key", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
+    ["value", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
   ]);
 }
 
 export function getAdditionalMetadataDecoder(): Decoder<AdditionalMetadata> {
   return getStructDecoder([
-    ['key', addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
-    ['value', addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
+    ["key", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
+    ["value", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
   ]);
 }
 
@@ -51,6 +51,6 @@ export function getAdditionalMetadataCodec(): Codec<
 > {
   return combineCodec(
     getAdditionalMetadataEncoder(),
-    getAdditionalMetadataDecoder()
+    getAdditionalMetadataDecoder(),
   );
 }

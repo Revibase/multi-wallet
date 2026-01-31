@@ -21,7 +21,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from 'gill';
+} from "gill";
 
 export type PackedStateTreeInfo = {
   rootIndex: number;
@@ -35,21 +35,21 @@ export type PackedStateTreeInfoArgs = PackedStateTreeInfo;
 
 export function getPackedStateTreeInfoEncoder(): FixedSizeEncoder<PackedStateTreeInfoArgs> {
   return getStructEncoder([
-    ['rootIndex', getU16Encoder()],
-    ['proveByIndex', getBooleanEncoder()],
-    ['merkleTreePubkeyIndex', getU8Encoder()],
-    ['queuePubkeyIndex', getU8Encoder()],
-    ['leafIndex', getU32Encoder()],
+    ["rootIndex", getU16Encoder()],
+    ["proveByIndex", getBooleanEncoder()],
+    ["merkleTreePubkeyIndex", getU8Encoder()],
+    ["queuePubkeyIndex", getU8Encoder()],
+    ["leafIndex", getU32Encoder()],
   ]);
 }
 
 export function getPackedStateTreeInfoDecoder(): FixedSizeDecoder<PackedStateTreeInfo> {
   return getStructDecoder([
-    ['rootIndex', getU16Decoder()],
-    ['proveByIndex', getBooleanDecoder()],
-    ['merkleTreePubkeyIndex', getU8Decoder()],
-    ['queuePubkeyIndex', getU8Decoder()],
-    ['leafIndex', getU32Decoder()],
+    ["rootIndex", getU16Decoder()],
+    ["proveByIndex", getBooleanDecoder()],
+    ["merkleTreePubkeyIndex", getU8Decoder()],
+    ["queuePubkeyIndex", getU8Decoder()],
+    ["leafIndex", getU32Decoder()],
   ]);
 }
 
@@ -59,6 +59,6 @@ export function getPackedStateTreeInfoCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getPackedStateTreeInfoEncoder(),
-    getPackedStateTreeInfoDecoder()
+    getPackedStateTreeInfoDecoder(),
   );
 }

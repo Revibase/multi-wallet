@@ -38,7 +38,7 @@ export function compileToWrappedMessageV0({
     readonly: [],
   };
   const lookupTableAccounts = Object.entries(
-    addressesByLookupTableAddress ?? {}
+    addressesByLookupTableAddress ?? {},
   );
 
   for (const lookupTable of lookupTableAccounts) {
@@ -61,7 +61,7 @@ export function compileToWrappedMessageV0({
 
   const accountKeys = new MessageAccountKeys(
     staticAccounts,
-    accountKeysFromLookups
+    accountKeysFromLookups,
   );
 
   const compiledInstructions = accountKeys.compileInstructions(instructions);

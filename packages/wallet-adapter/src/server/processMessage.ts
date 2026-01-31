@@ -34,8 +34,8 @@ export async function processMessage(
   const message = payload.message;
   const expectedChallenge = createMessageChallenge(
     message,
-    payload.clientSignature.clientOrigin,
-    payload.deviceSignature.publicKey,
+    payload.client.clientOrigin,
+    payload.device.jwk,
     payload.nonce,
   );
   const { verified } = await verifyAuthenticationResponse({

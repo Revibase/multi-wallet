@@ -17,7 +17,7 @@ import {
   type Encoder,
   type Option,
   type OptionOrNullable,
-} from 'gill';
+} from "gill";
 import {
   getSettingsMutArgsDecoder,
   getSettingsMutArgsEncoder,
@@ -27,7 +27,7 @@ import {
   type SettingsMutArgsArgs,
   type UserReadOnlyArgs,
   type UserReadOnlyArgsArgs,
-} from '.';
+} from ".";
 
 export type LinkWalletArgs = {
   settingsMutArgs: SettingsMutArgs;
@@ -41,15 +41,15 @@ export type LinkWalletArgsArgs = {
 
 export function getLinkWalletArgsEncoder(): Encoder<LinkWalletArgsArgs> {
   return getStructEncoder([
-    ['settingsMutArgs', getSettingsMutArgsEncoder()],
-    ['transactionManager', getOptionEncoder(getUserReadOnlyArgsEncoder())],
+    ["settingsMutArgs", getSettingsMutArgsEncoder()],
+    ["transactionManager", getOptionEncoder(getUserReadOnlyArgsEncoder())],
   ]);
 }
 
 export function getLinkWalletArgsDecoder(): Decoder<LinkWalletArgs> {
   return getStructDecoder([
-    ['settingsMutArgs', getSettingsMutArgsDecoder()],
-    ['transactionManager', getOptionDecoder(getUserReadOnlyArgsDecoder())],
+    ["settingsMutArgs", getSettingsMutArgsDecoder()],
+    ["transactionManager", getOptionDecoder(getUserReadOnlyArgsDecoder())],
   ]);
 }
 

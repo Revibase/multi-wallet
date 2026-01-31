@@ -1,8 +1,10 @@
 import {
+  convertBase64StringToJWK,
   createClientAuthorizationCompleteRequestChallenge,
   type TransactionAuthenticationResponse,
 } from "@revibase/core";
-import { getBase58Decoder } from "gill";
+import { getBase64Decoder } from "gill";
+import { CompactSign } from "jose";
 import {
   CompleteCustomMessageRequestSchema,
   CompleteCustomTransactionRequestSchema,
@@ -27,7 +29,7 @@ import { processStartRequest } from "./processStartRequest";
  * - Complete phase: Verifies and processes the authentication response
  *
  * @param request - Authorization request (start or complete phase)
- * @param privateKey - Ed25519 private key for signing challenges
+ * @param privateKey - Private Key JWK in Base64 string
  * @param providerOrigin - Optional expected origin for verification
  * @param rpId - Optional expected Relying Party ID for verification
  * @returns Signature and optional message/user data depending on request phase and type
@@ -44,7 +46,7 @@ export async function processClientAuthCallback({
     | StartCustomMessageRequest
     | CompleteCustomMessageRequest
     | CompleteCustomTransactionRequest;
-  privateKey: CryptoKey;
+  privateKey: string;
   providerOrigin?: string;
   rpId?: string;
 }) {
@@ -69,7 +71,9 @@ export async function processClientAuthCallback({
             type: "message",
             payload: createSignInMessageText({
               domain: parsedResult.redirectOrigin,
-              nonce: crypto.randomUUID(),
+              nonce: getBase64Decoder().decode(
+                crypto.getRandomValues(new Uint8Array(16)),
+              ),
             }),
           },
         },
@@ -113,22 +117,21 @@ export async function processClientAuthCallback({
     };
   }
 
-  const challenge = createClientAuthorizationCompleteRequestChallenge(result);
-  const signature = getBase58Decoder().decode(
-    new Uint8Array(
-      await crypto.subtle.sign(
-        { name: "Ed25519" },
-        privateKey,
-        new Uint8Array(challenge),
-      ),
-    ),
-  );
+  const pkey = convertBase64StringToJWK(privateKey);
+  if (!pkey.alg) throw new Error("Property alg in JWK is missing.");
+  const signature = await new CompactSign(
+    createClientAuthorizationCompleteRequestChallenge(result),
+  )
+    .setProtectedHeader({
+      alg: pkey.alg,
+    })
+    .sign(pkey);
 
   const authResponse: TransactionAuthenticationResponse = {
     ...result.data.payload,
-    clientSignature: {
-      ...result.data.payload.clientSignature,
-      signature,
+    client: {
+      clientOrigin: result.data.payload.client.clientOrigin,
+      jws: signature,
     },
   };
 

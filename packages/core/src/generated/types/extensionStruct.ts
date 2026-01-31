@@ -21,7 +21,7 @@ import {
   type Encoder,
   type GetDiscriminatedUnionVariant,
   type GetDiscriminatedUnionVariantContent,
-} from 'gill';
+} from "gill";
 import {
   getCompressedOnlyExtensionDecoder,
   getCompressedOnlyExtensionEncoder,
@@ -51,170 +51,170 @@ import {
   type TransferFeeAccountExtensionArgs,
   type TransferHookAccountExtension,
   type TransferHookAccountExtensionArgs,
-} from '.';
+} from ".";
 
 export type ExtensionStruct =
-  | { __kind: 'Placeholder0' }
-  | { __kind: 'Placeholder1' }
-  | { __kind: 'Placeholder2' }
-  | { __kind: 'Placeholder3' }
-  | { __kind: 'Placeholder4' }
-  | { __kind: 'Placeholder5' }
-  | { __kind: 'Placeholder6' }
-  | { __kind: 'Placeholder7' }
-  | { __kind: 'Placeholder8' }
-  | { __kind: 'Placeholder9' }
-  | { __kind: 'Placeholder10' }
-  | { __kind: 'Placeholder11' }
-  | { __kind: 'Placeholder12' }
-  | { __kind: 'Placeholder13' }
-  | { __kind: 'Placeholder14' }
-  | { __kind: 'Placeholder15' }
-  | { __kind: 'Placeholder16' }
-  | { __kind: 'Placeholder17' }
-  | { __kind: 'Placeholder18' }
-  | { __kind: 'TokenMetadata'; fields: readonly [TokenMetadata] }
-  | { __kind: 'Placeholder20' }
-  | { __kind: 'Placeholder21' }
-  | { __kind: 'Placeholder22' }
-  | { __kind: 'Placeholder23' }
-  | { __kind: 'Placeholder24' }
-  | { __kind: 'Placeholder25' }
-  | { __kind: 'Placeholder26' }
-  | { __kind: 'PausableAccount'; fields: readonly [PausableAccountExtension] }
+  | { __kind: "Placeholder0" }
+  | { __kind: "Placeholder1" }
+  | { __kind: "Placeholder2" }
+  | { __kind: "Placeholder3" }
+  | { __kind: "Placeholder4" }
+  | { __kind: "Placeholder5" }
+  | { __kind: "Placeholder6" }
+  | { __kind: "Placeholder7" }
+  | { __kind: "Placeholder8" }
+  | { __kind: "Placeholder9" }
+  | { __kind: "Placeholder10" }
+  | { __kind: "Placeholder11" }
+  | { __kind: "Placeholder12" }
+  | { __kind: "Placeholder13" }
+  | { __kind: "Placeholder14" }
+  | { __kind: "Placeholder15" }
+  | { __kind: "Placeholder16" }
+  | { __kind: "Placeholder17" }
+  | { __kind: "Placeholder18" }
+  | { __kind: "TokenMetadata"; fields: readonly [TokenMetadata] }
+  | { __kind: "Placeholder20" }
+  | { __kind: "Placeholder21" }
+  | { __kind: "Placeholder22" }
+  | { __kind: "Placeholder23" }
+  | { __kind: "Placeholder24" }
+  | { __kind: "Placeholder25" }
+  | { __kind: "Placeholder26" }
+  | { __kind: "PausableAccount"; fields: readonly [PausableAccountExtension] }
   | {
-      __kind: 'PermanentDelegateAccount';
+      __kind: "PermanentDelegateAccount";
       fields: readonly [PermanentDelegateAccountExtension];
     }
   | {
-      __kind: 'TransferFeeAccount';
+      __kind: "TransferFeeAccount";
       fields: readonly [TransferFeeAccountExtension];
     }
   | {
-      __kind: 'TransferHookAccount';
+      __kind: "TransferHookAccount";
       fields: readonly [TransferHookAccountExtension];
     }
-  | { __kind: 'CompressedOnly'; fields: readonly [CompressedOnlyExtension] }
-  | { __kind: 'Compressible'; fields: readonly [CompressibleExtension] };
+  | { __kind: "CompressedOnly"; fields: readonly [CompressedOnlyExtension] }
+  | { __kind: "Compressible"; fields: readonly [CompressibleExtension] };
 
 export type ExtensionStructArgs =
-  | { __kind: 'Placeholder0' }
-  | { __kind: 'Placeholder1' }
-  | { __kind: 'Placeholder2' }
-  | { __kind: 'Placeholder3' }
-  | { __kind: 'Placeholder4' }
-  | { __kind: 'Placeholder5' }
-  | { __kind: 'Placeholder6' }
-  | { __kind: 'Placeholder7' }
-  | { __kind: 'Placeholder8' }
-  | { __kind: 'Placeholder9' }
-  | { __kind: 'Placeholder10' }
-  | { __kind: 'Placeholder11' }
-  | { __kind: 'Placeholder12' }
-  | { __kind: 'Placeholder13' }
-  | { __kind: 'Placeholder14' }
-  | { __kind: 'Placeholder15' }
-  | { __kind: 'Placeholder16' }
-  | { __kind: 'Placeholder17' }
-  | { __kind: 'Placeholder18' }
-  | { __kind: 'TokenMetadata'; fields: readonly [TokenMetadataArgs] }
-  | { __kind: 'Placeholder20' }
-  | { __kind: 'Placeholder21' }
-  | { __kind: 'Placeholder22' }
-  | { __kind: 'Placeholder23' }
-  | { __kind: 'Placeholder24' }
-  | { __kind: 'Placeholder25' }
-  | { __kind: 'Placeholder26' }
+  | { __kind: "Placeholder0" }
+  | { __kind: "Placeholder1" }
+  | { __kind: "Placeholder2" }
+  | { __kind: "Placeholder3" }
+  | { __kind: "Placeholder4" }
+  | { __kind: "Placeholder5" }
+  | { __kind: "Placeholder6" }
+  | { __kind: "Placeholder7" }
+  | { __kind: "Placeholder8" }
+  | { __kind: "Placeholder9" }
+  | { __kind: "Placeholder10" }
+  | { __kind: "Placeholder11" }
+  | { __kind: "Placeholder12" }
+  | { __kind: "Placeholder13" }
+  | { __kind: "Placeholder14" }
+  | { __kind: "Placeholder15" }
+  | { __kind: "Placeholder16" }
+  | { __kind: "Placeholder17" }
+  | { __kind: "Placeholder18" }
+  | { __kind: "TokenMetadata"; fields: readonly [TokenMetadataArgs] }
+  | { __kind: "Placeholder20" }
+  | { __kind: "Placeholder21" }
+  | { __kind: "Placeholder22" }
+  | { __kind: "Placeholder23" }
+  | { __kind: "Placeholder24" }
+  | { __kind: "Placeholder25" }
+  | { __kind: "Placeholder26" }
   | {
-      __kind: 'PausableAccount';
+      __kind: "PausableAccount";
       fields: readonly [PausableAccountExtensionArgs];
     }
   | {
-      __kind: 'PermanentDelegateAccount';
+      __kind: "PermanentDelegateAccount";
       fields: readonly [PermanentDelegateAccountExtensionArgs];
     }
   | {
-      __kind: 'TransferFeeAccount';
+      __kind: "TransferFeeAccount";
       fields: readonly [TransferFeeAccountExtensionArgs];
     }
   | {
-      __kind: 'TransferHookAccount';
+      __kind: "TransferHookAccount";
       fields: readonly [TransferHookAccountExtensionArgs];
     }
-  | { __kind: 'CompressedOnly'; fields: readonly [CompressedOnlyExtensionArgs] }
-  | { __kind: 'Compressible'; fields: readonly [CompressibleExtensionArgs] };
+  | { __kind: "CompressedOnly"; fields: readonly [CompressedOnlyExtensionArgs] }
+  | { __kind: "Compressible"; fields: readonly [CompressibleExtensionArgs] };
 
 export function getExtensionStructEncoder(): Encoder<ExtensionStructArgs> {
   return getDiscriminatedUnionEncoder([
-    ['Placeholder0', getUnitEncoder()],
-    ['Placeholder1', getUnitEncoder()],
-    ['Placeholder2', getUnitEncoder()],
-    ['Placeholder3', getUnitEncoder()],
-    ['Placeholder4', getUnitEncoder()],
-    ['Placeholder5', getUnitEncoder()],
-    ['Placeholder6', getUnitEncoder()],
-    ['Placeholder7', getUnitEncoder()],
-    ['Placeholder8', getUnitEncoder()],
-    ['Placeholder9', getUnitEncoder()],
-    ['Placeholder10', getUnitEncoder()],
-    ['Placeholder11', getUnitEncoder()],
-    ['Placeholder12', getUnitEncoder()],
-    ['Placeholder13', getUnitEncoder()],
-    ['Placeholder14', getUnitEncoder()],
-    ['Placeholder15', getUnitEncoder()],
-    ['Placeholder16', getUnitEncoder()],
-    ['Placeholder17', getUnitEncoder()],
-    ['Placeholder18', getUnitEncoder()],
+    ["Placeholder0", getUnitEncoder()],
+    ["Placeholder1", getUnitEncoder()],
+    ["Placeholder2", getUnitEncoder()],
+    ["Placeholder3", getUnitEncoder()],
+    ["Placeholder4", getUnitEncoder()],
+    ["Placeholder5", getUnitEncoder()],
+    ["Placeholder6", getUnitEncoder()],
+    ["Placeholder7", getUnitEncoder()],
+    ["Placeholder8", getUnitEncoder()],
+    ["Placeholder9", getUnitEncoder()],
+    ["Placeholder10", getUnitEncoder()],
+    ["Placeholder11", getUnitEncoder()],
+    ["Placeholder12", getUnitEncoder()],
+    ["Placeholder13", getUnitEncoder()],
+    ["Placeholder14", getUnitEncoder()],
+    ["Placeholder15", getUnitEncoder()],
+    ["Placeholder16", getUnitEncoder()],
+    ["Placeholder17", getUnitEncoder()],
+    ["Placeholder18", getUnitEncoder()],
     [
-      'TokenMetadata',
+      "TokenMetadata",
       getStructEncoder([
-        ['fields', getTupleEncoder([getTokenMetadataEncoder()])],
+        ["fields", getTupleEncoder([getTokenMetadataEncoder()])],
       ]),
     ],
-    ['Placeholder20', getUnitEncoder()],
-    ['Placeholder21', getUnitEncoder()],
-    ['Placeholder22', getUnitEncoder()],
-    ['Placeholder23', getUnitEncoder()],
-    ['Placeholder24', getUnitEncoder()],
-    ['Placeholder25', getUnitEncoder()],
-    ['Placeholder26', getUnitEncoder()],
+    ["Placeholder20", getUnitEncoder()],
+    ["Placeholder21", getUnitEncoder()],
+    ["Placeholder22", getUnitEncoder()],
+    ["Placeholder23", getUnitEncoder()],
+    ["Placeholder24", getUnitEncoder()],
+    ["Placeholder25", getUnitEncoder()],
+    ["Placeholder26", getUnitEncoder()],
     [
-      'PausableAccount',
+      "PausableAccount",
       getStructEncoder([
-        ['fields', getTupleEncoder([getPausableAccountExtensionEncoder()])],
+        ["fields", getTupleEncoder([getPausableAccountExtensionEncoder()])],
       ]),
     ],
     [
-      'PermanentDelegateAccount',
+      "PermanentDelegateAccount",
       getStructEncoder([
         [
-          'fields',
+          "fields",
           getTupleEncoder([getPermanentDelegateAccountExtensionEncoder()]),
         ],
       ]),
     ],
     [
-      'TransferFeeAccount',
+      "TransferFeeAccount",
       getStructEncoder([
-        ['fields', getTupleEncoder([getTransferFeeAccountExtensionEncoder()])],
+        ["fields", getTupleEncoder([getTransferFeeAccountExtensionEncoder()])],
       ]),
     ],
     [
-      'TransferHookAccount',
+      "TransferHookAccount",
       getStructEncoder([
-        ['fields', getTupleEncoder([getTransferHookAccountExtensionEncoder()])],
+        ["fields", getTupleEncoder([getTransferHookAccountExtensionEncoder()])],
       ]),
     ],
     [
-      'CompressedOnly',
+      "CompressedOnly",
       getStructEncoder([
-        ['fields', getTupleEncoder([getCompressedOnlyExtensionEncoder()])],
+        ["fields", getTupleEncoder([getCompressedOnlyExtensionEncoder()])],
       ]),
     ],
     [
-      'Compressible',
+      "Compressible",
       getStructEncoder([
-        ['fields', getTupleEncoder([getCompressibleExtensionEncoder()])],
+        ["fields", getTupleEncoder([getCompressibleExtensionEncoder()])],
       ]),
     ],
   ]);
@@ -222,75 +222,75 @@ export function getExtensionStructEncoder(): Encoder<ExtensionStructArgs> {
 
 export function getExtensionStructDecoder(): Decoder<ExtensionStruct> {
   return getDiscriminatedUnionDecoder([
-    ['Placeholder0', getUnitDecoder()],
-    ['Placeholder1', getUnitDecoder()],
-    ['Placeholder2', getUnitDecoder()],
-    ['Placeholder3', getUnitDecoder()],
-    ['Placeholder4', getUnitDecoder()],
-    ['Placeholder5', getUnitDecoder()],
-    ['Placeholder6', getUnitDecoder()],
-    ['Placeholder7', getUnitDecoder()],
-    ['Placeholder8', getUnitDecoder()],
-    ['Placeholder9', getUnitDecoder()],
-    ['Placeholder10', getUnitDecoder()],
-    ['Placeholder11', getUnitDecoder()],
-    ['Placeholder12', getUnitDecoder()],
-    ['Placeholder13', getUnitDecoder()],
-    ['Placeholder14', getUnitDecoder()],
-    ['Placeholder15', getUnitDecoder()],
-    ['Placeholder16', getUnitDecoder()],
-    ['Placeholder17', getUnitDecoder()],
-    ['Placeholder18', getUnitDecoder()],
+    ["Placeholder0", getUnitDecoder()],
+    ["Placeholder1", getUnitDecoder()],
+    ["Placeholder2", getUnitDecoder()],
+    ["Placeholder3", getUnitDecoder()],
+    ["Placeholder4", getUnitDecoder()],
+    ["Placeholder5", getUnitDecoder()],
+    ["Placeholder6", getUnitDecoder()],
+    ["Placeholder7", getUnitDecoder()],
+    ["Placeholder8", getUnitDecoder()],
+    ["Placeholder9", getUnitDecoder()],
+    ["Placeholder10", getUnitDecoder()],
+    ["Placeholder11", getUnitDecoder()],
+    ["Placeholder12", getUnitDecoder()],
+    ["Placeholder13", getUnitDecoder()],
+    ["Placeholder14", getUnitDecoder()],
+    ["Placeholder15", getUnitDecoder()],
+    ["Placeholder16", getUnitDecoder()],
+    ["Placeholder17", getUnitDecoder()],
+    ["Placeholder18", getUnitDecoder()],
     [
-      'TokenMetadata',
+      "TokenMetadata",
       getStructDecoder([
-        ['fields', getTupleDecoder([getTokenMetadataDecoder()])],
+        ["fields", getTupleDecoder([getTokenMetadataDecoder()])],
       ]),
     ],
-    ['Placeholder20', getUnitDecoder()],
-    ['Placeholder21', getUnitDecoder()],
-    ['Placeholder22', getUnitDecoder()],
-    ['Placeholder23', getUnitDecoder()],
-    ['Placeholder24', getUnitDecoder()],
-    ['Placeholder25', getUnitDecoder()],
-    ['Placeholder26', getUnitDecoder()],
+    ["Placeholder20", getUnitDecoder()],
+    ["Placeholder21", getUnitDecoder()],
+    ["Placeholder22", getUnitDecoder()],
+    ["Placeholder23", getUnitDecoder()],
+    ["Placeholder24", getUnitDecoder()],
+    ["Placeholder25", getUnitDecoder()],
+    ["Placeholder26", getUnitDecoder()],
     [
-      'PausableAccount',
+      "PausableAccount",
       getStructDecoder([
-        ['fields', getTupleDecoder([getPausableAccountExtensionDecoder()])],
+        ["fields", getTupleDecoder([getPausableAccountExtensionDecoder()])],
       ]),
     ],
     [
-      'PermanentDelegateAccount',
+      "PermanentDelegateAccount",
       getStructDecoder([
         [
-          'fields',
+          "fields",
           getTupleDecoder([getPermanentDelegateAccountExtensionDecoder()]),
         ],
       ]),
     ],
     [
-      'TransferFeeAccount',
+      "TransferFeeAccount",
       getStructDecoder([
-        ['fields', getTupleDecoder([getTransferFeeAccountExtensionDecoder()])],
+        ["fields", getTupleDecoder([getTransferFeeAccountExtensionDecoder()])],
       ]),
     ],
     [
-      'TransferHookAccount',
+      "TransferHookAccount",
       getStructDecoder([
-        ['fields', getTupleDecoder([getTransferHookAccountExtensionDecoder()])],
+        ["fields", getTupleDecoder([getTransferHookAccountExtensionDecoder()])],
       ]),
     ],
     [
-      'CompressedOnly',
+      "CompressedOnly",
       getStructDecoder([
-        ['fields', getTupleDecoder([getCompressedOnlyExtensionDecoder()])],
+        ["fields", getTupleDecoder([getCompressedOnlyExtensionDecoder()])],
       ]),
     ],
     [
-      'Compressible',
+      "Compressible",
       getStructDecoder([
-        ['fields', getTupleDecoder([getCompressibleExtensionDecoder()])],
+        ["fields", getTupleDecoder([getCompressibleExtensionDecoder()])],
       ]),
     ],
   ]);
@@ -305,171 +305,171 @@ export function getExtensionStructCodec(): Codec<
 
 // Data Enum Helpers.
 export function extensionStruct(
-  kind: 'Placeholder0'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder0'>;
+  kind: "Placeholder0",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder0">;
 export function extensionStruct(
-  kind: 'Placeholder1'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder1'>;
+  kind: "Placeholder1",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder1">;
 export function extensionStruct(
-  kind: 'Placeholder2'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder2'>;
+  kind: "Placeholder2",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder2">;
 export function extensionStruct(
-  kind: 'Placeholder3'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder3'>;
+  kind: "Placeholder3",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder3">;
 export function extensionStruct(
-  kind: 'Placeholder4'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder4'>;
+  kind: "Placeholder4",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder4">;
 export function extensionStruct(
-  kind: 'Placeholder5'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder5'>;
+  kind: "Placeholder5",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder5">;
 export function extensionStruct(
-  kind: 'Placeholder6'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder6'>;
+  kind: "Placeholder6",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder6">;
 export function extensionStruct(
-  kind: 'Placeholder7'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder7'>;
+  kind: "Placeholder7",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder7">;
 export function extensionStruct(
-  kind: 'Placeholder8'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder8'>;
+  kind: "Placeholder8",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder8">;
 export function extensionStruct(
-  kind: 'Placeholder9'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder9'>;
+  kind: "Placeholder9",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder9">;
 export function extensionStruct(
-  kind: 'Placeholder10'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder10'>;
+  kind: "Placeholder10",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder10">;
 export function extensionStruct(
-  kind: 'Placeholder11'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder11'>;
+  kind: "Placeholder11",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder11">;
 export function extensionStruct(
-  kind: 'Placeholder12'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder12'>;
+  kind: "Placeholder12",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder12">;
 export function extensionStruct(
-  kind: 'Placeholder13'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder13'>;
+  kind: "Placeholder13",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder13">;
 export function extensionStruct(
-  kind: 'Placeholder14'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder14'>;
+  kind: "Placeholder14",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder14">;
 export function extensionStruct(
-  kind: 'Placeholder15'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder15'>;
+  kind: "Placeholder15",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder15">;
 export function extensionStruct(
-  kind: 'Placeholder16'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder16'>;
+  kind: "Placeholder16",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder16">;
 export function extensionStruct(
-  kind: 'Placeholder17'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder17'>;
+  kind: "Placeholder17",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder17">;
 export function extensionStruct(
-  kind: 'Placeholder18'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder18'>;
+  kind: "Placeholder18",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder18">;
 export function extensionStruct(
-  kind: 'TokenMetadata',
+  kind: "TokenMetadata",
   data: GetDiscriminatedUnionVariantContent<
     ExtensionStructArgs,
-    '__kind',
-    'TokenMetadata'
-  >['fields']
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'TokenMetadata'>;
+    "__kind",
+    "TokenMetadata"
+  >["fields"],
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "TokenMetadata">;
 export function extensionStruct(
-  kind: 'Placeholder20'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder20'>;
+  kind: "Placeholder20",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder20">;
 export function extensionStruct(
-  kind: 'Placeholder21'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder21'>;
+  kind: "Placeholder21",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder21">;
 export function extensionStruct(
-  kind: 'Placeholder22'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder22'>;
+  kind: "Placeholder22",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder22">;
 export function extensionStruct(
-  kind: 'Placeholder23'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder23'>;
+  kind: "Placeholder23",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder23">;
 export function extensionStruct(
-  kind: 'Placeholder24'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder24'>;
+  kind: "Placeholder24",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder24">;
 export function extensionStruct(
-  kind: 'Placeholder25'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder25'>;
+  kind: "Placeholder25",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder25">;
 export function extensionStruct(
-  kind: 'Placeholder26'
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Placeholder26'>;
+  kind: "Placeholder26",
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Placeholder26">;
 export function extensionStruct(
-  kind: 'PausableAccount',
+  kind: "PausableAccount",
   data: GetDiscriminatedUnionVariantContent<
     ExtensionStructArgs,
-    '__kind',
-    'PausableAccount'
-  >['fields']
+    "__kind",
+    "PausableAccount"
+  >["fields"],
 ): GetDiscriminatedUnionVariant<
   ExtensionStructArgs,
-  '__kind',
-  'PausableAccount'
+  "__kind",
+  "PausableAccount"
 >;
 export function extensionStruct(
-  kind: 'PermanentDelegateAccount',
+  kind: "PermanentDelegateAccount",
   data: GetDiscriminatedUnionVariantContent<
     ExtensionStructArgs,
-    '__kind',
-    'PermanentDelegateAccount'
-  >['fields']
+    "__kind",
+    "PermanentDelegateAccount"
+  >["fields"],
 ): GetDiscriminatedUnionVariant<
   ExtensionStructArgs,
-  '__kind',
-  'PermanentDelegateAccount'
+  "__kind",
+  "PermanentDelegateAccount"
 >;
 export function extensionStruct(
-  kind: 'TransferFeeAccount',
+  kind: "TransferFeeAccount",
   data: GetDiscriminatedUnionVariantContent<
     ExtensionStructArgs,
-    '__kind',
-    'TransferFeeAccount'
-  >['fields']
+    "__kind",
+    "TransferFeeAccount"
+  >["fields"],
 ): GetDiscriminatedUnionVariant<
   ExtensionStructArgs,
-  '__kind',
-  'TransferFeeAccount'
+  "__kind",
+  "TransferFeeAccount"
 >;
 export function extensionStruct(
-  kind: 'TransferHookAccount',
+  kind: "TransferHookAccount",
   data: GetDiscriminatedUnionVariantContent<
     ExtensionStructArgs,
-    '__kind',
-    'TransferHookAccount'
-  >['fields']
+    "__kind",
+    "TransferHookAccount"
+  >["fields"],
 ): GetDiscriminatedUnionVariant<
   ExtensionStructArgs,
-  '__kind',
-  'TransferHookAccount'
+  "__kind",
+  "TransferHookAccount"
 >;
 export function extensionStruct(
-  kind: 'CompressedOnly',
+  kind: "CompressedOnly",
   data: GetDiscriminatedUnionVariantContent<
     ExtensionStructArgs,
-    '__kind',
-    'CompressedOnly'
-  >['fields']
+    "__kind",
+    "CompressedOnly"
+  >["fields"],
 ): GetDiscriminatedUnionVariant<
   ExtensionStructArgs,
-  '__kind',
-  'CompressedOnly'
+  "__kind",
+  "CompressedOnly"
 >;
 export function extensionStruct(
-  kind: 'Compressible',
+  kind: "Compressible",
   data: GetDiscriminatedUnionVariantContent<
     ExtensionStructArgs,
-    '__kind',
-    'Compressible'
-  >['fields']
-): GetDiscriminatedUnionVariant<ExtensionStructArgs, '__kind', 'Compressible'>;
-export function extensionStruct<K extends ExtensionStructArgs['__kind'], Data>(
+    "__kind",
+    "Compressible"
+  >["fields"],
+): GetDiscriminatedUnionVariant<ExtensionStructArgs, "__kind", "Compressible">;
+export function extensionStruct<K extends ExtensionStructArgs["__kind"], Data>(
   kind: K,
-  data?: Data
+  data?: Data,
 ) {
   return Array.isArray(data)
     ? { __kind: kind, fields: data }
     : { __kind: kind, ...(data ?? {}) };
 }
 
-export function isExtensionStruct<K extends ExtensionStruct['__kind']>(
+export function isExtensionStruct<K extends ExtensionStruct["__kind"]>(
   kind: K,
-  value: ExtensionStruct
+  value: ExtensionStruct,
 ): value is ExtensionStruct & { __kind: K } {
   return value.__kind === kind;
 }

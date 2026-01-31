@@ -26,13 +26,13 @@ import {
   type Decoder,
   type Encoder,
   type ReadonlyUint8Array,
-} from 'gill';
+} from "gill";
 import {
   getExpectedSecp256r1SignersDecoder,
   getExpectedSecp256r1SignersEncoder,
   type ExpectedSecp256r1Signers,
   type ExpectedSecp256r1SignersArgs,
-} from '.';
+} from ".";
 
 export type TransactionBufferCreateArgs = {
   bufferIndex: number;
@@ -54,16 +54,16 @@ export type TransactionBufferCreateArgsArgs = {
 
 export function getTransactionBufferCreateArgsEncoder(): Encoder<TransactionBufferCreateArgsArgs> {
   return getStructEncoder([
-    ['bufferIndex', getU8Encoder()],
-    ['preauthorizeExecution', getBooleanEncoder()],
+    ["bufferIndex", getU8Encoder()],
+    ["preauthorizeExecution", getBooleanEncoder()],
     [
-      'bufferExtendHashes',
+      "bufferExtendHashes",
       getArrayEncoder(fixEncoderSize(getBytesEncoder(), 32)),
     ],
-    ['finalBufferHash', fixEncoderSize(getBytesEncoder(), 32)],
-    ['finalBufferSize', getU16Encoder()],
+    ["finalBufferHash", fixEncoderSize(getBytesEncoder(), 32)],
+    ["finalBufferSize", getU16Encoder()],
     [
-      'expectedSecp256r1Signers',
+      "expectedSecp256r1Signers",
       getArrayEncoder(getExpectedSecp256r1SignersEncoder()),
     ],
   ]);
@@ -71,16 +71,16 @@ export function getTransactionBufferCreateArgsEncoder(): Encoder<TransactionBuff
 
 export function getTransactionBufferCreateArgsDecoder(): Decoder<TransactionBufferCreateArgs> {
   return getStructDecoder([
-    ['bufferIndex', getU8Decoder()],
-    ['preauthorizeExecution', getBooleanDecoder()],
+    ["bufferIndex", getU8Decoder()],
+    ["preauthorizeExecution", getBooleanDecoder()],
     [
-      'bufferExtendHashes',
+      "bufferExtendHashes",
       getArrayDecoder(fixDecoderSize(getBytesDecoder(), 32)),
     ],
-    ['finalBufferHash', fixDecoderSize(getBytesDecoder(), 32)],
-    ['finalBufferSize', getU16Decoder()],
+    ["finalBufferHash", fixDecoderSize(getBytesDecoder(), 32)],
+    ["finalBufferSize", getU16Decoder()],
     [
-      'expectedSecp256r1Signers',
+      "expectedSecp256r1Signers",
       getArrayDecoder(getExpectedSecp256r1SignersDecoder()),
     ],
   ]);
@@ -92,6 +92,6 @@ export function getTransactionBufferCreateArgsCodec(): Codec<
 > {
   return combineCodec(
     getTransactionBufferCreateArgsEncoder(),
-    getTransactionBufferCreateArgsDecoder()
+    getTransactionBufferCreateArgsDecoder(),
   );
 }

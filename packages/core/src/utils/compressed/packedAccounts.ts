@@ -60,7 +60,7 @@ export class PackedAccounts {
       }).map((x) => ({
         address: address(x.pubkey.toString()),
         role: this.getAccountRole(x.isSigner, x.isWritable),
-      }))
+      })),
     );
   }
 
@@ -101,17 +101,17 @@ export class PackedAccounts {
 
   packTreeInfos(
     accountProofInputs: AccountProofInput[],
-    newAddressProofInputs: NewAddressProofInput[]
+    newAddressProofInputs: NewAddressProofInput[],
   ): PackedTreeInfos {
     const stateTreeInfos: PackedStateTreeInfo[] = [];
     const addressTreeInfos: PackedAddressTreeInfo[] = [];
 
     for (const account of accountProofInputs) {
       const merkleTreePubkeyIndex = this.insertOrGet(
-        account.treeInfo.tree.toString()
+        account.treeInfo.tree.toString(),
       );
       const queuePubkeyIndex = this.insertOrGet(
-        account.treeInfo.queue.toString()
+        account.treeInfo.queue.toString(),
       );
 
       stateTreeInfos.push({
@@ -131,10 +131,10 @@ export class PackedAccounts {
 
     for (const account of newAddressProofInputs) {
       const addressMerkleTreePubkeyIndex = this.insertOrGet(
-        account.treeInfo.tree.toString()
+        account.treeInfo.tree.toString(),
       );
       const addressQueuePubkeyIndex = this.insertOrGet(
-        account.treeInfo.queue.toString()
+        account.treeInfo.queue.toString(),
       );
 
       addressTreeInfos.push({

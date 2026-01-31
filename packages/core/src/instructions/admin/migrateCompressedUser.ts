@@ -27,7 +27,7 @@ export async function migrateUsers({
   await packedAccounts.addSystemAccounts();
   const { address: userAddress, addressTree } = await getUserAccountAddress(
     member,
-    userAddressTreeIndex
+    userAddressTreeIndex,
   );
   const newAddressParams = [
     {
@@ -44,7 +44,7 @@ export async function migrateUsers({
       proof.treeInfos,
       proof.roots,
       proof.rootIndices,
-      newAddressParams
+      newAddressParams,
     )
   )[0];
 

@@ -39,19 +39,19 @@ export const AuthenticationContextSchema = z
     client: z
       .object({
         clientOrigin: z.url(),
-        jws: z.base64url(),
+        jws: z.string(),
       })
       .strict(),
     device: z
       .object({
         jwk: z.base64(),
-        jws: z.base64url(),
+        jws: z.string(),
       })
       .strict(),
     authProvider: z
       .object({
         jwk: z.base64(),
-        jws: z.base64url(),
+        jws: z.string(),
       })
       .strict()
       .optional(),

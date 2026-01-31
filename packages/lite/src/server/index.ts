@@ -7,6 +7,7 @@ import {
 import {
   createNoopSigner,
   getAddressDecoder,
+  getBase64Decoder,
   getBase64Encoder,
   type TransactionSigner,
 } from "gill";
@@ -40,7 +41,7 @@ import { processTokenTransfer } from "./processTokenTransfer";
  * Handles the complete authentication and transaction flow.
  *
  * @param request - Start or complete request (message or transaction)
- * @param privateKey - Ed25519 private key for signing
+ * @param privateKey - Private Key JWK in base64
  * @param feePayer - Optional fee payer for transactions
  * @param providerOrigin - Optional expected origin for verification
  * @param rpId - Optional expected Relying Party ID for verification
@@ -59,7 +60,7 @@ export async function processClientAuthCallback({
     | StartCustomMessageRequest
     | CompleteMessageRequest
     | CompleteTransactionRequest;
-  privateKey: CryptoKey;
+  privateKey: string;
   feePayer?: TransactionSigner;
   providerOrigin?: string;
   rpId?: string;
@@ -87,7 +88,9 @@ export async function processClientAuthCallback({
             type: "message",
             payload: createSignInMessageText({
               domain: parsedResult.redirectOrigin,
-              nonce: crypto.randomUUID(),
+              nonce: getBase64Decoder().decode(
+                crypto.getRandomValues(new Uint8Array(16)),
+              ),
             }),
           },
         },

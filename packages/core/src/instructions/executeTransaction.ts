@@ -66,7 +66,7 @@ export async function executeTransaction({
           payer: payer.address,
           remainingAccounts: accountMetas,
           settings,
-        })
+        }),
   );
 
   if (jitoBundlesTipAmount) {

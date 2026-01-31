@@ -27,10 +27,10 @@ import {
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableSignerAccount,
-} from 'gill';
-import { parseRemainingAccounts } from '../../hooked';
-import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
-import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
+} from "gill";
+import { parseRemainingAccounts } from "../../hooked";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
   getProofArgsDecoder,
   getProofArgsEncoder,
@@ -44,13 +44,13 @@ import {
   type UserArgs,
   type UserCreationArgs,
   type UserCreationArgsArgs,
-} from '../types';
+} from "../types";
 
 export const MIGRATE_COMPRESSED_USERS_DISCRIMINATOR = new Uint8Array([31]);
 
 export function getMigrateCompressedUsersDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    MIGRATE_COMPRESSED_USERS_DISCRIMINATOR
+    MIGRATE_COMPRESSED_USERS_DISCRIMINATOR,
   );
 }
 
@@ -58,7 +58,7 @@ export type MigrateCompressedUsersInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountAuthority extends
     | string
-    | AccountMeta<string> = 'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ',
+    | AccountMeta<string> = "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -88,24 +88,24 @@ export type MigrateCompressedUsersInstructionDataArgs = {
 export function getMigrateCompressedUsersInstructionDataEncoder(): Encoder<MigrateCompressedUsersInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
-      ['args', getUserEncoder()],
-      ['compressedProofArgs', getProofArgsEncoder()],
-      ['userCreationArgs', getUserCreationArgsEncoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
+      ["args", getUserEncoder()],
+      ["compressedProofArgs", getProofArgsEncoder()],
+      ["userCreationArgs", getUserCreationArgsEncoder()],
     ]),
     (value) => ({
       ...value,
       discriminator: MIGRATE_COMPRESSED_USERS_DISCRIMINATOR,
-    })
+    }),
   );
 }
 
 export function getMigrateCompressedUsersInstructionDataDecoder(): Decoder<MigrateCompressedUsersInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
-    ['args', getUserDecoder()],
-    ['compressedProofArgs', getProofArgsDecoder()],
-    ['userCreationArgs', getUserCreationArgsDecoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ["args", getUserDecoder()],
+    ["compressedProofArgs", getProofArgsDecoder()],
+    ["userCreationArgs", getUserCreationArgsDecoder()],
   ]);
 }
 
@@ -115,7 +115,7 @@ export function getMigrateCompressedUsersInstructionDataCodec(): Codec<
 > {
   return combineCodec(
     getMigrateCompressedUsersInstructionDataEncoder(),
-    getMigrateCompressedUsersInstructionDataDecoder()
+    getMigrateCompressedUsersInstructionDataDecoder(),
   );
 }
 
@@ -127,10 +127,10 @@ export type MigrateCompressedUsersInput<
   TAccountAuthority extends string = string,
 > = {
   authority?: TransactionSigner<TAccountAuthority>;
-  args: MigrateCompressedUsersInstructionDataArgs['args'];
-  compressedProofArgs: MigrateCompressedUsersInstructionDataArgs['compressedProofArgs'];
-  userCreationArgs: MigrateCompressedUsersInstructionDataArgs['userCreationArgs'];
-  remainingAccounts: MigrateCompressedUsersInstructionExtraArgs['remainingAccounts'];
+  args: MigrateCompressedUsersInstructionDataArgs["args"];
+  compressedProofArgs: MigrateCompressedUsersInstructionDataArgs["compressedProofArgs"];
+  userCreationArgs: MigrateCompressedUsersInstructionDataArgs["userCreationArgs"];
+  remainingAccounts: MigrateCompressedUsersInstructionExtraArgs["remainingAccounts"];
 };
 
 export function getMigrateCompressedUsersInstruction<
@@ -138,7 +138,7 @@ export function getMigrateCompressedUsersInstruction<
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
   input: MigrateCompressedUsersInput<TAccountAuthority>,
-  config?: { programAddress?: TProgramAddress }
+  config?: { programAddress?: TProgramAddress },
 ): MigrateCompressedUsersInstruction<TProgramAddress, TAccountAuthority> {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -161,18 +161,18 @@ export function getMigrateCompressedUsersInstruction<
   // Resolve default values.
   if (!accounts.authority.value) {
     accounts.authority.value =
-      'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ' as Address<'AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ'>;
+      "AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ" as Address<"AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ">;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [getAccountMeta(accounts.authority), ...remainingAccounts],
     data: getMigrateCompressedUsersInstructionDataEncoder().encode(
-      args as MigrateCompressedUsersInstructionDataArgs
+      args as MigrateCompressedUsersInstructionDataArgs,
     ),
     programAddress,
   } as MigrateCompressedUsersInstruction<TProgramAddress, TAccountAuthority>);
@@ -195,11 +195,11 @@ export function parseMigrateCompressedUsersInstruction<
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
-    InstructionWithData<ReadonlyUint8Array>
+    InstructionWithData<ReadonlyUint8Array>,
 ): ParsedMigrateCompressedUsersInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 1) {
     // TODO: Coded error.
-    throw new Error('Not enough accounts');
+    throw new Error("Not enough accounts");
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -211,7 +211,7 @@ export function parseMigrateCompressedUsersInstruction<
     programAddress: instruction.programAddress,
     accounts: { authority: getNextAccount() },
     data: getMigrateCompressedUsersInstructionDataDecoder().decode(
-      instruction.data
+      instruction.data,
     ),
   };
 }

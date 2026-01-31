@@ -4,6 +4,7 @@
  */
 
 import {
+  convertBase64StringToJWK,
   createClientAuthorizationCompleteRequestChallenge,
   fetchSettingsAccountData,
   getSignedSecp256r1Key,
@@ -11,11 +12,8 @@ import {
   retrieveTransactionManager,
   type CompleteTransactionRequest,
 } from "@revibase/core";
-import {
-  getBase58Decoder,
-  getBase64Encoder,
-  type TransactionSigner,
-} from "gill";
+import { getBase64Encoder, type TransactionSigner } from "gill";
+import { CompactSign } from "jose";
 import { REVIBASE_API_URL } from "src/utils/consts";
 import { getRandomPayer } from "src/utils/helper";
 import { getSettingsIndexWithAddress } from "src/utils/internal";
@@ -44,24 +42,23 @@ export interface TransactionProcessingContext {
  */
 export async function createSignedAuthResponse(
   request: CompleteTransactionRequest,
-  privateKey: CryptoKey,
+  privateKey: string,
 ) {
-  const challenge = createClientAuthorizationCompleteRequestChallenge(request);
-  const jws = getBase58Decoder().decode(
-    new Uint8Array(
-      await crypto.subtle.sign(
-        { name: "Ed25519" },
-        privateKey,
-        new Uint8Array(challenge),
-      ),
-    ),
-  );
+  const pkey = convertBase64StringToJWK(privateKey);
+  if (!pkey.alg) throw new Error("Property alg in JWK is missing.");
+  const signature = await new CompactSign(
+    createClientAuthorizationCompleteRequestChallenge(request),
+  )
+    .setProtectedHeader({
+      alg: pkey.alg,
+    })
+    .sign(pkey);
 
   return {
     ...request.data.payload,
     client: {
-      ...request.data.payload.client,
-      jws,
+      clientOrigin: request.data.payload.client.clientOrigin,
+      jws: signature,
     },
   };
 }
@@ -77,7 +74,7 @@ export async function createSignedAuthResponse(
  */
 export async function prepareTransactionContext(
   request: CompleteTransactionRequest,
-  privateKey: CryptoKey,
+  privateKey: string,
   feePayer?: TransactionSigner,
 ): Promise<TransactionProcessingContext> {
   const authResponse = await createSignedAuthResponse(request, privateKey);

@@ -10,16 +10,6 @@ import { UserSchema } from "src/utils";
 import { REVIBASE_AUTH_URL, REVIBASE_RP_ID } from "src/utils/consts";
 import { getSettingsIndexWithAddress } from "src/utils/internal";
 
-/**
- * Processes a WebAuthn message authentication request.
- * Verifies the authentication response and returns user information.
- *
- * @param request - Complete message request
- * @param expectedOrigin - Expected origin for WebAuthn verification (defaults to REVIBASE_AUTH_URL)
- * @param expectedRPID - Expected RP ID for WebAuthn verification (defaults to REVIBASE_RP_ID)
- * @returns User information including public key, wallet address, and settings
- * @throws {Error} If message verification fails or user has no delegated wallet
- */
 export async function processMessage(
   request: CompleteMessageRequest,
   expectedOrigin = REVIBASE_AUTH_URL,

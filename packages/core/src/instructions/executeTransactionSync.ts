@@ -238,7 +238,7 @@ function parseTransactionMessage(
     instructions: transactionMessage.instructions.map((x) => ({
       ...x,
       accountIndices: new Uint8Array(x.accountIndices ?? []),
-      data: new Uint8Array(x.data ?? []),
+      data: (x.data ?? []) as Uint8Array,
     })),
     addressTableLookups:
       transactionMessage.addressTableLookups?.map((x) => ({

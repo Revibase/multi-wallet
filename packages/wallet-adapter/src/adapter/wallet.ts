@@ -146,9 +146,7 @@ export class RevibaseWallet implements Wallet {
     const member = this.#revibase.member;
     const settingsIndexWithAddress = this.#revibase.settingsIndexWithAddress;
     if (pubKey && member && settingsIndexWithAddress) {
-      const publicKey = new Uint8Array(
-        getAddressEncoder().encode(address(pubKey)),
-      );
+      const publicKey = getAddressEncoder().encode(address(pubKey));
       const account = this.#account;
       if (
         !account ||

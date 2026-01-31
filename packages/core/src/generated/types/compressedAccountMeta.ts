@@ -20,13 +20,13 @@ import {
   type FixedSizeDecoder,
   type FixedSizeEncoder,
   type ReadonlyUint8Array,
-} from 'gill';
+} from "gill";
 import {
   getPackedStateTreeInfoDecoder,
   getPackedStateTreeInfoEncoder,
   type PackedStateTreeInfo,
   type PackedStateTreeInfoArgs,
-} from '.';
+} from ".";
 
 export type CompressedAccountMeta = {
   /** Merkle tree context. */
@@ -48,17 +48,17 @@ export type CompressedAccountMetaArgs = {
 
 export function getCompressedAccountMetaEncoder(): FixedSizeEncoder<CompressedAccountMetaArgs> {
   return getStructEncoder([
-    ['treeInfo', getPackedStateTreeInfoEncoder()],
-    ['address', fixEncoderSize(getBytesEncoder(), 32)],
-    ['outputStateTreeIndex', getU8Encoder()],
+    ["treeInfo", getPackedStateTreeInfoEncoder()],
+    ["address", fixEncoderSize(getBytesEncoder(), 32)],
+    ["outputStateTreeIndex", getU8Encoder()],
   ]);
 }
 
 export function getCompressedAccountMetaDecoder(): FixedSizeDecoder<CompressedAccountMeta> {
   return getStructDecoder([
-    ['treeInfo', getPackedStateTreeInfoDecoder()],
-    ['address', fixDecoderSize(getBytesDecoder(), 32)],
-    ['outputStateTreeIndex', getU8Decoder()],
+    ["treeInfo", getPackedStateTreeInfoDecoder()],
+    ["address", fixDecoderSize(getBytesDecoder(), 32)],
+    ["outputStateTreeIndex", getU8Decoder()],
   ]);
 }
 
@@ -68,6 +68,6 @@ export function getCompressedAccountMetaCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getCompressedAccountMetaEncoder(),
-    getCompressedAccountMetaDecoder()
+    getCompressedAccountMetaDecoder(),
   );
 }

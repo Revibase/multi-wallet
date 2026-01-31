@@ -20,7 +20,7 @@ export class CompiledKeys {
 
   static compile(
     instructions: Array<Instruction>,
-    payer: Address
+    payer: Address,
   ): CompiledKeys {
     const keyMetaMap: KeyMetaMap = new Map();
     const getOrInsertDefault = (address: Address): CompiledKeyMeta => {
@@ -70,16 +70,16 @@ export class CompiledKeys {
     }
 
     const writableSigners = mapEntries.filter(
-      ([, meta]) => meta.isSigner && meta.isWritable
+      ([, meta]) => meta.isSigner && meta.isWritable,
     );
     const readonlySigners = mapEntries.filter(
-      ([, meta]) => meta.isSigner && !meta.isWritable
+      ([, meta]) => meta.isSigner && !meta.isWritable,
     );
     const writableNonSigners = mapEntries.filter(
-      ([, meta]) => !meta.isSigner && meta.isWritable
+      ([, meta]) => !meta.isSigner && meta.isWritable,
     );
     const readonlyNonSigners = mapEntries.filter(
-      ([, meta]) => !meta.isSigner && !meta.isWritable
+      ([, meta]) => !meta.isSigner && !meta.isWritable,
     );
 
     const header = {
@@ -94,9 +94,7 @@ export class CompiledKeys {
 
     const [payerAddress] = writableSigners[0];
     if (payerAddress !== this.payer) {
-      throw new Error(
-        "Expected first writable signer key to be the fee payer"
-      );
+      throw new Error("Expected first writable signer key to be the fee payer");
     }
 
     const staticAccountKeys = [
@@ -114,13 +112,13 @@ export class CompiledKeys {
       this.drainKeysFoundInLookupTable(
         lookupTableAddresses[1],
         (keyMeta) =>
-          !keyMeta.isSigner && !keyMeta.isInvoked && keyMeta.isWritable
+          !keyMeta.isSigner && !keyMeta.isInvoked && keyMeta.isWritable,
       );
     const [readonlyIndexes, drainedReadonlyKeys] =
       this.drainKeysFoundInLookupTable(
         lookupTableAddresses[1],
         (keyMeta) =>
-          !keyMeta.isSigner && !keyMeta.isInvoked && !keyMeta.isWritable
+          !keyMeta.isSigner && !keyMeta.isInvoked && !keyMeta.isWritable,
       );
 
     if (writableIndexes.length === 0 && readonlyIndexes.length === 0) {
@@ -142,7 +140,7 @@ export class CompiledKeys {
 
   private drainKeysFoundInLookupTable(
     lookupTableEntries: Array<Address>,
-    keyMetaFilter: (keyMeta: CompiledKeyMeta) => boolean
+    keyMetaFilter: (keyMeta: CompiledKeyMeta) => boolean,
   ): [Array<number>, Array<Address>] {
     const lookupTableIndexes = new Array();
     const drainedKeys = new Array();
@@ -151,7 +149,7 @@ export class CompiledKeys {
       if (keyMetaFilter(keyMeta)) {
         const key = addressKey;
         const lookupTableIndex = lookupTableEntries.findIndex(
-          (entry) => entry === key
+          (entry) => entry === key,
         );
         if (lookupTableIndex >= 0) {
           if (lookupTableIndex >= 256) {

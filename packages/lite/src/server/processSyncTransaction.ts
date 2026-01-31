@@ -7,19 +7,9 @@ import { getBase64Encoder, type TransactionSigner } from "gill";
 import { getAddressByLookUpTable } from "src/utils/internal";
 import { getTransactionSigners, prepareTransactionContext } from "./shared";
 
-/**
- * Processes a synchronous transaction.
- * Used for transactions that don't require bundling.
- *
- * @param request - Complete transaction request
- * @param privateKey - Ed25519 private key for signing
- * @param feePayer - Optional fee payer (defaults to random payer from API)
- * @returns Transaction signature
- * @throws {Error} If transaction action type is not "sync"
- */
 export async function processSyncTransaction(
   request: CompleteTransactionRequest,
-  privateKey: CryptoKey,
+  privateKey: string,
   feePayer?: TransactionSigner,
 ): Promise<string> {
   const { transactionActionType, transactionMessageBytes } =

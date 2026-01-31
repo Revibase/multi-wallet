@@ -17,7 +17,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from 'gill';
+} from "gill";
 
 /**
  * Packed address tree info for instruction data.
@@ -33,17 +33,17 @@ export type PackedAddressTreeInfoArgs = PackedAddressTreeInfo;
 
 export function getPackedAddressTreeInfoEncoder(): FixedSizeEncoder<PackedAddressTreeInfoArgs> {
   return getStructEncoder([
-    ['addressMerkleTreePubkeyIndex', getU8Encoder()],
-    ['addressQueuePubkeyIndex', getU8Encoder()],
-    ['rootIndex', getU16Encoder()],
+    ["addressMerkleTreePubkeyIndex", getU8Encoder()],
+    ["addressQueuePubkeyIndex", getU8Encoder()],
+    ["rootIndex", getU16Encoder()],
   ]);
 }
 
 export function getPackedAddressTreeInfoDecoder(): FixedSizeDecoder<PackedAddressTreeInfo> {
   return getStructDecoder([
-    ['addressMerkleTreePubkeyIndex', getU8Decoder()],
-    ['addressQueuePubkeyIndex', getU8Decoder()],
-    ['rootIndex', getU16Decoder()],
+    ["addressMerkleTreePubkeyIndex", getU8Decoder()],
+    ["addressQueuePubkeyIndex", getU8Decoder()],
+    ["rootIndex", getU16Decoder()],
   ]);
 }
 
@@ -53,6 +53,6 @@ export function getPackedAddressTreeInfoCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getPackedAddressTreeInfoEncoder(),
-    getPackedAddressTreeInfoDecoder()
+    getPackedAddressTreeInfoDecoder(),
   );
 }

@@ -18,13 +18,13 @@ import {
   type FixedSizeDecoder,
   type FixedSizeEncoder,
   type ReadonlyUint8Array,
-} from 'gill';
+} from "gill";
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
   type MemberKey,
   type MemberKeyArgs,
-} from '.';
+} from ".";
 
 export type ExpectedSecp256r1Signers = {
   memberKey: MemberKey;
@@ -38,15 +38,15 @@ export type ExpectedSecp256r1SignersArgs = {
 
 export function getExpectedSecp256r1SignersEncoder(): FixedSizeEncoder<ExpectedSecp256r1SignersArgs> {
   return getStructEncoder([
-    ['memberKey', getMemberKeyEncoder()],
-    ['messageHash', fixEncoderSize(getBytesEncoder(), 32)],
+    ["memberKey", getMemberKeyEncoder()],
+    ["messageHash", fixEncoderSize(getBytesEncoder(), 32)],
   ]);
 }
 
 export function getExpectedSecp256r1SignersDecoder(): FixedSizeDecoder<ExpectedSecp256r1Signers> {
   return getStructDecoder([
-    ['memberKey', getMemberKeyDecoder()],
-    ['messageHash', fixDecoderSize(getBytesDecoder(), 32)],
+    ["memberKey", getMemberKeyDecoder()],
+    ["messageHash", fixDecoderSize(getBytesDecoder(), 32)],
   ]);
 }
 
@@ -56,6 +56,6 @@ export function getExpectedSecp256r1SignersCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getExpectedSecp256r1SignersEncoder(),
-    getExpectedSecp256r1SignersDecoder()
+    getExpectedSecp256r1SignersDecoder(),
   );
 }

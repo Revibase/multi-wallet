@@ -32,16 +32,16 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from 'gill';
-import { parseRemainingAccounts } from '../../hooked';
-import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
-import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
+} from "gill";
+import { parseRemainingAccounts } from "../../hooked";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 
 export const ADD_WHITELISTED_ADDRESS_TREES_DISCRIMINATOR = new Uint8Array([8]);
 
 export function getAddWhitelistedAddressTreesDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    ADD_WHITELISTED_ADDRESS_TREES_DISCRIMINATOR
+    ADD_WHITELISTED_ADDRESS_TREES_DISCRIMINATOR,
   );
 }
 
@@ -51,7 +51,7 @@ export type AddWhitelistedAddressTreesInstruction<
   TAccountPayer extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | AccountMeta<string> = '11111111111111111111111111111111',
+    | AccountMeta<string> = "11111111111111111111111111111111",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -83,20 +83,20 @@ export type AddWhitelistedAddressTreesInstructionDataArgs = {
 export function getAddWhitelistedAddressTreesInstructionDataEncoder(): FixedSizeEncoder<AddWhitelistedAddressTreesInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
-      ['addressTree', getAddressEncoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
+      ["addressTree", getAddressEncoder()],
     ]),
     (value) => ({
       ...value,
       discriminator: ADD_WHITELISTED_ADDRESS_TREES_DISCRIMINATOR,
-    })
+    }),
   );
 }
 
 export function getAddWhitelistedAddressTreesInstructionDataDecoder(): FixedSizeDecoder<AddWhitelistedAddressTreesInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
-    ['addressTree', getAddressDecoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ["addressTree", getAddressDecoder()],
   ]);
 }
 
@@ -106,7 +106,7 @@ export function getAddWhitelistedAddressTreesInstructionDataCodec(): FixedSizeCo
 > {
   return combineCodec(
     getAddWhitelistedAddressTreesInstructionDataEncoder(),
-    getAddWhitelistedAddressTreesInstructionDataDecoder()
+    getAddWhitelistedAddressTreesInstructionDataDecoder(),
   );
 }
 
@@ -122,8 +122,8 @@ export type AddWhitelistedAddressTreesAsyncInput<
   whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
   payer: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
-  addressTree: AddWhitelistedAddressTreesInstructionDataArgs['addressTree'];
-  remainingAccounts: AddWhitelistedAddressTreesInstructionExtraArgs['remainingAccounts'];
+  addressTree: AddWhitelistedAddressTreesInstructionDataArgs["addressTree"];
+  remainingAccounts: AddWhitelistedAddressTreesInstructionExtraArgs["remainingAccounts"];
 };
 
 export async function getAddWhitelistedAddressTreesInstructionAsync<
@@ -137,7 +137,7 @@ export async function getAddWhitelistedAddressTreesInstructionAsync<
     TAccountPayer,
     TAccountSystemProgram
   >,
-  config?: { programAddress?: TProgramAddress }
+  config?: { programAddress?: TProgramAddress },
 ): Promise<
   AddWhitelistedAddressTreesInstruction<
     TProgramAddress,
@@ -178,21 +178,21 @@ export async function getAddWhitelistedAddressTreesInstructionAsync<
           new Uint8Array([
             119, 104, 105, 116, 101, 108, 105, 115, 116, 101, 100, 95, 97, 100,
             100, 114, 101, 115, 115, 95, 116, 114, 101, 101, 115,
-          ])
+          ]),
         ),
       ],
     });
   }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.whitelistedAddressTrees),
@@ -201,7 +201,7 @@ export async function getAddWhitelistedAddressTreesInstructionAsync<
       ...remainingAccounts,
     ],
     data: getAddWhitelistedAddressTreesInstructionDataEncoder().encode(
-      args as AddWhitelistedAddressTreesInstructionDataArgs
+      args as AddWhitelistedAddressTreesInstructionDataArgs,
     ),
     programAddress,
   } as AddWhitelistedAddressTreesInstruction<
@@ -220,8 +220,8 @@ export type AddWhitelistedAddressTreesInput<
   whitelistedAddressTrees: Address<TAccountWhitelistedAddressTrees>;
   payer: TransactionSigner<TAccountPayer>;
   systemProgram?: Address<TAccountSystemProgram>;
-  addressTree: AddWhitelistedAddressTreesInstructionDataArgs['addressTree'];
-  remainingAccounts: AddWhitelistedAddressTreesInstructionExtraArgs['remainingAccounts'];
+  addressTree: AddWhitelistedAddressTreesInstructionDataArgs["addressTree"];
+  remainingAccounts: AddWhitelistedAddressTreesInstructionExtraArgs["remainingAccounts"];
 };
 
 export function getAddWhitelistedAddressTreesInstruction<
@@ -235,7 +235,7 @@ export function getAddWhitelistedAddressTreesInstruction<
     TAccountPayer,
     TAccountSystemProgram
   >,
-  config?: { programAddress?: TProgramAddress }
+  config?: { programAddress?: TProgramAddress },
 ): AddWhitelistedAddressTreesInstruction<
   TProgramAddress,
   TAccountWhitelistedAddressTrees,
@@ -268,14 +268,14 @@ export function getAddWhitelistedAddressTreesInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.whitelistedAddressTrees),
@@ -284,7 +284,7 @@ export function getAddWhitelistedAddressTreesInstruction<
       ...remainingAccounts,
     ],
     data: getAddWhitelistedAddressTreesInstructionDataEncoder().encode(
-      args as AddWhitelistedAddressTreesInstructionDataArgs
+      args as AddWhitelistedAddressTreesInstructionDataArgs,
     ),
     programAddress,
   } as AddWhitelistedAddressTreesInstruction<
@@ -314,11 +314,11 @@ export function parseAddWhitelistedAddressTreesInstruction<
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
-    InstructionWithData<ReadonlyUint8Array>
+    InstructionWithData<ReadonlyUint8Array>,
 ): ParsedAddWhitelistedAddressTreesInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 3) {
     // TODO: Coded error.
-    throw new Error('Not enough accounts');
+    throw new Error("Not enough accounts");
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -334,7 +334,7 @@ export function parseAddWhitelistedAddressTreesInstruction<
       systemProgram: getNextAccount(),
     },
     data: getAddWhitelistedAddressTreesInstructionDataDecoder().decode(
-      instruction.data
+      instruction.data,
     ),
   };
 }

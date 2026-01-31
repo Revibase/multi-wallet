@@ -28,10 +28,10 @@ import {
   type ReadonlyAccount,
   type ReadonlyUint8Array,
   type WritableAccount,
-} from 'gill';
-import { parseRemainingAccounts } from '../../hooked';
-import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
-import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
+} from "gill";
+import { parseRemainingAccounts } from "../../hooked";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
   getSecp256r1VerifyArgsWithDomainAddressDecoder,
   getSecp256r1VerifyArgsWithDomainAddressEncoder,
@@ -41,13 +41,13 @@ import {
   type Secp256r1VerifyArgsWithDomainAddressArgs,
   type TransactionMessage,
   type TransactionMessageArgs,
-} from '../types';
+} from "../types";
 
 export const TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR = new Uint8Array([16]);
 
 export function getTransactionExecuteSyncDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR
+    TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR,
   );
 }
 
@@ -56,10 +56,10 @@ export type TransactionExecuteSyncInstruction<
   TAccountSettings extends string | AccountMeta<string> = string,
   TAccountSlotHashSysvar extends
     | string
-    | AccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
+    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
   TAccountInstructionsSysvar extends
     | string
-    | AccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
+    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -92,26 +92,26 @@ export type TransactionExecuteSyncInstructionDataArgs = {
 export function getTransactionExecuteSyncInstructionDataEncoder(): Encoder<TransactionExecuteSyncInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
-      ['transactionMessage', getTransactionMessageEncoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
+      ["transactionMessage", getTransactionMessageEncoder()],
       [
-        'secp256r1VerifyArgs',
+        "secp256r1VerifyArgs",
         getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
       ],
     ]),
     (value) => ({
       ...value,
       discriminator: TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR,
-    })
+    }),
   );
 }
 
 export function getTransactionExecuteSyncInstructionDataDecoder(): Decoder<TransactionExecuteSyncInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
-    ['transactionMessage', getTransactionMessageDecoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ["transactionMessage", getTransactionMessageDecoder()],
     [
-      'secp256r1VerifyArgs',
+      "secp256r1VerifyArgs",
       getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
     ],
   ]);
@@ -123,7 +123,7 @@ export function getTransactionExecuteSyncInstructionDataCodec(): Codec<
 > {
   return combineCodec(
     getTransactionExecuteSyncInstructionDataEncoder(),
-    getTransactionExecuteSyncInstructionDataDecoder()
+    getTransactionExecuteSyncInstructionDataDecoder(),
   );
 }
 
@@ -139,9 +139,9 @@ export type TransactionExecuteSyncInput<
   settings: Address<TAccountSettings>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  transactionMessage: TransactionExecuteSyncInstructionDataArgs['transactionMessage'];
-  secp256r1VerifyArgs: TransactionExecuteSyncInstructionDataArgs['secp256r1VerifyArgs'];
-  remainingAccounts: TransactionExecuteSyncInstructionExtraArgs['remainingAccounts'];
+  transactionMessage: TransactionExecuteSyncInstructionDataArgs["transactionMessage"];
+  secp256r1VerifyArgs: TransactionExecuteSyncInstructionDataArgs["secp256r1VerifyArgs"];
+  remainingAccounts: TransactionExecuteSyncInstructionExtraArgs["remainingAccounts"];
 };
 
 export function getTransactionExecuteSyncInstruction<
@@ -155,7 +155,7 @@ export function getTransactionExecuteSyncInstruction<
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar
   >,
-  config?: { programAddress?: TProgramAddress }
+  config?: { programAddress?: TProgramAddress },
 ): TransactionExecuteSyncInstruction<
   TProgramAddress,
   TAccountSettings,
@@ -188,18 +188,18 @@ export function getTransactionExecuteSyncInstruction<
   // Resolve default values.
   if (!accounts.slotHashSysvar.value) {
     accounts.slotHashSysvar.value =
-      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
+      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
   }
   if (!accounts.instructionsSysvar.value) {
     accounts.instructionsSysvar.value =
-      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
+      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.settings),
@@ -208,7 +208,7 @@ export function getTransactionExecuteSyncInstruction<
       ...remainingAccounts,
     ],
     data: getTransactionExecuteSyncInstructionDataEncoder().encode(
-      args as TransactionExecuteSyncInstructionDataArgs
+      args as TransactionExecuteSyncInstructionDataArgs,
     ),
     programAddress,
   } as TransactionExecuteSyncInstruction<
@@ -238,11 +238,11 @@ export function parseTransactionExecuteSyncInstruction<
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
-    InstructionWithData<ReadonlyUint8Array>
+    InstructionWithData<ReadonlyUint8Array>,
 ): ParsedTransactionExecuteSyncInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 3) {
     // TODO: Coded error.
-    throw new Error('Not enough accounts');
+    throw new Error("Not enough accounts");
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -264,7 +264,7 @@ export function parseTransactionExecuteSyncInstruction<
       instructionsSysvar: getNextAccount(),
     },
     data: getTransactionExecuteSyncInstructionDataDecoder().decode(
-      instruction.data
+      instruction.data,
     ),
   };
 }

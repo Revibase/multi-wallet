@@ -15,7 +15,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from 'gill';
+} from "gill";
 
 /**
  * Extension indicating the account belongs to a mint with transfer hook.
@@ -34,11 +34,11 @@ export type TransferHookAccountExtension = {
 export type TransferHookAccountExtensionArgs = TransferHookAccountExtension;
 
 export function getTransferHookAccountExtensionEncoder(): FixedSizeEncoder<TransferHookAccountExtensionArgs> {
-  return getStructEncoder([['transferring', getU8Encoder()]]);
+  return getStructEncoder([["transferring", getU8Encoder()]]);
 }
 
 export function getTransferHookAccountExtensionDecoder(): FixedSizeDecoder<TransferHookAccountExtension> {
-  return getStructDecoder([['transferring', getU8Decoder()]]);
+  return getStructDecoder([["transferring", getU8Decoder()]]);
 }
 
 export function getTransferHookAccountExtensionCodec(): FixedSizeCodec<
@@ -47,6 +47,6 @@ export function getTransferHookAccountExtensionCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getTransferHookAccountExtensionEncoder(),
-    getTransferHookAccountExtensionDecoder()
+    getTransferHookAccountExtensionDecoder(),
   );
 }

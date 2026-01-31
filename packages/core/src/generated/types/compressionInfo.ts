@@ -26,13 +26,13 @@ import {
   type FixedSizeDecoder,
   type FixedSizeEncoder,
   type ReadonlyUint8Array,
-} from 'gill';
+} from "gill";
 import {
   getRentConfigDecoder,
   getRentConfigEncoder,
   type RentConfig,
   type RentConfigArgs,
-} from '.';
+} from ".";
 
 /** Compressible extension for ctoken accounts. */
 export type CompressionInfo = {
@@ -107,31 +107,31 @@ export type CompressionInfoArgs = {
 
 export function getCompressionInfoEncoder(): FixedSizeEncoder<CompressionInfoArgs> {
   return getStructEncoder([
-    ['configAccountVersion', getU16Encoder()],
-    ['compressToPubkey', getU8Encoder()],
-    ['accountVersion', getU8Encoder()],
-    ['lamportsPerWrite', getU32Encoder()],
-    ['compressionAuthority', fixEncoderSize(getBytesEncoder(), 32)],
-    ['rentSponsor', fixEncoderSize(getBytesEncoder(), 32)],
-    ['lastClaimedSlot', getU64Encoder()],
-    ['rentExemptionPaid', getU32Encoder()],
-    ['reserved', getU32Encoder()],
-    ['rentConfig', getRentConfigEncoder()],
+    ["configAccountVersion", getU16Encoder()],
+    ["compressToPubkey", getU8Encoder()],
+    ["accountVersion", getU8Encoder()],
+    ["lamportsPerWrite", getU32Encoder()],
+    ["compressionAuthority", fixEncoderSize(getBytesEncoder(), 32)],
+    ["rentSponsor", fixEncoderSize(getBytesEncoder(), 32)],
+    ["lastClaimedSlot", getU64Encoder()],
+    ["rentExemptionPaid", getU32Encoder()],
+    ["reserved", getU32Encoder()],
+    ["rentConfig", getRentConfigEncoder()],
   ]);
 }
 
 export function getCompressionInfoDecoder(): FixedSizeDecoder<CompressionInfo> {
   return getStructDecoder([
-    ['configAccountVersion', getU16Decoder()],
-    ['compressToPubkey', getU8Decoder()],
-    ['accountVersion', getU8Decoder()],
-    ['lamportsPerWrite', getU32Decoder()],
-    ['compressionAuthority', fixDecoderSize(getBytesDecoder(), 32)],
-    ['rentSponsor', fixDecoderSize(getBytesDecoder(), 32)],
-    ['lastClaimedSlot', getU64Decoder()],
-    ['rentExemptionPaid', getU32Decoder()],
-    ['reserved', getU32Decoder()],
-    ['rentConfig', getRentConfigDecoder()],
+    ["configAccountVersion", getU16Decoder()],
+    ["compressToPubkey", getU8Decoder()],
+    ["accountVersion", getU8Decoder()],
+    ["lamportsPerWrite", getU32Decoder()],
+    ["compressionAuthority", fixDecoderSize(getBytesDecoder(), 32)],
+    ["rentSponsor", fixDecoderSize(getBytesDecoder(), 32)],
+    ["lastClaimedSlot", getU64Decoder()],
+    ["rentExemptionPaid", getU32Decoder()],
+    ["reserved", getU32Decoder()],
+    ["rentConfig", getRentConfigDecoder()],
   ]);
 }
 

@@ -28,7 +28,7 @@ export async function createDomainConfig({
 
   const { address, addressTree } = await getUserAccountAddress(
     authority.address,
-    userAddressTreeIndex
+    userAddressTreeIndex,
   );
   const newAddressParams = [
     {
@@ -46,7 +46,7 @@ export async function createDomainConfig({
       proof.treeInfos,
       proof.roots,
       proof.rootIndices,
-      newAddressParams
+      newAddressParams,
     )
   )[0];
 

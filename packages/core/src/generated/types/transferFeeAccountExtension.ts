@@ -15,7 +15,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from 'gill';
+} from "gill";
 
 /**
  * Transfer fee extension for Token accounts.
@@ -33,11 +33,11 @@ export type TransferFeeAccountExtensionArgs = {
 };
 
 export function getTransferFeeAccountExtensionEncoder(): FixedSizeEncoder<TransferFeeAccountExtensionArgs> {
-  return getStructEncoder([['withheldAmount', getU64Encoder()]]);
+  return getStructEncoder([["withheldAmount", getU64Encoder()]]);
 }
 
 export function getTransferFeeAccountExtensionDecoder(): FixedSizeDecoder<TransferFeeAccountExtension> {
-  return getStructDecoder([['withheldAmount', getU64Decoder()]]);
+  return getStructDecoder([["withheldAmount", getU64Decoder()]]);
 }
 
 export function getTransferFeeAccountExtensionCodec(): FixedSizeCodec<
@@ -46,6 +46,6 @@ export function getTransferFeeAccountExtensionCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getTransferFeeAccountExtensionEncoder(),
-    getTransferFeeAccountExtensionDecoder()
+    getTransferFeeAccountExtensionDecoder(),
   );
 }

@@ -9,7 +9,7 @@ use light_sdk::{
 };
 use light_token::{
     constants::LIGHT_TOKEN_PROGRAM_ID,
-    instruction::{COMPRESSIBLE_CONFIG_V1, LIGHT_TOKEN_CPI_AUTHORITY},
+    instruction::{LIGHT_TOKEN_CPI_AUTHORITY},
 };
 use light_token_interface::find_spl_interface_pda_with_index;
 
@@ -113,9 +113,6 @@ pub struct TokenTransferIntent<'info> {
     )]
     pub spl_interface_pda: Option<UncheckedAccount<'info>>,
     /// CHECK:
-    #[account(
-        address = COMPRESSIBLE_CONFIG_V1
-    )]
     pub compressible_config: UncheckedAccount<'info>,
     /// CHECK:
     #[account(mut)]

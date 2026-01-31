@@ -19,7 +19,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from 'gill';
+} from "gill";
 
 export type PackedMerkleContext = {
   merkleTreePubkeyIndex: number;
@@ -32,19 +32,19 @@ export type PackedMerkleContextArgs = PackedMerkleContext;
 
 export function getPackedMerkleContextEncoder(): FixedSizeEncoder<PackedMerkleContextArgs> {
   return getStructEncoder([
-    ['merkleTreePubkeyIndex', getU8Encoder()],
-    ['queuePubkeyIndex', getU8Encoder()],
-    ['leafIndex', getU32Encoder()],
-    ['proveByIndex', getBooleanEncoder()],
+    ["merkleTreePubkeyIndex", getU8Encoder()],
+    ["queuePubkeyIndex", getU8Encoder()],
+    ["leafIndex", getU32Encoder()],
+    ["proveByIndex", getBooleanEncoder()],
   ]);
 }
 
 export function getPackedMerkleContextDecoder(): FixedSizeDecoder<PackedMerkleContext> {
   return getStructDecoder([
-    ['merkleTreePubkeyIndex', getU8Decoder()],
-    ['queuePubkeyIndex', getU8Decoder()],
-    ['leafIndex', getU32Decoder()],
-    ['proveByIndex', getBooleanDecoder()],
+    ["merkleTreePubkeyIndex", getU8Decoder()],
+    ["queuePubkeyIndex", getU8Decoder()],
+    ["leafIndex", getU32Decoder()],
+    ["proveByIndex", getBooleanDecoder()],
   ]);
 }
 
@@ -54,6 +54,6 @@ export function getPackedMerkleContextCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getPackedMerkleContextEncoder(),
-    getPackedMerkleContextDecoder()
+    getPackedMerkleContextDecoder(),
   );
 }

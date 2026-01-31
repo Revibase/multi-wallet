@@ -40,7 +40,7 @@ export async function editTransactionManagerUrl({
     proof.rootIndices,
     proof.proveByIndices,
     hashesWithTree,
-    getUserDecoder()
+    getUserDecoder(),
   )[0];
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);

@@ -28,7 +28,7 @@ import {
   type Decoder,
   type Encoder,
   type ReadonlyUint8Array,
-} from 'gill';
+} from "gill";
 
 export type Secp256r1VerifyArgs = {
   signedMessageIndex: number;
@@ -50,29 +50,29 @@ export type Secp256r1VerifyArgsArgs = {
 
 export function getSecp256r1VerifyArgsEncoder(): Encoder<Secp256r1VerifyArgsArgs> {
   return getStructEncoder([
-    ['signedMessageIndex', getU8Encoder()],
-    ['slotNumber', getU64Encoder()],
-    ['originIndex', getU8Encoder()],
-    ['crossOrigin', getBooleanEncoder()],
+    ["signedMessageIndex", getU8Encoder()],
+    ["slotNumber", getU64Encoder()],
+    ["originIndex", getU8Encoder()],
+    ["crossOrigin", getBooleanEncoder()],
     [
-      'truncatedClientDataJson',
+      "truncatedClientDataJson",
       addEncoderSizePrefix(getBytesEncoder(), getU32Encoder()),
     ],
-    ['clientAndDeviceHash', fixEncoderSize(getBytesEncoder(), 32)],
+    ["clientAndDeviceHash", fixEncoderSize(getBytesEncoder(), 32)],
   ]);
 }
 
 export function getSecp256r1VerifyArgsDecoder(): Decoder<Secp256r1VerifyArgs> {
   return getStructDecoder([
-    ['signedMessageIndex', getU8Decoder()],
-    ['slotNumber', getU64Decoder()],
-    ['originIndex', getU8Decoder()],
-    ['crossOrigin', getBooleanDecoder()],
+    ["signedMessageIndex", getU8Decoder()],
+    ["slotNumber", getU64Decoder()],
+    ["originIndex", getU8Decoder()],
+    ["crossOrigin", getBooleanDecoder()],
     [
-      'truncatedClientDataJson',
+      "truncatedClientDataJson",
       addDecoderSizePrefix(getBytesDecoder(), getU32Decoder()),
     ],
-    ['clientAndDeviceHash', fixDecoderSize(getBytesDecoder(), 32)],
+    ["clientAndDeviceHash", fixDecoderSize(getBytesDecoder(), 32)],
   ]);
 }
 
@@ -82,6 +82,6 @@ export function getSecp256r1VerifyArgsCodec(): Codec<
 > {
   return combineCodec(
     getSecp256r1VerifyArgsEncoder(),
-    getSecp256r1VerifyArgsDecoder()
+    getSecp256r1VerifyArgsDecoder(),
   );
 }

@@ -49,7 +49,7 @@ export async function signAndSendTransaction({
       addressesByLookupTableAddress
         ? compressTransactionMessageUsingAddressLookupTables(
             tx,
-            addressesByLookupTableAddress
+            addressesByLookupTableAddress,
           )
         : tx,
     async (tx) => {
@@ -57,7 +57,7 @@ export async function signAndSendTransaction({
         getComputeBudgetEstimate()(tx),
         getMedianPriorityFees(
           getSolanaRpc(),
-          tx.instructions.flatMap((x) => x.accounts ?? [])
+          tx.instructions.flatMap((x) => x.accounts ?? []),
         ),
       ]);
       const computeUnits = Math.ceil(estimatedUnits * COMPUTE_UNIT_MULTIPLIER);
@@ -78,10 +78,10 @@ export async function signAndSendTransaction({
               ]
             : []),
         ],
-        tx
+        tx,
       );
     },
-    async (tx) => await signTransactionMessageWithSigners(await tx)
+    async (tx) => await signTransactionMessageWithSigners(await tx),
   );
   await getSendAndConfirmTransaction()(tx, {
     commitment: "confirmed",

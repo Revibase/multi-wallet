@@ -29,6 +29,6 @@ export function parseRemainingAccounts({
           role: x.role,
           signer: x.signer,
         } as AccountSignerMeta)
-      : ({ address: x.address, role: x.role } as AccountMeta)
+      : ({ address: x.address, role: x.role } as AccountMeta),
   );
 }

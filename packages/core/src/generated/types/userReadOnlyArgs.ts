@@ -13,7 +13,7 @@ import {
   type Codec,
   type Decoder,
   type Encoder,
-} from 'gill';
+} from "gill";
 import {
   getCompressedAccountMetaReadOnlyDecoder,
   getCompressedAccountMetaReadOnlyEncoder,
@@ -23,7 +23,7 @@ import {
   type CompressedAccountMetaReadOnlyArgs,
   type User,
   type UserArgs,
-} from '.';
+} from ".";
 
 export type UserReadOnlyArgs = {
   accountMeta: CompressedAccountMetaReadOnly;
@@ -37,15 +37,15 @@ export type UserReadOnlyArgsArgs = {
 
 export function getUserReadOnlyArgsEncoder(): Encoder<UserReadOnlyArgsArgs> {
   return getStructEncoder([
-    ['accountMeta', getCompressedAccountMetaReadOnlyEncoder()],
-    ['data', getUserEncoder()],
+    ["accountMeta", getCompressedAccountMetaReadOnlyEncoder()],
+    ["data", getUserEncoder()],
   ]);
 }
 
 export function getUserReadOnlyArgsDecoder(): Decoder<UserReadOnlyArgs> {
   return getStructDecoder([
-    ['accountMeta', getCompressedAccountMetaReadOnlyDecoder()],
-    ['data', getUserDecoder()],
+    ["accountMeta", getCompressedAccountMetaReadOnlyDecoder()],
+    ["data", getUserDecoder()],
   ]);
 }
 
@@ -55,6 +55,6 @@ export function getUserReadOnlyArgsCodec(): Codec<
 > {
   return combineCodec(
     getUserReadOnlyArgsEncoder(),
-    getUserReadOnlyArgsDecoder()
+    getUserReadOnlyArgsDecoder(),
   );
 }

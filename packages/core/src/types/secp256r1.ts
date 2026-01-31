@@ -1,8 +1,17 @@
 import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
-import { getBase58Decoder, getBase58Encoder, type Address } from "gill";
+import {
+  getBase58Decoder,
+  getBase58Encoder,
+  type Address,
+  type ReadonlyUint8Array,
+} from "gill";
 
 const SECP256R1_PUBLIC_KEY_LENGTH = 33;
-type Secp256r1KeyInitData = string | Uint8Array | Array<number>;
+type Secp256r1KeyInitData =
+  | string
+  | Uint8Array
+  | Array<number>
+  | ReadonlyUint8Array;
 type SignedMessageDetails = {
   verifyArgs: {
     clientDataJson: Uint8Array<ArrayBuffer>;

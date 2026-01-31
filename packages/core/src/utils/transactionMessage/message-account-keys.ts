@@ -11,7 +11,7 @@ export class MessageAccountKeys {
     accountKeysFromLookups: {
       writable: Address[];
       readonly: Address[];
-    }
+    },
   ) {
     this.staticAccountKeys = staticAccountKeys;
     this.accountKeysFromLookups = accountKeysFromLookups;
@@ -56,7 +56,7 @@ export class MessageAccountKeys {
       const keyIndex = keyIndexMap.get(key);
       if (keyIndex === undefined)
         throw new Error(
-          "Encountered an unknown instruction account key during compilation"
+          "Encountered an unknown instruction account key during compilation",
         );
       return keyIndex;
     };

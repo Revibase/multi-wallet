@@ -33,10 +33,10 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from 'gill';
-import { parseRemainingAccounts } from '../../hooked';
-import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
-import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
+} from "gill";
+import { parseRemainingAccounts } from "../../hooked";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
   getProofArgsDecoder,
   getProofArgsEncoder,
@@ -50,13 +50,13 @@ import {
   type SettingsCreationArgsArgs,
   type UserReadOnlyOrMutateArgs,
   type UserReadOnlyOrMutateArgsArgs,
-} from '../types';
+} from "../types";
 
 export const CREATE_COMPRESSED_WALLET_DISCRIMINATOR = new Uint8Array([18]);
 
 export function getCreateCompressedWalletDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    CREATE_COMPRESSED_WALLET_DISCRIMINATOR
+    CREATE_COMPRESSED_WALLET_DISCRIMINATOR,
   );
 }
 
@@ -66,7 +66,7 @@ export type CreateCompressedWalletInstruction<
   TAccountInitialMember extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | AccountMeta<string> = '11111111111111111111111111111111',
+    | AccountMeta<string> = "11111111111111111111111111111111",
   TAccountGlobalCounter extends string | AccountMeta<string> = string,
   TAccountWhitelistedAddressTrees extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
@@ -113,26 +113,26 @@ export type CreateCompressedWalletInstructionDataArgs = {
 export function getCreateCompressedWalletInstructionDataEncoder(): Encoder<CreateCompressedWalletInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
-      ['compressedProofArgs', getProofArgsEncoder()],
-      ['settingsCreation', getSettingsCreationArgsEncoder()],
-      ['userArgs', getUserReadOnlyOrMutateArgsEncoder()],
-      ['settingsIndex', getU128Encoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
+      ["compressedProofArgs", getProofArgsEncoder()],
+      ["settingsCreation", getSettingsCreationArgsEncoder()],
+      ["userArgs", getUserReadOnlyOrMutateArgsEncoder()],
+      ["settingsIndex", getU128Encoder()],
     ]),
     (value) => ({
       ...value,
       discriminator: CREATE_COMPRESSED_WALLET_DISCRIMINATOR,
-    })
+    }),
   );
 }
 
 export function getCreateCompressedWalletInstructionDataDecoder(): Decoder<CreateCompressedWalletInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
-    ['compressedProofArgs', getProofArgsDecoder()],
-    ['settingsCreation', getSettingsCreationArgsDecoder()],
-    ['userArgs', getUserReadOnlyOrMutateArgsDecoder()],
-    ['settingsIndex', getU128Decoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ["compressedProofArgs", getProofArgsDecoder()],
+    ["settingsCreation", getSettingsCreationArgsDecoder()],
+    ["userArgs", getUserReadOnlyOrMutateArgsDecoder()],
+    ["settingsIndex", getU128Decoder()],
   ]);
 }
 
@@ -142,7 +142,7 @@ export function getCreateCompressedWalletInstructionDataCodec(): Codec<
 > {
   return combineCodec(
     getCreateCompressedWalletInstructionDataEncoder(),
-    getCreateCompressedWalletInstructionDataDecoder()
+    getCreateCompressedWalletInstructionDataDecoder(),
   );
 }
 
@@ -162,11 +162,11 @@ export type CreateCompressedWalletAsyncInput<
   systemProgram?: Address<TAccountSystemProgram>;
   globalCounter?: Address<TAccountGlobalCounter>;
   whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
-  compressedProofArgs: CreateCompressedWalletInstructionDataArgs['compressedProofArgs'];
-  settingsCreation: CreateCompressedWalletInstructionDataArgs['settingsCreation'];
-  userArgs: CreateCompressedWalletInstructionDataArgs['userArgs'];
-  settingsIndex: CreateCompressedWalletInstructionDataArgs['settingsIndex'];
-  remainingAccounts: CreateCompressedWalletInstructionExtraArgs['remainingAccounts'];
+  compressedProofArgs: CreateCompressedWalletInstructionDataArgs["compressedProofArgs"];
+  settingsCreation: CreateCompressedWalletInstructionDataArgs["settingsCreation"];
+  userArgs: CreateCompressedWalletInstructionDataArgs["userArgs"];
+  settingsIndex: CreateCompressedWalletInstructionDataArgs["settingsIndex"];
+  remainingAccounts: CreateCompressedWalletInstructionExtraArgs["remainingAccounts"];
 };
 
 export async function getCreateCompressedWalletInstructionAsync<
@@ -184,7 +184,7 @@ export async function getCreateCompressedWalletInstructionAsync<
     TAccountGlobalCounter,
     TAccountWhitelistedAddressTrees
   >,
-  config?: { programAddress?: TProgramAddress }
+  config?: { programAddress?: TProgramAddress },
 ): Promise<
   CreateCompressedWalletInstruction<
     TProgramAddress,
@@ -223,7 +223,7 @@ export async function getCreateCompressedWalletInstructionAsync<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
   if (!accounts.globalCounter.value) {
     accounts.globalCounter.value = await getProgramDerivedAddress({
@@ -232,7 +232,7 @@ export async function getCreateCompressedWalletInstructionAsync<
         getBytesEncoder().encode(
           new Uint8Array([
             103, 108, 111, 98, 97, 108, 95, 99, 111, 117, 110, 116, 101, 114,
-          ])
+          ]),
         ),
       ],
     });
@@ -245,7 +245,7 @@ export async function getCreateCompressedWalletInstructionAsync<
           new Uint8Array([
             119, 104, 105, 116, 101, 108, 105, 115, 116, 101, 100, 95, 97, 100,
             100, 114, 101, 115, 115, 95, 116, 114, 101, 101, 115,
-          ])
+          ]),
         ),
       ],
     });
@@ -255,7 +255,7 @@ export async function getCreateCompressedWalletInstructionAsync<
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.payer),
@@ -266,7 +266,7 @@ export async function getCreateCompressedWalletInstructionAsync<
       ...remainingAccounts,
     ],
     data: getCreateCompressedWalletInstructionDataEncoder().encode(
-      args as CreateCompressedWalletInstructionDataArgs
+      args as CreateCompressedWalletInstructionDataArgs,
     ),
     programAddress,
   } as CreateCompressedWalletInstruction<
@@ -291,11 +291,11 @@ export type CreateCompressedWalletInput<
   systemProgram?: Address<TAccountSystemProgram>;
   globalCounter: Address<TAccountGlobalCounter>;
   whitelistedAddressTrees: Address<TAccountWhitelistedAddressTrees>;
-  compressedProofArgs: CreateCompressedWalletInstructionDataArgs['compressedProofArgs'];
-  settingsCreation: CreateCompressedWalletInstructionDataArgs['settingsCreation'];
-  userArgs: CreateCompressedWalletInstructionDataArgs['userArgs'];
-  settingsIndex: CreateCompressedWalletInstructionDataArgs['settingsIndex'];
-  remainingAccounts: CreateCompressedWalletInstructionExtraArgs['remainingAccounts'];
+  compressedProofArgs: CreateCompressedWalletInstructionDataArgs["compressedProofArgs"];
+  settingsCreation: CreateCompressedWalletInstructionDataArgs["settingsCreation"];
+  userArgs: CreateCompressedWalletInstructionDataArgs["userArgs"];
+  settingsIndex: CreateCompressedWalletInstructionDataArgs["settingsIndex"];
+  remainingAccounts: CreateCompressedWalletInstructionExtraArgs["remainingAccounts"];
 };
 
 export function getCreateCompressedWalletInstruction<
@@ -313,7 +313,7 @@ export function getCreateCompressedWalletInstruction<
     TAccountGlobalCounter,
     TAccountWhitelistedAddressTrees
   >,
-  config?: { programAddress?: TProgramAddress }
+  config?: { programAddress?: TProgramAddress },
 ): CreateCompressedWalletInstruction<
   TProgramAddress,
   TAccountPayer,
@@ -350,14 +350,14 @@ export function getCreateCompressedWalletInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.payer),
@@ -368,7 +368,7 @@ export function getCreateCompressedWalletInstruction<
       ...remainingAccounts,
     ],
     data: getCreateCompressedWalletInstructionDataEncoder().encode(
-      args as CreateCompressedWalletInstructionDataArgs
+      args as CreateCompressedWalletInstructionDataArgs,
     ),
     programAddress,
   } as CreateCompressedWalletInstruction<
@@ -402,11 +402,11 @@ export function parseCreateCompressedWalletInstruction<
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
-    InstructionWithData<ReadonlyUint8Array>
+    InstructionWithData<ReadonlyUint8Array>,
 ): ParsedCreateCompressedWalletInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 5) {
     // TODO: Coded error.
-    throw new Error('Not enough accounts');
+    throw new Error("Not enough accounts");
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -424,7 +424,7 @@ export function parseCreateCompressedWalletInstruction<
       whitelistedAddressTrees: getNextAccount(),
     },
     data: getCreateCompressedWalletInstructionDataDecoder().decode(
-      instruction.data
+      instruction.data,
     ),
   };
 }

@@ -23,5 +23,5 @@ export function prepareTransactionMessage({
     addressesByLookupTableAddress,
   });
 
-  return vaultTransactionMessageSerialize(compiledMessage);
+  return new Uint8Array(vaultTransactionMessageSerialize(compiledMessage));
 }

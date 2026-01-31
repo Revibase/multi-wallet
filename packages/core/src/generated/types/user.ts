@@ -33,7 +33,7 @@ import {
   type Option,
   type OptionOrNullable,
   type ReadonlyUint8Array,
-} from 'gill';
+} from "gill";
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
@@ -51,7 +51,7 @@ import {
   type TransportsArgs,
   type UserRole,
   type UserRoleArgs,
-} from '.';
+} from ".";
 
 export type User = {
   domainConfig: Option<Address>;
@@ -77,49 +77,49 @@ export type UserArgs = {
 
 export function getUserEncoder(): Encoder<UserArgs> {
   return getStructEncoder([
-    ['domainConfig', getOptionEncoder(getAddressEncoder())],
-    ['member', getMemberKeyEncoder()],
+    ["domainConfig", getOptionEncoder(getAddressEncoder())],
+    ["member", getMemberKeyEncoder()],
     [
-      'credentialId',
+      "credentialId",
       getOptionEncoder(
-        addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())
+        addEncoderSizePrefix(getBytesEncoder(), getU32Encoder()),
       ),
     ],
-    ['transports', getOptionEncoder(getArrayEncoder(getTransportsEncoder()))],
+    ["transports", getOptionEncoder(getArrayEncoder(getTransportsEncoder()))],
     [
-      'wallets',
+      "wallets",
       getArrayEncoder(getSettingsIndexWithAddressAndDelegateInfoEncoder()),
     ],
-    ['role', getUserRoleEncoder()],
+    ["role", getUserRoleEncoder()],
     [
-      'transactionManagerUrl',
+      "transactionManagerUrl",
       getOptionEncoder(addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())),
     ],
-    ['userAddressTreeIndex', getU8Encoder()],
+    ["userAddressTreeIndex", getU8Encoder()],
   ]);
 }
 
 export function getUserDecoder(): Decoder<User> {
   return getStructDecoder([
-    ['domainConfig', getOptionDecoder(getAddressDecoder())],
-    ['member', getMemberKeyDecoder()],
+    ["domainConfig", getOptionDecoder(getAddressDecoder())],
+    ["member", getMemberKeyDecoder()],
     [
-      'credentialId',
+      "credentialId",
       getOptionDecoder(
-        addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())
+        addDecoderSizePrefix(getBytesDecoder(), getU32Decoder()),
       ),
     ],
-    ['transports', getOptionDecoder(getArrayDecoder(getTransportsDecoder()))],
+    ["transports", getOptionDecoder(getArrayDecoder(getTransportsDecoder()))],
     [
-      'wallets',
+      "wallets",
       getArrayDecoder(getSettingsIndexWithAddressAndDelegateInfoDecoder()),
     ],
-    ['role', getUserRoleDecoder()],
+    ["role", getUserRoleDecoder()],
     [
-      'transactionManagerUrl',
+      "transactionManagerUrl",
       getOptionDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
     ],
-    ['userAddressTreeIndex', getU8Decoder()],
+    ["userAddressTreeIndex", getU8Decoder()],
   ]);
 }
 

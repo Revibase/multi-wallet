@@ -17,13 +17,13 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from 'gill';
+} from "gill";
 import {
   getCompressionInfoDecoder,
   getCompressionInfoEncoder,
   type CompressionInfo,
   type CompressionInfoArgs,
-} from '.';
+} from ".";
 
 /**
  * Compressible extension for token accounts.
@@ -63,21 +63,21 @@ export type CompressibleExtensionArgs = {
 
 export function getCompressibleExtensionEncoder(): FixedSizeEncoder<CompressibleExtensionArgs> {
   return getStructEncoder([
-    ['decimalsOption', getU8Encoder()],
-    ['decimals', getU8Encoder()],
-    ['compressionOnly', getBooleanEncoder()],
-    ['isAta', getU8Encoder()],
-    ['info', getCompressionInfoEncoder()],
+    ["decimalsOption", getU8Encoder()],
+    ["decimals", getU8Encoder()],
+    ["compressionOnly", getBooleanEncoder()],
+    ["isAta", getU8Encoder()],
+    ["info", getCompressionInfoEncoder()],
   ]);
 }
 
 export function getCompressibleExtensionDecoder(): FixedSizeDecoder<CompressibleExtension> {
   return getStructDecoder([
-    ['decimalsOption', getU8Decoder()],
-    ['decimals', getU8Decoder()],
-    ['compressionOnly', getBooleanDecoder()],
-    ['isAta', getU8Decoder()],
-    ['info', getCompressionInfoDecoder()],
+    ["decimalsOption", getU8Decoder()],
+    ["decimals", getU8Decoder()],
+    ["compressionOnly", getBooleanDecoder()],
+    ["isAta", getU8Decoder()],
+    ["info", getCompressionInfoDecoder()],
   ]);
 }
 
@@ -87,6 +87,6 @@ export function getCompressibleExtensionCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getCompressibleExtensionEncoder(),
-    getCompressibleExtensionDecoder()
+    getCompressibleExtensionDecoder(),
   );
 }

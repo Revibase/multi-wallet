@@ -118,9 +118,9 @@ async function processBufferCreate(
     throw new Error("Invalid instruction");
   }
 
-  const transactionMessage = new Uint8Array(
-    getBase64Encoder().encode(transactionMessageBytes),
-  );
+  const transactionMessage = getBase64Encoder().encode(
+    transactionMessageBytes,
+  ) as Uint8Array<ArrayBuffer>;
 
   if (isCompressedInstruction) {
     return processCompressedBufferCreate(rpc, instruction, transactionMessage);

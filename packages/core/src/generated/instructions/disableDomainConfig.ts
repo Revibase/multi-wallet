@@ -30,16 +30,16 @@ import {
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableAccount,
-} from 'gill';
-import { parseRemainingAccounts } from '../../hooked';
-import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
-import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
+} from "gill";
+import { parseRemainingAccounts } from "../../hooked";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 
 export const DISABLE_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([2]);
 
 export function getDisableDomainConfigDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    DISABLE_DOMAIN_CONFIG_DISCRIMINATOR
+    DISABLE_DOMAIN_CONFIG_DISCRIMINATOR,
   );
 }
 
@@ -73,20 +73,20 @@ export type DisableDomainConfigInstructionDataArgs = { disable: boolean };
 export function getDisableDomainConfigInstructionDataEncoder(): FixedSizeEncoder<DisableDomainConfigInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
-      ['disable', getBooleanEncoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
+      ["disable", getBooleanEncoder()],
     ]),
     (value) => ({
       ...value,
       discriminator: DISABLE_DOMAIN_CONFIG_DISCRIMINATOR,
-    })
+    }),
   );
 }
 
 export function getDisableDomainConfigInstructionDataDecoder(): FixedSizeDecoder<DisableDomainConfigInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
-    ['disable', getBooleanDecoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ["disable", getBooleanDecoder()],
   ]);
 }
 
@@ -96,7 +96,7 @@ export function getDisableDomainConfigInstructionDataCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getDisableDomainConfigInstructionDataEncoder(),
-    getDisableDomainConfigInstructionDataDecoder()
+    getDisableDomainConfigInstructionDataDecoder(),
   );
 }
 
@@ -110,8 +110,8 @@ export type DisableDomainConfigInput<
 > = {
   domainConfig: Address<TAccountDomainConfig>;
   admin: TransactionSigner<TAccountAdmin>;
-  disable: DisableDomainConfigInstructionDataArgs['disable'];
-  remainingAccounts: DisableDomainConfigInstructionExtraArgs['remainingAccounts'];
+  disable: DisableDomainConfigInstructionDataArgs["disable"];
+  remainingAccounts: DisableDomainConfigInstructionExtraArgs["remainingAccounts"];
 };
 
 export function getDisableDomainConfigInstruction<
@@ -120,7 +120,7 @@ export function getDisableDomainConfigInstruction<
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
   input: DisableDomainConfigInput<TAccountDomainConfig, TAccountAdmin>,
-  config?: { programAddress?: TProgramAddress }
+  config?: { programAddress?: TProgramAddress },
 ): DisableDomainConfigInstruction<
   TProgramAddress,
   TAccountDomainConfig,
@@ -149,7 +149,7 @@ export function getDisableDomainConfigInstruction<
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.domainConfig),
@@ -157,7 +157,7 @@ export function getDisableDomainConfigInstruction<
       ...remainingAccounts,
     ],
     data: getDisableDomainConfigInstructionDataEncoder().encode(
-      args as DisableDomainConfigInstructionDataArgs
+      args as DisableDomainConfigInstructionDataArgs,
     ),
     programAddress,
   } as DisableDomainConfigInstruction<
@@ -185,11 +185,11 @@ export function parseDisableDomainConfigInstruction<
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
-    InstructionWithData<ReadonlyUint8Array>
+    InstructionWithData<ReadonlyUint8Array>,
 ): ParsedDisableDomainConfigInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 2) {
     // TODO: Coded error.
-    throw new Error('Not enough accounts');
+    throw new Error("Not enough accounts");
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -201,7 +201,7 @@ export function parseDisableDomainConfigInstruction<
     programAddress: instruction.programAddress,
     accounts: { domainConfig: getNextAccount(), admin: getNextAccount() },
     data: getDisableDomainConfigInstructionDataDecoder().decode(
-      instruction.data
+      instruction.data,
     ),
   };
 }

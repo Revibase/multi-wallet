@@ -34,7 +34,9 @@ export async function processCompressedTransferIntent(
       ? getNativeTransferIntentCompressedInstructionDataDecoder()
       : getTokenTransferIntentCompressedInstructionDataDecoder();
 
-  const decodedInstructionData = instructionDataDecoder.decode(instruction.data);
+  const decodedInstructionData = instructionDataDecoder.decode(
+    instruction.data,
+  );
 
   const settingsAddress = await extractSettingsFromCompressed(
     decodedInstructionData.settingsMutArgs,
@@ -79,7 +81,9 @@ export async function processTransferIntent(
       ? getNativeTransferIntentInstructionDataDecoder()
       : getTokenTransferIntentInstructionDataDecoder();
 
-  const decodedInstructionData = instructionDataDecoder.decode(instruction.data);
+  const decodedInstructionData = instructionDataDecoder.decode(
+    instruction.data,
+  );
 
   const settingsAddress = instruction.accounts[0].address.toString();
 

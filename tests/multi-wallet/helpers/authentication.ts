@@ -65,7 +65,7 @@ export async function mockAuthenticationResponse(
 
   const messageBuffer = new Uint8Array([
     ...mockAuthenticatorData,
-    ...new Uint8Array(clientDataHash),
+    ...clientDataHash,
   ]);
 
   const signature = new Uint8Array(

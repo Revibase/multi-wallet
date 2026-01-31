@@ -58,7 +58,7 @@ export function initializeWallet(input: InitializeWalletArgs): void {
       providerOrigin: input.providerOrigin,
     });
     registerWallet(
-      new RevibaseWallet(createRevibaseAdapter(provider, input.feePayer))
+      new RevibaseWallet(createRevibaseAdapter(provider, input.feePayer)),
     );
   }
 }

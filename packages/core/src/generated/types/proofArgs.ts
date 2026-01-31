@@ -19,13 +19,13 @@ import {
   type Encoder,
   type Option,
   type OptionOrNullable,
-} from 'gill';
+} from "gill";
 import {
   getCompressedProofDecoder,
   getCompressedProofEncoder,
   type CompressedProof,
   type CompressedProofArgs,
-} from '.';
+} from ".";
 
 export type ProofArgs = {
   proof: Option<CompressedProof>;
@@ -39,15 +39,15 @@ export type ProofArgsArgs = {
 
 export function getProofArgsEncoder(): Encoder<ProofArgsArgs> {
   return getStructEncoder([
-    ['proof', getOptionEncoder(getCompressedProofEncoder())],
-    ['lightCpiAccountsStartIndex', getU8Encoder()],
+    ["proof", getOptionEncoder(getCompressedProofEncoder())],
+    ["lightCpiAccountsStartIndex", getU8Encoder()],
   ]);
 }
 
 export function getProofArgsDecoder(): Decoder<ProofArgs> {
   return getStructDecoder([
-    ['proof', getOptionDecoder(getCompressedProofDecoder())],
-    ['lightCpiAccountsStartIndex', getU8Decoder()],
+    ["proof", getOptionDecoder(getCompressedProofDecoder())],
+    ["lightCpiAccountsStartIndex", getU8Decoder()],
   ]);
 }
 

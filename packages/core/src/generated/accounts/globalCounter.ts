@@ -33,7 +33,7 @@ import {
   type MaybeAccount,
   type MaybeEncodedAccount,
   type ReadonlyUint8Array,
-} from 'gill';
+} from "gill";
 
 export const GLOBAL_COUNTER_DISCRIMINATOR = new Uint8Array([
   42, 206, 176, 58, 175, 129, 130, 233,
@@ -41,7 +41,7 @@ export const GLOBAL_COUNTER_DISCRIMINATOR = new Uint8Array([
 
 export function getGlobalCounterDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 8).encode(
-    GLOBAL_COUNTER_DISCRIMINATOR
+    GLOBAL_COUNTER_DISCRIMINATOR,
   );
 }
 
@@ -55,17 +55,17 @@ export type GlobalCounterArgs = { index: number | bigint };
 export function getGlobalCounterEncoder(): FixedSizeEncoder<GlobalCounterArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
-      ['index', getU128Encoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
+      ["index", getU128Encoder()],
     ]),
-    (value) => ({ ...value, discriminator: GLOBAL_COUNTER_DISCRIMINATOR })
+    (value) => ({ ...value, discriminator: GLOBAL_COUNTER_DISCRIMINATOR }),
   );
 }
 
 export function getGlobalCounterDecoder(): FixedSizeDecoder<GlobalCounter> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
-    ['index', getU128Decoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
+    ["index", getU128Decoder()],
   ]);
 }
 
@@ -77,24 +77,24 @@ export function getGlobalCounterCodec(): FixedSizeCodec<
 }
 
 export function decodeGlobalCounter<TAddress extends string = string>(
-  encodedAccount: EncodedAccount<TAddress>
+  encodedAccount: EncodedAccount<TAddress>,
 ): Account<GlobalCounter, TAddress>;
 export function decodeGlobalCounter<TAddress extends string = string>(
-  encodedAccount: MaybeEncodedAccount<TAddress>
+  encodedAccount: MaybeEncodedAccount<TAddress>,
 ): MaybeAccount<GlobalCounter, TAddress>;
 export function decodeGlobalCounter<TAddress extends string = string>(
-  encodedAccount: EncodedAccount<TAddress> | MaybeEncodedAccount<TAddress>
+  encodedAccount: EncodedAccount<TAddress> | MaybeEncodedAccount<TAddress>,
 ): Account<GlobalCounter, TAddress> | MaybeAccount<GlobalCounter, TAddress> {
   return decodeAccount(
     encodedAccount as MaybeEncodedAccount<TAddress>,
-    getGlobalCounterDecoder()
+    getGlobalCounterDecoder(),
   );
 }
 
 export async function fetchGlobalCounter<TAddress extends string = string>(
   rpc: Parameters<typeof fetchEncodedAccount>[0],
   address: Address<TAddress>,
-  config?: FetchAccountConfig
+  config?: FetchAccountConfig,
 ): Promise<Account<GlobalCounter, TAddress>> {
   const maybeAccount = await fetchMaybeGlobalCounter(rpc, address, config);
   assertAccountExists(maybeAccount);
@@ -104,7 +104,7 @@ export async function fetchGlobalCounter<TAddress extends string = string>(
 export async function fetchMaybeGlobalCounter<TAddress extends string = string>(
   rpc: Parameters<typeof fetchEncodedAccount>[0],
   address: Address<TAddress>,
-  config?: FetchAccountConfig
+  config?: FetchAccountConfig,
 ): Promise<MaybeAccount<GlobalCounter, TAddress>> {
   const maybeAccount = await fetchEncodedAccount(rpc, address, config);
   return decodeGlobalCounter(maybeAccount);
@@ -113,12 +113,12 @@ export async function fetchMaybeGlobalCounter<TAddress extends string = string>(
 export async function fetchAllGlobalCounter(
   rpc: Parameters<typeof fetchEncodedAccounts>[0],
   addresses: Array<Address>,
-  config?: FetchAccountsConfig
+  config?: FetchAccountsConfig,
 ): Promise<Account<GlobalCounter>[]> {
   const maybeAccounts = await fetchAllMaybeGlobalCounter(
     rpc,
     addresses,
-    config
+    config,
   );
   assertAccountsExist(maybeAccounts);
   return maybeAccounts;
@@ -127,7 +127,7 @@ export async function fetchAllGlobalCounter(
 export async function fetchAllMaybeGlobalCounter(
   rpc: Parameters<typeof fetchEncodedAccounts>[0],
   addresses: Array<Address>,
-  config?: FetchAccountsConfig
+  config?: FetchAccountsConfig,
 ): Promise<MaybeAccount<GlobalCounter>[]> {
   const maybeAccounts = await fetchEncodedAccounts(rpc, addresses, config);
   return maybeAccounts.map((maybeAccount) => decodeGlobalCounter(maybeAccount));

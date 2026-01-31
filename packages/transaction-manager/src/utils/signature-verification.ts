@@ -103,10 +103,7 @@ export async function verifyTransactionAuthResponseWithMessageHash(
     slotNumber,
   );
 
-  const receivedChallenge = new Uint8Array(
-    base64URLStringToBuffer(clientDataJson.challenge),
-  );
-
+  const receivedChallenge = base64URLStringToBuffer(clientDataJson.challenge);
   if (!equalBytes(receivedChallenge, expectedChallenge)) {
     throw new Error("Invalid challenge");
   }
@@ -124,5 +121,5 @@ export async function verifyTransactionBufferHash(
   transactionMessage: Uint8Array<ArrayBuffer>,
 ): Promise<boolean> {
   const computedHash = sha256(transactionMessage);
-  return equalBytes(new Uint8Array(bufferArgs.finalBufferHash), computedHash);
+  return equalBytes(bufferArgs.finalBufferHash as Uint8Array, computedHash);
 }

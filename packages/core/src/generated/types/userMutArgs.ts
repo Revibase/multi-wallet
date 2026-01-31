@@ -13,7 +13,7 @@ import {
   type Codec,
   type Decoder,
   type Encoder,
-} from 'gill';
+} from "gill";
 import {
   getCompressedAccountMetaDecoder,
   getCompressedAccountMetaEncoder,
@@ -23,7 +23,7 @@ import {
   type CompressedAccountMetaArgs,
   type User,
   type UserArgs,
-} from '.';
+} from ".";
 
 export type UserMutArgs = { accountMeta: CompressedAccountMeta; data: User };
 
@@ -34,15 +34,15 @@ export type UserMutArgsArgs = {
 
 export function getUserMutArgsEncoder(): Encoder<UserMutArgsArgs> {
   return getStructEncoder([
-    ['accountMeta', getCompressedAccountMetaEncoder()],
-    ['data', getUserEncoder()],
+    ["accountMeta", getCompressedAccountMetaEncoder()],
+    ["data", getUserEncoder()],
   ]);
 }
 
 export function getUserMutArgsDecoder(): Decoder<UserMutArgs> {
   return getStructDecoder([
-    ['accountMeta', getCompressedAccountMetaDecoder()],
-    ['data', getUserDecoder()],
+    ["accountMeta", getCompressedAccountMetaDecoder()],
+    ["data", getUserDecoder()],
   ]);
 }
 

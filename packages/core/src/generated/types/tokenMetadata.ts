@@ -25,13 +25,13 @@ import {
   type Decoder,
   type Encoder,
   type ReadonlyUint8Array,
-} from 'gill';
+} from "gill";
 import {
   getAdditionalMetadataDecoder,
   getAdditionalMetadataEncoder,
   type AdditionalMetadata,
   type AdditionalMetadataArgs,
-} from '.';
+} from ".";
 
 /** Used for onchain serialization */
 export type TokenMetadata = {
@@ -84,23 +84,23 @@ export type TokenMetadataArgs = {
 
 export function getTokenMetadataEncoder(): Encoder<TokenMetadataArgs> {
   return getStructEncoder([
-    ['updateAuthority', getAddressEncoder()],
-    ['mint', getAddressEncoder()],
-    ['name', addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
-    ['symbol', addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
-    ['uri', addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
-    ['additionalMetadata', getArrayEncoder(getAdditionalMetadataEncoder())],
+    ["updateAuthority", getAddressEncoder()],
+    ["mint", getAddressEncoder()],
+    ["name", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
+    ["symbol", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
+    ["uri", addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())],
+    ["additionalMetadata", getArrayEncoder(getAdditionalMetadataEncoder())],
   ]);
 }
 
 export function getTokenMetadataDecoder(): Decoder<TokenMetadata> {
   return getStructDecoder([
-    ['updateAuthority', getAddressDecoder()],
-    ['mint', getAddressDecoder()],
-    ['name', addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
-    ['symbol', addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
-    ['uri', addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
-    ['additionalMetadata', getArrayDecoder(getAdditionalMetadataDecoder())],
+    ["updateAuthority", getAddressDecoder()],
+    ["mint", getAddressDecoder()],
+    ["name", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
+    ["symbol", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
+    ["uri", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
+    ["additionalMetadata", getArrayDecoder(getAdditionalMetadataDecoder())],
   ]);
 }
 

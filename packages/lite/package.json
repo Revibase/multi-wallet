@@ -1,6 +1,6 @@
 {
   "name": "@revibase/lite",
-  "version": "0.0.21",
+  "version": "0.0.22",
   "scripts": {
     "build": "rimraf dist & tsup",
     "clean": "rimraf dist",
@@ -38,6 +38,7 @@
   "dependencies": {
     "@revibase/core": "workspace:*",
     "@simplewebauthn/server": "^13.2.2",
+    "jose": "^6.1.3",
     "zod": "^4.3.5"
   },
   "devDependencies": {

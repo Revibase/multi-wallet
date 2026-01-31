@@ -40,7 +40,7 @@ export async function editDomainConfig({
 
     const { address, addressTree } = await getUserAccountAddress(
       newAuthority.address,
-      userAddressTreeIndex
+      userAddressTreeIndex,
     );
     const newAddressParams = [
       {
@@ -58,7 +58,7 @@ export async function editDomainConfig({
         proof.treeInfos,
         proof.roots,
         proof.rootIndices,
-        newAddressParams
+        newAddressParams,
       )
     )[0];
 
@@ -67,7 +67,7 @@ export async function editDomainConfig({
 
     const compressedProofArgs = convertToCompressedProofArgs(
       proof,
-      accountMetas.systemOffset
+      accountMetas.systemOffset,
     );
 
     newAuthorityArgs = { compressedProofArgs, authorityCreationArgs };

@@ -8,19 +8,9 @@ import { getBase64Encoder, type TransactionSigner } from "gill";
 import { estimateJitoTips, getAddressByLookUpTable } from "src/utils/internal";
 import { prepareTransactionContext } from "./shared";
 
-/**
- * Processes a bundled transaction.
- * Used for large transactions that need to be split into bundles.
- *
- * @param request - Complete transaction request
- * @param privateKey - Ed25519 private key for signing
- * @param feePayer - Optional fee payer (defaults to random payer from API)
- * @returns Transaction signatures
- * @throws {Error} If transaction action type is not "execute" or "create_with_preauthorized_execution"
- */
 export async function processBundledTransaction(
   request: CompleteTransactionRequest,
-  privateKey: CryptoKey,
+  privateKey: string,
   feePayer?: TransactionSigner,
 ): Promise<string> {
   const { transactionActionType, transactionMessageBytes } =
@@ -48,7 +38,9 @@ export async function processBundledTransaction(
     index: context.settingsIndexWithAddress.index,
     settingsAddressTreeIndex:
       context.settingsIndexWithAddress.settingsAddressTreeIndex,
-    transactionMessageBytes: getBase64Encoder().encode(transactionMessageBytes),
+    transactionMessageBytes: getBase64Encoder().encode(
+      transactionMessageBytes,
+    ) as Uint8Array<ArrayBuffer>,
     creator: context.transactionManagerSigner ?? context.signedSigner,
     executor: context.transactionManagerSigner
       ? context.signedSigner

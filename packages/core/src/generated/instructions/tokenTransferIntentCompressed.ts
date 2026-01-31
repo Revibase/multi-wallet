@@ -39,14 +39,14 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from 'gill';
-import { parseRemainingAccounts } from '../../hooked';
-import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+} from "gill";
+import { parseRemainingAccounts } from "../../hooked";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import {
   expectAddress,
   getAccountMetaFactory,
   type ResolvedAccount,
-} from '../shared';
+} from "../shared";
 import {
   getCompressedTokenArgsDecoder,
   getCompressedTokenArgsEncoder,
@@ -68,7 +68,7 @@ import {
   type SettingsMutArgsArgs,
   type SplInterfacePdaArgs,
   type SplInterfacePdaArgsArgs,
-} from '../types';
+} from "../types";
 
 export const TOKEN_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR = new Uint8Array([
   28,
@@ -76,7 +76,7 @@ export const TOKEN_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR = new Uint8Array([
 
 export function getTokenTransferIntentCompressedDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    TOKEN_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR
+    TOKEN_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR,
   );
 }
 
@@ -85,10 +85,10 @@ export type TokenTransferIntentCompressedInstruction<
   TAccountPayer extends string | AccountMeta<string> = string,
   TAccountSlotHashSysvar extends
     | string
-    | AccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
+    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
   TAccountInstructionsSysvar extends
     | string
-    | AccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
+    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
   TAccountSource extends string | AccountMeta<string> = string,
   TAccountSourceSplTokenAccount extends string | AccountMeta<string> = string,
   TAccountSourceCtokenTokenAccount extends
@@ -103,20 +103,20 @@ export type TokenTransferIntentCompressedInstruction<
     | AccountMeta<string> = string,
   TAccountTokenProgram extends
     | string
-    | AccountMeta<string> = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+    | AccountMeta<string> = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
   TAccountMint extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | AccountMeta<string> = '11111111111111111111111111111111',
+    | AccountMeta<string> = "11111111111111111111111111111111",
   TAccountCompressedTokenProgramAuthority extends
     | string
-    | AccountMeta<string> = 'GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy',
+    | AccountMeta<string> = "GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy",
   TAccountSplInterfacePda extends string | AccountMeta<string> = string,
   TAccountCompressibleConfig extends string | AccountMeta<string> = string,
   TAccountRentSponsor extends string | AccountMeta<string> = string,
   TAccountCompressedTokenProgram extends
     | string
-    | AccountMeta<string> = 'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m',
+    | AccountMeta<string> = "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -202,45 +202,45 @@ export type TokenTransferIntentCompressedInstructionDataArgs = {
 export function getTokenTransferIntentCompressedInstructionDataEncoder(): Encoder<TokenTransferIntentCompressedInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       [
-        'splInterfacePdaArgs',
+        "splInterfacePdaArgs",
         getOptionEncoder(getSplInterfacePdaArgsEncoder()),
       ],
-      ['amount', getU64Encoder()],
+      ["amount", getU64Encoder()],
       [
-        'sourceCompressedTokenAccounts',
+        "sourceCompressedTokenAccounts",
         getOptionEncoder(getArrayEncoder(getCompressedTokenArgsEncoder())),
       ],
       [
-        'secp256r1VerifyArgs',
+        "secp256r1VerifyArgs",
         getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
       ],
-      ['settingsMutArgs', getSettingsMutArgsEncoder()],
-      ['compressedProofArgs', getProofArgsEncoder()],
+      ["settingsMutArgs", getSettingsMutArgsEncoder()],
+      ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
       ...value,
       discriminator: TOKEN_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR,
-    })
+    }),
   );
 }
 
 export function getTokenTransferIntentCompressedInstructionDataDecoder(): Decoder<TokenTransferIntentCompressedInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
-    ['splInterfacePdaArgs', getOptionDecoder(getSplInterfacePdaArgsDecoder())],
-    ['amount', getU64Decoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ["splInterfacePdaArgs", getOptionDecoder(getSplInterfacePdaArgsDecoder())],
+    ["amount", getU64Decoder()],
     [
-      'sourceCompressedTokenAccounts',
+      "sourceCompressedTokenAccounts",
       getOptionDecoder(getArrayDecoder(getCompressedTokenArgsDecoder())),
     ],
     [
-      'secp256r1VerifyArgs',
+      "secp256r1VerifyArgs",
       getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
     ],
-    ['settingsMutArgs', getSettingsMutArgsDecoder()],
-    ['compressedProofArgs', getProofArgsDecoder()],
+    ["settingsMutArgs", getSettingsMutArgsDecoder()],
+    ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }
 
@@ -250,7 +250,7 @@ export function getTokenTransferIntentCompressedInstructionDataCodec(): Codec<
 > {
   return combineCodec(
     getTokenTransferIntentCompressedInstructionDataEncoder(),
-    getTokenTransferIntentCompressedInstructionDataDecoder()
+    getTokenTransferIntentCompressedInstructionDataDecoder(),
   );
 }
 
@@ -294,13 +294,13 @@ export type TokenTransferIntentCompressedAsyncInput<
   compressibleConfig: Address<TAccountCompressibleConfig>;
   rentSponsor?: Address<TAccountRentSponsor>;
   compressedTokenProgram?: Address<TAccountCompressedTokenProgram>;
-  splInterfacePdaArgs: TokenTransferIntentCompressedInstructionDataArgs['splInterfacePdaArgs'];
-  amount: TokenTransferIntentCompressedInstructionDataArgs['amount'];
-  sourceCompressedTokenAccounts: TokenTransferIntentCompressedInstructionDataArgs['sourceCompressedTokenAccounts'];
-  secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs['secp256r1VerifyArgs'];
-  settingsMutArgs: TokenTransferIntentCompressedInstructionDataArgs['settingsMutArgs'];
-  compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs['compressedProofArgs'];
-  remainingAccounts: TokenTransferIntentCompressedInstructionExtraArgs['remainingAccounts'];
+  splInterfacePdaArgs: TokenTransferIntentCompressedInstructionDataArgs["splInterfacePdaArgs"];
+  amount: TokenTransferIntentCompressedInstructionDataArgs["amount"];
+  sourceCompressedTokenAccounts: TokenTransferIntentCompressedInstructionDataArgs["sourceCompressedTokenAccounts"];
+  secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs["secp256r1VerifyArgs"];
+  settingsMutArgs: TokenTransferIntentCompressedInstructionDataArgs["settingsMutArgs"];
+  compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs["compressedProofArgs"];
+  remainingAccounts: TokenTransferIntentCompressedInstructionExtraArgs["remainingAccounts"];
 };
 
 export async function getTokenTransferIntentCompressedInstructionAsync<
@@ -342,7 +342,7 @@ export async function getTokenTransferIntentCompressedInstructionAsync<
     TAccountRentSponsor,
     TAccountCompressedTokenProgram
   >,
-  config?: { programAddress?: TProgramAddress }
+  config?: { programAddress?: TProgramAddress },
 ): Promise<
   TokenTransferIntentCompressedInstruction<
     TProgramAddress,
@@ -426,20 +426,20 @@ export async function getTokenTransferIntentCompressedInstructionAsync<
   // Resolve default values.
   if (!accounts.slotHashSysvar.value) {
     accounts.slotHashSysvar.value =
-      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
+      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
   }
   if (!accounts.instructionsSysvar.value) {
     accounts.instructionsSysvar.value =
-      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
+      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
   }
   if (!accounts.tokenProgram.value) {
     accounts.tokenProgram.value =
-      'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' as Address<'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'>;
+      "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address<"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA">;
   }
   if (!accounts.sourceSplTokenAccount.value) {
     accounts.sourceSplTokenAccount.value = await getProgramDerivedAddress({
       programAddress:
-        'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL' as Address<'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'>,
+        "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">,
       seeds: [
         getAddressEncoder().encode(expectAddress(accounts.source.value)),
         getAddressEncoder().encode(expectAddress(accounts.tokenProgram.value)),
@@ -450,7 +450,7 @@ export async function getTokenTransferIntentCompressedInstructionAsync<
   if (!accounts.sourceCtokenTokenAccount.value) {
     accounts.sourceCtokenTokenAccount.value = await getProgramDerivedAddress({
       programAddress:
-        'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m' as Address<'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m'>,
+        "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m" as Address<"cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m">,
       seeds: [
         getAddressEncoder().encode(expectAddress(accounts.source.value)),
         getBytesEncoder().encode(
@@ -458,7 +458,7 @@ export async function getTokenTransferIntentCompressedInstructionAsync<
             9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114, 105,
             156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65, 142, 128,
             151, 91, 68,
-          ])
+          ]),
         ),
         getAddressEncoder().encode(expectAddress(accounts.mint.value)),
       ],
@@ -467,7 +467,7 @@ export async function getTokenTransferIntentCompressedInstructionAsync<
   if (!accounts.destinationSplTokenAccount.value) {
     accounts.destinationSplTokenAccount.value = await getProgramDerivedAddress({
       programAddress:
-        'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL' as Address<'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'>,
+        "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL" as Address<"ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL">,
       seeds: [
         getAddressEncoder().encode(expectAddress(accounts.destination.value)),
         getAddressEncoder().encode(expectAddress(accounts.tokenProgram.value)),
@@ -479,7 +479,7 @@ export async function getTokenTransferIntentCompressedInstructionAsync<
     accounts.destinationCtokenTokenAccount.value =
       await getProgramDerivedAddress({
         programAddress:
-          'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m' as Address<'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m'>,
+          "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m" as Address<"cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m">,
         seeds: [
           getAddressEncoder().encode(expectAddress(accounts.destination.value)),
           getBytesEncoder().encode(
@@ -487,7 +487,7 @@ export async function getTokenTransferIntentCompressedInstructionAsync<
               9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114, 105,
               156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65, 142, 128,
               151, 91, 68,
-            ])
+            ]),
           ),
           getAddressEncoder().encode(expectAddress(accounts.mint.value)),
         ],
@@ -495,22 +495,22 @@ export async function getTokenTransferIntentCompressedInstructionAsync<
   }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
   if (!accounts.compressedTokenProgramAuthority.value) {
     accounts.compressedTokenProgramAuthority.value =
-      'GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy' as Address<'GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy'>;
+      "GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy" as Address<"GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy">;
   }
   if (!accounts.compressedTokenProgram.value) {
     accounts.compressedTokenProgram.value =
-      'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m' as Address<'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m'>;
+      "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m" as Address<"cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m">;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.payer),
@@ -533,7 +533,7 @@ export async function getTokenTransferIntentCompressedInstructionAsync<
       ...remainingAccounts,
     ],
     data: getTokenTransferIntentCompressedInstructionDataEncoder().encode(
-      args as TokenTransferIntentCompressedInstructionDataArgs
+      args as TokenTransferIntentCompressedInstructionDataArgs,
     ),
     programAddress,
   } as TokenTransferIntentCompressedInstruction<
@@ -594,13 +594,13 @@ export type TokenTransferIntentCompressedInput<
   compressibleConfig: Address<TAccountCompressibleConfig>;
   rentSponsor?: Address<TAccountRentSponsor>;
   compressedTokenProgram?: Address<TAccountCompressedTokenProgram>;
-  splInterfacePdaArgs: TokenTransferIntentCompressedInstructionDataArgs['splInterfacePdaArgs'];
-  amount: TokenTransferIntentCompressedInstructionDataArgs['amount'];
-  sourceCompressedTokenAccounts: TokenTransferIntentCompressedInstructionDataArgs['sourceCompressedTokenAccounts'];
-  secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs['secp256r1VerifyArgs'];
-  settingsMutArgs: TokenTransferIntentCompressedInstructionDataArgs['settingsMutArgs'];
-  compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs['compressedProofArgs'];
-  remainingAccounts: TokenTransferIntentCompressedInstructionExtraArgs['remainingAccounts'];
+  splInterfacePdaArgs: TokenTransferIntentCompressedInstructionDataArgs["splInterfacePdaArgs"];
+  amount: TokenTransferIntentCompressedInstructionDataArgs["amount"];
+  sourceCompressedTokenAccounts: TokenTransferIntentCompressedInstructionDataArgs["sourceCompressedTokenAccounts"];
+  secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs["secp256r1VerifyArgs"];
+  settingsMutArgs: TokenTransferIntentCompressedInstructionDataArgs["settingsMutArgs"];
+  compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs["compressedProofArgs"];
+  remainingAccounts: TokenTransferIntentCompressedInstructionExtraArgs["remainingAccounts"];
 };
 
 export function getTokenTransferIntentCompressedInstruction<
@@ -642,7 +642,7 @@ export function getTokenTransferIntentCompressedInstruction<
     TAccountRentSponsor,
     TAccountCompressedTokenProgram
   >,
-  config?: { programAddress?: TProgramAddress }
+  config?: { programAddress?: TProgramAddress },
 ): TokenTransferIntentCompressedInstruction<
   TProgramAddress,
   TAccountPayer,
@@ -724,34 +724,34 @@ export function getTokenTransferIntentCompressedInstruction<
   // Resolve default values.
   if (!accounts.slotHashSysvar.value) {
     accounts.slotHashSysvar.value =
-      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
+      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
   }
   if (!accounts.instructionsSysvar.value) {
     accounts.instructionsSysvar.value =
-      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
+      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
   }
   if (!accounts.tokenProgram.value) {
     accounts.tokenProgram.value =
-      'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' as Address<'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'>;
+      "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" as Address<"TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA">;
   }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
   if (!accounts.compressedTokenProgramAuthority.value) {
     accounts.compressedTokenProgramAuthority.value =
-      'GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy' as Address<'GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy'>;
+      "GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy" as Address<"GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy">;
   }
   if (!accounts.compressedTokenProgram.value) {
     accounts.compressedTokenProgram.value =
-      'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m' as Address<'cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m'>;
+      "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m" as Address<"cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m">;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.payer),
@@ -774,7 +774,7 @@ export function getTokenTransferIntentCompressedInstruction<
       ...remainingAccounts,
     ],
     data: getTokenTransferIntentCompressedInstructionDataEncoder().encode(
-      args as TokenTransferIntentCompressedInstructionDataArgs
+      args as TokenTransferIntentCompressedInstructionDataArgs,
     ),
     programAddress,
   } as TokenTransferIntentCompressedInstruction<
@@ -832,11 +832,11 @@ export function parseTokenTransferIntentCompressedInstruction<
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
-    InstructionWithData<ReadonlyUint8Array>
+    InstructionWithData<ReadonlyUint8Array>,
 ): ParsedTokenTransferIntentCompressedInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 17) {
     // TODO: Coded error.
-    throw new Error('Not enough accounts');
+    throw new Error("Not enough accounts");
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -872,7 +872,7 @@ export function parseTokenTransferIntentCompressedInstruction<
       compressedTokenProgram: getNextAccount(),
     },
     data: getTokenTransferIntentCompressedInstructionDataDecoder().decode(
-      instruction.data
+      instruction.data,
     ),
   };
 }

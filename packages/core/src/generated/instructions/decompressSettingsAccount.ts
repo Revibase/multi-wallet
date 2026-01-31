@@ -31,10 +31,10 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from 'gill';
-import { parseRemainingAccounts } from '../../hooked';
-import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
-import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
+} from "gill";
+import { parseRemainingAccounts } from "../../hooked";
+import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
   getProofArgsDecoder,
   getProofArgsEncoder,
@@ -48,13 +48,13 @@ import {
   type Secp256r1VerifyArgsWithDomainAddressArgs,
   type SettingsMutArgs,
   type SettingsMutArgsArgs,
-} from '../types';
+} from "../types";
 
 export const DECOMPRESS_SETTINGS_ACCOUNT_DISCRIMINATOR = new Uint8Array([17]);
 
 export function getDecompressSettingsAccountDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    DECOMPRESS_SETTINGS_ACCOUNT_DISCRIMINATOR
+    DECOMPRESS_SETTINGS_ACCOUNT_DISCRIMINATOR,
   );
 }
 
@@ -64,13 +64,13 @@ export type DecompressSettingsAccountInstruction<
   TAccountPayer extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
-    | AccountMeta<string> = '11111111111111111111111111111111',
+    | AccountMeta<string> = "11111111111111111111111111111111",
   TAccountSlotHashSysvar extends
     | string
-    | AccountMeta<string> = 'SysvarS1otHashes111111111111111111111111111',
+    | AccountMeta<string> = "SysvarS1otHashes111111111111111111111111111",
   TAccountInstructionsSysvar extends
     | string
-    | AccountMeta<string> = 'Sysvar1nstructions1111111111111111111111111',
+    | AccountMeta<string> = "Sysvar1nstructions1111111111111111111111111",
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -112,28 +112,28 @@ export type DecompressSettingsAccountInstructionDataArgs = {
 export function getDecompressSettingsAccountInstructionDataEncoder(): Encoder<DecompressSettingsAccountInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
-      ['settingsMutArgs', getSettingsMutArgsEncoder()],
-      ['compressedProofArgs', getProofArgsEncoder()],
+      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
+      ["settingsMutArgs", getSettingsMutArgsEncoder()],
+      ["compressedProofArgs", getProofArgsEncoder()],
       [
-        'secp256r1VerifyArgs',
+        "secp256r1VerifyArgs",
         getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
       ],
     ]),
     (value) => ({
       ...value,
       discriminator: DECOMPRESS_SETTINGS_ACCOUNT_DISCRIMINATOR,
-    })
+    }),
   );
 }
 
 export function getDecompressSettingsAccountInstructionDataDecoder(): Decoder<DecompressSettingsAccountInstructionData> {
   return getStructDecoder([
-    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
-    ['settingsMutArgs', getSettingsMutArgsDecoder()],
-    ['compressedProofArgs', getProofArgsDecoder()],
+    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ["settingsMutArgs", getSettingsMutArgsDecoder()],
+    ["compressedProofArgs", getProofArgsDecoder()],
     [
-      'secp256r1VerifyArgs',
+      "secp256r1VerifyArgs",
       getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
     ],
   ]);
@@ -145,7 +145,7 @@ export function getDecompressSettingsAccountInstructionDataCodec(): Codec<
 > {
   return combineCodec(
     getDecompressSettingsAccountInstructionDataEncoder(),
-    getDecompressSettingsAccountInstructionDataDecoder()
+    getDecompressSettingsAccountInstructionDataDecoder(),
   );
 }
 
@@ -165,10 +165,10 @@ export type DecompressSettingsAccountInput<
   systemProgram?: Address<TAccountSystemProgram>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  settingsMutArgs: DecompressSettingsAccountInstructionDataArgs['settingsMutArgs'];
-  compressedProofArgs: DecompressSettingsAccountInstructionDataArgs['compressedProofArgs'];
-  secp256r1VerifyArgs: DecompressSettingsAccountInstructionDataArgs['secp256r1VerifyArgs'];
-  remainingAccounts: DecompressSettingsAccountInstructionExtraArgs['remainingAccounts'];
+  settingsMutArgs: DecompressSettingsAccountInstructionDataArgs["settingsMutArgs"];
+  compressedProofArgs: DecompressSettingsAccountInstructionDataArgs["compressedProofArgs"];
+  secp256r1VerifyArgs: DecompressSettingsAccountInstructionDataArgs["secp256r1VerifyArgs"];
+  remainingAccounts: DecompressSettingsAccountInstructionExtraArgs["remainingAccounts"];
 };
 
 export function getDecompressSettingsAccountInstruction<
@@ -186,7 +186,7 @@ export function getDecompressSettingsAccountInstruction<
     TAccountSlotHashSysvar,
     TAccountInstructionsSysvar
   >,
-  config?: { programAddress?: TProgramAddress }
+  config?: { programAddress?: TProgramAddress },
 ): DecompressSettingsAccountInstruction<
   TProgramAddress,
   TAccountSettings,
@@ -223,22 +223,22 @@ export function getDecompressSettingsAccountInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
+      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
   }
   if (!accounts.slotHashSysvar.value) {
     accounts.slotHashSysvar.value =
-      'SysvarS1otHashes111111111111111111111111111' as Address<'SysvarS1otHashes111111111111111111111111111'>;
+      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
   }
   if (!accounts.instructionsSysvar.value) {
     accounts.instructionsSysvar.value =
-      'Sysvar1nstructions1111111111111111111111111' as Address<'Sysvar1nstructions1111111111111111111111111'>;
+      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.settings),
@@ -249,7 +249,7 @@ export function getDecompressSettingsAccountInstruction<
       ...remainingAccounts,
     ],
     data: getDecompressSettingsAccountInstructionDataEncoder().encode(
-      args as DecompressSettingsAccountInstructionDataArgs
+      args as DecompressSettingsAccountInstructionDataArgs,
     ),
     programAddress,
   } as DecompressSettingsAccountInstruction<
@@ -283,11 +283,11 @@ export function parseDecompressSettingsAccountInstruction<
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
-    InstructionWithData<ReadonlyUint8Array>
+    InstructionWithData<ReadonlyUint8Array>,
 ): ParsedDecompressSettingsAccountInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 5) {
     // TODO: Coded error.
-    throw new Error('Not enough accounts');
+    throw new Error("Not enough accounts");
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -311,7 +311,7 @@ export function parseDecompressSettingsAccountInstruction<
       instructionsSysvar: getNextAccount(),
     },
     data: getDecompressSettingsAccountInstructionDataDecoder().decode(
-      instruction.data
+      instruction.data,
     ),
   };
 }

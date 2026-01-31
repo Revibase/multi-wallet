@@ -22,11 +22,11 @@ export function runWalletCreationTests(getCtx: () => TestContext) {
 
       expect(
         accountData.members.length,
-        "Wallet should have exactly one member initially"
+        "Wallet should have exactly one member initially",
       ).to.equal(1);
       expect(
         accountData.threshold,
-        "Wallet should be configured as a single-signature wallet"
+        "Wallet should be configured as a single-signature wallet",
       ).to.equal(1);
 
       // Fund the wallet
@@ -39,7 +39,7 @@ export function runWalletCreationTests(getCtx: () => TestContext) {
 
       expect(
         vaultBalance.value,
-        "Wallet should have the expected balance after funding"
+        "Wallet should have the expected balance after funding",
       ).to.equal(WALLET_TRANSFER_AMOUNT);
     });
   });

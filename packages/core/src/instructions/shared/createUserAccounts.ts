@@ -37,7 +37,7 @@ export async function createUserAccounts({
       address: x.member.address,
       role: AccountRole.READONLY_SIGNER,
       signer: x.member,
-    }))
+    })),
   );
 
   const userAddressTreeIndex = await getNewWhitelistedAddressTreeIndex();
@@ -45,7 +45,7 @@ export async function createUserAccounts({
     createUserArgs.map(async (x) => {
       const { address, addressTree } = await getUserAccountAddress(
         x.member.address,
-        userAddressTreeIndex
+        userAddressTreeIndex,
       );
       return {
         address,
@@ -53,7 +53,7 @@ export async function createUserAccounts({
         queue: addressTree,
         type: "User" as const,
       };
-    })
+    }),
   );
   const proof = await getValidityProofWithRetry([], newAddressParams);
   const userCreationArgs = await getCompressedAccountInitArgs(
@@ -61,7 +61,7 @@ export async function createUserAccounts({
     proof.treeInfos,
     proof.roots,
     proof.rootIndices,
-    newAddressParams
+    newAddressParams,
   );
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();

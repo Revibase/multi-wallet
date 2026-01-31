@@ -129,12 +129,12 @@ export async function setupTestEnvironment(): Promise<TestContext> {
 
   const addressLookUpTable = await fetchAddressesForLookupTables(
     [lut],
-    getSolanaRpc()
+    getSolanaRpc(),
   );
 
   const globalAccountAddress = await fetchMaybeGlobalCounter(
     getSolanaRpc(),
-    await getGlobalCounterAddress()
+    await getGlobalCounterAddress(),
   );
   if (!globalAccountAddress.exists) {
     const globalCounterIx = await createGlobalCounter({
@@ -146,7 +146,7 @@ export async function setupTestEnvironment(): Promise<TestContext> {
 
   const whitelistedAddressTreesAccount = await fetchMaybeWhitelistedAddressTree(
     getSolanaRpc(),
-    await getWhitelistedAddressTreesAddress()
+    await getWhitelistedAddressTreesAddress(),
   );
 
   if (!whitelistedAddressTreesAccount.exists) {
@@ -175,7 +175,7 @@ export async function setupTestEnvironment(): Promise<TestContext> {
  * Creates a multi-wallet and sets up the domain config
  */
 export async function createMultiWallet(
-  ctx: TestContext
+  ctx: TestContext,
 ): Promise<TestContext> {
   const rpId = crypto.randomUUID();
   const origin = crypto.randomUUID();
@@ -188,7 +188,7 @@ export async function createMultiWallet(
   const wallet = await createKeyPairSignerFromPrivateKeyBytes(walletSeed, true);
   const newMember = await createKeyPairSignerFromPrivateKeyBytes(
     newMemberSeed,
-    true
+    true,
   );
 
   const payerSecretKey = new Uint8Array([
@@ -221,7 +221,7 @@ export async function createMultiWallet(
 
   const globalCounter = await fetchGlobalCounter(
     getSolanaRpc(),
-    await getGlobalCounterAddress()
+    await getGlobalCounterAddress(),
   );
   const createIndex = globalCounter.data.index;
   const multiWalletVault = await getWalletAddressFromIndex(createIndex);

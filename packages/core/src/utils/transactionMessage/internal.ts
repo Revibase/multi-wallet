@@ -16,7 +16,7 @@ function getAccountRole(
   message: CompiledTransactionMessage,
   index: number,
   accountKey: Address,
-  vaultPda: Address
+  vaultPda: Address,
 ) {
   const isWritable = isStaticWritableIndex(message, index);
   const isSigner = isSignerIndex(message, index) && accountKey !== vaultPda;
@@ -33,7 +33,7 @@ function getAccountRole(
 
 function isStaticWritableIndex(
   message: CompiledTransactionMessage,
-  index: number
+  index: number,
 ) {
   const numAccountKeys = message.staticAccounts.length;
   const {
@@ -78,7 +78,7 @@ export async function accountsForTransactionExecute({
   additionalSigners?: TransactionSigner[];
 }) {
   const transactionMessage = vaultTransactionMessageDeserialize(
-    transactionMessageBytes
+    transactionMessageBytes,
   );
 
   if (transactionMessage.version === "legacy") {
@@ -90,9 +90,9 @@ export async function accountsForTransactionExecute({
     (transactionMessage.addressTableLookups
       ? await fetchAddressesForLookupTables(
           transactionMessage.addressTableLookups.map(
-            (x) => x.lookupTableAddress
+            (x) => x.lookupTableAddress,
           ),
-          getSolanaRpc()
+          getSolanaRpc(),
         )
       : {});
 
@@ -104,7 +104,7 @@ export async function accountsForTransactionExecute({
         role: AccountRole.READONLY,
         address: lookup.lookupTableAddress,
       };
-    }) ?? [])
+    }) ?? []),
   );
 
   for (const [
@@ -117,7 +117,7 @@ export async function accountsForTransactionExecute({
         transactionMessage,
         accountIndex,
         accountKey,
-        walletAddress
+        walletAddress,
       ),
     });
   }
@@ -128,7 +128,7 @@ export async function accountsForTransactionExecute({
         addressLookupTableAccounts[lookup.lookupTableAddress];
       if (!lookupTableAccount) {
         throw new Error(
-          `Address lookup table account ${lookup.lookupTableAddress} not found`
+          `Address lookup table account ${lookup.lookupTableAddress} not found`,
         );
       }
 
@@ -136,7 +136,7 @@ export async function accountsForTransactionExecute({
         const address = lookupTableAccount[accountIndex];
         if (!address) {
           throw new Error(
-            `Address lookup table account ${lookup.lookupTableAddress} does not contain address at index ${accountIndex}`
+            `Address lookup table account ${lookup.lookupTableAddress} does not contain address at index ${accountIndex}`,
           );
         }
 
@@ -149,7 +149,7 @@ export async function accountsForTransactionExecute({
         const address = lookupTableAccount[accountIndex];
         if (!address) {
           throw new Error(
-            `Address lookup table account ${lookup.lookupTableAddress} does not contain address at index ${accountIndex}`
+            `Address lookup table account ${lookup.lookupTableAddress} does not contain address at index ${accountIndex}`,
           );
         }
         accountMetas.push({
@@ -161,10 +161,10 @@ export async function accountsForTransactionExecute({
   }
 
   for (const signer of additionalSigners?.filter(
-    (x) => x.address !== walletAddress
+    (x) => x.address !== walletAddress,
   ) ?? []) {
     const index = accountMetas.findIndex(
-      (meta) => meta.address === signer.address
+      (meta) => meta.address === signer.address,
     );
     if (index === -1) {
       accountMetas.push({

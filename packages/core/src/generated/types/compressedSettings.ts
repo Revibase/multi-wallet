@@ -17,13 +17,13 @@ import {
   type Encoder,
   type Option,
   type OptionOrNullable,
-} from 'gill';
+} from "gill";
 import {
   getCompressedSettingsDataDecoder,
   getCompressedSettingsDataEncoder,
   type CompressedSettingsData,
   type CompressedSettingsDataArgs,
-} from '.';
+} from ".";
 
 export type CompressedSettings = { data: Option<CompressedSettingsData> };
 
@@ -33,13 +33,13 @@ export type CompressedSettingsArgs = {
 
 export function getCompressedSettingsEncoder(): Encoder<CompressedSettingsArgs> {
   return getStructEncoder([
-    ['data', getOptionEncoder(getCompressedSettingsDataEncoder())],
+    ["data", getOptionEncoder(getCompressedSettingsDataEncoder())],
   ]);
 }
 
 export function getCompressedSettingsDecoder(): Decoder<CompressedSettings> {
   return getStructDecoder([
-    ['data', getOptionDecoder(getCompressedSettingsDataDecoder())],
+    ["data", getOptionDecoder(getCompressedSettingsDataDecoder())],
   ]);
 }
 
@@ -49,6 +49,6 @@ export function getCompressedSettingsCodec(): Codec<
 > {
   return combineCodec(
     getCompressedSettingsEncoder(),
-    getCompressedSettingsDecoder()
+    getCompressedSettingsDecoder(),
   );
 }

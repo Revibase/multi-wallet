@@ -26,7 +26,7 @@ export async function migrateSettings({
   await packedAccounts.addSystemAccounts();
   const { address, addressTree } = await getCompressedSettingsAddressFromIndex(
     index,
-    settingsAddressTreeIndex
+    settingsAddressTreeIndex,
   );
   const newAddressParams = [
     {
@@ -43,7 +43,7 @@ export async function migrateSettings({
       proof.treeInfos,
       proof.roots,
       proof.rootIndices,
-      newAddressParams
+      newAddressParams,
     )
   )[0];
 
