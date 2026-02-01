@@ -81,7 +81,7 @@ impl<'info> ChangeConfig<'info> {
                 })
                 .collect();
 
-        for member in &settings.get_members()? {
+        for member in settings.get_members()? {
             let has_permission = |perm| member.permissions.has(perm);
 
             let secp256r1_signer = secp256r1_member_keys

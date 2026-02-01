@@ -156,7 +156,7 @@ impl<'info> TransactionBufferCreateCompressed<'info> {
             settings_key,
             settings.multi_wallet_bump,
             payer.key(),
-            &args,
+            args,
             ctx.bumps.transaction_buffer,
         )?;
         transaction_buffer.add_initiator(signer)?;

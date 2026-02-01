@@ -65,14 +65,14 @@ impl TransactionBuffer {
         settings_key: Pubkey,
         multi_wallet_bump: u8,
         payer: Pubkey,
-        args: &TransactionBufferCreateArgs,
+        args: TransactionBufferCreateArgs,
         bump: u8,
     ) -> Result<()> {
         self.multi_wallet_settings = settings_key;
         self.multi_wallet_bump = multi_wallet_bump;
         self.can_execute = false;
         self.preauthorize_execution = args.preauthorize_execution;
-        self.buffer_extend_hashes = args.buffer_extend_hashes.to_vec();
+        self.buffer_extend_hashes = args.buffer_extend_hashes;
         self.payer = payer;
         self.buffer_index = args.buffer_index;
         self.final_buffer_hash = args.final_buffer_hash;
@@ -85,7 +85,7 @@ impl TransactionBuffer {
             .and_then(|ts| u64::try_from(ts).ok())
             .ok_or(MultisigError::InvalidArguments)?;
         self.voters = Vec::new();
-        self.expected_secp256r1_signers = args.expected_secp256r1_signers.clone();
+        self.expected_secp256r1_signers = args.expected_secp256r1_signers;
         Ok(())
     }
 
@@ -196,5 +196,236 @@ impl TransactionBuffer {
 
         self.executor = executor;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::KeyType;
+
+    #[test]
+    fn test_transaction_buffer_size_exceeds_max() {
+        let result = TransactionBuffer::size(MAX_BUFFER_SIZE as u16 + 1, 0, 0, 0);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_transaction_buffer_size_at_max() {
+        let result = TransactionBuffer::size(MAX_BUFFER_SIZE as u16, 0, 0, 0);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_transaction_buffer_size_with_voters() {
+        let size_no_voters = TransactionBuffer::size(100, 0, 0, 0).unwrap();
+        let size_with_voters = TransactionBuffer::size(100, 0, 4, 0).unwrap();
+        assert!(size_with_voters > size_no_voters);
+    }
+
+    #[test]
+    fn test_transaction_buffer_size_with_extend_buffers() {
+        let size_no_extend = TransactionBuffer::size(100, 0, 0, 0).unwrap();
+        let size_with_extend = TransactionBuffer::size(100, 3, 0, 0).unwrap();
+        assert!(size_with_extend > size_no_extend);
+        assert_eq!(size_with_extend - size_no_extend, 3 * 32);
+    }
+
+    #[test]
+    fn test_transaction_buffer_validate_size_empty() {
+        let buffer = TransactionBuffer {
+            multi_wallet_settings: Pubkey::new_unique(),
+            multi_wallet_bump: 0,
+            can_execute: false,
+            preauthorize_execution: false,
+            valid_till: 0,
+            payer: Pubkey::new_unique(),
+            bump: 0,
+            buffer_index: 0,
+            final_buffer_hash: [0u8; 32],
+            final_buffer_size: 0,
+            creator: MemberKey::default(),
+            executor: MemberKey::default(),
+            buffer_extend_hashes: vec![],
+            voters: vec![],
+            expected_secp256r1_signers: vec![],
+            buffer: vec![],
+        };
+        assert!(buffer.validate_size().is_ok());
+    }
+
+    #[test]
+    fn test_transaction_buffer_validate_size_mismatch() {
+        let buffer = TransactionBuffer {
+            multi_wallet_settings: Pubkey::new_unique(),
+            multi_wallet_bump: 0,
+            can_execute: false,
+            preauthorize_execution: false,
+            valid_till: 0,
+            payer: Pubkey::new_unique(),
+            bump: 0,
+            buffer_index: 0,
+            final_buffer_hash: [0u8; 32],
+            final_buffer_size: 100,
+            creator: MemberKey::default(),
+            executor: MemberKey::default(),
+            buffer_extend_hashes: vec![],
+            voters: vec![],
+            expected_secp256r1_signers: vec![],
+            buffer: vec![1, 2, 3],
+        };
+        assert!(buffer.validate_size().is_err());
+    }
+
+    #[test]
+    fn test_transaction_buffer_invariant_valid() {
+        let buffer = TransactionBuffer {
+            multi_wallet_settings: Pubkey::new_unique(),
+            multi_wallet_bump: 0,
+            can_execute: false,
+            preauthorize_execution: false,
+            valid_till: 0,
+            payer: Pubkey::new_unique(),
+            bump: 0,
+            buffer_index: 0,
+            final_buffer_hash: [0u8; 32],
+            final_buffer_size: 100,
+            creator: MemberKey::default(),
+            executor: MemberKey::default(),
+            buffer_extend_hashes: vec![],
+            voters: vec![],
+            expected_secp256r1_signers: vec![],
+            buffer: vec![0u8; 50],
+        };
+        assert!(buffer.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_transaction_buffer_invariant_buffer_exceeds_final_size() {
+        let buffer = TransactionBuffer {
+            multi_wallet_settings: Pubkey::new_unique(),
+            multi_wallet_bump: 0,
+            can_execute: false,
+            preauthorize_execution: false,
+            valid_till: 0,
+            payer: Pubkey::new_unique(),
+            bump: 0,
+            buffer_index: 0,
+            final_buffer_hash: [0u8; 32],
+            final_buffer_size: 10,
+            creator: MemberKey::default(),
+            executor: MemberKey::default(),
+            buffer_extend_hashes: vec![],
+            voters: vec![],
+            expected_secp256r1_signers: vec![],
+            buffer: vec![0u8; 50],
+        };
+        assert!(buffer.invariant().is_err());
+    }
+
+    #[test]
+    fn test_add_voter_ed25519() {
+        let pubkey = Pubkey::new_unique();
+        let member_key = MemberKey::convert_ed25519(&pubkey).unwrap();
+        let mut buffer = TransactionBuffer {
+            multi_wallet_settings: Pubkey::new_unique(),
+            multi_wallet_bump: 0,
+            can_execute: false,
+            preauthorize_execution: false,
+            valid_till: 0,
+            payer: Pubkey::new_unique(),
+            bump: 0,
+            buffer_index: 0,
+            final_buffer_hash: [0u8; 32],
+            final_buffer_size: 0,
+            creator: MemberKey::default(),
+            executor: MemberKey::default(),
+            buffer_extend_hashes: vec![],
+            voters: vec![],
+            expected_secp256r1_signers: vec![],
+            buffer: vec![],
+        };
+        assert!(buffer.add_voter(&member_key).is_ok());
+        assert_eq!(buffer.voters.len(), 1);
+        assert_eq!(buffer.voters[0], member_key);
+    }
+
+    #[test]
+    fn test_add_voter_duplicate_ignored() {
+        let pubkey = Pubkey::new_unique();
+        let member_key = MemberKey::convert_ed25519(&pubkey).unwrap();
+        let mut buffer = TransactionBuffer {
+            multi_wallet_settings: Pubkey::new_unique(),
+            multi_wallet_bump: 0,
+            can_execute: false,
+            preauthorize_execution: false,
+            valid_till: 0,
+            payer: Pubkey::new_unique(),
+            bump: 0,
+            buffer_index: 0,
+            final_buffer_hash: [0u8; 32],
+            final_buffer_size: 0,
+            creator: MemberKey::default(),
+            executor: MemberKey::default(),
+            buffer_extend_hashes: vec![],
+            voters: vec![],
+            expected_secp256r1_signers: vec![],
+            buffer: vec![],
+        };
+        buffer.add_voter(&member_key).unwrap();
+        buffer.add_voter(&member_key).unwrap();
+        assert_eq!(buffer.voters.len(), 1);
+    }
+
+    #[test]
+    fn test_add_initiator_ed25519() {
+        let pubkey = Pubkey::new_unique();
+        let member_key = MemberKey::convert_ed25519(&pubkey).unwrap();
+        let mut buffer = TransactionBuffer {
+            multi_wallet_settings: Pubkey::new_unique(),
+            multi_wallet_bump: 0,
+            can_execute: false,
+            preauthorize_execution: false,
+            valid_till: 0,
+            payer: Pubkey::new_unique(),
+            bump: 0,
+            buffer_index: 0,
+            final_buffer_hash: [0u8; 32],
+            final_buffer_size: 0,
+            creator: MemberKey::default(),
+            executor: MemberKey::default(),
+            buffer_extend_hashes: vec![],
+            voters: vec![],
+            expected_secp256r1_signers: vec![],
+            buffer: vec![],
+        };
+        assert!(buffer.add_initiator(member_key).is_ok());
+        assert_eq!(buffer.creator, member_key);
+    }
+
+    #[test]
+    fn test_add_executor_ed25519() {
+        let pubkey = Pubkey::new_unique();
+        let member_key = MemberKey::convert_ed25519(&pubkey).unwrap();
+        let mut buffer = TransactionBuffer {
+            multi_wallet_settings: Pubkey::new_unique(),
+            multi_wallet_bump: 0,
+            can_execute: false,
+            preauthorize_execution: false,
+            valid_till: 0,
+            payer: Pubkey::new_unique(),
+            bump: 0,
+            buffer_index: 0,
+            final_buffer_hash: [0u8; 32],
+            final_buffer_size: 0,
+            creator: MemberKey::default(),
+            executor: MemberKey::default(),
+            buffer_extend_hashes: vec![],
+            voters: vec![],
+            expected_secp256r1_signers: vec![],
+            buffer: vec![],
+        };
+        assert!(buffer.add_executor(member_key).is_ok());
+        assert_eq!(buffer.executor, member_key);
     }
 }

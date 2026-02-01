@@ -137,7 +137,7 @@ impl TransactionBufferCreate<'_> {
             ctx.accounts.settings.key(),
             settings.multi_wallet_bump,
             ctx.accounts.payer.key(),
-            &args,
+            args,
             ctx.bumps.transaction_buffer,
         )?;
 

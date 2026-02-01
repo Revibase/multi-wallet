@@ -1,6 +1,6 @@
 use crate::{
-    AddMemberArgs, EditMemberArgs, Member, MemberKey, MultisigError, MultisigSettings,
-    RemoveMemberArgs, Settings, LIGHT_CPI_SIGNER, SEED_MULTISIG,
+    AddMemberArgs, EditMemberArgs, KeyType, Member, MemberKey, MultisigError, MultisigSettings,
+    Permission, Permissions, RemoveMemberArgs, Settings, UserRole, LIGHT_CPI_SIGNER, SEED_MULTISIG,
 };
 use anchor_lang::prelude::*;
 use light_sdk::address::NewAddressParamsAssignedPacked;
@@ -126,12 +126,12 @@ impl CompressedSettings {
         Ok((settings_account, new_address_params))
     }
 
-    pub fn verify_readonly_compressed_settings_account<'info>(
+    pub fn verify_readonly_compressed_settings_account<'a, 'info>(
         payer: &AccountInfo<'info>,
-        settings_readonly_args: &SettingsReadonlyArgs,
+        settings_readonly_args: &'a SettingsReadonlyArgs,
         remaining_accounts: &[AccountInfo<'info>],
         compressed_proof_args: &ProofArgs,
-    ) -> Result<(CompressedSettingsData, Pubkey)> {
+    ) -> Result<(&'a CompressedSettingsData, Pubkey)> {
         let settings_data = settings_readonly_args
             .data
             .data
@@ -164,7 +164,7 @@ impl CompressedSettings {
         .with_light_account(read_only_account)?
         .invoke(light_cpi_accounts)?;
 
-        Ok((settings_data.clone(), settings_key))
+        Ok((settings_data, settings_key))
     }
 }
 
@@ -203,9 +203,17 @@ impl MultisigSettings for CompressedSettings {
         }
     }
 
-    fn get_members(&self) -> Result<Vec<Member>> {
+    fn get_members_mut(&mut self) -> Result<&mut [Member]> {
+        if let Some(data) = &mut self.data {
+            Ok(data.members.as_mut_slice())
+        } else {
+            err!(MultisigError::MissingSettingsData)
+        }
+    }
+
+    fn get_members(&self) -> Result<&[Member]> {
         if let Some(data) = &self.data {
-            Ok(data.members.clone())
+            Ok(data.members.as_slice())
         } else {
             err!(MultisigError::MissingSettingsData)
         }
@@ -228,5 +236,199 @@ impl MultisigSettings for CompressedSettings {
             data.members.retain(|m| !to_delete.contains(&m.pubkey));
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::utils::settings::MAXIMUM_AMOUNT_OF_MEMBERS_FOR_COMPRESSED_SETTINGS;
+
+    fn mk_ed25519_member(
+        idx: u8,
+        perms: Vec<Permission>,
+        role: UserRole,
+        is_delegate: bool,
+    ) -> Member {
+        let mut key = [0u8; 33];
+        key[0] = KeyType::Ed25519 as u8;
+        key[1..].copy_from_slice(&[idx; 32]);
+        let member_key = MemberKey {
+            key_type: key[0],
+            key,
+        };
+        Member {
+            pubkey: member_key,
+            role: role.to_u8(),
+            permissions: Permissions::from_permissions(perms),
+            user_address_tree_index: 0,
+            is_delegate: if is_delegate { 1 } else { 0 },
+        }
+    }
+
+    fn mk_compressed_settings(members: Vec<Member>, threshold: u8) -> CompressedSettings {
+        CompressedSettings {
+            data: Some(CompressedSettingsData {
+                index: 0,
+                members,
+                threshold,
+                multi_wallet_bump: 0,
+                bump: 0,
+                settings_address_tree_index: 0,
+                latest_slot_number: 0,
+            }),
+        }
+    }
+
+    #[test]
+    fn test_invariant_valid_minimal() {
+        let settings = mk_compressed_settings(
+            vec![mk_ed25519_member(
+                1,
+                vec![
+                    Permission::InitiateTransaction,
+                    Permission::VoteTransaction,
+                    Permission::ExecuteTransaction,
+                ],
+                UserRole::Member,
+                false,
+            )],
+            1,
+        );
+        assert!(settings.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_invariant_at_max_members() {
+        let members: Vec<Member> = (0..MAXIMUM_AMOUNT_OF_MEMBERS_FOR_COMPRESSED_SETTINGS)
+            .map(|i| {
+                mk_ed25519_member(
+                    i as u8,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::Member,
+                    false,
+                )
+            })
+            .collect();
+        let settings = mk_compressed_settings(members, 1);
+        assert!(settings.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_invariant_too_many_members() {
+        let members: Vec<Member> = (0..=MAXIMUM_AMOUNT_OF_MEMBERS_FOR_COMPRESSED_SETTINGS)
+            .map(|i| {
+                mk_ed25519_member(
+                    i as u8,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::Member,
+                    false,
+                )
+            })
+            .collect();
+        let settings = mk_compressed_settings(members, 1);
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_empty_members() {
+        let settings = mk_compressed_settings(vec![], 1);
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_zero_threshold() {
+        let settings = mk_compressed_settings(
+            vec![mk_ed25519_member(
+                1,
+                vec![
+                    Permission::InitiateTransaction,
+                    Permission::VoteTransaction,
+                    Permission::ExecuteTransaction,
+                ],
+                UserRole::Member,
+                false,
+            )],
+            0,
+        );
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_duplicate_member() {
+        let member = mk_ed25519_member(
+            1,
+            vec![
+                Permission::InitiateTransaction,
+                Permission::VoteTransaction,
+                Permission::ExecuteTransaction,
+            ],
+            UserRole::Member,
+            false,
+        );
+        let settings = mk_compressed_settings(vec![member, member], 1);
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_permanent_member_valid() {
+        let settings = mk_compressed_settings(
+            vec![mk_ed25519_member(
+                1,
+                vec![
+                    Permission::InitiateTransaction,
+                    Permission::VoteTransaction,
+                    Permission::ExecuteTransaction,
+                ],
+                UserRole::PermanentMember,
+                true,
+            )],
+            1,
+        );
+        assert!(settings.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_invariant_two_permanent_members_fails() {
+        let settings = mk_compressed_settings(
+            vec![
+                mk_ed25519_member(
+                    1,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::PermanentMember,
+                    true,
+                ),
+                mk_ed25519_member(
+                    2,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::PermanentMember,
+                    true,
+                ),
+            ],
+            1,
+        );
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_missing_data() {
+        let settings = CompressedSettings { data: None };
+        assert!(settings.invariant().is_err());
     }
 }

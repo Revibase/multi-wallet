@@ -106,7 +106,7 @@ impl<'info> CreateDomainConfig<'info> {
         domain_config.rp_id_hash = Sha256::hash(args.rp_id.as_bytes())
             .map_err(|_| MultisigError::HashComputationFailed)?;
         domain_config.write_rp_id(args.rp_id)?;
-        domain_config.write_origins(args.origins)?;
+        domain_config.write_origins(&args.origins)?;
         domain_config.authority = ctx.accounts.authority.key();
         domain_config.bump = ctx.bumps.domain_config;
         domain_config.is_disabled = 0;

@@ -111,7 +111,7 @@ impl<'info> EditDomainConfig<'info> {
         }
 
         if let Some(new_origins) = args.new_origins {
-            domain_config.write_origins(new_origins)?;
+            domain_config.write_origins(&new_origins)?;
         }
 
         Ok(())

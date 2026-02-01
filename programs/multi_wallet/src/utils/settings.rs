@@ -15,12 +15,13 @@ pub trait MultisigSettings {
     fn delete_members(&mut self, members: Vec<MemberKey>) -> Result<()>;
     fn set_latest_slot_number(&mut self, value: u64) -> Result<()>;
     fn get_threshold(&self) -> Result<u8>;
-    fn get_members(&self) -> Result<Vec<Member>>;
+    fn get_members(&self) -> Result<&[Member]>;
+    fn get_members_mut(&mut self) -> Result<&mut [Member]>;
     fn get_latest_slot_number(&self) -> Result<u64>;
     fn is_compressed(&self) -> Result<bool>;
 
     fn sort_members(&mut self) -> Result<()> {
-        self.get_members()?.sort_by_key(|m| m.role);
+        self.get_members_mut()?.sort_by_key(|m| m.role);
         Ok(())
     }
 
@@ -236,7 +237,7 @@ pub trait MultisigSettings {
     }
 
     fn edit_permissions(&mut self, new_members: Vec<EditMemberArgs>) -> Result<()> {
-        let mut members = self.get_members()?;
+        let members = self.get_members_mut()?;
 
         let mut idx: HashMap<MemberKey, usize> = HashMap::with_capacity(members.len());
         for (i, m) in members.iter().enumerate() {
@@ -247,17 +248,15 @@ pub trait MultisigSettings {
             let i = *idx
                 .get(&nm.member_key)
                 .ok_or(MultisigError::MemberNotFound)?;
-            let existing = &mut members[i];
 
             require!(
-                UserRole::from(existing.role) != UserRole::TransactionManager,
+                UserRole::from(members[i].role) != UserRole::TransactionManager,
                 MultisigError::InvalidTransactionManagerPermission
             );
 
-            existing.permissions = nm.permissions;
+            members[i].permissions = nm.permissions;
         }
 
-        self.set_members(members)?;
         self.sort_members()?;
 
         Ok(())

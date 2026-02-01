@@ -22,8 +22,8 @@ impl DomainConfig {
         return 8 + 32 + 32 + 1 + 1 + 1 + 1 + MAX_RP_ID_LEN + MAX_ORIGINS_LEN;
     }
 
-    pub fn write_rp_id(&mut self, rp_id: String) -> Result<()> {
-        let rp_id = rp_id.as_bytes();
+    pub fn write_rp_id(&mut self, rp_id: impl AsRef<str>) -> Result<()> {
+        let rp_id = rp_id.as_ref().as_bytes();
 
         require!(
             rp_id.len() <= MAX_RP_ID_LEN,
@@ -42,11 +42,15 @@ impl DomainConfig {
         Ok(())
     }
 
-    pub fn write_origins(&mut self, origins: Vec<String>) -> Result<()> {
+    pub fn write_origins(&mut self, origins: &[impl AsRef<str>]) -> Result<()> {
         let mut cursor = 0;
         let mut count = 0;
 
         for origin in origins {
+            let origin = origin.as_ref();
+            if origin.is_empty() {
+                continue;
+            }
             let origin_bytes = origin.as_bytes();
             let origin_len = origin_bytes.len();
 
@@ -97,11 +101,8 @@ impl DomainConfig {
             }
 
             // Validate string length is reasonable (prevent excessive memory allocation)
-            require!(
-                str_len <= MAX_ORIGINS_LEN,
-                MultisigError::MaxLengthExceeded
-            );
-            
+            require!(str_len <= MAX_ORIGINS_LEN, MultisigError::MaxLengthExceeded);
+
             let str_bytes = &self.origins[cursor..cursor + str_len];
             match from_utf8(str_bytes) {
                 Ok(s) => origins.push(s.to_string()),
@@ -125,5 +126,105 @@ impl DomainConfig {
         let account_loader = AccountLoader::<DomainConfig>::try_from(domain_account)?;
 
         Ok(account_loader)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_domain_config() -> DomainConfig {
+        DomainConfig {
+            authority: Pubkey::new_unique(),
+            rp_id_hash: [0u8; 32],
+            bump: 0,
+            is_disabled: 0,
+            rp_id_length: 0,
+            num_origins: 0,
+            rp_id: [0u8; MAX_RP_ID_LEN],
+            origins: [0u8; MAX_ORIGINS_LEN],
+        }
+    }
+
+    #[test]
+    fn test_write_and_parse_rp_id() {
+        let mut config = create_test_domain_config();
+        let rp_id = "example.com";
+        config.write_rp_id(rp_id).unwrap();
+        assert_eq!(config.rp_id_length, rp_id.len() as u8);
+        let stored = std::str::from_utf8(&config.rp_id[..config.rp_id_length as usize]).unwrap();
+        assert_eq!(stored, rp_id);
+    }
+
+    #[test]
+    fn test_write_rp_id_empty() {
+        let mut config = create_test_domain_config();
+        config.write_rp_id("".to_string()).unwrap();
+        assert_eq!(config.rp_id_length, 0);
+    }
+
+    #[test]
+    fn test_write_rp_id_max_length() {
+        let mut config = create_test_domain_config();
+        let rp_id = "a".repeat(MAX_RP_ID_LEN);
+        config.write_rp_id(rp_id.as_str()).unwrap();
+        assert_eq!(config.rp_id_length, MAX_RP_ID_LEN as u8);
+    }
+
+    #[test]
+    fn test_write_rp_id_exceeds_max_length() {
+        let mut config = create_test_domain_config();
+        let rp_id = "a".repeat(MAX_RP_ID_LEN + 1);
+        assert!(config.write_rp_id(rp_id).is_err());
+    }
+
+    #[test]
+    fn test_write_and_parse_origins_single() {
+        let mut config = create_test_domain_config();
+        let origins = vec!["https://example.com".to_string()];
+        config.write_origins(origins.as_slice()).unwrap();
+        let parsed = config.parse_origins().unwrap();
+        assert_eq!(parsed, origins);
+    }
+
+    #[test]
+    fn test_write_and_parse_origins_multiple() {
+        let mut config = create_test_domain_config();
+        let origins = vec![
+            "https://example.com".to_string(),
+            "https://app.example.com".to_string(),
+            "https://test.example.com".to_string(),
+        ];
+        config.write_origins(origins.as_slice()).unwrap();
+        let parsed = config.parse_origins().unwrap();
+        assert_eq!(parsed, origins);
+    }
+
+    #[test]
+    fn test_write_and_parse_origins_empty() {
+        let mut config = create_test_domain_config();
+        config.write_origins(&[] as &[&str]).unwrap();
+        let parsed = config.parse_origins().unwrap();
+        assert!(parsed.is_empty());
+    }
+
+    #[test]
+    fn test_parse_origins_no_origins() {
+        let config = create_test_domain_config();
+        let parsed = config.parse_origins().unwrap();
+        assert!(parsed.is_empty());
+    }
+
+    #[test]
+    fn test_write_origins_overwrites_previous() {
+        let mut config = create_test_domain_config();
+        config
+            .write_origins(&vec!["https://old.com".to_string()])
+            .unwrap();
+        config
+            .write_origins(&vec!["https://new.com".to_string()])
+            .unwrap();
+        let parsed = config.parse_origins().unwrap();
+        assert_eq!(parsed, vec!["https://new.com".to_string()]);
     }
 }

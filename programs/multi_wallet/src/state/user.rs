@@ -205,25 +205,6 @@ impl User {
         Ok(final_account_infos)
     }
 
-    /// Adds a wallet to a user's wallet list when the user is added as a member to a wallet.
-    ///
-    /// This function is called during delegate operations (adding members to wallets).
-    /// Note: This function does NOT set the `is_delegate` flag to true. The delegate flag is managed
-    /// separately in the settings member struct. For `Member` role users, this function
-    /// adds the wallet with `is_delegate: false`. The actual delegate status is determined
-    /// by the settings member's `is_delegate` field.
-    ///
-    /// # Arguments
-    /// * `user_args` - User account arguments (read-only or mutable)
-    /// * `settings_index_with_address` - The wallet being added to the user
-    /// * `light_cpi_accounts` - Light protocol CPI accounts for compressed account operations
-    ///
-    /// # Returns
-    /// The updated user account
-    ///
-    /// # Errors
-    /// * `OnlyOnePermanentMemberAllowed` - PermanentMember role cannot use this function
-    /// * `MissingMutationUserArgs` - Member role requires mutable user args
     pub fn add_wallet_to_user(
         user_args: UserReadOnlyOrMutateArgs,
         settings_index_with_address: &SettingsIndexWithAddress,
@@ -283,19 +264,6 @@ impl User {
         }
     }
 
-    /// Removes a wallet from a user's wallet list when the user is removed as a member from a wallet.
-    ///
-    /// # Arguments
-    /// * `user_args` - User account arguments (read-only or mutable)
-    /// * `settings_index_with_address` - The wallet being removed from the user
-    /// * `light_cpi_accounts` - Light protocol CPI accounts for compressed account operations
-    ///
-    /// # Returns
-    /// The updated user account
-    ///
-    /// # Errors
-    /// * `PermanentMember` - PermanentMember role cannot have wallets removed
-    /// * `MissingMutationUserArgs` - Member role requires mutable user args when wallet exists
     fn remove_wallet_from_user(
         user_args: UserReadOnlyOrMutateArgs,
         settings_index_with_address: &SettingsIndexWithAddress,
@@ -352,5 +320,404 @@ impl User {
                 Ok(user_account)
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mk_ed25519_member_key(idx: u8) -> MemberKey {
+        let mut bytes = [0u8; 32];
+        bytes[..].fill(idx);
+        let pubkey = Pubkey::new_from_array(bytes);
+        MemberKey::convert_ed25519(&pubkey).unwrap()
+    }
+
+    fn mk_secp256r1_member_key(idx: u8) -> MemberKey {
+        let mut key = [0u8; 33];
+        key[0] = KeyType::Secp256r1 as u8;
+        key[1..].fill(idx);
+        MemberKey { key_type: key[0], key }
+    }
+
+    #[test]
+    fn test_invariant_transaction_manager_valid() {
+        let user = User {
+            domain_config: None,
+            member: mk_ed25519_member_key(1),
+            credential_id: None,
+            transports: None,
+            wallets: vec![],
+            role: UserRole::TransactionManager,
+            transaction_manager_url: Some("https://tm.example.com".to_string()),
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_invariant_transaction_manager_missing_url() {
+        let user = User {
+            domain_config: None,
+            member: mk_ed25519_member_key(1),
+            credential_id: None,
+            transports: None,
+            wallets: vec![],
+            role: UserRole::TransactionManager,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_transaction_manager_secp256r1_fails() {
+        let user = User {
+            domain_config: None,
+            member: mk_secp256r1_member_key(1),
+            credential_id: Some(vec![1, 2, 3]),
+            transports: Some(vec![Transports::Usb]),
+            wallets: vec![],
+            role: UserRole::TransactionManager,
+            transaction_manager_url: Some("https://tm.example.com".to_string()),
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_transaction_manager_has_wallets() {
+        let user = User {
+            domain_config: None,
+            member: mk_ed25519_member_key(1),
+            credential_id: None,
+            transports: None,
+            wallets: vec![SettingsIndexWithAddressAndDelegateInfo {
+                index: 0,
+                settings_address_tree_index: 0,
+                is_delegate: false,
+            }],
+            role: UserRole::TransactionManager,
+            transaction_manager_url: Some("https://tm.example.com".to_string()),
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_non_tm_with_url_fails() {
+        let user = User {
+            domain_config: Some(Pubkey::new_unique()),
+            member: mk_ed25519_member_key(1),
+            credential_id: None,
+            transports: None,
+            wallets: vec![],
+            role: UserRole::Member,
+            transaction_manager_url: Some("https://tm.example.com".to_string()),
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_member_valid() {
+        let user = User {
+            domain_config: None,
+            member: mk_ed25519_member_key(1),
+            credential_id: None,
+            transports: None,
+            wallets: vec![],
+            role: UserRole::Member,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_invariant_administrator_valid() {
+        let user = User {
+            domain_config: Some(Pubkey::new_unique()),
+            member: mk_ed25519_member_key(1),
+            credential_id: None,
+            transports: None,
+            wallets: vec![],
+            role: UserRole::Administrator,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_invariant_administrator_with_wallets() {
+        let user = User {
+            domain_config: Some(Pubkey::new_unique()),
+            member: mk_ed25519_member_key(1),
+            credential_id: None,
+            transports: None,
+            wallets: vec![SettingsIndexWithAddressAndDelegateInfo {
+                index: 0,
+                settings_address_tree_index: 0,
+                is_delegate: false,
+            }],
+            role: UserRole::Administrator,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_administrator_secp256r1_fails() {
+        let user = User {
+            domain_config: Some(Pubkey::new_unique()),
+            member: mk_secp256r1_member_key(1),
+            credential_id: Some(vec![1, 2, 3]),
+            transports: Some(vec![Transports::Usb]),
+            wallets: vec![],
+            role: UserRole::Administrator,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_administrator_no_domain_config() {
+        let user = User {
+            domain_config: None,
+            member: mk_ed25519_member_key(1),
+            credential_id: None,
+            transports: None,
+            wallets: vec![],
+            role: UserRole::Administrator,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_secp256r1_member_valid() {
+        let user = User {
+            domain_config: Some(Pubkey::new_unique()),
+            member: mk_secp256r1_member_key(1),
+            credential_id: Some(vec![1, 2, 3]),
+            transports: Some(vec![Transports::Usb]),
+            wallets: vec![],
+            role: UserRole::Member,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_invariant_secp256r1_missing_domain_config() {
+        let user = User {
+            domain_config: None,
+            member: mk_secp256r1_member_key(1),
+            credential_id: Some(vec![1, 2, 3]),
+            transports: Some(vec![Transports::Usb]),
+            wallets: vec![],
+            role: UserRole::Member,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_secp256r1_missing_credential_id() {
+        let user = User {
+            domain_config: Some(Pubkey::new_unique()),
+            member: mk_secp256r1_member_key(1),
+            credential_id: None,
+            transports: Some(vec![Transports::Usb]),
+            wallets: vec![],
+            role: UserRole::Member,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_secp256r1_missing_transports() {
+        let user = User {
+            domain_config: Some(Pubkey::new_unique()),
+            member: mk_secp256r1_member_key(1),
+            credential_id: Some(vec![1, 2, 3]),
+            transports: None,
+            wallets: vec![],
+            role: UserRole::Member,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_secp256r1_administrator_fails() {
+        let user = User {
+            domain_config: Some(Pubkey::new_unique()),
+            member: mk_secp256r1_member_key(1),
+            credential_id: Some(vec![1, 2, 3]),
+            transports: Some(vec![Transports::Usb]),
+            wallets: vec![],
+            role: UserRole::Administrator,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_ed25519_with_credential_fails() {
+        let user = User {
+            domain_config: None,
+            member: mk_ed25519_member_key(1),
+            credential_id: Some(vec![1, 2, 3]),
+            transports: None,
+            wallets: vec![],
+            role: UserRole::Member,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_ed25519_with_transports_fails() {
+        let user = User {
+            domain_config: None,
+            member: mk_ed25519_member_key(1),
+            credential_id: None,
+            transports: Some(vec![Transports::Usb]),
+            wallets: vec![],
+            role: UserRole::Member,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_permanent_member_valid() {
+        let user = User {
+            domain_config: Some(Pubkey::new_unique()),
+            member: mk_secp256r1_member_key(1),
+            credential_id: Some(vec![1, 2, 3]),
+            transports: Some(vec![Transports::Usb]),
+            wallets: vec![SettingsIndexWithAddressAndDelegateInfo {
+                index: 0,
+                settings_address_tree_index: 0,
+                is_delegate: true,
+            }],
+            role: UserRole::PermanentMember,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_invariant_permanent_member_ed25519_fails() {
+        let user = User {
+            domain_config: None,
+            member: mk_ed25519_member_key(1),
+            credential_id: None,
+            transports: None,
+            wallets: vec![SettingsIndexWithAddressAndDelegateInfo {
+                index: 0,
+                settings_address_tree_index: 0,
+                is_delegate: true,
+            }],
+            role: UserRole::PermanentMember,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_permanent_member_wrong_wallets() {
+        let user = User {
+            domain_config: Some(Pubkey::new_unique()),
+            member: mk_secp256r1_member_key(1),
+            credential_id: Some(vec![1, 2, 3]),
+            transports: Some(vec![Transports::Usb]),
+            wallets: vec![SettingsIndexWithAddressAndDelegateInfo {
+                index: 0,
+                settings_address_tree_index: 0,
+                is_delegate: false,
+            }],
+            role: UserRole::PermanentMember,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_permanent_member_empty_wallets() {
+        let user = User {
+            domain_config: Some(Pubkey::new_unique()),
+            member: mk_secp256r1_member_key(1),
+            credential_id: Some(vec![1, 2, 3]),
+            transports: Some(vec![Transports::Usb]),
+            wallets: vec![],
+            role: UserRole::PermanentMember,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_already_delegated() {
+        let user = User {
+            domain_config: None,
+            member: mk_ed25519_member_key(1),
+            credential_id: None,
+            transports: None,
+            wallets: vec![
+                SettingsIndexWithAddressAndDelegateInfo {
+                    index: 0,
+                    settings_address_tree_index: 0,
+                    is_delegate: true,
+                },
+                SettingsIndexWithAddressAndDelegateInfo {
+                    index: 1,
+                    settings_address_tree_index: 0,
+                    is_delegate: true,
+                },
+            ],
+            role: UserRole::Member,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_member_with_wallet_valid() {
+        let user = User {
+            domain_config: None,
+            member: mk_ed25519_member_key(1),
+            credential_id: None,
+            transports: None,
+            wallets: vec![SettingsIndexWithAddressAndDelegateInfo {
+                index: 0,
+                settings_address_tree_index: 0,
+                is_delegate: false,
+            }],
+            role: UserRole::Member,
+            transaction_manager_url: None,
+            user_address_tree_index: 0,
+        };
+        assert!(user.invariant().is_ok());
     }
 }

@@ -1,6 +1,6 @@
 use crate::{
-    error::MultisigError, AddMemberArgs, EditMemberArgs, Member, MemberKey, MultisigSettings,
-    RemoveMemberArgs, SEED_MULTISIG,
+    error::MultisigError, AddMemberArgs, EditMemberArgs, KeyType, Member, MemberKey,
+    MultisigSettings, Permission, Permissions, RemoveMemberArgs, UserRole, SEED_MULTISIG,
 };
 use anchor_lang::prelude::*;
 use std::collections::HashSet;
@@ -49,7 +49,7 @@ impl Settings {
         MultisigSettings::set_members(self, members)
     }
 
-    pub fn invariant(&mut self) -> Result<()> {
+    pub fn invariant(&self) -> Result<()> {
         MultisigSettings::invariant(self)
     }
 
@@ -93,8 +93,12 @@ impl MultisigSettings for Settings {
         Ok(self.threshold)
     }
 
-    fn get_members(&self) -> Result<Vec<Member>> {
-        Ok(self.members.to_vec())
+    fn get_members(&self) -> Result<&[Member]> {
+        Ok(self.members.as_slice())
+    }
+
+    fn get_members_mut(&mut self) -> Result<&mut [Member]> {
+        Ok(&mut self.members)
     }
 
     fn extend_members(&mut self, members: Vec<Member>) -> Result<()> {
@@ -110,5 +114,594 @@ impl MultisigSettings for Settings {
         let to_delete: HashSet<_> = HashSet::from_iter(members);
         self.members.retain(|m| !to_delete.contains(&m.pubkey));
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn mk_ed25519_member(
+        idx: u8,
+        perms: Vec<Permission>,
+        role: UserRole,
+        is_delegate: bool,
+    ) -> Member {
+        let mut key = [0u8; 33];
+        key[0] = KeyType::Ed25519 as u8;
+        key[1..].copy_from_slice(&[idx; 32]);
+        let member_key = MemberKey {
+            key_type: key[0],
+            key,
+        };
+        Member {
+            pubkey: member_key,
+            role: role.to_u8(),
+            permissions: Permissions::from_permissions(perms),
+            user_address_tree_index: 0,
+            is_delegate: if is_delegate { 1 } else { 0 },
+        }
+    }
+
+    fn mk_secp256r1_member(idx: u8, perms: Vec<Permission>, role: UserRole) -> Member {
+        let mut key = [0u8; 33];
+        key[0] = KeyType::Secp256r1 as u8;
+        key[1..].copy_from_slice(&[idx; 32]);
+        let member_key = MemberKey {
+            key_type: key[0],
+            key,
+        };
+        Member {
+            pubkey: member_key,
+            role: role.to_u8(),
+            permissions: Permissions::from_permissions(perms),
+            user_address_tree_index: 0,
+            is_delegate: 0,
+        }
+    }
+
+    #[test]
+    fn test_invariant_valid_minimal() {
+        let settings = Settings {
+            index: 0,
+            members: vec![mk_ed25519_member(
+                1,
+                vec![
+                    Permission::InitiateTransaction,
+                    Permission::VoteTransaction,
+                    Permission::ExecuteTransaction,
+                ],
+                UserRole::Member,
+                false,
+            )],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_invariant_valid_multiple_members() {
+        let settings = Settings {
+            index: 0,
+            members: vec![
+                mk_ed25519_member(
+                    1,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::Member,
+                    false,
+                ),
+                mk_ed25519_member(
+                    2,
+                    vec![Permission::VoteTransaction, Permission::ExecuteTransaction],
+                    UserRole::Member,
+                    false,
+                ),
+            ],
+            threshold: 2,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_invariant_empty_members() {
+        let settings = Settings {
+            index: 0,
+            members: vec![],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_zero_threshold() {
+        let settings = Settings {
+            index: 0,
+            members: vec![mk_ed25519_member(
+                1,
+                vec![
+                    Permission::InitiateTransaction,
+                    Permission::VoteTransaction,
+                    Permission::ExecuteTransaction,
+                ],
+                UserRole::Member,
+                false,
+            )],
+            threshold: 0,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_duplicate_member() {
+        let member = mk_ed25519_member(
+            1,
+            vec![
+                Permission::InitiateTransaction,
+                Permission::VoteTransaction,
+                Permission::ExecuteTransaction,
+            ],
+            UserRole::Member,
+            false,
+        );
+        let settings = Settings {
+            index: 0,
+            members: vec![member, member],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_threshold_exceeds_voters() {
+        let settings = Settings {
+            index: 0,
+            members: vec![mk_ed25519_member(
+                1,
+                vec![
+                    Permission::InitiateTransaction,
+                    Permission::VoteTransaction,
+                    Permission::ExecuteTransaction,
+                ],
+                UserRole::Member,
+                false,
+            )],
+            threshold: 2,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_no_initiator() {
+        let settings = Settings {
+            index: 0,
+            members: vec![mk_ed25519_member(
+                1,
+                vec![Permission::VoteTransaction, Permission::ExecuteTransaction],
+                UserRole::Member,
+                false,
+            )],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_no_executor() {
+        let settings = Settings {
+            index: 0,
+            members: vec![mk_ed25519_member(
+                1,
+                vec![Permission::InitiateTransaction, Permission::VoteTransaction],
+                UserRole::Member,
+                false,
+            )],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_permanent_member_without_delegate() {
+        let settings = Settings {
+            index: 0,
+            members: vec![mk_ed25519_member(
+                1,
+                vec![
+                    Permission::InitiateTransaction,
+                    Permission::VoteTransaction,
+                    Permission::ExecuteTransaction,
+                ],
+                UserRole::PermanentMember,
+                false,
+            )],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_permanent_member_valid() {
+        let settings = Settings {
+            index: 0,
+            members: vec![mk_ed25519_member(
+                1,
+                vec![
+                    Permission::InitiateTransaction,
+                    Permission::VoteTransaction,
+                    Permission::ExecuteTransaction,
+                ],
+                UserRole::PermanentMember,
+                true,
+            )],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_invariant_transaction_manager_wrong_permissions() {
+        let settings = Settings {
+            index: 0,
+            members: vec![mk_ed25519_member(
+                1,
+                vec![
+                    Permission::InitiateTransaction,
+                    Permission::VoteTransaction,
+                    Permission::ExecuteTransaction,
+                ],
+                UserRole::TransactionManager,
+                false,
+            )],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_transaction_manager_valid() {
+        let settings = Settings {
+            index: 0,
+            members: vec![
+                mk_ed25519_member(
+                    1,
+                    vec![Permission::InitiateTransaction],
+                    UserRole::TransactionManager,
+                    false,
+                ),
+                mk_ed25519_member(
+                    2,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::Member,
+                    false,
+                ),
+            ],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_invariant_transaction_manager_is_delegate_fails() {
+        let settings = Settings {
+            index: 0,
+            members: vec![
+                mk_ed25519_member(
+                    1,
+                    vec![Permission::InitiateTransaction],
+                    UserRole::TransactionManager,
+                    true,
+                ),
+                mk_ed25519_member(
+                    2,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::Member,
+                    false,
+                ),
+            ],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_transaction_manager_secp256r1_fails() {
+        let settings = Settings {
+            index: 0,
+            members: vec![
+                mk_secp256r1_member(
+                    1,
+                    vec![Permission::InitiateTransaction],
+                    UserRole::TransactionManager,
+                ),
+                mk_ed25519_member(
+                    2,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::Member,
+                    false,
+                ),
+            ],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_administrator_valid() {
+        let settings = Settings {
+            index: 0,
+            members: vec![
+                mk_ed25519_member(
+                    1,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::Administrator,
+                    false,
+                ),
+                mk_ed25519_member(
+                    2,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::Member,
+                    false,
+                ),
+            ],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_ok());
+    }
+
+    #[test]
+    fn test_invariant_administrator_secp256r1_fails() {
+        let settings = Settings {
+            index: 0,
+            members: vec![
+                mk_secp256r1_member(
+                    1,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::Administrator,
+                ),
+                mk_ed25519_member(
+                    2,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::Member,
+                    false,
+                ),
+            ],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_two_permanent_members_fails() {
+        let settings = Settings {
+            index: 0,
+            members: vec![
+                mk_ed25519_member(
+                    1,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::PermanentMember,
+                    true,
+                ),
+                mk_ed25519_member(
+                    2,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::PermanentMember,
+                    true,
+                ),
+            ],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_two_transaction_managers_fails() {
+        let settings = Settings {
+            index: 0,
+            members: vec![
+                mk_ed25519_member(
+                    1,
+                    vec![Permission::InitiateTransaction],
+                    UserRole::TransactionManager,
+                    false,
+                ),
+                mk_ed25519_member(
+                    2,
+                    vec![Permission::InitiateTransaction],
+                    UserRole::TransactionManager,
+                    false,
+                ),
+                mk_ed25519_member(
+                    3,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::Member,
+                    false,
+                ),
+            ],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_invariant_two_administrators_fails() {
+        let settings = Settings {
+            index: 0,
+            members: vec![
+                mk_ed25519_member(
+                    1,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::Administrator,
+                    false,
+                ),
+                mk_ed25519_member(
+                    2,
+                    vec![
+                        Permission::InitiateTransaction,
+                        Permission::VoteTransaction,
+                        Permission::ExecuteTransaction,
+                    ],
+                    UserRole::Administrator,
+                    false,
+                ),
+            ],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        assert!(settings.invariant().is_err());
+    }
+
+    #[test]
+    fn test_sort_members() {
+        let mut settings = Settings {
+            index: 0,
+            members: vec![
+                mk_ed25519_member(
+                    3,
+                    vec![Permission::InitiateTransaction, Permission::VoteTransaction],
+                    UserRole::Member,
+                    false,
+                ),
+                mk_ed25519_member(
+                    1,
+                    vec![Permission::InitiateTransaction],
+                    UserRole::TransactionManager,
+                    false,
+                ),
+            ],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number: 0,
+        };
+        settings.sort_members().unwrap();
+        assert_eq!(
+            settings.members[0].role,
+            UserRole::TransactionManager.to_u8()
+        );
+        assert_eq!(settings.members[1].role, UserRole::Member.to_u8());
     }
 }
