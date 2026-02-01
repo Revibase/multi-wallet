@@ -1,6 +1,10 @@
 # @revibase/transaction-manager
 
-Transaction verification and processing for the Revibase multi-wallet system.
+Transaction verification and policy-based signing for the Revibase multi-wallet system.
+
+This package verifies incoming Solana transaction intents, extracts the on-chain instructions and verified signers, and lets you apply custom allow/deny policies before producing Ed25519 signatures.
+
+---
 
 ## Installation
 
@@ -8,20 +12,42 @@ Transaction verification and processing for the Revibase multi-wallet system.
 npm install @revibase/transaction-manager
 ```
 
+---
+
+## Overview
+
+A **transaction manager** is a server-side signer that:
+
+1. Verifies a transaction request using your custom rules
+2. Applies your own business / security policy
+3. Signs the Solana **transaction message bytes** (Ed25519)
+4. Returns base58-encoded signatures to the caller
+
+---
+
 ## Usage
 
-```typescript
+### Basic signing endpoint
+
+```ts
 import { verifyTransaction } from "@revibase/transaction-manager";
-import { createSolanaRpc, getBase58Decoder } from "gill";
-import { ed25519 } from "@noble/curves/ed25519.js";
+import { createSolanaRpc, getBase58Encoder } from "gill";
 
 const rpc = createSolanaRpc("https://api.mainnet-beta.solana.com");
+
 const transactionManagerConfig = {
+  /**
+   * Base58-encoded Ed25519 public key of this transaction manager
+   */
   publicKey: "YOUR_TRANSACTION_MANAGER_PUBLIC_KEY",
+
+  /**
+   * Public URL of this signing endpoint
+   */
   url: "https://your-transaction-manager.com/sign",
 };
 
-export async function sign(request: Request) {
+export async function sign(request: Request): Promise<Response> {
   const { publicKey, payload } = await request.json();
 
   if (publicKey !== transactionManagerConfig.publicKey) {
@@ -34,12 +60,7 @@ export async function sign(request: Request) {
     );
   }
 
-  /**
-   * Load your transaction manager private key (Ed25519).
-   *
-   * Rough example only: `ed25519.sign(messageBytes, privateKey)` expects a 32-byte private key.
-   * In production, store/fetch this from secure storage (KMS/HSM), not source code.
-   */
+  // Load the Ed25519 private key corresponding to `transactionManagerConfig.publicKey`
   const privateKey = await loadTransactionManagerPrivateKey(publicKey);
 
   const signatures: string[] = [];
@@ -52,33 +73,92 @@ export async function sign(request: Request) {
     );
 
     /**
-     * Add custom allow/deny policy (example):
-     * Only allow transfer intents (reject config changes, url edits, account creation, etc.).
+     * ------------------------------------------------------------------
+     * Custom policy enforcement
+     * ------------------------------------------------------------------
      *
-     * `verificationResults` contains:
-     * - `instructions`: the instruction(s) that will be send on chain
-     * - `verifiedSigners`: verified signers metadata
+     * `verificationResults` contains fully verified metadata such as:
      *
-     * make use of those parameters to build your own transaction signing policies
+     * - `instructions`: decoded Solana instructions that will be sent on-chain
+     * - `verifiedSigners`: wallets, members, and credentials involved
+     *
+     * Use this information to:
+     * - allow only transfers
+     * - reject config changes
+     * - restrict destination addresses
+     * - enforce amount limits
      */
 
-    // Sign the Solana transaction MESSAGE bytes (Ed25519) and return base58 signatures.
-    const signatureBytes = ed25519.sign(messageBytes, privateKey);
-    signatures.push(getBase58Decoder().decode(signatureBytes));
+    // Sign the Solana *message* bytes (not the full transaction)
+    const signatureBytes = await crypto.subtle.sign(
+      { name: "Ed25519" },
+      privateKey,
+      messageBytes,
+    );
+
+    // Return base58-encoded signatures
+    signatures.push(getBase58Encoder().encode(signatureBytes));
   }
 
   return new Response(JSON.stringify({ signatures }), {
     headers: { "Content-Type": "application/json" },
   });
 }
+```
 
+---
+
+## Key Management
+
+```ts
 async function loadTransactionManagerPrivateKey(
   publicKey: string,
-): Promise<Uint8Array<ArrayBuffer>> {
-  // fetch the corresponding private key for your transaction manager public key
-  // - return a 32-byte Ed25519 private key, e.g. from env/KMS.
+): Promise<CryptoKey> {
+  /**
+   * Fetch the private key corresponding to `publicKey`.
+   *
+   * - Must be an Ed25519 private key
+   * - SHOULD be stored in a secure system (KMS / HSM / Secrets Manager)
+   * - MUST NOT be hard-coded in source code
+   */
+
+  const jwk = await fetchPrivateKeyJwkFromSecureStore(publicKey);
+
+  return crypto.subtle.importKey(
+    "jwk",
+    jwk,
+    { name: "Ed25519" },
+    false, // non-extractable
+    ["sign"],
+  );
 }
 ```
+
+> ⚠️ **Security note**
+>
+> The transaction manager private key has full signing authority for any
+> transaction that passes your policy checks. Treat it as highly sensitive.
+
+---
+
+## What `verifyTransaction` Does
+
+`verifyTransaction` performs:
+
+- Signature verification of all required members
+- Instruction decoding and validation
+- Wallet, member, and permission checks
+
+---
+
+## What This Package Does _Not_ Do
+
+- ❌ Store private keys for you
+- ❌ Enforce your business rules automatically
+
+Those responsibilities remain under your control.
+
+---
 
 ## License
 
