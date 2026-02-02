@@ -7,27 +7,16 @@ import {
   type TransactionSigner,
 } from "gill";
 
-/**
- * Fetches a random payer from the API and returns a transaction signer.
- * The payer can be used to pay transaction fees.
- *
- * @param payerEndpoint - Base URL of the payer API endpoint
- * @returns Transaction signer that can sign transactions on behalf of the payer
- * @throws {Error} If the API request fails or returns an error
- */
-
 const payerCache = new Map<string, TransactionSigner>();
 
 export async function getRandomPayer(
-  payerEndpoint: string,
+  payerEndpoint: string
 ): Promise<TransactionSigner> {
-  // Check cache first
   const cached = payerCache.get(payerEndpoint);
   if (cached) return cached;
 
-  // Fetch new payer
   const response = await fetch(`${payerEndpoint}/getRandomPayer`, {
-    signal: AbortSignal.timeout(5000), // 5s timeout
+    signal: AbortSignal.timeout(5000),
   });
 
   if (!response.ok) {
@@ -42,7 +31,7 @@ export async function getRandomPayer(
       const payload = {
         publicKey: randomPayer,
         transactions: transactions.map((tx) =>
-          getBase64Decoder().decode(getTransactionEncoder().encode(tx)),
+          getBase64Decoder().decode(getTransactionEncoder().encode(tx))
         ),
       };
 
@@ -50,12 +39,12 @@ export async function getRandomPayer(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(10000), // 10s timeout
+        signal: AbortSignal.timeout(10000),
       });
 
       if (!signResponse.ok) {
         throw new Error(
-          `Failed to sign transactions: ${signResponse.statusText}`,
+          `Failed to sign transactions: ${signResponse.statusText}`
         );
       }
 
@@ -69,13 +58,12 @@ export async function getRandomPayer(
 
       return data.signatures.map((sig) => ({
         [address(randomPayer)]: getBase58Encoder().encode(
-          sig,
+          sig
         ) as SignatureBytes,
       }));
     },
   };
 
-  // Cache the payer for this endpoint
   payerCache.set(payerEndpoint, payer);
   return payer;
 }

@@ -1,8 +1,3 @@
-/**
- * Shared utilities for transaction processing
- * Reduces code duplication across different transaction types
- */
-
 import {
   convertBase64StringToJWK,
   createClientAuthorizationCompleteRequestChallenge,
@@ -18,9 +13,6 @@ import { REVIBASE_API_URL } from "src/utils/consts";
 import { getRandomPayer } from "src/utils/helper";
 import { getSettingsIndexWithAddress } from "src/utils/internal";
 
-/**
- * Common transaction processing context
- */
 export interface TransactionProcessingContext {
   settingsIndexWithAddress: Awaited<
     ReturnType<typeof getSettingsIndexWithAddress>
@@ -33,21 +25,14 @@ export interface TransactionProcessingContext {
   payer: TransactionSigner;
 }
 
-/**
- * Creates a signed authentication response from a request and private key.
- *
- * @param request - Complete transaction request
- * @param privateKey - Ed25519 private key for signing
- * @returns Authentication response with client signature
- */
 export async function createSignedAuthResponse(
   request: CompleteTransactionRequest,
-  privateKey: string,
+  privateKey: string
 ) {
   const pkey = convertBase64StringToJWK(privateKey);
   if (!pkey.alg) throw new Error("Property alg in JWK is missing.");
   const signature = await new CompactSign(
-    createClientAuthorizationCompleteRequestChallenge(request),
+    createClientAuthorizationCompleteRequestChallenge(request)
   )
     .setProtectedHeader({
       alg: pkey.alg,
@@ -63,26 +48,17 @@ export async function createSignedAuthResponse(
   };
 }
 
-/**
- * Prepares the common context needed for transaction processing.
- * This includes fetching settings, signing keys, and transaction manager setup.
- *
- * @param request - Complete transaction request
- * @param privateKey - Ed25519 private key for signing
- * @param feePayer - Optional fee payer (defaults to random payer from API)
- * @returns Transaction processing context
- */
 export async function prepareTransactionContext(
   request: CompleteTransactionRequest,
   privateKey: string,
-  feePayer?: TransactionSigner,
+  feePayer?: TransactionSigner
 ): Promise<TransactionProcessingContext> {
   const authResponse = await createSignedAuthResponse(request, privateKey);
   const cachedAccounts = new Map();
 
   const settingsIndexWithAddress = await getSettingsIndexWithAddress(
     request,
-    cachedAccounts,
+    cachedAccounts
   );
 
   const [payer, settingsData, signedSigner] = await Promise.all([
@@ -90,7 +66,7 @@ export async function prepareTransactionContext(
     fetchSettingsAccountData(
       settingsIndexWithAddress.index,
       settingsIndexWithAddress.settingsAddressTreeIndex,
-      cachedAccounts,
+      cachedAccounts
     ),
     getSignedSecp256r1Key(authResponse),
   ]);
@@ -102,7 +78,7 @@ export async function prepareTransactionContext(
     authResponses: [authResponse],
     transactionManagerAddress,
     transactionMessageBytes: getBase64Encoder().encode(
-      request.data.payload.transactionPayload.transactionMessageBytes,
+      request.data.payload.transactionPayload.transactionMessageBytes
     ),
     userAddressTreeIndex,
     cachedAccounts,
@@ -117,17 +93,9 @@ export async function prepareTransactionContext(
   };
 }
 
-/**
- * Gets the signers array for a transaction.
- * Includes transaction manager signer if available.
- *
- * @param signedSigner - The signed user signer
- * @param transactionManagerSigner - Optional transaction manager signer
- * @returns Array of signers
- */
 export function getTransactionSigners(
   signedSigner: TransactionProcessingContext["signedSigner"],
-  transactionManagerSigner: TransactionProcessingContext["transactionManagerSigner"],
+  transactionManagerSigner: TransactionProcessingContext["transactionManagerSigner"]
 ) {
   return transactionManagerSigner
     ? [signedSigner, transactionManagerSigner]

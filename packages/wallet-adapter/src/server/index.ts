@@ -3,7 +3,6 @@ import {
   createClientAuthorizationCompleteRequestChallenge,
   type TransactionAuthenticationResponse,
 } from "@revibase/core";
-import { getBase64Decoder } from "gill";
 import { CompactSign } from "jose";
 import {
   CompleteCustomMessageRequestSchema,
@@ -71,9 +70,7 @@ export async function processClientAuthCallback({
             type: "message",
             payload: createSignInMessageText({
               domain: parsedResult.redirectOrigin,
-              nonce: getBase64Decoder().decode(
-                crypto.getRandomValues(new Uint8Array(16)),
-              ),
+              nonce: data.rid,
             }),
           },
         },

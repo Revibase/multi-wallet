@@ -35,12 +35,6 @@ import {
   REVIBASE_LOOKUP_TABLE_ADDRESS,
 } from "./consts";
 
-/**
- * Creates a standardized sign-in message text for WebAuthn authentication.
- *
- * @param input - Configuration object containing domain and nonce
- * @returns Formatted sign-in message string
- */
 export function createSignInMessageText(input: {
   domain?: string;
   nonce: string;
@@ -58,18 +52,9 @@ export function createSignInMessageText(input: {
   return fields.length > 0 ? `${message}\n\n${fields.join("\n")}` : message;
 }
 
-/**
- * Retrieves the settings index with address from the request.
- * If not present in additionalInfo, fetches it from the user account data.
- *
- * @param request - Complete message or transaction request
- * @param cachedAccounts - Optional cache for account data to avoid redundant fetches
- * @returns Settings index with address information
- * @throws {Error} If user has no delegated wallet
- */
 export async function getSettingsIndexWithAddress(
   request: CompleteMessageRequest | CompleteTransactionRequest,
-  cachedAccounts?: Map<string, any>,
+  cachedAccounts?: Map<string, any>
 ): Promise<SettingsIndexWithAddressArgs> {
   const { additionalInfo } = request.data.payload;
 
@@ -80,14 +65,14 @@ export async function getSettingsIndexWithAddress(
   const userAccountData = await fetchUserAccountData(
     new Secp256r1Key(request.data.payload.signer),
     request.data.payload.userAddressTreeIndex,
-    cachedAccounts,
+    cachedAccounts
   );
-
-  if (userAccountData.delegatedTo.__option === "None") {
+  const delegate = userAccountData.wallets.find((x) => x.isDelegate);
+  if (!delegate) {
     throw new Error("User has no delegated wallet");
   }
 
-  return userAccountData.delegatedTo.value;
+  return delegate;
 }
 
 export async function estimateTransactionSizeExceedLimit({
@@ -129,17 +114,17 @@ export async function estimateTransactionSizeExceedLimit({
       setTransactionMessageLifetimeUsingBlockhash(
         {
           blockhash: getBlockhashDecoder().decode(
-            crypto.getRandomValues(new Uint8Array(32)),
+            crypto.getRandomValues(new Uint8Array(32))
           ),
           lastValidBlockHeight: BigInt(Number.MAX_SAFE_INTEGER),
         },
-        tx,
+        tx
       ),
     (tx) =>
       result.addressesByLookupTableAddress
         ? compressTransactionMessageUsingAddressLookupTables(
             tx,
-            result.addressesByLookupTableAddress,
+            result.addressesByLookupTableAddress
           )
         : tx,
     (tx) =>
@@ -152,10 +137,10 @@ export async function estimateTransactionSizeExceedLimit({
             microLamports: 1000,
           }),
         ],
-        tx,
+        tx
       ),
 
-    (tx) => compileTransaction(tx),
+    (tx) => compileTransaction(tx)
   );
   const txSize = getBase64EncodedWireTransaction(tx).length;
   console.log("Estimated Tx Size: ", txSize);
@@ -172,7 +157,7 @@ export function simulateSecp256r1Signer() {
     crossOrigin: false,
     authData,
     domainConfig: getAddressDecoder().decode(
-      crypto.getRandomValues(new Uint8Array(32)),
+      crypto.getRandomValues(new Uint8Array(32))
     ),
     signature,
     verifyArgs: {
@@ -197,22 +182,15 @@ export function simulateSecp256r1Signer() {
   return signer;
 }
 
-/**
- * Estimates Jito bundle tip amount based on current network conditions.
- *
- * @param jitoTipsConfig - Optional Jito tips configuration (defaults to global config)
- * @returns Estimated tip amount in lamports
- * @throws {Error} If the API request fails or returns invalid data
- */
 export async function estimateJitoTips(
-  jitoTipsConfig = getJitoTipsConfig(),
+  jitoTipsConfig = getJitoTipsConfig()
 ): Promise<number> {
   const { getJitoTipsUrl: estimateJitoTipsEndpoint, priority } = jitoTipsConfig;
 
   const response = await fetch(estimateJitoTipsEndpoint);
   if (!response.ok) {
     throw new Error(
-      `Failed to fetch Jito tips: ${response.status} ${response.statusText}`,
+      `Failed to fetch Jito tips: ${response.status} ${response.statusText}`
     );
   }
 
@@ -229,12 +207,6 @@ export async function estimateJitoTips(
   return Math.round(result[0][priority] * LAMPORTS_PER_SOL);
 }
 
-/**
- * Returns the address lookup table mapping for Revibase.
- * This table contains commonly used program addresses to reduce transaction size.
- *
- * @returns Address lookup table mapping
- */
 export function getAddressByLookUpTable(): AddressesByLookupTableAddress {
   return {
     [address(REVIBASE_LOOKUP_TABLE_ADDRESS)]: [
