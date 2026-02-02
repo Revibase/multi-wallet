@@ -4,10 +4,8 @@
 
 import {
   appendTransactionMessageInstructions,
-  compileTransaction,
   compressTransactionMessageUsingAddressLookupTables,
   createTransactionMessage,
-  getBase64EncodedWireTransaction,
   getSignatureFromTransaction,
   pipe,
   prependTransactionMessageInstructions,
@@ -22,7 +20,10 @@ import {
 import { MIN_COMPUTE_UNITS } from "../../constants";
 import type { TransactionDetails } from "../../types";
 import { getSendAndConfirmTransaction, getSolanaRpc } from "../initialize";
-import { getMedianPriorityFees } from "../transaction/internal";
+import {
+  getComputeUnitsEstimate,
+  getMedianPriorityFees,
+} from "../transaction/internal";
 
 /**
  * Signs and sends a transaction with automatic compute unit and priority fee estimation
@@ -51,37 +52,14 @@ export async function signAndSendTransaction({
           )
         : tx,
     async (tx) => {
-      const [simulatedTransaction, priorityFees] = await Promise.all([
-        getSolanaRpc()
-          .simulateTransaction(
-            getBase64EncodedWireTransaction(compileTransaction(tx)),
-            { encoding: "base64" },
-          )
-          .send(),
+      const [unitsConsumed, priorityFees] = await Promise.all([
+        getComputeUnitsEstimate(tx),
         getMedianPriorityFees(
           getSolanaRpc(),
           tx.instructions.flatMap((x) => x.accounts ?? []),
         ),
       ]);
-      if (simulatedTransaction.value.err) {
-        if (simulatedTransaction.value.logs) {
-          const errorMessage = [
-            "Transaction simulation failed:",
-            "",
-            ...simulatedTransaction.value.logs,
-          ].join("\n");
-          throw new Error(errorMessage);
-        }
-        const errorMessage = [
-          "Transaction simulation failed:",
-          "",
-          simulatedTransaction.value.err.toString(),
-        ].join("\n");
-        throw new Error(errorMessage);
-      }
-      const computeUnits = Math.ceil(
-        (Number(simulatedTransaction.value.unitsConsumed) ?? 0) * 1.1,
-      );
+      const computeUnits = Math.ceil((Number(unitsConsumed) ?? 0) * 1.1);
       return prependTransactionMessageInstructions(
         [
           ...(computeUnits > MIN_COMPUTE_UNITS

@@ -8,6 +8,7 @@ import {
   compressTransactionMessageUsingAddressLookupTables,
   createTransactionMessage,
   getAddressEncoder,
+  getBase64EncodedWireTransaction,
   getBlockhashDecoder,
   type Instruction,
   none,
@@ -24,6 +25,7 @@ import {
 } from "gill";
 import {
   getSetComputeUnitLimitInstruction,
+  getSetComputeUnitPriceInstruction,
   getTransferSolInstruction,
 } from "gill/programs";
 import {
@@ -93,6 +95,49 @@ export async function createEncodedBundle(
       return tx;
     }),
   );
+}
+
+export async function getComputeUnitsEstimate(
+  transactionMessage: Parameters<typeof compileTransaction>[0],
+) {
+  const transactionMessageWithComputeUnitAndPriorityFees =
+    prependTransactionMessageInstructions(
+      [
+        getSetComputeUnitLimitInstruction({ units: 800_000 }),
+        getSetComputeUnitPriceInstruction({ microLamports: 10_000 }),
+      ],
+      transactionMessage,
+    );
+  const encodedTransaction = getBase64EncodedWireTransaction(
+    compileTransaction(transactionMessageWithComputeUnitAndPriorityFees),
+  );
+  if (encodedTransaction.length > TRANSACTION_SIZE_LIMIT) {
+    throw new ValidationError(
+      `Transaction exceeds maximum length of ${TRANSACTION_SIZE_LIMIT} bytes (actual: ${encodedTransaction.length} bytes)`,
+    );
+  }
+  const simulatedTransaction = await getSolanaRpc()
+    .simulateTransaction(encodedTransaction, {
+      encoding: "base64",
+    })
+    .send();
+  if (simulatedTransaction.value.err) {
+    if (simulatedTransaction.value.logs) {
+      const errorMessage = [
+        "Transaction simulation failed:",
+        "",
+        ...simulatedTransaction.value.logs,
+      ].join("\n");
+      throw new Error(errorMessage);
+    }
+    const errorMessage = [
+      "Transaction simulation failed:",
+      "",
+      simulatedTransaction.value.err.toString(),
+    ].join("\n");
+    throw new Error(errorMessage);
+  }
+  return simulatedTransaction.value.unitsConsumed;
 }
 
 export async function getMedianPriorityFees(
