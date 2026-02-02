@@ -4,13 +4,10 @@ import {
 } from "@lightprotocol/stateless.js";
 import {
   createSolanaClient,
-  type BaseTransactionMessage,
   type Rpc,
   type SendAndConfirmTransactionWithSignersFunction,
   type SolanaRpcApi,
-  type TransactionMessageWithFeePayer,
 } from "gill";
-import { estimateComputeUnitLimitFactory } from "gill/programs";
 import {
   DEFAULT_JITO_BLOCK_ENGINE_URL,
   DEFAULT_JITO_TIP_PRIORITY,
@@ -24,10 +21,6 @@ type RevibaseGlobalState = {
   lightProtocolRpc?: LightProtocolRpc;
   solanaRpc?: Rpc<SolanaRpcApi>;
   sendAndConfirm?: SendAndConfirmTransactionWithSignersFunction;
-  computeEstimate?: (
-    tx: BaseTransactionMessage & TransactionMessageWithFeePayer,
-    cfg?: { commitment?: "processed" | "confirmed" | "finalized" },
-  ) => Promise<number>;
   jitoTipsConfig?: JitoTipsConfig | null;
 };
 
@@ -59,13 +52,6 @@ export function getSendAndConfirmTransaction() {
     throw new NotInitializedError("Send and confirm transaction function");
   }
   return state.sendAndConfirm;
-}
-
-export function getComputeBudgetEstimate() {
-  if (!state.computeEstimate) {
-    throw new NotInitializedError("Compute budget estimate function");
-  }
-  return state.computeEstimate;
 }
 
 export function getJitoTipsConfig() {
@@ -102,6 +88,5 @@ export function initialize({
   });
   state.solanaRpc = rpc;
   state.sendAndConfirm = sendAndConfirmTransaction;
-  state.computeEstimate = estimateComputeUnitLimitFactory({ rpc });
   state.jitoTipsConfig = jitoTipsConfig ?? null;
 }
