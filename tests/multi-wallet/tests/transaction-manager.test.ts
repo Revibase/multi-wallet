@@ -100,8 +100,8 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
       ).to.equal(2);
 
       expect(
-        convertMemberKeyToString(accountData.members[1].pubkey),
-        "Second member should be the transaction manager keypair",
+        convertMemberKeyToString(accountData.members[0].pubkey),
+        "First member should be the transaction manager keypair",
       ).to.equal(ephemeralKeypair.address.toString());
     });
   });
