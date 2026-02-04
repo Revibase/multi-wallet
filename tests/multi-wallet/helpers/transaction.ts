@@ -1,6 +1,7 @@
 import {
   changeConfig,
   getSendAndConfirmTransaction,
+  getSettingsFromIndex,
   getSolanaRpc,
   prepareChangeConfigArgs,
 } from "@revibase/core";
@@ -128,7 +129,7 @@ export async function addPayerAsNewMember(ctx: TestContext) {
 
   const changeConfigArgs = await prepareChangeConfigArgs({
     compressed: ctx.compressed,
-    index: ctx.index,
+    settings: await getSettingsFromIndex(ctx.index),
     configActionsArgs: [
       {
         type: "AddMembers",

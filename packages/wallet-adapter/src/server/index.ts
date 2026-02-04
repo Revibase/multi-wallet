@@ -1,20 +1,22 @@
+import type {
+  StartMessageRequest,
+  StartTransactionRequest,
+} from "@revibase/core";
 import {
   convertBase64StringToJWK,
   createClientAuthorizationCompleteRequestChallenge,
+  StartMessageRequestSchema,
+  StartTransactionRequestSchema,
   type TransactionAuthenticationResponse,
 } from "@revibase/core";
 import { CompactSign } from "jose";
+import { DEFAULT_TIMEOUT } from "src/provider/utils";
 import {
   CompleteCustomMessageRequestSchema,
   CompleteCustomTransactionRequestSchema,
-  StartCustomMessageRequestSchema,
-  StartCustomTransactionRequestSchema,
   type CompleteCustomMessageRequest,
   type CompleteCustomTransactionRequest,
-  type StartCustomMessageRequest,
-  type StartCustomTransactionRequest,
 } from "src/utils";
-import { createSignInMessageText } from "src/utils/internal";
 import z from "zod";
 import { processGetResult } from "./processGetResult";
 import { processMessage } from "./processMessage";
@@ -41,8 +43,8 @@ export async function processClientAuthCallback({
   rpId,
 }: {
   request:
-    | StartCustomTransactionRequest
-    | StartCustomMessageRequest
+    | StartTransactionRequest
+    | StartMessageRequest
     | CompleteCustomMessageRequest
     | CompleteCustomTransactionRequest;
   privateKey: string;
@@ -51,47 +53,47 @@ export async function processClientAuthCallback({
 }) {
   const parsedResult = z
     .union([
-      StartCustomMessageRequestSchema,
-      StartCustomTransactionRequestSchema,
+      StartTransactionRequestSchema,
+      StartMessageRequestSchema,
       CompleteCustomTransactionRequestSchema,
       CompleteCustomMessageRequestSchema,
     ])
     .parse(request);
 
   if (parsedResult.phase === "start") {
-    const { data } = parsedResult;
+    const { data, rid, redirectOrigin, signer } = parsedResult;
     if (data.type === "message") {
       return await processStartRequest({
         request: {
           phase: "start",
-          redirectOrigin: parsedResult.redirectOrigin,
-          signer: parsedResult.signer,
+          redirectOrigin,
+          signer,
+          rid,
+          validTill: Date.now() + DEFAULT_TIMEOUT,
           data: {
             type: "message",
-            payload: createSignInMessageText({
-              domain: parsedResult.redirectOrigin,
-              nonce: data.rid,
-            }),
+            payload: data.payload,
           },
         },
         privateKey,
         providerOrigin,
-        rid: data.rid,
       });
     } else {
       return await processStartRequest({
         request: {
           phase: "start",
-          redirectOrigin: parsedResult.redirectOrigin,
-          signer: parsedResult.signer,
+          redirectOrigin,
+          signer,
+          rid,
+          validTill: Date.now() + DEFAULT_TIMEOUT,
           data: {
             type: "transaction",
             payload: data.payload,
+            sendTx: false,
           },
         },
         providerOrigin,
         privateKey,
-        rid: data.rid,
       });
     }
   }

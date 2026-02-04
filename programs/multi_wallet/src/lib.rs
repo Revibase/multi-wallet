@@ -124,14 +124,12 @@ pub mod multi_wallet {
     #[instruction(discriminator = 9)]
     pub fn change_config<'info>(
         ctx: Context<'_, '_, 'info, 'info, ChangeConfig<'info>>,
-        settings_index: u128,
         config_actions: Vec<ConfigAction>,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
         compressed_proof_args: Option<ProofArgs>,
     ) -> Result<()> {
         ChangeConfig::process(
             ctx,
-            settings_index,
             config_actions,
             secp256r1_verify_args,
             compressed_proof_args,

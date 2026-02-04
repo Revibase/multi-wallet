@@ -105,8 +105,9 @@ impl CompressedSettings {
         LightAccount<CompressedSettings>,
         NewAddressParamsAssignedPacked,
     )> {
+        let settings_key = Settings::get_settings_key_from_index(data.index)?;
         let (address, address_seed) = derive_address(
-            &[SEED_MULTISIG, data.index.to_le_bytes().as_ref()],
+            &[SEED_MULTISIG, settings_key.as_ref()],
             address_tree,
             &crate::ID,
         );
@@ -138,8 +139,10 @@ impl CompressedSettings {
             .as_ref()
             .ok_or(MultisigError::MissingSettingsData)?;
 
-        let settings_key =
-            Settings::get_settings_key_from_index(settings_data.index, settings_data.bump)?;
+        let settings_key = Settings::get_settings_key_from_index_with_bump(
+            settings_data.index,
+            settings_data.bump,
+        )?;
 
         let light_cpi_accounts = CpiAccounts::new(
             payer,

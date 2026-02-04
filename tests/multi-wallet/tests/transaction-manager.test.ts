@@ -4,6 +4,7 @@ import {
   createUserAccounts,
   fetchSettingsAccountData,
   fetchUserAccountData,
+  getSettingsFromIndex,
   prepareChangeConfigArgs,
   UserRole,
 } from "@revibase/core";
@@ -48,7 +49,7 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
 
       const changeConfigArgs = await prepareChangeConfigArgs({
         compressed: ctx.compressed,
-        index: ctx.index,
+        settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
             type: "AddMembers",
@@ -74,7 +75,8 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
       const userAccountData = await fetchUserAccountData(
         ephemeralKeypair.address,
       );
-      const accountData = await fetchSettingsAccountData(ctx.index);
+      const settings = await getSettingsFromIndex(ctx.index);
+      const accountData = await fetchSettingsAccountData(settings);
       const settingsIndex =
         userAccountData.wallets.find((x) => x.isDelegate) ?? null;
 

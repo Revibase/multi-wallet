@@ -15,6 +15,7 @@ import {
   createUserAccounts,
   editUserDelegate,
   getLightProtocolRpc,
+  getSettingsFromIndex,
   getSolanaRpc,
   Secp256r1Key,
   tokenTransferIntent,
@@ -208,7 +209,7 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
           createUserArgs: {
             member: secp256r1Key,
             role: UserRole.PermanentMember,
-            index: ctx.index,
+            settings: await getSettingsFromIndex(ctx.index),
             transactionManager: {
               member: transactionManager.address,
             },
@@ -241,7 +242,7 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
         );
 
         const tokenTransfer = await tokenTransferIntent({
-          index: ctx.index,
+          settings: await getSettingsFromIndex(ctx.index),
           payer: ctx.payer,
           signers: [signedSigner, transactionManager],
           destination: ctx.wallet.address,
@@ -1176,7 +1177,7 @@ async function ensureDelegate(ctx: TestContext) {
 async function doTokenTransfer(ctx: TestContext, mint: Address) {
   assertTestContext(ctx, ["index", "payer", "wallet"]);
   const tokenTransfer = await tokenTransferIntent({
-    index: ctx.index,
+    settings: await getSettingsFromIndex(ctx.index),
     payer: ctx.payer,
     signers: [ctx.payer],
     destination: ctx.wallet.address,

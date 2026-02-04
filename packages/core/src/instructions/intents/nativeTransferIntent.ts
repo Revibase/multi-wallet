@@ -10,10 +10,7 @@ import {
   type Secp256r1VerifyArgsWithDomainAddressArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
-import {
-  getSettingsFromIndex,
-  getWalletAddressFromSettings,
-} from "../../utils";
+import { getWalletAddressFromSettings } from "../../utils";
 import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
@@ -29,7 +26,7 @@ import {
 } from "../secp256r1Verify";
 
 export async function nativeTransferIntent({
-  index,
+  settings,
   settingsAddressTreeIndex,
   destination,
   signers,
@@ -38,7 +35,7 @@ export async function nativeTransferIntent({
   payer,
   compressed = false,
 }: {
-  index: number | bigint;
+  settings: Address;
   settingsAddressTreeIndex?: number;
   destination: Address;
   amount: number | bigint;
@@ -48,14 +45,13 @@ export async function nativeTransferIntent({
   cachedAccounts?: Map<string, any>;
 }) {
   const dedupSigners = getDeduplicatedSigners(signers);
-  const settings = await getSettingsFromIndex(index);
   const walletAddress = await getWalletAddressFromSettings(settings);
 
   const [{ packedAccounts, proof, settingsMutArgs }, { value }] =
     await Promise.all([
       constructSettingsProofArgs(
         compressed,
-        index,
+        settings,
         settingsAddressTreeIndex,
         false,
         cachedAccounts,

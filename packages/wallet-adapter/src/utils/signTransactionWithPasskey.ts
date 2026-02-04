@@ -1,12 +1,15 @@
-import type { TransactionPayload } from "@revibase/core";
+import type {
+  StartTransactionRequest,
+  TransactionPayload,
+} from "@revibase/core";
 import {
   bufferToBase64URLString,
   type TransactionAuthenticationResponse,
 } from "@revibase/core";
 import { getBase64Decoder } from "gill";
 import type { RevibaseProvider } from "src/provider";
+import { DEFAULT_TIMEOUT } from "src/provider/utils.js";
 import { WalletTransactionError } from "./errors.js";
-import type { StartCustomTransactionRequest } from "./types.js";
 
 /**
  * Signs a transaction using WebAuthn passkey authentication.
@@ -46,12 +49,14 @@ export async function signTransactionWithPasskey({
     rid ??
     getBase64Decoder().decode(crypto.getRandomValues(new Uint8Array(16)));
 
-  const payload: StartCustomTransactionRequest = {
+  const payload: StartTransactionRequest = {
     phase: "start",
+    rid,
+    validTill: Date.now() + DEFAULT_TIMEOUT,
     data: {
       type: "transaction" as const,
       payload: transactionPayload,
-      rid,
+      sendTx: false,
     },
     redirectOrigin,
     signer,

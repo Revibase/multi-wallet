@@ -1,10 +1,11 @@
 use crate::{
     error::MultisigError,
-    state::{DomainConfig, ProofArgs, Settings, SettingsIndexWithAddress, User, UserWalletOperation},
+    state::{
+        DomainConfig, ProofArgs, Settings, SettingsIndexWithAddress, User, UserWalletOperation,
+    },
     utils::{
         durable_nonce_check, resize_account_if_necessary, ChallengeArgs, MemberKey,
         MultisigSettings, Permission, Secp256r1VerifyArgsWithDomainAddress, TransactionActionType,
-        SEED_MULTISIG,
     },
     ConfigAction, LIGHT_CPI_SIGNER,
 };
@@ -20,16 +21,8 @@ use light_sdk::{
 use std::vec;
 
 #[derive(Accounts)]
-#[instruction(settings_index: u128)]
 pub struct ChangeConfig<'info> {
-    #[account(
-        mut,
-        seeds = [
-            SEED_MULTISIG,  
-            settings_index.to_le_bytes().as_ref()
-        ],
-        bump = settings.bump
-    )]
+    #[account(mut)]
     pub settings: Account<'info, Settings>,
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -150,7 +143,6 @@ impl<'info> ChangeConfig<'info> {
     #[access_control(ctx.accounts.validate(&ctx, &config_actions, &secp256r1_verify_args))]
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
-        _settings_index: u128,
         config_actions: Vec<ConfigAction>,
         secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
         compressed_proof_args: Option<ProofArgs>,

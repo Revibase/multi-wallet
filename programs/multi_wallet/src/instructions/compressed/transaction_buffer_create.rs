@@ -23,7 +23,7 @@ pub struct TransactionBufferCreateCompressed<'info> {
             SEED_MULTISIG,
             {
                 let settings = settings_readonly_args.data.data.as_ref().ok_or(MultisigError::InvalidArguments)?;
-                Settings::get_settings_key_from_index(settings.index, settings.bump)?.as_ref()
+                Settings::get_settings_key_from_index_with_bump(settings.index, settings.bump)?.as_ref()
             },
             SEED_TRANSACTION_BUFFER,
             {&MemberKey::get_signer(&creator, &secp256r1_verify_args, Some(&instructions_sysvar))?.get_seed()?},

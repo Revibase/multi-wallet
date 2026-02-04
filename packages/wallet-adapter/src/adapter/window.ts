@@ -1,10 +1,10 @@
-import type { SettingsIndexWithAddressArgs } from "@revibase/core";
 import {
   ReadonlyWalletAccount,
   type StandardConnectInput,
   type StandardDisconnectMethod,
   type WalletAccount,
 } from "@wallet-standard/core";
+import type { User } from "src/utils";
 import type {
   RevibaseBuildTokenTransferTransactionMethod,
   RevibaseBuildTransactionMethod,
@@ -33,8 +33,7 @@ export interface RevibaseEventEmitter {
 
 export interface Revibase extends RevibaseEventEmitter {
   publicKey: string | null;
-  member: string | null;
-  settingsIndexWithAddress: SettingsIndexWithAddressArgs | null;
+  user: User | null;
   connect: (input: StandardConnectInput | undefined) => Promise<void>;
   disconnect: StandardDisconnectMethod;
   signAndSendTransaction: RevibaseSignAndSendTransactionMethod;
@@ -44,16 +43,10 @@ export interface Revibase extends RevibaseEventEmitter {
 }
 
 export class RevibaseWalletAccount extends ReadonlyWalletAccount {
-  readonly member: string | null;
-  readonly settingsIndexWithAddress: SettingsIndexWithAddressArgs;
+  readonly user: User | null;
 
-  constructor(
-    account: WalletAccount,
-    member: string | null,
-    settingsIndexWithAddress: SettingsIndexWithAddressArgs,
-  ) {
+  constructor(account: WalletAccount, user: User | null) {
     super(account);
-    this.member = member;
-    this.settingsIndexWithAddress = settingsIndexWithAddress;
+    this.user = user;
   }
 }

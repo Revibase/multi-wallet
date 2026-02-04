@@ -1,4 +1,8 @@
-import { fetchSettingsAccountData, getSolanaRpc } from "@revibase/core";
+import {
+  fetchSettingsAccountData,
+  getSettingsFromIndex,
+  getSolanaRpc,
+} from "@revibase/core";
 import { expect } from "chai";
 import { address } from "gill";
 import { TEST_AMOUNT_SMALL, WALLET_TRANSFER_AMOUNT } from "../constants.ts";
@@ -18,7 +22,8 @@ export function runWalletCreationTests(getCtx: () => TestContext) {
       assertTestContext(ctx, ["index", "multiWalletVault"]);
 
       // Verify wallet settings
-      const accountData = await fetchSettingsAccountData(ctx.index);
+      const settings = await getSettingsFromIndex(ctx.index);
+      const accountData = await fetchSettingsAccountData(settings);
 
       expect(
         accountData.members.length,

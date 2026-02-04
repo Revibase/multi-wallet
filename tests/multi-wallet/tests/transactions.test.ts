@@ -1,6 +1,7 @@
 import {
   fetchSettingsAccountData,
   fetchUserAccountData,
+  getSettingsFromIndex,
   getSolanaRpc,
   getWalletAddressFromIndex,
   prepareTransactionMessage,
@@ -74,7 +75,7 @@ export function runTransactionTests(getCtx: () => TestContext) {
         payer: ctx.payer,
         transactionMessageBytes,
         signers: [ephemeralKeypair, ctx.wallet],
-        index: ctx.index,
+        settings: await getSettingsFromIndex(ctx.index),
       });
 
       await sendTransaction(
@@ -84,7 +85,8 @@ export function runTransactionTests(getCtx: () => TestContext) {
       );
 
       // Verify transaction was successful
-      const accountData = await fetchSettingsAccountData(ctx.index);
+      const settings = await getSettingsFromIndex(ctx.index);
+      const accountData = await fetchSettingsAccountData(settings);
       const userAccountData = await fetchUserAccountData(ctx.wallet.address);
       const settingsIndex =
         userAccountData.wallets.find((x) => x.isDelegate) ?? null;

@@ -1,5 +1,6 @@
 import z from "zod";
 import { WalletStorageError } from "./errors.js";
+import { UserSchema } from "./types.js";
 
 /**
  * Storage key for wallet account data
@@ -10,16 +11,12 @@ const STORAGE_KEY = "Revibase:account";
  * Type definition for stored account data
  */
 
-const StoredAccountDataSchema = z.object({
-  publicKey: z.string().nullable(),
-  member: z.string().nullable(),
-  settingsIndexWithAddress: z
-    .object({
-      index: z.union([z.number(), z.bigint()]),
-      settingsAddressTreeIndex: z.number(),
-    })
-    .nullable(),
-});
+const StoredAccountDataSchema = z
+  .object({
+    publicKey: z.string().nullable(),
+    user: UserSchema,
+  })
+  .strict();
 export type StoredAccountData = z.infer<typeof StoredAccountDataSchema>;
 /**
  * Safely retrieves account data from localStorage

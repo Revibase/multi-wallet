@@ -164,7 +164,7 @@ impl<'info> ChangeConfigCompressed<'info> {
         let settings_index = settings_data.index;
         let settings_address_tree_index = settings_data.settings_address_tree_index;
         let settings_key =
-            Settings::get_settings_key_from_index(settings_index, settings_data.bump)?;
+            Settings::get_settings_key_from_index_with_bump(settings_index, settings_data.bump)?;
 
         ctx.accounts.validate(
             ctx.remaining_accounts,

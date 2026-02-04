@@ -19,7 +19,7 @@ import { SignedSecp256r1Key } from "../../types";
 import {
   fetchSettingsAccountData,
   fetchUserAccountData,
-  getCompressedSettingsAddressFromIndex,
+  getCompressedSettingsAddress,
   getSettingsFromIndex,
   getUserAccountAddress,
 } from "../../utils";
@@ -87,16 +87,17 @@ export async function editUserDelegate({
   let newSettingsIndexes: { start: number; end: number } | null = null;
   const old_delegate = userAccount.wallets.find((x) => x.isDelegate);
   if (old_delegate) {
+    const old_settings = await getSettingsFromIndex(old_delegate.index);
     const settings = await fetchSettingsAccountData(
-      old_delegate.index,
+      old_settings,
       old_delegate.settingsAddressTreeIndex,
       cachedAccounts,
     );
     if (settings.isCompressed) {
       addresses.push({
         address: (
-          await getCompressedSettingsAddressFromIndex(
-            old_delegate.index,
+          await getCompressedSettingsAddress(
+            old_settings,
             old_delegate.settingsAddressTreeIndex,
           )
         ).address,
@@ -111,16 +112,17 @@ export async function editUserDelegate({
     }
   }
   if (newDelegate) {
+    const new_settings = await getSettingsFromIndex(newDelegate.index);
     const settings = await fetchSettingsAccountData(
-      newDelegate.index,
+      new_settings,
       newDelegate.settingsAddressTreeIndex,
       cachedAccounts,
     );
     if (settings.isCompressed) {
       addresses.push({
         address: (
-          await getCompressedSettingsAddressFromIndex(
-            newDelegate.index,
+          await getCompressedSettingsAddress(
+            new_settings,
             newDelegate.settingsAddressTreeIndex,
           )
         ).address,

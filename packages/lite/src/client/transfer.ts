@@ -1,4 +1,7 @@
-import type { TransactionPayloadWithBase64MessageBytes } from "@revibase/core";
+import type {
+  StartTransactionRequest,
+  TransactionPayloadWithBase64MessageBytes,
+} from "@revibase/core";
 import {
   address,
   getAddressEncoder,
@@ -7,7 +10,8 @@ import {
 } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 import type { RevibaseProvider } from "src/provider/main";
-import type { StartCustomTransactionRequest, User } from "src/utils";
+import { DEFAULT_TIMEOUT } from "src/provider/utils";
+import type { User } from "src/utils";
 
 /**
  * Transfers tokens (native SOL or SPL tokens) using the Revibase provider.
@@ -60,15 +64,17 @@ export async function transferTokens(
   const rid = getBase64Decoder().decode(
     crypto.getRandomValues(new Uint8Array(16)),
   );
-  const payload: StartCustomTransactionRequest = {
+  const payload: StartTransactionRequest = {
     phase: "start",
+    rid,
+    validTill: Date.now() + DEFAULT_TIMEOUT,
     data: {
       type: "transaction" as const,
       payload: transactionPayload,
-      rid,
+      sendTx: true,
     },
     redirectOrigin,
-    signer,
+    signer: signer?.publicKey,
   };
 
   await Promise.all([

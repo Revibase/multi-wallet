@@ -74,7 +74,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
           createUserArgs: {
             member: secp256r1Key,
             role: UserRole.Member,
-            index: ctx.index,
+            settings: await getSettingsFromIndex(ctx.index),
             transactionManager: {
               member: transactionManager.address,
             },
@@ -90,7 +90,8 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         );
 
         // Verify Secp256r1Key was added as member
-        const accountData = await fetchSettingsAccountData(ctx.index);
+        const settings = await getSettingsFromIndex(ctx.index);
+        const accountData = await fetchSettingsAccountData(settings);
         const userAccountData = await fetchUserAccountData(secp256r1Key);
         const settingsIndex =
           userAccountData.wallets.find((x) => x.isDelegate) ?? null;
@@ -164,7 +165,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
           createUserArgs: {
             member: secp256r1Key,
             role: UserRole.Member,
-            index: ctx.index,
+            settings: await getSettingsFromIndex(ctx.index),
             credentialId,
             transports: [Transports.Internal, Transports.Hybrid],
           },
@@ -178,7 +179,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
 
         const changeConfigArgs = await prepareChangeConfigArgs({
           compressed: ctx.compressed,
-          index: ctx.index,
+          settings: await getSettingsFromIndex(ctx.index),
           configActionsArgs: [
             {
               type: "AddMembers",
@@ -216,7 +217,8 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
 
         // Verify payer was added as member
-        const accountData = await fetchSettingsAccountData(ctx.index);
+        const settings = await getSettingsFromIndex(ctx.index);
+        const accountData = await fetchSettingsAccountData(settings);
         expect(
           accountData.members.length,
           "Wallet should have at least two members after adding payer",

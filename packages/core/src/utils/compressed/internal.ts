@@ -25,7 +25,7 @@ import {
   type SettingsReadonlyArgs,
 } from "../../generated";
 import {
-  getCompressedSettingsAddressFromIndex,
+  getCompressedSettingsAddress,
   getWhitelistedAddressTreesAddress,
 } from "../addresses";
 import {
@@ -195,7 +195,7 @@ export function getCompressedAccountMutArgs<T>(
 
 export async function constructSettingsProofArgs(
   compressed: boolean,
-  index: number | bigint,
+  settings: Address,
   settingsAddressTreeIndex?: number,
   simulateProof?: boolean,
   cachedAccounts?: AccountCache,
@@ -206,11 +206,11 @@ export async function constructSettingsProofArgs(
   const packedAccounts = new PackedAccounts();
   if (compressed) {
     await packedAccounts.addSystemAccounts();
-    const { address } = await getCompressedSettingsAddressFromIndex(
-      index,
+    const { address } = await getCompressedSettingsAddress(
+      settings,
       settingsAddressTreeIndex,
     );
-    const settings = (
+    const settingsAccount = (
       await getCompressedAccountHashes(
         [{ address, type: "Settings" }],
         cachedAccounts,
@@ -220,10 +220,10 @@ export async function constructSettingsProofArgs(
       proof = {
         rootIndices: [0],
         roots: [],
-        leafIndices: [settings.leafIndex],
+        leafIndices: [settingsAccount.leafIndex],
         leaves: [],
-        treeInfos: [settings.treeInfo],
-        proveByIndices: [settings.proveByIndex],
+        treeInfos: [settingsAccount.treeInfo],
+        proveByIndices: [settingsAccount.proveByIndex],
         compressedProof: {
           a: Array.from(crypto.getRandomValues(new Uint8Array(32))),
           b: Array.from(crypto.getRandomValues(new Uint8Array(32))),
@@ -231,7 +231,7 @@ export async function constructSettingsProofArgs(
         },
       };
     } else {
-      proof = await getValidityProofWithRetry([settings], []);
+      proof = await getValidityProofWithRetry([settingsAccount], []);
     }
 
     const stateTreeInfo = packedAccounts.packTreeInfos(
@@ -241,7 +241,7 @@ export async function constructSettingsProofArgs(
           rootIndex: proof.rootIndices[0],
           leafIndex: proof.leafIndices[0],
           proveByIndex: proof.proveByIndices[0],
-          hash: settings.hash,
+          hash: settingsAccount.hash,
         },
       ],
       [],
@@ -253,19 +253,19 @@ export async function constructSettingsProofArgs(
 
     settingsReadonlyArgs = {
       accountMeta: {
-        address: new Uint8Array(settings.address!),
+        address: new Uint8Array(settingsAccount.address!),
         treeInfo: stateTreeInfo.packedTreeInfos[0],
       },
-      data: getCompressedSettingsDecoder().decode(settings.data?.data!),
+      data: getCompressedSettingsDecoder().decode(settingsAccount.data?.data!),
     };
 
     settingsMutArgs = {
       accountMeta: {
-        address: new Uint8Array(settings.address!),
+        address: new Uint8Array(settingsAccount.address!),
         treeInfo: stateTreeInfo.packedTreeInfos[0],
         outputStateTreeIndex: stateTreeInfo.outputTreeIndex,
       },
-      data: getCompressedSettingsDecoder().decode(settings.data?.data!),
+      data: getCompressedSettingsDecoder().decode(settingsAccount.data?.data!),
     };
   }
   return { settingsReadonlyArgs, proof, packedAccounts, settingsMutArgs };

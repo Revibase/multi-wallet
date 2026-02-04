@@ -1,6 +1,7 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import {
   convertMemberKeyToString,
+  createClientAuthorizationStartRequestChallenge,
   getSecp256r1VerifyInstructionDataDecoder,
   getSettingsFromIndex,
   getWalletAddressFromSettings,
@@ -110,10 +111,24 @@ export async function verifyAndParseSigners(
   const verifiedSigners = await Promise.all(
     signers.map(async ({ signer, messageHash }, signerIndex) => {
       const authDetails = authResponses[signerIndex];
-      const { client, device, authProvider } = authDetails;
+      const { client, device, authProvider, startRequest } = authDetails;
+      if (startRequest.data.type !== "transaction")
+        throw new Error("Invalid request type.");
+      if (startRequest.validTill < Date.now()) {
+        throw new Error("Request has expired.");
+      }
+      if (startRequest.data.sendTx && !authProvider) {
+        throw new Error("Auth provider cannot be empty when send tx is true.");
+      }
 
       const [clientDetails] = await Promise.all([
-        verifyClientSignature(client, messageHash, wellKnownProxyUrl),
+        verifyClientSignature(
+          client,
+          startRequest.data.sendTx
+            ? createClientAuthorizationStartRequestChallenge(startRequest)
+            : messageHash,
+          wellKnownProxyUrl,
+        ),
         verifyTransactionAuthResponseWithMessageHash(authDetails, messageHash),
         verifyAuthProviderSignature(authProvider, messageHash),
         verifyDeviceSignature(device, messageHash),

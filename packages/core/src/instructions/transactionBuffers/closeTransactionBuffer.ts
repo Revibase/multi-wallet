@@ -14,7 +14,6 @@ import { extractSecp256r1VerificationArgs } from "../../utils/transaction/intern
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
 export async function closeTransactionBuffer({
-  index,
   settingsAddressTreeIndex,
   closer,
   transactionBufferAddress,
@@ -22,7 +21,6 @@ export async function closeTransactionBuffer({
   compressed = false,
   cachedAccounts,
 }: {
-  index: number | bigint;
   settingsAddressTreeIndex?: number;
   closer: TransactionSigner | SignedSecp256r1Key;
   transactionBufferAddress: Address;
@@ -38,7 +36,7 @@ export async function closeTransactionBuffer({
   const { packedAccounts, proof, settingsMutArgs } =
     await constructSettingsProofArgs(
       compressed,
-      index,
+      settings,
       settingsAddressTreeIndex,
       false,
       cachedAccounts,

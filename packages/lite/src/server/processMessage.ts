@@ -1,4 +1,7 @@
-import type { CompleteMessageRequest } from "@revibase/core";
+import type {
+  CompleteMessageRequest,
+  SettingsIndexWithAddressArgs,
+} from "@revibase/core";
 import {
   bufferToBase64URLString,
   convertPubkeyCompressedToCose,
@@ -6,9 +9,8 @@ import {
   getWalletAddressFromIndex,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
-import { UserSchema } from "src/utils";
+import { UserSchema, type User } from "src/utils";
 import { REVIBASE_AUTH_URL, REVIBASE_RP_ID } from "src/utils/consts";
-import { getSettingsIndexWithAddress } from "src/utils/internal";
 
 export async function processMessage(
   request: CompleteMessageRequest,
@@ -16,13 +18,15 @@ export async function processMessage(
   expectedRPID = REVIBASE_RP_ID,
 ) {
   const { payload } = request.data;
+  if (payload.startRequest.data.type !== "message")
+    throw new Error("Invalid request type.");
 
-  const message = payload.message;
+  const message = payload.startRequest.data.payload;
   const expectedChallenge = createMessageChallenge(
     message,
     payload.client.clientOrigin,
     payload.device.jwk,
-    payload.nonce,
+    payload.startRequest.rid,
   );
   const { verified } = await verifyAuthenticationResponse({
     response: payload.authResponse,
@@ -40,12 +44,19 @@ export async function processMessage(
   if (!verified) {
     throw new Error("WebAuthn message verification failed");
   }
-  const settingsIndexWithAddress = await getSettingsIndexWithAddress(request);
+
+  const settingsIndexWithAddress = payload.additionalInfo
+    ?.settingIndexWithAddress as SettingsIndexWithAddressArgs | undefined;
+
+  if (!settingsIndexWithAddress) {
+    throw new Error("User is not delegated");
+  }
+
   const walletAddress = await getWalletAddressFromIndex(
     settingsIndexWithAddress.index,
   );
 
-  const user = {
+  const user: User = {
     publicKey: payload.signer,
     walletAddress,
     settingsIndexWithAddress,

@@ -1,5 +1,6 @@
 import {
   changeConfig,
+  getSettingsFromIndex,
   nativeTransferIntent,
   prepareChangeConfigArgs,
 } from "@revibase/core";
@@ -25,7 +26,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
       // Try to remove the only member (wallet)
       const changeConfigArgs = await prepareChangeConfigArgs({
         compressed: ctx.compressed,
-        index: ctx.index,
+        settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
             type: "RemoveMembers",
@@ -63,7 +64,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
       // Try to set threshold to 3 when we only have 2 members
       const changeConfigArgs = await prepareChangeConfigArgs({
         compressed: ctx.compressed,
-        index: ctx.index,
+        settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
             type: "SetThreshold",
@@ -87,7 +88,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
 
       expect(
         transactionFailed,
-        "Setting threshold higher than voting members should fail"
+        "Setting threshold higher than voting members should fail",
       ).to.be.true;
     });
   });
@@ -113,7 +114,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
         let transactionFailed = false;
         try {
           const nativeTransfer = await nativeTransferIntent({
-            index: ctx.index,
+            settings: await getSettingsFromIndex(ctx.index),
             payer: ctx.payer,
             signers: [ctx.payer],
             destination: ctx.wallet.address,
@@ -124,7 +125,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
           await sendTransaction(
             [...nativeTransfer],
             ctx.payer,
-            ctx.addressLookUpTable
+            ctx.addressLookUpTable,
           );
         } catch (error) {
           transactionFailed = true;
@@ -132,9 +133,9 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
 
         expect(
           transactionFailed,
-          "Transferring more than wallet balance should fail"
+          "Transferring more than wallet balance should fail",
         ).to.be.true;
-      }
+      },
     );
   });
 
@@ -147,7 +148,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
       // Try to add wallet as member again (it's already a member)
       const changeConfigArgs = await prepareChangeConfigArgs({
         compressed: ctx.compressed,
-        index: ctx.index,
+        settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
             type: "AddMembers",
@@ -194,7 +195,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
 
         const changeConfigArgs = await prepareChangeConfigArgs({
           compressed: ctx.compressed,
-          index: ctx.index,
+          settings: await getSettingsFromIndex(ctx.index),
           configActionsArgs: [
             {
               type: "RemoveMembers",
@@ -214,7 +215,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
           await sendTransaction(
             instructions,
             ctx.payer,
-            ctx.addressLookUpTable
+            ctx.addressLookUpTable,
           );
         } catch (error) {
           transactionFailed = true;
@@ -222,7 +223,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
 
         expect(transactionFailed, "Removing non-existent member should fail").to
           .be.true;
-      }
+      },
     );
   });
 
@@ -242,7 +243,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
         // Add payer as member with only vote permission (no initiate/execute)
         const addMemberArgs = await prepareChangeConfigArgs({
           compressed: ctx.compressed,
-          index: ctx.index,
+          settings: await getSettingsFromIndex(ctx.index),
           configActionsArgs: [
             {
               type: "AddMembers",
@@ -263,13 +264,13 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
             changeConfigArgs: addMemberArgs,
           }),
           ctx.payer,
-          ctx.addressLookUpTable
+          ctx.addressLookUpTable,
         );
 
         // Try to change config using payer (who doesn't have initiate permission)
         const changeConfigArgs = await prepareChangeConfigArgs({
           compressed: ctx.compressed,
-          index: ctx.index,
+          settings: await getSettingsFromIndex(ctx.index),
           configActionsArgs: [
             {
               type: "SetThreshold",
@@ -289,7 +290,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
           await sendTransaction(
             instructions,
             ctx.payer,
-            ctx.addressLookUpTable
+            ctx.addressLookUpTable,
           );
         } catch (error) {
           transactionFailed = true;
@@ -297,9 +298,9 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
 
         expect(
           transactionFailed,
-          "Changing config without initiate permission should fail"
+          "Changing config without initiate permission should fail",
         ).to.be.true;
-      }
+      },
     );
   });
 }

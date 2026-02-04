@@ -20,8 +20,8 @@ import { Secp256r1Key } from "../../types";
 import { getWhitelistedAddressTreeFromIndex } from "../compressed/helper";
 import { requireInRange } from "../validation";
 
-export async function getCompressedSettingsAddressFromIndex(
-  index: number | bigint,
+export async function getCompressedSettingsAddress(
+  settings: Address,
   settingsAddressTreeIndex = 0,
 ) {
   const addressTree = await getWhitelistedAddressTreeFromIndex(
@@ -29,7 +29,7 @@ export async function getCompressedSettingsAddressFromIndex(
   );
   const addressSeed = deriveAddressSeedV2([
     getUtf8Encoder().encode("multi_wallet") as Uint8Array,
-    getU128Encoder().encode(index) as Uint8Array,
+    getAddressEncoder().encode(settings) as Uint8Array,
   ]);
   return {
     address: createBN254(

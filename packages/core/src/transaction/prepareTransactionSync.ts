@@ -1,4 +1,5 @@
 import type {
+  Address,
   AddressesByLookupTableAddress,
   ReadonlyUint8Array,
   TransactionSigner,
@@ -12,7 +13,7 @@ import { SignedSecp256r1Key, type TransactionDetails } from "../types";
 
 interface CreateTransactionSyncArgs {
   payer: TransactionSigner;
-  index: number | bigint;
+  settings: Address;
   settingsAddressTreeIndex?: number;
   transactionMessageBytes: ReadonlyUint8Array;
   signers: (TransactionSigner | SignedSecp256r1Key)[];
@@ -25,7 +26,7 @@ interface CreateTransactionSyncArgs {
 
 export async function prepareTransactionSync({
   payer,
-  index,
+  settings,
   settingsAddressTreeIndex,
   transactionMessageBytes,
   signers,
@@ -37,7 +38,7 @@ export async function prepareTransactionSync({
 }: CreateTransactionSyncArgs): Promise<TransactionDetails> {
   const { instructions, addressLookupTableAccounts } =
     await executeTransactionSync({
-      index,
+      settings,
       settingsAddressTreeIndex,
       payer,
       signers,

@@ -21,7 +21,7 @@ export function runDecompressionTests(getCtx: () => TestContext) {
       assertTestContext(ctx, ["index", "payer", "wallet"]);
 
       const decompressIxs = await decompressSettingsAccount({
-        index: ctx.index,
+        settings: await getSettingsFromIndex(ctx.index),
         payer: ctx.payer,
         signers: [ctx.wallet],
       });
@@ -29,14 +29,16 @@ export function runDecompressionTests(getCtx: () => TestContext) {
       await sendTransaction(
         [...decompressIxs],
         ctx.payer,
-        ctx.addressLookUpTable
+        ctx.addressLookUpTable,
       );
 
       const settings = await getSettingsFromIndex(ctx.index);
       const settingsData = await fetchMaybeSettings(getSolanaRpc(), settings);
 
-      expect(settingsData.exists, "Settings account should exist after decompression").to.be
-        .true;
+      expect(
+        settingsData.exists,
+        "Settings account should exist after decompression",
+      ).to.be.true;
     });
   });
 }

@@ -1,30 +1,9 @@
 import {
   bufferToBase64URLString,
   getJitoTipsConfig,
-  prepareTransactionSync,
   SignedSecp256r1Key,
 } from "@revibase/core";
-import {
-  appendTransactionMessageInstructions,
-  compileTransaction,
-  compressTransactionMessageUsingAddressLookupTables,
-  createTransactionMessage,
-  getAddressDecoder,
-  getBase64EncodedWireTransaction,
-  getBlockhashDecoder,
-  pipe,
-  prependTransactionMessageInstructions,
-  setTransactionMessageFeePayerSigner,
-  setTransactionMessageLifetimeUsingBlockhash,
-  type AddressesByLookupTableAddress,
-  type ReadonlyUint8Array,
-  type TransactionSigner,
-} from "gill";
-import {
-  getSetComputeUnitLimitInstruction,
-  getSetComputeUnitPriceInstruction,
-} from "gill/programs";
-import { MAX_TRANSACTION_SIZE_BYTES } from "./consts.js";
+import { getAddressDecoder } from "gill";
 
 /**
  * Creates a standardized sign-in message text for authentication.
@@ -105,95 +84,6 @@ export function simulateSecp256r1Signer() {
   return signer;
 }
 
-/**
- * Estimates whether a transaction will exceed the size limit.
- *
- * This function builds a simulated transaction with the provided parameters
- * and checks if it exceeds the maximum allowed size. This helps determine
- * whether to use a transaction bundle instead of a regular transaction.
- *
- * @param input - Transaction estimation parameters
- * @param input.payer - Transaction signer for paying fees
- * @param input.transactionMessageBytes - Serialized transaction message bytes
- * @param input.index - Settings account index
- * @param input.settingsAddressTreeIndex - Settings address tree index
- * @param input.compressed - Whether the account is compressed
- * @param input.signers - Array of transaction signers
- * @param input.addressesByLookupTableAddress - Optional address lookup tables
- * @param input.cachedAccounts - Optional cache for account data
- * @returns True if the transaction size exceeds the limit, false otherwise
- */
-export async function estimateTransactionSizeExceedLimit({
-  payer,
-  index,
-  settingsAddressTreeIndex,
-  transactionMessageBytes,
-  signers,
-  compressed,
-  addressesByLookupTableAddress,
-  cachedAccounts,
-}: {
-  payer: TransactionSigner;
-  transactionMessageBytes: ReadonlyUint8Array;
-  index: number | bigint;
-  settingsAddressTreeIndex?: number;
-  compressed: boolean;
-  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
-  signers: (TransactionSigner | SignedSecp256r1Key)[];
-  cachedAccounts?: Map<string, any>;
-}) {
-  const result = await prepareTransactionSync({
-    payer,
-    index,
-    settingsAddressTreeIndex,
-    transactionMessageBytes,
-    signers,
-    compressed,
-    simulateProof: true,
-    addressesByLookupTableAddress,
-    cachedAccounts,
-  });
-
-  const tx = pipe(
-    createTransactionMessage({ version: 0 }),
-    (tx) => appendTransactionMessageInstructions(result.instructions, tx),
-    (tx) => setTransactionMessageFeePayerSigner(result.payer, tx),
-    (tx) =>
-      setTransactionMessageLifetimeUsingBlockhash(
-        {
-          blockhash: getBlockhashDecoder().decode(
-            crypto.getRandomValues(new Uint8Array(32)),
-          ),
-          lastValidBlockHeight: BigInt(Number.MAX_SAFE_INTEGER),
-        },
-        tx,
-      ),
-    (tx) =>
-      result.addressesByLookupTableAddress
-        ? compressTransactionMessageUsingAddressLookupTables(
-            tx,
-            result.addressesByLookupTableAddress,
-          )
-        : tx,
-    (tx) =>
-      prependTransactionMessageInstructions(
-        [
-          getSetComputeUnitLimitInstruction({
-            units: 800_000,
-          }),
-          getSetComputeUnitPriceInstruction({
-            microLamports: 1000,
-          }),
-        ],
-        tx,
-      ),
-
-    (tx) => compileTransaction(tx),
-  );
-  const txSize = getBase64EncodedWireTransaction(tx).length;
-
-  return txSize > MAX_TRANSACTION_SIZE_BYTES;
-}
 /**
  * Estimates Jito tip amount for transaction bundles.
  *

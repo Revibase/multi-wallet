@@ -1,6 +1,7 @@
+import { initialize } from "@revibase/core";
 import { getBase64Decoder } from "gill";
 import type { ClientAuthorizationCallback } from "src/utils";
-import { REVIBASE_AUTH_URL } from "src/utils/consts";
+import { REVIBASE_AUTH_URL, REVIBASE_RPC_URL } from "src/utils/consts";
 import {
   createPopUp,
   DEFAULT_TIMEOUT,
@@ -24,6 +25,9 @@ export class RevibaseProvider {
   constructor(opts: Options) {
     this.onClientAuthorizationCallback = opts.onClientAuthorizationCallback;
     this.providerOrigin = opts.providerOrigin ?? REVIBASE_AUTH_URL;
+    initialize({
+      rpcEndpoint: opts.rpcEndpoint ?? REVIBASE_RPC_URL,
+    });
   }
 
   /**

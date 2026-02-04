@@ -11,11 +11,9 @@ export async function processStartRequest({
   privateKey,
   request,
   providerOrigin = REVIBASE_AUTH_URL,
-  rid,
 }: {
   privateKey: string;
   request: StartTransactionRequest | StartMessageRequest;
-  rid: string;
   providerOrigin?: string;
 }): Promise<{ rid: string }> {
   const pKey = convertBase64StringToJWK(privateKey);
@@ -33,7 +31,6 @@ export async function processStartRequest({
     body: JSON.stringify({
       signature,
       request,
-      rid,
     }),
   });
 

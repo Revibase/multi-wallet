@@ -1,7 +1,7 @@
-import type { SettingsIndexWithAddressArgs } from "@revibase/core";
 import {
   fetchSettingsAccountData,
   fetchUserAccountData,
+  getSettingsFromIndex,
   getSignedSecp256r1Key,
   getSignedTransactionManager,
   nativeTransferIntent,
@@ -14,6 +14,7 @@ import type { AddressesByLookupTableAddress, TransactionSigner } from "gill";
 import { getAddressEncoder, getU64Encoder, type Address } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 import type { RevibaseProvider } from "src/provider";
+import type { User } from "src/utils";
 
 import { WalletTransactionError } from "src/utils/errors";
 import { signTransactionWithPasskey } from "src/utils/signTransactionWithPasskey";
@@ -45,7 +46,7 @@ export async function signAndSendTokenTransfer(input: {
   tokenProgram?: Address;
   cachedAccounts?: Map<string, any>;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
-  signer?: string | undefined;
+  user?: User;
 }): Promise<string> {
   const transactionDetails = await buildTokenTransferInstruction(input);
   return signAndSendTransaction(transactionDetails);
@@ -78,7 +79,7 @@ export const buildTokenTransferInstruction = async (input: {
   tokenProgram?: Address;
   cachedAccounts?: Map<string, any>;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
-  signer?: string;
+  user?: User;
 }) => {
   const {
     amount,
@@ -88,7 +89,7 @@ export const buildTokenTransferInstruction = async (input: {
     addressesByLookupTableAddress,
     tokenProgram = TOKEN_PROGRAM_ADDRESS,
     cachedAccounts = new Map<string, any>(),
-    signer,
+    user,
     provider,
   } = input;
   const authResponse = await signTransactionWithPasskey({
@@ -99,12 +100,12 @@ export const buildTokenTransferInstruction = async (input: {
       ...getAddressEncoder().encode(destination),
       ...getAddressEncoder().encode(mint ?? SYSTEM_PROGRAM_ADDRESS),
     ]),
-    signer,
+    signer: user?.publicKey,
     provider,
   });
 
-  let settingsIndexWithAddress: SettingsIndexWithAddressArgs;
-  if (!authResponse.additionalInfo?.settingsIndexWithAddress) {
+  let settingsIndexWithAddress = user?.settingsIndexWithAddress;
+  if (!settingsIndexWithAddress) {
     const userAccountData = await fetchUserAccountData(
       new Secp256r1Key(authResponse.signer),
       authResponse.userAddressTreeIndex,
@@ -115,14 +116,16 @@ export const buildTokenTransferInstruction = async (input: {
       throw new WalletTransactionError("User has no delegated wallet");
     }
     settingsIndexWithAddress = delegateAccount;
-  } else {
-    settingsIndexWithAddress = authResponse.additionalInfo
-      .settingsIndexWithAddress as SettingsIndexWithAddressArgs;
   }
+
+  const settings = await getSettingsFromIndex(settingsIndexWithAddress.index);
+  const settingsAddressTreeIndex =
+    settingsIndexWithAddress.settingsAddressTreeIndex;
+
   const [settingsData, signedSigner] = await Promise.all([
     fetchSettingsAccountData(
-      settingsIndexWithAddress.index,
-      settingsIndexWithAddress.settingsAddressTreeIndex,
+      settings,
+      settingsAddressTreeIndex,
       cachedAccounts,
     ),
     getSignedSecp256r1Key(authResponse),
@@ -145,9 +148,8 @@ export const buildTokenTransferInstruction = async (input: {
   const instructions = mint
     ? await tokenTransferIntent({
         payer,
-        index: settingsIndexWithAddress.index,
-        settingsAddressTreeIndex:
-          settingsIndexWithAddress.settingsAddressTreeIndex,
+        settings,
+        settingsAddressTreeIndex,
         amount,
         signers,
         destination,
@@ -158,9 +160,8 @@ export const buildTokenTransferInstruction = async (input: {
       })
     : await nativeTransferIntent({
         payer,
-        index: settingsIndexWithAddress.index,
-        settingsAddressTreeIndex:
-          settingsIndexWithAddress.settingsAddressTreeIndex,
+        settings,
+        settingsAddressTreeIndex,
         amount,
         signers,
         destination,

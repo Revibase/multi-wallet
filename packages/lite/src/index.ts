@@ -1,4 +1,3 @@
-export { initialize } from "@revibase/core";
 export type {
   CompleteMessageRequest,
   CompleteTransactionRequest,

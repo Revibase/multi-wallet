@@ -5,6 +5,7 @@ import {
   createDomainUserAccounts,
   fetchSettingsAccountData,
   fetchUserAccountData,
+  getSettingsFromIndex,
   prepareChangeConfigArgs,
   Secp256r1Key,
   Transports,
@@ -31,7 +32,8 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       await addPayerAsNewMember(ctx);
 
       // Verify member was added
-      const accountData = await fetchSettingsAccountData(ctx.index);
+      const settings = await getSettingsFromIndex(ctx.index);
+      const accountData = await fetchSettingsAccountData(settings);
       const userAccountData = await fetchUserAccountData(ctx.payer.address);
 
       expect(
@@ -59,7 +61,7 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
 
       const changeConfigArgs = await prepareChangeConfigArgs({
         compressed: ctx.compressed,
-        index: ctx.index,
+        settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
             type: "EditPermissions",
@@ -100,7 +102,7 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
 
       const changeConfigArgs = await prepareChangeConfigArgs({
         compressed: ctx.compressed,
-        index: ctx.index,
+        settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
             type: "RemoveMembers",
@@ -122,7 +124,8 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
 
       // Verify member was removed
-      const accountData = await fetchSettingsAccountData(ctx.index);
+      const settings = await getSettingsFromIndex(ctx.index);
+      const accountData = await fetchSettingsAccountData(settings);
       const userAccountData = await fetchUserAccountData(ctx.payer.address);
 
       expect(
@@ -182,7 +185,7 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
 
       const changeConfigArgs = await prepareChangeConfigArgs({
         compressed: ctx.compressed,
-        index: ctx.index,
+        settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
             type: "AddMembers",
@@ -204,7 +207,8 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
 
       // Verify member was added
-      const accountData = await fetchSettingsAccountData(ctx.index);
+      const settings = await getSettingsFromIndex(ctx.index);
+      const accountData = await fetchSettingsAccountData(settings);
       const userAccountData = await fetchUserAccountData(secp256r1Key);
 
       expect(

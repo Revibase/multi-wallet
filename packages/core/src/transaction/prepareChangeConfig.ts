@@ -27,10 +27,7 @@ import {
   type IPermission,
   type PermissionArgs,
 } from "../types";
-import {
-  getCompressedSettingsAddressFromIndex,
-  getUserAccountAddress,
-} from "../utils";
+import { getCompressedSettingsAddress, getUserAccountAddress } from "../utils";
 import {
   getCompressedAccountHashes,
   getCompressedAccountMutArgs,
@@ -40,20 +37,20 @@ import { PackedAccounts } from "../utils/compressed/packedAccounts";
 import { convertPubkeyToMemberkey } from "../utils/transaction/internal";
 
 export async function prepareChangeConfigArgs({
-  index,
+  settings,
   settingsAddressTreeIndex,
   configActionsArgs,
   cachedAccounts,
   compressed = false,
 }: {
-  index: number | bigint;
+  settings: Address;
   compressed?: boolean;
   settingsAddressTreeIndex?: number;
   configActionsArgs: ConfigurationArgs[];
   cachedAccounts?: Map<string, any>;
 }): Promise<{
   configActions: ConfigAction[];
-  index: number | bigint;
+  settings: Address;
   compressed: boolean;
   packedAccounts: PackedAccounts;
   proof: ValidityProofWithContext | null;
@@ -71,7 +68,7 @@ export async function prepareChangeConfigArgs({
       packedAccounts,
       userAccounts,
       compressed,
-      index,
+      settings,
       settingsAddressTreeIndex,
       cachedAccounts,
     });
@@ -84,12 +81,11 @@ export async function prepareChangeConfigArgs({
   const configActions = await buildConfigActions({
     configActionsArgs,
     userMutArgs,
-    index,
   });
 
   return {
     configActions,
-    index,
+    settings,
     proof,
     settingsMutArgs,
     packedAccounts,
@@ -136,14 +132,14 @@ async function prepareProofAndMutArgs({
   packedAccounts,
   userAccounts,
   compressed,
-  index,
+  settings,
   settingsAddressTreeIndex,
   cachedAccounts,
 }: {
   packedAccounts: PackedAccounts;
   userAccounts: { address: BN254; type: "User" }[];
   compressed: boolean;
-  index: number | bigint;
+  settings: Address;
   settingsAddressTreeIndex?: number;
   cachedAccounts?: Map<string, any>;
 }) {
@@ -152,10 +148,7 @@ async function prepareProofAndMutArgs({
   const addresses: { address: BN254; type: "Settings" | "User" }[] = [];
   if (compressed) {
     const settingsAddr = (
-      await getCompressedSettingsAddressFromIndex(
-        index,
-        settingsAddressTreeIndex,
-      )
+      await getCompressedSettingsAddress(settings, settingsAddressTreeIndex)
     ).address;
     addresses.push({ address: settingsAddr, type: "Settings" } as any);
   }
@@ -209,11 +202,9 @@ async function prepareProofAndMutArgs({
 }
 
 async function buildConfigActions({
-  index,
   configActionsArgs,
   userMutArgs,
 }: {
-  index: number | bigint;
   configActionsArgs: ConfigurationArgs[];
   userMutArgs: UserMutArgs[];
 }): Promise<ConfigAction[]> {

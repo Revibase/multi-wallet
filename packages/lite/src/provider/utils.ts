@@ -23,6 +23,10 @@ export type Options = {
    * Used to open and communicate with the authorization popup.
    */
   providerOrigin?: string;
+  /**
+   * Solana Rpc Endpoint
+   */
+  rpcEndpoint?: string;
 };
 
 export type Pending = {

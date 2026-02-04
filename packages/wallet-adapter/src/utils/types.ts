@@ -1,55 +1,21 @@
-import {
-  TransactionPayloadWithBase64MessageBytesSchema,
-  type TransactionAuthenticationResponse,
+import type {
+  StartMessageRequest,
+  StartTransactionRequest,
 } from "@revibase/core";
+import { type TransactionAuthenticationResponse } from "@revibase/core";
 import z from "zod";
 
 export const UserSchema = z.looseObject({
   publicKey: z.string(),
   walletAddress: z.string(),
   settingsIndexWithAddress: z.object({
-    index: z.number(),
+    index: z.union([z.number(), z.bigint()]),
     settingsAddressTreeIndex: z.number(),
   }),
   username: z.string().optional(),
   image: z.string().optional(),
 });
 export type User = z.infer<typeof UserSchema>;
-
-export const StartCustomTransactionRequestSchema = z
-  .object({
-    phase: z.literal("start"),
-    redirectOrigin: z.string(),
-    signer: z.string().optional(),
-    data: z
-      .object({
-        type: z.literal("transaction"),
-        payload: TransactionPayloadWithBase64MessageBytesSchema,
-        rid: z.string(),
-      })
-      .strict(),
-  })
-  .strict();
-export type StartCustomTransactionRequest = z.infer<
-  typeof StartCustomTransactionRequestSchema
->;
-
-export const StartCustomMessageRequestSchema = z
-  .object({
-    phase: z.literal("start"),
-    redirectOrigin: z.string(),
-    signer: z.string().optional(),
-    data: z
-      .object({
-        type: z.literal("message"),
-        rid: z.string(),
-      })
-      .strict(),
-  })
-  .strict();
-export type StartCustomMessageRequest = z.infer<
-  typeof StartCustomMessageRequestSchema
->;
 
 export const CompleteCustomMessageRequestSchema = z.object({
   phase: z.literal("complete"),
@@ -76,8 +42,8 @@ export type CompleteCustomTransactionRequest = z.infer<
 >;
 
 export type ClientAuthorizationCallback = {
-  (request: StartCustomMessageRequest): Promise<{ rid: string }>;
-  (request: StartCustomTransactionRequest): Promise<{ rid: string }>;
+  (request: StartMessageRequest): Promise<{ rid: string }>;
+  (request: StartTransactionRequest): Promise<{ rid: string }>;
   (request: CompleteCustomMessageRequest): Promise<{
     user: User;
   }>;

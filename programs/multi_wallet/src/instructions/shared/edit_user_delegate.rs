@@ -239,7 +239,7 @@ impl<'info> EditUserDelegate<'info> {
                     index: settings_data.index,
                     settings_address_tree_index: settings_data.settings_address_tree_index,
                 });
-                account = Some(Settings::get_settings_key_from_index(
+                account = Some(Settings::get_settings_key_from_index_with_bump(
                     settings_data.index,
                     settings_data.bump,
                 )?);
@@ -309,7 +309,7 @@ impl<'info> EditUserDelegate<'info> {
                     true,
                 )?;
                 if account.is_none() {
-                    account = Some(Settings::get_settings_key_from_index(
+                    account = Some(Settings::get_settings_key_from_index_with_bump(
                         settings_data.index,
                         settings_data.bump,
                     )?);

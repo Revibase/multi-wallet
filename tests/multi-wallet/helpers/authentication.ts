@@ -95,12 +95,6 @@ export async function mockAuthenticationResponse(
         signature: bufferToBase64URLString(signature),
       },
     },
-    transactionPayload: {
-      ...transaction,
-      transactionMessageBytes: getBase64Decoder().decode(
-        transaction.transactionMessageBytes,
-      ),
-    },
     client: {
       clientOrigin,
       jws: getBase64Decoder().decode(
@@ -113,8 +107,23 @@ export async function mockAuthenticationResponse(
         crypto.getRandomValues(new Uint8Array(64)),
       ),
     },
-    nonce,
     originIndex,
     crossOrigin,
+    startRequest: {
+      phase: "start",
+      redirectOrigin: clientOrigin,
+      rid: nonce,
+      validTill: Date.now() + 10 * 60 * 1000,
+      data: {
+        type: "transaction",
+        payload: {
+          ...transaction,
+          transactionMessageBytes: getBase64Decoder().decode(
+            transaction.transactionMessageBytes,
+          ),
+        },
+        sendTx: false,
+      },
+    },
   });
 }

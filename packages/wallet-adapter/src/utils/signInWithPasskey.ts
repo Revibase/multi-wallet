@@ -1,7 +1,8 @@
+import type { StartMessageRequest } from "@revibase/core";
 import { getBase64Decoder } from "gill";
 import type { RevibaseProvider } from "src/provider";
-import { WalletVerificationError } from "./errors.js";
-import type { StartCustomMessageRequest } from "./types.js";
+import { DEFAULT_TIMEOUT } from "src/provider/utils.js";
+import { createSignInMessageText } from "./internal.js";
 
 /**
  * Signs and verifies a message using WebAuthn passkey authentication.
@@ -25,9 +26,19 @@ export async function signInWithPasskey({
   const rid = getBase64Decoder().decode(
     crypto.getRandomValues(new Uint8Array(16)),
   );
-  const payload: StartCustomMessageRequest = {
+  const payload: StartMessageRequest = {
     phase: "start",
-    data: { type: "message" as const, rid },
+    rid,
+    validTill: Date.now() + DEFAULT_TIMEOUT,
+    data: {
+      type: "message" as const,
+      payload: createSignInMessageText({
+        domain: redirectOrigin,
+        nonce: getBase64Decoder().decode(
+          crypto.getRandomValues(new Uint8Array(16)),
+        ),
+      }),
+    },
     redirectOrigin,
   };
   await Promise.all([

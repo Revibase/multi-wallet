@@ -65,14 +65,11 @@ export function createRevibaseAdapter(
   // Safely retrieve stored account data
   const storedAccount = getStoredAccount();
   const publicKey = storedAccount?.publicKey ?? null;
-  const member = storedAccount?.member ?? null;
-  const settingsIndexWithAddress =
-    storedAccount?.settingsIndexWithAddress ?? null;
+  const user = storedAccount?.user ?? null;
 
   return {
     publicKey,
-    member,
-    settingsIndexWithAddress,
+    user,
     connect: async function () {
       try {
         const { user } = await signInWithPasskey({
@@ -82,14 +79,12 @@ export function createRevibaseAdapter(
           throw new WalletVerificationError("Failed to verify signed message");
         }
         this.publicKey = user.walletAddress;
-        this.member = user.publicKey;
-        this.settingsIndexWithAddress = user.settingsIndexWithAddress;
+        this.user = user;
 
         // Store account data
         setStoredAccount({
           publicKey: this.publicKey,
-          member: this.member,
-          settingsIndexWithAddress: this.settingsIndexWithAddress,
+          user: this.user,
         });
 
         emit("connect");
@@ -108,37 +103,36 @@ export function createRevibaseAdapter(
     },
     disconnect: async function () {
       this.publicKey = null;
-      this.member = null;
-      this.settingsIndexWithAddress = null;
+      this.user = null;
       removeStoredAccount();
       emit("disconnect");
     },
     buildTokenTransfer: async function (input) {
-      if (!this.member || !this.settingsIndexWithAddress || !this.publicKey) {
+      if (!this.user || !this.publicKey) {
         throw new WalletNotConnectedError();
       }
       const payer = feePayer ?? (await getRandomPayer(REVIBASE_API_URL));
       return buildTokenTransferInstruction({
         ...input,
-        signer: this.member,
+        user: this.user,
         payer,
         provider,
       });
     },
     signAndSendTokenTransfer: async function (input) {
-      if (!this.member || !this.settingsIndexWithAddress || !this.publicKey) {
+      if (!this.user || !this.publicKey) {
         throw new WalletNotConnectedError();
       }
       const payer = feePayer ?? (await getRandomPayer(REVIBASE_API_URL));
       return signAndSendTokenTransfer({
         ...input,
-        signer: this.member,
+        user: this.user,
         payer,
         provider,
       });
     },
     buildTransaction: async function (input) {
-      if (!this.member || !this.settingsIndexWithAddress || !this.publicKey) {
+      if (!this.user || !this.publicKey) {
         throw new WalletNotConnectedError();
       }
       const { rid } = provider.openPopUp();
@@ -146,8 +140,7 @@ export function createRevibaseAdapter(
       return buildTransaction({
         ...input,
         rid,
-        signer: this.member,
-        settingsIndexWithAddress: this.settingsIndexWithAddress,
+        user: this.user,
         payer,
         provider,
       });

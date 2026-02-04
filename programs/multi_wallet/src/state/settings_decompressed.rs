@@ -61,11 +61,18 @@ impl Settings {
         MultisigSettings::latest_slot_number_check(self, slot_numbers, sysvar_slot_history)
     }
 
-    pub fn get_settings_key_from_index(index: u128, bump: u8) -> Result<Pubkey> {
+    pub fn get_settings_key_from_index_with_bump(index: u128, bump: u8) -> Result<Pubkey> {
         let index_bytes = index.to_le_bytes();
         let signer_seeds: &[&[u8]] = &[SEED_MULTISIG, index_bytes.as_ref(), &[bump]];
         let pubkey =
             Pubkey::create_program_address(signer_seeds, &crate::ID).map_err(ProgramError::from)?;
+        Ok(pubkey)
+    }
+
+    pub fn get_settings_key_from_index(index: u128) -> Result<Pubkey> {
+        let index_bytes = index.to_le_bytes();
+        let signer_seeds: &[&[u8]] = &[SEED_MULTISIG, index_bytes.as_ref()];
+        let (pubkey, _) = Pubkey::find_program_address(signer_seeds, &crate::ID);
         Ok(pubkey)
     }
 }

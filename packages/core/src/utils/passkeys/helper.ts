@@ -110,7 +110,7 @@ export async function getSignedSecp256r1Key(
     clientAndDeviceHash: getClientAndDeviceHash(
       payload.client.clientOrigin,
       payload.device.jwk,
-      payload.nonce,
+      payload.startRequest.rid,
     ),
     domainConfig,
     authData,

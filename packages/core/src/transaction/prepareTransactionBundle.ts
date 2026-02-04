@@ -1,5 +1,6 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import type {
+  Address,
   AddressesByLookupTableAddress,
   Instruction,
   TransactionSigner,
@@ -14,11 +15,7 @@ import {
 } from "../instructions";
 import { SignedSecp256r1Key } from "../types";
 import type { TransactionDetails } from "../types/transaction";
-import {
-  getSecp256r1MessageHash,
-  getSettingsFromIndex,
-  getTransactionBufferAddress,
-} from "../utils";
+import { getSecp256r1MessageHash, getTransactionBufferAddress } from "../utils";
 import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
@@ -30,7 +27,7 @@ import {
 
 interface CreateTransactionBundleArgs {
   payer: TransactionSigner;
-  index: number | bigint;
+  settings: Address;
   settingsAddressTreeIndex?: number;
   transactionMessageBytes: Uint8Array<ArrayBuffer>;
   creator: TransactionSigner | SignedSecp256r1Key;
@@ -47,7 +44,7 @@ interface CreateTransactionBundleArgs {
 
 export async function prepareTransactionBundle({
   payer,
-  index,
+  settings,
   settingsAddressTreeIndex,
   transactionMessageBytes,
   creator,
@@ -61,8 +58,6 @@ export async function prepareTransactionBundle({
   chunkSize = Math.ceil(transactionMessageBytes.length / 2),
   cachedAccounts,
 }: CreateTransactionBundleArgs): Promise<TransactionDetails[]> {
-  const settings = await getSettingsFromIndex(index);
-
   const bufferIndex = Math.floor(Math.random() * 255);
   const transactionBufferAddress = await getTransactionBufferAddress(
     settings,
@@ -84,7 +79,7 @@ export async function prepareTransactionBundle({
   const { settingsReadonlyArgs, settingsMutArgs, proof, packedAccounts } =
     await constructSettingsProofArgs(
       compressed,
-      index,
+      settings,
       settingsAddressTreeIndex,
       false,
       cachedAccounts,

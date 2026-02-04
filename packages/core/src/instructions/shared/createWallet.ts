@@ -6,7 +6,8 @@ import {
   type User,
 } from "../../generated";
 import {
-  getCompressedSettingsAddressFromIndex,
+  getCompressedSettingsAddress,
+  getSettingsFromIndex,
   getUserAccountAddress,
 } from "../../utils";
 import {
@@ -57,8 +58,8 @@ export async function createWallet({
   );
   const settingsAddressTreeIndex = await getNewWhitelistedAddressTreeIndex();
   const { address: settingsAddress, addressTree } =
-    await getCompressedSettingsAddressFromIndex(
-      index,
+    await getCompressedSettingsAddress(
+      await getSettingsFromIndex(index),
       settingsAddressTreeIndex,
     );
   newAddressParams.push({

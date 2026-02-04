@@ -16,11 +16,8 @@ import {
   getBytesEncoder,
   getOptionDecoder,
   getOptionEncoder,
-  getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
-  getU128Decoder,
-  getU128Encoder,
   transformEncoder,
   type AccountMeta,
   type AccountSignerMeta,
@@ -41,11 +38,7 @@ import {
 } from "gill";
 import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import {
-  expectSome,
-  getAccountMetaFactory,
-  type ResolvedAccount,
-} from "../shared";
+import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
   getConfigActionDecoder,
   getConfigActionEncoder,
@@ -109,14 +102,12 @@ export type ChangeConfigInstruction<
 
 export type ChangeConfigInstructionData = {
   discriminator: ReadonlyUint8Array;
-  settingsIndex: bigint;
   configActions: Array<ConfigAction>;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
   compressedProofArgs: Option<ProofArgs>;
 };
 
 export type ChangeConfigInstructionDataArgs = {
-  settingsIndex: number | bigint;
   configActions: Array<ConfigActionArgs>;
   secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
   compressedProofArgs: OptionOrNullable<ProofArgsArgs>;
@@ -126,7 +117,6 @@ export function getChangeConfigInstructionDataEncoder(): Encoder<ChangeConfigIns
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["settingsIndex", getU128Encoder()],
       ["configActions", getArrayEncoder(getConfigActionEncoder())],
       [
         "secp256r1VerifyArgs",
@@ -141,7 +131,6 @@ export function getChangeConfigInstructionDataEncoder(): Encoder<ChangeConfigIns
 export function getChangeConfigInstructionDataDecoder(): Decoder<ChangeConfigInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["settingsIndex", getU128Decoder()],
     ["configActions", getArrayDecoder(getConfigActionDecoder())],
     [
       "secp256r1VerifyArgs",
@@ -165,131 +154,6 @@ export type ChangeConfigInstructionExtraArgs = {
   remainingAccounts: Array<{ address: Address; role: number }>;
 };
 
-export type ChangeConfigAsyncInput<
-  TAccountSettings extends string = string,
-  TAccountPayer extends string = string,
-  TAccountSystemProgram extends string = string,
-  TAccountSlotHashSysvar extends string = string,
-  TAccountInstructionsSysvar extends string = string,
-> = {
-  settings?: Address<TAccountSettings>;
-  payer: TransactionSigner<TAccountPayer>;
-  systemProgram?: Address<TAccountSystemProgram>;
-  slotHashSysvar?: Address<TAccountSlotHashSysvar>;
-  instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  settingsIndex: ChangeConfigInstructionDataArgs["settingsIndex"];
-  configActions: ChangeConfigInstructionDataArgs["configActions"];
-  secp256r1VerifyArgs: ChangeConfigInstructionDataArgs["secp256r1VerifyArgs"];
-  compressedProofArgs: ChangeConfigInstructionDataArgs["compressedProofArgs"];
-  remainingAccounts: ChangeConfigInstructionExtraArgs["remainingAccounts"];
-};
-
-export async function getChangeConfigInstructionAsync<
-  TAccountSettings extends string,
-  TAccountPayer extends string,
-  TAccountSystemProgram extends string,
-  TAccountSlotHashSysvar extends string,
-  TAccountInstructionsSysvar extends string,
-  TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
->(
-  input: ChangeConfigAsyncInput<
-    TAccountSettings,
-    TAccountPayer,
-    TAccountSystemProgram,
-    TAccountSlotHashSysvar,
-    TAccountInstructionsSysvar
-  >,
-  config?: { programAddress?: TProgramAddress },
-): Promise<
-  ChangeConfigInstruction<
-    TProgramAddress,
-    TAccountSettings,
-    TAccountPayer,
-    TAccountSystemProgram,
-    TAccountSlotHashSysvar,
-    TAccountInstructionsSysvar
-  >
-> {
-  // Program address.
-  const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
-
-  // Original accounts.
-  const originalAccounts = {
-    settings: { value: input.settings ?? null, isWritable: true },
-    payer: { value: input.payer ?? null, isWritable: true },
-    systemProgram: { value: input.systemProgram ?? null, isWritable: false },
-    slotHashSysvar: { value: input.slotHashSysvar ?? null, isWritable: false },
-    instructionsSysvar: {
-      value: input.instructionsSysvar ?? null,
-      isWritable: false,
-    },
-  };
-  const accounts = originalAccounts as Record<
-    keyof typeof originalAccounts,
-    ResolvedAccount
-  >;
-
-  // Original args.
-  const args = { ...input };
-
-  // Resolver scope.
-  const resolverScope = { programAddress, accounts, args };
-
-  // Resolve default values.
-  if (!accounts.settings.value) {
-    accounts.settings.value = await getProgramDerivedAddress({
-      programAddress,
-      seeds: [
-        getBytesEncoder().encode(
-          new Uint8Array([
-            109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116,
-          ]),
-        ),
-        getU128Encoder().encode(expectSome(args.settingsIndex)),
-      ],
-    });
-  }
-  if (!accounts.systemProgram.value) {
-    accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
-  }
-  if (!accounts.slotHashSysvar.value) {
-    accounts.slotHashSysvar.value =
-      "SysvarS1otHashes111111111111111111111111111" as Address<"SysvarS1otHashes111111111111111111111111111">;
-  }
-  if (!accounts.instructionsSysvar.value) {
-    accounts.instructionsSysvar.value =
-      "Sysvar1nstructions1111111111111111111111111" as Address<"Sysvar1nstructions1111111111111111111111111">;
-  }
-
-  // Remaining accounts.
-  const remainingAccounts: AccountMeta[] =
-    parseRemainingAccounts(resolverScope);
-
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
-  return Object.freeze({
-    accounts: [
-      getAccountMeta(accounts.settings),
-      getAccountMeta(accounts.payer),
-      getAccountMeta(accounts.systemProgram),
-      getAccountMeta(accounts.slotHashSysvar),
-      getAccountMeta(accounts.instructionsSysvar),
-      ...remainingAccounts,
-    ],
-    data: getChangeConfigInstructionDataEncoder().encode(
-      args as ChangeConfigInstructionDataArgs,
-    ),
-    programAddress,
-  } as ChangeConfigInstruction<
-    TProgramAddress,
-    TAccountSettings,
-    TAccountPayer,
-    TAccountSystemProgram,
-    TAccountSlotHashSysvar,
-    TAccountInstructionsSysvar
-  >);
-}
-
 export type ChangeConfigInput<
   TAccountSettings extends string = string,
   TAccountPayer extends string = string,
@@ -302,7 +166,6 @@ export type ChangeConfigInput<
   systemProgram?: Address<TAccountSystemProgram>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  settingsIndex: ChangeConfigInstructionDataArgs["settingsIndex"];
   configActions: ChangeConfigInstructionDataArgs["configActions"];
   secp256r1VerifyArgs: ChangeConfigInstructionDataArgs["secp256r1VerifyArgs"];
   compressedProofArgs: ChangeConfigInstructionDataArgs["compressedProofArgs"];

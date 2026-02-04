@@ -1,6 +1,6 @@
-import {
-  TransactionActionTypeSchema,
-  TransactionPayloadWithBase64MessageBytesSchema,
+import type {
+  StartMessageRequest,
+  StartTransactionRequest,
 } from "@revibase/core";
 import z from "zod";
 
@@ -8,51 +8,13 @@ export const UserSchema = z.looseObject({
   publicKey: z.string(),
   walletAddress: z.string(),
   settingsIndexWithAddress: z.object({
-    index: z.number(),
+    index: z.union([z.number(), z.bigint()]),
     settingsAddressTreeIndex: z.number(),
   }),
   username: z.string().optional(),
   image: z.string().optional(),
 });
 export type User = z.infer<typeof UserSchema>;
-
-export const StartCustomTransactionRequestSchema = z
-  .object({
-    phase: z.literal("start"),
-    redirectOrigin: z.string(),
-    signer: UserSchema.optional(),
-    data: z
-      .object({
-        type: z.literal("transaction"),
-        payload: TransactionPayloadWithBase64MessageBytesSchema.extend({
-          transactionActionType: TransactionActionTypeSchema.optional(),
-          transactionAddress: z.string().optional(),
-        }),
-        rid: z.string(),
-      })
-      .strict(),
-  })
-  .strict();
-export type StartCustomTransactionRequest = z.infer<
-  typeof StartCustomTransactionRequestSchema
->;
-
-export const StartCustomMessageRequestSchema = z
-  .object({
-    phase: z.literal("start"),
-    redirectOrigin: z.string(),
-    signer: UserSchema.optional(),
-    data: z
-      .object({
-        type: z.literal("message"),
-        rid: z.string(),
-      })
-      .strict(),
-  })
-  .strict();
-export type StartCustomMessageRequest = z.infer<
-  typeof StartCustomMessageRequestSchema
->;
 
 export const CompleteMessageRequestSchema = z.object({
   phase: z.literal("complete"),
@@ -79,8 +41,8 @@ export type CompleteTransactionRequest = z.infer<
 >;
 
 export type ClientAuthorizationCallback = {
-  (request: StartCustomMessageRequest): Promise<{ rid: string }>;
-  (request: StartCustomTransactionRequest): Promise<{ rid: string }>;
+  (request: StartMessageRequest): Promise<{ rid: string }>;
+  (request: StartTransactionRequest): Promise<{ rid: string }>;
   (request: CompleteMessageRequest): Promise<{ user: User }>;
   (request: CompleteTransactionRequest): Promise<{ txSig: string }>;
 };

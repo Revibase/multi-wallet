@@ -1,5 +1,13 @@
-import type { TransactionPayloadWithBase64MessageBytes } from "@revibase/core";
-import { prepareTransactionMessage } from "@revibase/core";
+import type {
+  StartTransactionRequest,
+  TransactionPayloadWithBase64MessageBytes,
+} from "@revibase/core";
+import {
+  fetchSettingsAccountData,
+  getSettingsFromIndex,
+  prepareTransactionMessage,
+  UserRole,
+} from "@revibase/core";
 import {
   address,
   getBase64Decoder,
@@ -7,7 +15,8 @@ import {
   type Instruction,
 } from "gill";
 import type { RevibaseProvider } from "src/provider/main";
-import type { StartCustomTransactionRequest, User } from "src/utils/types";
+import { DEFAULT_TIMEOUT } from "src/provider/utils";
+import type { User } from "src/utils/types";
 
 /**
  * Executes a transaction using the Revibase provider.
@@ -33,12 +42,22 @@ export async function executeTransaction(
     instructions,
     addressesByLookupTableAddress,
   });
+  const settings = await getSettingsFromIndex(
+    signer.settingsIndexWithAddress.index,
+  );
+  const walletInfo = await fetchSettingsAccountData(
+    settings,
+    signer.settingsIndexWithAddress.settingsAddressTreeIndex,
+  );
 
-  const transactionPayloadWithoutType: Omit<
-    TransactionPayloadWithBase64MessageBytes,
-    "transactionActionType" | "transactionAddress"
-  > = {
+  const transactionPayload: TransactionPayloadWithBase64MessageBytes = {
     transactionMessageBytes: getBase64Decoder().decode(transactionMessageBytes),
+    transactionAddress: settings,
+    transactionActionType: walletInfo.members.some(
+      (x) => x.role === UserRole.TransactionManager,
+    )
+      ? "execute"
+      : "create_with_preauthorized_execution",
   };
 
   const redirectOrigin = window.origin;
@@ -46,15 +65,17 @@ export async function executeTransaction(
     rid ??
     getBase64Decoder().decode(crypto.getRandomValues(new Uint8Array(16)));
 
-  const payload: StartCustomTransactionRequest = {
+  const payload: StartTransactionRequest = {
     phase: "start",
+    rid,
+    validTill: Date.now() + DEFAULT_TIMEOUT,
     data: {
       type: "transaction" as const,
-      payload: transactionPayloadWithoutType,
-      rid,
+      payload: transactionPayload,
+      sendTx: true,
     },
     redirectOrigin,
-    signer,
+    signer: signer.publicKey,
   };
 
   await Promise.all([

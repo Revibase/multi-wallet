@@ -10,10 +10,11 @@ import {
 import {
   base64URLStringToBuffer,
   fetchMaybeSettings,
-  getCompressedSettingsAddressFromIndex,
+  getCompressedSettingsAddress,
   getCompressedSettingsDecoder,
   getMemberKeyEncoder,
   getSettingsDecoder,
+  getSettingsFromIndex,
   getUserAccountAddress,
   getUserDecoder,
   MULTI_WALLET_PROGRAM_ADDRESS,
@@ -24,7 +25,6 @@ import {
 } from "../..";
 import { NotFoundError, ValidationError } from "../../errors";
 import type { AccountCache } from "../../types";
-import { getSettingsFromIndex } from "../addresses";
 import { getLightProtocolRpc, getSolanaRpc } from "../initialize";
 import { convertPubkeyToMemberkey } from "../transaction/internal";
 import { requireNonNegative } from "../validation";
@@ -113,12 +113,12 @@ export async function fetchUserAccountByFilters(
 }
 
 export async function fetchSettingsAccountData(
-  index: number | bigint,
+  settings: Address,
   settingsAddressTreeIndex?: number,
   cachedAccounts?: AccountCache,
 ): Promise<CompressedSettingsData & { isCompressed: boolean }> {
   const settingsData = await fetchMaybeSettingsAccountData(
-    index,
+    settings,
     settingsAddressTreeIndex,
     cachedAccounts,
   );
@@ -129,13 +129,13 @@ export async function fetchSettingsAccountData(
 }
 
 export async function fetchMaybeSettingsAccountData(
-  index: number | bigint,
+  settings: Address,
   settingsAddressTreeIndex?: number,
   cachedAccounts?: AccountCache,
 ): Promise<(CompressedSettingsData & { isCompressed: boolean }) | null> {
   try {
-    const { address } = await getCompressedSettingsAddressFromIndex(
-      index,
+    const { address } = await getCompressedSettingsAddress(
+      settings,
       settingsAddressTreeIndex,
     );
     const result = await fetchCachedCompressedAccount(address, cachedAccounts);
@@ -148,10 +148,7 @@ export async function fetchMaybeSettingsAccountData(
     }
     return { ...data.data.value, isCompressed: true };
   } catch {
-    const result = await fetchMaybeSettings(
-      getSolanaRpc(),
-      await getSettingsFromIndex(index),
-    );
+    const result = await fetchMaybeSettings(getSolanaRpc(), settings);
     if (!result.exists) {
       return null;
     }
@@ -239,9 +236,9 @@ export async function fetchAllSettingsAccountByMember(
     return settingsAccount;
   } else {
     return await Promise.all(
-      user.wallets.map((x) =>
+      user.wallets.map(async (x) =>
         fetchSettingsAccountData(
-          x.index,
+          await getSettingsFromIndex(x.index),
           x.settingsAddressTreeIndex,
           cachedAccounts,
         ),

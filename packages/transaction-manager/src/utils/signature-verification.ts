@@ -78,15 +78,10 @@ export async function verifyTransactionAuthResponseWithMessageHash(
   authDetails: TransactionAuthDetails,
   expectedMessageHash: Uint8Array<ArrayBuffer>,
 ): Promise<void> {
-  const {
-    authResponse,
-    transactionPayload,
-    slotHash,
-    slotNumber,
-    device,
-    client,
-    nonce,
-  } = authDetails;
+  const { authResponse, startRequest, slotHash, slotNumber, device, client } =
+    authDetails;
+  if (startRequest.data.type !== "transaction")
+    throw new Error("Invalid request type.");
   const { response } = authResponse;
 
   const clientDataJsonBytes = base64URLStringToBuffer(response.clientDataJSON);
@@ -95,10 +90,10 @@ export async function verifyTransactionAuthResponseWithMessageHash(
   ) as ClientDataJSON;
 
   const { challenge: expectedChallenge } = await createTransactionChallenge(
-    transactionPayload,
+    startRequest.data.payload,
     client.clientOrigin,
     device.jwk,
-    nonce,
+    startRequest.rid,
     slotHash,
     slotNumber,
   );

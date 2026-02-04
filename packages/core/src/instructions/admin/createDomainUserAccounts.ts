@@ -14,7 +14,7 @@ import {
 import { Secp256r1Key } from "../../types";
 import {
   base64URLStringToBuffer,
-  getCompressedSettingsAddressFromIndex,
+  getCompressedSettingsAddress,
   getUserAccountAddress,
 } from "../../utils";
 import {
@@ -32,7 +32,7 @@ interface UserCreationArgs {
   role: UserRole.Member | UserRole.PermanentMember;
   credentialId: string;
   transports: Transports[];
-  index?: number | bigint;
+  settings?: Address;
   settingsAddressTreeIndex?: number;
   transactionManager?: {
     member: Address;
@@ -58,11 +58,11 @@ export async function createDomainUserAccounts({
 
   const addresses = [];
 
-  if (createUserArgs.index) {
+  if (createUserArgs.settings) {
     addresses.push({
       address: (
-        await getCompressedSettingsAddressFromIndex(
-          createUserArgs.index,
+        await getCompressedSettingsAddress(
+          createUserArgs.settings,
           createUserArgs.settingsAddressTreeIndex,
         )
       ).address,

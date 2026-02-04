@@ -41,9 +41,8 @@ import {
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
 import {
-  getCompressedSettingsAddressFromIndex,
+  getCompressedSettingsAddress,
   getLightProtocolRpc,
-  getSettingsFromIndex,
   getWalletAddressFromSettings,
 } from "../../utils";
 import {
@@ -74,7 +73,7 @@ const ctokenProgramAddress = address(
 );
 
 export async function tokenTransferIntent({
-  index,
+  settings,
   settingsAddressTreeIndex,
   destination,
   mint,
@@ -86,7 +85,7 @@ export async function tokenTransferIntent({
   splInterfacePdaArgs = { index: 0, restricted: false },
   compressed = false,
 }: {
-  index: number | bigint;
+  settings: Address;
   settingsAddressTreeIndex?: number;
   destination: Address;
   mint: Address;
@@ -99,7 +98,6 @@ export async function tokenTransferIntent({
   cachedAccounts?: Map<string, any>;
 }) {
   const dedupSigners = getDeduplicatedSigners(signers);
-  const settings = await getSettingsFromIndex(index);
   const walletAddress = await getWalletAddressFromSettings(settings);
 
   const getCtokenAta = (owner: Address) =>
@@ -154,7 +152,7 @@ export async function tokenTransferIntent({
     fetchCachedAccountInfo(sourceCtokenAta, cachedAccounts),
     getCompressedSettings(
       compressed,
-      index,
+      settings,
       settingsAddressTreeIndex,
       cachedAccounts,
     ),
@@ -463,24 +461,21 @@ async function getCompressedTokenAccounts(
 
 async function getCompressedSettings(
   compressed: boolean,
-  index: number | bigint,
+  settings: Address,
   settingsAddressTreeIndex?: number,
   cachedAccounts?: Map<string, any>,
 ) {
   if (!compressed) return null;
-  const { address: settingsAddress } =
-    await getCompressedSettingsAddressFromIndex(
-      index,
-      settingsAddressTreeIndex,
-    );
-  const settings = (
+  const { address: settingsAddress } = await getCompressedSettingsAddress(
+    settings,
+    settingsAddressTreeIndex,
+  );
+  return (
     await getCompressedAccountHashes(
       [{ address: settingsAddress, type: "Settings" }],
       cachedAccounts,
     )
   )[0];
-
-  return settings;
 }
 
 function parseTokenAmount(data: ReadonlyUint8Array): {

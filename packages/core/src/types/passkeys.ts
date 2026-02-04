@@ -32,10 +32,46 @@ export const TransactionPayloadWithBase64MessageBytesSchema = z
   })
   .strict();
 
+export const StartMessageRequestSchema = z
+  .object({
+    phase: z.literal("start"),
+    redirectOrigin: z.url(),
+    signer: z.string().optional(),
+    rid: z.string(),
+    validTill: z.number(),
+    data: z
+      .object({
+        type: z.literal("message"),
+        payload: z.string(),
+      })
+      .strict(),
+  })
+  .strict();
+
+export const StartTransactionRequestSchema = z
+  .object({
+    phase: z.literal("start"),
+    redirectOrigin: z.url(),
+    signer: z.string().optional(),
+    rid: z.string(),
+    validTill: z.number(),
+    data: z
+      .object({
+        type: z.literal("transaction"),
+        payload: TransactionPayloadWithBase64MessageBytesSchema,
+        sendTx: z.boolean(),
+      })
+      .strict(),
+  })
+  .strict();
+
 export const AuthenticationContextSchema = z
   .object({
+    startRequest: z.union([
+      StartMessageRequestSchema,
+      StartTransactionRequestSchema,
+    ]),
     authResponse: z.custom<AuthenticationResponseJSON>(),
-    nonce: z.base64(),
     client: z
       .object({
         clientOrigin: z.url(),
@@ -68,39 +104,10 @@ export const BaseResponseSchema = z
 
 export const TransactionDetailsSchema = z
   .object({
-    transactionPayload: TransactionPayloadWithBase64MessageBytesSchema,
     slotHash: z.string(),
     slotNumber: z.string(),
     originIndex: z.number(),
     crossOrigin: z.boolean(),
-  })
-  .strict();
-
-export const StartMessageRequestSchema = z
-  .object({
-    phase: z.literal("start"),
-    redirectOrigin: z.url(),
-    signer: z.string().optional(),
-    data: z
-      .object({
-        type: z.literal("message"),
-        payload: z.string().optional(),
-      })
-      .strict(),
-  })
-  .strict();
-
-export const StartTransactionRequestSchema = z
-  .object({
-    phase: z.literal("start"),
-    redirectOrigin: z.url(),
-    signer: z.string().optional(),
-    data: z
-      .object({
-        type: z.literal("transaction"),
-        payload: TransactionPayloadWithBase64MessageBytesSchema,
-      })
-      .strict(),
   })
   .strict();
 
@@ -114,7 +121,6 @@ export const CompleteMessageRequestSchema = z
           AuthenticationContextSchema.shape,
         ).extend({
           id: z.string().optional(),
-          message: z.string(),
           client: z
             .object({
               clientOrigin: z.url(),
@@ -146,6 +152,24 @@ export const CompleteTransactionRequestSchema = z
   })
   .strict();
 
+export const CompleteSendTransactionRequestSchema = z
+  .object({
+    phase: z.literal("complete"),
+    data: z
+      .object({
+        type: z.literal("transaction"),
+        payload: z.object({
+          startRequest: z.union([
+            StartTransactionRequestSchema,
+            StartMessageRequestSchema,
+          ]),
+          txSig: z.string(),
+        }),
+      })
+      .strict(),
+  })
+  .strict();
+
 export type TransactionActionType = z.infer<typeof TransactionActionTypeSchema>;
 export type TransactionPayload = z.infer<typeof TransactionPayloadSchema>;
 export type TransactionPayloadWithBase64MessageBytes = z.infer<
@@ -157,6 +181,9 @@ export type StartTransactionRequest = z.infer<
 >;
 export type CompleteTransactionRequest = z.infer<
   typeof CompleteTransactionRequestSchema
+>;
+export type CompleteSendTransactionRequest = z.infer<
+  typeof CompleteSendTransactionRequestSchema
 >;
 export type CompleteMessageRequest = z.infer<
   typeof CompleteMessageRequestSchema

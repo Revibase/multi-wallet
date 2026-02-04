@@ -1,6 +1,7 @@
 import {
   AccountRole,
   type AccountSignerMeta,
+  type Address,
   type TransactionSigner,
 } from "gill";
 import {
@@ -8,7 +9,6 @@ import {
   type Secp256r1VerifyArgsWithDomainAddressArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
-import { getSettingsFromIndex } from "../../utils";
 import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
@@ -23,13 +23,13 @@ import {
 } from "../secp256r1Verify";
 
 export async function decompressSettingsAccount({
-  index,
+  settings,
   settingsAddressTreeIndex,
   payer,
   signers,
   cachedAccounts,
 }: {
-  index: number | bigint;
+  settings: Address;
   settingsAddressTreeIndex?: number;
   payer: TransactionSigner;
   signers: (SignedSecp256r1Key | TransactionSigner)[];
@@ -38,7 +38,7 @@ export async function decompressSettingsAccount({
   const { packedAccounts, proof, settingsMutArgs } =
     await constructSettingsProofArgs(
       true,
-      index,
+      settings,
       settingsAddressTreeIndex,
       false,
       cachedAccounts,
@@ -94,7 +94,6 @@ export async function decompressSettingsAccount({
   if (secp256r1VerifyInput.length > 0) {
     instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
   }
-  const settings = await getSettingsFromIndex(index);
   instructions.push(
     getDecompressSettingsAccountInstruction({
       settings,

@@ -16,7 +16,7 @@ import {
   type SettingsMutArgs,
 } from "../generated";
 import { SignedSecp256r1Key } from "../types";
-import { getSettingsFromIndex, getWalletAddressFromSettings } from "../utils";
+import { getWalletAddressFromSettings } from "../utils";
 import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
@@ -33,7 +33,7 @@ import {
 } from "./secp256r1Verify";
 
 export async function executeTransactionSync({
-  index,
+  settings,
   settingsAddressTreeIndex,
   transactionMessageBytes,
   signers,
@@ -44,7 +44,7 @@ export async function executeTransactionSync({
   simulateProof = false,
   cachedAccounts,
 }: {
-  index: number | bigint;
+  settings: Address;
   settingsAddressTreeIndex?: number;
   signers: (TransactionSigner | SignedSecp256r1Key)[];
   transactionMessageBytes: ReadonlyUint8Array;
@@ -56,7 +56,6 @@ export async function executeTransactionSync({
   cachedAccounts?: Map<string, any>;
 }) {
   const dedupSigners = getDeduplicatedSigners(signers);
-  const settings = await getSettingsFromIndex(index);
   const walletAddress = await getWalletAddressFromSettings(settings);
   const [
     { accountMetas, addressLookupTableAccounts, transactionMessage },
@@ -72,7 +71,7 @@ export async function executeTransactionSync({
     }),
     constructSettingsProofArgs(
       compressed,
-      index,
+      settings,
       settingsAddressTreeIndex,
       simulateProof,
       cachedAccounts,

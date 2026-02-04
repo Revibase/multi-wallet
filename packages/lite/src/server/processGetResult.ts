@@ -1,7 +1,7 @@
+import type { CompleteSendTransactionRequest } from "@revibase/core";
 import {
   convertBase64StringToJWK,
   type CompleteMessageRequest,
-  type CompleteTransactionRequest,
 } from "@revibase/core";
 import { getBase64Encoder } from "gill";
 import { CompactSign } from "jose";
@@ -15,7 +15,7 @@ export async function processGetResult({
   rid: string;
   privateKey: string;
   providerOrigin?: string;
-}): Promise<CompleteMessageRequest | CompleteTransactionRequest> {
+}) {
   const pKey = convertBase64StringToJWK(privateKey);
   if (!pKey.alg) throw new Error("Property alg in JWK is missing.");
   const signature = await new CompactSign(
@@ -36,5 +36,5 @@ export async function processGetResult({
   }
   return (await res.json()) as
     | CompleteMessageRequest
-    | CompleteTransactionRequest;
+    | CompleteSendTransactionRequest;
 }

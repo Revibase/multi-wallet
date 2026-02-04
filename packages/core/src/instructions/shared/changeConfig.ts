@@ -1,8 +1,8 @@
 import type { ValidityProofWithContext } from "@lightprotocol/stateless.js";
-import { AccountRole, type TransactionSigner } from "gill";
+import { AccountRole, type Address, type TransactionSigner } from "gill";
 import {
   getChangeConfigCompressedInstruction,
-  getChangeConfigInstructionAsync,
+  getChangeConfigInstruction,
   type ConfigAction,
   type Secp256r1VerifyArgsWithDomainAddressArgs,
   type SettingsMutArgs,
@@ -23,7 +23,7 @@ export async function changeConfig({
 }: {
   changeConfigArgs: {
     configActions: ConfigAction[];
-    index: number | bigint;
+    settings: Address;
     compressed: boolean;
     packedAccounts: PackedAccounts;
     proof: ValidityProofWithContext | null;
@@ -33,7 +33,7 @@ export async function changeConfig({
   payer: TransactionSigner;
 }) {
   const {
-    index,
+    settings,
     configActions,
     compressed,
     packedAccounts,
@@ -99,8 +99,8 @@ export async function changeConfig({
     );
   } else {
     instructions.push(
-      await getChangeConfigInstructionAsync({
-        settingsIndex: index,
+      getChangeConfigInstruction({
+        settings,
         configActions,
         payer,
         compressedProofArgs,

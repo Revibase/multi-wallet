@@ -185,7 +185,7 @@ impl<'info> NativeTransferIntentCompressed<'info> {
             .ok_or(MultisigError::MissingSettingsData)?;
 
         let settings_key =
-            Settings::get_settings_key_from_index(settings_data.index, settings_data.bump)?;
+            Settings::get_settings_key_from_index_with_bump(settings_data.index, settings_data.bump)?;
 
         ctx.accounts.validate(
             amount,

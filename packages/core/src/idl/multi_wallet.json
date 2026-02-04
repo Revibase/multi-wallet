@@ -53,21 +53,7 @@
       "accounts": [
         {
           "name": "settings",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
-                ]
-              },
-              {
-                "kind": "arg",
-                "path": "settings_index"
-              }
-            ]
-          }
+          "writable": true
         },
         {
           "name": "payer",
@@ -89,10 +75,6 @@
         }
       ],
       "args": [
-        {
-          "name": "settings_index",
-          "type": "u128"
-        },
         {
           "name": "config_actions",
           "type": {

@@ -3,6 +3,7 @@ import {
   convertMemberKeyToString,
   createUserAccounts,
   fetchSettingsAccountData,
+  getSettingsFromIndex,
   Permission,
   Permissions,
   prepareChangeConfigArgs,
@@ -31,7 +32,7 @@ export function runPermissionsTests(getCtx: () => TestContext) {
       // Update permissions to only vote
       const changeConfigArgs = await prepareChangeConfigArgs({
         compressed: ctx.compressed,
-        index: ctx.index,
+        settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
             type: "EditPermissions",
@@ -52,8 +53,8 @@ export function runPermissionsTests(getCtx: () => TestContext) {
       });
 
       await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
-
-      const accountData = await fetchSettingsAccountData(ctx.index);
+      const settings = await getSettingsFromIndex(ctx.index);
+      const accountData = await fetchSettingsAccountData(settings);
       const payerMember = accountData.members.find(
         (m) =>
           convertMemberKeyToString(m.pubkey) === ctx.payer.address.toString(),
@@ -89,7 +90,7 @@ export function runPermissionsTests(getCtx: () => TestContext) {
 
       const changeConfigArgs = await prepareChangeConfigArgs({
         compressed: ctx.compressed,
-        index: ctx.index,
+        settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
             type: "AddMembers",
@@ -110,8 +111,8 @@ export function runPermissionsTests(getCtx: () => TestContext) {
       });
 
       await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
-
-      const accountData = await fetchSettingsAccountData(ctx.index);
+      const settings = await getSettingsFromIndex(ctx.index);
+      const accountData = await fetchSettingsAccountData(settings);
       const addedMember = accountData.members.find(
         (m) =>
           convertMemberKeyToString(m.pubkey) === ctx.payer.address.toString(),
@@ -147,7 +148,7 @@ export function runPermissionsTests(getCtx: () => TestContext) {
 
       const changeConfigArgs = await prepareChangeConfigArgs({
         compressed: ctx.compressed,
-        index: ctx.index,
+        settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
             type: "AddMembers",
@@ -168,8 +169,8 @@ export function runPermissionsTests(getCtx: () => TestContext) {
       });
 
       await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
-
-      const accountData = await fetchSettingsAccountData(ctx.index);
+      const settings = await getSettingsFromIndex(ctx.index);
+      const accountData = await fetchSettingsAccountData(settings);
       const addedMember = accountData.members.find(
         (m) =>
           convertMemberKeyToString(m.pubkey) === ctx.payer.address.toString(),
@@ -231,7 +232,7 @@ export function runPermissionsTests(getCtx: () => TestContext) {
       // Add two members first
       const addMembersArgs = await prepareChangeConfigArgs({
         compressed: ctx.compressed,
-        index: ctx.index,
+        settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
             type: "AddMembers",
@@ -262,7 +263,7 @@ export function runPermissionsTests(getCtx: () => TestContext) {
       // Update both members' permissions
       const editPermissionsArgs = await prepareChangeConfigArgs({
         compressed: ctx.compressed,
-        index: ctx.index,
+        settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
             type: "EditPermissions",
@@ -289,8 +290,8 @@ export function runPermissionsTests(getCtx: () => TestContext) {
         ctx.payer,
         ctx.addressLookUpTable,
       );
-
-      const accountData = await fetchSettingsAccountData(ctx.index);
+      const settings = await getSettingsFromIndex(ctx.index);
+      const accountData = await fetchSettingsAccountData(settings);
       const updatedMember1 = accountData.members.find(
         (m) =>
           convertMemberKeyToString(m.pubkey) === member1.address.toString(),
