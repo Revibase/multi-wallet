@@ -3,26 +3,20 @@ use crate::state::ProofArgs;
 use anchor_lang::solana_program::program::invoke_signed;
 use anchor_lang::{prelude::*, solana_program::program::invoke};
 use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TransferChecked};
+use light_compressed_token_sdk::compressed_token::transfer2::{
+    create_transfer2_instruction, Transfer2AccountsMetaConfig, Transfer2Config, Transfer2Inputs,
+};
+use light_compressed_token_sdk::compressed_token::CTokenAccount2;
 use light_sdk::{
     cpi::v2::CpiAccounts,
     instruction::{PackedMerkleContext, ValidityProof},
 };
-use light_token::anchor::derive_token_ata;
 use light_token::instruction::{
-    CreateTokenAtaCpi, TransferCpi, TransferFromSplCpi, TransferToSplCpi,
+    derive_token_ata, CreateTokenAtaCpi, TransferCpi, TransferFromSplCpi, TransferToSplCpi,
 };
 use light_token::spl_interface::derive_spl_interface_pda;
+use light_token::spl_interface::{CreateSplInterfacePda, SplInterfacePda};
 use light_token::ExtensionInstructionData;
-use light_token::{
-    compressed_token::{
-        transfer2::{
-            create_transfer2_instruction, Transfer2AccountsMetaConfig, Transfer2Config,
-            Transfer2Inputs,
-        },
-        CTokenAccount2,
-    },
-    spl_interface::{CreateSplInterfacePda, SplInterfacePda},
-};
 use light_token_interface::instructions::extensions::CompressedOnlyExtensionInstructionData;
 use light_token_interface::instructions::transfer2::MultiInputTokenDataWithContext;
 use light_token_interface::state::ExtensionStruct;

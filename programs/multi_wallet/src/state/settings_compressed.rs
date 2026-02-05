@@ -14,12 +14,12 @@ use light_sdk::{
     instruction::{
         account_meta::CompressedAccountMetaReadOnly, PackedAddressTreeInfo, ValidityProof,
     },
-    LightDiscriminator,
+    {AnchorDiscriminator, LightDiscriminator},
 };
 use std::collections::HashSet;
 
 #[derive(
-    AnchorDeserialize, AnchorSerialize, LightDiscriminator, PartialEq, Default, Debug, Clone,
+    AnchorDeserialize, AnchorSerialize, AnchorDiscriminator, PartialEq, Default, Debug, Clone,
 )]
 pub struct CompressedSettings {
     pub data: Option<CompressedSettingsData>,

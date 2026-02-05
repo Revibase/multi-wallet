@@ -46,7 +46,7 @@ export async function processMessage(
   }
 
   const settingsIndexWithAddress = payload.additionalInfo
-    ?.settingIndexWithAddress as SettingsIndexWithAddressArgs | undefined;
+    ?.settingsIndexWithAddress as SettingsIndexWithAddressArgs | undefined;
 
   if (!settingsIndexWithAddress) {
     throw new Error("User is not delegated");

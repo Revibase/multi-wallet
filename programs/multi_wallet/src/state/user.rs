@@ -6,11 +6,13 @@ use light_sdk::address::NewAddressParamsAssignedPacked;
 use light_sdk::cpi::v2::CpiAccounts;
 use light_sdk::instruction::account_meta::{CompressedAccountMeta, CompressedAccountMetaReadOnly};
 use light_sdk::{
-    account::LightAccount, address::v2::derive_address, instruction::PackedAddressTreeInfo,
-    LightDiscriminator,
+    account::LightAccount,
+    address::v2::derive_address,
+    instruction::PackedAddressTreeInfo,
+    {AnchorDiscriminator, LightDiscriminator},
 };
 
-#[derive(Default, AnchorDeserialize, AnchorSerialize, LightDiscriminator, PartialEq, Debug)]
+#[derive(Default, AnchorDeserialize, AnchorSerialize, AnchorDiscriminator, PartialEq, Debug)]
 pub struct User {
     pub domain_config: Option<Pubkey>,
     pub member: MemberKey,
@@ -338,7 +340,10 @@ mod tests {
         let mut key = [0u8; 33];
         key[0] = KeyType::Secp256r1 as u8;
         key[1..].fill(idx);
-        MemberKey { key_type: key[0], key }
+        MemberKey {
+            key_type: key[0],
+            key,
+        }
     }
 
     #[test]
