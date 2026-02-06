@@ -17,6 +17,8 @@ import {
   getStructEncoder,
   getU128Decoder,
   getU128Encoder,
+  getU8Decoder,
+  getU8Encoder,
   transformEncoder,
   type AccountMeta,
   type AccountSignerMeta,
@@ -38,16 +40,16 @@ import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
+  getPackedAddressTreeInfoDecoder,
+  getPackedAddressTreeInfoEncoder,
   getProofArgsDecoder,
   getProofArgsEncoder,
-  getSettingsCreationArgsDecoder,
-  getSettingsCreationArgsEncoder,
   getUserReadOnlyOrMutateArgsDecoder,
   getUserReadOnlyOrMutateArgsEncoder,
+  type PackedAddressTreeInfo,
+  type PackedAddressTreeInfoArgs,
   type ProofArgs,
   type ProofArgsArgs,
-  type SettingsCreationArgs,
-  type SettingsCreationArgsArgs,
   type UserReadOnlyOrMutateArgs,
   type UserReadOnlyOrMutateArgsArgs,
 } from "../types";
@@ -98,14 +100,16 @@ export type CreateCompressedWalletInstruction<
 export type CreateCompressedWalletInstructionData = {
   discriminator: ReadonlyUint8Array;
   compressedProofArgs: ProofArgs;
-  settingsCreation: SettingsCreationArgs;
+  addressTreeInfo: PackedAddressTreeInfo;
+  outputStateTreeIndex: number;
   userArgs: UserReadOnlyOrMutateArgs;
   settingsIndex: bigint;
 };
 
 export type CreateCompressedWalletInstructionDataArgs = {
   compressedProofArgs: ProofArgsArgs;
-  settingsCreation: SettingsCreationArgsArgs;
+  addressTreeInfo: PackedAddressTreeInfoArgs;
+  outputStateTreeIndex: number;
   userArgs: UserReadOnlyOrMutateArgsArgs;
   settingsIndex: number | bigint;
 };
@@ -115,7 +119,8 @@ export function getCreateCompressedWalletInstructionDataEncoder(): Encoder<Creat
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["compressedProofArgs", getProofArgsEncoder()],
-      ["settingsCreation", getSettingsCreationArgsEncoder()],
+      ["addressTreeInfo", getPackedAddressTreeInfoEncoder()],
+      ["outputStateTreeIndex", getU8Encoder()],
       ["userArgs", getUserReadOnlyOrMutateArgsEncoder()],
       ["settingsIndex", getU128Encoder()],
     ]),
@@ -130,7 +135,8 @@ export function getCreateCompressedWalletInstructionDataDecoder(): Decoder<Creat
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["compressedProofArgs", getProofArgsDecoder()],
-    ["settingsCreation", getSettingsCreationArgsDecoder()],
+    ["addressTreeInfo", getPackedAddressTreeInfoDecoder()],
+    ["outputStateTreeIndex", getU8Decoder()],
     ["userArgs", getUserReadOnlyOrMutateArgsDecoder()],
     ["settingsIndex", getU128Decoder()],
   ]);
@@ -163,7 +169,8 @@ export type CreateCompressedWalletAsyncInput<
   globalCounter?: Address<TAccountGlobalCounter>;
   whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
   compressedProofArgs: CreateCompressedWalletInstructionDataArgs["compressedProofArgs"];
-  settingsCreation: CreateCompressedWalletInstructionDataArgs["settingsCreation"];
+  addressTreeInfo: CreateCompressedWalletInstructionDataArgs["addressTreeInfo"];
+  outputStateTreeIndex: CreateCompressedWalletInstructionDataArgs["outputStateTreeIndex"];
   userArgs: CreateCompressedWalletInstructionDataArgs["userArgs"];
   settingsIndex: CreateCompressedWalletInstructionDataArgs["settingsIndex"];
   remainingAccounts: CreateCompressedWalletInstructionExtraArgs["remainingAccounts"];
@@ -292,7 +299,8 @@ export type CreateCompressedWalletInput<
   globalCounter: Address<TAccountGlobalCounter>;
   whitelistedAddressTrees: Address<TAccountWhitelistedAddressTrees>;
   compressedProofArgs: CreateCompressedWalletInstructionDataArgs["compressedProofArgs"];
-  settingsCreation: CreateCompressedWalletInstructionDataArgs["settingsCreation"];
+  addressTreeInfo: CreateCompressedWalletInstructionDataArgs["addressTreeInfo"];
+  outputStateTreeIndex: CreateCompressedWalletInstructionDataArgs["outputStateTreeIndex"];
   userArgs: CreateCompressedWalletInstructionDataArgs["userArgs"];
   settingsIndex: CreateCompressedWalletInstructionDataArgs["settingsIndex"];
   remainingAccounts: CreateCompressedWalletInstructionExtraArgs["remainingAccounts"];

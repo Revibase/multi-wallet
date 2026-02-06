@@ -114,7 +114,7 @@ export async function createWallet({
         ? { __kind: "Mutate", fields: [userMutArgs] }
         : { __kind: "Read", fields: [userMutArgs] },
     compressedProofArgs,
-    settingsCreation: settingsCreationArgs,
+    ...settingsCreationArgs,
     remainingAccounts,
   });
 }

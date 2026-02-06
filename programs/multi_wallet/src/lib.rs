@@ -432,24 +432,4 @@ pub mod multi_wallet {
             secp256r1_verify_args,
         )
     }
-
-    #[instruction(discriminator = 31)]
-    pub fn migrate_compressed_users<'info>(
-        ctx: Context<'_, '_, 'info, 'info, MigrateCompressedUser<'info>>,
-        args: User,
-        compressed_proof_args: ProofArgs,
-        user_creation_args: UserCreationArgs,
-    ) -> Result<()> {
-        MigrateCompressedUser::process(ctx, args, compressed_proof_args, user_creation_args)
-    }
-
-    #[instruction(discriminator = 32)]
-    pub fn migrate_compressed_settings<'info>(
-        ctx: Context<'_, '_, 'info, 'info, MigrateCompressedSettings<'info>>,
-        args: CompressedSettingsData,
-        compressed_proof_args: ProofArgs,
-        settings_creation_args: SettingsCreationArgs,
-    ) -> Result<()> {
-        MigrateCompressedSettings::process(ctx, args, compressed_proof_args, settings_creation_args)
-    }
 }

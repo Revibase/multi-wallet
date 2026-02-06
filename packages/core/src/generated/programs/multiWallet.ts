@@ -27,8 +27,6 @@ import {
   type ParsedEditDomainConfigInstruction,
   type ParsedEditTransactionManagerUrlInstruction,
   type ParsedEditUserDelegateInstruction,
-  type ParsedMigrateCompressedSettingsInstruction,
-  type ParsedMigrateCompressedUsersInstruction,
   type ParsedNativeTransferIntentCompressedInstruction,
   type ParsedNativeTransferIntentInstruction,
   type ParsedTokenTransferIntentCompressedInstruction,
@@ -138,8 +136,6 @@ export enum MultiWalletInstruction {
   EditDomainConfig,
   EditTransactionManagerUrl,
   EditUserDelegate,
-  MigrateCompressedSettings,
-  MigrateCompressedUsers,
   NativeTransferIntent,
   NativeTransferIntentCompressed,
   TokenTransferIntent,
@@ -280,24 +276,6 @@ export function identifyMultiWalletInstruction(
     )
   ) {
     return MultiWalletInstruction.EditUserDelegate;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([32])),
-      0,
-    )
-  ) {
-    return MultiWalletInstruction.MigrateCompressedSettings;
-  }
-  if (
-    containsBytes(
-      data,
-      fixEncoderSize(getBytesEncoder(), 1).encode(new Uint8Array([31])),
-      0,
-    )
-  ) {
-    return MultiWalletInstruction.MigrateCompressedUsers;
   }
   if (
     containsBytes(
@@ -508,12 +486,6 @@ export type ParsedMultiWalletInstruction<
   | ({
       instructionType: MultiWalletInstruction.EditUserDelegate;
     } & ParsedEditUserDelegateInstruction<TProgram>)
-  | ({
-      instructionType: MultiWalletInstruction.MigrateCompressedSettings;
-    } & ParsedMigrateCompressedSettingsInstruction<TProgram>)
-  | ({
-      instructionType: MultiWalletInstruction.MigrateCompressedUsers;
-    } & ParsedMigrateCompressedUsersInstruction<TProgram>)
   | ({
       instructionType: MultiWalletInstruction.NativeTransferIntent;
     } & ParsedNativeTransferIntentInstruction<TProgram>)

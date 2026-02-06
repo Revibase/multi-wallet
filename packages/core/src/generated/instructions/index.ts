@@ -19,8 +19,6 @@ export * from './disableDomainConfig';
 export * from './editDomainConfig';
 export * from './editTransactionManagerUrl';
 export * from './editUserDelegate';
-export * from './migrateCompressedSettings';
-export * from './migrateCompressedUsers';
 export * from './nativeTransferIntent';
 export * from './nativeTransferIntentCompressed';
 export * from './tokenTransferIntent';

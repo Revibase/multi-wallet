@@ -39,7 +39,6 @@ export * from './rentConfig';
 export * from './secp256r1Pubkey';
 export * from './secp256r1VerifyArgs';
 export * from './secp256r1VerifyArgsWithDomainAddress';
-export * from './settingsCreationArgs';
 export * from './settingsIndexWithAddress';
 export * from './settingsIndexWithAddressAndDelegateInfo';
 export * from './settingsMutArgs';

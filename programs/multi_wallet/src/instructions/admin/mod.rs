@@ -9,9 +9,3 @@ pub use create_global_counter::*;
 
 pub mod add_whitelisted_address_trees;
 pub use add_whitelisted_address_trees::*;
-
-pub mod migrate_compressed_settings;
-pub use migrate_compressed_settings::*;
-
-pub mod migrate_compressed_user;
-pub use migrate_compressed_user::*;
