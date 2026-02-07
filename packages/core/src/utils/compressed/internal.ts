@@ -1,12 +1,26 @@
 import {
+  bn,
+  CompressedAccountResult,
+  CompressedAccountResultV2,
+  createCompressedAccountWithMerkleContextLegacy,
+  createMerkleContextLegacy,
+  encodeBN254toBase58,
+  featureFlags,
+  getStateTreeInfoByPubkey,
+  jsonRpcResultAndContext,
+  parseAccountData,
+  rpcRequest,
+  versionedEndpoint,
   type AccountProofInput,
   type AddressWithTree,
   type BN254,
   type CompressedAccount,
+  type CompressedAccountWithMerkleContext,
   type HashWithTree,
   type TreeInfo,
   type ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
+import { SolanaJSONRPCError } from "@solana/web3.js";
 import {
   some,
   type AccountInfoBase,
@@ -16,6 +30,7 @@ import {
   type OptionOrNullable,
   type Slot,
 } from "gill";
+import { create, nullable } from "superstruct";
 import { NotFoundError, ValidationError } from "../../errors";
 import {
   fetchWhitelistedAddressTree,
@@ -24,6 +39,7 @@ import {
   type SettingsMutArgs,
   type SettingsReadonlyArgs,
 } from "../../generated";
+import type { AccountCache } from "../../types";
 import {
   getCompressedSettingsAddress,
   getWhitelistedAddressTreesAddress,
@@ -35,9 +51,7 @@ import {
 } from "../cache";
 import { getLightProtocolRpc, getSolanaRpc } from "../initialize";
 import { retryWithBackoff } from "../retry";
-import { PackedAccounts } from "./packedAccounts";
-
-import type { AccountCache } from "../../types";
+import { defaultStateTreeInfos, PackedAccounts } from "./packedAccounts";
 
 export async function fetchCachedCompressedAccount(
   address: BN254,
@@ -45,7 +59,65 @@ export async function fetchCachedCompressedAccount(
 ): Promise<CompressedAccount | null> {
   const key = createCompressedAccountCacheKey(address);
   return getCachedOrFetch(cachedAccounts, key, () =>
-    getLightProtocolRpc().getCompressedAccount(address),
+    getCompressedAccount(address),
+  );
+}
+
+async function getCompressedAccount(
+  address?: BN254,
+  hash?: BN254,
+): Promise<CompressedAccountWithMerkleContext | null> {
+  if (!hash && !address) {
+    throw new Error("Either hash or address must be provided");
+  }
+  if (hash && address) {
+    throw new Error("Only one of hash or address must be provided");
+  }
+
+  const unsafeRes = await rpcRequest(
+    getLightProtocolRpc().compressionApiEndpoint,
+    versionedEndpoint("getCompressedAccount"),
+    {
+      hash: hash ? encodeBN254toBase58(hash) : undefined,
+      address: address ? encodeBN254toBase58(address) : undefined,
+    },
+  );
+
+  let res;
+  if (featureFlags.isV2()) {
+    res = create(
+      unsafeRes,
+      jsonRpcResultAndContext(nullable(CompressedAccountResultV2)),
+    );
+  } else {
+    res = create(
+      unsafeRes,
+      jsonRpcResultAndContext(nullable(CompressedAccountResult)),
+    );
+  }
+
+  if ("error" in res) {
+    throw new SolanaJSONRPCError(
+      res.error,
+      `failed to get info for compressed account ${hash ? hash.toString() : address ? address.toString() : ""}`,
+    );
+  }
+  if (res.result.value === null) {
+    return null;
+  }
+
+  const tree = featureFlags.isV2()
+    ? (res.result.value as any).merkleContext.tree
+    : (res.result.value as any).tree!;
+  const stateTreeInfo = getStateTreeInfoByPubkey(defaultStateTreeInfos, tree);
+  const item = res.result.value;
+
+  return createCompressedAccountWithMerkleContextLegacy(
+    createMerkleContextLegacy(stateTreeInfo, item.hash, item.leafIndex),
+    item.owner,
+    bn(item.lamports),
+    item.data ? parseAccountData(item.data) : undefined,
+    item.address || undefined,
   );
 }
 

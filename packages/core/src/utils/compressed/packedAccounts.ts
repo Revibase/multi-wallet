@@ -38,7 +38,7 @@ interface MapData {
   accountMeta: AccountMeta;
 }
 
-const defaultStateTreeInfos: TreeInfo[] = [
+export const defaultStateTreeInfos: TreeInfo[] = [
   {
     tree: new PublicKey(batchMerkleTree1),
     queue: new PublicKey(batchQueue1),

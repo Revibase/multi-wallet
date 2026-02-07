@@ -1,6 +1,6 @@
 {
   "name": "@revibase/core",
-  "version": "0.0.51",
+  "version": "0.0.53",
   "scripts": {
     "build": "rimraf dist && tsup",
     "clean": "rimraf dist",
@@ -43,6 +43,7 @@
     "bn.js": "^5.2.2",
     "gill": "^0.14.0",
     "json-canonicalize": "^2.0.0",
+    "superstruct": "^2.0.2",
     "zod": "^4.3.5"
   },
   "peerDependencies": {
