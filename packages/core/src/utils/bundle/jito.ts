@@ -4,7 +4,12 @@ import { BundleError, NetworkError } from "../../errors";
 import type { TransactionDetails } from "../../types";
 import { parseJson, validateResponse } from "../async";
 import { getJitoTipsConfig, getSolanaRpcEndpoint } from "../initialize";
-import { retryFetch, retryWithBackoff, type RetryConfig } from "../retry";
+import {
+  createShouldRetryForErrors,
+  retryFetch,
+  retryWithBackoff,
+  type RetryConfig,
+} from "../retry";
 import { createEncodedBundle, simulateBundle } from "../transaction/internal";
 import { requireNonEmpty, requireNonEmptyString } from "../validation";
 
@@ -24,23 +29,23 @@ interface BundleStatusResponse {
 }
 
 export async function signAndSendBundledTransactions(
-  bundle: TransactionDetails[],
+  bundle: TransactionDetails[]
 ): Promise<string> {
   requireNonEmpty(bundle, "bundle");
 
   const simulationBundle = await createEncodedBundle(bundle, true);
   const computeUnits = await simulateBundle(
     simulationBundle.map(getBase64EncodedWireTransaction),
-    getSolanaRpcEndpoint(),
+    getSolanaRpcEndpoint()
   );
   const encodedBundle = await createEncodedBundle(
     bundle.map((x, index) => ({
       ...x,
       unitsConsumed: computeUnits[index],
-    })),
+    }))
   );
   const bundleId = await sendJitoBundle(
-    encodedBundle.map(getBase64EncodedWireTransaction),
+    encodedBundle.map(getBase64EncodedWireTransaction)
   );
   return bundleId;
 }
@@ -48,7 +53,7 @@ export async function signAndSendBundledTransactions(
 export async function sendJitoBundle(
   serializedTransactions: string[],
   jitoTipsConfig = getJitoTipsConfig(),
-  config?: RetryConfig,
+  config?: RetryConfig
 ): Promise<string> {
   requireNonEmpty(serializedTransactions, "serializedTransactions");
   const { blockEngineUrl: jitoBlockEngineUrl } = jitoTipsConfig;
@@ -71,7 +76,7 @@ export async function sendJitoBundle(
           ],
         }),
       }),
-    config,
+    config
   );
 
   await validateResponse(response, url);
@@ -79,7 +84,7 @@ export async function sendJitoBundle(
 
   if (data.error) {
     throw new BundleError(
-      `Error sending bundles: ${JSON.stringify(data.error, null, 2)}`,
+      `Error sending bundles: ${JSON.stringify(data.error, null, 2)}`
     );
   }
 
@@ -94,7 +99,7 @@ export async function pollJitoBundleConfirmation(
   bundleId: string,
   maxRetries = BUNDLE_POLL_MAX_RETRIES,
   initialDelayMs = BUNDLE_POLL_DELAY_MS,
-  jitoTipsConfig = getJitoTipsConfig(),
+  jitoTipsConfig = getJitoTipsConfig()
 ): Promise<string> {
   requireNonEmptyString(bundleId, "bundleId");
   const { blockEngineUrl: jitoBlockEngineUrl } = jitoTipsConfig;
@@ -122,7 +127,7 @@ export async function pollJitoBundleConfirmation(
       if (data.error) {
         throw new BundleError(
           `Error getting bundle status: ${JSON.stringify(data.error, null, 2)}`,
-          bundleId,
+          bundleId
         );
       }
 
@@ -139,7 +144,7 @@ export async function pollJitoBundleConfirmation(
         if (!lastTx) {
           throw new BundleError(
             "No transactions in confirmed bundle",
-            bundleId,
+            bundleId
           );
         }
         return lastTx;
@@ -147,14 +152,13 @@ export async function pollJitoBundleConfirmation(
 
       throw new BundleError(
         `Bundle status: ${status.confirmation_status}`,
-        bundleId,
+        bundleId
       );
     },
     {
       maxRetries,
       initialDelayMs,
-      shouldRetry: (error) =>
-        error instanceof BundleError || error instanceof NetworkError,
-    },
+      shouldRetry: createShouldRetryForErrors(BundleError, NetworkError),
+    }
   );
 }

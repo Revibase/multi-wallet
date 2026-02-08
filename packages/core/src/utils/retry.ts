@@ -18,7 +18,9 @@ export interface RetryConfig {
   shouldRetry?: (error: unknown, attempt: number) => boolean;
 }
 
-const DEFAULT_RETRY_CONFIG = {
+const DEFAULT_RETRY_CONFIG: Required<
+  Omit<RetryConfig, "shouldRetry" | "retryOnRateLimit">
+> & { retryOnRateLimit: boolean } = {
   backoffBase: EXPONENTIAL_BACKOFF_BASE,
   maxDelayMs: BACKOFF_MAX_DELAY_MS,
   retryOnRateLimit: true,
@@ -26,11 +28,47 @@ const DEFAULT_RETRY_CONFIG = {
   maxRetries: DEFAULT_NETWORK_RETRY_MAX_RETRIES,
 };
 
+function isRateLimitStatus(status: number): boolean {
+  return status === HTTP_STATUS_TOO_MANY_REQUESTS;
+}
+
+function isServerErrorStatus(status: number): boolean {
+  return status >= HTTP_STATUS_INTERNAL_SERVER_ERROR;
+}
+
+function isClientErrorStatus(status: number): boolean {
+  return (
+    status >= HTTP_STATUS_BAD_REQUEST &&
+    status < HTTP_STATUS_INTERNAL_SERVER_ERROR
+  );
+}
+
+function isRetryableHttpStatus(status: number): boolean {
+  return isRateLimitStatus(status) || isServerErrorStatus(status);
+}
+
+function defaultFetchShouldRetry(
+  error: unknown,
+  _attempt: number,
+  config: RetryConfig
+): boolean {
+  if (error instanceof Response) {
+    if (isRateLimitStatus(error.status)) {
+      return config.retryOnRateLimit ?? true;
+    }
+    if (isClientErrorStatus(error.status)) {
+      return false;
+    }
+    return isServerErrorStatus(error.status);
+  }
+  return error instanceof TypeError || error instanceof Error;
+}
+
 export function calculateBackoffDelay(
   attempt: number,
   initialDelayMs: number,
   backoffBase: number,
-  maxDelayMs: number,
+  maxDelayMs: number
 ): number {
   const delay = initialDelayMs * Math.pow(backoffBase, attempt - 1);
   return Math.min(delay, maxDelayMs);
@@ -42,7 +80,7 @@ export function sleep(ms: number): Promise<void> {
 
 export async function retryWithBackoff<T>(
   fn: () => Promise<T>,
-  config?: RetryConfig,
+  config?: RetryConfig
 ): Promise<T> {
   const { maxRetries, initialDelayMs, backoffBase, maxDelayMs, shouldRetry } = {
     ...DEFAULT_RETRY_CONFIG,
@@ -69,7 +107,7 @@ export async function retryWithBackoff<T>(
         attempt,
         initialDelayMs,
         backoffBase,
-        maxDelayMs,
+        maxDelayMs
       );
       await sleep(delay);
     }
@@ -78,35 +116,38 @@ export async function retryWithBackoff<T>(
   throw new RetryExhaustedError(
     fn.name || "retryWithBackoff",
     maxRetries,
-    lastError,
+    lastError
   );
 }
 
 export async function retryFetch(
   fetchFn: () => Promise<Response>,
-  config?: RetryConfig,
+  config?: RetryConfig
 ): Promise<Response> {
-  const shouldRetry = (error: unknown, attempt: number): boolean => {
-    if (attempt > (config?.maxRetries ?? DEFAULT_NETWORK_RETRY_MAX_RETRIES)) {
-      return false;
+  const mergedConfig = { ...DEFAULT_RETRY_CONFIG, ...config };
+
+  const shouldRetry = (error: unknown, attempt: number): boolean =>
+    defaultFetchShouldRetry(error, attempt, mergedConfig);
+
+  const fetchAndThrowIfRetryable = async (): Promise<Response> => {
+    const response = await fetchFn();
+    if (!response.ok && isRetryableHttpStatus(response.status)) {
+      throw response;
     }
-    if (error instanceof Response) {
-      if (error.status === HTTP_STATUS_TOO_MANY_REQUESTS) {
-        return config?.retryOnRateLimit ?? true;
-      }
-      if (
-        error.status >= HTTP_STATUS_BAD_REQUEST &&
-        error.status < HTTP_STATUS_INTERNAL_SERVER_ERROR
-      ) {
-        return false;
-      }
-      return error.status >= HTTP_STATUS_INTERNAL_SERVER_ERROR;
-    }
-    return error instanceof TypeError || error instanceof Error;
+    return response;
   };
 
-  return retryWithBackoff(fetchFn, {
-    ...config,
+  return retryWithBackoff(fetchAndThrowIfRetryable, {
+    ...mergedConfig,
     shouldRetry: config?.shouldRetry ?? shouldRetry,
   });
+}
+
+export function createShouldRetryForErrors(
+  ...errorClasses: ReadonlyArray<new (...args: any[]) => unknown>
+): (error: unknown, _attempt: number) => boolean {
+  return (error: unknown): boolean =>
+    errorClasses.some(
+      (C) => error instanceof (C as new (...args: any[]) => Error)
+    );
 }
