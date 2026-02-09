@@ -44,14 +44,14 @@ import {
   getConfigActionEncoder,
   getProofArgsDecoder,
   getProofArgsEncoder,
-  getSecp256r1VerifyArgsWithDomainAddressDecoder,
-  getSecp256r1VerifyArgsWithDomainAddressEncoder,
+  getTransactionSyncSignersDecoder,
+  getTransactionSyncSignersEncoder,
   type ConfigAction,
   type ConfigActionArgs,
   type ProofArgs,
   type ProofArgsArgs,
-  type Secp256r1VerifyArgsWithDomainAddress,
-  type Secp256r1VerifyArgsWithDomainAddressArgs,
+  type TransactionSyncSigners,
+  type TransactionSyncSignersArgs,
 } from "../types";
 
 export const CHANGE_CONFIG_DISCRIMINATOR = new Uint8Array([9]);
@@ -103,13 +103,13 @@ export type ChangeConfigInstruction<
 export type ChangeConfigInstructionData = {
   discriminator: ReadonlyUint8Array;
   configActions: Array<ConfigAction>;
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
+  signers: Array<TransactionSyncSigners>;
   compressedProofArgs: Option<ProofArgs>;
 };
 
 export type ChangeConfigInstructionDataArgs = {
   configActions: Array<ConfigActionArgs>;
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
+  signers: Array<TransactionSyncSignersArgs>;
   compressedProofArgs: OptionOrNullable<ProofArgsArgs>;
 };
 
@@ -118,10 +118,7 @@ export function getChangeConfigInstructionDataEncoder(): Encoder<ChangeConfigIns
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["configActions", getArrayEncoder(getConfigActionEncoder())],
-      [
-        "secp256r1VerifyArgs",
-        getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
-      ],
+      ["signers", getArrayEncoder(getTransactionSyncSignersEncoder())],
       ["compressedProofArgs", getOptionEncoder(getProofArgsEncoder())],
     ]),
     (value) => ({ ...value, discriminator: CHANGE_CONFIG_DISCRIMINATOR }),
@@ -132,10 +129,7 @@ export function getChangeConfigInstructionDataDecoder(): Decoder<ChangeConfigIns
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["configActions", getArrayDecoder(getConfigActionDecoder())],
-    [
-      "secp256r1VerifyArgs",
-      getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
-    ],
+    ["signers", getArrayDecoder(getTransactionSyncSignersDecoder())],
     ["compressedProofArgs", getOptionDecoder(getProofArgsDecoder())],
   ]);
 }
@@ -167,7 +161,7 @@ export type ChangeConfigInput<
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   configActions: ChangeConfigInstructionDataArgs["configActions"];
-  secp256r1VerifyArgs: ChangeConfigInstructionDataArgs["secp256r1VerifyArgs"];
+  signers: ChangeConfigInstructionDataArgs["signers"];
   compressedProofArgs: ChangeConfigInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: ChangeConfigInstructionExtraArgs["remainingAccounts"];
 };

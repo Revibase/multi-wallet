@@ -17,6 +17,7 @@ interface CreateTransactionSyncArgs {
   settingsAddressTreeIndex?: number;
   transactionMessageBytes: ReadonlyUint8Array;
   signers: (TransactionSigner | SignedSecp256r1Key)[];
+  additionalSigners?: TransactionSigner[];
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   compressed?: boolean;
@@ -30,6 +31,7 @@ export async function prepareTransactionSync({
   settingsAddressTreeIndex,
   transactionMessageBytes,
   signers,
+  additionalSigners,
   secp256r1VerifyInput,
   addressesByLookupTableAddress,
   cachedAccounts,
@@ -42,6 +44,7 @@ export async function prepareTransactionSync({
       settingsAddressTreeIndex,
       payer,
       signers,
+      additionalSigners,
       transactionMessageBytes,
       secp256r1VerifyInput,
       compressed,

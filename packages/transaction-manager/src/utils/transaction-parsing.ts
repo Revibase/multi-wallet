@@ -1,14 +1,16 @@
 import { sha256 } from "@noble/hashes/sha2.js";
+import type {
+  ExpectedSigner,
+  Secp256r1VerifyArgsWithDomainConfigIndex,
+} from "@revibase/core";
 import {
-  convertMemberKeyToString,
   createClientAuthorizationStartRequestChallenge,
   getSecp256r1VerifyInstructionDataDecoder,
   getSettingsFromIndex,
   getWalletAddressFromSettings,
+  KeyType,
   Secp256r1Key,
   vaultTransactionMessageDeserialize,
-  type ExpectedSecp256r1Signers,
-  type Secp256r1VerifyArgsWithDomainAddress,
   type SettingsMutArgs,
   type SettingsReadonlyArgs,
   type TransactionAuthDetails,
@@ -25,6 +27,7 @@ import {
   address,
   decompileTransactionMessage,
   fetchAddressesForLookupTables,
+  getAddressDecoder,
   type Instruction,
 } from "gill";
 import type { Secp256r1VerifyData, SignerInfo, VerifiedSigner } from "../types";
@@ -45,7 +48,7 @@ import {
 export async function getSecp256r1Signers(
   secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
   currentInstructionIndex: number,
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>,
+  secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainConfigIndex[],
 ): Promise<SignerInfo[]> {
   if (!secp256r1VerifyDataList) return [];
 
@@ -66,7 +69,7 @@ export async function getSecp256r1Signers(
         signedMessage.message as Uint8Array,
       ) as Uint8Array<ArrayBuffer>;
       return {
-        signer: new Secp256r1Key(signedMessage.publicKey).toString(),
+        signer: new Secp256r1Key(signedMessage.publicKey),
         messageHash,
       };
     }),
@@ -77,12 +80,23 @@ export async function getSecp256r1Signers(
  * Maps expected signers from transaction buffer args to SignerInfo format.
  */
 export function mapExpectedSigners(
-  expectedSigners: ExpectedSecp256r1Signers[],
+  expectedSigners: ExpectedSigner[],
 ): SignerInfo[] {
-  return expectedSigners.map((expectedSigner) => ({
-    signer: convertMemberKeyToString(expectedSigner.memberKey),
-    messageHash: expectedSigner.messageHash as Uint8Array<ArrayBuffer>,
-  }));
+  return expectedSigners.map((x) => {
+    if (x.memberKey.keyType === KeyType.Secp256r1) {
+      if (x.messageHash.__option === "None") {
+        throw new Error("Message hash cannot be found.");
+      }
+      return {
+        signer: new Secp256r1Key(x.memberKey.key),
+        messageHash: x.messageHash.value as Uint8Array<ArrayBuffer>,
+      };
+    } else {
+      return {
+        signer: getAddressDecoder().decode(x.memberKey.key),
+      };
+    }
+  });
 }
 
 /**
@@ -99,7 +113,10 @@ export async function verifyAndParseSigners(
     throw new Error("Transaction Auth Response is missing");
   }
 
-  if (signers.length !== authResponses.length) {
+  if (
+    signers.filter((x) => x.signer instanceof Secp256r1Key).length !==
+    authResponses.length
+  ) {
     throw new Error(
       `Signer count mismatch. Expected ${signers.length} auth responses, got ${authResponses.length}`,
     );
@@ -110,36 +127,48 @@ export async function verifyAndParseSigners(
   );
   const verifiedSigners = await Promise.all(
     signers.map(async ({ signer, messageHash }, signerIndex) => {
-      const authDetails = authResponses[signerIndex];
-      const { client, device, authProvider, startRequest } = authDetails;
-      if (startRequest.data.type !== "transaction")
-        throw new Error("Invalid request type.");
-      if (startRequest.validTill < Date.now()) {
-        throw new Error("Request has expired.");
-      }
-      if (startRequest.data.sendTx && !authProvider) {
-        throw new Error("Auth provider cannot be empty when send tx is true.");
-      }
+      if (signer instanceof Secp256r1Key) {
+        if (!messageHash) throw new Error("Message hash not found.");
+        const authDetails = authResponses[signerIndex];
+        const { client, device, authProvider, startRequest } = authDetails;
+        if (startRequest.data.type !== "transaction")
+          throw new Error("Invalid request type.");
+        if (startRequest.validTill < Date.now()) {
+          throw new Error("Request has expired.");
+        }
+        if (startRequest.data.sendTx && !authProvider) {
+          throw new Error(
+            "Auth provider cannot be empty when send tx is true.",
+          );
+        }
 
-      const [clientDetails] = await Promise.all([
-        verifyClientSignature(
-          client,
-          startRequest.data.sendTx
-            ? createClientAuthorizationStartRequestChallenge(startRequest)
-            : messageHash,
-          wellKnownProxyUrl,
-        ),
-        verifyTransactionAuthResponseWithMessageHash(authDetails, messageHash),
-        verifyAuthProviderSignature(authProvider, messageHash),
-        verifyDeviceSignature(device, messageHash),
-      ]);
+        const [clientDetails] = await Promise.all([
+          verifyClientSignature(
+            client,
+            startRequest.data.sendTx
+              ? createClientAuthorizationStartRequestChallenge(startRequest)
+              : messageHash,
+            wellKnownProxyUrl,
+          ),
+          verifyTransactionAuthResponseWithMessageHash(
+            authDetails,
+            messageHash,
+          ),
+          verifyAuthProviderSignature(authProvider, messageHash),
+          verifyDeviceSignature(device, messageHash),
+        ]);
+        return {
+          signer,
+          walletAddress,
+          client: { origin: client.clientOrigin, ...clientDetails },
+          device: device.jwk,
+          authProvider: authProvider?.jwk,
+        } as VerifiedSigner;
+      }
 
       return {
         signer,
         walletAddress,
-        client: { origin: client.clientOrigin, ...clientDetails },
-        device: device.jwk,
-        authProvider: authProvider?.jwk,
       } as VerifiedSigner;
     }),
   );

@@ -74,7 +74,8 @@ export function runTransactionTests(getCtx: () => TestContext) {
         compressed: ctx.compressed,
         payer: ctx.payer,
         transactionMessageBytes,
-        signers: [ephemeralKeypair, ctx.wallet],
+        signers: [ctx.wallet],
+        additionalSigners: [ephemeralKeypair],
         settings: await getSettingsFromIndex(ctx.index),
       });
 

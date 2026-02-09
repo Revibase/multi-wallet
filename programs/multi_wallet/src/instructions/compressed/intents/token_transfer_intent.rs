@@ -1,10 +1,9 @@
 use crate::{
-    durable_nonce_check,
     state::{Settings, SettingsMutArgs},
+    utils::TransactionSyncSigners,
     utils::{CompressedTokenArgs, SourceType, SplInterfacePdaArgs, TokenTransfer},
-    ChallengeArgs, CompressedSettings, CompressedSettingsData, DomainConfig, MemberKey,
-    MultisigError, Permission, ProofArgs, Secp256r1VerifyArgsWithDomainAddress,
-    TransactionActionType, ID, LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
+    CompressedSettings, CompressedSettingsData, MultisigError, ProofArgs, TransactionActionType,
+    ID, LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use anchor_spl::associated_token::{self};
@@ -17,10 +16,7 @@ use light_sdk::{
     light_hasher::{Hasher, Sha256},
     LightAccount,
 };
-use light_token::{
-    constants::LIGHT_TOKEN_PROGRAM_ID,
-    instruction::{LIGHT_TOKEN_CPI_AUTHORITY},
-};
+use light_token::{constants::LIGHT_TOKEN_PROGRAM_ID, instruction::LIGHT_TOKEN_CPI_AUTHORITY};
 use light_token_interface::find_spl_interface_pda_with_index;
 
 #[derive(Accounts)]
@@ -129,7 +125,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
         &self,
         amount: u64,
         remaining_accounts: &'info [AccountInfo<'info>],
-        secp256r1_verify_args: &Vec<Secp256r1VerifyArgsWithDomainAddress>,
+        signers: &Vec<TransactionSyncSigners>,
         settings: &CompressedSettingsData,
     ) -> Result<()> {
         let Self {
@@ -141,98 +137,24 @@ impl<'info> TokenTransferIntentCompressed<'info> {
             ..
         } = &self;
 
-        durable_nonce_check(instructions_sysvar)?;
+        let mut buffer = vec![];
+        buffer.extend_from_slice(amount.to_le_bytes().as_ref());
+        buffer.extend_from_slice(destination.key().as_ref());
+        buffer.extend_from_slice(mint.key().as_ref());
+        let message_hash =
+            Sha256::hash(&buffer).map_err(|_| MultisigError::HashComputationFailed)?;
 
-        let mut initiate = false;
-        let mut execute = false;
-        let mut vote_count = 0;
-        let mut are_delegates = true;
-
-        let threshold = settings.threshold as usize;
-        let secp256r1_member_keys: Vec<(MemberKey, &Secp256r1VerifyArgsWithDomainAddress)> =
-            secp256r1_verify_args
-                .iter()
-                .filter_map(|arg| {
-                    let pubkey = arg
-                        .verify_args
-                        .extract_public_key_from_instruction(Some(&self.instructions_sysvar))
-                        .ok()?;
-
-                    let member_key = MemberKey::convert_secp256r1(&pubkey).ok()?;
-
-                    Some((member_key, arg))
-                })
-                .collect();
-
-        for member in &settings.members {
-            let has_permission = |perm| member.permissions.has(perm);
-
-            let secp256r1_signer = secp256r1_member_keys
-                .iter()
-                .find(|f| f.0.eq(&member.pubkey));
-
-            let is_signer = secp256r1_signer.is_some()
-                || remaining_accounts.iter().any(|account| {
-                    account.is_signer
-                        && MemberKey::convert_ed25519(account.key)
-                            .map_or(false, |key| key.eq(&member.pubkey))
-                });
-
-            if is_signer {
-                if has_permission(Permission::InitiateTransaction) {
-                    initiate = true;
-                }
-                if has_permission(Permission::ExecuteTransaction) {
-                    execute = true;
-                }
-                if has_permission(Permission::VoteTransaction) {
-                    vote_count += 1;
-                }
-                if secp256r1_signer.is_some() && member.is_delegate == 0 {
-                    are_delegates = false;
-                }
-            }
-
-            if let Some((_, secp256r1_verify_data)) = secp256r1_signer {
-                let account_loader = DomainConfig::extract_domain_config_account(
-                    remaining_accounts,
-                    secp256r1_verify_data.domain_config_key,
-                )?;
-
-                let mut buffer = vec![];
-                buffer.extend_from_slice(amount.to_le_bytes().as_ref());
-                buffer.extend_from_slice(destination.key().as_ref());
-                buffer.extend_from_slice(mint.key().as_ref());
-                let message_hash =
-                    Sha256::hash(&buffer).map_err(|_| MultisigError::HashComputationFailed)?;
-
-                secp256r1_verify_data.verify_args.verify_webauthn(
-                    slot_hash_sysvar,
-                    &Some(account_loader),
-                    instructions_sysvar,
-                    ChallengeArgs {
-                        account: token_program.key(),
-                        message_hash,
-                        action_type: TransactionActionType::TransferIntent,
-                    },
-                    &[],
-                )?;
-            }
-        }
-
-        require!(
-            initiate,
-            MultisigError::InsufficientSignerWithInitiatePermission
-        );
-        require!(
-            execute,
-            MultisigError::InsufficientSignerWithExecutePermission
-        );
-        require!(
-            vote_count >= threshold,
-            MultisigError::InsufficientSignersWithVotePermission
-        );
-        require!(are_delegates, MultisigError::InvalidNonDelegatedSigners);
+        TransactionSyncSigners::verify(
+            signers,
+            remaining_accounts,
+            instructions_sysvar,
+            slot_hash_sysvar,
+            &settings.members,
+            settings.threshold,
+            token_program.key(),
+            message_hash,
+            TransactionActionType::TransferIntent,
+        )?;
 
         Ok(())
     }
@@ -242,7 +164,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
         spl_interface_pda_args: Option<SplInterfacePdaArgs>,
         amount: u64,
         source_compressed_token_accounts: Option<Vec<CompressedTokenArgs>>,
-        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
+        signers: Vec<TransactionSyncSigners>,
         settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
@@ -264,15 +186,13 @@ impl<'info> TokenTransferIntentCompressed<'info> {
             .as_ref()
             .ok_or(MultisigError::MissingSettingsData)?;
 
-        let settings_key =
-            Settings::get_settings_key_from_index_with_bump(settings_data.index, settings_data.bump)?;
-
-        ctx.accounts.validate(
-            amount,
-            ctx.remaining_accounts,
-            &secp256r1_verify_args,
-            &settings_data,
+        let settings_key = Settings::get_settings_key_from_index_with_bump(
+            settings_data.index,
+            settings_data.bump,
         )?;
+
+        ctx.accounts
+            .validate(amount, ctx.remaining_accounts, &signers, &settings_data)?;
 
         let signer_seeds: &[&[u8]] = &[
             SEED_MULTISIG,
@@ -390,12 +310,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
             _ => return err!(MultisigError::InvalidTokenSourceType),
         }
 
-        let mut slot_numbers = Vec::with_capacity(secp256r1_verify_args.len());
-        slot_numbers.extend(
-            secp256r1_verify_args
-                .iter()
-                .map(|f| f.verify_args.slot_number),
-        );
+        let slot_numbers = TransactionSyncSigners::collect_slot_numbers(&signers);
         settings_account.latest_slot_number_check(&slot_numbers, &ctx.accounts.slot_hash_sysvar)?;
 
         settings_account.invariant()?;

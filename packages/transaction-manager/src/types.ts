@@ -1,4 +1,6 @@
+import type { Secp256r1Key } from "@revibase/core";
 import type {
+  Address,
   Instruction,
   ReadonlyUint8Array,
   TransactionMessageBytes,
@@ -20,12 +22,12 @@ export interface TransactionManagerConfig {
  * Produced when parsing a transaction that contains secp256r1 (e.g. passkey)
  * verification instructions. Used as input for signature verification.
  */
-export interface SignerInfo {
-  /** The signer's public key (base58-encoded string). */
-  signer: string;
+export type SignerInfo = {
+  /** The signer's public key. */
+  signer: Secp256r1Key | Address;
   /** The SHA-256 hash of the message that was signed (used to verify the signature). */
-  messageHash: Uint8Array<ArrayBuffer>;
-}
+  messageHash?: Uint8Array<ArrayBuffer>;
+};
 
 /**
  * Data extracted from a secp256r1 signature verification instruction.
@@ -94,29 +96,36 @@ export interface WellKnownClientCacheEntry {
  * the client/device context (origin, JWK, trusted devices) that produced the
  * signature. Used to record who signed and from which app/device.
  */
-export interface VerifiedSigner {
-  /** The public key (base58-encoded) of the verified signer. */
-  signer: string;
-  /** The wallet address (base58-encoded) that this signer is authorized for. */
-  walletAddress: string;
-  /**
-   * Client identity and cache entry: origin plus JWK and trusted devices.
-   * Identifies which application requested the signature for this transaction.
-   */
-  client: {
-    origin: string;
-  } & WellKnownClientCacheEntry;
-  /**
-   * The device public key or identifier that produced the signature.
-   * Uniquely identifies the device that requested the signature for this transaction.
-   */
-  device: string;
-  /**
-   * The authentication provider, if known.
-   * When set, indicates the transaction was already verified once by that provider.
-   */
-  authProvider: string | undefined;
-}
+export type VerifiedSigner =
+  | {
+      /** The public key of the verified signer. */
+      signer: Secp256r1Key;
+      /** The wallet address that this signer is signing for. */
+      walletAddress: Address;
+      /**
+       * Client identity and cache entry: origin plus JWK and trusted devices.
+       * Identifies which application requested the signature for this transaction.
+       */
+      client: {
+        origin: string;
+      } & WellKnownClientCacheEntry;
+      /**
+       * The device public key or identifier that produced the signature.
+       * Uniquely identifies the device that requested the signature for this transaction.
+       */
+      device: string;
+      /**
+       * The authentication provider, if known.
+       * When set, indicates the transaction was already verified once by that provider.
+       */
+      authProvider: string | undefined;
+    }
+  | {
+      /** The public key of the signer. */
+      signer: Address;
+      /** The wallet address that this signer is signing for. */
+      walletAddress: Address;
+    };
 
 /**
  * Result of verifying a transaction.

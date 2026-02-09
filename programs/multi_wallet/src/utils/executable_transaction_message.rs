@@ -231,8 +231,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                 .get_account_by_index(usize::from(ms_compiled_instruction.program_address_index))
                 .map_err(|_| MultisigError::InvalidAccountIndex)?;
 
-            let (account_infos, account_metas): (Vec<_>, Vec<_>) =
-                ix_accounts.into_iter().unzip();
+            let (account_infos, account_metas): (Vec<_>, Vec<_>) = ix_accounts.into_iter().unzip();
 
             let ix = Instruction {
                 program_id: *ix_program_account_info.key,

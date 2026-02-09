@@ -79,22 +79,31 @@ export const defaultStateTreeInfos: TreeInfo[] = [
 ];
 
 export class PackedAccounts {
-  preAccounts: AccountMeta[];
   systemAccounts: AccountMeta[];
-  nextIndex: number;
-  map: Map<string, MapData>;
+
+  nextPreIndex: number;
+  preMap: Map<string, MapData>;
+
+  nextPackedIndex: number;
+  packedMap: Map<string, MapData>;
   outputTreeIndex: number;
 
   constructor() {
-    this.preAccounts = [];
     this.systemAccounts = [];
-    this.nextIndex = 0;
-    this.map = new Map();
+    this.nextPreIndex = 0;
+    this.preMap = new Map();
+    this.nextPackedIndex = 0;
+    this.packedMap = new Map();
     this.outputTreeIndex = -1;
   }
 
-  addPreAccounts(accounts: (AccountMeta | AccountSignerMeta)[]): void {
-    this.preAccounts.push(...accounts);
+  addPreAccounts(
+    accounts: (AccountMeta | AccountSignerMeta)[],
+  ): Map<string, MapData> {
+    for (const acc of accounts) {
+      this.insertOrGet(acc.address.toString(), acc, false);
+    }
+    return this.preMap;
   }
 
   getAccountRole(isSigner: boolean, isWritable: boolean): AccountRole {
@@ -118,20 +127,20 @@ export class PackedAccounts {
     );
   }
 
-  insertOrGet(pubkey: string): number {
-    return this.insertOrGetConfig(pubkey, AccountRole.WRITABLE);
-  }
-
-  insertOrGetConfig(pubkey: string, role: AccountRole): number {
-    if (!this.map.has(pubkey)) {
-      const index = this.nextIndex++;
-      const accountMeta: AccountMeta = {
-        address: address(pubkey),
-        role,
-      };
-      this.map.set(pubkey, { index, accountMeta });
+  insertOrGet(
+    pubkey: string,
+    accountMeta: AccountMeta | AccountSignerMeta = {
+      address: address(pubkey),
+      role: AccountRole.WRITABLE,
+    },
+    isPacked = true,
+  ): number {
+    const map = isPacked ? this.packedMap : this.preMap;
+    if (!map.has(pubkey)) {
+      const index = isPacked ? this.nextPackedIndex++ : this.nextPreIndex++;
+      map.set(pubkey, { index, accountMeta });
     }
-    return this.map.get(pubkey)!.index;
+    return map.get(pubkey)!.index;
   }
 
   packOutputTreeIndex(outputStateTreeInfo: TreeInfo) {
@@ -209,15 +218,15 @@ export class PackedAccounts {
     };
   }
 
-  hashSetAccountsToMetas(): AccountMeta[] {
-    const packedAccounts: AccountMeta[] = Array.from(this.map.entries())
+  hashSetAccountsToMetas(map: Map<string, MapData>): AccountMeta[] {
+    const packedAccounts: AccountMeta[] = Array.from(map.entries())
       .sort((a, b) => a[1].index - b[1].index)
       .map(([, { accountMeta }]) => ({ ...accountMeta }));
     return packedAccounts;
   }
 
-  getOffsets(): [number, number] {
-    const systemAccountsStartOffset = this.preAccounts.length;
+  getOffsets(preAccountLength: number): [number, number] {
+    const systemAccountsStartOffset = preAccountLength;
     const packedAccountsStartOffset =
       systemAccountsStartOffset + this.systemAccounts.length;
     return [systemAccountsStartOffset, packedAccountsStartOffset];
@@ -228,10 +237,11 @@ export class PackedAccounts {
     systemOffset: number;
     packedOffset: number;
   } {
-    const packedAccounts = this.hashSetAccountsToMetas();
-    const [systemOffset, packedOffset] = this.getOffsets();
+    const preAccounts = this.hashSetAccountsToMetas(this.preMap);
+    const packedAccounts = this.hashSetAccountsToMetas(this.packedMap);
+    const [systemOffset, packedOffset] = this.getOffsets(preAccounts.length);
     const remainingAccounts = [
-      ...this.preAccounts,
+      ...preAccounts,
       ...this.systemAccounts,
       ...packedAccounts,
     ];

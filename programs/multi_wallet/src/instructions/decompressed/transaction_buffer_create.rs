@@ -1,7 +1,8 @@
+use crate::utils::TransactionBufferSigners;
 use crate::{
-    durable_nonce_check, ChallengeArgs, DomainConfig, KeyType, MemberKey, MultisigError,
-    Permission, Secp256r1VerifyArgs, Settings, TransactionActionType, TransactionBuffer,
-    TransactionBufferCreateArgs, MAX_BUFFER_SIZE, SEED_MULTISIG, SEED_TRANSACTION_BUFFER,
+    DomainConfig, MemberKey, MultisigError, Permission, Secp256r1VerifyArgs, Settings,
+    TransactionBuffer, TransactionBufferCreateArgs, MAX_BUFFER_SIZE, SEED_MULTISIG,
+    SEED_TRANSACTION_BUFFER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
@@ -15,7 +16,7 @@ pub struct TransactionBufferCreate<'info> {
     #[account(
         init,
         payer = payer,
-        space = TransactionBuffer::size(args.final_buffer_size, args.buffer_extend_hashes.len(), settings.members.len(), args.expected_secp256r1_signers.len())?,
+        space = TransactionBuffer::size(args.final_buffer_size, args.buffer_extend_hashes.len(), args.expected_signers.len())?,
         seeds = [
             SEED_MULTISIG,
             settings.key().as_ref(),
@@ -55,64 +56,27 @@ impl TransactionBufferCreate<'_> {
             ..
         } = self;
 
-        durable_nonce_check(instructions_sysvar)?;
-
         require!(
             args.final_buffer_size as usize <= MAX_BUFFER_SIZE,
             MultisigError::FinalBufferSizeExceeded
         );
 
-        let signer: MemberKey =
-            MemberKey::get_signer(creator, &secp256r1_verify_args, Some(instructions_sysvar))?;
-        let settings_key = settings.key();
-        let member = settings
-            .members
-            .iter()
-            .find(|x| x.pubkey.eq(&signer))
-            .ok_or(MultisigError::MissingAccount)?;
+        TransactionBufferSigners::verify_create(
+            creator,
+            secp256r1_verify_args,
+            instructions_sysvar,
+            slot_hash_sysvar,
+            domain_config,
+            &settings.members,
+            settings.key(),
+            args.final_buffer_hash,
+            args.preauthorize_execution,
+        )?;
 
         require!(
-            member.permissions.has(Permission::InitiateTransaction),
-            MultisigError::InsufficientSignerWithInitiatePermission
-        );
-
-        if args.preauthorize_execution {
-            require!(
-                member.permissions.has(Permission::ExecuteTransaction),
-                MultisigError::InsufficientSignerWithExecutePermission
-            );
-        }
-
-        if signer.get_type().eq(&KeyType::Secp256r1) {
-            let secp256r1_verify_data = secp256r1_verify_args
-                .as_ref()
-                .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
-
-            secp256r1_verify_data.verify_webauthn(
-                slot_hash_sysvar,
-                domain_config,
-                instructions_sysvar,
-                ChallengeArgs {
-                    account: settings_key,
-                    message_hash: args.final_buffer_hash,
-                    action_type: if args.preauthorize_execution {
-                        TransactionActionType::CreateWithPreauthorizedExecution
-                    } else {
-                        TransactionActionType::Create
-                    },
-                },
-                &[],
-            )?;
-        }
-
-        require!(
-            args.expected_secp256r1_signers
+            args.expected_signers
                 .iter()
-                .all(|f| settings.members.iter().any(|x| f
-                    .member_key
-                    .get_type()
-                    .eq(&KeyType::Secp256r1)
-                    && x.pubkey.eq(&f.member_key))),
+                .all(|f| settings.members.iter().any(|x| x.pubkey.eq(&f.member_key))),
             MultisigError::InvalidArguments
         );
 

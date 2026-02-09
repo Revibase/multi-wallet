@@ -117,8 +117,12 @@ impl DomainConfig {
 
     pub fn extract_domain_config_account<'a>(
         remaining_accounts: &'a [AccountInfo<'a>],
-        domain_config_key: Pubkey,
+        domain_config_index: u8,
     ) -> Result<AccountLoader<'a, DomainConfig>> {
+        let domain_config_key = remaining_accounts
+            .get(domain_config_index as usize)
+            .ok_or(MultisigError::MissingAccount)?
+            .key;
         let domain_account = remaining_accounts
             .iter()
             .find(|f| f.key.eq(&domain_config_key))

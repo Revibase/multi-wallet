@@ -1,6 +1,6 @@
 use crate::{
-    ChallengeArgs, DomainConfig, KeyType, MemberKey, MultisigError, Permission,
-    Secp256r1VerifyArgs, Settings, TransactionActionType, TransactionBuffer,
+    utils::{MultisigSettings, TransactionBufferSigners},
+    DomainConfig, MemberKey, Secp256r1VerifyArgs, Settings, TransactionBuffer,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
@@ -42,41 +42,17 @@ impl TransactionBufferVote<'_> {
         transaction_buffer.validate_hash()?;
         transaction_buffer.validate_size()?;
 
-        let signer =
-            MemberKey::get_signer(voter, secp256r1_verify_args, instructions_sysvar.as_ref())?;
-
-        let member = settings
-            .members
-            .iter()
-            .find(|x| x.pubkey.eq(&signer))
-            .ok_or(MultisigError::MissingAccount)?;
-
-        require!(
-            member.permissions.has(Permission::VoteTransaction),
-            MultisigError::InsufficientSignersWithVotePermission
-        );
-
-        if signer.get_type().eq(&KeyType::Secp256r1) {
-            let secp256r1_verify_data = secp256r1_verify_args
-                .as_ref()
-                .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
-
-            let instructions_sysvar = instructions_sysvar
-                .as_ref()
-                .ok_or(MultisigError::MissingAccount)?;
-
-            secp256r1_verify_data.verify_webauthn(
-                slot_hash_sysvar,
-                domain_config,
-                instructions_sysvar,
-                ChallengeArgs {
-                    account: transaction_buffer.multi_wallet_settings,
-                    message_hash: transaction_buffer.final_buffer_hash,
-                    action_type: TransactionActionType::Vote,
-                },
-                &transaction_buffer.expected_secp256r1_signers,
-            )?;
-        }
+        TransactionBufferSigners::verify_vote(
+            voter,
+            secp256r1_verify_args,
+            instructions_sysvar,
+            slot_hash_sysvar,
+            domain_config,
+            settings.get_members()?,
+            transaction_buffer.multi_wallet_settings,
+            transaction_buffer.final_buffer_hash,
+            &transaction_buffer.expected_signers,
+        )?;
 
         Ok(())
     }

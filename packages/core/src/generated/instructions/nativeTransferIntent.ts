@@ -41,10 +41,10 @@ import {
   type ResolvedAccount,
 } from "../shared";
 import {
-  getSecp256r1VerifyArgsWithDomainAddressDecoder,
-  getSecp256r1VerifyArgsWithDomainAddressEncoder,
-  type Secp256r1VerifyArgsWithDomainAddress,
-  type Secp256r1VerifyArgsWithDomainAddressArgs,
+  getTransactionSyncSignersDecoder,
+  getTransactionSyncSignersEncoder,
+  type TransactionSyncSigners,
+  type TransactionSyncSignersArgs,
 } from "../types";
 
 export const NATIVE_TRANSFER_INTENT_DISCRIMINATOR = new Uint8Array([29]);
@@ -99,12 +99,12 @@ export type NativeTransferIntentInstruction<
 export type NativeTransferIntentInstructionData = {
   discriminator: ReadonlyUint8Array;
   amount: bigint;
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
+  signers: Array<TransactionSyncSigners>;
 };
 
 export type NativeTransferIntentInstructionDataArgs = {
   amount: number | bigint;
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
+  signers: Array<TransactionSyncSignersArgs>;
 };
 
 export function getNativeTransferIntentInstructionDataEncoder(): Encoder<NativeTransferIntentInstructionDataArgs> {
@@ -112,10 +112,7 @@ export function getNativeTransferIntentInstructionDataEncoder(): Encoder<NativeT
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["amount", getU64Encoder()],
-      [
-        "secp256r1VerifyArgs",
-        getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
-      ],
+      ["signers", getArrayEncoder(getTransactionSyncSignersEncoder())],
     ]),
     (value) => ({
       ...value,
@@ -128,10 +125,7 @@ export function getNativeTransferIntentInstructionDataDecoder(): Decoder<NativeT
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["amount", getU64Decoder()],
-    [
-      "secp256r1VerifyArgs",
-      getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
-    ],
+    ["signers", getArrayDecoder(getTransactionSyncSignersDecoder())],
   ]);
 }
 
@@ -164,7 +158,7 @@ export type NativeTransferIntentAsyncInput<
   destination: Address<TAccountDestination>;
   systemProgram?: Address<TAccountSystemProgram>;
   amount: NativeTransferIntentInstructionDataArgs["amount"];
-  secp256r1VerifyArgs: NativeTransferIntentInstructionDataArgs["secp256r1VerifyArgs"];
+  signers: NativeTransferIntentInstructionDataArgs["signers"];
   remainingAccounts: NativeTransferIntentInstructionExtraArgs["remainingAccounts"];
 };
 
@@ -296,7 +290,7 @@ export type NativeTransferIntentInput<
   destination: Address<TAccountDestination>;
   systemProgram?: Address<TAccountSystemProgram>;
   amount: NativeTransferIntentInstructionDataArgs["amount"];
-  secp256r1VerifyArgs: NativeTransferIntentInstructionDataArgs["secp256r1VerifyArgs"];
+  signers: NativeTransferIntentInstructionDataArgs["signers"];
   remainingAccounts: NativeTransferIntentInstructionExtraArgs["remainingAccounts"];
 };
 

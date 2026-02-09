@@ -1,12 +1,8 @@
 use crate::{
     error::MultisigError,
-    state::{
-        DomainConfig, ProofArgs, Settings, SettingsIndexWithAddress, User, UserWalletOperation,
-    },
-    utils::{
-        durable_nonce_check, resize_account_if_necessary, ChallengeArgs, MemberKey,
-        MultisigSettings, Permission, Secp256r1VerifyArgsWithDomainAddress, TransactionActionType,
-    },
+    state::{ProofArgs, Settings, SettingsIndexWithAddress, User, UserWalletOperation},
+    utils::TransactionSyncSigners,
+    utils::{resize_account_if_necessary, MultisigSettings, TransactionActionType},
     ConfigAction, LIGHT_CPI_SIGNER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
@@ -44,7 +40,7 @@ impl<'info> ChangeConfig<'info> {
         &self,
         ctx: &Context<'_, '_, 'info, 'info, Self>,
         config_actions: &Vec<ConfigAction>,
-        secp256r1_verify_args: &Vec<Secp256r1VerifyArgsWithDomainAddress>,
+        signers: &Vec<TransactionSyncSigners>,
     ) -> Result<()> {
         let Self {
             settings,
@@ -53,98 +49,31 @@ impl<'info> ChangeConfig<'info> {
             ..
         } = self;
 
-        durable_nonce_check(instructions_sysvar)?;
+        let mut writer = Vec::new();
+        config_actions.serialize(&mut writer)?;
+        let message_hash =
+            Sha256::hash(&writer).map_err(|_| MultisigError::HashComputationFailed)?;
 
-        let mut initiate = false;
-        let mut execute = false;
-        let mut vote_count = 0;
-
-        let secp256r1_member_keys: Vec<(MemberKey, &Secp256r1VerifyArgsWithDomainAddress)> =
-            secp256r1_verify_args
-                .iter()
-                .filter_map(|arg| {
-                    let pubkey = arg
-                        .verify_args
-                        .extract_public_key_from_instruction(Some(&instructions_sysvar))
-                        .ok()?;
-
-                    let member_key = MemberKey::convert_secp256r1(&pubkey).ok()?;
-
-                    Some((member_key, arg))
-                })
-                .collect();
-
-        for member in settings.get_members()? {
-            let has_permission = |perm| member.permissions.has(perm);
-
-            let secp256r1_signer = secp256r1_member_keys
-                .iter()
-                .find(|f| f.0.eq(&member.pubkey));
-            let is_signer = secp256r1_signer.is_some()
-                || ctx.remaining_accounts.iter().any(|account| {
-                    account.is_signer
-                        && MemberKey::convert_ed25519(account.key)
-                            .map_or(false, |key| key.eq(&member.pubkey))
-                });
-
-            if is_signer {
-                if has_permission(Permission::InitiateTransaction) {
-                    initiate = true;
-                }
-                if has_permission(Permission::ExecuteTransaction) {
-                    execute = true;
-                }
-                if has_permission(Permission::VoteTransaction) {
-                    vote_count += 1;
-                }
-            }
-
-            if let Some((_, secp256r1_verify_data)) = secp256r1_signer {
-                let mut writer = Vec::new();
-                config_actions.serialize(&mut writer)?;
-                let message_hash =
-                    Sha256::hash(&writer).map_err(|_| MultisigError::HashComputationFailed)?;
-
-                let account_loader = DomainConfig::extract_domain_config_account(
-                    ctx.remaining_accounts,
-                    secp256r1_verify_data.domain_config_key,
-                )?;
-
-                secp256r1_verify_data.verify_args.verify_webauthn(
-                    slot_hash_sysvar,
-                    &Some(account_loader),
-                    instructions_sysvar,
-                    ChallengeArgs {
-                        account: ctx.accounts.settings.key(),
-                        message_hash,
-                        action_type: TransactionActionType::ChangeConfig,
-                    },
-                    &[],
-                )?;
-            }
-        }
-
-        require!(
-            initiate,
-            MultisigError::InsufficientSignerWithInitiatePermission
-        );
-        require!(
-            execute,
-            MultisigError::InsufficientSignerWithExecutePermission
-        );
-        require!(
-            vote_count >= settings.get_threshold()?,
-            MultisigError::InsufficientSignersWithVotePermission
-        );
+        TransactionSyncSigners::verify(
+            signers,
+            ctx.remaining_accounts,
+            instructions_sysvar,
+            slot_hash_sysvar,
+            settings.get_members()?,
+            settings.get_threshold()?,
+            ctx.accounts.settings.key(),
+            message_hash,
+            TransactionActionType::ChangeConfig,
+        )?;
 
         Ok(())
     }
 
-    #[access_control(ctx.accounts.validate(&ctx, &config_actions, &secp256r1_verify_args))]
+    #[access_control(ctx.accounts.validate(&ctx, &config_actions, &signers))]
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
         config_actions: Vec<ConfigAction>,
-        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
+        signers: Vec<TransactionSyncSigners>,
         compressed_proof_args: Option<ProofArgs>,
     ) -> Result<()> {
         let settings = &mut ctx.accounts.settings;
@@ -178,12 +107,7 @@ impl<'info> ChangeConfig<'info> {
             Settings::size(settings.get_members()?.len()),
         )?;
 
-        let mut slot_numbers = Vec::with_capacity(secp256r1_verify_args.len());
-        slot_numbers.extend(
-            secp256r1_verify_args
-                .iter()
-                .map(|f| f.verify_args.slot_number),
-        );
+        let slot_numbers = TransactionSyncSigners::collect_slot_numbers(&signers);
         settings.latest_slot_number_check(&slot_numbers, &ctx.accounts.slot_hash_sysvar)?;
 
         settings.invariant()?;

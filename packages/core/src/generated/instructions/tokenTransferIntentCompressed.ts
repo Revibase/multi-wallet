@@ -52,22 +52,22 @@ import {
   getCompressedTokenArgsEncoder,
   getProofArgsDecoder,
   getProofArgsEncoder,
-  getSecp256r1VerifyArgsWithDomainAddressDecoder,
-  getSecp256r1VerifyArgsWithDomainAddressEncoder,
   getSettingsMutArgsDecoder,
   getSettingsMutArgsEncoder,
   getSplInterfacePdaArgsDecoder,
   getSplInterfacePdaArgsEncoder,
+  getTransactionSyncSignersDecoder,
+  getTransactionSyncSignersEncoder,
   type CompressedTokenArgs,
   type CompressedTokenArgsArgs,
   type ProofArgs,
   type ProofArgsArgs,
-  type Secp256r1VerifyArgsWithDomainAddress,
-  type Secp256r1VerifyArgsWithDomainAddressArgs,
   type SettingsMutArgs,
   type SettingsMutArgsArgs,
   type SplInterfacePdaArgs,
   type SplInterfacePdaArgsArgs,
+  type TransactionSyncSigners,
+  type TransactionSyncSignersArgs,
 } from "../types";
 
 export const TOKEN_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR = new Uint8Array([
@@ -183,7 +183,7 @@ export type TokenTransferIntentCompressedInstructionData = {
   splInterfacePdaArgs: Option<SplInterfacePdaArgs>;
   amount: bigint;
   sourceCompressedTokenAccounts: Option<Array<CompressedTokenArgs>>;
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
+  signers: Array<TransactionSyncSigners>;
   settingsMutArgs: SettingsMutArgs;
   compressedProofArgs: ProofArgs;
 };
@@ -194,7 +194,7 @@ export type TokenTransferIntentCompressedInstructionDataArgs = {
   sourceCompressedTokenAccounts: OptionOrNullable<
     Array<CompressedTokenArgsArgs>
   >;
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
+  signers: Array<TransactionSyncSignersArgs>;
   settingsMutArgs: SettingsMutArgsArgs;
   compressedProofArgs: ProofArgsArgs;
 };
@@ -212,10 +212,7 @@ export function getTokenTransferIntentCompressedInstructionDataEncoder(): Encode
         "sourceCompressedTokenAccounts",
         getOptionEncoder(getArrayEncoder(getCompressedTokenArgsEncoder())),
       ],
-      [
-        "secp256r1VerifyArgs",
-        getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
-      ],
+      ["signers", getArrayEncoder(getTransactionSyncSignersEncoder())],
       ["settingsMutArgs", getSettingsMutArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
     ]),
@@ -235,10 +232,7 @@ export function getTokenTransferIntentCompressedInstructionDataDecoder(): Decode
       "sourceCompressedTokenAccounts",
       getOptionDecoder(getArrayDecoder(getCompressedTokenArgsDecoder())),
     ],
-    [
-      "secp256r1VerifyArgs",
-      getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
-    ],
+    ["signers", getArrayDecoder(getTransactionSyncSignersDecoder())],
     ["settingsMutArgs", getSettingsMutArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
   ]);
@@ -297,7 +291,7 @@ export type TokenTransferIntentCompressedAsyncInput<
   splInterfacePdaArgs: TokenTransferIntentCompressedInstructionDataArgs["splInterfacePdaArgs"];
   amount: TokenTransferIntentCompressedInstructionDataArgs["amount"];
   sourceCompressedTokenAccounts: TokenTransferIntentCompressedInstructionDataArgs["sourceCompressedTokenAccounts"];
-  secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs["secp256r1VerifyArgs"];
+  signers: TokenTransferIntentCompressedInstructionDataArgs["signers"];
   settingsMutArgs: TokenTransferIntentCompressedInstructionDataArgs["settingsMutArgs"];
   compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: TokenTransferIntentCompressedInstructionExtraArgs["remainingAccounts"];
@@ -597,7 +591,7 @@ export type TokenTransferIntentCompressedInput<
   splInterfacePdaArgs: TokenTransferIntentCompressedInstructionDataArgs["splInterfacePdaArgs"];
   amount: TokenTransferIntentCompressedInstructionDataArgs["amount"];
   sourceCompressedTokenAccounts: TokenTransferIntentCompressedInstructionDataArgs["sourceCompressedTokenAccounts"];
-  secp256r1VerifyArgs: TokenTransferIntentCompressedInstructionDataArgs["secp256r1VerifyArgs"];
+  signers: TokenTransferIntentCompressedInstructionDataArgs["signers"];
   settingsMutArgs: TokenTransferIntentCompressedInstructionDataArgs["settingsMutArgs"];
   compressedProofArgs: TokenTransferIntentCompressedInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: TokenTransferIntentCompressedInstructionExtraArgs["remainingAccounts"];

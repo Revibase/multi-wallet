@@ -125,15 +125,10 @@ pub mod multi_wallet {
     pub fn change_config<'info>(
         ctx: Context<'_, '_, 'info, 'info, ChangeConfig<'info>>,
         config_actions: Vec<ConfigAction>,
-        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
+        signers: Vec<TransactionSyncSigners>,
         compressed_proof_args: Option<ProofArgs>,
     ) -> Result<()> {
-        ChangeConfig::process(
-            ctx,
-            config_actions,
-            secp256r1_verify_args,
-            compressed_proof_args,
-        )
+        ChangeConfig::process(ctx, config_actions, signers, compressed_proof_args)
     }
 
     /// Creates a new transaction buffer to stage a transaction before execution.
@@ -195,9 +190,9 @@ pub mod multi_wallet {
     pub fn transaction_execute_sync<'info>(
         ctx: Context<'_, '_, 'info, 'info, TransactionExecuteSync<'info>>,
         transaction_message: TransactionMessage,
-        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
+        signers: Vec<TransactionSyncSigners>,
     ) -> Result<()> {
-        TransactionExecuteSync::process(ctx, transaction_message, secp256r1_verify_args)
+        TransactionExecuteSync::process(ctx, transaction_message, signers)
     }
 
     /// Decompress an existing settings account.
@@ -206,14 +201,9 @@ pub mod multi_wallet {
         ctx: Context<'_, '_, 'info, 'info, DecompressSettingsAccount<'info>>,
         settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
-        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
+        signers: Vec<TransactionSyncSigners>,
     ) -> Result<()> {
-        DecompressSettingsAccount::process(
-            ctx,
-            settings_mut_args,
-            compressed_proof_args,
-            secp256r1_verify_args,
-        )
+        DecompressSettingsAccount::process(ctx, settings_mut_args, compressed_proof_args, signers)
     }
 
     /**
@@ -243,14 +233,14 @@ pub mod multi_wallet {
     pub fn change_config_compressed<'info>(
         ctx: Context<'_, '_, 'info, 'info, ChangeConfigCompressed<'info>>,
         config_actions: Vec<ConfigAction>,
-        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
+        signers: Vec<TransactionSyncSigners>,
         settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         ChangeConfigCompressed::process(
             ctx,
             config_actions,
-            secp256r1_verify_args,
+            signers,
             settings_mut_args,
             compressed_proof_args,
         )
@@ -346,14 +336,14 @@ pub mod multi_wallet {
     pub fn transaction_execute_sync_compressed<'info>(
         ctx: Context<'_, '_, 'info, 'info, TransactionExecuteSyncCompressed<'info>>,
         transaction_message: TransactionMessage,
-        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
+        signers: Vec<TransactionSyncSigners>,
         settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         TransactionExecuteSyncCompressed::process(
             ctx,
             transaction_message,
-            secp256r1_verify_args,
+            signers,
             settings_mut_args,
             compressed_proof_args,
         )
@@ -365,14 +355,14 @@ pub mod multi_wallet {
     pub fn native_transfer_intent_compressed<'info>(
         ctx: Context<'_, '_, 'info, 'info, NativeTransferIntentCompressed<'info>>,
         amount: u64,
-        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
+        signers: Vec<TransactionSyncSigners>,
         settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
         NativeTransferIntentCompressed::process(
             ctx,
             amount,
-            secp256r1_verify_args,
+            signers,
             settings_mut_args,
             compressed_proof_args,
         )
@@ -386,7 +376,7 @@ pub mod multi_wallet {
         spl_interface_pda_args: Option<SplInterfacePdaArgs>,
         amount: u64,
         source_compressed_token_accounts: Option<Vec<CompressedTokenArgs>>,
-        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
+        signers: Vec<TransactionSyncSigners>,
         settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
@@ -395,7 +385,7 @@ pub mod multi_wallet {
             spl_interface_pda_args,
             amount,
             source_compressed_token_accounts,
-            secp256r1_verify_args,
+            signers,
             settings_mut_args,
             compressed_proof_args,
         )
@@ -407,9 +397,9 @@ pub mod multi_wallet {
     pub fn native_transfer_intent<'info>(
         ctx: Context<'_, '_, 'info, 'info, NativeTransferIntent<'info>>,
         amount: u64,
-        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
+        signers: Vec<TransactionSyncSigners>,
     ) -> Result<()> {
-        NativeTransferIntent::process(ctx, amount, secp256r1_verify_args)
+        NativeTransferIntent::process(ctx, amount, signers)
     }
 
     /// Creates a token transfer intent with on chain settings.
@@ -421,7 +411,7 @@ pub mod multi_wallet {
         amount: u64,
         source_compressed_token_accounts: Option<Vec<CompressedTokenArgs>>,
         compressed_proof_args: Option<ProofArgs>,
-        secp256r1_verify_args: Vec<Secp256r1VerifyArgsWithDomainAddress>,
+        signers: Vec<TransactionSyncSigners>,
     ) -> Result<()> {
         TokenTransferIntent::process(
             ctx,
@@ -429,7 +419,7 @@ pub mod multi_wallet {
             amount,
             source_compressed_token_accounts,
             compressed_proof_args,
-            secp256r1_verify_args,
+            signers,
         )
     }
 }

@@ -145,7 +145,7 @@ async function processCompressedBufferCreate(
   );
 
   const expectedSigners = mapExpectedSigners(
-    decodedInstructionData.args.expectedSecp256r1Signers,
+    decodedInstructionData.args.expectedSigners,
   );
 
   const isHashValid = await verifyTransactionBufferHash(
@@ -180,7 +180,7 @@ async function processStandardBufferCreate(
 
   const settingsAddress = instruction.accounts![0].address.toString();
   const expectedSigners = mapExpectedSigners(
-    decodedInstructionData.args.expectedSecp256r1Signers,
+    decodedInstructionData.args.expectedSigners,
   );
 
   const isHashValid = await verifyTransactionBufferHash(
@@ -233,6 +233,9 @@ async function processCompressedExecuteSync(
   secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
   instructionIndex: number,
 ): Promise<ProcessingResult> {
+  if (!instruction.accounts) {
+    throw new Error("Invalid instruction accounts.");
+  }
   const decodedInstructionData =
     getTransactionExecuteSyncCompressedInstructionDataDecoder().decode(
       instruction.data!,
@@ -243,11 +246,20 @@ async function processCompressedExecuteSync(
     "Settings account is required for compressed transaction execute",
   );
 
-  const signers = await getSecp256r1Signers(
+  const sepcp256r1Signers = await getSecp256r1Signers(
     secp256r1VerifyDataList,
     instructionIndex,
-    decodedInstructionData.secp256r1VerifyArgs,
+    decodedInstructionData.signers
+      .filter((x) => x.__kind === "Secp256r1")
+      .map((x) => x.fields[0]),
   );
+
+  const numFixedAccounts = 3;
+  const addressSigners = decodedInstructionData.signers
+    .filter((x) => x.__kind === "Ed25519")
+    .map((x) => ({
+      signer: instruction.accounts![numFixedAccounts + x.fields[0]].address,
+    }));
 
   const innerInstructions = parseInnerTransaction(
     instruction.accounts,
@@ -256,7 +268,7 @@ async function processCompressedExecuteSync(
 
   return {
     settingsAddress,
-    signers,
+    signers: sepcp256r1Signers.concat(addressSigners),
     instructionsToVerify: innerInstructions,
   };
 }
@@ -266,16 +278,28 @@ async function processStandardExecuteSync(
   secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
   instructionIndex: number,
 ): Promise<ProcessingResult> {
+  if (!instruction.accounts) {
+    throw new Error("Invalid instruction accounts.");
+  }
   const decodedInstructionData =
     getTransactionExecuteSyncInstructionDataDecoder().decode(instruction.data!);
 
   const settingsAddress = instruction.accounts![0].address.toString();
 
-  const signers = await getSecp256r1Signers(
+  const sepcp256r1Signers = await getSecp256r1Signers(
     secp256r1VerifyDataList,
     instructionIndex,
-    decodedInstructionData.secp256r1VerifyArgs,
+    decodedInstructionData.signers
+      .filter((x) => x.__kind === "Secp256r1")
+      .map((x) => x.fields[0]),
   );
+
+  const numFixedAccounts = 3;
+  const addressSigners = decodedInstructionData.signers
+    .filter((x) => x.__kind === "Ed25519")
+    .map((x) => ({
+      signer: instruction.accounts![numFixedAccounts + x.fields[0]].address,
+    }));
 
   const innerInstructions = parseInnerTransaction(
     instruction.accounts,
@@ -284,7 +308,7 @@ async function processStandardExecuteSync(
 
   return {
     settingsAddress,
-    signers,
+    signers: sepcp256r1Signers.concat(addressSigners),
     instructionsToVerify: innerInstructions,
   };
 }

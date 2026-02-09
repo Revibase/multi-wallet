@@ -40,16 +40,16 @@ import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
   getProofArgsDecoder,
   getProofArgsEncoder,
-  getSecp256r1VerifyArgsWithDomainAddressDecoder,
-  getSecp256r1VerifyArgsWithDomainAddressEncoder,
   getSettingsMutArgsDecoder,
   getSettingsMutArgsEncoder,
+  getTransactionSyncSignersDecoder,
+  getTransactionSyncSignersEncoder,
   type ProofArgs,
   type ProofArgsArgs,
-  type Secp256r1VerifyArgsWithDomainAddress,
-  type Secp256r1VerifyArgsWithDomainAddressArgs,
   type SettingsMutArgs,
   type SettingsMutArgsArgs,
+  type TransactionSyncSigners,
+  type TransactionSyncSignersArgs,
 } from "../types";
 
 export const NATIVE_TRANSFER_INTENT_COMPRESSED_DISCRIMINATOR = new Uint8Array([
@@ -107,14 +107,14 @@ export type NativeTransferIntentCompressedInstruction<
 export type NativeTransferIntentCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   amount: bigint;
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
+  signers: Array<TransactionSyncSigners>;
   settingsMutArgs: SettingsMutArgs;
   compressedProofArgs: ProofArgs;
 };
 
 export type NativeTransferIntentCompressedInstructionDataArgs = {
   amount: number | bigint;
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
+  signers: Array<TransactionSyncSignersArgs>;
   settingsMutArgs: SettingsMutArgsArgs;
   compressedProofArgs: ProofArgsArgs;
 };
@@ -124,10 +124,7 @@ export function getNativeTransferIntentCompressedInstructionDataEncoder(): Encod
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["amount", getU64Encoder()],
-      [
-        "secp256r1VerifyArgs",
-        getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
-      ],
+      ["signers", getArrayEncoder(getTransactionSyncSignersEncoder())],
       ["settingsMutArgs", getSettingsMutArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
     ]),
@@ -142,10 +139,7 @@ export function getNativeTransferIntentCompressedInstructionDataDecoder(): Decod
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["amount", getU64Decoder()],
-    [
-      "secp256r1VerifyArgs",
-      getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
-    ],
+    ["signers", getArrayDecoder(getTransactionSyncSignersDecoder())],
     ["settingsMutArgs", getSettingsMutArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
   ]);
@@ -180,7 +174,7 @@ export type NativeTransferIntentCompressedInput<
   destination: Address<TAccountDestination>;
   systemProgram?: Address<TAccountSystemProgram>;
   amount: NativeTransferIntentCompressedInstructionDataArgs["amount"];
-  secp256r1VerifyArgs: NativeTransferIntentCompressedInstructionDataArgs["secp256r1VerifyArgs"];
+  signers: NativeTransferIntentCompressedInstructionDataArgs["signers"];
   settingsMutArgs: NativeTransferIntentCompressedInstructionDataArgs["settingsMutArgs"];
   compressedProofArgs: NativeTransferIntentCompressedInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: NativeTransferIntentCompressedInstructionExtraArgs["remainingAccounts"];

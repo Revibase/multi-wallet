@@ -1,7 +1,4 @@
-use crate::{
-    utils::{ExpectedSecp256r1Signers, KeyType},
-    MemberKey, MultisigError,
-};
+use crate::{MemberKey, MultisigError};
 use anchor_lang::prelude::*;
 use light_sdk::light_hasher::{Hasher, Sha256};
 
@@ -20,7 +17,13 @@ pub struct TransactionBufferCreateArgs {
     pub buffer_extend_hashes: Vec<[u8; 32]>,
     pub final_buffer_hash: [u8; 32],
     pub final_buffer_size: u16,
-    pub expected_secp256r1_signers: Vec<ExpectedSecp256r1Signers>,
+    pub expected_signers: Vec<ExpectedSigner>,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, InitSpace)]
+pub struct ExpectedSigner {
+    pub member_key: MemberKey,
+    pub message_hash: Option<[u8; 32]>,
 }
 
 #[account]
@@ -53,8 +56,8 @@ pub struct TransactionBuffer {
     pub buffer_extend_hashes: Vec<[u8; 32]>,
     /// Members that voted for this transaction
     pub voters: Vec<MemberKey>,
-    /// All Secp256r1 Signers that are expected to initiate / vote / execute this transaction (used for off-chain inspection by the transaction manager)
-    pub expected_secp256r1_signers: Vec<ExpectedSecp256r1Signers>,
+    /// All Signers that are expected to initiate / vote / execute this transaction (used for off-chain inspection by the transaction manager)
+    pub expected_signers: Vec<ExpectedSigner>,
     /// The buffer of the transaction message.
     pub buffer: Vec<u8>,
 }
@@ -85,15 +88,14 @@ impl TransactionBuffer {
             .and_then(|ts| u64::try_from(ts).ok())
             .ok_or(MultisigError::InvalidArguments)?;
         self.voters = Vec::new();
-        self.expected_secp256r1_signers = args.expected_secp256r1_signers;
+        self.expected_signers = args.expected_signers;
         Ok(())
     }
 
     pub fn size(
         final_message_buffer_size: u16,
         number_of_extend_buffers: usize,
-        number_of_voters: usize,
-        number_of_expected_secp256r1_signers: usize,
+        number_of_expected_signers: usize,
     ) -> Result<usize> {
         // Make sure final size is not greater than MAX_BUFFER_SIZE bytes.
         if (final_message_buffer_size as usize) > MAX_BUFFER_SIZE {
@@ -113,10 +115,30 @@ impl TransactionBuffer {
             2  +  // final_buffer_size
             2 * MemberKey::INIT_SPACE +  // creator & executor
             (4 + number_of_extend_buffers * 32 ) + // extend buffer hash
-            (4 + number_of_voters * MemberKey::INIT_SPACE)  +  // maximum number of members 
-            (4 + number_of_expected_secp256r1_signers * ExpectedSecp256r1Signers::INIT_SPACE)  +  // maximum number of expected secp256r1 members 
+            (4 + number_of_expected_signers * MemberKey::INIT_SPACE)  +  // maximum number of voters 
+            (4 + number_of_expected_signers * ExpectedSigner::INIT_SPACE)  +  // maximum number of expected signers 
             (4 + usize::from(final_message_buffer_size)), // buffer
         )
+    }
+
+    pub fn execute(&mut self) -> Result<()> {
+        self.validate_hash()?;
+        self.validate_size()?;
+        require!(
+            Clock::get()?.unix_timestamp as u64 <= self.valid_till,
+            MultisigError::TransactionHasExpired
+        );
+        require!(
+            self.expected_signers
+                .iter()
+                .all(|f| self.creator.eq(&f.member_key)
+                    || self.executor.eq(&f.member_key)
+                    || self.voters.contains(&f.member_key)),
+            MultisigError::UnexpectedSigner
+        );
+
+        self.can_execute = true;
+        Ok(())
     }
 
     pub fn validate_hash(&self) -> Result<()> {
@@ -156,44 +178,17 @@ impl TransactionBuffer {
 
     pub fn add_voter(&mut self, voter: &MemberKey) -> Result<()> {
         if !self.voters.contains(voter) {
-            require!(
-                voter.get_type().ne(&KeyType::Secp256r1)
-                    || self
-                        .expected_secp256r1_signers
-                        .iter()
-                        .any(|f| f.member_key.eq(&voter)),
-                MultisigError::UnexpectedSigner
-            );
-
             self.voters.push(*voter);
         }
         Ok(())
     }
 
     pub fn add_initiator(&mut self, creator: MemberKey) -> Result<()> {
-        require!(
-            creator.get_type().ne(&KeyType::Secp256r1)
-                || self
-                    .expected_secp256r1_signers
-                    .iter()
-                    .any(|f| f.member_key.eq(&creator)),
-            MultisigError::UnexpectedSigner
-        );
-
         self.creator = creator;
         Ok(())
     }
 
     pub fn add_executor(&mut self, executor: MemberKey) -> Result<()> {
-        require!(
-            executor.get_type().ne(&KeyType::Secp256r1)
-                || self
-                    .expected_secp256r1_signers
-                    .iter()
-                    .any(|f| f.member_key.eq(&executor)),
-            MultisigError::UnexpectedSigner
-        );
-
         self.executor = executor;
         Ok(())
     }
@@ -202,33 +197,46 @@ impl TransactionBuffer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::KeyType;
 
     #[test]
     fn test_transaction_buffer_size_exceeds_max() {
-        let result = TransactionBuffer::size(MAX_BUFFER_SIZE as u16 + 1, 0, 0, 0);
+        let result = TransactionBuffer::size(MAX_BUFFER_SIZE as u16 + 1, 0, 0);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_transaction_buffer_size_at_max() {
-        let result = TransactionBuffer::size(MAX_BUFFER_SIZE as u16, 0, 0, 0);
+        let result = TransactionBuffer::size(MAX_BUFFER_SIZE as u16, 0, 0);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_transaction_buffer_size_with_voters() {
-        let size_no_voters = TransactionBuffer::size(100, 0, 0, 0).unwrap();
-        let size_with_voters = TransactionBuffer::size(100, 0, 4, 0).unwrap();
+        let size_no_voters = TransactionBuffer::size(100, 0, 0).unwrap();
+        let size_with_voters = TransactionBuffer::size(100, 0, 4).unwrap();
         assert!(size_with_voters > size_no_voters);
     }
 
     #[test]
     fn test_transaction_buffer_size_with_extend_buffers() {
-        let size_no_extend = TransactionBuffer::size(100, 0, 0, 0).unwrap();
-        let size_with_extend = TransactionBuffer::size(100, 3, 0, 0).unwrap();
+        let size_no_extend = TransactionBuffer::size(100, 0, 0).unwrap();
+        let size_with_extend = TransactionBuffer::size(100, 3, 0).unwrap();
         assert!(size_with_extend > size_no_extend);
         assert_eq!(size_with_extend - size_no_extend, 3 * 32);
+    }
+
+    #[test]
+    fn test_transaction_buffer_size_with_expected_signers() {
+        // Size should increase with number_of_expected_signers (affects both voters and expected_signers capacity)
+        let size_0 = TransactionBuffer::size(100, 0, 0).unwrap();
+        let size_1 = TransactionBuffer::size(100, 0, 1).unwrap();
+        let size_2 = TransactionBuffer::size(100, 0, 2).unwrap();
+        assert!(size_1 > size_0);
+        assert!(size_2 > size_1);
+        let expected_increment_per_signer =
+            MemberKey::INIT_SPACE + ExpectedSigner::INIT_SPACE;
+        assert_eq!(size_1 - size_0, expected_increment_per_signer);
+        assert_eq!(size_2 - size_1, expected_increment_per_signer);
     }
 
     #[test]
@@ -248,7 +256,7 @@ mod tests {
             executor: MemberKey::default(),
             buffer_extend_hashes: vec![],
             voters: vec![],
-            expected_secp256r1_signers: vec![],
+            expected_signers: vec![],
             buffer: vec![],
         };
         assert!(buffer.validate_size().is_ok());
@@ -271,7 +279,7 @@ mod tests {
             executor: MemberKey::default(),
             buffer_extend_hashes: vec![],
             voters: vec![],
-            expected_secp256r1_signers: vec![],
+            expected_signers: vec![],
             buffer: vec![1, 2, 3],
         };
         assert!(buffer.validate_size().is_err());
@@ -294,7 +302,7 @@ mod tests {
             executor: MemberKey::default(),
             buffer_extend_hashes: vec![],
             voters: vec![],
-            expected_secp256r1_signers: vec![],
+            expected_signers: vec![],
             buffer: vec![0u8; 50],
         };
         assert!(buffer.invariant().is_ok());
@@ -317,7 +325,7 @@ mod tests {
             executor: MemberKey::default(),
             buffer_extend_hashes: vec![],
             voters: vec![],
-            expected_secp256r1_signers: vec![],
+            expected_signers: vec![],
             buffer: vec![0u8; 50],
         };
         assert!(buffer.invariant().is_err());
@@ -342,7 +350,7 @@ mod tests {
             executor: MemberKey::default(),
             buffer_extend_hashes: vec![],
             voters: vec![],
-            expected_secp256r1_signers: vec![],
+            expected_signers: vec![],
             buffer: vec![],
         };
         assert!(buffer.add_voter(&member_key).is_ok());
@@ -369,7 +377,7 @@ mod tests {
             executor: MemberKey::default(),
             buffer_extend_hashes: vec![],
             voters: vec![],
-            expected_secp256r1_signers: vec![],
+            expected_signers: vec![],
             buffer: vec![],
         };
         buffer.add_voter(&member_key).unwrap();
@@ -396,7 +404,7 @@ mod tests {
             executor: MemberKey::default(),
             buffer_extend_hashes: vec![],
             voters: vec![],
-            expected_secp256r1_signers: vec![],
+            expected_signers: vec![],
             buffer: vec![],
         };
         assert!(buffer.add_initiator(member_key).is_ok());
@@ -422,7 +430,7 @@ mod tests {
             executor: MemberKey::default(),
             buffer_extend_hashes: vec![],
             voters: vec![],
-            expected_secp256r1_signers: vec![],
+            expected_signers: vec![],
             buffer: vec![],
         };
         assert!(buffer.add_executor(member_key).is_ok());

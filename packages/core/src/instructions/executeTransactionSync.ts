@@ -1,4 +1,3 @@
-import type { ValidityProofWithContext } from "@lightprotocol/stateless.js";
 import {
   AccountRole,
   type AccountMeta,
@@ -12,8 +11,7 @@ import {
 import {
   getTransactionExecuteSyncCompressedInstruction,
   getTransactionExecuteSyncInstruction,
-  type Secp256r1VerifyArgsWithDomainAddressArgs,
-  type SettingsMutArgs,
+  type TransactionSyncSignersArgs,
 } from "../generated";
 import { SignedSecp256r1Key } from "../types";
 import { getWalletAddressFromSettings } from "../utils";
@@ -21,7 +19,6 @@ import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
 } from "../utils/compressed/internal";
-import type { PackedAccounts } from "../utils/compressed/packedAccounts";
 import {
   extractSecp256r1VerificationArgs,
   getDeduplicatedSigners,
@@ -36,6 +33,7 @@ export async function executeTransactionSync({
   settings,
   settingsAddressTreeIndex,
   transactionMessageBytes,
+  additionalSigners,
   signers,
   payer,
   addressesByLookupTableAddress,
@@ -48,6 +46,7 @@ export async function executeTransactionSync({
   settingsAddressTreeIndex?: number;
   signers: (TransactionSigner | SignedSecp256r1Key)[];
   transactionMessageBytes: ReadonlyUint8Array;
+  additionalSigners?: TransactionSigner[];
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   compressed?: boolean;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
@@ -64,9 +63,7 @@ export async function executeTransactionSync({
     accountsForTransactionExecute({
       transactionMessageBytes,
       walletAddress,
-      additionalSigners: dedupSigners.filter(
-        (x) => !(x instanceof SignedSecp256r1Key),
-      ) as TransactionSigner[],
+      additionalSigners,
       addressesByLookupTableAddress,
     }),
     constructSettingsProofArgs(
@@ -80,98 +77,47 @@ export async function executeTransactionSync({
 
   packedAccounts.addPreAccounts(accountMetas);
 
-  const secp256r1Signers = dedupSigners.filter(
-    (x) => x instanceof SignedSecp256r1Key,
-  );
+  const transactionSyncSigners: TransactionSyncSignersArgs[] = [];
 
-  const { secp256r1VerifyArgs } = buildSecp256r1VerificationArgs(
-    secp256r1Signers,
-    secp256r1VerifyInput,
-    packedAccounts,
-  );
+  for (const x of dedupSigners) {
+    if (x instanceof SignedSecp256r1Key) {
+      const index = secp256r1VerifyInput.length;
+      const { domainConfig, verifyArgs, signature, publicKey, message } =
+        extractSecp256r1VerificationArgs(x, index);
 
-  const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
-
-  const instructions = buildTransactionInstructions({
-    secp256r1VerifyInput,
-    transactionMessage,
-    accountMetas,
-    compressed,
-    payer,
-    settingsMutArgs,
-    proof,
-    systemOffset,
-    secp256r1VerifyArgs,
-    settings,
-    remainingAccounts,
-  });
-
-  return {
-    instructions,
-    addressLookupTableAccounts,
-  };
-}
-
-function buildSecp256r1VerificationArgs(
-  secp256r1Signers: SignedSecp256r1Key[],
-  secp256r1VerifyInput: Secp256r1VerifyInput,
-  packedAccounts: PackedAccounts,
-): {
-  secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[];
-} {
-  const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];
-
-  for (const signer of secp256r1Signers) {
-    const index = secp256r1VerifyInput.length;
-    const { domainConfig, verifyArgs, signature, publicKey, message } =
-      extractSecp256r1VerificationArgs(signer, index);
-
-    if (message && signature && publicKey) {
-      secp256r1VerifyInput.push({ message, signature, publicKey });
-    }
-
-    if (domainConfig) {
-      packedAccounts.addPreAccounts([
-        { address: domainConfig, role: AccountRole.READONLY },
-      ]);
-
-      if (verifyArgs.__option === "Some") {
-        secp256r1VerifyArgs.push({
-          domainConfigKey: domainConfig,
-          verifyArgs: verifyArgs.value,
+      if (message && signature && publicKey) {
+        secp256r1VerifyInput.push({ message, signature, publicKey });
+      }
+      if (domainConfig) {
+        const domainConfigIndex = packedAccounts
+          .addPreAccounts([
+            { address: domainConfig, role: AccountRole.READONLY },
+          ])
+          .get(domainConfig)?.index;
+        if (verifyArgs.__option === "Some" && domainConfigIndex !== undefined) {
+          transactionSyncSigners.push({
+            __kind: "Secp256r1",
+            fields: [{ domainConfigIndex, verifyArgs: verifyArgs.value }],
+          });
+        }
+      }
+    } else {
+      const index = packedAccounts
+        .addPreAccounts([
+          { address: x.address, role: AccountRole.READONLY_SIGNER, signer: x },
+        ])
+        .get(x.address)?.index;
+      if (index !== undefined) {
+        transactionSyncSigners.push({
+          __kind: "Ed25519",
+          fields: [index],
         });
       }
     }
   }
 
-  return { secp256r1VerifyArgs };
-}
+  const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
 
-function buildTransactionInstructions({
-  secp256r1VerifyInput,
-  transactionMessage,
-  accountMetas,
-  compressed,
-  payer,
-  settingsMutArgs,
-  proof,
-  systemOffset,
-  secp256r1VerifyArgs,
-  settings,
-  remainingAccounts,
-}: {
-  secp256r1VerifyInput: Secp256r1VerifyInput;
-  transactionMessage: CompiledTransactionMessage;
-  accountMetas: AccountMeta[];
-  compressed: boolean;
-  payer?: TransactionSigner;
-  settingsMutArgs: SettingsMutArgs | null;
-  proof: ValidityProofWithContext | null;
-  systemOffset: number;
-  secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[];
-  settings: Address;
-  remainingAccounts: AccountMeta[];
-}): Instruction[] {
   const instructions: Instruction[] = [];
 
   if (secp256r1VerifyInput.length > 0) {
@@ -195,7 +141,7 @@ function buildTransactionInstructions({
 
     instructions.push(
       getTransactionExecuteSyncCompressedInstruction({
-        secp256r1VerifyArgs,
+        signers: transactionSyncSigners,
         transactionMessage: customTransactionMessage,
         settingsMutArgs,
         compressedProofArgs,
@@ -206,7 +152,7 @@ function buildTransactionInstructions({
   } else {
     instructions.push(
       getTransactionExecuteSyncInstruction({
-        secp256r1VerifyArgs,
+        signers: transactionSyncSigners,
         settings,
         transactionMessage: customTransactionMessage,
         remainingAccounts,
@@ -214,7 +160,10 @@ function buildTransactionInstructions({
     );
   }
 
-  return instructions;
+  return {
+    instructions,
+    addressLookupTableAccounts,
+  };
 }
 
 function parseTransactionMessage(

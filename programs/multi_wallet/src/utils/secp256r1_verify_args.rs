@@ -1,7 +1,7 @@
 use crate::{
-    utils::MemberKey, DomainConfig, MultisigError, Secp256r1Pubkey, TransactionActionType,
-    COMPRESSED_PUBKEY_SERIALIZED_SIZE, SECP256R1_PROGRAM_ID, SIGNATURE_OFFSETS_SERIALIZED_SIZE,
-    SIGNATURE_OFFSETS_START,
+    state::ExpectedSigner, utils::MemberKey, DomainConfig, MultisigError, Secp256r1Pubkey,
+    TransactionActionType, COMPRESSED_PUBKEY_SERIALIZED_SIZE, SECP256R1_PROGRAM_ID,
+    SIGNATURE_OFFSETS_SERIALIZED_SIZE, SIGNATURE_OFFSETS_START,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::instructions};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
@@ -28,22 +28,10 @@ pub struct Secp256r1VerifyArgs {
     pub client_and_device_hash: [u8; 32],
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, PartialEq)]
-pub struct Secp256r1VerifyArgsWithDomainAddress {
-    pub domain_config_key: Pubkey,
-    pub verify_args: Secp256r1VerifyArgs,
-}
-
 pub struct ChallengeArgs {
     pub account: Pubkey,
     pub message_hash: [u8; 32],
     pub action_type: TransactionActionType,
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize, Clone, Copy, InitSpace)]
-pub struct ExpectedSecp256r1Signers {
-    pub member_key: MemberKey,
-    pub message_hash: [u8; 32],
 }
 
 impl Secp256r1VerifyArgs {
@@ -275,7 +263,7 @@ impl Secp256r1VerifyArgs {
     fn extract_webauthn_signed_message_from_instruction(
         &self,
         instructions_sysvar: &UncheckedAccount,
-        expected_secp256r1_signers: &[ExpectedSecp256r1Signers],
+        expected_signers: &[ExpectedSigner],
     ) -> Result<([u8; 32], [u8; 32])> {
         let instruction = instructions::get_instruction_relative(-1, instructions_sysvar)?;
 
@@ -303,7 +291,7 @@ impl Secp256r1VerifyArgs {
         let message = Self::extract_message_data(data, &offsets)?;
 
         // Verify expected signers if provided
-        if !expected_secp256r1_signers.is_empty() {
+        if !expected_signers.is_empty() {
             let public_key_bytes = Self::extract_public_key_data(data, &offsets)?;
 
             let extracted_pubkey = MemberKey::convert_secp256r1(&Secp256r1Pubkey(
@@ -312,11 +300,12 @@ impl Secp256r1VerifyArgs {
                     .map_err(|_| MultisigError::InvalidSecp256r1PublicKey)?,
             ))?;
 
-            let extracted_message_hash = expected_secp256r1_signers
+            let extracted_message_hash = expected_signers
                 .iter()
                 .find(|f| f.member_key.eq(&extracted_pubkey))
                 .ok_or(MultisigError::MalformedSignedMessage)?
-                .message_hash;
+                .message_hash
+                .ok_or(MultisigError::InvalidArguments)?;
 
             let computed_hash =
                 Sha256::hash(message).map_err(|_| MultisigError::HashComputationFailed)?;
@@ -384,7 +373,7 @@ impl Secp256r1VerifyArgs {
         domain_config: &Option<AccountLoader<'info, DomainConfig>>,
         instructions_sysvar: &UncheckedAccount<'info>,
         challenge_args: ChallengeArgs,
-        expected_secp256r1_signers: &[ExpectedSecp256r1Signers],
+        expected_signers: &[ExpectedSigner],
     ) -> Result<()> {
         let domain_data = domain_config
             .as_ref()
@@ -399,7 +388,7 @@ impl Secp256r1VerifyArgs {
         let (rp_id_hash, client_data_hash) = self
             .extract_webauthn_signed_message_from_instruction(
                 instructions_sysvar,
-                expected_secp256r1_signers,
+                expected_signers,
             )?;
 
         require!(

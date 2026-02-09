@@ -1,7 +1,7 @@
+use crate::utils::TransactionBufferSigners;
 use crate::{
-    state::SettingsReadonlyArgs, ChallengeArgs, CompressedSettings, DomainConfig, KeyType,
-    MemberKey, MultisigError, Permission, ProofArgs, Secp256r1VerifyArgs, TransactionActionType,
-    TransactionBuffer,
+    state::SettingsReadonlyArgs, CompressedSettings, DomainConfig, MemberKey, MultisigError,
+    ProofArgs, Secp256r1VerifyArgs, TransactionBuffer,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
@@ -50,8 +50,6 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
         transaction_buffer.validate_hash()?;
         transaction_buffer.validate_size()?;
 
-        let signer =
-            MemberKey::get_signer(voter, secp256r1_verify_args, instructions_sysvar.as_ref())?;
         let (settings, settings_key) =
             CompressedSettings::verify_readonly_compressed_settings_account(
                 &payer,
@@ -64,38 +62,17 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
             MultisigError::InvalidAccount
         );
 
-        let member = settings
-            .members
-            .iter()
-            .find(|x| x.pubkey.eq(&signer))
-            .ok_or(MultisigError::MemberNotFound)?;
-
-        require!(
-            member.permissions.has(Permission::VoteTransaction),
-            MultisigError::InsufficientSignersWithVotePermission
-        );
-
-        if signer.get_type().eq(&KeyType::Secp256r1) {
-            let secp256r1_verify_data = secp256r1_verify_args
-                .as_ref()
-                .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
-
-            let instructions_sysvar = instructions_sysvar
-                .as_ref()
-                .ok_or(MultisigError::MissingInstructionsSysvar)?;
-
-            secp256r1_verify_data.verify_webauthn(
-                slot_hash_sysvar,
-                domain_config,
-                instructions_sysvar,
-                ChallengeArgs {
-                    account: transaction_buffer.multi_wallet_settings,
-                    message_hash: transaction_buffer.final_buffer_hash,
-                    action_type: TransactionActionType::Vote,
-                },
-                transaction_buffer.expected_secp256r1_signers.as_ref(),
-            )?;
-        }
+        TransactionBufferSigners::verify_vote(
+            voter,
+            secp256r1_verify_args,
+            instructions_sysvar,
+            slot_hash_sysvar,
+            domain_config,
+            &settings.members,
+            transaction_buffer.multi_wallet_settings,
+            transaction_buffer.final_buffer_hash,
+            transaction_buffer.expected_signers.as_ref(),
+        )?;
 
         Ok(())
     }

@@ -28,6 +28,9 @@ export async function processCompressedTransferIntent(
   if (!instruction.data) {
     throw new Error("Invalid instruction data.");
   }
+  if (!instruction.accounts) {
+    throw new Error("Invalid instruction accounts.");
+  }
 
   const instructionDataDecoder =
     instructionType === MultiWalletInstruction.NativeTransferIntentCompressed
@@ -43,16 +46,28 @@ export async function processCompressedTransferIntent(
     "Invalid instruction data. Settings not found.",
   );
 
-  const signers = await getSecp256r1Signers(
+  const sepcp256r1Signers = await getSecp256r1Signers(
     secp256r1VerifyDataList,
     instructionIndex,
-    decodedInstructionData.secp256r1VerifyArgs,
+    decodedInstructionData.signers
+      .filter((x) => x.__kind === "Secp256r1")
+      .map((x) => x.fields[0]),
   );
+
+  const numFixedAccounts =
+    instructionType === MultiWalletInstruction.NativeTransferIntentCompressed
+      ? 6
+      : 17;
+  const addressSigners = decodedInstructionData.signers
+    .filter((x) => x.__kind === "Ed25519")
+    .map((x) => ({
+      signer: instruction.accounts![numFixedAccounts + x.fields[0]].address,
+    }));
 
   return verifyAndParseSigners(
     [instruction],
     settingsAddress,
-    signers,
+    sepcp256r1Signers.concat(addressSigners),
     authResponses,
     wellKnownProxyUrl,
   );
@@ -87,16 +102,28 @@ export async function processTransferIntent(
 
   const settingsAddress = instruction.accounts[0].address.toString();
 
-  const signers = await getSecp256r1Signers(
+  const sepcp256r1Signers = await getSecp256r1Signers(
     secp256r1VerifyDataList,
     instructionIndex,
-    decodedInstructionData.secp256r1VerifyArgs,
+    decodedInstructionData.signers
+      .filter((x) => x.__kind === "Secp256r1")
+      .map((x) => x.fields[0]),
   );
+
+  const numFixedAccounts =
+    instructionType === MultiWalletInstruction.NativeTransferIntentCompressed
+      ? 6
+      : 18;
+  const addressSigners = decodedInstructionData.signers
+    .filter((x) => x.__kind === "Ed25519")
+    .map((x) => ({
+      signer: instruction.accounts![numFixedAccounts + x.fields[0]].address,
+    }));
 
   return verifyAndParseSigners(
     [instruction],
     settingsAddress,
-    signers,
+    sepcp256r1Signers.concat(addressSigners),
     authResponses,
     wellKnownProxyUrl,
   );

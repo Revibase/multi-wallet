@@ -33,14 +33,14 @@ import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
-  getSecp256r1VerifyArgsWithDomainAddressDecoder,
-  getSecp256r1VerifyArgsWithDomainAddressEncoder,
   getTransactionMessageDecoder,
   getTransactionMessageEncoder,
-  type Secp256r1VerifyArgsWithDomainAddress,
-  type Secp256r1VerifyArgsWithDomainAddressArgs,
+  getTransactionSyncSignersDecoder,
+  getTransactionSyncSignersEncoder,
   type TransactionMessage,
   type TransactionMessageArgs,
+  type TransactionSyncSigners,
+  type TransactionSyncSignersArgs,
 } from "../types";
 
 export const TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR = new Uint8Array([16]);
@@ -81,12 +81,12 @@ export type TransactionExecuteSyncInstruction<
 export type TransactionExecuteSyncInstructionData = {
   discriminator: ReadonlyUint8Array;
   transactionMessage: TransactionMessage;
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
+  signers: Array<TransactionSyncSigners>;
 };
 
 export type TransactionExecuteSyncInstructionDataArgs = {
   transactionMessage: TransactionMessageArgs;
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
+  signers: Array<TransactionSyncSignersArgs>;
 };
 
 export function getTransactionExecuteSyncInstructionDataEncoder(): Encoder<TransactionExecuteSyncInstructionDataArgs> {
@@ -94,10 +94,7 @@ export function getTransactionExecuteSyncInstructionDataEncoder(): Encoder<Trans
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["transactionMessage", getTransactionMessageEncoder()],
-      [
-        "secp256r1VerifyArgs",
-        getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
-      ],
+      ["signers", getArrayEncoder(getTransactionSyncSignersEncoder())],
     ]),
     (value) => ({
       ...value,
@@ -110,10 +107,7 @@ export function getTransactionExecuteSyncInstructionDataDecoder(): Decoder<Trans
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["transactionMessage", getTransactionMessageDecoder()],
-    [
-      "secp256r1VerifyArgs",
-      getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
-    ],
+    ["signers", getArrayDecoder(getTransactionSyncSignersDecoder())],
   ]);
 }
 
@@ -140,7 +134,7 @@ export type TransactionExecuteSyncInput<
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   transactionMessage: TransactionExecuteSyncInstructionDataArgs["transactionMessage"];
-  secp256r1VerifyArgs: TransactionExecuteSyncInstructionDataArgs["secp256r1VerifyArgs"];
+  signers: TransactionExecuteSyncInstructionDataArgs["signers"];
   remainingAccounts: TransactionExecuteSyncInstructionExtraArgs["remainingAccounts"];
 };
 

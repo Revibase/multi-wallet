@@ -39,18 +39,18 @@ import {
   getConfigActionEncoder,
   getProofArgsDecoder,
   getProofArgsEncoder,
-  getSecp256r1VerifyArgsWithDomainAddressDecoder,
-  getSecp256r1VerifyArgsWithDomainAddressEncoder,
   getSettingsMutArgsDecoder,
   getSettingsMutArgsEncoder,
+  getTransactionSyncSignersDecoder,
+  getTransactionSyncSignersEncoder,
   type ConfigAction,
   type ConfigActionArgs,
   type ProofArgs,
   type ProofArgsArgs,
-  type Secp256r1VerifyArgsWithDomainAddress,
-  type Secp256r1VerifyArgsWithDomainAddressArgs,
   type SettingsMutArgs,
   type SettingsMutArgsArgs,
+  type TransactionSyncSigners,
+  type TransactionSyncSignersArgs,
 } from "../types";
 
 export const CHANGE_CONFIG_COMPRESSED_DISCRIMINATOR = new Uint8Array([19]);
@@ -92,14 +92,14 @@ export type ChangeConfigCompressedInstruction<
 export type ChangeConfigCompressedInstructionData = {
   discriminator: ReadonlyUint8Array;
   configActions: Array<ConfigAction>;
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
+  signers: Array<TransactionSyncSigners>;
   settingsMutArgs: SettingsMutArgs;
   compressedProofArgs: ProofArgs;
 };
 
 export type ChangeConfigCompressedInstructionDataArgs = {
   configActions: Array<ConfigActionArgs>;
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
+  signers: Array<TransactionSyncSignersArgs>;
   settingsMutArgs: SettingsMutArgsArgs;
   compressedProofArgs: ProofArgsArgs;
 };
@@ -109,10 +109,7 @@ export function getChangeConfigCompressedInstructionDataEncoder(): Encoder<Chang
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["configActions", getArrayEncoder(getConfigActionEncoder())],
-      [
-        "secp256r1VerifyArgs",
-        getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
-      ],
+      ["signers", getArrayEncoder(getTransactionSyncSignersEncoder())],
       ["settingsMutArgs", getSettingsMutArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
     ]),
@@ -127,10 +124,7 @@ export function getChangeConfigCompressedInstructionDataDecoder(): Decoder<Chang
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["configActions", getArrayDecoder(getConfigActionDecoder())],
-    [
-      "secp256r1VerifyArgs",
-      getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
-    ],
+    ["signers", getArrayDecoder(getTransactionSyncSignersDecoder())],
     ["settingsMutArgs", getSettingsMutArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
   ]);
@@ -159,7 +153,7 @@ export type ChangeConfigCompressedInput<
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   configActions: ChangeConfigCompressedInstructionDataArgs["configActions"];
-  secp256r1VerifyArgs: ChangeConfigCompressedInstructionDataArgs["secp256r1VerifyArgs"];
+  signers: ChangeConfigCompressedInstructionDataArgs["signers"];
   settingsMutArgs: ChangeConfigCompressedInstructionDataArgs["settingsMutArgs"];
   compressedProofArgs: ChangeConfigCompressedInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: ChangeConfigCompressedInstructionExtraArgs["remainingAccounts"];

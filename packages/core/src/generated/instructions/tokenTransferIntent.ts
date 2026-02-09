@@ -52,18 +52,18 @@ import {
   getCompressedTokenArgsEncoder,
   getProofArgsDecoder,
   getProofArgsEncoder,
-  getSecp256r1VerifyArgsWithDomainAddressDecoder,
-  getSecp256r1VerifyArgsWithDomainAddressEncoder,
   getSplInterfacePdaArgsDecoder,
   getSplInterfacePdaArgsEncoder,
+  getTransactionSyncSignersDecoder,
+  getTransactionSyncSignersEncoder,
   type CompressedTokenArgs,
   type CompressedTokenArgsArgs,
   type ProofArgs,
   type ProofArgsArgs,
-  type Secp256r1VerifyArgsWithDomainAddress,
-  type Secp256r1VerifyArgsWithDomainAddressArgs,
   type SplInterfacePdaArgs,
   type SplInterfacePdaArgsArgs,
+  type TransactionSyncSigners,
+  type TransactionSyncSignersArgs,
 } from "../types";
 
 export const TOKEN_TRANSFER_INTENT_DISCRIMINATOR = new Uint8Array([30]);
@@ -182,7 +182,7 @@ export type TokenTransferIntentInstructionData = {
   amount: bigint;
   sourceCompressedTokenAccounts: Option<Array<CompressedTokenArgs>>;
   compressedProofArgs: Option<ProofArgs>;
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
+  signers: Array<TransactionSyncSigners>;
 };
 
 export type TokenTransferIntentInstructionDataArgs = {
@@ -192,7 +192,7 @@ export type TokenTransferIntentInstructionDataArgs = {
     Array<CompressedTokenArgsArgs>
   >;
   compressedProofArgs: OptionOrNullable<ProofArgsArgs>;
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
+  signers: Array<TransactionSyncSignersArgs>;
 };
 
 export function getTokenTransferIntentInstructionDataEncoder(): Encoder<TokenTransferIntentInstructionDataArgs> {
@@ -209,10 +209,7 @@ export function getTokenTransferIntentInstructionDataEncoder(): Encoder<TokenTra
         getOptionEncoder(getArrayEncoder(getCompressedTokenArgsEncoder())),
       ],
       ["compressedProofArgs", getOptionEncoder(getProofArgsEncoder())],
-      [
-        "secp256r1VerifyArgs",
-        getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
-      ],
+      ["signers", getArrayEncoder(getTransactionSyncSignersEncoder())],
     ]),
     (value) => ({
       ...value,
@@ -231,10 +228,7 @@ export function getTokenTransferIntentInstructionDataDecoder(): Decoder<TokenTra
       getOptionDecoder(getArrayDecoder(getCompressedTokenArgsDecoder())),
     ],
     ["compressedProofArgs", getOptionDecoder(getProofArgsDecoder())],
-    [
-      "secp256r1VerifyArgs",
-      getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
-    ],
+    ["signers", getArrayDecoder(getTransactionSyncSignersDecoder())],
   ]);
 }
 
@@ -294,7 +288,7 @@ export type TokenTransferIntentAsyncInput<
   amount: TokenTransferIntentInstructionDataArgs["amount"];
   sourceCompressedTokenAccounts: TokenTransferIntentInstructionDataArgs["sourceCompressedTokenAccounts"];
   compressedProofArgs: TokenTransferIntentInstructionDataArgs["compressedProofArgs"];
-  secp256r1VerifyArgs: TokenTransferIntentInstructionDataArgs["secp256r1VerifyArgs"];
+  signers: TokenTransferIntentInstructionDataArgs["signers"];
   remainingAccounts: TokenTransferIntentInstructionExtraArgs["remainingAccounts"];
 };
 
@@ -615,7 +609,7 @@ export type TokenTransferIntentInput<
   amount: TokenTransferIntentInstructionDataArgs["amount"];
   sourceCompressedTokenAccounts: TokenTransferIntentInstructionDataArgs["sourceCompressedTokenAccounts"];
   compressedProofArgs: TokenTransferIntentInstructionDataArgs["compressedProofArgs"];
-  secp256r1VerifyArgs: TokenTransferIntentInstructionDataArgs["secp256r1VerifyArgs"];
+  signers: TokenTransferIntentInstructionDataArgs["signers"];
   remainingAccounts: TokenTransferIntentInstructionExtraArgs["remainingAccounts"];
 };
 

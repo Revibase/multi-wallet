@@ -86,11 +86,11 @@
           }
         },
         {
-          "name": "secp256r1_verify_args",
+          "name": "signers",
           "type": {
             "vec": {
               "defined": {
-                "name": "Secp256r1VerifyArgsWithDomainAddress"
+                "name": "TransactionSyncSigners"
               }
             }
           }
@@ -141,11 +141,11 @@
           }
         },
         {
-          "name": "secp256r1_verify_args",
+          "name": "signers",
           "type": {
             "vec": {
               "defined": {
-                "name": "Secp256r1VerifyArgsWithDomainAddress"
+                "name": "TransactionSyncSigners"
               }
             }
           }
@@ -495,11 +495,11 @@
           }
         },
         {
-          "name": "secp256r1_verify_args",
+          "name": "signers",
           "type": {
             "vec": {
               "defined": {
-                "name": "Secp256r1VerifyArgsWithDomainAddress"
+                "name": "TransactionSyncSigners"
               }
             }
           }
@@ -772,11 +772,11 @@
           "type": "u64"
         },
         {
-          "name": "secp256r1_verify_args",
+          "name": "signers",
           "type": {
             "vec": {
               "defined": {
-                "name": "Secp256r1VerifyArgsWithDomainAddress"
+                "name": "TransactionSyncSigners"
               }
             }
           }
@@ -824,11 +824,11 @@
           "type": "u64"
         },
         {
-          "name": "secp256r1_verify_args",
+          "name": "signers",
           "type": {
             "vec": {
               "defined": {
-                "name": "Secp256r1VerifyArgsWithDomainAddress"
+                "name": "TransactionSyncSigners"
               }
             }
           }
@@ -1093,11 +1093,11 @@
           }
         },
         {
-          "name": "secp256r1_verify_args",
+          "name": "signers",
           "type": {
             "vec": {
               "defined": {
-                "name": "Secp256r1VerifyArgsWithDomainAddress"
+                "name": "TransactionSyncSigners"
               }
             }
           }
@@ -1314,11 +1314,11 @@
           }
         },
         {
-          "name": "secp256r1_verify_args",
+          "name": "signers",
           "type": {
             "vec": {
               "defined": {
-                "name": "Secp256r1VerifyArgsWithDomainAddress"
+                "name": "TransactionSyncSigners"
               }
             }
           }
@@ -1939,11 +1939,11 @@
           }
         },
         {
-          "name": "secp256r1_verify_args",
+          "name": "signers",
           "type": {
             "vec": {
               "defined": {
-                "name": "Secp256r1VerifyArgsWithDomainAddress"
+                "name": "TransactionSyncSigners"
               }
             }
           }
@@ -1982,11 +1982,11 @@
           }
         },
         {
-          "name": "secp256r1_verify_args",
+          "name": "signers",
           "type": {
             "vec": {
               "defined": {
-                "name": "Secp256r1VerifyArgsWithDomainAddress"
+                "name": "TransactionSyncSigners"
               }
             }
           }
@@ -3178,7 +3178,7 @@
       }
     },
     {
-      "name": "ExpectedSecp256r1Signers",
+      "name": "ExpectedSigner",
       "type": {
         "kind": "struct",
         "fields": [
@@ -3193,7 +3193,9 @@
           {
             "name": "message_hash",
             "type": {
-              "array": ["u8", 32]
+              "option": {
+                "array": ["u8", 32]
+              }
             }
           }
         ]
@@ -3750,14 +3752,10 @@
       }
     },
     {
-      "name": "Secp256r1VerifyArgsWithDomainAddress",
+      "name": "Secp256r1VerifyArgsWithDomainConfigIndex",
       "type": {
         "kind": "struct",
         "fields": [
-          {
-            "name": "domain_config_key",
-            "type": "pubkey"
-          },
           {
             "name": "verify_args",
             "type": {
@@ -3765,6 +3763,10 @@
                 "name": "Secp256r1VerifyArgs"
               }
             }
+          },
+          {
+            "name": "domain_config_index",
+            "type": "u8"
           }
         ]
       }
@@ -4089,14 +4091,14 @@
             }
           },
           {
-            "name": "expected_secp256r1_signers",
+            "name": "expected_signers",
             "docs": [
-              "All Secp256r1 Signers that are expected to initiate / vote / execute this transaction (used for off-chain inspection by the transaction manager)"
+              "All Signers that are expected to initiate / vote / execute this transaction (used for off-chain inspection by the transaction manager)"
             ],
             "type": {
               "vec": {
                 "defined": {
-                  "name": "ExpectedSecp256r1Signers"
+                  "name": "ExpectedSigner"
                 }
               }
             }
@@ -4141,11 +4143,11 @@
             "type": "u16"
           },
           {
-            "name": "expected_secp256r1_signers",
+            "name": "expected_signers",
             "type": {
               "vec": {
                 "defined": {
-                  "name": "ExpectedSecp256r1Signers"
+                  "name": "ExpectedSigner"
                 }
               }
             }
@@ -4213,6 +4215,28 @@
           {
             "name": "readonly_indexes",
             "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransactionSyncSigners",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Ed25519",
+            "fields": ["u8"]
+          },
+          {
+            "name": "Secp256r1",
+            "fields": [
+              {
+                "defined": {
+                  "name": "Secp256r1VerifyArgsWithDomainConfigIndex"
+                }
+              }
+            ]
           }
         ]
       }

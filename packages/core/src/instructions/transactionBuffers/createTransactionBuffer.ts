@@ -2,7 +2,7 @@ import type { AccountMeta, Address, TransactionSigner } from "gill";
 import {
   getTransactionBufferCreateCompressedInstruction,
   getTransactionBufferCreateInstruction,
-  type ExpectedSecp256r1SignersArgs,
+  type ExpectedSignerArgs,
   type ProofArgsArgs,
   type SettingsReadonlyArgs,
 } from "../../generated";
@@ -21,7 +21,7 @@ export function createTransactionBuffer({
   preauthorizeExecution,
   bufferExtendHashes,
   compressedArgs,
-  expectedSecp256r1Signers,
+  expectedSigners,
 }: {
   finalBufferHash: Uint8Array<ArrayBuffer>;
   finalBufferSize: number;
@@ -37,7 +37,7 @@ export function createTransactionBuffer({
     compressedProofArgs: ProofArgsArgs;
     remainingAccounts: AccountMeta[];
   } | null;
-  expectedSecp256r1Signers: ExpectedSecp256r1SignersArgs[];
+  expectedSigners: ExpectedSignerArgs[];
 }) {
   const { domainConfig, verifyArgs, message, signature, publicKey } =
     extractSecp256r1VerificationArgs(creator);
@@ -70,7 +70,7 @@ export function createTransactionBuffer({
           finalBufferSize,
           bufferExtendHashes,
           preauthorizeExecution,
-          expectedSecp256r1Signers,
+          expectedSigners,
         },
         settingsReadonlyArgs,
         compressedProofArgs,
@@ -92,7 +92,7 @@ export function createTransactionBuffer({
           finalBufferSize,
           bufferExtendHashes,
           preauthorizeExecution,
-          expectedSecp256r1Signers,
+          expectedSigners,
         },
         remainingAccounts: [],
       }),

@@ -99,16 +99,17 @@ export async function prepareTransactionBundle({
         }
       : null;
 
-  const expectedSecp256r1Signers = getDeduplicatedSigners([
+  const expectedSigners = getDeduplicatedSigners([
     creator,
     ...(executor ? [executor] : []),
     ...additionalVoters,
-  ])
-    .filter((x) => x instanceof SignedSecp256r1Key)
-    .map((x) => ({
-      memberKey: convertPubkeyToMemberkey(x),
-      messageHash: getSecp256r1MessageHash(x.authResponse),
-    }));
+  ]).map((x) => ({
+    memberKey: convertPubkeyToMemberkey(x),
+    messageHash:
+      x instanceof SignedSecp256r1Key
+        ? getSecp256r1MessageHash(x.authResponse)
+        : null,
+  }));
 
   const createIxs = createTransactionBuffer({
     finalBufferHash,
@@ -121,7 +122,7 @@ export async function prepareTransactionBundle({
     preauthorizeExecution: !executor,
     bufferExtendHashes: chunksHash,
     compressedArgs,
-    expectedSecp256r1Signers,
+    expectedSigners,
   });
 
   const extendIxs = chunks.map((bytes) =>

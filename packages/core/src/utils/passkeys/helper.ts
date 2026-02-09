@@ -276,9 +276,7 @@ export function convertJWKToBase64String(jwk: JsonWebKey) {
   return getBase64Decoder().decode(
     getUtf8Encoder().encode(canonicalize(jwk)) as Uint8Array<ArrayBuffer>,
   );
-}
-
-/**
+}/**
  * Converts a Base64-encoded JWK string back into a JSON Web Key (JWK) object.
  *
  * @param jwk - The Base64-encoded string representing the JWK.

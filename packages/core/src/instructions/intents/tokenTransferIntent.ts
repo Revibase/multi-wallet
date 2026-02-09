@@ -35,9 +35,9 @@ import {
   getTokenTransferIntentInstruction,
   type CompressedSettings,
   type CompressedTokenArgsArgs,
-  type Secp256r1VerifyArgsWithDomainAddressArgs,
   type SettingsMutArgs,
   type SplInterfacePdaArgsArgs,
+  type TransactionSyncSignersArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
 import {
@@ -301,7 +301,7 @@ export async function tokenTransferIntent({
       : none();
 
   const secp256r1VerifyInput: Secp256r1VerifyInput = [];
-  const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];
+  const transactionSyncSigners: TransactionSyncSignersArgs[] = [];
   for (const x of dedupSigners) {
     if (x instanceof SignedSecp256r1Key) {
       const index = secp256r1VerifyInput.length;
@@ -311,20 +311,30 @@ export async function tokenTransferIntent({
         secp256r1VerifyInput.push({ message, signature, publicKey });
       }
       if (domainConfig) {
-        packedAccounts.addPreAccounts([
-          { address: domainConfig, role: AccountRole.READONLY },
-        ]);
-        if (verifyArgs.__option === "Some") {
-          secp256r1VerifyArgs.push({
-            domainConfigKey: domainConfig,
-            verifyArgs: verifyArgs.value,
+        const domainConfigIndex = packedAccounts
+          .addPreAccounts([
+            { address: domainConfig, role: AccountRole.READONLY },
+          ])
+          .get(domainConfig)?.index;
+        if (verifyArgs.__option === "Some" && domainConfigIndex !== undefined) {
+          transactionSyncSigners.push({
+            __kind: "Secp256r1",
+            fields: [{ domainConfigIndex, verifyArgs: verifyArgs.value }],
           });
         }
       }
     } else {
-      packedAccounts.addPreAccounts([
-        { address: x.address, role: AccountRole.READONLY_SIGNER, signer: x },
-      ]);
+      const index = packedAccounts
+        .addPreAccounts([
+          { address: x.address, role: AccountRole.READONLY_SIGNER, signer: x },
+        ])
+        .get(x.address)?.index;
+      if (index !== undefined) {
+        transactionSyncSigners.push({
+          __kind: "Ed25519",
+          fields: [index],
+        });
+      }
     }
   }
 
@@ -347,7 +357,7 @@ export async function tokenTransferIntent({
 
   const commonParams = {
     amount,
-    secp256r1VerifyArgs,
+    signers: transactionSyncSigners,
     source: walletAddress,
     destination,
     sourceCtokenTokenAccount: sourceCtokenAta,

@@ -38,16 +38,16 @@ import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
   getProofArgsDecoder,
   getProofArgsEncoder,
-  getSecp256r1VerifyArgsWithDomainAddressDecoder,
-  getSecp256r1VerifyArgsWithDomainAddressEncoder,
   getSettingsMutArgsDecoder,
   getSettingsMutArgsEncoder,
+  getTransactionSyncSignersDecoder,
+  getTransactionSyncSignersEncoder,
   type ProofArgs,
   type ProofArgsArgs,
-  type Secp256r1VerifyArgsWithDomainAddress,
-  type Secp256r1VerifyArgsWithDomainAddressArgs,
   type SettingsMutArgs,
   type SettingsMutArgsArgs,
+  type TransactionSyncSigners,
+  type TransactionSyncSignersArgs,
 } from "../types";
 
 export const DECOMPRESS_SETTINGS_ACCOUNT_DISCRIMINATOR = new Uint8Array([17]);
@@ -100,13 +100,13 @@ export type DecompressSettingsAccountInstructionData = {
   discriminator: ReadonlyUint8Array;
   settingsMutArgs: SettingsMutArgs;
   compressedProofArgs: ProofArgs;
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddress>;
+  signers: Array<TransactionSyncSigners>;
 };
 
 export type DecompressSettingsAccountInstructionDataArgs = {
   settingsMutArgs: SettingsMutArgsArgs;
   compressedProofArgs: ProofArgsArgs;
-  secp256r1VerifyArgs: Array<Secp256r1VerifyArgsWithDomainAddressArgs>;
+  signers: Array<TransactionSyncSignersArgs>;
 };
 
 export function getDecompressSettingsAccountInstructionDataEncoder(): Encoder<DecompressSettingsAccountInstructionDataArgs> {
@@ -115,10 +115,7 @@ export function getDecompressSettingsAccountInstructionDataEncoder(): Encoder<De
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["settingsMutArgs", getSettingsMutArgsEncoder()],
       ["compressedProofArgs", getProofArgsEncoder()],
-      [
-        "secp256r1VerifyArgs",
-        getArrayEncoder(getSecp256r1VerifyArgsWithDomainAddressEncoder()),
-      ],
+      ["signers", getArrayEncoder(getTransactionSyncSignersEncoder())],
     ]),
     (value) => ({
       ...value,
@@ -132,10 +129,7 @@ export function getDecompressSettingsAccountInstructionDataDecoder(): Decoder<De
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["settingsMutArgs", getSettingsMutArgsDecoder()],
     ["compressedProofArgs", getProofArgsDecoder()],
-    [
-      "secp256r1VerifyArgs",
-      getArrayDecoder(getSecp256r1VerifyArgsWithDomainAddressDecoder()),
-    ],
+    ["signers", getArrayDecoder(getTransactionSyncSignersDecoder())],
   ]);
 }
 
@@ -167,7 +161,7 @@ export type DecompressSettingsAccountInput<
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   settingsMutArgs: DecompressSettingsAccountInstructionDataArgs["settingsMutArgs"];
   compressedProofArgs: DecompressSettingsAccountInstructionDataArgs["compressedProofArgs"];
-  secp256r1VerifyArgs: DecompressSettingsAccountInstructionDataArgs["secp256r1VerifyArgs"];
+  signers: DecompressSettingsAccountInstructionDataArgs["signers"];
   remainingAccounts: DecompressSettingsAccountInstructionExtraArgs["remainingAccounts"];
 };
 

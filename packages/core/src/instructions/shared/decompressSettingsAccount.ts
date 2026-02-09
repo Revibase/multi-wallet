@@ -1,12 +1,7 @@
-import {
-  AccountRole,
-  type AccountSignerMeta,
-  type Address,
-  type TransactionSigner,
-} from "gill";
+import { AccountRole, type Address, type TransactionSigner } from "gill";
 import {
   getDecompressSettingsAccountInstruction,
-  type Secp256r1VerifyArgsWithDomainAddressArgs,
+  type TransactionSyncSignersArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
 import {
@@ -50,43 +45,43 @@ export async function decompressSettingsAccount({
 
   const dedupSigners = getDeduplicatedSigners(signers);
 
-  const secp256r1Signers = dedupSigners.filter(
-    (x) => x instanceof SignedSecp256r1Key,
-  );
-
   const secp256r1VerifyInput: Secp256r1VerifyInput = [];
-  const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];
-  for (const x of secp256r1Signers) {
-    const index = secp256r1VerifyInput.length;
-    const { domainConfig, verifyArgs, signature, publicKey, message } =
-      extractSecp256r1VerificationArgs(x, index);
-    if (message && signature && publicKey) {
-      secp256r1VerifyInput.push({ message, signature, publicKey });
-    }
-    if (domainConfig) {
-      packedAccounts.addPreAccounts([
-        { address: domainConfig, role: AccountRole.READONLY },
-      ]);
-      if (verifyArgs.__option === "Some") {
-        secp256r1VerifyArgs.push({
-          domainConfigKey: domainConfig,
-          verifyArgs: verifyArgs.value,
+  const transactionSyncSigners: TransactionSyncSignersArgs[] = [];
+  for (const x of dedupSigners) {
+    if (x instanceof SignedSecp256r1Key) {
+      const index = secp256r1VerifyInput.length;
+      const { domainConfig, verifyArgs, signature, publicKey, message } =
+        extractSecp256r1VerificationArgs(x, index);
+      if (message && signature && publicKey) {
+        secp256r1VerifyInput.push({ message, signature, publicKey });
+      }
+      if (domainConfig) {
+        const domainConfigIndex = packedAccounts
+          .addPreAccounts([
+            { address: domainConfig, role: AccountRole.READONLY },
+          ])
+          .get(domainConfig)?.index;
+        if (verifyArgs.__option === "Some" && domainConfigIndex !== undefined) {
+          transactionSyncSigners.push({
+            __kind: "Secp256r1",
+            fields: [{ domainConfigIndex, verifyArgs: verifyArgs.value }],
+          });
+        }
+      }
+    } else {
+      const index = packedAccounts
+        .addPreAccounts([
+          { address: x.address, role: AccountRole.READONLY_SIGNER, signer: x },
+        ])
+        .get(x.address)?.index;
+      if (index !== undefined) {
+        transactionSyncSigners.push({
+          __kind: "Ed25519",
+          fields: [index],
         });
       }
     }
   }
-  packedAccounts.addPreAccounts(
-    dedupSigners
-      .filter((x) => "address" in x)
-      .map(
-        (x) =>
-          ({
-            address: x.address,
-            role: AccountRole.READONLY_SIGNER,
-            signer: x,
-          }) as AccountSignerMeta,
-      ),
-  );
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
@@ -100,7 +95,7 @@ export async function decompressSettingsAccount({
       payer,
       settingsMutArgs,
       compressedProofArgs,
-      secp256r1VerifyArgs,
+      signers: transactionSyncSigners,
       remainingAccounts,
     }),
   );

@@ -24,6 +24,9 @@ export async function processChangeConfigCompressed(
   if (!instruction.data) {
     throw new Error("Invalid instruction data.");
   }
+  if (!instruction.accounts) {
+    throw new Error("Invalid instruction accounts");
+  }
 
   const decodedInstructionData =
     getChangeConfigCompressedInstructionDataDecoder().decode(instruction.data);
@@ -33,16 +36,25 @@ export async function processChangeConfigCompressed(
     "Invalid instruction data. Settings not found.",
   );
 
-  const signers = await getSecp256r1Signers(
+  const sepcp256r1Signers = await getSecp256r1Signers(
     secp256r1VerifyDataList,
     instructionIndex,
-    decodedInstructionData.secp256r1VerifyArgs,
+    decodedInstructionData.signers
+      .filter((x) => x.__kind === "Secp256r1")
+      .map((x) => x.fields[0]),
   );
+
+  const numFixedAccounts = 3;
+  const addressSigners = decodedInstructionData.signers
+    .filter((x) => x.__kind === "Ed25519")
+    .map((x) => ({
+      signer: instruction.accounts![numFixedAccounts + x.fields[0]].address,
+    }));
 
   return verifyAndParseSigners(
     [instruction],
     settingsAddress,
-    signers,
+    sepcp256r1Signers.concat(addressSigners),
     authResponses,
     wellKnownProxyUrl,
   );
@@ -71,16 +83,25 @@ export async function processChangeConfig(
 
   const settingsAddress = instruction.accounts[0].address.toString();
 
-  const signers = await getSecp256r1Signers(
+  const sepcp256r1Signers = await getSecp256r1Signers(
     secp256r1VerifyDataList,
     instructionIndex,
-    decodedInstructionData.secp256r1VerifyArgs,
+    decodedInstructionData.signers
+      .filter((x) => x.__kind === "Secp256r1")
+      .map((x) => x.fields[0]),
   );
+
+  const numFixedAccounts = 5;
+  const addressSigners = decodedInstructionData.signers
+    .filter((x) => x.__kind === "Ed25519")
+    .map((x) => ({
+      signer: instruction.accounts![numFixedAccounts + x.fields[0]].address,
+    }));
 
   return verifyAndParseSigners(
     [instruction],
     settingsAddress,
-    signers,
+    sepcp256r1Signers.concat(addressSigners),
     authResponses,
     wellKnownProxyUrl,
   );

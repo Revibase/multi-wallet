@@ -1,6 +1,6 @@
 use crate::{
-    utils::MultisigSettings, ChallengeArgs, DomainConfig, KeyType, MemberKey, MultisigError,
-    Permission, Secp256r1VerifyArgs, Settings, TransactionActionType, TransactionBuffer,
+    utils::{MultisigSettings, TransactionBufferSigners},
+    DomainConfig, MemberKey, MultisigError, Secp256r1VerifyArgs, Settings, TransactionBuffer,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 
@@ -39,18 +39,12 @@ impl<'info> TransactionBufferExecute<'info> {
             ..
         } = self;
 
-        require!(
-            Clock::get()?.unix_timestamp as u64 <= transaction_buffer.valid_till,
-            MultisigError::TransactionHasExpired
-        );
-        transaction_buffer.validate_hash()?;
-        transaction_buffer.validate_size()?;
         let members = settings.get_members()?;
         if transaction_buffer.preauthorize_execution {
             let vote_count = members
                 .iter()
                 .filter(|x| {
-                    x.permissions.has(Permission::VoteTransaction)
+                    x.permissions.has(crate::Permission::VoteTransaction)
                         && (transaction_buffer.voters.contains(&x.pubkey))
                 })
                 .count();
@@ -62,58 +56,22 @@ impl<'info> TransactionBufferExecute<'info> {
             return Ok(());
         }
 
-        let signer = MemberKey::get_signer(
+        TransactionBufferSigners::verify_execute(
             executor,
             secp256r1_verify_args,
-            instructions_sysvar.as_ref(),
+            instructions_sysvar,
+            slot_hash_sysvar,
+            domain_config,
+            members,
+            settings.get_threshold()?,
+            transaction_buffer.multi_wallet_settings,
+            transaction_buffer.final_buffer_hash,
+            transaction_buffer.voters.as_ref(),
+            &transaction_buffer.expected_signers,
         )?;
 
-        let member = members
-            .iter()
-            .find(|x| x.pubkey.eq(&signer))
-            .ok_or(MultisigError::MissingAccount)?;
-
-        require!(
-            member.permissions.has(Permission::ExecuteTransaction),
-            MultisigError::InsufficientSignerWithExecutePermission
-        );
-
-        let vote_count = members
-            .iter()
-            .filter(|x| {
-                x.permissions.has(Permission::VoteTransaction)
-                    && (transaction_buffer.voters.contains(&x.pubkey) || signer.eq(&x.pubkey))
-            })
-            .count();
-
-        require!(
-            vote_count >= settings.get_threshold()? as usize,
-            MultisigError::InsufficientSignersWithVotePermission
-        );
-
-        if signer.get_type().eq(&KeyType::Secp256r1) {
-            let secp256r1_verify_data = secp256r1_verify_args
-                .as_ref()
-                .ok_or(MultisigError::InvalidSecp256r1VerifyArg)?;
-
-            let instructions_sysvar = instructions_sysvar
-                .as_ref()
-                .ok_or(MultisigError::MissingAccount)?;
-
-            secp256r1_verify_data.verify_webauthn(
-                slot_hash_sysvar,
-                domain_config,
-                instructions_sysvar,
-                ChallengeArgs {
-                    account: transaction_buffer.multi_wallet_settings,
-                    message_hash: transaction_buffer.final_buffer_hash,
-                    action_type: TransactionActionType::Execute,
-                },
-                &transaction_buffer.expected_secp256r1_signers,
-            )?;
-            settings
-                .latest_slot_number_check(&[secp256r1_verify_data.slot_number], slot_hash_sysvar)?;
-        }
+        let slot_numbers = TransactionBufferSigners::collect_slot_numbers(&secp256r1_verify_args);
+        settings.latest_slot_number_check(&slot_numbers, &slot_hash_sysvar)?;
         settings.invariant()?;
 
         Ok(())
@@ -135,7 +93,7 @@ impl<'info> TransactionBufferExecute<'info> {
             ctx.accounts.transaction_buffer.add_executor(signer)?;
         }
 
-        ctx.accounts.transaction_buffer.can_execute = true;
+        ctx.accounts.transaction_buffer.execute()?;
         Ok(())
     }
 }

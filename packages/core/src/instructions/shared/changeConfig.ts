@@ -4,8 +4,8 @@ import {
   getChangeConfigCompressedInstruction,
   getChangeConfigInstruction,
   type ConfigAction,
-  type Secp256r1VerifyArgsWithDomainAddressArgs,
   type SettingsMutArgs,
+  type TransactionSyncSignersArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
 import { convertToCompressedProofArgs } from "../../utils/compressed/internal";
@@ -41,36 +41,40 @@ export async function changeConfig({
     settingsMutArgs,
   } = changeConfigArgs;
   const dedupSigners = getDeduplicatedSigners(signers);
-  const transactionSigners = dedupSigners.filter(
-    (x) => !(x instanceof SignedSecp256r1Key),
-  ) as TransactionSigner[];
-  packedAccounts.addPreAccounts(
-    transactionSigners.map((x) => ({
-      address: x.address,
-      role: AccountRole.READONLY_SIGNER,
-      signer: x,
-    })),
-  );
-  const secp256r1Signers = dedupSigners.filter(
-    (x) => x instanceof SignedSecp256r1Key,
-  );
-  const secp256r1VerifyArgs: Secp256r1VerifyArgsWithDomainAddressArgs[] = [];
+  const transactionSyncSigners: TransactionSyncSignersArgs[] = [];
   const secp256r1VerifyInput = [];
-  for (const x of secp256r1Signers) {
-    const index = secp256r1VerifyInput.length;
-    const { domainConfig, verifyArgs, signature, publicKey, message } =
-      extractSecp256r1VerificationArgs(x, index);
-    if (message && signature && publicKey) {
-      secp256r1VerifyInput.push({ message, signature, publicKey });
-    }
-    if (domainConfig) {
-      packedAccounts.addPreAccounts([
-        { address: domainConfig, role: AccountRole.READONLY },
-      ]);
-      if (verifyArgs.__option === "Some") {
-        secp256r1VerifyArgs.push({
-          domainConfigKey: domainConfig,
-          verifyArgs: verifyArgs.value,
+  for (const x of dedupSigners) {
+    if (x instanceof SignedSecp256r1Key) {
+      const index = secp256r1VerifyInput.length;
+      const { domainConfig, verifyArgs, signature, publicKey, message } =
+        extractSecp256r1VerificationArgs(x, index);
+      if (message && signature && publicKey) {
+        secp256r1VerifyInput.push({ message, signature, publicKey });
+      }
+      if (domainConfig) {
+        const domainConfigIndex = packedAccounts
+          .addPreAccounts([
+            { address: domainConfig, role: AccountRole.READONLY },
+          ])
+          .get(domainConfig)?.index;
+        if (verifyArgs.__option === "Some" && domainConfigIndex !== undefined) {
+          transactionSyncSigners.push({
+            __kind: "Secp256r1",
+            fields: [{ domainConfigIndex, verifyArgs: verifyArgs.value }],
+          });
+        }
+      }
+    } else {
+      const index = packedAccounts
+        .addPreAccounts([
+          { address: x.address, role: AccountRole.READONLY_SIGNER, signer: x },
+        ])
+        .get(x.address)?.index;
+
+      if (index !== undefined) {
+        transactionSyncSigners.push({
+          __kind: "Ed25519",
+          fields: [index],
         });
       }
     }
@@ -94,7 +98,7 @@ export async function changeConfig({
         compressedProofArgs,
         settingsMutArgs,
         remainingAccounts,
-        secp256r1VerifyArgs,
+        signers: transactionSyncSigners,
       }),
     );
   } else {
@@ -105,7 +109,7 @@ export async function changeConfig({
         payer,
         compressedProofArgs,
         remainingAccounts,
-        secp256r1VerifyArgs,
+        signers: transactionSyncSigners,
       }),
     );
   }
