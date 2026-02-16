@@ -1,10 +1,13 @@
+import { equalBytes } from "@noble/curves/utils.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import type {
   ExpectedSigner,
   Secp256r1VerifyArgsWithDomainConfigIndex,
 } from "@revibase/core";
 import {
+  convertMemberKeyToString,
   createClientAuthorizationStartRequestChallenge,
+  getSecp256r1MessageHash,
   getSecp256r1VerifyInstructionDataDecoder,
   getSettingsFromIndex,
   getWalletAddressFromSettings,
@@ -27,10 +30,13 @@ import {
   address,
   decompileTransactionMessage,
   fetchAddressesForLookupTables,
-  getAddressDecoder,
   type Instruction,
 } from "gill";
-import type { Secp256r1VerifyData, SignerInfo, VerifiedSigner } from "../types";
+import type {
+  ExpectedTransactionSigner,
+  Secp256r1VerifyData,
+  SignerInfo,
+} from "../types";
 import {
   getRevibaseLookupTableAddresses,
   REVIBASE_LOOKUP_TABLE_ADDRESS,
@@ -88,12 +94,12 @@ export function mapExpectedSigners(
         throw new Error("Message hash cannot be found.");
       }
       return {
-        signer: new Secp256r1Key(x.memberKey.key),
+        signer: new Secp256r1Key(convertMemberKeyToString(x.memberKey)),
         messageHash: x.messageHash.value as Uint8Array<ArrayBuffer>,
       };
     } else {
       return {
-        signer: getAddressDecoder().decode(x.memberKey.key),
+        signer: address(convertMemberKeyToString(x.memberKey)),
       };
     }
   });
@@ -125,11 +131,14 @@ export async function verifyAndParseSigners(
   const walletAddress = await getWalletAddressFromSettings(
     address(settingsAddress),
   );
-  const verifiedSigners = await Promise.all(
-    signers.map(async ({ signer, messageHash }, signerIndex) => {
+  const result = await Promise.all(
+    signers.map(async ({ signer, messageHash }) => {
       if (signer instanceof Secp256r1Key) {
-        if (!messageHash) throw new Error("Message hash not found.");
-        const authDetails = authResponses[signerIndex];
+        if (!messageHash) throw new Error("Hash not found.");
+        const authDetails = authResponses.find((x) =>
+          equalBytes(getSecp256r1MessageHash(x.authResponse), messageHash),
+        );
+        if (!authDetails) throw new Error("Hash mismatch");
         const { client, device, authProvider, startRequest } = authDetails;
         if (startRequest.data.type !== "transaction")
           throw new Error("Invalid request type.");
@@ -163,17 +172,17 @@ export async function verifyAndParseSigners(
           client: { origin: client.clientOrigin, ...clientDetails },
           device: device.jwk,
           authProvider: authProvider?.jwk,
-        } as VerifiedSigner;
+        } as ExpectedTransactionSigner;
       }
 
       return {
         signer,
         walletAddress,
-      } as VerifiedSigner;
+      } as ExpectedTransactionSigner;
     }),
   );
 
-  return { instructions, verifiedSigners };
+  return { instructions, signers: result };
 }
 
 /**

@@ -28,9 +28,7 @@ export async function getRandomPayer(
   if (cached) return cached;
 
   // Fetch new payer
-  const response = await fetch(`${payerEndpoint}/getRandomPayer`, {
-    signal: AbortSignal.timeout(5000), // 5s timeout
-  });
+  const response = await fetch(`${payerEndpoint}/getRandomPayer`);
 
   if (!response.ok) {
     throw new Error(`Failed to get random payer: ${response.statusText}`);
@@ -52,7 +50,6 @@ export async function getRandomPayer(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-        signal: AbortSignal.timeout(10000), // 10s timeout
       });
 
       if (!signResponse.ok) {

@@ -90,13 +90,9 @@ export interface WellKnownClientCacheEntry {
 }
 
 /**
- * A signer that has been successfully verified during transaction verification.
- *
- * Includes the signer's public key, the wallet they are authorized for, and
- * the client/device context (origin, JWK, trusted devices) that produced the
- * signature. Used to record who signed and from which app/device.
+ * Signers that are expected to sign the transaction.
  */
-export type VerifiedSigner =
+export type ExpectedTransactionSigner =
   | {
       /** The public key of the verified signer. */
       signer: Secp256r1Key;
@@ -135,14 +131,13 @@ export type VerifiedSigner =
  * signers that successfully passed verification for those instructions.
  */
 export interface VerificationResults {
-  /** The raw transaction message bytes that were verified. */
+  /** The raw transaction message bytes that needs to be signed. */
   transactionMessage: TransactionMessageBytes;
   /**
-   * One entry per verification batch. Each entry lists the instructions
-   * extracted in that batch and the signers that passed verification.
+   * One entry per verification batch. Each entry lists the decoded instructions from the transaction message as well as the signers.
    */
   verificationResults: {
     instructions: Instruction[];
-    verifiedSigners: VerifiedSigner[];
+    signers: ExpectedTransactionSigner[];
   }[];
 }
