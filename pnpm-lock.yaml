@@ -64,8 +64,8 @@ importers:
         specifier: 0.3.2
         version: 0.3.2
       '@lightprotocol/stateless.js':
-        specifier: 0.23.0-beta.5
-        version: 0.23.0-beta.5(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10))
+        specifier: 0.23.0-beta.8
+        version: 0.23.0-beta.8(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10))
       '@noble/curves':
         specifier: 2.0.1
         version: 2.0.1
@@ -484,8 +484,8 @@ packages:
     peerDependencies:
       '@solana/web3.js': '>=1.73.5'
 
-  '@lightprotocol/stateless.js@0.23.0-beta.5':
-    resolution: {integrity: sha512-r8scroPiZ2kae3HQsqIqeeKNERH8/IW9ZvX/l+Bb82ioSBWnPTU+OVA7Kalaj7VPrLbhsXt4U971/QClnDakGg==}
+  '@lightprotocol/stateless.js@0.23.0-beta.8':
+    resolution: {integrity: sha512-c+Suq1lUvP2zUPdw1deG/hg3V5xwwDeHiX/euXb3ZXkVU6o68w7HezDkRex6Taad94z4REB6u04nb+U8uwkVFw==}
     peerDependencies:
       '@solana/web3.js': '>=1.73.5'
 
@@ -2354,7 +2354,7 @@ snapshots:
       camelcase-keys: 9.1.3
       superstruct: 2.0.2
 
-  '@lightprotocol/stateless.js@0.23.0-beta.5(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10))':
+  '@lightprotocol/stateless.js@0.23.0-beta.8(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10))':
     dependencies:
       '@coral-xyz/borsh': 0.29.0(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10))
       '@noble/hashes': 1.5.0

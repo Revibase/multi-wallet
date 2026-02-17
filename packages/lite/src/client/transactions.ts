@@ -1,4 +1,5 @@
 import type {
+  AdditionalSignersParam,
   StartTransactionRequest,
   TransactionPayloadWithBase64MessageBytes,
 } from "@revibase/core";
@@ -32,6 +33,7 @@ export async function executeTransaction(
   args: {
     instructions: Instruction[];
     signer: User;
+    additionalSigners?: AdditionalSignersParam;
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
   rid?: string,
@@ -73,6 +75,7 @@ export async function executeTransaction(
       type: "transaction" as const,
       payload: transactionPayload,
       sendTx: true,
+      additionalSigners: args.additionalSigners,
     },
     redirectOrigin,
     signer: signer.publicKey,

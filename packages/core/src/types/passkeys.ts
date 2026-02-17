@@ -32,6 +32,20 @@ export const TransactionPayloadWithBase64MessageBytesSchema = z
   })
   .strict();
 
+export const AdditionalSignersSchema = z
+  .union([
+    z.object({
+      type: z.literal("Ephemeral"),
+      secretKey: z.string(),
+    }),
+    z.object({
+      type: z.literal("Default"),
+      endpoint: z.string(),
+    }),
+  ])
+  .array()
+  .optional();
+
 export const StartMessageRequestSchema = z
   .object({
     phase: z.literal("start"),
@@ -60,6 +74,7 @@ export const StartTransactionRequestSchema = z
         type: z.literal("transaction"),
         payload: TransactionPayloadWithBase64MessageBytesSchema,
         sendTx: z.boolean(),
+        additionalSigners: AdditionalSignersSchema,
       })
       .strict(),
   })
@@ -198,3 +213,4 @@ export type TransactionAuthenticationResponse = TransactionDetails &
 export type MessageAuthenticationResponse = AuthenticationContext &
   BaseResponse;
 export type TransactionAuthDetails = TransactionDetails & AuthenticationContext;
+export type AdditionalSignersParam = z.infer<typeof AdditionalSignersSchema>;

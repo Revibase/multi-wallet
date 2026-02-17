@@ -36,7 +36,7 @@ export class RevibaseProvider {
    *
    * @throws {Error} If popup is blocked by the browser
    */
-  openPopUp() {
+  createNewPopup() {
     const redirectOrigin = window.origin;
     const rid = getBase64Decoder().decode(
       crypto.getRandomValues(new Uint8Array(16)),
