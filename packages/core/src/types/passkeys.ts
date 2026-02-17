@@ -1,6 +1,17 @@
 import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
 import z from "zod";
 
+export const UserInfoSchema = z.looseObject({
+  publicKey: z.string(),
+  walletAddress: z.string(),
+  settingsIndexWithAddress: z.object({
+    index: z.union([z.number(), z.bigint()]),
+    settingsAddressTreeIndex: z.number(),
+  }),
+  username: z.string().optional(),
+  profilePictureUrl: z.string().optional(),
+});
+
 export const TransactionActionTypeSchema = z.enum([
   "create",
   "create_with_preauthorized_execution",
@@ -180,6 +191,7 @@ export const CompleteSendTransactionRequestSchema = z
             StartMessageRequestSchema,
           ]),
           txSig: z.string(),
+          user: UserInfoSchema,
         }),
       })
       .strict(),
@@ -215,3 +227,4 @@ export type MessageAuthenticationResponse = AuthenticationContext &
   BaseResponse;
 export type TransactionAuthDetails = TransactionDetails & AuthenticationContext;
 export type AdditionalSignersParam = z.infer<typeof AdditionalSignersSchema>;
+export type UserInfo = z.infer<typeof UserInfoSchema>;

@@ -7,9 +7,9 @@ import {
   convertPubkeyCompressedToCose,
   createMessageChallenge,
   getWalletAddressFromIndex,
+  UserInfoSchema,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
-import { UserSchema, type User } from "src/utils";
 import { REVIBASE_AUTH_URL, REVIBASE_RP_ID } from "src/utils/consts";
 
 export async function processMessage(
@@ -56,12 +56,10 @@ export async function processMessage(
     settingsIndexWithAddress.index,
   );
 
-  const user: User = {
+  return UserInfoSchema.parse({
     publicKey: payload.signer,
     walletAddress,
     settingsIndexWithAddress,
     ...payload.additionalInfo,
-  };
-
-  return UserSchema.parse(user);
+  });
 }

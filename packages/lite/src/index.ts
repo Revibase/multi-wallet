@@ -3,6 +3,7 @@ export type {
   CompleteTransactionRequest,
   StartMessageRequest,
   StartTransactionRequest,
+  UserInfo,
 } from "@revibase/core";
 
 export * from "./client";

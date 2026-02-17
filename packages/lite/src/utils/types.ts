@@ -1,20 +1,9 @@
 import type {
   StartMessageRequest,
   StartTransactionRequest,
+  UserInfo,
 } from "@revibase/core";
 import z from "zod";
-
-export const UserSchema = z.looseObject({
-  publicKey: z.string(),
-  walletAddress: z.string(),
-  settingsIndexWithAddress: z.object({
-    index: z.union([z.number(), z.bigint()]),
-    settingsAddressTreeIndex: z.number(),
-  }),
-  username: z.string().optional(),
-  image: z.string().optional(),
-});
-export type User = z.infer<typeof UserSchema>;
 
 export const CompleteMessageRequestSchema = z.object({
   phase: z.literal("complete"),
@@ -43,6 +32,8 @@ export type CompleteTransactionRequest = z.infer<
 export type ClientAuthorizationCallback = {
   (request: StartMessageRequest): Promise<{ rid: string }>;
   (request: StartTransactionRequest): Promise<{ rid: string }>;
-  (request: CompleteMessageRequest): Promise<{ user: User }>;
-  (request: CompleteTransactionRequest): Promise<{ txSig: string }>;
+  (request: CompleteMessageRequest): Promise<{ user: UserInfo }>;
+  (
+    request: CompleteTransactionRequest,
+  ): Promise<{ txSig: string; user: UserInfo }>;
 };

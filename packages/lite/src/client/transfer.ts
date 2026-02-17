@@ -1,6 +1,7 @@
 import type {
   StartTransactionRequest,
   TransactionPayloadWithBase64MessageBytes,
+  UserInfo,
 } from "@revibase/core";
 import {
   address,
@@ -11,7 +12,6 @@ import {
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 import type { RevibaseProvider } from "src/provider/main";
 import { DEFAULT_TIMEOUT } from "src/provider/utils";
-import type { User } from "src/utils";
 
 /**
  * Transfers tokens (native SOL or SPL tokens) using the Revibase provider.
@@ -26,11 +26,11 @@ export async function transferTokens(
   args: {
     amount: number | bigint;
     destination: string;
-    signer?: User;
+    signer?: UserInfo;
     mint?: string;
     tokenProgram?: string;
   },
-): Promise<{ txSig: string }> {
+): Promise<{ txSig: string; user: UserInfo }> {
   // Validate inputs
   if (args.amount <= 0) {
     throw new Error("Transfer amount must be greater than 0");

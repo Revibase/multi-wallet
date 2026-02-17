@@ -1,8 +1,7 @@
-import type { StartMessageRequest } from "@revibase/core";
+import type { StartMessageRequest, UserInfo } from "@revibase/core";
 import { getBase64Decoder } from "gill";
 import type { RevibaseProvider } from "src/provider/main";
 import { DEFAULT_TIMEOUT } from "src/provider/utils";
-import type { User } from "src/utils";
 import { createSignInMessageText } from "src/utils/internal";
 
 /**
@@ -15,7 +14,7 @@ import { createSignInMessageText } from "src/utils/internal";
  */
 export async function signIn(
   provider: RevibaseProvider,
-): Promise<{ user: User }> {
+): Promise<{ user: UserInfo }> {
   const redirectOrigin = window.origin;
   const rid = getBase64Decoder().decode(
     crypto.getRandomValues(new Uint8Array(16)),

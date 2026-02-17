@@ -1,6 +1,7 @@
 import type {
   StartMessageRequest,
   StartTransactionRequest,
+  UserInfo,
 } from "@revibase/core";
 import {
   StartMessageRequestSchema,
@@ -12,7 +13,6 @@ import {
   CompleteTransactionRequestSchema,
   type CompleteMessageRequest,
   type CompleteTransactionRequest,
-  type User,
 } from "src/utils";
 import z from "zod";
 import { processGetResult } from "./processGetResult";
@@ -45,7 +45,7 @@ export async function processClientAuthCallback({
   privateKey: string;
   providerOrigin?: string;
   rpId?: string;
-}): Promise<{ rid: string } | { user: User } | { txSig: string }> {
+}): Promise<{ rid: string } | { txSig?: string; user: UserInfo }> {
   const parsedResult = z
     .union([
       StartTransactionRequestSchema,
@@ -110,5 +110,5 @@ export async function processClientAuthCallback({
     };
   }
 
-  return { txSig: result.data.payload.txSig };
+  return { txSig: result.data.payload.txSig, user: result.data.payload.user };
 }

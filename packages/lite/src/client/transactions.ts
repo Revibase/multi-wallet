@@ -2,6 +2,7 @@ import type {
   AdditionalSignersParam,
   StartTransactionRequest,
   TransactionPayloadWithBase64MessageBytes,
+  UserInfo,
 } from "@revibase/core";
 import {
   fetchSettingsAccountData,
@@ -17,7 +18,6 @@ import {
 } from "gill";
 import type { RevibaseProvider } from "src/provider/main";
 import { DEFAULT_TIMEOUT } from "src/provider/utils";
-import type { User } from "src/utils/types";
 
 /**
  * Executes a transaction using the Revibase provider.
@@ -32,12 +32,12 @@ export async function executeTransaction(
   provider: RevibaseProvider,
   args: {
     instructions: Instruction[];
-    signer: User;
+    signer: UserInfo;
     additionalSigners?: AdditionalSignersParam;
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
   rid?: string,
-): Promise<{ txSig: string }> {
+): Promise<{ txSig: string; user: UserInfo }> {
   const { instructions, signer, addressesByLookupTableAddress } = args;
   const transactionMessageBytes = prepareTransactionMessage({
     payer: address(signer.walletAddress),
