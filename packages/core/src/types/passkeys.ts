@@ -40,6 +40,7 @@ export const AdditionalSignersSchema = z
     }),
     z.object({
       type: z.literal("Default"),
+      publickey: z.string(),
       endpoint: z.string(),
     }),
   ])
