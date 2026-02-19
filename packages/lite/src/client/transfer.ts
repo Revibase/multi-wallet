@@ -31,7 +31,7 @@ export async function transferTokens(
     throw new Error("Destination address is required");
   }
 
-  const { rid, redirectOrigin } = provider.createNewPopup();
+  const { rid, redirectOrigin } = provider.initialize();
 
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
 

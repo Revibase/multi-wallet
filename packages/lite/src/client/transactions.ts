@@ -27,7 +27,7 @@ export async function executeTransaction(
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
 ): Promise<{ txSig?: string; user: UserInfo }> {
-  const { redirectOrigin, rid } = provider.createNewPopup();
+  const { redirectOrigin, rid } = provider.initialize();
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
   const {

@@ -7,7 +7,7 @@ import { createSignInMessageText } from "src/utils/internal";
 export async function signIn(
   provider: RevibaseProvider,
 ): Promise<{ user: UserInfo }> {
-  const { rid, redirectOrigin } = provider.createNewPopup();
+  const { rid, redirectOrigin } = provider.initialize();
 
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
 

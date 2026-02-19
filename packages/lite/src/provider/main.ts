@@ -37,18 +37,21 @@ export class RevibaseProvider {
     };
   }
 
-  createNewPopup() {
+  initialize() {
     const redirectOrigin = window.origin;
     const rid = getBase64Decoder().decode(
       crypto.getRandomValues(new Uint8Array(16)),
     );
-    const url = new URL(this.providerOrigin);
-    url.searchParams.set("rid", rid);
-    url.searchParams.set("redirectOrigin", redirectOrigin);
 
-    this.popUp = createPopUp(url.toString());
-    if (!this.popUp) {
-      throw new Error("Popup blocked. Please enable popups.");
+    if (!this.channelId) {
+      const url = new URL(this.providerOrigin);
+      url.searchParams.set("rid", rid);
+      url.searchParams.set("redirectOrigin", redirectOrigin);
+
+      this.popUp = createPopUp(url.toString());
+      if (!this.popUp) {
+        throw new Error("Popup blocked. Please enable popups.");
+      }
     }
 
     return { rid, redirectOrigin };

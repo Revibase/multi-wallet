@@ -8,6 +8,7 @@ import {
   StartTransactionRequestSchema,
 } from "@revibase/core";
 import { DEFAULT_TIMEOUT } from "src/provider/utils";
+import type { DeviceSignature } from "src/utils";
 import z from "zod";
 import { processGetResult } from "./processGetResult";
 import { processMessage } from "./processMessage";
@@ -26,10 +27,7 @@ export async function processClientAuthCallback({
   signal: AbortSignal;
   privateKey: string;
   channelId?: string;
-  device?: {
-    jwk: string;
-    jws: string;
-  };
+  device?: DeviceSignature;
   providerOrigin?: string;
   rpId?: string;
 }): Promise<{ txSig?: string; user: UserInfo }> {
