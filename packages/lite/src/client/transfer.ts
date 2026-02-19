@@ -40,6 +40,10 @@ export async function transferTokens(
     throw new Error("Destination address is required");
   }
 
+  const { rid, redirectOrigin } = provider.createNewPopup();
+
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
   const {
     mint,
     tokenProgram = TOKEN_PROGRAM_ADDRESS,
@@ -60,10 +64,6 @@ export async function transferTokens(
     ),
   };
 
-  const redirectOrigin = window.origin;
-  const rid = getBase64Decoder().decode(
-    crypto.getRandomValues(new Uint8Array(16)),
-  );
   const payload: StartTransactionRequest = {
     phase: "start",
     rid,
@@ -77,13 +77,10 @@ export async function transferTokens(
     signer: signer?.publicKey,
   };
 
-  await Promise.all([
-    provider.onClientAuthorizationCallback(payload),
-    provider.sendPayloadToProvider({
-      rid,
-      redirectOrigin,
-    }),
-  ]);
+  provider.onClientAuthorizationCallback(payload);
+  await provider.sendPayloadToProvider({
+    rid,
+  });
 
   return await provider.onClientAuthorizationCallback({
     phase: "complete",

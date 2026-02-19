@@ -49,7 +49,8 @@ export class RevibaseProvider {
     if (!this.popUp) {
       throw new Error("Popup blocked. Please enable popups.");
     }
-    return { rid };
+
+    return { rid, redirectOrigin };
   }
 
   /**
@@ -63,11 +64,9 @@ export class RevibaseProvider {
    */
   async sendPayloadToProvider({
     rid,
-    redirectOrigin,
     timeoutMs = DEFAULT_TIMEOUT,
   }: {
     rid: string;
-    redirectOrigin: string;
     timeoutMs?: number;
   }): Promise<{ rid: string }> {
     if (typeof window === "undefined") {
@@ -77,10 +76,6 @@ export class RevibaseProvider {
     if (this.pending.size > 0) {
       throw new Error("An authorization flow is already in progress");
     }
-
-    const url = new URL(this.providerOrigin);
-    url.searchParams.set("rid", rid);
-    url.searchParams.set("redirectOrigin", redirectOrigin);
 
     return new Promise<{ rid: string }>((resolve, reject) => {
       const timeoutId = setTimeout(() => {
@@ -96,11 +91,14 @@ export class RevibaseProvider {
         }
       }, timeoutMs);
 
+      if (!this.popUp || this.popUp.closed) {
+        throw new Error("Popup is not open. Call createNewPopup() first.");
+      }
       this.pending.set(rid, { rid, resolve, reject, timeoutId });
 
-      this.openWebPopup({
-        startUrl: url.toString(),
-        origin: url.origin,
+      this.attachTransport({
+        popup: this.popUp,
+        origin: new URL(this.providerOrigin).origin,
         rid,
       });
     });
@@ -112,21 +110,18 @@ export class RevibaseProvider {
    *
    * @private
    */
-  private openWebPopup(params: {
-    startUrl: string;
+  private attachTransport(params: {
+    popup: Window;
     origin: string;
     rid: string;
   }) {
-    const { startUrl, origin, rid } = params;
+    const { popup, origin, rid } = params;
 
     const entry = this.pending.get(rid);
     if (!entry) return;
 
-    let popup: Window | null = this.popUp ?? null;
     let port: MessagePort | null = null;
-
     let finished = false;
-    let closeHandled = false;
 
     const cleanup = (): void => {
       window.removeEventListener("message", onConnect);
@@ -170,46 +165,9 @@ export class RevibaseProvider {
 
     entry.cancel = fail;
 
-    const ensurePopupOpenedAndNavigated = (): Window => {
-      // Open or reuse popup
-      if (!popup) {
-        popup = createPopUp(startUrl);
-      } else {
-        // MUST navigate (no silent fallback)
-        try {
-          // Location access can throw; if it does, we still try replace
-          if (popup.location.href !== startUrl) {
-            popup.location.replace(startUrl);
-          }
-        } catch {
-          // If replace throws too, we consider navigation failed
-          try {
-            popup.location.replace(startUrl);
-          } catch {
-            throw new Error("Unable to navigate popup to provider URL");
-          }
-        }
-      }
-
-      if (!popup) {
-        throw new Error("Popup blocked. Please enable popups.");
-      }
-      return popup;
-    };
-
-    // --- Start: open popup + require navigation
-    try {
-      popup = ensurePopupOpenedAndNavigated();
-    } catch (e) {
-      fail(e instanceof Error ? e : new Error(String(e)));
-      return;
-    }
-
     // Detect user closing popup
     const heartbeatId = setInterval(() => {
       if (!popup?.closed) return;
-      if (closeHandled) return;
-      closeHandled = true;
       fail(new Error("Popup was closed by the user"));
     }, HEARTBEAT_INTERVAL);
 
@@ -218,8 +176,7 @@ export class RevibaseProvider {
       if (event.source !== popup) return;
 
       const data = event.data as PopupConnectMessage;
-      if (data?.type !== "popup-connect") return;
-      if (data.rid !== rid) return;
+      if (!data || data.type !== "popup-connect" || data.rid !== rid) return;
       if (!event.ports?.[0]) return;
 
       port = event.ports[0];

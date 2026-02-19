@@ -38,6 +38,12 @@ export async function executeTransaction(
   },
   rid?: string,
 ): Promise<{ txSig: string; user: UserInfo }> {
+  const redirectOrigin = window.origin;
+  if (!rid) {
+    ({ rid } = provider.createNewPopup());
+  }
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
   const { instructions, signer, addressesByLookupTableAddress } = args;
   const transactionMessageBytes = prepareTransactionMessage({
     payer: address(signer.walletAddress),
@@ -62,11 +68,6 @@ export async function executeTransaction(
       : "create_with_preauthorized_execution",
   };
 
-  const redirectOrigin = window.origin;
-  rid =
-    rid ??
-    getBase64Decoder().decode(crypto.getRandomValues(new Uint8Array(16)));
-
   const payload: StartTransactionRequest = {
     phase: "start",
     rid,
@@ -81,13 +82,10 @@ export async function executeTransaction(
     signer: signer.publicKey,
   };
 
-  await Promise.all([
-    provider.onClientAuthorizationCallback(payload),
-    provider.sendPayloadToProvider({
-      rid,
-      redirectOrigin,
-    }),
-  ]);
+  provider.onClientAuthorizationCallback(payload);
+  await provider.sendPayloadToProvider({
+    rid,
+  });
 
   return await provider.onClientAuthorizationCallback({
     phase: "complete",
