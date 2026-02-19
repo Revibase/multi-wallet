@@ -12,11 +12,18 @@ export async function processStartRequest({
   request,
   providerOrigin = REVIBASE_AUTH_URL,
   signal,
+  device,
+  channelId,
 }: {
   privateKey: string;
   request: StartTransactionRequest | StartMessageRequest;
-  providerOrigin?: string;
   signal: AbortSignal;
+  channelId?: string;
+  device?: {
+    jwk: string;
+    jws: string;
+  };
+  providerOrigin?: string;
 }): Promise<{ rid: string }> {
   const pKey = convertBase64StringToJWK(privateKey);
   if (!pKey.alg) throw new Error("Property alg in JWK is missing.");
@@ -33,6 +40,8 @@ export async function processStartRequest({
     body: JSON.stringify({
       signature,
       request,
+      device,
+      channelId,
     }),
     signal,
   });

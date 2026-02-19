@@ -10,6 +10,8 @@ Add **Revibase** (passkey-based Solana wallet) to your app. Users sign in and si
 
 The private key is only used on the server. The client only sees the request/result payloads.
 
+**Device binding (optional)** — When you pass a `channelId` to the provider, the SDK creates a **device-bound key** (Ed25519, non-exportable) and stores it in the browser’s IndexedDB. That key is used to sign the channel id; your backend receives `device: { jwk, jws }` and can bind the session to that device. The private key never leaves the device and cannot be exported.
+
 ## Prerequisites
 
 Get a single **key pair** from [developers.revibase.com](https://developers.revibase.com). You will use:
@@ -46,11 +48,17 @@ import { processClientAuthCallback } from "@revibase/lite";
 
 export async function POST(req: Request) {
   try {
-    const { request } = (await req.json()) as { request: unknown };
+    const { request, device, channelId } = (await req.json()) as {
+      request: StartMessageRequest | StartTransactionRequest;
+      device?: DeviceSignature;
+      channelId?: string;
+    };
     const result = await processClientAuthCallback({
       request,
       privateKey: process.env.PRIVATE_KEY!,
       signal: req.signal,
+      device,
+      channelId,
     });
     return new Response(JSON.stringify(result));
   } catch (error) {
@@ -75,11 +83,11 @@ import {
 } from "@revibase/lite";
 
 const provider = new RevibaseProvider({
-  onClientAuthorizationCallback: async (request, signal) => {
+  onClientAuthorizationCallback: async (request, signal, device, channelId) => {
     const res = await fetch("/api/clientAuthorization", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ request }),
+      body: JSON.stringify({ request, device, channelId }),
       signal,
     });
     const data = await res.json();
@@ -89,6 +97,7 @@ const provider = new RevibaseProvider({
       );
     return data;
   },
+  channelId,
 });
 ```
 
@@ -111,7 +120,7 @@ For custom instructions, use **`executeTransaction`** (see API reference).
 
 ---
 
-**Checklist:** Install → add `/.well-known/revibase.json` with `clientJwk` → set `PRIVATE_KEY` → add POST route with `processClientAuthCallback` and `req.signal` → create `RevibaseProvider` with callback that passes `signal` to `fetch` → call `signIn(provider)` and/or `transferTokens` / `executeTransaction`.
+**Checklist:** Install → add `/.well-known/revibase.json` with `clientJwk` → set `PRIVATE_KEY` → add POST route with `processClientAuthCallback` and `req.signal` (and `device`, `channelId` if using device binding) → create `RevibaseProvider` with callback that passes `signal` to `fetch` (optionally pass `channelId` for device-bound keys) → call `signIn(provider)` and/or `transferTokens` / `executeTransaction`.
 
 **Security:** Store `PRIVATE_KEY` only on the server. Use HTTPS in production.
 
@@ -162,7 +171,8 @@ function transferTokens(
 **`RevibaseProvider`** — Connects your app to the Revibase auth popup and your backend.
 
 - **Constructor:** `new RevibaseProvider(opts)`
-  - `opts.onClientAuthorizationCallback` — **Required.** Called with `(request, signal)`; must POST `request` to your backend and return the JSON result. Pass `signal` to `fetch` for cancellation.
+  - `opts.onClientAuthorizationCallback` — **Required.** Called with `(request, signal, device, channelId)`. POST `request`, `device`, and `channelId` to your backend and return the JSON result. Pass `signal` to `fetch` for cancellation.
+  - `opts.channelId` — Optional. When set, a device-bound key is created (or reused) and used to sign the channel; the callback receives `device: { jwk, jws }` for your backend to verify and bind the session.
   - `opts.providerOrigin` — Optional. Default `https://auth.revibase.com`.
 
 ### Server
@@ -179,6 +189,8 @@ function processClientAuthCallback(options: {
   request: StartMessageRequest | StartTransactionRequest;
   signal: AbortSignal;
   privateKey: string; // base64-encoded JWK
+  device?: DeviceSignature; // { jwk, jws } from device-bound key when channelId is used
+  channelId?: string;
   providerOrigin?: string;
   rpId?: string;
 }): Promise<{ txSig?: string; user: UserInfo }>;

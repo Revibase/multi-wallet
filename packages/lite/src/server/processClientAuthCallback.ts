@@ -19,10 +19,17 @@ export async function processClientAuthCallback({
   providerOrigin,
   rpId,
   signal,
+  device,
+  channelId,
 }: {
   request: StartTransactionRequest | StartMessageRequest;
   signal: AbortSignal;
   privateKey: string;
+  channelId?: string;
+  device?: {
+    jwk: string;
+    jws: string;
+  };
   providerOrigin?: string;
   rpId?: string;
 }): Promise<{ txSig?: string; user: UserInfo }> {
@@ -48,6 +55,8 @@ export async function processClientAuthCallback({
       privateKey,
       providerOrigin,
       signal,
+      device,
+      channelId,
     });
   } else {
     await processStartRequest({
@@ -67,6 +76,8 @@ export async function processClientAuthCallback({
       providerOrigin,
       privateKey,
       signal,
+      device,
+      channelId,
     });
   }
 

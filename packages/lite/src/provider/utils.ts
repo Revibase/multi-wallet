@@ -16,6 +16,7 @@ export type PopupConnectMessage = {
 export type Options = {
   onClientAuthorizationCallback: ClientAuthorizationCallback;
   providerOrigin?: string;
+  channelId?: string;
 };
 
 export type Pending = {

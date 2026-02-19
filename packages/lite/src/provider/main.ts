@@ -1,6 +1,7 @@
 import { getBase64Decoder } from "gill";
 import type { ClientAuthorizationCallback } from "src/utils";
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
+import { DeviceKeyManager } from "./device";
 import {
   createPopUp,
   DEFAULT_TIMEOUT,
@@ -16,10 +17,24 @@ export class RevibaseProvider {
   public readonly onClientAuthorizationCallback: ClientAuthorizationCallback;
   private readonly providerOrigin: string;
   private popUp: Window | null = null;
+  public channelId: string | undefined = undefined;
 
   constructor(opts: Options) {
     this.onClientAuthorizationCallback = opts.onClientAuthorizationCallback;
     this.providerOrigin = opts.providerOrigin ?? REVIBASE_AUTH_URL;
+    this.channelId = opts.channelId;
+  }
+
+  async getDeviceSignature() {
+    if (!this.channelId) {
+      return;
+    }
+    return {
+      jwk: (await DeviceKeyManager.getOrCreateDevicePublickey()).publicKey,
+      jws: await DeviceKeyManager.sign(
+        new TextEncoder().encode(this.channelId),
+      ),
+    };
   }
 
   createNewPopup() {

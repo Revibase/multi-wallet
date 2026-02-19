@@ -28,14 +28,18 @@ export async function signIn(
   };
 
   const abortController = new AbortController();
-  provider
-    .sendPayloadToProvider({
-      rid,
-      signal: abortController.signal,
-    })
-    .catch((error) => abortController.abort(error));
+  if (!provider.channelId) {
+    provider
+      .sendPayloadToProvider({
+        rid,
+        signal: abortController.signal,
+      })
+      .catch((error) => abortController.abort(error));
+  }
   return await provider.onClientAuthorizationCallback(
     payload,
     abortController.signal,
+    await provider.getDeviceSignature(),
+    provider.channelId,
   );
 }
