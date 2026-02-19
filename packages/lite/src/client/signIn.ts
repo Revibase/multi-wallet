@@ -4,14 +4,6 @@ import type { RevibaseProvider } from "src/provider/main";
 import { DEFAULT_TIMEOUT } from "src/provider/utils";
 import { createSignInMessageText } from "src/utils/internal";
 
-/**
- * Initiates a sign-in flow using WebAuthn authentication.
- * Opens a popup window and handles the complete authentication process.
- *
- * @param provider - Revibase provider instance
- * @returns User information after successful authentication
- * @throws {Error} If authentication fails or popup is blocked
- */
 export async function signIn(
   provider: RevibaseProvider,
 ): Promise<{ user: UserInfo }> {
@@ -35,13 +27,15 @@ export async function signIn(
     redirectOrigin,
   };
 
-  provider.onClientAuthorizationCallback(payload);
-  await provider.sendPayloadToProvider({
-    rid,
-  });
-
-  return await provider.onClientAuthorizationCallback({
-    phase: "complete",
-    data: { type: "message", rid },
-  });
+  const abortController = new AbortController();
+  provider
+    .sendPayloadToProvider({
+      rid,
+      signal: abortController.signal,
+    })
+    .catch((error) => abortController.abort(error));
+  return await provider.onClientAuthorizationCallback(
+    payload,
+    abortController.signal,
+  );
 }

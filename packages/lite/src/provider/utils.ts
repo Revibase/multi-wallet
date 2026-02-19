@@ -1,7 +1,7 @@
 import type { ClientAuthorizationCallback } from "src/utils";
 
-export const DEFAULT_TIMEOUT = 10 * 60 * 1000; // 10 minutes
-export const HEARTBEAT_INTERVAL = 2000; // 2s
+export const DEFAULT_TIMEOUT = 10 * 60 * 1000;
+export const HEARTBEAT_INTERVAL = 2000;
 
 export type PopupPortMessage =
   | { type: "popup-complete"; payload: any }
@@ -14,19 +14,8 @@ export type PopupConnectMessage = {
 };
 
 export type Options = {
-  /**
-   * Client Authorization Callback
-   */
   onClientAuthorizationCallback: ClientAuthorizationCallback;
-  /**
-   * Origin of the authentication provider (e.g. https://auth.example.com).
-   * Used to open and communicate with the authorization popup.
-   */
   providerOrigin?: string;
-  /**
-   * Solana Rpc Endpoint
-   */
-  rpcEndpoint?: string;
 };
 
 export type Pending = {
@@ -37,15 +26,6 @@ export type Pending = {
   cancel?: (err: Error) => void;
 };
 
-/**
- * Opens a popup window for WebAuthn or authentication workflows.
- *
- * This helper creates a centered, resizable popup on desktop, and a full-screen view on mobile.
- *
- * @param url - The URL to load in the popup (optional, can be set later)
- * @returns A reference to the newly created popup window, or `null` if blocked by the browser
- * @throws {Error} If called outside a browser environment
- */
 export function createPopUp(url?: string): Window | null {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");

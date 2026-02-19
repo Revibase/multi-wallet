@@ -5,10 +5,8 @@ import type {
   UserInfo,
 } from "@revibase/core";
 import {
-  fetchSettingsAccountData,
   getSettingsFromIndex,
   prepareTransactionMessage,
-  UserRole,
 } from "@revibase/core";
 import {
   address,
@@ -19,32 +17,25 @@ import {
 import type { RevibaseProvider } from "src/provider/main";
 import { DEFAULT_TIMEOUT } from "src/provider/utils";
 
-/**
- * Executes a transaction using the Revibase provider.
- * Automatically determines whether to use bundling based on transaction size.
- *
- * @param provider - Revibase provider instance
- * @param args - Transaction arguments including instructions, signer, and optional lookup tables
- * @returns Transaction signature
- * @throws {Error} If transaction execution fails
- */
 export async function executeTransaction(
   provider: RevibaseProvider,
   args: {
     instructions: Instruction[];
     signer: UserInfo;
+    hasTxManager?: boolean;
     additionalSigners?: AdditionalSignersParam;
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
-  rid?: string,
-): Promise<{ txSig: string; user: UserInfo }> {
-  const redirectOrigin = window.origin;
-  if (!rid) {
-    ({ rid } = provider.createNewPopup());
-  }
+): Promise<{ txSig?: string; user: UserInfo }> {
+  const { redirectOrigin, rid } = provider.createNewPopup();
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
-  const { instructions, signer, addressesByLookupTableAddress } = args;
+  const {
+    instructions,
+    signer,
+    addressesByLookupTableAddress,
+    hasTxManager = true,
+  } = args;
   const transactionMessageBytes = prepareTransactionMessage({
     payer: address(signer.walletAddress),
     instructions,
@@ -53,17 +44,11 @@ export async function executeTransaction(
   const settings = await getSettingsFromIndex(
     signer.settingsIndexWithAddress.index,
   );
-  const walletInfo = await fetchSettingsAccountData(
-    settings,
-    signer.settingsIndexWithAddress.settingsAddressTreeIndex,
-  );
 
   const transactionPayload: TransactionPayloadWithBase64MessageBytes = {
     transactionMessageBytes: getBase64Decoder().decode(transactionMessageBytes),
     transactionAddress: settings,
-    transactionActionType: walletInfo.members.some(
-      (x) => x.role === UserRole.TransactionManager,
-    )
+    transactionActionType: hasTxManager
       ? "execute"
       : "create_with_preauthorized_execution",
   };
@@ -81,14 +66,15 @@ export async function executeTransaction(
     redirectOrigin,
     signer: signer.publicKey,
   };
-
-  provider.onClientAuthorizationCallback(payload);
-  await provider.sendPayloadToProvider({
-    rid,
-  });
-
-  return await provider.onClientAuthorizationCallback({
-    phase: "complete",
-    data: { type: "transaction", rid },
-  });
+  const abortController = new AbortController();
+  provider
+    .sendPayloadToProvider({
+      rid,
+      signal: abortController.signal,
+    })
+    .catch((error) => abortController.abort(error));
+  return await provider.onClientAuthorizationCallback(
+    payload,
+    abortController.signal,
+  );
 }

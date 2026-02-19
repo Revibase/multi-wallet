@@ -1,32 +1,45 @@
-# Integrating Revibase as a Wallet with @revibase/lite
+# @revibase/lite
 
-Use **@revibase/lite** so users can sign in with Revibase and use it as a wallet. The flow: frontend calls your API with an auth request → your server calls `processClientAuthCallback` with a **private key** → returns result to client. The key never leaves your server.
+Add **Revibase** (passkey-based Solana wallet) to your app. Users sign in and sign transactions in a popup; your backend authorizes requests with a private key that never leaves the server.
 
-**Key pair:** At [developers.revibase.com](https://developers.revibase.com) you get one **key pair**. Put the **public key** in `revibase.json` as `clientJwk` and the **private key** in `PRIVATE_KEY`.
+## How it works
 
----
+1. **Frontend** — User triggers sign-in or a transaction; the app opens a Revibase popup and sends the auth request to your backend.
+2. **Backend** — Your POST route calls `processClientAuthCallback` with the request body and your **private key**, talks to the Revibase provider, and returns the result.
+3. **Frontend** — The callback receives the result; the popup closes and your app gets `user` (and optionally `txSig`).
 
-## 1. Install
+The private key is only used on the server. The client only sees the request/result payloads.
+
+## Prerequisites
+
+Get a single **key pair** from [developers.revibase.com](https://developers.revibase.com). You will use:
+
+- **Public key** → in `revibase.json` as `clientJwk`
+- **Private key** → in env as `PRIVATE_KEY` (server-only)
+
+## Setup
+
+### 1. Install
 
 ```bash
 pnpm add @revibase/lite
 ```
 
-## 2. Well-known file
+### 2. Well-known file
 
-Add `public/.well-known/revibase.json` (served at `/.well-known/revibase.json`). Use the **public key** from your key pair as `clientJwk` (from [developers.revibase.com](https://developers.revibase.com)).
+Serve `/.well-known/revibase.json` (e.g. from `public/.well-known/revibase.json`). Set `clientJwk` to the **public key** from your key pair.
 
 ```json
 {
-  "clientJwk": "<from-developers.revibase.com>",
+  "clientJwk": "<public-key-from-developers.revibase.com>",
   "title": "My App",
   "description": "Connect with passkeys"
 }
 ```
 
-## 3. Backend
+### 3. Backend
 
-Set env **`PRIVATE_KEY`** to the **private key** from the same key pair (from [developers.revibase.com](https://developers.revibase.com)). Add a POST route (e.g. `app/api/clientAuthorization/route.ts`):
+Set `PRIVATE_KEY` to the **private key** from the same key pair. Add a POST route that forwards the client’s auth request to Revibase and returns the result. Pass **`req.signal`** into `processClientAuthCallback` so that when the user closes the popup or the client aborts, the server cancels in-flight requests.
 
 ```ts
 import { processClientAuthCallback } from "@revibase/lite";
@@ -37,6 +50,7 @@ export async function POST(req: Request) {
     const result = await processClientAuthCallback({
       request,
       privateKey: process.env.PRIVATE_KEY!,
+      signal: req.signal,
     });
     return new Response(JSON.stringify(result));
   } catch (error) {
@@ -50,9 +64,9 @@ export async function POST(req: Request) {
 }
 ```
 
-## 4. Frontend
+### 4. Frontend provider
 
-Create a provider that POSTs the auth request to your route:
+Create a `RevibaseProvider` whose callback POSTs the auth request to your route. Pass the callback’s **`signal`** to `fetch` so that when the popup is closed or the flow aborts, the client request (and thus the server’s `req.signal`) is cancelled.
 
 ```ts
 import {
@@ -61,11 +75,12 @@ import {
 } from "@revibase/lite";
 
 const provider = new RevibaseProvider({
-  onClientAuthorizationCallback: async (request) => {
+  onClientAuthorizationCallback: async (request, signal) => {
     const res = await fetch("/api/clientAuthorization", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ request }),
+      signal,
     });
     const data = await res.json();
     if (!res.ok)
@@ -77,7 +92,7 @@ const provider = new RevibaseProvider({
 });
 ```
 
-## 5. Sign in & transfer
+### 5. Sign in and send transactions
 
 ```ts
 import { signIn, transferTokens } from "@revibase/lite";
@@ -88,12 +103,88 @@ const { txSig } = await transferTokens(provider, {
   amount: BigInt(100_000_000),
   destination: "RECIPIENT_ADDRESS",
   signer: user,
-  // mint: "..." // optional; omit for SOL
+  // mint: "..."  // optional; omit for SOL
 });
 ```
 
+For custom instructions, use **`executeTransaction`** (see API reference).
+
 ---
 
-**Checklist:** Install → add `public/.well-known/revibase.json` → set `PRIVATE_KEY` → add POST route with `processClientAuthCallback` → create `RevibaseProvider` with callback → `signIn(provider)` then `transferTokens(provider, { … })`.
+**Checklist:** Install → add `/.well-known/revibase.json` with `clientJwk` → set `PRIVATE_KEY` → add POST route with `processClientAuthCallback` and `req.signal` → create `RevibaseProvider` with callback that passes `signal` to `fetch` → call `signIn(provider)` and/or `transferTokens` / `executeTransaction`.
 
-**Security:** Keep `PRIVATE_KEY` server-only. Use HTTPS in production.
+**Security:** Store `PRIVATE_KEY` only on the server. Use HTTPS in production.
+
+---
+
+## API Reference
+
+Public exports from `@revibase/lite`: client helpers (browser), `RevibaseProvider` (browser), server helpers, and types.
+
+### Client (browser)
+
+| Function                                 | Description                                                                                                        |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| **`signIn(provider)`**                   | Opens the auth popup and returns `{ user: UserInfo }` after WebAuthn sign-in.                                      |
+| **`executeTransaction(provider, args)`** | Builds and executes a transaction (uses wallet settings to choose execute vs create_with_preauthorized_execution). |
+| **`transferTokens(provider, args)`**     | Transfers SOL or SPL tokens. Set `mint` for SPL; omit for native SOL.                                              |
+
+**Signatures**
+
+```ts
+function signIn(provider: RevibaseProvider): Promise<{ user: UserInfo }>;
+
+function executeTransaction(
+  provider: RevibaseProvider,
+  args: {
+    instructions: Instruction[];
+    signer: UserInfo;
+    hasTxManager?: boolean;
+    additionalSigners?: AdditionalSignersParam;
+    addressesByLookupTableAddress?: AddressesByLookupTableAddress;
+  },
+): Promise<{ txSig?: string; user: UserInfo }>;
+
+function transferTokens(
+  provider: RevibaseProvider,
+  args: {
+    amount: number | bigint;
+    destination: string;
+    signer?: UserInfo;
+    mint?: string;
+    tokenProgram?: string;
+  },
+): Promise<{ txSig?: string; user: UserInfo }>;
+```
+
+### Provider (browser)
+
+**`RevibaseProvider`** — Connects your app to the Revibase auth popup and your backend.
+
+- **Constructor:** `new RevibaseProvider(opts)`
+  - `opts.onClientAuthorizationCallback` — **Required.** Called with `(request, signal)`; must POST `request` to your backend and return the JSON result. Pass `signal` to `fetch` for cancellation.
+  - `opts.providerOrigin` — Optional. Default `https://auth.revibase.com`.
+
+### Server
+
+| Function                                           | Description                                                                                                                                                                                                      |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`processClientAuthCallback(options)`**           | Validates the start request, calls the Revibase start + getResult APIs, returns `{ user }` (message) or `{ txSig, user }` (transaction). Pass `req.signal` so fetches are cancelled when the client disconnects. |
+| **`createTransactionSigner(request, privateKey)`** | Signs an array of serialized transactions. Use when the provider requires additional signers.                                                                                                                    |
+
+**Signatures**
+
+```ts
+function processClientAuthCallback(options: {
+  request: StartMessageRequest | StartTransactionRequest;
+  signal: AbortSignal;
+  privateKey: string; // base64-encoded JWK
+  providerOrigin?: string;
+  rpId?: string;
+}): Promise<{ txSig?: string; user: UserInfo }>;
+
+function createTransactionSigner(
+  request: { transactions: string[] },
+  privateKey: KeyPairSigner,
+): Promise<{ signatures: string[] }>;
+```

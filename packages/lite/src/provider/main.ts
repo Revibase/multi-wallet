@@ -1,7 +1,6 @@
-import { initialize } from "@revibase/core";
 import { getBase64Decoder } from "gill";
 import type { ClientAuthorizationCallback } from "src/utils";
-import { REVIBASE_AUTH_URL, REVIBASE_RPC_URL } from "src/utils/consts";
+import { REVIBASE_AUTH_URL } from "src/utils/consts";
 import {
   createPopUp,
   DEFAULT_TIMEOUT,
@@ -12,10 +11,6 @@ import {
   type PopupPortMessage,
 } from "./utils";
 
-/**
- * RevibaseProvider handles the communication between the client application
- * and the Revibase authentication provider using popup windows and MessageChannel.
- */
 export class RevibaseProvider {
   private readonly pending = new Map<string, Pending>();
   public readonly onClientAuthorizationCallback: ClientAuthorizationCallback;
@@ -25,17 +20,8 @@ export class RevibaseProvider {
   constructor(opts: Options) {
     this.onClientAuthorizationCallback = opts.onClientAuthorizationCallback;
     this.providerOrigin = opts.providerOrigin ?? REVIBASE_AUTH_URL;
-    initialize({
-      rpcEndpoint: opts.rpcEndpoint ?? REVIBASE_RPC_URL,
-    });
   }
 
-  /**
-   * Opens a popup window for authentication.
-   * The popup will be reused for subsequent navigation.
-   *
-   * @throws {Error} If popup is blocked by the browser
-   */
   createNewPopup() {
     const redirectOrigin = window.origin;
     const rid = getBase64Decoder().decode(
@@ -53,20 +39,13 @@ export class RevibaseProvider {
     return { rid, redirectOrigin };
   }
 
-  /**
-   * Sends a payload to the provider and waits for the response.
-   * Opens a popup window and handles communication via MessageChannel with polling fallback.
-   *
-   * @param rid - Request Id
-   * @param timeoutMs - Timeout in milliseconds (defaults to DEFAULT_TIMEOUT)
-   * @returns The response from the provider
-   * @throws {Error} If called outside browser, if another flow is in progress, or if timeout occurs
-   */
   async sendPayloadToProvider({
     rid,
     timeoutMs = DEFAULT_TIMEOUT,
+    signal,
   }: {
     rid: string;
+    signal: AbortSignal;
     timeoutMs?: number;
   }): Promise<{ rid: string }> {
     if (typeof window === "undefined") {
@@ -82,7 +61,6 @@ export class RevibaseProvider {
         const entry = this.pending.get(rid);
         if (!entry) return;
 
-        // Route through unified cleanup path if available
         if (entry.cancel) {
           entry.cancel(new Error("Authentication timed out"));
         } else {
@@ -100,22 +78,18 @@ export class RevibaseProvider {
         popup: this.popUp,
         origin: new URL(this.providerOrigin).origin,
         rid,
+        signal,
       });
     });
   }
 
-  /**
-   * Communicates with the popup using MessageChannel.
-   * Falls back to polling if connection fails or popup closes.
-   *
-   * @private
-   */
   private attachTransport(params: {
     popup: Window;
     origin: string;
     rid: string;
+    signal: AbortSignal;
   }) {
-    const { popup, origin, rid } = params;
+    const { popup, origin, rid, signal } = params;
 
     const entry = this.pending.get(rid);
     if (!entry) return;
@@ -123,23 +97,24 @@ export class RevibaseProvider {
     let port: MessagePort | null = null;
     let finished = false;
 
+    const onAbort = (): void => {
+      fail(new Error("Aborted"));
+    };
+
     const cleanup = (): void => {
+      signal.removeEventListener("abort", onAbort);
       window.removeEventListener("message", onConnect);
 
       try {
         port?.close();
-      } catch {
-        // Ignore close errors
-      }
+      } catch {}
       port = null;
 
       try {
         if (popup && !popup.closed) {
           popup.close();
         }
-      } catch {
-        // Ignore close errors
-      }
+      } catch {}
       this.popUp = null;
 
       clearInterval(heartbeatId);
@@ -165,7 +140,12 @@ export class RevibaseProvider {
 
     entry.cancel = fail;
 
-    // Detect user closing popup
+    if (signal.aborted) {
+      fail(new Error("Aborted"));
+      return;
+    }
+    signal.addEventListener("abort", onAbort);
+
     const heartbeatId = setInterval(() => {
       if (!popup?.closed) return;
       fail(new Error("Popup was closed by the user"));
