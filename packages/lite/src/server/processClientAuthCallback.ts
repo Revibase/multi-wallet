@@ -1,4 +1,6 @@
 import type {
+  CompleteMessageRequest,
+  CompleteSendTransactionRequest,
   StartMessageRequest,
   StartTransactionRequest,
   UserInfo,
@@ -10,9 +12,8 @@ import {
 import { DEFAULT_TIMEOUT } from "src/provider/utils";
 import type { DeviceSignature } from "src/utils";
 import z from "zod";
-import { processGetResult } from "./processGetResult";
-import { processMessage } from "./processMessage";
-import { processStartRequest } from "./processStartRequest";
+import { startRequest } from "./startRequest";
+import { validateMessage } from "./validateMessage";
 
 export async function processClientAuthCallback({
   request,
@@ -38,7 +39,7 @@ export async function processClientAuthCallback({
   const { data, signer, redirectOrigin, rid } = parsedResult;
 
   if (data.type === "message") {
-    await processStartRequest({
+    const result = (await startRequest({
       request: {
         phase: "start",
         redirectOrigin,
@@ -55,46 +56,35 @@ export async function processClientAuthCallback({
       signal,
       device,
       channelId,
-    });
-  } else {
-    await processStartRequest({
-      request: {
-        phase: "start",
-        redirectOrigin,
-        signer,
-        rid,
-        validTill: Date.now() + DEFAULT_TIMEOUT,
-        data: {
-          type: "transaction",
-          payload: data.payload,
-          sendTx: true,
-          additionalSigners: data.additionalSigners,
-        },
-      },
+    })) as CompleteMessageRequest;
+
+    return validateMessage(
+      { phase: "complete", data: result.data },
       providerOrigin,
-      privateKey,
-      signal,
-      device,
-      channelId,
-    });
+      rpId,
+    );
   }
 
-  const result = await processGetResult({
-    rid,
+  const result = (await startRequest({
+    request: {
+      phase: "start",
+      redirectOrigin,
+      signer,
+      rid,
+      validTill: Date.now() + DEFAULT_TIMEOUT,
+      data: {
+        type: "transaction",
+        payload: data.payload,
+        sendTx: true,
+        additionalSigners: data.additionalSigners,
+      },
+    },
     providerOrigin,
     privateKey,
     signal,
-  });
-
-  if (result.data.type === "message") {
-    return {
-      user: await processMessage(
-        { phase: "complete", data: result.data },
-        providerOrigin,
-        rpId,
-      ),
-    };
-  }
+    device,
+    channelId,
+  })) as CompleteSendTransactionRequest;
 
   return {
     txSig: result.data.payload.txSig,

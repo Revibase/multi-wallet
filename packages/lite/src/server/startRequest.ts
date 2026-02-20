@@ -1,13 +1,15 @@
 import {
   convertBase64StringToJWK,
   createClientAuthorizationStartRequestChallenge,
+  type CompleteMessageRequest,
+  type CompleteSendTransactionRequest,
   type StartMessageRequest,
   type StartTransactionRequest,
 } from "@revibase/core";
 import { CompactSign } from "jose";
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
 
-export async function processStartRequest({
+export async function startRequest({
   privateKey,
   request,
   providerOrigin = REVIBASE_AUTH_URL,
@@ -24,7 +26,7 @@ export async function processStartRequest({
     jws: string;
   };
   providerOrigin?: string;
-}): Promise<{ rid: string }> {
+}) {
   const pKey = convertBase64StringToJWK(privateKey);
   if (!pKey.alg) throw new Error("Property alg in JWK is missing.");
   const signature = await new CompactSign(
@@ -49,5 +51,7 @@ export async function processStartRequest({
   if (!res.ok) {
     throw new Error(((await res.json()) as { error: string }).error);
   }
-  return (await res.json()) as { rid: string };
+  return (await res.json()) as
+    | CompleteMessageRequest
+    | CompleteSendTransactionRequest;
 }
