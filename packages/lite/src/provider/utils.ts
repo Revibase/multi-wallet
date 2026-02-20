@@ -1,5 +1,3 @@
-import type { ClientAuthorizationCallback } from "src/utils";
-
 export const DEFAULT_TIMEOUT = 10 * 60 * 1000;
 export const HEARTBEAT_INTERVAL = 2000;
 
@@ -11,12 +9,6 @@ export type PopupPortMessage =
 export type PopupConnectMessage = {
   type: "popup-connect";
   rid: string;
-};
-
-export type Options = {
-  onClientAuthorizationCallback: ClientAuthorizationCallback;
-  providerOrigin?: string;
-  channelId?: string;
 };
 
 export type Pending = {

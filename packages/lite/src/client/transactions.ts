@@ -27,7 +27,7 @@ export async function executeTransaction(
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
 ): Promise<{ txSig?: string; user: UserInfo }> {
-  const { redirectOrigin, rid } = provider.initialize();
+  const { redirectOrigin, rid } = provider.startRequest();
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
   const {
@@ -67,18 +67,18 @@ export async function executeTransaction(
     signer: signer.publicKey,
   };
   const abortController = new AbortController();
-  if (!provider.channelId) {
-    provider
-      .sendPayloadToProvider({
-        rid,
-        signal: abortController.signal,
-      })
-      .catch((error) => abortController.abort(error));
-  }
+
+  provider
+    .sendPayloadToProviderViaPopup({
+      rid,
+      signal: abortController.signal,
+    })
+    .catch((error) => abortController.abort(error));
+
   return await provider.onClientAuthorizationCallback(
     payload,
     abortController.signal,
-    await provider.getDeviceSignature(),
+    await provider.getDeviceSignature(rid),
     provider.channelId,
   );
 }

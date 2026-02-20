@@ -7,7 +7,7 @@ import { createSignInMessageText } from "src/utils/internal";
 export async function signIn(
   provider: RevibaseProvider,
 ): Promise<{ user: UserInfo }> {
-  const { rid, redirectOrigin } = provider.initialize();
+  const { rid, redirectOrigin } = provider.startRequest();
 
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
@@ -28,18 +28,18 @@ export async function signIn(
   };
 
   const abortController = new AbortController();
-  if (!provider.channelId) {
-    provider
-      .sendPayloadToProvider({
-        rid,
-        signal: abortController.signal,
-      })
-      .catch((error) => abortController.abort(error));
-  }
+
+  provider
+    .sendPayloadToProviderViaPopup({
+      rid,
+      signal: abortController.signal,
+    })
+    .catch((error) => abortController.abort(error));
+
   return await provider.onClientAuthorizationCallback(
     payload,
     abortController.signal,
-    await provider.getDeviceSignature(),
+    await provider.getDeviceSignature(rid),
     provider.channelId,
   );
 }

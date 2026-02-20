@@ -31,72 +31,24 @@ export async function processGetResult({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Accept: "text/event-stream",
+      Accept: "application/json",
     },
     body: JSON.stringify({ rid, signature }),
     signal,
   });
 
   if (!res.ok) {
-    throw new Error(((await res.json()) as { error: string }).error);
+    let message = "Failed to get result";
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body?.error) message = body.error;
+    } catch {
+      // ignore malformed/non-json body
+    }
+    throw new Error(message);
   }
 
-  const reader = res.body?.getReader();
-  if (!reader) {
-    throw new Error("Response body is not a stream");
-  }
-
-  const decoder = new TextDecoder();
-  let buffer = "";
-
-  return new Promise((resolve, reject) => {
-    const read = async (): Promise<void> => {
-      try {
-        const { done, value } = await reader.read();
-        if (value) buffer += decoder.decode(value, { stream: !done });
-
-        const blocks = buffer.split("\n\n");
-        buffer = done ? "" : (blocks.pop() ?? "");
-
-        for (const block of blocks) {
-          let eventType = "message";
-          let dataLine = "";
-
-          for (const line of block.split("\n")) {
-            if (line.startsWith("event:")) eventType = line.slice(6).trim();
-            else if (line.startsWith("data:")) dataLine = line.slice(5).trim();
-          }
-
-          if (!dataLine) continue;
-
-          try {
-            const data = JSON.parse(dataLine);
-
-            if (eventType === "result") {
-              resolve(
-                data as CompleteMessageRequest | CompleteSendTransactionRequest,
-              );
-              return;
-            }
-
-            if (eventType === "error") {
-              reject(new Error(data?.error ?? "Unknown error"));
-              return;
-            }
-          } catch {}
-        }
-
-        if (done) {
-          reject(new Error("Stream ended without complete result"));
-          return;
-        }
-
-        read();
-      } catch (err) {
-        reject(err instanceof Error ? err : new Error(String(err)));
-      }
-    };
-
-    read();
-  });
+  return (await res.json()) as
+    | CompleteMessageRequest
+    | CompleteSendTransactionRequest;
 }

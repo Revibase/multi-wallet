@@ -6,7 +6,6 @@ import {
   createPopUp,
   DEFAULT_TIMEOUT,
   HEARTBEAT_INTERVAL,
-  type Options,
   type Pending,
   type PopupConnectMessage,
   type PopupPortMessage,
@@ -14,30 +13,80 @@ import {
 
 export class RevibaseProvider {
   private readonly pending = new Map<string, Pending>();
-  public readonly onClientAuthorizationCallback: ClientAuthorizationCallback;
+  public onClientAuthorizationCallback: ClientAuthorizationCallback;
   private readonly providerOrigin: string;
   private popUp: Window | null = null;
   public channelId: string | undefined = undefined;
 
-  constructor(opts: Options) {
-    this.onClientAuthorizationCallback = opts.onClientAuthorizationCallback;
-    this.providerOrigin = opts.providerOrigin ?? REVIBASE_AUTH_URL;
-    this.channelId = opts.channelId;
+  private defaultCallback: ClientAuthorizationCallback = async (
+    request,
+    signal,
+    device,
+    channelId,
+  ) => {
+    const res = await fetch("/api/clientAuthorization", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ request, device, channelId }),
+      signal,
+    });
+    const data = await res.json();
+    if (!res.ok)
+      throw new Error(
+        (data as { error?: string }).error ?? "Authorization failed",
+      );
+    return data;
+  };
+
+  constructor(
+    onClientAuthorizationCallback?: ClientAuthorizationCallback,
+    providerOrigin?: string,
+  ) {
+    this.onClientAuthorizationCallback =
+      onClientAuthorizationCallback ?? this.defaultCallback;
+    this.providerOrigin = providerOrigin ?? REVIBASE_AUTH_URL;
   }
 
-  async getDeviceSignature() {
+  async getDeviceSignature(rid: string) {
     if (!this.channelId) {
       return;
     }
     return {
       jwk: (await DeviceKeyManager.getOrCreateDevicePublickey()).publicKey,
       jws: await DeviceKeyManager.sign(
-        new TextEncoder().encode(this.channelId),
+        new TextEncoder().encode(
+          JSON.stringify({ channelId: this.channelId, rid }),
+        ),
       ),
     };
   }
 
-  initialize() {
+  setChannelId(channelId: string) {
+    this.channelId = channelId;
+  }
+
+  async closeChannel() {
+    const device = {
+      jwk: (await DeviceKeyManager.getOrCreateDevicePublickey()).publicKey,
+      jws: await DeviceKeyManager.sign(
+        new TextEncoder().encode(this.channelId),
+      ),
+    };
+    const res = await fetch(`${this.providerOrigin}/api/channel/close`, {
+      method: "POST",
+      body: JSON.stringify({ device, channelId: this.channelId }),
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(
+        (data as { error?: string }).error ?? "Unable to close channel",
+      );
+    }
+    this.channelId = undefined;
+  }
+
+  startRequest() {
     const redirectOrigin = window.origin;
     const rid = getBase64Decoder().decode(
       crypto.getRandomValues(new Uint8Array(16)),
@@ -57,7 +106,7 @@ export class RevibaseProvider {
     return { rid, redirectOrigin };
   }
 
-  async sendPayloadToProvider({
+  async sendPayloadToProviderViaPopup({
     rid,
     timeoutMs = DEFAULT_TIMEOUT,
     signal,
@@ -65,7 +114,10 @@ export class RevibaseProvider {
     rid: string;
     signal: AbortSignal;
     timeoutMs?: number;
-  }): Promise<{ rid: string }> {
+  }) {
+    if (this.channelId) {
+      return;
+    }
     if (typeof window === "undefined") {
       throw new Error("Provider can only be used in a browser environment");
     }
