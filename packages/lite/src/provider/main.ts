@@ -61,8 +61,38 @@ export class RevibaseProvider {
     };
   }
 
-  setChannelId(channelId: string) {
+  async createChannel() {
+    if (this.channelId) {
+      throw new Error("Close your existing channel before creating a new one.");
+    }
+    const res = await fetch(`${this.providerOrigin}/api/channel/challenge`);
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(
+        (data as { error?: string }).error ?? "Unable to generate challenge",
+      );
+    }
+    const { id, challenge } = await res.json();
+    const device = {
+      jwk: (await DeviceKeyManager.getOrCreateDevicePublickey()).publicKey,
+      jws: await DeviceKeyManager.sign(new TextEncoder().encode(challenge)),
+    };
+    const response = await fetch(`${this.providerOrigin}/api/channel/create`, {
+      method: "POST",
+      body: JSON.stringify({
+        device,
+        challengeId: id,
+      }),
+    });
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(
+        (data as { error?: string }).error ?? "Unable to create channel",
+      );
+    }
+    const { channelId } = await response.json();
     this.channelId = channelId;
+    return { channelId, url: `${this.providerOrigin}?channelId=${channelId}` };
   }
 
   async closeChannel() {
