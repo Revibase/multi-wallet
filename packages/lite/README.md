@@ -100,8 +100,9 @@ const provider = new RevibaseProvider(onClientAuthorizationCallback);
 ### 5) Optional: device binding
 
 ```ts
-provider.setChannelId("session-or-channel-id");
-// ... run auth flows
+const { channelId, url } = await provider.createChannel();
+// Open `url` in a new tab so the user can complete the channel handshake
+// ... run auth flows (signIn, transferTokens, etc.)
 await provider.closeChannel();
 ```
 
@@ -118,6 +119,7 @@ For custom instructions, use `executeTransaction` (see API reference).
 ---
 
 **Quick checklist**
+
 - Install `@revibase/lite`.
 - Add `/.well-known/revibase.json` with `clientJwk`.
 - Set `PRIVATE_KEY` on the server.
@@ -135,11 +137,11 @@ For custom instructions, use `executeTransaction` (see API reference).
 
 ### Client (browser)
 
-| Function                                 | Description                                                                                                        |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| **`signIn(provider)`**                   | Opens the auth popup and returns `{ user: UserInfo }` after passkey auth.                                          |
-| **`executeTransaction(provider, args)`** | Builds and executes a custom transaction. Action type is selected from wallet settings.                            |
-| **`transferTokens(provider, args)`**     | Transfers SOL or SPL tokens. Set `mint` for SPL; omit for native SOL.                                              |
+| Function                                 | Description                                                                             |
+| ---------------------------------------- | --------------------------------------------------------------------------------------- |
+| **`signIn(provider)`**                   | Opens the auth popup and returns `{ user: UserInfo }` after passkey auth.               |
+| **`executeTransaction(provider, args)`** | Builds and executes a custom transaction. Action type is selected from wallet settings. |
+| **`transferTokens(provider, args)`**     | Transfers SOL or SPL tokens. Set `mint` for SPL; omit for native SOL.                   |
 
 **Signatures**
 
@@ -177,15 +179,14 @@ function transferTokens(
   - `onClientAuthorizationCallback` — Optional. Called with `(request, signal, device, channelId)`. POST `request`, `device`, and `channelId` to your backend and return JSON. Pass `signal` to `fetch` for cancellation.
   - `providerOrigin` — Optional. Default `https://auth.revibase.com`.
 - **Methods**
-  - `setChannelId(channelId: string): void` — Enables channel-based flows and includes device proof (`device`) + `channelId` in callback payloads.
+  - `createChannel(): Promise<{ channelId: string; url: string }>` — Creates a channel and enables device-bound flows. Open the returned `url` in a new tab so the user can complete the handshake. Callback payloads will include device proof (`device`) and `channelId`.
   - `closeChannel(): Promise<void>` — Closes the active channel on the provider and clears local `channelId`.
 
 ### Server
 
-| Function                                           | Description                                                                                                                                                                                                      |
-| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`processClientAuthCallback(options)`**           | Validates the start request, calls Revibase start + getResult APIs, and returns `{ user }` (message) or `{ txSig, user }` (transaction). Pass `req.signal` to cancel fetches when the client disconnects. |
-| **`createTransactionSigner(request, privateKey)`** | Signs an array of serialized transactions. Use when the provider requires additional signers.                                                                                                                    |
+| Function                                 | Description                                                                                                                                                                                               |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`processClientAuthCallback(options)`** | Validates the start request, calls Revibase start + getResult APIs, and returns `{ user }` (message) or `{ txSig, user }` (transaction). Pass `req.signal` to cancel fetches when the client disconnects. |
 
 **Signatures**
 
@@ -199,9 +200,4 @@ function processClientAuthCallback(options: {
   providerOrigin?: string;
   rpId?: string;
 }): Promise<{ txSig?: string; user: UserInfo }>;
-
-function createTransactionSigner(
-  request: { transactions: string[] },
-  privateKey: KeyPairSigner,
-): Promise<{ signatures: string[] }>;
 ```
