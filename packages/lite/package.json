@@ -1,6 +1,6 @@
 {
   "name": "@revibase/lite",
-  "version": "0.0.40",
+  "version": "0.0.41",
   "scripts": {
     "build": "rimraf dist & tsup",
     "clean": "rimraf dist",
@@ -27,13 +27,14 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Revibase/multi-wallet.git"
+    "url": "git+https://github.com/Revibase/multi-wallet.git",
+    "directory": "packages/lite"
   },
   "author": "jychab",
   "bugs": {
     "url": "https://github.com/Revibase/multi-wallet/issues"
   },
-  "homepage": "https://github.com/Revibase/multi-wallet#readme",
+  "homepage": "https://github.com/Revibase/multi-wallet/blob/master/packages/lite",
   "description": "",
   "dependencies": {
     "@revibase/core": "workspace:*",

@@ -8,7 +8,11 @@ Add **Revibase** (a passkey-based Solana wallet) to your app. Users sign in and 
 pnpm add @revibase/lite
 ```
 
-### 1) Add well-known config
+### 1) Get your keys
+
+You can generate your public and private key at [https://developers.revibase.com](https://developers.revibase.com). The **clientJwk** in the config below is your public key.
+
+### 2) Add well-known config
 
 Create `/.well-known/revibase.json` (for example in `public/.well-known/revibase.json`):
 
@@ -20,7 +24,7 @@ Create `/.well-known/revibase.json` (for example in `public/.well-known/revibase
 }
 ```
 
-### 2) Add backend route
+### 3) Add backend route
 
 Set `PRIVATE_KEY` to your matching private key, then forward the client payload to `processClientAuthCallback`:
 
@@ -53,7 +57,7 @@ export async function POST(req: Request) {
 }
 ```
 
-### 3) Use in frontend
+### 4) Use in frontend
 
 If your backend route is `/api/clientAuthorization`, the default provider is enough:
 
@@ -69,7 +73,7 @@ const { txSig } = await transferTokens(provider, {
 });
 ```
 
-### 4) Optional: custom callback route
+### 5) Optional: custom callback route
 
 If your route path is different, pass a custom callback and forward `signal`:
 
@@ -97,10 +101,10 @@ const onClientAuthorizationCallback: ClientAuthorizationCallback = async (
 const provider = new RevibaseProvider(onClientAuthorizationCallback);
 ```
 
-### 5) Optional: device binding
+### 6) Optional: device binding
 
 ```ts
-const { channelId, url } = await provider.createChannel();
+const { url } = await provider.createChannel();
 // Open `url` in a new tab so the user can complete the channel handshake
 // ... run auth flows (signIn, transferTokens, etc.)
 await provider.closeChannel();
