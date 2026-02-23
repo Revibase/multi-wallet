@@ -26,8 +26,9 @@ export async function executeTransaction(
     additionalSigners?: AdditionalSignersParam;
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
+  channelId?: string,
 ): Promise<{ txSig?: string; user: UserInfo }> {
-  const { redirectOrigin, rid } = provider.startRequest();
+  const { redirectOrigin, rid } = provider.startRequest(!channelId);
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
   const {
@@ -71,6 +72,7 @@ export async function executeTransaction(
   provider
     .sendPayloadToProviderViaPopup({
       rid,
+      usePopUp: !channelId,
       signal: abortController.signal,
     })
     .catch((error) => abortController.abort(error));
@@ -78,7 +80,7 @@ export async function executeTransaction(
   return await provider.onClientAuthorizationCallback(
     payload,
     abortController.signal,
-    await provider.getDeviceSignature(rid),
-    provider.channelId,
+    await provider.getDeviceSignature(rid, channelId),
+    channelId,
   );
 }

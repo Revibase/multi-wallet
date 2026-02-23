@@ -16,7 +16,7 @@ export class RevibaseProvider {
   public onClientAuthorizationCallback: ClientAuthorizationCallback;
   private readonly providerOrigin: string;
   private popUp: Window | null = null;
-  public channelId: string | undefined = undefined;
+  public channelIds: string[] = [];
 
   private defaultCallback: ClientAuthorizationCallback = async (
     request,
@@ -47,24 +47,28 @@ export class RevibaseProvider {
     this.providerOrigin = providerOrigin ?? REVIBASE_AUTH_URL;
   }
 
-  async getDeviceSignature(rid: string) {
-    if (!this.channelId) {
+  async getDeviceSignature(rid: string, channelId?: string) {
+    if (!channelId) {
       return;
     }
     return {
       jwk: (await DeviceKeyManager.getOrCreateDevicePublickey()).publicKey,
       jws: await DeviceKeyManager.sign(
-        new TextEncoder().encode(
-          JSON.stringify({ channelId: this.channelId, rid }),
-        ),
+        new TextEncoder().encode(JSON.stringify({ channelId, rid })),
       ),
     };
   }
 
+  getAllChannelIds() {
+    return this.channelIds;
+  }
+
+  async closeAllChannels() {
+    const channelIds = new Array(...new Set(this.channelIds));
+    return await Promise.all(channelIds.map((x) => this.closeChannel(x)));
+  }
+
   async createChannel() {
-    if (this.channelId) {
-      throw new Error("Close your existing channel before creating a new one.");
-    }
     const res = await fetch(`${this.providerOrigin}/api/channel/challenge`);
     if (!res.ok) {
       const data = await res.json();
@@ -91,20 +95,18 @@ export class RevibaseProvider {
       );
     }
     const { channelId } = await response.json();
-    this.channelId = channelId;
+    this.channelIds.push(channelId);
     return { channelId, url: `${this.providerOrigin}?channelId=${channelId}` };
   }
 
-  async closeChannel() {
+  async closeChannel(channelId: string) {
     const device = {
       jwk: (await DeviceKeyManager.getOrCreateDevicePublickey()).publicKey,
-      jws: await DeviceKeyManager.sign(
-        new TextEncoder().encode(this.channelId),
-      ),
+      jws: await DeviceKeyManager.sign(new TextEncoder().encode(channelId)),
     };
     const res = await fetch(`${this.providerOrigin}/api/channel/close`, {
       method: "POST",
-      body: JSON.stringify({ device, channelId: this.channelId }),
+      body: JSON.stringify({ device, channelId }),
     });
 
     if (!res.ok) {
@@ -113,16 +115,16 @@ export class RevibaseProvider {
         (data as { error?: string }).error ?? "Unable to close channel",
       );
     }
-    this.channelId = undefined;
+    this.channelIds = this.channelIds.filter((x) => x !== channelId);
   }
 
-  startRequest() {
+  startRequest(usePopUp: boolean) {
     const redirectOrigin = window.origin;
     const rid = getBase64Decoder().decode(
       crypto.getRandomValues(new Uint8Array(16)),
     );
 
-    if (!this.channelId) {
+    if (usePopUp) {
       const url = new URL(this.providerOrigin);
       url.searchParams.set("rid", rid);
       url.searchParams.set("redirectOrigin", redirectOrigin);
@@ -140,12 +142,14 @@ export class RevibaseProvider {
     rid,
     timeoutMs = DEFAULT_TIMEOUT,
     signal,
+    usePopUp,
   }: {
     rid: string;
     signal: AbortSignal;
+    usePopUp: boolean;
     timeoutMs?: number;
   }) {
-    if (this.channelId) {
+    if (!usePopUp) {
       return;
     }
     if (typeof window === "undefined") {

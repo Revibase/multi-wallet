@@ -22,6 +22,7 @@ export async function transferTokens(
     mint?: string;
     tokenProgram?: string;
   },
+  channelId?: string,
 ): Promise<{ txSig?: string; user: UserInfo }> {
   if (args.amount <= 0) {
     throw new Error("Transfer amount must be greater than 0");
@@ -31,7 +32,7 @@ export async function transferTokens(
     throw new Error("Destination address is required");
   }
 
-  const { rid, redirectOrigin } = provider.startRequest();
+  const { rid, redirectOrigin } = provider.startRequest(!channelId);
 
   await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
@@ -72,6 +73,7 @@ export async function transferTokens(
   provider
     .sendPayloadToProviderViaPopup({
       rid,
+      usePopUp: !channelId,
       signal: abortController.signal,
     })
     .catch((error) => abortController.abort(error));
@@ -79,7 +81,7 @@ export async function transferTokens(
   return await provider.onClientAuthorizationCallback(
     payload,
     abortController.signal,
-    await provider.getDeviceSignature(rid),
-    provider.channelId,
+    await provider.getDeviceSignature(rid, channelId),
+    channelId,
   );
 }

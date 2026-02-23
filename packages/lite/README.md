@@ -104,10 +104,14 @@ const provider = new RevibaseProvider(onClientAuthorizationCallback);
 ### 6) Optional: device binding
 
 ```ts
-const { url } = await provider.createChannel();
+const { channelId, url } = await provider.createChannel();
 // Open `url` in a new tab so the user can complete the channel handshake
-// ... run auth flows (signIn, transferTokens, etc.)
-await provider.closeChannel();
+// Pass channelId to use the channel (no popup) for subsequent flows:
+const { user } = await signIn(provider, channelId);
+const { txSig } = await transferTokens(provider, { amount: BigInt(100_000_000), destination: "RECIPIENT_ADDRESS", signer: user }, channelId);
+// When done, close the channel:
+await provider.closeChannel(channelId);
+// Or close all channels: await provider.closeAllChannels();
 ```
 
 ## How it works
@@ -129,7 +133,7 @@ For custom instructions, use `executeTransaction` (see API reference).
 - Set `PRIVATE_KEY` on the server.
 - Add a POST route using `processClientAuthCallback` and pass `req.signal`.
 - Create `RevibaseProvider` and ensure callback `fetch` uses `signal`.
-- Call `signIn(provider)` and/or `transferTokens` / `executeTransaction`.
+- Call `signIn(provider)` and/or `transferTokens` / `executeTransaction`. For device binding, pass `channelId` as the last argument and use `closeChannel(channelId)` or `closeAllChannels()` when done.
 
 **Security note:** Keep `PRIVATE_KEY` server-only and use HTTPS in production.
 
@@ -143,14 +147,17 @@ For custom instructions, use `executeTransaction` (see API reference).
 
 | Function                                 | Description                                                                             |
 | ---------------------------------------- | --------------------------------------------------------------------------------------- |
-| **`signIn(provider)`**                   | Opens the auth popup and returns `{ user: UserInfo }` after passkey auth.               |
-| **`executeTransaction(provider, args)`** | Builds and executes a custom transaction. Action type is selected from wallet settings. |
-| **`transferTokens(provider, args)`**     | Transfers SOL or SPL tokens. Set `mint` for SPL; omit for native SOL.                   |
+| **`signIn(provider, channelId?)`**                   | Opens the auth popup (or uses channel when `channelId` is set) and returns `{ user: UserInfo }` after passkey auth. |
+| **`executeTransaction(provider, args, channelId?)`**  | Builds and executes a custom transaction. Action type is selected from wallet settings. Pass `channelId` for device-bound flow. |
+| **`transferTokens(provider, args, channelId?)`**     | Transfers SOL or SPL tokens. Set `mint` for SPL; omit for native SOL. `amount` must be &gt; 0; `destination` is required. Pass `channelId` for device-bound flow. |
 
 **Signatures**
 
 ```ts
-function signIn(provider: RevibaseProvider): Promise<{ user: UserInfo }>;
+function signIn(
+  provider: RevibaseProvider,
+  channelId?: string,
+): Promise<{ user: UserInfo }>;
 
 function executeTransaction(
   provider: RevibaseProvider,
@@ -161,6 +168,7 @@ function executeTransaction(
     additionalSigners?: AdditionalSignersParam;
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
+  channelId?: string,
 ): Promise<{ txSig?: string; user: UserInfo }>;
 
 function transferTokens(
@@ -172,6 +180,7 @@ function transferTokens(
     mint?: string;
     tokenProgram?: string;
   },
+  channelId?: string,
 ): Promise<{ txSig?: string; user: UserInfo }>;
 ```
 
@@ -183,8 +192,10 @@ function transferTokens(
   - `onClientAuthorizationCallback` — Optional. Called with `(request, signal, device, channelId)`. POST `request`, `device`, and `channelId` to your backend and return JSON. Pass `signal` to `fetch` for cancellation.
   - `providerOrigin` — Optional. Default `https://auth.revibase.com`.
 - **Methods**
-  - `createChannel(): Promise<{ channelId: string; url: string }>` — Creates a channel and enables device-bound flows. Open the returned `url` in a new tab so the user can complete the handshake. Callback payloads will include device proof (`device`) and `channelId`.
-  - `closeChannel(): Promise<void>` — Closes the active channel on the provider and clears local `channelId`.
+  - `createChannel(): Promise<{ channelId: string; url: string }>` — Creates a channel and enables device-bound flows. Open the returned `url` in a new tab so the user can complete the handshake. Pass `channelId` to `signIn`, `transferTokens`, or `executeTransaction` to use the channel (no popup). Callback payloads will include device proof (`device`) and `channelId`.
+  - `closeChannel(channelId: string): Promise<void>` — Closes the given channel on the provider and removes it from the local list.
+  - `getAllChannelIds(): string[]` — Returns all active channel IDs.
+  - `closeAllChannels(): Promise<void>` — Closes all active channels.
 
 ### Server
 
