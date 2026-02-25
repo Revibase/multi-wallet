@@ -193,18 +193,18 @@ export class RevibaseProvider {
   }
 
   /** Cancels any pending request on the given channel (e.g. waiting for recipient). No-op if none. */
-  cancelChannelRequest(channelId: string): void {
+  cancelChannelRequest(channelId: string) {
     this.channelWs.get(channelId)?.cancelRequest();
   }
 
   /** Closes the given channel (sends close over WebSocket and cleans up). */
-  async closeChannel(channelId: string): Promise<void> {
+  closeChannel(channelId: string) {
     this.channelWs.get(channelId)?.closeChannel();
     this.channelWs.delete(channelId);
   }
 
   /** Closes all active channels. */
-  async closeAllChannels(): Promise<void> {
+  closeAllChannels() {
     this.channelWs.entries().forEach((x) => x[1].closeChannel());
     this.channelWs.clear();
   }
