@@ -134,7 +134,14 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
         owner_index: u8,
         destination_token_account: &Pubkey,
     ) -> Vec<Vec<ExtensionInstructionData>> {
-        let (_, ata_bump) = derive_token_ata(destination_token_account, self.mint.key);
+        let (_, ata_bump) = Pubkey::find_program_address(
+            &[
+                destination_token_account.as_ref(),
+                light_token_interface::LIGHT_TOKEN_PROGRAM_ID.as_ref(),
+                self.mint.key.as_ref(),
+            ],
+            &Pubkey::from(light_token_interface::LIGHT_TOKEN_PROGRAM_ID),
+        );
         source_compressed_token_accounts
             .iter()
             .filter_map(|account| {
@@ -142,15 +149,14 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
                     extensions
                         .iter()
                         .filter_map(|ext| match ext {
-                            ExtensionStruct::CompressedOnly(compressed_only) => {
+                            ExtensionStruct::CompressedOnly(data) => {
                                 Some(ExtensionInstructionData::CompressedOnly(
                                     CompressedOnlyExtensionInstructionData {
-                                        delegated_amount: compressed_only.delegated_amount,
-                                        withheld_transfer_fee: compressed_only
-                                            .withheld_transfer_fee,
+                                        delegated_amount: data.delegated_amount,
+                                        withheld_transfer_fee: data.withheld_transfer_fee,
                                         is_frozen: account.is_frozen,
                                         compression_index: 0,
-                                        is_ata: compressed_only.is_ata != 0,
+                                        is_ata: data.is_ata != 0,
                                         bump: ata_bump,
                                         owner_index,
                                     },
@@ -677,16 +683,12 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
         let rent_sponsor = self
             .rent_sponsor
             .ok_or(MultisigError::MissingCompressedTokenAccount)?;
-        let bump = self
-            .destination_ctoken_bump
-            .ok_or(MultisigError::MissingCompressedTokenAccount)?;
 
         CreateTokenAtaCpi {
             owner: self.destination.to_account_info(),
             mint: self.mint.to_account_info(),
             payer: self.payer.to_account_info(),
             ata: destination_ctoken_token_account.to_account_info(),
-            bump,
         }
         .idempotent()
         .rent_free(

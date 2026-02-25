@@ -1293,9 +1293,9 @@ dependencies = [
 
 [[package]]
 name = "light-account"
-version = "0.20.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5f7464c25ca421182041ad563d81bf059aa5cd54d8c81caadc46e3999dcd34db"
+checksum = "44bd2aa4022dddcc09896624da69c975b3fdf9f78470d690886370b1ef72f5df"
 dependencies = [
  "light-account-checks",
  "light-compressed-account",
@@ -1337,9 +1337,9 @@ dependencies = [
 
 [[package]]
 name = "light-batched-merkle-tree"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb07ef41d9d99db94072d556767a93d774323bc34940db349555abc4504de015"
+checksum = "3702b96798a1cc93c9d4b0d9eb6ee980481beb147ab663cfd260c71ec258c5f0"
 dependencies = [
  "aligned-sized",
  "borsh 0.10.4",
@@ -1375,9 +1375,9 @@ dependencies = [
 
 [[package]]
 name = "light-compressed-account"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7a04e4598c72fdf010bb17021608bbc1a687320305d392dcfcae0738911c786"
+checksum = "c2ce168f42dab1a4c01ad83993d68b17cd2dc1bb31ced8ab4edecaf5b666a8ad"
 dependencies = [
  "anchor-lang",
  "borsh 0.10.4",
@@ -1396,9 +1396,9 @@ dependencies = [
 
 [[package]]
 name = "light-compressed-token-sdk"
-version = "0.20.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76e56f85162c02208b24d7d9c817a24de1f6116e49f5751b7d8761c72f0021ff"
+checksum = "6b537399b0910b7ec821f3ef24d56d11b59ad370e877cc4dbe697b81abed5a38"
 dependencies = [
  "anchor-lang",
  "arrayvec",
@@ -1423,9 +1423,9 @@ dependencies = [
 
 [[package]]
 name = "light-compressible"
-version = "0.5.0"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f0905b52848daea4cb7edbc9ddca0a8d5c4f1d864e89eff0aca3b6fc2a9edbb2"
+checksum = "54745d82dab271a4178b48c48d5768ff54af0a6e01aae62425003c25ed394fc5"
 dependencies = [
  "aligned-sized",
  "anchor-lang",
@@ -1477,9 +1477,9 @@ dependencies = [
 
 [[package]]
 name = "light-merkle-tree-metadata"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7623246ad0015345f6a88471f554381e24635b770fe4b15b38384daddf1d2f5f"
+checksum = "ee2ef127f8b968a22203515fca1822cb54bb8f0bd84de392fcb9fb0b77855393"
 dependencies = [
  "borsh 0.10.4",
  "bytemuck",
@@ -1525,9 +1525,9 @@ dependencies = [
 
 [[package]]
 name = "light-sdk"
-version = "0.20.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf31676e72039c1663c9c0cc207572f5bfea985f7a39de346b942b3f4c3b92fe"
+checksum = "1e3820e6de3d2f1de335a3dbb35a44edd5ee9dd73510022d693112b9e34f1aa8"
 dependencies = [
  "anchor-lang",
  "bincode",
@@ -1559,9 +1559,9 @@ dependencies = [
 
 [[package]]
 name = "light-sdk-macros"
-version = "0.20.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7186366be777810e54f4025ff388d4463c2314df452a2e7f14cb218977fc1ac7"
+checksum = "498c1603fa593185d03f2d4a00f91886f318f5d2163cd32ed0e59d0f92eb3c92"
 dependencies = [
  "darling",
  "light-hasher",
@@ -1574,9 +1574,9 @@ dependencies = [
 
 [[package]]
 name = "light-sdk-types"
-version = "0.20.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d60036a8f1af0d3aa651780aa57ae2cdca3fa0f16acecda71c98f81a53e37c9"
+checksum = "67d2142429691a2bfe10e12d426c72131523352815b5b254915e85b81d274f8e"
 dependencies = [
  "anchor-lang",
  "borsh 0.10.4",
@@ -1594,9 +1594,9 @@ dependencies = [
 
 [[package]]
 name = "light-token"
-version = "0.20.0"
+version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9940ddbb68ace4cd49e9312bb1d573146232c6460b95f669433b9e1c16fa147b"
+checksum = "b910f2bd3c4b297fe9fef956381620decad989db22daa28c9af81a8655f6a8ed"
 dependencies = [
  "anchor-lang",
  "arrayvec",
@@ -1627,9 +1627,9 @@ dependencies = [
 
 [[package]]
 name = "light-token-interface"
-version = "0.4.0"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77a457179188d9b6b7208a8a63a1fea851f818adfde3faaa262474bdcd3e3c7d"
+checksum = "b14661b6592711d90b1cac2402fa10310d90e0517e035c6b1f47c30a14883461"
 dependencies = [
  "aligned-sized",
  "anchor-lang",
@@ -1655,9 +1655,9 @@ dependencies = [
 
 [[package]]
 name = "light-token-types"
-version = "0.20.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3daffe234719b109238a81d3b61009b9005a58a014436124edf55600361187e2"
+checksum = "c8e7683ae232f9744864890591433811a2cb34f13af631d23d5b296666a05673"
 dependencies = [
  "anchor-lang",
  "borsh 0.10.4",
@@ -1671,9 +1671,9 @@ dependencies = [
 
 [[package]]
 name = "light-verifier"
-version = "9.0.0"
+version = "10.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65a33dc6b302f2cfb7319006f1234f1d86c992ac1991ade7c97653828b7f1735"
+checksum = "0d829f997b17c7c65198bb93f0d645a4b2818aed2bd14bf2716e36171d4a9f3f"
 dependencies = [
  "groth16-solana",
  "light-compressed-account",

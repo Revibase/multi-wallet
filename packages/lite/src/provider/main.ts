@@ -39,7 +39,7 @@ export class RevibaseProvider {
   public onClientAuthorizationCallback: ClientAuthorizationCallback;
   private readonly providerOrigin: string;
   private popUp: Window | null = null;
-  private channelWs: Map<string, SenderChannelSocketHandle> = new Map();
+  private channelWs = new Map<string, SenderChannelSocketHandle>();
   private readonly channelStatusListeners = new Set<ChannelStatusListener>();
 
   private defaultCallback: ClientAuthorizationCallback = async (
@@ -157,18 +157,18 @@ export class RevibaseProvider {
     return { channelId, url: `${this.providerOrigin}?channelId=${channelId}` };
   }
 
-  async cancelChannelRequest(channelId: string) {
-    return this.channelWs.get(channelId)?.cancelRequest();
+  cancelChannelRequest(channelId: string) {
+    this.channelWs.get(channelId)?.cancelRequest();
   }
 
-  async closeChannel(channelId: string) {
-    return this.channelWs.get(channelId)?.closeChannel();
+  closeChannel(channelId: string) {
+    this.channelWs.get(channelId)?.closeChannel();
+    this.channelWs.delete(channelId);
   }
 
-  async closeAllChannels() {
-    return await Promise.all(
-      this.channelWs.entries().map((x) => x[1].closeChannel()),
-    );
+  closeAllChannels() {
+    this.channelWs.entries().forEach((x) => x[1].closeChannel());
+    this.channelWs.clear();
   }
 
   startRequest(usePopUp: boolean) {
