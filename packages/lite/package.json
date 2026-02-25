@@ -35,7 +35,7 @@
     "url": "https://github.com/Revibase/multi-wallet/issues"
   },
   "homepage": "https://github.com/Revibase/multi-wallet/blob/master/packages/lite",
-  "description": "",
+  "description": "Passkey-based Solana wallet SDK: sign in and approve transactions in a popup, authorize with a server-side private key.",
   "dependencies": {
     "@revibase/core": "workspace:*",
     "@simplewebauthn/server": "^13.2.2",

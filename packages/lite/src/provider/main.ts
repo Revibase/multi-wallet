@@ -1,6 +1,16 @@
 import { getBase64Decoder } from "gill";
 import type { ClientAuthorizationCallback } from "src/utils";
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
+import {
+  RevibaseAbortedError,
+  RevibaseAuthError,
+  RevibaseEnvironmentError,
+  RevibaseFlowInProgressError,
+  RevibasePopupBlockedError,
+  RevibasePopupClosedError,
+  RevibasePopupNotOpenError,
+  RevibaseTimeoutError,
+} from "src/utils/errors";
 import { DeviceKeyManager } from "./device";
 import {
   createPopUp,
@@ -15,6 +25,7 @@ import {
   type SenderChannelSocketHandle,
 } from "./websocket";
 
+/** Channel lifecycle status for device-bound flows. */
 export enum ChannelStatus {
   AUTHENTICATING,
   AWAITING_RECIPIENT,
@@ -23,17 +34,23 @@ export enum ChannelStatus {
   ERROR,
 }
 
+/** Status update for a channel (status, optional recipient, optional error). */
 export type ChannelStatusEntry = {
   status: ChannelStatus;
   recipient?: string;
   error?: string;
 };
 
+/** Listener for channel status updates. Called with (channelId, entry). */
 export type ChannelStatusListener = (
   channelId: string,
   entry: ChannelStatusEntry,
 ) => void;
 
+/**
+ * Connects your app to the Revibase auth popup and your backend route.
+ * For device-bound flows, use createChannel() and pass `{ channelId }` in options to signIn/transferTokens/executeTransaction.
+ */
 export class RevibaseProvider {
   private readonly pending = new Map<string, Pending>();
   public onClientAuthorizationCallback: ClientAuthorizationCallback;
@@ -41,6 +58,7 @@ export class RevibaseProvider {
   private popUp: Window | null = null;
   private channelWs = new Map<string, SenderChannelSocketHandle>();
   private readonly channelStatusListeners = new Set<ChannelStatusListener>();
+  private readonly logger: Pick<Console, "info" | "warn" | "error">;
 
   private defaultCallback: ClientAuthorizationCallback = async (
     request,
@@ -56,21 +74,33 @@ export class RevibaseProvider {
     });
     const data = await res.json();
     if (!res.ok)
-      throw new Error(
+      throw new RevibaseAuthError(
         (data as { error?: string }).error ?? "Authorization failed",
       );
     return data;
   };
 
+  /**
+   * @param providerOrigin - Revibase auth origin. Defaults to production.
+   * @param onClientAuthorizationCallback - Optional. Called with (request, signal, device, channelId). POST to your backend and return JSON. Pass signal to fetch for cancellation.
+   * @param logger - Optional. { info, warn, error } for channel status and errors. No-op by default.
+   */
   constructor(
-    onClientAuthorizationCallback?: ClientAuthorizationCallback,
     providerOrigin?: string,
+    onClientAuthorizationCallback?: ClientAuthorizationCallback,
+    logger?: Pick<Console, "info" | "warn" | "error">,
   ) {
     this.onClientAuthorizationCallback =
       onClientAuthorizationCallback ?? this.defaultCallback;
     this.providerOrigin = providerOrigin ?? REVIBASE_AUTH_URL;
+    this.logger = logger ?? {
+      info: () => {},
+      warn: () => {},
+      error: () => {},
+    };
   }
 
+  /** Returns device proof (jwk + jws) for the given message. Used when authorizing with a channel. */
   async getDeviceSignature(message: string) {
     return {
       jwk: (await DeviceKeyManager.getOrCreateDevicePublickey()).publicKey,
@@ -78,6 +108,7 @@ export class RevibaseProvider {
     };
   }
 
+  /** Subscribe to channel status updates. Returns an unsubscribe function. */
   subscribeToChannelStatus(listener: ChannelStatusListener): () => void {
     this.channelStatusListeners.add(listener);
     return () => {
@@ -93,16 +124,20 @@ export class RevibaseProvider {
       try {
         listener(channelId, details);
       } catch (err) {
-        console.error("[RevibaseProvider] Channel status listener threw", err);
+        this.logger.error(
+          "[RevibaseProvider] Channel status listener threw",
+          err,
+        );
       }
     }
   }
 
-  async createChannel() {
+  /** Creates a channel and WebSocket. Open the returned url in a new tab for the user to complete the handshake. */
+  async createChannel(): Promise<{ channelId: string; url: string }> {
     const res = await fetch(`${this.providerOrigin}/api/channel/challenge`);
     if (!res.ok) {
       const data = await res.json();
-      throw new Error(
+      throw new RevibaseAuthError(
         (data as { error?: string }).error ?? "Unable to generate challenge",
       );
     }
@@ -120,7 +155,7 @@ export class RevibaseProvider {
     });
     if (!response.ok) {
       const data = await response.json();
-      throw new Error(
+      throw new RevibaseAuthError(
         (data as { error?: string }).error ?? "Unable to create channel",
       );
     }
@@ -157,34 +192,37 @@ export class RevibaseProvider {
     return { channelId, url: `${this.providerOrigin}?channelId=${channelId}` };
   }
 
-  cancelChannelRequest(channelId: string) {
+  /** Cancels any pending request on the given channel (e.g. waiting for recipient). No-op if none. */
+  cancelChannelRequest(channelId: string): void {
     this.channelWs.get(channelId)?.cancelRequest();
   }
 
-  closeChannel(channelId: string) {
+  /** Closes the given channel (sends close over WebSocket and cleans up). */
+  async closeChannel(channelId: string): Promise<void> {
     this.channelWs.get(channelId)?.closeChannel();
     this.channelWs.delete(channelId);
   }
 
-  closeAllChannels() {
+  /** Closes all active channels. */
+  async closeAllChannels(): Promise<void> {
     this.channelWs.entries().forEach((x) => x[1].closeChannel());
     this.channelWs.clear();
   }
 
-  startRequest(usePopUp: boolean) {
+  startRequest(channelId?: string) {
     const redirectOrigin = window.origin;
     const rid = getBase64Decoder().decode(
       crypto.getRandomValues(new Uint8Array(16)),
     );
 
-    if (usePopUp) {
+    if (!channelId) {
       const url = new URL(this.providerOrigin);
       url.searchParams.set("rid", rid);
       url.searchParams.set("redirectOrigin", redirectOrigin);
 
       this.popUp = createPopUp(url.toString());
       if (!this.popUp) {
-        throw new Error("Popup blocked. Please enable popups.");
+        throw new RevibasePopupBlockedError();
       }
     }
 
@@ -195,22 +233,17 @@ export class RevibaseProvider {
     rid,
     timeoutMs = DEFAULT_TIMEOUT,
     signal,
-    usePopUp,
   }: {
     rid: string;
     signal: AbortSignal;
-    usePopUp: boolean;
     timeoutMs?: number;
   }) {
-    if (!usePopUp) {
-      return;
-    }
     if (typeof window === "undefined") {
-      throw new Error("Provider can only be used in a browser environment");
+      throw new RevibaseEnvironmentError();
     }
 
     if (this.pending.size > 0) {
-      throw new Error("An authorization flow is already in progress");
+      throw new RevibaseFlowInProgressError();
     }
 
     return new Promise<{ rid: string }>((resolve, reject) => {
@@ -219,15 +252,15 @@ export class RevibaseProvider {
         if (!entry) return;
 
         if (entry.cancel) {
-          entry.cancel(new Error("Authentication timed out"));
+          entry.cancel(new RevibaseTimeoutError());
         } else {
           this.pending.delete(rid);
-          reject(new Error("Authentication timed out"));
+          reject(new RevibaseTimeoutError());
         }
       }, timeoutMs);
 
       if (!this.popUp || this.popUp.closed) {
-        throw new Error("Popup is not open. Call createNewPopup() first.");
+        throw new RevibasePopupNotOpenError();
       }
       this.pending.set(rid, { rid, resolve, reject, timeoutId });
 
@@ -255,7 +288,7 @@ export class RevibaseProvider {
     let finished = false;
 
     const onAbort = (): void => {
-      fail(new Error("Aborted"));
+      fail(new RevibaseAbortedError());
     };
 
     const cleanup = (): void => {
@@ -298,14 +331,14 @@ export class RevibaseProvider {
     entry.cancel = fail;
 
     if (signal.aborted) {
-      fail(new Error("Aborted"));
+      fail(new RevibaseAbortedError());
       return;
     }
     signal.addEventListener("abort", onAbort);
 
     const heartbeatId = setInterval(() => {
       if (!popup?.closed) return;
-      fail(new Error("Popup was closed by the user"));
+      fail(new RevibasePopupClosedError());
     }, HEARTBEAT_INTERVAL);
 
     const onConnect = (event: MessageEvent) => {
@@ -328,11 +361,13 @@ export class RevibaseProvider {
             break;
 
           case "popup-error":
-            fail(new Error(ev.data.error));
+            fail(new RevibaseAuthError(ev.data.error));
             break;
 
           case "popup-closed": {
-            fail(new Error("Lost connection with the popup."));
+            fail(
+              new RevibasePopupClosedError("Lost connection with the popup."),
+            );
             break;
           }
         }

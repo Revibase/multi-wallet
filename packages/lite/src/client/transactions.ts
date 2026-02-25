@@ -16,7 +16,17 @@ import {
 } from "gill";
 import type { RevibaseProvider } from "src/provider/main";
 import { DEFAULT_TIMEOUT } from "src/provider/utils";
+import type { AuthorizationFlowOptions } from "src/utils/types";
+import { runAuthorizationFlow } from "./runAuthorizationFlow";
 
+/**
+ * Builds and executes a custom transaction. Action type is selected from wallet settings.
+ *
+ * @param provider - The Revibase provider instance.
+ * @param args - Transaction params: `instructions`, `signer`, optional `hasTxManager`, `additionalSigners`, `addressesByLookupTableAddress`.
+ * @param options - Optional. `signal`: abort the flow from the app. `channelId`: use an existing channel (no popup).
+ * @returns The transaction signature (if sent) and user info.
+ */
 export async function executeTransaction(
   provider: RevibaseProvider,
   args: {
@@ -26,17 +36,15 @@ export async function executeTransaction(
     additionalSigners?: AdditionalSignersParam;
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
-  channelId?: string,
+  options?: AuthorizationFlowOptions,
 ): Promise<{ txSig?: string; user: UserInfo }> {
-  const { redirectOrigin, rid } = provider.startRequest(!channelId);
-  await new Promise<void>((resolve) => setTimeout(resolve, 0));
-
   const {
     instructions,
     signer,
     addressesByLookupTableAddress,
     hasTxManager = true,
   } = args;
+
   const transactionMessageBytes = prepareTransactionMessage({
     payer: address(signer.walletAddress),
     instructions,
@@ -46,43 +54,34 @@ export async function executeTransaction(
     signer.settingsIndexWithAddress.index,
   );
 
-  const transactionPayload: TransactionPayloadWithBase64MessageBytes = {
-    transactionMessageBytes: getBase64Decoder().decode(transactionMessageBytes),
-    transactionAddress: settings,
-    transactionActionType: hasTxManager
-      ? "execute"
-      : "create_with_preauthorized_execution",
-  };
+  return runAuthorizationFlow(
+    provider,
+    (rid, redirectOrigin) => {
+      const transactionPayload: TransactionPayloadWithBase64MessageBytes = {
+        transactionMessageBytes: getBase64Decoder().decode(
+          transactionMessageBytes,
+        ),
+        transactionAddress: settings,
+        transactionActionType: hasTxManager
+          ? "execute"
+          : "create_with_preauthorized_execution",
+      };
 
-  const payload: StartTransactionRequest = {
-    phase: "start",
-    rid,
-    validTill: Date.now() + DEFAULT_TIMEOUT,
-    data: {
-      type: "transaction" as const,
-      payload: transactionPayload,
-      sendTx: true,
-      additionalSigners: args.additionalSigners,
+      const payload: StartTransactionRequest = {
+        phase: "start",
+        rid,
+        validTill: Date.now() + DEFAULT_TIMEOUT,
+        data: {
+          type: "transaction" as const,
+          payload: transactionPayload,
+          sendTx: true,
+          additionalSigners: args.additionalSigners,
+        },
+        redirectOrigin,
+        signer: signer.publicKey,
+      };
+      return payload;
     },
-    redirectOrigin,
-    signer: signer.publicKey,
-  };
-  const abortController = new AbortController();
-
-  provider
-    .sendPayloadToProviderViaPopup({
-      rid,
-      usePopUp: !channelId,
-      signal: abortController.signal,
-    })
-    .catch((error) => abortController.abort(error));
-
-  return await provider.onClientAuthorizationCallback(
-    payload,
-    abortController.signal,
-    channelId
-      ? await provider.getDeviceSignature(JSON.stringify({ rid, channelId }))
-      : undefined,
-    channelId,
+    options,
   );
 }

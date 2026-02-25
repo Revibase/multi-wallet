@@ -106,6 +106,9 @@ function parseSenderIncomingMessage(
  * Creates a channel WebSocket client for the **sender** role.
  * Sender receives: awaiting_recipient, recipient_connected.
  * Sender can send: auth, close, cancel_request.
+ *
+ * @param config - Provider origin, channelId, getDevicePayload, callbacks, and optional tuning (reconnect, heartbeat, logger).
+ * @returns Handle with closeChannel, cancelRequest, and reconnect.
  */
 export function createSenderChannelSocket(
   config: SenderChannelSocketConfig,

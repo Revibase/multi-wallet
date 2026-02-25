@@ -12,6 +12,14 @@ import {
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import { REVIBASE_AUTH_URL, REVIBASE_RP_ID } from "src/utils/consts";
 
+/**
+ * Verifies the WebAuthn message response and returns the user info.
+ *
+ * @param request - The complete message request from Revibase.
+ * @param expectedOrigin - Origin to verify. Defaults to Revibase auth URL.
+ * @param expectedRPID - Relying party ID. Defaults to Revibase RP ID.
+ * @returns The verified user info.
+ */
 export async function validateMessage(
   request: CompleteMessageRequest,
   expectedOrigin = REVIBASE_AUTH_URL,
