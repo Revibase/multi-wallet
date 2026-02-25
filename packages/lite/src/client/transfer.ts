@@ -81,7 +81,9 @@ export async function transferTokens(
   return await provider.onClientAuthorizationCallback(
     payload,
     abortController.signal,
-    await provider.getDeviceSignature(rid, channelId),
+    channelId
+      ? await provider.getDeviceSignature(JSON.stringify({ rid, channelId }))
+      : undefined,
     channelId,
   );
 }

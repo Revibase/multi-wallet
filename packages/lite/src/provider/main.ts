@@ -10,13 +10,37 @@ import {
   type PopupConnectMessage,
   type PopupPortMessage,
 } from "./utils";
+import {
+  createSenderChannelSocket,
+  type SenderChannelSocketHandle,
+} from "./websocket";
+
+export enum ChannelStatus {
+  AUTHENTICATING,
+  AWAITING_RECIPIENT,
+  RECIPIENT_CONNECTED,
+  CHANNEL_CLOSED,
+  ERROR,
+}
+
+export type ChannelStatusEntry = {
+  status: ChannelStatus;
+  recipient?: string;
+  error?: string;
+};
+
+export type ChannelStatusListener = (
+  channelId: string,
+  entry: ChannelStatusEntry,
+) => void;
 
 export class RevibaseProvider {
   private readonly pending = new Map<string, Pending>();
   public onClientAuthorizationCallback: ClientAuthorizationCallback;
   private readonly providerOrigin: string;
   private popUp: Window | null = null;
-  public channelIds: string[] = [];
+  private channelWs: Map<string, SenderChannelSocketHandle> = new Map();
+  private readonly channelStatusListeners = new Set<ChannelStatusListener>();
 
   private defaultCallback: ClientAuthorizationCallback = async (
     request,
@@ -47,25 +71,31 @@ export class RevibaseProvider {
     this.providerOrigin = providerOrigin ?? REVIBASE_AUTH_URL;
   }
 
-  async getDeviceSignature(rid: string, channelId?: string) {
-    if (!channelId) {
-      return;
-    }
+  async getDeviceSignature(message: string) {
     return {
       jwk: (await DeviceKeyManager.getOrCreateDevicePublickey()).publicKey,
-      jws: await DeviceKeyManager.sign(
-        new TextEncoder().encode(JSON.stringify({ channelId, rid })),
-      ),
+      jws: await DeviceKeyManager.sign(new TextEncoder().encode(message)),
     };
   }
 
-  getAllChannelIds() {
-    return this.channelIds;
+  subscribeToChannelStatus(listener: ChannelStatusListener): () => void {
+    this.channelStatusListeners.add(listener);
+    return () => {
+      this.channelStatusListeners.delete(listener);
+    };
   }
 
-  async closeAllChannels() {
-    const channelIds = new Array(...new Set(this.channelIds));
-    return await Promise.all(channelIds.map((x) => this.closeChannel(x)));
+  private setChannelStatus(
+    channelId: string,
+    details: ChannelStatusEntry,
+  ): void {
+    for (const listener of this.channelStatusListeners) {
+      try {
+        listener(channelId, details);
+      } catch (err) {
+        console.error("[RevibaseProvider] Channel status listener threw", err);
+      }
+    }
   }
 
   async createChannel() {
@@ -95,27 +125,50 @@ export class RevibaseProvider {
       );
     }
     const { channelId } = await response.json();
-    this.channelIds.push(channelId);
+    const handlers = createSenderChannelSocket({
+      channelId,
+      getDevicePayload: this.getDeviceSignature,
+      providerOrigin: this.providerOrigin,
+      callbacks: {
+        onAwaitingRecipient: () =>
+          this.setChannelStatus(channelId, {
+            status: ChannelStatus.AWAITING_RECIPIENT,
+          }),
+        onRecipientConnected: ({ devicePublicKey }) =>
+          this.setChannelStatus(channelId, {
+            status: ChannelStatus.RECIPIENT_CONNECTED,
+            recipient: devicePublicKey,
+          }),
+        onClose: () => {
+          this.setChannelStatus(channelId, {
+            status: ChannelStatus.CHANNEL_CLOSED,
+          });
+          this.channelWs.delete(channelId);
+        },
+        onError: (error) =>
+          this.setChannelStatus(channelId, {
+            status: ChannelStatus.ERROR,
+            error,
+          }),
+      },
+    });
+    this.channelWs.set(channelId, handlers);
+    this.setChannelStatus(channelId, { status: ChannelStatus.AUTHENTICATING });
     return { channelId, url: `${this.providerOrigin}?channelId=${channelId}` };
   }
 
-  async closeChannel(channelId: string) {
-    const device = {
-      jwk: (await DeviceKeyManager.getOrCreateDevicePublickey()).publicKey,
-      jws: await DeviceKeyManager.sign(new TextEncoder().encode(channelId)),
-    };
-    const res = await fetch(`${this.providerOrigin}/api/channel/close`, {
-      method: "POST",
-      body: JSON.stringify({ device, channelId }),
-    });
+  async cancelChannelRequest(channelId: string) {
+    return this.channelWs.get(channelId)?.cancelRequest();
+  }
 
-    if (!res.ok) {
-      const data = await res.json();
-      throw new Error(
-        (data as { error?: string }).error ?? "Unable to close channel",
-      );
-    }
-    this.channelIds = this.channelIds.filter((x) => x !== channelId);
+  async closeChannel(channelId: string) {
+    return this.channelWs.get(channelId)?.closeChannel();
+  }
+
+  async closeAllChannels() {
+    return await Promise.all(
+      this.channelWs.entries().map((x) => x[1].closeChannel()),
+    );
   }
 
   startRequest(usePopUp: boolean) {
