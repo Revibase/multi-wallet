@@ -13,7 +13,6 @@ import {
   getUtf8Encoder,
   type Address,
 } from "gill";
-import { MAX_TRANSACTION_BUFFER_INDEX } from "../../constants";
 import { ValidationError } from "../../errors";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
 import { Secp256r1Key } from "../../types";
@@ -117,7 +116,7 @@ export async function getTransactionBufferAddress(
   creator: Address | Secp256r1Key,
   buffer_index: number,
 ): Promise<Address> {
-  requireInRange(buffer_index, 0, MAX_TRANSACTION_BUFFER_INDEX, "buffer_index");
+  requireInRange(buffer_index, 0, 255, "buffer_index");
   const [transactionBuffer] = await getProgramDerivedAddress({
     programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
     seeds: [

@@ -1,12 +1,3 @@
-import {
-  BACKOFF_MAX_DELAY_MS,
-  DEFAULT_NETWORK_RETRY_DELAY_MS,
-  DEFAULT_NETWORK_RETRY_MAX_RETRIES,
-  EXPONENTIAL_BACKOFF_BASE,
-  HTTP_STATUS_BAD_REQUEST,
-  HTTP_STATUS_INTERNAL_SERVER_ERROR,
-  HTTP_STATUS_TOO_MANY_REQUESTS,
-} from "../constants";
 import { RetryExhaustedError } from "../errors";
 
 export interface RetryConfig {
@@ -17,6 +8,14 @@ export interface RetryConfig {
   retryOnRateLimit?: boolean;
   shouldRetry?: (error: unknown, attempt: number) => boolean;
 }
+
+const HTTP_STATUS_BAD_REQUEST = 400;
+const HTTP_STATUS_TOO_MANY_REQUESTS = 429;
+const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
+const DEFAULT_NETWORK_RETRY_MAX_RETRIES = 3;
+const DEFAULT_NETWORK_RETRY_DELAY_MS = 500;
+const EXPONENTIAL_BACKOFF_BASE = 2;
+const BACKOFF_MAX_DELAY_MS = 30000;
 
 const DEFAULT_RETRY_CONFIG: Required<
   Omit<RetryConfig, "shouldRetry" | "retryOnRateLimit">
@@ -50,7 +49,7 @@ function isRetryableHttpStatus(status: number): boolean {
 function defaultFetchShouldRetry(
   error: unknown,
   _attempt: number,
-  config: RetryConfig
+  config: RetryConfig,
 ): boolean {
   if (error instanceof Response) {
     if (isRateLimitStatus(error.status)) {
@@ -68,7 +67,7 @@ export function calculateBackoffDelay(
   attempt: number,
   initialDelayMs: number,
   backoffBase: number,
-  maxDelayMs: number
+  maxDelayMs: number,
 ): number {
   const delay = initialDelayMs * Math.pow(backoffBase, attempt - 1);
   return Math.min(delay, maxDelayMs);
@@ -80,7 +79,7 @@ export function sleep(ms: number): Promise<void> {
 
 export async function retryWithBackoff<T>(
   fn: () => Promise<T>,
-  config?: RetryConfig
+  config?: RetryConfig,
 ): Promise<T> {
   const { maxRetries, initialDelayMs, backoffBase, maxDelayMs, shouldRetry } = {
     ...DEFAULT_RETRY_CONFIG,
@@ -107,7 +106,7 @@ export async function retryWithBackoff<T>(
         attempt,
         initialDelayMs,
         backoffBase,
-        maxDelayMs
+        maxDelayMs,
       );
       await sleep(delay);
     }
@@ -116,13 +115,13 @@ export async function retryWithBackoff<T>(
   throw new RetryExhaustedError(
     fn.name || "retryWithBackoff",
     maxRetries,
-    lastError
+    lastError,
   );
 }
 
 export async function retryFetch(
   fetchFn: () => Promise<Response>,
-  config?: RetryConfig
+  config?: RetryConfig,
 ): Promise<Response> {
   const mergedConfig = { ...DEFAULT_RETRY_CONFIG, ...config };
 
@@ -148,6 +147,6 @@ export function createShouldRetryForErrors(
 ): (error: unknown, _attempt: number) => boolean {
   return (error: unknown): boolean =>
     errorClasses.some(
-      (C) => error instanceof (C as new (...args: any[]) => Error)
+      (C) => error instanceof (C as new (...args: any[]) => Error),
     );
 }
