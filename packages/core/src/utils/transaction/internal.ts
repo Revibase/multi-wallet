@@ -34,7 +34,11 @@ import {
   TRANSACTION_SIZE_LIMIT,
 } from "../../constants";
 import { BundleError, ValidationError } from "../../errors";
-import type { MemberKey, Secp256r1VerifyArgsArgs } from "../../generated";
+import type {
+  MemberKey,
+  Secp256r1VerifyArgsArgs,
+  TransactionSyncSignersArgs,
+} from "../../generated";
 import {
   KeyType,
   Secp256r1Key,
@@ -46,6 +50,8 @@ import { getSolanaRpc } from "../initialize";
 import { getSecp256r1Message } from "../passkeys/internal";
 import { retryFetch } from "../retry";
 import { requireNonEmpty } from "../validation";
+import type { Secp256r1VerifyInput } from "../../instructions/secp256r1Verify";
+import type { PackedAccounts } from "../compressed/packedAccounts";
 
 export async function createEncodedBundle(
   bundle: (TransactionDetails & { unitsConsumed?: number })[],
@@ -286,6 +292,55 @@ export function extractSecp256r1VerificationArgs(
     message,
     publicKey,
   };
+}
+
+export function buildSignerAccounts(
+  dedupSigners: (TransactionSigner | SignedSecp256r1Key)[],
+  packedAccounts: PackedAccounts,
+  secp256r1VerifyInput: Secp256r1VerifyInput = [],
+): {
+  secp256r1VerifyInput: Secp256r1VerifyInput;
+  transactionSyncSigners: TransactionSyncSignersArgs[];
+} {
+  const transactionSyncSigners: TransactionSyncSignersArgs[] = [];
+
+  for (const x of dedupSigners) {
+    if (x instanceof SignedSecp256r1Key) {
+      const index = secp256r1VerifyInput.length;
+      const { domainConfig, verifyArgs, signature, publicKey, message } =
+        extractSecp256r1VerificationArgs(x, index);
+      if (message && signature && publicKey) {
+        secp256r1VerifyInput.push({ message, signature, publicKey });
+      }
+      if (domainConfig) {
+        const domainConfigIndex = packedAccounts
+          .addPreAccounts([
+            { address: domainConfig, role: AccountRole.READONLY },
+          ])
+          .get(domainConfig)?.index;
+        if (verifyArgs.__option === "Some" && domainConfigIndex !== undefined) {
+          transactionSyncSigners.push({
+            __kind: "Secp256r1",
+            fields: [{ domainConfigIndex, verifyArgs: verifyArgs.value }],
+          });
+        }
+      }
+    } else {
+      const index = packedAccounts
+        .addPreAccounts([
+          { address: x.address, role: AccountRole.READONLY_SIGNER, signer: x },
+        ])
+        .get(x.address)?.index;
+      if (index !== undefined) {
+        transactionSyncSigners.push({
+          __kind: "Ed25519",
+          fields: [index],
+        });
+      }
+    }
+  }
+
+  return { secp256r1VerifyInput, transactionSyncSigners };
 }
 
 export function convertPubkeyToMemberkey(

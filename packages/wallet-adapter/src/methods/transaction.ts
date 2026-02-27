@@ -7,6 +7,7 @@ import {
   prepareTransactionBundle,
   prepareTransactionMessage,
   retrieveTransactionManager,
+  type AccountCache,
 } from "@revibase/core";
 import {
   type AddressesByLookupTableAddress,
@@ -26,7 +27,7 @@ export const buildTransaction = async (input: {
   rid?: string;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   additionalSigners?: TransactionSigner[];
-  cachedAccounts?: Map<string, any>;
+  cachedAccounts?: AccountCache;
 }) => {
   let {
     addressesByLookupTableAddress,

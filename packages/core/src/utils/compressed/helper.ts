@@ -297,10 +297,14 @@ export async function fetchCompressedAccount(
   hash?: BN254,
 ): Promise<CompressedAccountWithMerkleContext | null> {
   if (!hash && !address) {
-    throw new Error("Either hash or address must be provided");
+    throw new ValidationError(
+      "Either hash or address must be provided to fetchCompressedAccount.",
+    );
   }
   if (hash && address) {
-    throw new Error("Only one of hash or address must be provided");
+    throw new ValidationError(
+      "Only one of hash or address must be provided to fetchCompressedAccount.",
+    );
   }
 
   const unsafeRes = await rpcRequest(

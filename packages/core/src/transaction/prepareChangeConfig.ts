@@ -23,6 +23,7 @@ import {
   Permission,
   Permissions,
   Secp256r1Key,
+  type AccountCache,
   type ConfigurationArgs,
   type IPermission,
   type PermissionArgs,
@@ -47,7 +48,7 @@ export async function prepareChangeConfigArgs({
   compressed?: boolean;
   settingsAddressTreeIndex?: number;
   configActionsArgs: ConfigurationArgs[];
-  cachedAccounts?: Map<string, any>;
+  cachedAccounts?: AccountCache;
 }): Promise<{
   configActions: ConfigAction[];
   settings: Address;
@@ -141,7 +142,7 @@ async function prepareProofAndMutArgs({
   compressed: boolean;
   settings: Address;
   settingsAddressTreeIndex?: number;
-  cachedAccounts?: Map<string, any>;
+  cachedAccounts?: AccountCache;
 }) {
   await packedAccounts.addSystemAccounts();
 

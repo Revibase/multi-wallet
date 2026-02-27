@@ -11,7 +11,7 @@ import {
   type UserMutArgs,
   UserRole,
 } from "../../generated";
-import { Secp256r1Key } from "../../types";
+import { type AccountCache, Secp256r1Key } from "../../types";
 import {
   base64URLStringToBuffer,
   getCompressedSettingsAddress,
@@ -51,7 +51,7 @@ export async function createDomainUserAccounts({
   authority: TransactionSigner;
   payer: TransactionSigner;
   createUserArgs: UserCreationArgs;
-  cachedAccounts?: Map<string, any>;
+  cachedAccounts?: AccountCache;
 }) {
   const packedAccounts = new PackedAccounts();
   await packedAccounts.addSystemAccounts();

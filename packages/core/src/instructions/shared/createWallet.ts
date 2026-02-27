@@ -5,6 +5,7 @@ import {
   UserRole,
   type User,
 } from "../../generated";
+import type { AccountCache } from "../../types";
 import {
   getCompressedSettingsAddress,
   getSettingsFromIndex,
@@ -23,7 +24,7 @@ import { PackedAccounts } from "../../utils/compressed/packedAccounts";
 type CreateWalletArgs = {
   index: number | bigint;
   payer: TransactionSigner;
-  cachedAccounts?: Map<string, any>;
+  cachedAccounts?: AccountCache;
   initialMember: TransactionSigner;
   userAddressTreeIndex?: number;
 };

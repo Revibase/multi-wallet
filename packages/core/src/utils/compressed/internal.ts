@@ -251,12 +251,16 @@ export async function constructSettingsProofArgs(
       throw new ValidationError("Unable to parse state tree data");
     }
 
+    const decodedSettings = getCompressedSettingsDecoder().decode(
+      settingsAccount.data?.data!,
+    );
+
     settingsReadonlyArgs = {
       accountMeta: {
         address: new Uint8Array(settingsAccount.address!),
         treeInfo: stateTreeInfo.packedTreeInfos[0],
       },
-      data: getCompressedSettingsDecoder().decode(settingsAccount.data?.data!),
+      data: decodedSettings,
     };
 
     settingsMutArgs = {
@@ -265,7 +269,7 @@ export async function constructSettingsProofArgs(
         treeInfo: stateTreeInfo.packedTreeInfos[0],
         outputStateTreeIndex: stateTreeInfo.outputTreeIndex,
       },
-      data: getCompressedSettingsDecoder().decode(settingsAccount.data?.data!),
+      data: decodedSettings,
     };
   }
   return { settingsReadonlyArgs, proof, packedAccounts, settingsMutArgs };

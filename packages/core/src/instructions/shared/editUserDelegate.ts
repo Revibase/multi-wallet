@@ -15,7 +15,7 @@ import {
   type SettingsMutArgs,
   type User,
 } from "../../generated";
-import { SignedSecp256r1Key } from "../../types";
+import { SignedSecp256r1Key, type AccountCache } from "../../types";
 import {
   fetchSettingsAccountData,
   fetchUserAccountData,
@@ -46,7 +46,7 @@ export async function editUserDelegate({
   payer: TransactionSigner;
   user: TransactionSigner | SignedSecp256r1Key;
   userAddressTreeIndex?: number;
-  cachedAccounts?: Map<string, any>;
+  cachedAccounts?: AccountCache;
   newDelegate?: SettingsIndexWithAddress;
 }) {
   const { domainConfig, verifyArgs, message, signature, publicKey } =

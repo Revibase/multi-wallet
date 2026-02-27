@@ -13,7 +13,7 @@ import {
   voteTransactionBuffer,
   type Secp256r1VerifyInput,
 } from "../instructions";
-import { SignedSecp256r1Key } from "../types";
+import { SignedSecp256r1Key, type AccountCache } from "../types";
 import type { TransactionDetails } from "../types/transaction";
 import { getSecp256r1MessageHash, getTransactionBufferAddress } from "../utils";
 import {
@@ -39,7 +39,7 @@ interface CreateTransactionBundleArgs {
   compressed?: boolean;
   chunkSize?: number;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
-  cachedAccounts?: Map<string, any>;
+  cachedAccounts?: AccountCache;
 }
 
 export async function prepareTransactionBundle({

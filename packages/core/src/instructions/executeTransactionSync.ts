@@ -13,14 +13,15 @@ import {
   getTransactionExecuteSyncInstruction,
   type TransactionSyncSignersArgs,
 } from "../generated";
-import { SignedSecp256r1Key } from "../types";
+import { SignedSecp256r1Key, type AccountCache } from "../types";
 import { getWalletAddressFromSettings } from "../utils";
 import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
 } from "../utils/compressed/internal";
+import { ValidationError } from "../errors";
 import {
-  extractSecp256r1VerificationArgs,
+  buildSignerAccounts,
   getDeduplicatedSigners,
 } from "../utils/transaction/internal";
 import { accountsForTransactionExecute } from "../utils/transactionMessage/internal";
@@ -52,7 +53,7 @@ export async function executeTransactionSync({
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   payer?: TransactionSigner;
   simulateProof?: boolean;
-  cachedAccounts?: Map<string, any>;
+  cachedAccounts?: AccountCache;
 }) {
   const dedupSigners = getDeduplicatedSigners(signers);
   const walletAddress = await getWalletAddressFromSettings(settings);
@@ -77,51 +78,19 @@ export async function executeTransactionSync({
 
   packedAccounts.addPreAccounts(accountMetas);
 
-  const transactionSyncSigners: TransactionSyncSignersArgs[] = [];
-
-  for (const x of dedupSigners) {
-    if (x instanceof SignedSecp256r1Key) {
-      const index = secp256r1VerifyInput.length;
-      const { domainConfig, verifyArgs, signature, publicKey, message } =
-        extractSecp256r1VerificationArgs(x, index);
-
-      if (message && signature && publicKey) {
-        secp256r1VerifyInput.push({ message, signature, publicKey });
-      }
-      if (domainConfig) {
-        const domainConfigIndex = packedAccounts
-          .addPreAccounts([
-            { address: domainConfig, role: AccountRole.READONLY },
-          ])
-          .get(domainConfig)?.index;
-        if (verifyArgs.__option === "Some" && domainConfigIndex !== undefined) {
-          transactionSyncSigners.push({
-            __kind: "Secp256r1",
-            fields: [{ domainConfigIndex, verifyArgs: verifyArgs.value }],
-          });
-        }
-      }
-    } else {
-      const index = packedAccounts
-        .addPreAccounts([
-          { address: x.address, role: AccountRole.READONLY_SIGNER, signer: x },
-        ])
-        .get(x.address)?.index;
-      if (index !== undefined) {
-        transactionSyncSigners.push({
-          __kind: "Ed25519",
-          fields: [index],
-        });
-      }
-    }
-  }
+  const {
+    secp256r1VerifyInput: finalSecp256r1VerifyInput,
+    transactionSyncSigners,
+  } = buildSignerAccounts(dedupSigners, packedAccounts, secp256r1VerifyInput);
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
 
   const instructions: Instruction[] = [];
 
-  if (secp256r1VerifyInput.length > 0) {
-    instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
+  if (finalSecp256r1VerifyInput.length > 0) {
+    instructions.push(
+      getSecp256r1VerifyInstruction(finalSecp256r1VerifyInput),
+    );
   }
 
   const customTransactionMessage = parseTransactionMessage(
@@ -131,7 +100,9 @@ export async function executeTransactionSync({
 
   if (compressed) {
     if (!payer || !settingsMutArgs) {
-      throw new Error("Payer not found or proof args is missing.");
+      throw new ValidationError(
+        "Payer not found or proof args are missing for executeTransactionSync.",
+      );
     }
 
     const compressedProofArgs = convertToCompressedProofArgs(
@@ -171,7 +142,7 @@ function parseTransactionMessage(
   accountMetas: AccountMeta[],
 ) {
   if (transactionMessage.version === "legacy") {
-    throw new Error("Only versioned transaction is allowed.");
+    throw new ValidationError("Only versioned transaction is allowed.");
   }
   return {
     numSigners: transactionMessage.header.numSignerAccounts,

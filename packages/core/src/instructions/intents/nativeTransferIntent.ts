@@ -1,15 +1,11 @@
-import {
-  AccountRole,
-  type Address,
-  type Instruction,
-  type TransactionSigner,
-} from "gill";
+import { type Address, type Instruction, type TransactionSigner } from "gill";
+import { ValidationError } from "../../errors";
 import {
   getNativeTransferIntentCompressedInstruction,
   getNativeTransferIntentInstruction,
-  type TransactionSyncSignersArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
+import type { AccountCache } from "../../types/cache";
 import { getWalletAddressFromSettings } from "../../utils";
 import {
   constructSettingsProofArgs,
@@ -17,13 +13,21 @@ import {
   fetchCachedAccountInfo,
 } from "../../utils/compressed/internal";
 import {
-  extractSecp256r1VerificationArgs,
+  buildSignerAccounts,
   getDeduplicatedSigners,
 } from "../../utils/transaction/internal";
-import {
-  getSecp256r1VerifyInstruction,
-  type Secp256r1VerifyInput,
-} from "../secp256r1Verify";
+import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
+
+export type NativeTransferIntentParams = {
+  settings: Address;
+  settingsAddressTreeIndex?: number;
+  destination: Address;
+  amount: number | bigint;
+  signers: (TransactionSigner | SignedSecp256r1Key)[];
+  payer?: TransactionSigner;
+  compressed?: boolean;
+  cachedAccounts?: AccountCache;
+};
 
 export async function nativeTransferIntent({
   settings,
@@ -34,16 +38,7 @@ export async function nativeTransferIntent({
   amount,
   payer,
   compressed = false,
-}: {
-  settings: Address;
-  settingsAddressTreeIndex?: number;
-  destination: Address;
-  amount: number | bigint;
-  signers: (TransactionSigner | SignedSecp256r1Key)[];
-  payer?: TransactionSigner;
-  compressed?: boolean;
-  cachedAccounts?: Map<string, any>;
-}) {
+}: NativeTransferIntentParams): Promise<Instruction[]> {
   const dedupSigners = getDeduplicatedSigners(signers);
   const walletAddress = await getWalletAddressFromSettings(settings);
 
@@ -60,46 +55,13 @@ export async function nativeTransferIntent({
     ]);
 
   if ((value?.lamports ?? 0) < BigInt(amount)) {
-    throw new Error("Insufficient balance");
+    throw new ValidationError("Insufficient balance for native transfer.");
   }
 
-  const secp256r1VerifyInput: Secp256r1VerifyInput = [];
-  const transactionSyncSigners: TransactionSyncSignersArgs[] = [];
-  for (const x of dedupSigners) {
-    if (x instanceof SignedSecp256r1Key) {
-      const index = secp256r1VerifyInput.length;
-      const { domainConfig, verifyArgs, signature, publicKey, message } =
-        extractSecp256r1VerificationArgs(x, index);
-      if (message && signature && publicKey) {
-        secp256r1VerifyInput.push({ message, signature, publicKey });
-      }
-      if (domainConfig) {
-        const domainConfigIndex = packedAccounts
-          .addPreAccounts([
-            { address: domainConfig, role: AccountRole.READONLY },
-          ])
-          .get(domainConfig)?.index;
-        if (verifyArgs.__option === "Some" && domainConfigIndex !== undefined) {
-          transactionSyncSigners.push({
-            __kind: "Secp256r1",
-            fields: [{ domainConfigIndex, verifyArgs: verifyArgs.value }],
-          });
-        }
-      }
-    } else {
-      const index = packedAccounts
-        .addPreAccounts([
-          { address: x.address, role: AccountRole.READONLY_SIGNER, signer: x },
-        ])
-        .get(x.address)?.index;
-      if (index !== undefined) {
-        transactionSyncSigners.push({
-          __kind: "Ed25519",
-          fields: [index],
-        });
-      }
-    }
-  }
+  const { secp256r1VerifyInput, transactionSyncSigners } = buildSignerAccounts(
+    dedupSigners,
+    packedAccounts,
+  );
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
 

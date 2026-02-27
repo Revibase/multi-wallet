@@ -1,4 +1,4 @@
-import type { TransactionDetails } from "@revibase/core";
+import type { AccountCache, TransactionDetails } from "@revibase/core";
 import type {
   Address,
   AddressesByLookupTableAddress,
@@ -11,7 +11,7 @@ export type RevibaseSignAndSendTransactionMethod = (input: {
   instructions: Instruction[];
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   additionalSigners?: TransactionSigner[];
-  cachedAccounts?: Map<string, any>;
+  cachedAccounts?: AccountCache;
 }) => Promise<string>;
 export type RevibaseSignAndSendTransactionFeature = {
   /** Name of the feature. */
@@ -38,7 +38,7 @@ export type RevibaseBuildTransactionMethod = (input: {
   instructions: Instruction[];
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   additionalSigners?: TransactionSigner[];
-  cachedAccounts?: Map<string, any>;
+  cachedAccounts?: AccountCache;
 }) => Promise<TransactionDetails[]>;
 export type RevibaseBuildTransactionFeature = {
   /** Name of the feature. */
@@ -66,7 +66,7 @@ export type RevibaseSignAndSendTokenTransferMethod = (input: {
   destination: Address;
   mint?: Address;
   tokenProgram?: Address;
-  cachedAccounts?: Map<string, any>;
+  cachedAccounts?: AccountCache;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   signer?: string | undefined;
 }) => Promise<string>;
@@ -87,7 +87,7 @@ export type RevibaseBuildTokenTransferTransactionMethod = (input: {
   destination: Address;
   mint?: Address;
   tokenProgram?: Address;
-  cachedAccounts?: Map<string, any>;
+  cachedAccounts?: AccountCache;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   signer?: string | undefined;
 }) => Promise<TransactionDetails>;

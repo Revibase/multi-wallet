@@ -9,6 +9,7 @@ import {
   Secp256r1Key,
   signAndSendTransaction,
   tokenTransferIntent,
+  type AccountCache,
 } from "@revibase/core";
 import type { AddressesByLookupTableAddress, TransactionSigner } from "gill";
 import { getAddressEncoder, getU64Encoder, type Address } from "gill";
@@ -44,7 +45,7 @@ export async function signAndSendTokenTransfer(input: {
   provider: RevibaseProvider;
   mint?: Address;
   tokenProgram?: Address;
-  cachedAccounts?: Map<string, any>;
+  cachedAccounts?: AccountCache;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   user?: User;
 }): Promise<string> {
@@ -77,7 +78,7 @@ export const buildTokenTransferInstruction = async (input: {
   provider: RevibaseProvider;
   mint?: Address;
   tokenProgram?: Address;
-  cachedAccounts?: Map<string, any>;
+  cachedAccounts?: AccountCache;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   user?: User;
 }) => {

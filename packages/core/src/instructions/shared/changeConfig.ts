@@ -8,6 +8,7 @@ import {
   type TransactionSyncSignersArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
+import { ValidationError } from "../../errors";
 import { convertToCompressedProofArgs } from "../../utils/compressed/internal";
 import type { PackedAccounts } from "../../utils/compressed/packedAccounts";
 import {
@@ -89,7 +90,9 @@ export async function changeConfig({
 
   if (compressed) {
     if (!settingsMutArgs) {
-      throw new Error("Payer not found or proof args is missing.");
+      throw new ValidationError(
+        "Proof args are missing for compressed changeConfig.",
+      );
     }
     instructions.push(
       getChangeConfigCompressedInstruction({

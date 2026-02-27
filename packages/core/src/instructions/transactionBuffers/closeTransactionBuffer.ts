@@ -4,12 +4,13 @@ import {
   getTransactionBufferCloseCompressedInstruction,
   getTransactionBufferCloseInstruction,
 } from "../../generated";
-import { SignedSecp256r1Key } from "../../types";
+import { SignedSecp256r1Key, type AccountCache } from "../../types";
 import { getSolanaRpc } from "../../utils";
 import {
   constructSettingsProofArgs,
   convertToCompressedProofArgs,
 } from "../../utils/compressed/internal";
+import { ValidationError } from "../../errors";
 import { extractSecp256r1VerificationArgs } from "../../utils/transaction/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
@@ -26,7 +27,7 @@ export async function closeTransactionBuffer({
   transactionBufferAddress: Address;
   payer?: TransactionSigner;
   compressed?: boolean;
-  cachedAccounts?: Map<string, any>;
+  cachedAccounts?: AccountCache;
 }) {
   const transactionBuffer = await fetchTransactionBuffer(
     getSolanaRpc(),
@@ -61,7 +62,9 @@ export async function closeTransactionBuffer({
 
   if (compressed) {
     if (!payer || !settingsMutArgs) {
-      throw new Error("Payer not found or proof args is missing.");
+      throw new ValidationError(
+        "Payer not found or proof args are missing for closing buffer.",
+      );
     }
     const compressedProofArgs = convertToCompressedProofArgs(
       proof,
