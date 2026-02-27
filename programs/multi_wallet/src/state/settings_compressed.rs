@@ -1,6 +1,6 @@
 use crate::{
-    AddMemberArgs, EditMemberArgs, KeyType, Member, MemberKey, MultisigError, MultisigSettings,
-    Permission, Permissions, RemoveMemberArgs, Settings, UserRole, LIGHT_CPI_SIGNER, SEED_MULTISIG,
+    AddMemberArgs, EditMemberArgs, Member, MemberKey, MultisigError, MultisigSettings,
+    RemoveMemberArgs, Settings, LIGHT_CPI_SIGNER, SEED_MULTISIG,
 };
 use anchor_lang::prelude::*;
 use light_sdk::address::NewAddressParamsAssignedPacked;
@@ -246,6 +246,7 @@ impl MultisigSettings for CompressedSettings {
 mod tests {
     use super::*;
     use crate::utils::settings::MAXIMUM_AMOUNT_OF_MEMBERS_FOR_COMPRESSED_SETTINGS;
+    use crate::{KeyType, Permission, Permissions, UserRole};
 
     fn mk_ed25519_member(
         idx: u8,

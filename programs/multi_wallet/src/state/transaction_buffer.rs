@@ -233,8 +233,7 @@ mod tests {
         let size_2 = TransactionBuffer::size(100, 0, 2).unwrap();
         assert!(size_1 > size_0);
         assert!(size_2 > size_1);
-        let expected_increment_per_signer =
-            MemberKey::INIT_SPACE + ExpectedSigner::INIT_SPACE;
+        let expected_increment_per_signer = MemberKey::INIT_SPACE + ExpectedSigner::INIT_SPACE;
         assert_eq!(size_1 - size_0, expected_increment_per_signer);
         assert_eq!(size_2 - size_1, expected_increment_per_signer);
     }

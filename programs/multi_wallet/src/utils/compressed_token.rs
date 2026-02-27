@@ -12,7 +12,7 @@ use light_sdk::{
     instruction::{PackedMerkleContext, ValidityProof},
 };
 use light_token::instruction::{
-    derive_token_ata, CreateTokenAtaCpi, TransferCpi, TransferFromSplCpi, TransferToSplCpi,
+    CreateTokenAtaCpi, TransferCpi, TransferFromSplCpi, TransferToSplCpi,
 };
 use light_token::spl_interface::derive_spl_interface_pda;
 use light_token::spl_interface::{CreateSplInterfacePda, SplInterfacePda};
@@ -60,7 +60,6 @@ pub struct TokenTransfer<'a, 'info> {
     pub compressible_config: &'a AccountInfo<'info>,
     pub rent_sponsor: Option<&'a AccountInfo<'info>>,
     pub system_program: &'a AccountInfo<'info>,
-    pub destination_ctoken_bump: Option<u8>,
     pub spl_interface_pda_args: Option<SplInterfacePdaArgs>,
 }
 

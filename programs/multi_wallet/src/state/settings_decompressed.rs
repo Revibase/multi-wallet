@@ -1,6 +1,6 @@
 use crate::{
-    error::MultisigError, AddMemberArgs, EditMemberArgs, KeyType, Member, MemberKey,
-    MultisigSettings, Permission, Permissions, RemoveMemberArgs, UserRole, SEED_MULTISIG,
+    error::MultisigError, AddMemberArgs, EditMemberArgs, Member, MemberKey, MultisigSettings,
+    RemoveMemberArgs, SEED_MULTISIG,
 };
 use anchor_lang::prelude::*;
 use std::collections::HashSet;
@@ -127,6 +127,7 @@ impl MultisigSettings for Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{KeyType, Permission, Permissions, UserRole};
 
     fn mk_ed25519_member(
         idx: u8,

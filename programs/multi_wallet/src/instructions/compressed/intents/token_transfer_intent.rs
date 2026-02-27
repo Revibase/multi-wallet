@@ -226,7 +226,6 @@ impl<'info> TokenTransferIntentCompressed<'info> {
             compressible_config: &ctx.accounts.compressible_config,
             rent_sponsor: ctx.accounts.rent_sponsor.as_deref(),
             system_program: &ctx.accounts.system_program,
-            destination_ctoken_bump: ctx.bumps.destination_ctoken_token_account,
             spl_interface_pda_args,
         };
 
