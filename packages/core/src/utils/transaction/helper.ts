@@ -109,9 +109,9 @@ export async function getSignedTransactionManager({
   transactionMessageBytes,
   cachedAccounts,
 }: {
-  authResponses: TransactionAuthDetails[];
-  transactionManagerAddress?: Address;
+  authResponses?: TransactionAuthDetails[];
   transactionMessageBytes?: ReadonlyUint8Array;
+  transactionManagerAddress?: Address;
   userAddressTreeIndex?: number;
   cachedAccounts?: AccountCache;
 }): Promise<TransactionSigner | null> {
