@@ -185,20 +185,22 @@ export class RevibaseProvider {
           this.setChannelStatus(channelId, {
             status: ChannelStatus.RECIPIENT_DISCONNECTED,
           }),
-        onClose: () => {
-          this.setChannelStatus(channelId, {
-            status: ChannelStatus.CHANNEL_CLOSED,
-          });
-          this.channelWs.delete(channelId);
+        onClose: (_event, opts) => {
+          if (opts?.connectionLost) {
+            this.setChannelStatus(channelId, {
+              status: ChannelStatus.CONNECTION_LOST,
+            });
+          } else {
+            this.setChannelStatus(channelId, {
+              status: ChannelStatus.CHANNEL_CLOSED,
+            });
+            this.channelWs.delete(channelId);
+          }
         },
         onError: (error) =>
           this.setChannelStatus(channelId, {
             status: ChannelStatus.ERROR,
             error,
-          }),
-        onConnectionLost: () =>
-          this.setChannelStatus(channelId, {
-            status: ChannelStatus.CONNECTION_LOST,
           }),
         onAutoReconnecting: (attempt) =>
           this.setChannelStatus(channelId, {
@@ -216,7 +218,6 @@ export class RevibaseProvider {
     this.channelWs.get(channelId)?.cancelRequest();
   }
 
-  /** Manual retry after network fixed. Returns true if reconnect started. */
   reconnectChannel(channelId: string): boolean {
     return this.channelWs.get(channelId)?.reconnect() ?? false;
   }

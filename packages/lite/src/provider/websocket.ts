@@ -3,10 +3,9 @@ import { z } from "zod";
 const DEFAULT_MAX_RECONNECT_ATTEMPTS = 3;
 const DEFAULT_RECONNECT_BASE_DELAY_MS = 1000;
 const DEFAULT_AUTH_TIMEOUT_MS = 10_000;
-const DEFAULT_HEARTBEAT_INTERVAL_MS = 30_000;
-const DEFAULT_HEARTBEAT_TIMEOUT_MS = 10_000;
+const DEFAULT_HEARTBEAT_INTERVAL_MS = 15_000;
+const DEFAULT_HEARTBEAT_TIMEOUT_MS = 8_000;
 const CHANNEL_WS_MAX_MESSAGE_BYTES = 64 * 1024;
-
 const WS_CLOSE_CODE_AUTH_FAILED = 1008;
 const WS_CLOSE_CODE_MESSAGE_TOO_LARGE = 1009;
 
@@ -45,17 +44,19 @@ export type SenderChannelWsMessage = z.infer<
   typeof SenderChannelWsMessageSchema
 >;
 
+export type ChannelCloseOptions = {
+  connectionLost?: boolean;
+};
+
 export type SenderChannelSocketCallbacks = {
   onAwaitingRecipient?: () => void;
   onRecipientConnected?: (data: { devicePublicKey: string }) => void;
   onRecipientDisconnected?: () => void;
-  onClose?: (event: {
-    code: number;
-    reason: string;
-    wasClean: boolean;
-  }) => void;
+  onClose?: (
+    event: { code: number; reason: string; wasClean: boolean },
+    opts?: ChannelCloseOptions,
+  ) => void;
   onError?: (message: string) => void;
-  onConnectionLost?: () => void;
   onAutoReconnecting?: (attempt: number) => void;
   onConnected?: () => void;
 };
@@ -118,7 +119,6 @@ export function createSenderChannelSocket(
     onRecipientDisconnected,
     onClose,
     onError,
-    onConnectionLost,
     onAutoReconnecting,
     onConnected,
   } = callbacks;
@@ -127,6 +127,8 @@ export function createSenderChannelSocket(
   const host = providerUrl.host;
   const wsUrl = `${protocol}//${host}/api/channel/ws?channelId=${encodeURIComponent(channelId)}`;
   const log = config.logger ?? console;
+  const HEARTBEAT_TIMEOUT_REASON = "Heartbeat timeout";
+
   log.info("[Channel WS Sender] Creating socket", { channelId, wsUrl });
   let currentWs: WebSocket = new WebSocket(wsUrl);
   let closed = false;
@@ -136,7 +138,7 @@ export function createSenderChannelSocket(
   let reconnectTimeoutId: ReturnType<typeof setTimeout> | null = null;
   let heartbeatIntervalId: ReturnType<typeof setInterval> | null = null;
   let pendingPongTimeoutId: ReturnType<typeof setTimeout> | null = null;
-  let closedDueToHeartbeat = false;
+  let manualReconnectInProgress = false;
 
   function clearReconnectTimeout(): void {
     if (reconnectTimeoutId != null) {
@@ -191,42 +193,18 @@ export function createSenderChannelSocket(
     }
   }
 
-  function detachAndCloseSocket(
-    ws: WebSocket,
-    code?: number,
-    reason?: string,
-  ): void {
-    ws.onopen = null;
-    ws.onclose = null;
-    ws.onerror = null;
-    ws.onmessage = null;
-    try {
-      if (
-        ws.readyState === WebSocket.OPEN ||
-        ws.readyState === WebSocket.CONNECTING
-      ) {
-        ws.close(code ?? 1000, reason ?? "Reconnecting");
-      }
-    } catch {}
-  }
-
-  function replaceSocketWithNew(): void {
-    const prev = currentWs;
-    currentWs = new WebSocket(wsUrl);
-    attachHandlers(currentWs);
-    detachAndCloseSocket(prev, 1000, "Reconnecting");
-  }
-
   function attachHandlers(ws: WebSocket): void {
     ws.onopen = async (): Promise<void> => {
-      if (closed) return;
+      if (closed || ws !== currentWs) return;
       log.info("[Channel WS Sender] Socket opened", { channelId });
       try {
         const device = await getDevicePayloadWithTimeout(channelId);
-        if (closed || ws.readyState !== WebSocket.OPEN) return;
+        if (closed || ws !== currentWs || ws.readyState !== WebSocket.OPEN)
+          return;
         ws.send(JSON.stringify({ type: "auth", device }));
         log.info("[Channel WS Sender] Auth sent", { channelId });
         retryCount = 0;
+        manualReconnectInProgress = false;
         onConnected?.();
         if (heartbeatIntervalMs > 0 && heartbeatTimeoutMs > 0) {
           heartbeatIntervalId = setInterval(() => {
@@ -235,10 +213,9 @@ export function createSenderChannelSocket(
               log.warn("[Channel WS Sender] Heartbeat timeout", {
                 channelId,
               });
-              closedDueToHeartbeat = true;
               clearHeartbeat();
               try {
-                currentWs.close(1000, "Heartbeat timeout");
+                currentWs.close(1000, HEARTBEAT_TIMEOUT_REASON);
               } catch {}
               return;
             }
@@ -253,10 +230,9 @@ export function createSenderChannelSocket(
                 log.warn("[Channel WS Sender] Heartbeat timeout", {
                   channelId,
                 });
-                closedDueToHeartbeat = true;
                 clearHeartbeat();
                 try {
-                  currentWs.close(1000, "Heartbeat timeout");
+                  currentWs.close(1000, HEARTBEAT_TIMEOUT_REASON);
                 } catch {}
               }
             }, heartbeatTimeoutMs);
@@ -272,7 +248,7 @@ export function createSenderChannelSocket(
     };
 
     ws.onmessage = (event: MessageEvent): void => {
-      if (closed) return;
+      if (closed || ws !== currentWs) return;
       const raw = decodeMessageWithSizeLimit(
         event.data as string | ArrayBuffer,
         maxMessageBytes,
@@ -326,59 +302,66 @@ export function createSenderChannelSocket(
     };
 
     ws.onclose = (event: CloseEvent): void => {
+      if (ws !== currentWs) return;
       clearHeartbeat();
-      if (event.target !== currentWs) return;
-      if (closed && !closedDueToHeartbeat) {
-        onClose?.({
-          code: event.code,
-          reason: event.reason || "",
-          wasClean: event.wasClean,
-        });
+      const evt = {
+        code: event.code,
+        reason: event.reason || "",
+        wasClean: event.wasClean,
+      };
+      const isHeartbeatClose = evt.reason === HEARTBEAT_TIMEOUT_REASON;
+
+      const emitConnectionLost = () => {
+        connectionLost = true;
+        onClose?.(evt, { connectionLost: true });
+      };
+      const emitClose = () => onClose?.(evt);
+
+      if (closed && !isHeartbeatClose) {
+        if (manualReconnectInProgress) {
+          manualReconnectInProgress = false;
+          emitConnectionLost();
+        } else {
+          emitClose();
+        }
         return;
       }
-      if (closedDueToHeartbeat) {
+      if (isHeartbeatClose) {
         log.info("[Channel WS Sender] Socket closed (heartbeat timeout)", {
           channelId,
-          code: event.code,
-          reason: event.reason || "(none)",
+          code: evt.code,
+          reason: evt.reason || "(none)",
           retryCount,
         });
       } else if (!closed) {
         log.info("[Channel WS Sender] Socket closed", {
           channelId,
-          code: event.code,
-          reason: event.reason || "(none)",
-          wasClean: event.wasClean,
+          ...evt,
           retryCount,
         });
       }
       if (closedIntentionally) {
         closed = true;
-        onClose?.({
-          code: event.code,
-          reason: event.reason || "",
-          wasClean: event.wasClean,
-        });
+        emitClose();
         return;
       }
-      if (event.wasClean && !closedDueToHeartbeat) {
+      if (event.wasClean && !isHeartbeatClose) {
         closed = true;
-        onClose?.({
-          code: event.code,
-          reason: event.reason || "",
-          wasClean: event.wasClean,
-        });
+        if (manualReconnectInProgress) {
+          manualReconnectInProgress = false;
+          emitConnectionLost();
+        } else {
+          emitClose();
+        }
         return;
       }
-      if (closedDueToHeartbeat) closedDueToHeartbeat = false;
       if (retryCount >= maxReconnectAttempts) {
         closed = true;
-        connectionLost = true;
         log.info("[Channel WS Sender] Max reconnect attempts reached", {
           channelId,
           maxReconnectAttempts,
         });
-        onConnectionLost?.();
+        emitConnectionLost();
         return;
       }
       const baseDelay = reconnectBaseDelayMs * Math.pow(2, retryCount);
@@ -398,11 +381,24 @@ export function createSenderChannelSocket(
           channelId,
           attempt: retryCount,
         });
-        replaceSocketWithNew();
+        const prev = currentWs;
+        currentWs = new WebSocket(wsUrl);
+        try {
+          if (
+            prev.readyState === WebSocket.OPEN ||
+            prev.readyState === WebSocket.CONNECTING
+          ) {
+            prev.close(1000, "Replaced by reconnect");
+          }
+        } catch {
+          /* ignore */
+        }
+        attachHandlers(currentWs);
       }, delay);
     };
 
     ws.onerror = (): void => {
+      if (ws !== currentWs) return;
       log.info("[Channel WS Sender] Socket error", { channelId });
       if (!closed) {
         onError?.("Connection error");
@@ -414,7 +410,7 @@ export function createSenderChannelSocket(
 
   return {
     reconnect(): boolean {
-      if (closed || !connectionLost) {
+      if (!connectionLost && !(reconnectTimeoutId != null && !closed)) {
         log.info("[Channel WS Sender] reconnect() no-op", {
           channelId,
           closed,
@@ -422,11 +418,28 @@ export function createSenderChannelSocket(
         });
         return false;
       }
+      const hadScheduledRetry = reconnectTimeoutId != null;
+      const wasConnectionLost = connectionLost;
       log.info("[Channel WS Sender] reconnect() starting", { channelId });
+      closed = false;
       connectionLost = false;
       retryCount = 0;
+      manualReconnectInProgress = hadScheduledRetry || wasConnectionLost;
       clearReconnectTimeout();
-      replaceSocketWithNew();
+      clearHeartbeat();
+      const previousWs = currentWs;
+      currentWs = new WebSocket(wsUrl);
+      try {
+        if (
+          previousWs.readyState === WebSocket.OPEN ||
+          previousWs.readyState === WebSocket.CONNECTING
+        ) {
+          previousWs.close(1000, "Replaced by reconnect");
+        }
+      } catch {
+        /* ignore */
+      }
+      attachHandlers(currentWs);
       return true;
     },
     closeChannel() {
