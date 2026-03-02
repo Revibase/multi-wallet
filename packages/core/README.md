@@ -108,20 +108,29 @@ Use `settings`, `compressed`, and (optionally) `walletAddress` in the following 
 ### 2. Native SOL transfer
 
 ```ts
-import { nativeTransferIntent } from "@revibase/core";
+import {
+  nativeTransferIntent,
+  retrieveTransactionManager,
+  getSignedTransactionManager,
+} from "@revibase/core";
 import type { TransactionSigner } from "gill";
 
 declare const payer: TransactionSigner;
 declare const memberSigner: TransactionSigner;
 declare const destination: string;
 
-const { transactionManagerAddress, userAddressTreeIndex } =
-  retrieveTransactionManager(memberSigner.address.toString(), settingsAccount);
-const transactionManagerSigner = await getSignedTransactionManager({
-  transactionMessageBytes,
-  transactionManagerAddress,
-  userAddressTreeIndex,
-});
+// For wallets with a transaction manager, add its signer. See Custom transactions for full flow.
+const tmResult = retrieveTransactionManager(
+  memberSigner.address.toString(),
+  settingsAccount,
+);
+const transactionManagerSigner =
+  "transactionManagerAddress" in tmResult
+    ? await getSignedTransactionManager({
+        transactionManagerAddress: tmResult.transactionManagerAddress,
+        userAddressTreeIndex: tmResult.userAddressTreeIndex,
+      })
+    : null;
 
 const instructions = await nativeTransferIntent({
   settings,
@@ -134,13 +143,17 @@ const instructions = await nativeTransferIntent({
   payer,
   compressed,
 });
-// Send instructions in a transaction. With a transaction manager, add its signer to signers (retrieveTransactionManager + getSignedTransactionManager).
+// Build tx from instructions with prepareTransactionMessage (or similar), then send.
 ```
 
 ### 3. SPL / Token-2022 transfer
 
 ```ts
-import { tokenTransferIntent } from "@revibase/core";
+import {
+  tokenTransferIntent,
+  retrieveTransactionManager,
+  getSignedTransactionManager,
+} from "@revibase/core";
 import type { Address, TransactionSigner } from "gill";
 import { TOKEN_2022_PROGRAM_ADDRESS } from "gill/programs";
 
@@ -149,13 +162,17 @@ declare const memberSigner: TransactionSigner;
 declare const destinationWallet: Address;
 declare const mint: Address;
 
-const { transactionManagerAddress, userAddressTreeIndex } =
-  retrieveTransactionManager(memberSigner.address.toString(), settingsAccount);
-const transactionManagerSigner = await getSignedTransactionManager({
-  transactionMessageBytes,
-  transactionManagerAddress,
-  userAddressTreeIndex,
-});
+const tmResult = retrieveTransactionManager(
+  memberSigner.address.toString(),
+  settingsAccount,
+);
+const transactionManagerSigner =
+  "transactionManagerAddress" in tmResult
+    ? await getSignedTransactionManager({
+        transactionManagerAddress: tmResult.transactionManagerAddress,
+        userAddressTreeIndex: tmResult.userAddressTreeIndex,
+      })
+    : null;
 
 const instructions = await tokenTransferIntent({
   settings,
@@ -170,7 +187,7 @@ const instructions = await tokenTransferIntent({
   tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
   compressed,
 });
-// Send instructions in a transaction (same signer pattern as native transfer if using a transaction manager).
+// Build tx from instructions, then send. Same signer pattern as native transfer if using a transaction manager.
 ```
 
 ---

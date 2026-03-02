@@ -5,8 +5,10 @@ import type {
   UserInfo,
 } from "@revibase/core";
 import {
+  fetchSettingsAccountData,
   getSettingsFromIndex,
   prepareTransactionMessage,
+  UserRole,
 } from "@revibase/core";
 import {
   address,
@@ -19,20 +21,16 @@ import { DEFAULT_TIMEOUT } from "src/provider/utils";
 import type { AuthorizationFlowOptions } from "src/utils/types";
 import { runAuthorizationFlow } from "./runAuthorizationFlow";
 
-/**
- * Builds and executes a custom transaction. Action type is selected from wallet settings.
- *
- * @param provider - The Revibase provider instance.
- * @param args - Transaction params: `instructions`, `signer`, optional `hasTxManager`, `additionalSigners`, `addressesByLookupTableAddress`.
- * @param options - Optional. `signal`: abort the flow from the app. `channelId`: use an existing channel (no popup).
- * @returns The transaction signature (if sent) and user info.
- */
+/** Custom transaction. Action from wallet settings (TransactionManager). Provider needs rpcEndpoint. Options: signal?, channelId?. */
 export async function executeTransaction(
   provider: RevibaseProvider,
   args: {
     instructions: Instruction[];
     signer: UserInfo;
-    hasTxManager?: boolean;
+    settingsIndexWithAddress?: {
+      index: number | bigint;
+      settingsAddressTreeIndex: number;
+    };
     additionalSigners?: AdditionalSignersParam;
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
@@ -42,7 +40,7 @@ export async function executeTransaction(
     instructions,
     signer,
     addressesByLookupTableAddress,
-    hasTxManager = true,
+    settingsIndexWithAddress,
   } = args;
 
   const transactionMessageBytes = prepareTransactionMessage({
@@ -50,8 +48,15 @@ export async function executeTransaction(
     instructions,
     addressesByLookupTableAddress,
   });
-  const settings = await getSettingsFromIndex(
-    signer.settingsIndexWithAddress.index,
+  const settingsArgs =
+    settingsIndexWithAddress ?? signer.settingsIndexWithAddress;
+  const settings = await getSettingsFromIndex(settingsArgs.index);
+  const settingsData = await fetchSettingsAccountData(
+    settings,
+    settingsArgs.settingsAddressTreeIndex,
+  );
+  const hasTxManager = settingsData.members.some(
+    (x) => x.role === UserRole.TransactionManager,
   );
 
   return runAuthorizationFlow(

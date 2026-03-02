@@ -8,15 +8,7 @@ import type {
   AuthorizationFlowResult,
 } from "src/utils";
 
-/**
- * Shared flow: startRequest → build payload → open popup or get device signature → callback.
- * Used by signIn, transferTokens, and executeTransaction.
- *
- * @param provider - The Revibase provider instance.
- * @param buildPayload - Function that builds the start request payload from `rid` and `redirectOrigin`.
- * @param options - Optional. `signal`: abort the flow. `channelId`: use an existing channel (no popup).
- * @returns The result from the client authorization callback (`{ user }` or `{ txSig, user }`).
- */
+/** Shared flow: startRequest → payload → popup or device signature → callback. Used by signIn, transferTokens, executeTransaction. */
 export async function runAuthorizationFlow(
   provider: RevibaseProvider,
   buildPayload: (

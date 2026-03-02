@@ -1,25 +1,14 @@
-import type {
-  CompleteMessageRequest,
-  SettingsIndexWithAddressArgs,
-} from "@revibase/core";
+import type { CompleteMessageRequest } from "@revibase/core";
 import {
   bufferToBase64URLString,
   convertPubkeyCompressedToCose,
   createMessageChallenge,
-  getWalletAddressFromIndex,
   UserInfoSchema,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import { REVIBASE_AUTH_URL, REVIBASE_RP_ID } from "src/utils/consts";
 
-/**
- * Verifies the WebAuthn message response and returns the user info.
- *
- * @param request - The complete message request from Revibase.
- * @param expectedOrigin - Origin to verify. Defaults to Revibase auth URL.
- * @param expectedRPID - Relying party ID. Defaults to Revibase RP ID.
- * @returns The verified user info.
- */
+/** Verifies WebAuthn message, returns user. */
 export async function validateMessage(
   request: CompleteMessageRequest,
   expectedOrigin = REVIBASE_AUTH_URL,
@@ -53,23 +42,7 @@ export async function validateMessage(
     throw new Error("WebAuthn message verification failed");
   }
 
-  const settingsIndexWithAddress = payload.additionalInfo
-    ?.settingsIndexWithAddress as SettingsIndexWithAddressArgs | undefined;
-
-  if (!settingsIndexWithAddress) {
-    throw new Error("User is not delegated");
-  }
-
-  const walletAddress = await getWalletAddressFromIndex(
-    settingsIndexWithAddress.index,
-  );
-
   return {
-    user: UserInfoSchema.parse({
-      publicKey: payload.signer,
-      walletAddress,
-      settingsIndexWithAddress,
-      ...payload.additionalInfo,
-    }),
+    user: UserInfoSchema.parse(payload.additionalInfo),
   };
 }

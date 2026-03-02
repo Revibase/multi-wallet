@@ -31,9 +31,14 @@ const SenderRecipientConnectedSchema = z.object({
   data: z.object({ devicePublicKey: z.string() }),
 });
 
+const SenderRecipientDisconnectedSchema = z.object({
+  event: z.literal("recipient_disconnected"),
+});
+
 const SenderChannelWsMessageSchema = z.discriminatedUnion("event", [
   SenderAwaitingRecipientSchema,
   SenderRecipientConnectedSchema,
+  SenderRecipientDisconnectedSchema,
 ]);
 
 export type SenderChannelWsMessage = z.infer<
@@ -41,18 +46,17 @@ export type SenderChannelWsMessage = z.infer<
 >;
 
 export type SenderChannelSocketCallbacks = {
-  /** Called when sender has connected and the channel is waiting for the recipient. */
   onAwaitingRecipient?: () => void;
   onRecipientConnected?: (data: { devicePublicKey: string }) => void;
+  onRecipientDisconnected?: () => void;
   onClose?: (event: {
     code: number;
     reason: string;
     wasClean: boolean;
   }) => void;
   onError?: (message: string) => void;
-  /** Called when auto-reconnect is exhausted; UI can show "Reconnect" button. */
   onConnectionLost?: () => void;
-  /** Called after successful open + auth send; UI can clear "Reconnecting…". */
+  onAutoReconnecting?: (attempt: number) => void;
   onConnected?: () => void;
 };
 
@@ -64,29 +68,19 @@ export type SenderChannelSocketConfig = {
     jws: string;
   }>;
   callbacks: SenderChannelSocketCallbacks;
-  /** Max reconnection attempts after unexpected disconnect. Default 3. */
   maxReconnectAttempts?: number;
-  /** Base delay in ms for first reconnect; doubles each attempt. Default 1000. */
   reconnectBaseDelayMs?: number;
-  /** Timeout for getDevicePayload() before failing auth. Default 10000. */
   authTimeoutMs?: number;
-  /** Max incoming message size in bytes. Default from server limit. */
   maxMessageBytes?: number;
-  /** Log every message (noisier). Default false for production. */
   verboseLogging?: boolean;
-  /** Send ping every N ms. Set to 0 to disable. Default 30000. */
   heartbeatIntervalMs?: number;
-  /** Close connection if no pong within N ms after ping. Default 10000. */
   heartbeatTimeoutMs?: number;
-  /** Optional logger (info/warn/error). Defaults to console. Use no-op in production to reduce noise. */
   logger?: Pick<Console, "info" | "warn" | "error">;
 };
 
 export type SenderChannelSocketHandle = {
   closeChannel: () => void;
-  /** Cancel the current pending request (no-op if none). Returns true if send succeeded. */
   cancelRequest: () => boolean;
-  /** Try to reconnect after connection lost. Returns true if reconnect was started. */
   reconnect: () => boolean;
 };
 
@@ -102,14 +96,6 @@ function parseSenderIncomingMessage(
   }
 }
 
-/**
- * Creates a channel WebSocket client for the **sender** role.
- * Sender receives: awaiting_recipient, recipient_connected.
- * Sender can send: auth, close, cancel_request.
- *
- * @param config - Provider origin, channelId, getDevicePayload, callbacks, and optional tuning (reconnect, heartbeat, logger).
- * @returns Handle with closeChannel, cancelRequest, and reconnect.
- */
 export function createSenderChannelSocket(
   config: SenderChannelSocketConfig,
 ): SenderChannelSocketHandle {
@@ -129,9 +115,11 @@ export function createSenderChannelSocket(
   const {
     onAwaitingRecipient,
     onRecipientConnected,
+    onRecipientDisconnected,
     onClose,
     onError,
     onConnectionLost,
+    onAutoReconnecting,
     onConnected,
   } = callbacks;
   const providerUrl = new URL(providerOrigin);
@@ -182,9 +170,7 @@ export function createSenderChannelSocket(
       ) {
         currentWs.close(code ?? 1000, reason ?? "Closed");
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
   async function getDevicePayloadWithTimeout(channelId: string): Promise<{
@@ -221,9 +207,7 @@ export function createSenderChannelSocket(
       ) {
         ws.close(code ?? 1000, reason ?? "Reconnecting");
       }
-    } catch {
-      // ignore
-    }
+    } catch {}
   }
 
   function replaceSocketWithNew(): void {
@@ -313,9 +297,7 @@ export function createSenderChannelSocket(
           }
           return;
         }
-      } catch {
-        // not JSON or no event, continue to normal parse
-      }
+      } catch {}
       const msg = parseSenderIncomingMessage(raw);
       if (!msg) {
         if (verboseLogging) {
@@ -330,13 +312,16 @@ export function createSenderChannelSocket(
         log.info("[Channel WS Sender] Message received", {
           channelId,
           event: msg.event,
-          ...(msg.event !== "awaiting_recipient" && { data: msg.data }),
+          ...(msg.event !== "awaiting_recipient" &&
+            msg.event !== "recipient_disconnected" && { data: msg.data }),
         });
       }
       if (msg.event === "awaiting_recipient") {
         onAwaitingRecipient?.();
       } else if (msg.event === "recipient_connected") {
         onRecipientConnected?.(msg.data);
+      } else if (msg.event === "recipient_disconnected") {
+        onRecipientDisconnected?.();
       }
     };
 
@@ -400,6 +385,7 @@ export function createSenderChannelSocket(
       const jitter = 0.8 + 0.4 * Math.random();
       const delay = Math.min(Math.round(baseDelay * jitter), 30_000);
       retryCount += 1;
+      onAutoReconnecting?.(retryCount);
       log.info("[Channel WS Sender] Scheduling reconnect", {
         channelId,
         attempt: retryCount,
@@ -450,14 +436,14 @@ export function createSenderChannelSocket(
         currentWs.readyState === WebSocket.OPEN
       ) {
         try {
-          log.info("[Channel WS] Sending close", { channelId });
+          log.info("[Channel WS Sender] Sending close", { channelId });
           currentWs.send(JSON.stringify({ type: "close" }));
         } catch (err) {
           log.error("Channel close send failed", err, { channelId });
           onError?.("Failed to close channel");
         }
       } else if (!closed) {
-        log.info("[Channel WS] closeChannelAndConnection() skip send", {
+        log.info("[Channel WS Sender] closeChannel skip send", {
           channelId,
           closed,
           connectionLost,
@@ -465,7 +451,7 @@ export function createSenderChannelSocket(
         });
       }
       if (closed) return;
-      log.info("[Channel WS] close() called", {
+      log.info("[Channel WS Sender] close() called", {
         channelId,
         connectionLost,
       });

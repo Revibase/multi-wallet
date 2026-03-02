@@ -1,3 +1,4 @@
+/** @revibase/lite — Passkey Solana wallet. Frontend: RevibaseProvider, signIn, transferTokens, executeTransaction. Backend: processClientAuthCallback. See README.md, AGENTS.md. */
 export type {
   CompleteMessageRequest,
   CompleteTransactionRequest,

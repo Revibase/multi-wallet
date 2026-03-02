@@ -9,18 +9,7 @@ import {
 import { CompactSign } from "jose";
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
 
-/**
- * Signs the start request and calls the Revibase startRequest API.
- * Used by processClientAuthCallback.
- *
- * @param options.request - The start message or transaction request.
- * @param options.privateKey - Base64-encoded JWK for signing.
- * @param options.signal - AbortSignal for the fetch.
- * @param options.providerOrigin - Revibase auth origin.
- * @param options.device - Optional. Device signature when using a channel.
- * @param options.channelId - Optional. Channel ID for device-bound flow.
- * @returns The complete message or send-transaction response from Revibase.
- */
+/** Signs start request, calls Revibase startRequest API. options.channelId for channel flow. */
 export async function startRequest({
   privateKey,
   request,

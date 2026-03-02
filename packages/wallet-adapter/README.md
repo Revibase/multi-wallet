@@ -11,11 +11,11 @@ You can get one from Helius or any other Solana RPC provider that supports Heliu
 
 ## Initialize the SDK
 
-```bash
+```ts
 import { initializeMultiWallet } from "@revibase/wallet";
 
 initializeMultiWallet({
-  rpcEndpoint: INSERT_YOUR_HELIUS_RPC_ENDPOINT_HERE
+  rpcEndpoint: INSERT_YOUR_HELIUS_RPC_ENDPOINT_HERE,
 });
 ```
 
@@ -26,8 +26,7 @@ Simply integrate it into your existing Solana wallet flow.
 
 ## Example
 
-```bash
-
+```tsx
 import { useEffect } from "react";
 import { initializeMultiWallet } from "@revibase/wallet";
 import { ConnectionProvider, WalletProvider } from "@solana/wallet-adapter-react";
@@ -56,6 +55,4 @@ export default function App() {
     </ConnectionProvider>
   );
 }
-
-
 ```

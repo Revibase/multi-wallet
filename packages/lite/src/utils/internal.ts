@@ -1,10 +1,4 @@
-/**
- * Builds the sign-in message text shown to the user (domain + nonce).
- *
- * @param input.domain - Optional. The requesting domain.
- * @param input.nonce - Nonce for the message.
- * @returns The formatted message string.
- */
+/** Sign-in message text (domain + nonce). */
 export function createSignInMessageText(input: {
   domain?: string;
   nonce: string;

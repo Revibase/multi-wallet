@@ -4,10 +4,10 @@ import type {
   UserInfo,
 } from "@revibase/core";
 
-/** Device proof (public key + signature) when using a device-bound channel. */
+/** Device proof (jwk + jws) for channel auth. */
 export type DeviceSignature = { jwk: string; jws: string };
 
-/** Callback invoked to authorize a start request. POST request/device/channelId to your backend and return the result. */
+/** Authorize start request: POST request/device/channelId to backend, return result. */
 export type ClientAuthorizationCallback = {
   (
     request: StartMessageRequest,
@@ -23,18 +23,13 @@ export type ClientAuthorizationCallback = {
   ): Promise<{ txSig?: string; user: UserInfo }>;
 };
 
-/**
- * Options for signIn, transferTokens, and executeTransaction.
- *
- * @property signal - When aborted, the flow is cancelled and the request is not sent.
- * @property channelId - Use an existing channel (no popup); device-bound flow.
- */
+/** signIn / transferTokens / executeTransaction options. */
 export type AuthorizationFlowOptions = {
   signal?: AbortSignal;
   channelId?: string;
 };
 
-/** Result of signIn (user only) or transferTokens/executeTransaction (txSig + user). */
+/** signIn → user; transferTokens/executeTransaction → txSig? + user. */
 export type AuthorizationFlowResult =
   | { user: UserInfo }
   | { txSig?: string; user: UserInfo };

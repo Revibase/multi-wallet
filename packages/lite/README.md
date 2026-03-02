@@ -1,21 +1,33 @@
 # @revibase/lite
 
-Passkey-based Solana wallet: sign in and approve transactions in a popup; backend authorizes with a server-side private key.
-
-## Quick Start
+Passkey Solana wallet: sign in and approve transactions in a popup. Backend authorizes with a server-side private key.
 
 ```bash
 pnpm add @revibase/lite
 ```
 
-1. **Keys & config** — Get public/private key at [developers.revibase.com](https://developers.revibase.com). Add `/.well-known/revibase.json` with `clientJwk` (your public key), `title`, `description`.
-2. **Backend** — Set `PRIVATE_KEY`. POST route: parse `{ request, device, channelId }` from body, call `processClientAuthCallback({ request, privateKey: process.env.PRIVATE_KEY!, signal: req.signal, device, channelId })`, return JSON.
-3. **Frontend** — Default callback POSTs to `/api/clientAuthorization`. If your path differs, pass a custom callback as 2nd arg to `RevibaseProvider`.
+**API** — Frontend: `RevibaseProvider`, `signIn`, `transferTokens`, `executeTransaction`. Backend: `processClientAuthCallback`. Types: `UserInfo`, `ChannelStatus`, `AuthorizationFlowOptions`, `RevibaseProviderOptions`. Errors: `RevibaseError` + subclasses (`.code`). [AGENTS.md](./AGENTS.md) for automation.
+
+---
+
+## Get started
+
+Three steps: keys, backend route, provider.
+
+### 1. Keys
+
+Get keys at [developers.revibase.com](https://developers.revibase.com). Add `/.well-known/revibase.json` with `clientJwk`, `title`, `description`.
+
+### 2. Backend
+
+Expose **POST** at **`/api/clientAuthorization`** (default). Keep `PRIVATE_KEY` server-only; HTTPS in production.
+
+Example handler:
 
 ```ts
 import {
-  type DeviceSignature,
   processClientAuthCallback,
+  type DeviceSignature,
   type StartMessageRequest,
   type StartTransactionRequest,
 } from "@revibase/lite";
@@ -34,35 +46,120 @@ export async function POST(req: Request) {
       device,
       channelId,
     });
-    return new Response(JSON.stringify(result));
+    return Response.json(result);
   } catch (e) {
-    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : String(e) }), { status: 500 });
+    const msg = e instanceof Error ? e.message : String(e);
+    return Response.json({ error: msg }, { status: 500 });
   }
 }
 ```
 
+### 3. Frontend
+
+Create a provider. For `executeTransaction`, pass `rpcEndpoint` in options:
+
 ```ts
-import { RevibaseProvider, signIn, transferTokens } from "@revibase/lite";
+import {
+  RevibaseProvider,
+  signIn,
+  transferTokens,
+  executeTransaction,
+} from "@revibase/lite";
 
 const provider = new RevibaseProvider();
 const { user } = await signIn(provider);
-const { txSig } = await transferTokens(provider, { amount: BigInt(100_000_000), destination: "ADDRESS", signer: user });
+const { txSig } = await transferTokens(provider, {
+  amount: BigInt(100_000_000),
+  destination: "ADDRESS",
+  signer: user, // optional for transfers
+});
 ```
 
-**Custom callback:** `new RevibaseProvider(undefined, async (request, signal, device, channelId) => { const res = await fetch("/api/your-route", { method: "POST", body: JSON.stringify({ request, device, channelId }), signal }); const data = await res.json(); if (!res.ok) throw new Error(data?.error ?? "Authorization failed"); return data; })`
+**Custom instructions** — Build instructions with `gill` (Solana instruction builder) or similar, then pass to `executeTransaction`.
 
-**Device binding (no popup):** `const { channelId, url } = await provider.createChannel();` — open `url` in a tab. Then `signIn(provider, { channelId })`, `transferTokens(provider, args, { channelId })`, etc. `subscribeToChannelStatus(listener)`, `closeChannel(channelId)` / `closeAllChannels()`.
+```ts
+import { RevibaseProvider, signIn, executeTransaction } from "@revibase/lite";
+import { address, createNoopSigner } from "gill";
+import { getTransferSolInstruction } from "gill/programs";
 
-**Security:** Keep `PRIVATE_KEY` server-only; use HTTPS in production.
+const provider = new RevibaseProvider({
+  rpcEndpoint: "https://api.mainnet-beta.solana.com",
+});
+const { user } = await signIn(provider);
+
+const { txSig } = await executeTransaction(provider, {
+  instructions: [
+    getTransferSolInstruction({
+      source: createNoopSigner(address(user.walletAddress)),
+      destination: address("RECIPIENT_WALLET_ADDRESS"),
+      amount: 1_000_000n,
+    }),
+  ],
+  signer: user,
+});
+```
+
+Default: auth in popup. For auth on another device, use a channel (below).
 
 ---
 
-## API
+## Auth on another device (channel)
 
-**Client:** `signIn(provider, options?)` → `{ user }`. `transferTokens(provider, args, options?)` → `{ txSig?, user }`. `executeTransaction(provider, args, options?)` → `{ txSig?, user }`. Options: `{ signal?: AbortSignal, channelId?: string }` (type: `AuthorizationFlowOptions`).
+Channel: auth on another device; requests go there. `createChannel()` → open `url` on that device:
 
-**Provider:** `new RevibaseProvider(providerOrigin?, onClientAuthorizationCallback?, logger?)`. Methods: `createChannel()` → `{ channelId, url }`, `subscribeToChannelStatus(listener)` → unsubscribe fn, `cancelChannelRequest(channelId)`, `closeChannel(channelId)`, `closeAllChannels()`. Channel status: `ChannelStatus` enum, `ChannelStatusEntry`.
+```ts
+const { channelId, url } = await provider.createChannel();
+```
 
-**Server:** `processClientAuthCallback({ request, signal, privateKey, device?, channelId?, providerOrigin?, rpId? })` → `{ user }` or `{ txSig?, user }`. Pass `req.signal` so fetches cancel on client disconnect.
+```ts
+const { user } = await signIn(provider, { channelId });
+const { txSig } = await transferTokens(
+  provider,
+  { amount, destination, signer: user },
+  { channelId },
+);
+// Or: executeTransaction(provider, { instructions, signer: user }, { channelId })
+```
 
-**Errors:** `RevibaseError` base; `RevibasePopupBlockedError`, `RevibasePopupClosedError`, `RevibaseTimeoutError`, `RevibaseFlowInProgressError`, `RevibaseAbortedError`, `RevibaseAuthError`, `RevibaseEnvironmentError`, `RevibasePopupNotOpenError`. All have `.code` (e.g. `"POPUP_BLOCKED"`, `"TIMEOUT"`).
+Use `subscribeToChannelStatus` to check channel status.
+
+```ts
+import { ChannelStatus } from "@revibase/lite";
+
+provider.subscribeToChannelStatus((id, entry) => {
+  switch (entry.status) {
+    case ChannelStatus.AUTHENTICATING:
+      break; // show "Connecting…"
+    case ChannelStatus.AWAITING_RECIPIENT:
+      break; // show "Waiting for other device"
+    case ChannelStatus.RECIPIENT_CONNECTED:
+      break; // show "Connected" (entry.recipient)
+    case ChannelStatus.RECIPIENT_DISCONNECTED:
+      break; // show "Other device left"
+    case ChannelStatus.AUTO_RECONNECTING:
+      break; // show "Reconnecting…" (entry.reconnectAttempt)
+    case ChannelStatus.CONNECTION_LOST:
+      break; // show "Connection lost. [Retry]" → provider.reconnectChannel(id)
+    case ChannelStatus.CHANNEL_CLOSED:
+      break; // show "Channel closed"
+    case ChannelStatus.ERROR:
+      break; // show entry.error
+  }
+});
+```
+
+### Reconnect
+
+If the channel connection is lost, call `reconnectChannel(channelId)`:
+
+```ts
+provider.reconnectChannel(channelId);
+```
+
+### Cleanup
+
+```ts
+provider.closeChannel(channelId);
+// or
+provider.closeAllChannels();
+```

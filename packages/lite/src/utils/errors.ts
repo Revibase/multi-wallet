@@ -1,6 +1,4 @@
-/**
- * Base error for Revibase SDK. Use `instanceof` or `code` for programmatic handling.
- */
+/** Base error. Use instanceof or .code for handling. */
 export class RevibaseError extends Error {
   readonly code: string;
 
@@ -12,7 +10,7 @@ export class RevibaseError extends Error {
   }
 }
 
-/** Thrown when the auth popup was blocked by the browser. */
+/** Auth popup blocked. */
 export class RevibasePopupBlockedError extends RevibaseError {
   constructor(message = "Popup blocked. Please enable popups.") {
     super(message, "POPUP_BLOCKED");
@@ -21,7 +19,7 @@ export class RevibasePopupBlockedError extends RevibaseError {
   }
 }
 
-/** Thrown when the user closed the popup before completing auth. */
+/** User closed popup before auth. */
 export class RevibasePopupClosedError extends RevibaseError {
   constructor(message = "Popup was closed by the user") {
     super(message, "POPUP_CLOSED");
@@ -30,7 +28,7 @@ export class RevibasePopupClosedError extends RevibaseError {
   }
 }
 
-/** Thrown when an authorization flow times out. */
+/** Authorization flow timed out. */
 export class RevibaseTimeoutError extends RevibaseError {
   constructor(message = "Authentication timed out") {
     super(message, "TIMEOUT");
@@ -39,7 +37,7 @@ export class RevibaseTimeoutError extends RevibaseError {
   }
 }
 
-/** Thrown when a new flow is started while one is already in progress. */
+/** Flow already in progress. */
 export class RevibaseFlowInProgressError extends RevibaseError {
   constructor(message = "An authorization flow is already in progress") {
     super(message, "FLOW_IN_PROGRESS");
@@ -48,7 +46,7 @@ export class RevibaseFlowInProgressError extends RevibaseError {
   }
 }
 
-/** Thrown when the flow is aborted (e.g. via AbortSignal). */
+/** Flow aborted (e.g. AbortSignal). */
 export class RevibaseAbortedError extends RevibaseError {
   constructor(message = "Aborted") {
     super(message, "ABORTED");
@@ -57,7 +55,7 @@ export class RevibaseAbortedError extends RevibaseError {
   }
 }
 
-/** Thrown when the popup is not open (e.g. closed before sendPayloadToProviderViaPopup). */
+/** Popup not open. */
 export class RevibasePopupNotOpenError extends RevibaseError {
   constructor(message = "Popup is not open. Call startRequest first.") {
     super(message, "POPUP_NOT_OPEN");
@@ -66,9 +64,8 @@ export class RevibasePopupNotOpenError extends RevibaseError {
   }
 }
 
-/** Thrown when the backend authorization callback fails. */
+/** Backend authorization failed. */
 export class RevibaseAuthError extends RevibaseError {
-  /** @param message - Error message (e.g. from backend response). */
   constructor(message: string) {
     super(message, "AUTH_FAILED");
     this.name = "RevibaseAuthError";
@@ -76,7 +73,7 @@ export class RevibaseAuthError extends RevibaseError {
   }
 }
 
-/** Thrown when the provider is used outside a browser. */
+/** Used outside browser. */
 export class RevibaseEnvironmentError extends RevibaseError {
   constructor(message = "Provider can only be used in a browser environment") {
     super(message, "ENVIRONMENT");

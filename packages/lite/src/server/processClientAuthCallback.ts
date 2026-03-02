@@ -15,19 +15,7 @@ import z from "zod";
 import { startRequest } from "./startRequest";
 import { validateMessage } from "./validateMessage";
 
-/**
- * Validates the start request, calls Revibase start + getResult APIs, and returns user or tx result.
- * Pass your route's req.signal so fetches cancel when the client disconnects.
- *
- * @param options.request - The start message or transaction request from the client.
- * @param options.signal - AbortSignal (e.g. req.signal) to cancel fetches when the client disconnects.
- * @param options.privateKey - Base64-encoded JWK. Server-only; never pass from the client. Use an env var (e.g. PRIVATE_KEY).
- * @param options.channelId - Optional. Present when using a device-bound channel.
- * @param options.device - Optional. Device signature when channelId is used.
- * @param options.providerOrigin - Optional. Revibase auth origin. Defaults to production.
- * @param options.rpId - Optional. Relying party ID for WebAuthn.
- * @returns User info and, for transactions, the transaction signature.
- */
+/** Validates start request, calls Revibase start + getResult, returns user or tx. Pass req.signal for cancel on disconnect. */
 export async function processClientAuthCallback({
   request,
   privateKey,

@@ -15,14 +15,7 @@ import { DEFAULT_TIMEOUT } from "src/provider/utils";
 import type { AuthorizationFlowOptions } from "src/utils/types";
 import { runAuthorizationFlow } from "./runAuthorizationFlow";
 
-/**
- * Transfers SOL or SPL tokens. Set `mint` for SPL; omit for native SOL. `amount` must be &gt; 0; `destination` is required.
- *
- * @param provider - The Revibase provider instance.
- * @param args - Transfer params: `amount`, `destination`, optional `signer`, `mint`, `tokenProgram`.
- * @param options - Optional. `signal`: abort the flow from the app. `channelId`: use an existing channel (no popup).
- * @returns The transaction signature (if sent) and user info.
- */
+/** Transfers SOL or SPL (set mint for SPL). amount &gt; 0, destination required. Options: signal?, channelId?. */
 export async function transferTokens(
   provider: RevibaseProvider,
   args: {

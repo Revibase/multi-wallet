@@ -1,3 +1,4 @@
+import { initialize } from "@revibase/core";
 import { getBase64Decoder } from "gill";
 import type { ClientAuthorizationCallback } from "src/utils";
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
@@ -25,32 +26,41 @@ import {
   type SenderChannelSocketHandle,
 } from "./websocket";
 
-/** Channel lifecycle status for device-bound flows. */
+/** Channel status (subscribeToChannelStatus). */
 export enum ChannelStatus {
   AUTHENTICATING,
   AWAITING_RECIPIENT,
   RECIPIENT_CONNECTED,
+  RECIPIENT_DISCONNECTED,
+  AUTO_RECONNECTING,
+  CONNECTION_LOST,
   CHANNEL_CLOSED,
   ERROR,
 }
 
-/** Status update for a channel (status, optional recipient, optional error). */
+/** status, recipient?, error?, reconnectAttempt? (when AUTO_RECONNECTING). */
 export type ChannelStatusEntry = {
   status: ChannelStatus;
   recipient?: string;
   error?: string;
+  reconnectAttempt?: number;
 };
 
-/** Listener for channel status updates. Called with (channelId, entry). */
+/** (channelId, entry) => void. */
 export type ChannelStatusListener = (
   channelId: string,
   entry: ChannelStatusEntry,
 ) => void;
 
-/**
- * Connects your app to the Revibase auth popup and your backend route.
- * For device-bound flows, use createChannel() and pass `{ channelId }` in options to signIn/transferTokens/executeTransaction.
- */
+/** RevibaseProvider options. rpcEndpoint required for executeTransaction. */
+export type RevibaseProviderOptions = {
+  providerOrigin?: string;
+  onClientAuthorizationCallback?: ClientAuthorizationCallback;
+  rpcEndpoint?: string;
+  logger?: Pick<Console, "info" | "warn" | "error">;
+};
+
+/** Provider: popup or channel auth. Default callback: POST /api/clientAuthorization. */
 export class RevibaseProvider {
   private readonly pending = new Map<string, Pending>();
   public onClientAuthorizationCallback: ClientAuthorizationCallback;
@@ -80,16 +90,13 @@ export class RevibaseProvider {
     return data;
   };
 
-  /**
-   * @param providerOrigin - Revibase auth origin. Defaults to production.
-   * @param onClientAuthorizationCallback - Optional. Called with (request, signal, device, channelId). POST to your backend and return JSON. Pass signal to fetch for cancellation.
-   * @param logger - Optional. { info, warn, error } for channel status and errors. No-op by default.
-   */
-  constructor(
-    providerOrigin?: string,
-    onClientAuthorizationCallback?: ClientAuthorizationCallback,
-    logger?: Pick<Console, "info" | "warn" | "error">,
-  ) {
+  constructor(options: RevibaseProviderOptions = {}) {
+    const {
+      providerOrigin,
+      onClientAuthorizationCallback,
+      rpcEndpoint,
+      logger,
+    } = options;
     this.onClientAuthorizationCallback =
       onClientAuthorizationCallback ?? this.defaultCallback;
     this.providerOrigin = providerOrigin ?? REVIBASE_AUTH_URL;
@@ -98,9 +105,11 @@ export class RevibaseProvider {
       warn: () => {},
       error: () => {},
     };
+    if (rpcEndpoint) {
+      initialize({ rpcEndpoint });
+    }
   }
 
-  /** Returns device proof (jwk + jws) for the given message. Used when authorizing with a channel. */
   async getDeviceSignature(message: string) {
     return {
       jwk: (await DeviceKeyManager.getOrCreateDevicePublickey()).publicKey,
@@ -108,7 +117,6 @@ export class RevibaseProvider {
     };
   }
 
-  /** Subscribe to channel status updates. Returns an unsubscribe function. */
   subscribeToChannelStatus(listener: ChannelStatusListener): () => void {
     this.channelStatusListeners.add(listener);
     return () => {
@@ -132,7 +140,6 @@ export class RevibaseProvider {
     }
   }
 
-  /** Creates a channel and WebSocket. Open the returned url in a new tab for the user to complete the handshake. */
   async createChannel(): Promise<{ channelId: string; url: string }> {
     const res = await fetch(`${this.providerOrigin}/api/channel/challenge`);
     if (!res.ok) {
@@ -174,6 +181,10 @@ export class RevibaseProvider {
             status: ChannelStatus.RECIPIENT_CONNECTED,
             recipient: devicePublicKey,
           }),
+        onRecipientDisconnected: () =>
+          this.setChannelStatus(channelId, {
+            status: ChannelStatus.RECIPIENT_DISCONNECTED,
+          }),
         onClose: () => {
           this.setChannelStatus(channelId, {
             status: ChannelStatus.CHANNEL_CLOSED,
@@ -185,6 +196,15 @@ export class RevibaseProvider {
             status: ChannelStatus.ERROR,
             error,
           }),
+        onConnectionLost: () =>
+          this.setChannelStatus(channelId, {
+            status: ChannelStatus.CONNECTION_LOST,
+          }),
+        onAutoReconnecting: (attempt) =>
+          this.setChannelStatus(channelId, {
+            status: ChannelStatus.AUTO_RECONNECTING,
+            reconnectAttempt: attempt,
+          }),
       },
     });
     this.channelWs.set(channelId, handlers);
@@ -192,18 +212,20 @@ export class RevibaseProvider {
     return { channelId, url: `${this.providerOrigin}?channelId=${channelId}` };
   }
 
-  /** Cancels any pending request on the given channel (e.g. waiting for recipient). No-op if none. */
   cancelChannelRequest(channelId: string) {
     this.channelWs.get(channelId)?.cancelRequest();
   }
 
-  /** Closes the given channel (sends close over WebSocket and cleans up). */
+  /** Manual retry after network fixed. Returns true if reconnect started. */
+  reconnectChannel(channelId: string): boolean {
+    return this.channelWs.get(channelId)?.reconnect() ?? false;
+  }
+
   closeChannel(channelId: string) {
     this.channelWs.get(channelId)?.closeChannel();
     this.channelWs.delete(channelId);
   }
 
-  /** Closes all active channels. */
   closeAllChannels() {
     this.channelWs.entries().forEach((x) => x[1].closeChannel());
     this.channelWs.clear();
