@@ -10,8 +10,6 @@ import {
   combineCodec,
   getArrayDecoder,
   getArrayEncoder,
-  getBooleanDecoder,
-  getBooleanEncoder,
   getOptionDecoder,
   getOptionEncoder,
   getStructDecoder,
@@ -29,10 +27,14 @@ import {
   type OptionOrNullable,
 } from "gill";
 import {
+  getAccountStateDecoder,
+  getAccountStateEncoder,
   getExtensionStructDecoder,
   getExtensionStructEncoder,
   getPackedMerkleContextDecoder,
   getPackedMerkleContextEncoder,
+  type AccountState,
+  type AccountStateArgs,
   type ExtensionStruct,
   type ExtensionStructArgs,
   type PackedMerkleContext,
@@ -45,8 +47,7 @@ export type CompressedTokenArgs = {
   amount: bigint;
   merkleContext: PackedMerkleContext;
   tlv: Option<Array<ExtensionStruct>>;
-  hasDelegate: boolean;
-  isFrozen: boolean;
+  state: AccountState;
 };
 
 export type CompressedTokenArgsArgs = {
@@ -55,8 +56,7 @@ export type CompressedTokenArgsArgs = {
   amount: number | bigint;
   merkleContext: PackedMerkleContextArgs;
   tlv: OptionOrNullable<Array<ExtensionStructArgs>>;
-  hasDelegate: boolean;
-  isFrozen: boolean;
+  state: AccountStateArgs;
 };
 
 export function getCompressedTokenArgsEncoder(): Encoder<CompressedTokenArgsArgs> {
@@ -66,8 +66,7 @@ export function getCompressedTokenArgsEncoder(): Encoder<CompressedTokenArgsArgs
     ["amount", getU64Encoder()],
     ["merkleContext", getPackedMerkleContextEncoder()],
     ["tlv", getOptionEncoder(getArrayEncoder(getExtensionStructEncoder()))],
-    ["hasDelegate", getBooleanEncoder()],
-    ["isFrozen", getBooleanEncoder()],
+    ["state", getAccountStateEncoder()],
   ]);
 }
 
@@ -78,8 +77,7 @@ export function getCompressedTokenArgsDecoder(): Decoder<CompressedTokenArgs> {
     ["amount", getU64Decoder()],
     ["merkleContext", getPackedMerkleContextDecoder()],
     ["tlv", getOptionDecoder(getArrayDecoder(getExtensionStructDecoder()))],
-    ["hasDelegate", getBooleanDecoder()],
-    ["isFrozen", getBooleanDecoder()],
+    ["state", getAccountStateDecoder()],
   ]);
 }
 

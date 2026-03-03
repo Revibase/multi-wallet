@@ -124,6 +124,9 @@ pub struct TokenTransferIntent<'info> {
         address = LIGHT_TOKEN_PROGRAM_ID,
     )]
     pub compressed_token_program: UncheckedAccount<'info>,
+    /// CHECK:
+    #[account(mut)]
+    pub delegate: Option<UncheckedAccount<'info>>,
 }
 
 impl<'info> TokenTransferIntent<'info> {
@@ -170,7 +173,7 @@ impl<'info> TokenTransferIntent<'info> {
         ctx: Context<'_, '_, 'info, 'info, Self>,
         spl_interface_pda_args: Option<SplInterfacePdaArgs>,
         amount: u64,
-        source_compressed_token_accounts: Option<Vec<CompressedTokenArgs>>,
+        source_compressed_token_account: Option<CompressedTokenArgs>,
         compressed_proof_args: Option<ProofArgs>,
         signers: Vec<TransactionSyncSigners>,
     ) -> Result<()> {
@@ -199,6 +202,7 @@ impl<'info> TokenTransferIntent<'info> {
             destination: &ctx.accounts.destination,
             mint: &ctx.accounts.mint,
             payer: &ctx.accounts.payer,
+            delegate: ctx.accounts.delegate.as_deref(),
             source_spl_token_account: &ctx.accounts.source_spl_token_account,
             source_ctoken_token_account: &ctx.accounts.source_ctoken_token_account,
             destination_spl_token_account: ctx.accounts.destination_spl_token_account.as_deref(),
@@ -220,7 +224,7 @@ impl<'info> TokenTransferIntent<'info> {
 
         let source_type = token_transfer.load_ata(
             amount,
-            &source_compressed_token_accounts,
+            &source_compressed_token_account,
             light_cpi_accounts.as_ref(),
             compressed_proof_args.as_ref(),
             &spl_interface_pda_data,
@@ -257,40 +261,6 @@ impl<'info> TokenTransferIntent<'info> {
             }
             (SourceType::CToken, false, true) => {
                 token_transfer.ctoken_to_ctoken_transfer(amount, signer_seeds)?;
-            }
-
-            (SourceType::CompressedToken, false, true) => {
-                let destination_token_account = ctx
-                    .accounts
-                    .destination_ctoken_token_account
-                    .as_ref()
-                    .ok_or(MultisigError::MissingDestinationTokenAccount)?;
-                token_transfer.create_destination_ctoken_ata()?;
-                token_transfer.compressed_token_to_ctoken_transfer(
-                    &source_compressed_token_accounts,
-                    light_cpi_accounts.as_ref(),
-                    compressed_proof_args.as_ref(),
-                    signer_seeds,
-                    amount,
-                    destination_token_account,
-                )?;
-            }
-
-            (SourceType::CompressedToken, true, false) => {
-                let destination_token_account = ctx
-                    .accounts
-                    .destination_spl_token_account
-                    .as_ref()
-                    .ok_or(MultisigError::MissingDestinationTokenAccount)?;
-                token_transfer.compressed_token_to_spl_transfer(
-                    &source_compressed_token_accounts,
-                    light_cpi_accounts.as_ref(),
-                    compressed_proof_args.as_ref(),
-                    signer_seeds,
-                    &spl_interface_pda_data,
-                    amount,
-                    destination_token_account,
-                )?;
             }
 
             _ => return err!(MultisigError::InvalidTokenSourceType),

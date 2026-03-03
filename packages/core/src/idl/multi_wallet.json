@@ -1053,6 +1053,11 @@
         {
           "name": "compressed_token_program",
           "address": "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m"
+        },
+        {
+          "name": "delegate",
+          "writable": true,
+          "optional": true
         }
       ],
       "args": [
@@ -1071,13 +1076,11 @@
           "type": "u64"
         },
         {
-          "name": "source_compressed_token_accounts",
+          "name": "source_compressed_token_account",
           "type": {
             "option": {
-              "vec": {
-                "defined": {
-                  "name": "CompressedTokenArgs"
-                }
+              "defined": {
+                "name": "CompressedTokenArgs"
               }
             }
           }
@@ -1284,6 +1287,11 @@
         {
           "name": "compressed_token_program",
           "address": "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m"
+        },
+        {
+          "name": "delegate",
+          "writable": true,
+          "optional": true
         }
       ],
       "args": [
@@ -1302,13 +1310,11 @@
           "type": "u64"
         },
         {
-          "name": "source_compressed_token_accounts",
+          "name": "source_compressed_token_account",
           "type": {
             "option": {
-              "vec": {
-                "defined": {
-                  "name": "CompressedTokenArgs"
-                }
+              "defined": {
+                "name": "CompressedTokenArgs"
               }
             }
           }
@@ -2471,6 +2477,23 @@
   ],
   "types": [
     {
+      "name": "AccountState",
+      "repr": {
+        "kind": "rust"
+      },
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Initialized"
+          },
+          {
+            "name": "Frozen"
+          }
+        ]
+      }
+    },
+    {
       "name": "AddMemberArgs",
       "type": {
         "kind": "struct",
@@ -2762,12 +2785,12 @@
             }
           },
           {
-            "name": "has_delegate",
-            "type": "bool"
-          },
-          {
-            "name": "is_frozen",
-            "type": "bool"
+            "name": "state",
+            "type": {
+              "defined": {
+                "name": "AccountState"
+              }
+            }
           }
         ]
       }

@@ -24,10 +24,10 @@ import {
   type TransactionSigner,
 } from "gill";
 import {
-  AccountState,
   getAssociatedTokenAccountAddress,
   getTokenDecoder,
 } from "gill/programs";
+import { ValidationError } from "../../errors";
 import {
   getCompressedSettingsDecoder,
   getExtensionStructDecoder,
@@ -39,7 +39,6 @@ import {
   type SplInterfacePdaArgsArgs,
   type TransactionSyncSignersArgs,
 } from "../../generated";
-import { ValidationError } from "../../errors";
 import { SignedSecp256r1Key } from "../../types";
 import type { AccountCache } from "../../types/cache";
 import {
@@ -151,15 +150,14 @@ export async function tokenTransferIntent({
     useDestinationSplAccount,
   );
 
-  const [compressedTokenAccounts, splInterfaceNeedsInitialization] =
+  const [compressedTokenAccount, splInterfaceNeedsInitialization] =
     await Promise.all([
-      getCompressedTokenAccounts(
+      getCompressedTokenAccount(
         walletAddress,
         mint,
         balances.splBalance,
         balances.cTokenBalance,
         BigInt(amount),
-        compressed ? 3 : 4,
       ),
       checkIfSplInterfaceNeedsToBeInitialized(
         balances.requireSplInterface,
@@ -168,14 +166,11 @@ export async function tokenTransferIntent({
       ),
     ]);
 
-  const compressedTotalBalance = compressedTokenAccounts.reduce(
-    (sum, x) => sum + x.parsed.amount.toNumber(),
-    0,
+  const compressedTotalBalance = BigInt(
+    compressedTokenAccount?.parsed.amount.toNumber() ?? 0,
   );
   if (
-    balances.splBalance +
-      balances.cTokenBalance +
-      BigInt(compressedTotalBalance) <
+    balances.splBalance + balances.cTokenBalance + compressedTotalBalance <
     BigInt(amount)
   ) {
     throw new ValidationError("Insufficient balance for token transfer.");
@@ -189,18 +184,17 @@ export async function tokenTransferIntent({
   }
 
   const hashesWithTree = buildHashesWithTree(
-    compressedTokenAccounts,
+    compressedTokenAccount,
     compressedSettings,
   );
   const { proof, settingsMutArgs } = await resolveCompressedProofAndSettings(
     packedAccounts,
     hashesWithTree,
-    compressedTokenAccounts.length,
     compressedSettings,
   );
 
-  const sourceCompressedTokenAccounts = buildSourceCompressedTokenAccounts(
-    compressedTokenAccounts,
+  const sourceCompressedTokenAccount = buildSourceCompressedTokenAccounts(
+    compressedTokenAccount,
     proof,
     packedAccounts,
   );
@@ -229,9 +223,12 @@ export async function tokenTransferIntent({
     tokenProgram,
     remainingAccounts,
     payer,
-    sourceCompressedTokenAccounts,
+    sourceCompressedTokenAccount,
     compressedProofArgs,
     splInterfacePdaArgs,
+    delegate: compressedTokenAccount?.parsed.delegate
+      ? address(compressedTokenAccount.parsed.delegate.toString())
+      : undefined,
   });
 
   if (compressed) {
@@ -375,25 +372,24 @@ function computeBalancesAndDestinations(
     destinationSplTokenAccount,
     destinationCtokenTokenAccount,
     requireSplInterface,
-    requireRentSponsor: !destinationSplExists,
+    requireRentSponsor:
+      splBalance + cTokenBalance < BigInt(amount) || !destinationSplExists,
   };
 }
 
 function buildHashesWithTree(
-  compressedTokenAccounts: ParsedTokenAccount[],
+  compressedTokenAccount: ParsedTokenAccount | null,
   compressedSettings: HashWithTreeAndAccount | null,
 ): HashWithTreeAndAccount[] {
   const hashesWithTree: HashWithTreeAndAccount[] = [];
-  if (compressedTokenAccounts.length) {
-    hashesWithTree.push(
-      ...compressedTokenAccounts.map((x) => ({
-        hash: x.compressedAccount.hash,
-        tree: x.compressedAccount.treeInfo.tree,
-        queue: x.compressedAccount.treeInfo.queue,
-        data: x.compressedAccount.data,
-        address: x.compressedAccount.address,
-      })),
-    );
+  if (compressedTokenAccount) {
+    hashesWithTree.push({
+      hash: compressedTokenAccount.compressedAccount.hash,
+      tree: compressedTokenAccount.compressedAccount.treeInfo.tree,
+      queue: compressedTokenAccount.compressedAccount.treeInfo.queue,
+      data: compressedTokenAccount.compressedAccount.data,
+      address: compressedTokenAccount.compressedAccount.address,
+    });
   }
   if (compressedSettings) {
     hashesWithTree.push(compressedSettings);
@@ -404,7 +400,6 @@ function buildHashesWithTree(
 async function resolveCompressedProofAndSettings(
   packedAccounts: PackedAccounts,
   hashesWithTree: HashWithTreeAndAccount[],
-  compressedTokenCount: number,
   compressedSettings: HashWithTreeAndAccount | null,
 ): Promise<{
   proof: ValidityProofWithContext | null;
@@ -420,14 +415,13 @@ async function resolveCompressedProofAndSettings(
   await packedAccounts.addSystemAccounts();
   proof = await getValidityProofWithRetry(hashesWithTree, []);
   if (compressedSettings) {
-    const start = compressedTokenCount;
     settingsMutArgs = getCompressedAccountMutArgs<CompressedSettings>(
       packedAccounts,
-      proof!.treeInfos.slice(start),
-      proof!.leafIndices.slice(start),
-      proof!.rootIndices.slice(start),
-      proof!.proveByIndices.slice(start),
-      hashesWithTree.slice(start),
+      proof!.treeInfos.slice(-1),
+      proof!.leafIndices.slice(-1),
+      proof!.rootIndices.slice(-1),
+      proof!.proveByIndices.slice(-1),
+      hashesWithTree.slice(-1),
       getCompressedSettingsDecoder(),
     )[0];
   }
@@ -435,39 +429,38 @@ async function resolveCompressedProofAndSettings(
 }
 
 function buildSourceCompressedTokenAccounts(
-  compressedTokenAccounts: ParsedTokenAccount[],
+  compressedTokenAccount: ParsedTokenAccount | null,
   proof: ValidityProofWithContext | null,
   packedAccounts: PackedAccounts,
-): OptionOrNullable<CompressedTokenArgsArgs[]> {
-  if (!compressedTokenAccounts.length || !proof) {
+): OptionOrNullable<CompressedTokenArgsArgs> {
+  if (!proof || !compressedTokenAccount) {
     return none();
   }
-  return some(
-    compressedTokenAccounts.map((x, index) => ({
-      isFrozen: x.parsed.state === AccountState.Frozen,
-      hasDelegate: x.parsed.delegate != null,
-      amount: x.parsed.amount.toNumber(),
-      merkleContext: {
-        leafIndex: x.compressedAccount.leafIndex,
-        merkleTreePubkeyIndex: packedAccounts.insertOrGet(
-          x.compressedAccount.treeInfo.tree.toString(),
-        ),
-        queuePubkeyIndex: packedAccounts.insertOrGet(
-          x.compressedAccount.treeInfo.queue.toString(),
-        ),
-        proveByIndex: x.compressedAccount.proveByIndex,
-      },
-      rootIndex: proof.rootIndices[index],
-      version: getVersionFromDiscriminator(
-        x.compressedAccount.data?.discriminator,
+  return some({
+    amount: compressedTokenAccount.parsed.amount.toNumber(),
+    merkleContext: {
+      leafIndex: compressedTokenAccount.compressedAccount.leafIndex,
+      merkleTreePubkeyIndex: packedAccounts.insertOrGet(
+        compressedTokenAccount.compressedAccount.treeInfo.tree.toString(),
       ),
-      tlv: x.parsed.tlv
-        ? some(
-            getArrayDecoder(getExtensionStructDecoder()).decode(x.parsed.tlv),
-          )
-        : none(),
-    })),
-  );
+      queuePubkeyIndex: packedAccounts.insertOrGet(
+        compressedTokenAccount.compressedAccount.treeInfo.queue.toString(),
+      ),
+      proveByIndex: compressedTokenAccount.compressedAccount.proveByIndex,
+    },
+    rootIndex: proof.rootIndices[0],
+    version: getVersionFromDiscriminator(
+      compressedTokenAccount.compressedAccount.data?.discriminator,
+    ),
+    tlv: compressedTokenAccount.parsed.tlv
+      ? some(
+          getArrayDecoder(getExtensionStructDecoder()).decode(
+            compressedTokenAccount.parsed.tlv,
+          ),
+        )
+      : none(),
+    state: compressedTokenAccount.parsed.state,
+  });
 }
 
 function buildCommonParams({
@@ -481,9 +474,10 @@ function buildCommonParams({
   tokenProgram,
   remainingAccounts,
   payer,
-  sourceCompressedTokenAccounts,
+  sourceCompressedTokenAccount,
   compressedProofArgs,
   splInterfacePdaArgs,
+  delegate,
 }: {
   amount: number | bigint;
   transactionSyncSigners: TransactionSyncSignersArgs[];
@@ -497,9 +491,10 @@ function buildCommonParams({
     PackedAccounts["toAccountMetas"]
   >["remainingAccounts"];
   payer: TransactionSigner;
-  sourceCompressedTokenAccounts: OptionOrNullable<CompressedTokenArgsArgs[]>;
+  sourceCompressedTokenAccount: OptionOrNullable<CompressedTokenArgsArgs>;
   compressedProofArgs: ReturnType<typeof convertToCompressedProofArgs>;
   splInterfacePdaArgs: SplInterfacePdaArgsArgs;
+  delegate?: Address;
 }) {
   return {
     amount,
@@ -514,7 +509,7 @@ function buildCommonParams({
     tokenProgram,
     remainingAccounts,
     payer,
-    sourceCompressedTokenAccounts,
+    sourceCompressedTokenAccount,
     compressedProofArgs,
     compressibleConfig,
     splInterfacePda: balances.requireSplInterface
@@ -524,6 +519,7 @@ function buildCommonParams({
     splInterfacePdaArgs: (balances.requireSplInterface
       ? some(splInterfacePdaArgs)
       : none()) as OptionOrNullable<SplInterfacePdaArgsArgs>,
+    delegate,
   };
 }
 
@@ -540,17 +536,16 @@ async function checkIfSplInterfaceNeedsToBeInitialized(
   return !value;
 }
 
-async function getCompressedTokenAccounts(
+async function getCompressedTokenAccount(
   walletAddress: string,
   mint: string,
   splBalance: bigint,
   cTokenBalance: bigint,
   total: bigint,
-  maxInputs: number,
 ) {
   const transferAmount = total - splBalance - cTokenBalance;
   if (transferAmount <= 0) {
-    return [];
+    return null;
   }
   const compressedResult =
     await getLightProtocolRpc().getCompressedTokenAccountsByOwner(
@@ -558,44 +553,23 @@ async function getCompressedTokenAccounts(
       { mint: new PublicKey(mint) },
     );
 
-  const accounts = compressedResult.items
-    .filter(
-      (x) =>
-        !!x.compressedAccount.data?.data.length &&
-        x.compressedAccount.owner.toString() ===
-          ctokenProgramAddress.toString() &&
-        !x.parsed.amount.isZero(),
-    )
-    .sort((a, b) => b.parsed.amount.cmp(a.parsed.amount));
+  const accounts = compressedResult.items.filter(
+    (x) =>
+      !!x.compressedAccount.data?.data.length &&
+      x.compressedAccount.owner.toString() ===
+        ctokenProgramAddress.toString() &&
+      !x.parsed.amount.isZero() &&
+      !!x.parsed.tlv &&
+      getArrayDecoder(getExtensionStructDecoder())
+        .decode(x.parsed.tlv)
+        .some((e) => e.__kind === "CompressedOnly" && e.fields[0].isAta),
+  );
 
   if (accounts.length === 0) {
-    return [];
+    return null;
   }
 
-  let accumulatedAmount = BigInt(0);
-  const selectedAccounts: ParsedTokenAccount[] = [];
-
-  for (const account of accounts) {
-    if (
-      selectedAccounts.length >= maxInputs ||
-      accumulatedAmount >= transferAmount
-    ) {
-      break;
-    }
-    accumulatedAmount += BigInt(account.parsed.amount.toNumber());
-    selectedAccounts.push(account);
-  }
-
-  if (accumulatedAmount < transferAmount) {
-    if (selectedAccounts.length >= maxInputs) {
-      throw new ValidationError(
-        "Transaction size limit exceeded. Consider multiple transfers to transfer full balance.",
-      );
-    }
-    throw new ValidationError("Insufficient compressed balance.");
-  }
-
-  return selectedAccounts;
+  return accounts[0];
 }
 
 async function getCompressedSettings(

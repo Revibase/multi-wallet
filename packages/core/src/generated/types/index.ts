@@ -6,6 +6,7 @@
  * @see https://github.com/codama-idl/codama
  */
 
+export * from './accountState';
 export * from './additionalMetadata';
 export * from './addMemberArgs';
 export * from './compiledInstruction';

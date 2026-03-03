@@ -405,7 +405,7 @@ const createMintAndMintToCTokenAccount = async (ctx: TestContext) => {
     secretKey: ctx.newMemberSecretKey,
   };
 
-  const recipientAta = getAssociatedTokenAddressInterface(
+  const recipientCTokenAta = getAssociatedTokenAddressInterface(
     mint,
     new PublicKey(ctx.multiWalletVault),
     true,
@@ -441,7 +441,7 @@ const createMintAndMintToCTokenAccount = async (ctx: TestContext) => {
     payer,
     senderCTokenAta,
     mint,
-    recipientAta,
+    recipientCTokenAta,
     newMember,
     10 ** 9,
   );
@@ -631,7 +631,6 @@ const createMintAndMintToSplAndCompressedTokenAccount = async (
     new PublicKey(recipientSplAta),
     newMember,
     10 ** 9 / 2,
-    new PublicKey(TOKEN_2022_PROGRAM_ADDRESS),
   );
 
   // transfer half to multiWallet compressed token
@@ -749,7 +748,6 @@ const createMintAndMintToSplAndCTokenAccount = async (ctx: TestContext) => {
     new PublicKey(recipientSplAta),
     newMember,
     10 ** 9 / 2,
-    new PublicKey(TOKEN_2022_PROGRAM_ADDRESS),
   );
 
   await createAtaInterfaceIdempotent(
@@ -1027,7 +1025,6 @@ const createMintAndMintToSplAndCTokenAndCompressedAccount = async (
     new PublicKey(recipientSplAta),
     newMember,
     Math.floor(10 ** 9 / 3),
-    new PublicKey(TOKEN_2022_PROGRAM_ADDRESS),
   );
 
   await createSplInterface(getLightProtocolRpc(), payer, mint);

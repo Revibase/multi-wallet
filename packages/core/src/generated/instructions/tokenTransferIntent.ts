@@ -112,6 +112,7 @@ export type TokenTransferIntentInstruction<
   TAccountCompressedTokenProgram extends
     | string
     | AccountMeta<string> = "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m",
+  TAccountDelegate extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -172,6 +173,9 @@ export type TokenTransferIntentInstruction<
       TAccountCompressedTokenProgram extends string
         ? ReadonlyAccount<TAccountCompressedTokenProgram>
         : TAccountCompressedTokenProgram,
+      TAccountDelegate extends string
+        ? WritableAccount<TAccountDelegate>
+        : TAccountDelegate,
       ...TRemainingAccounts,
     ]
   >;
@@ -180,7 +184,7 @@ export type TokenTransferIntentInstructionData = {
   discriminator: ReadonlyUint8Array;
   splInterfacePdaArgs: Option<SplInterfacePdaArgs>;
   amount: bigint;
-  sourceCompressedTokenAccounts: Option<Array<CompressedTokenArgs>>;
+  sourceCompressedTokenAccount: Option<CompressedTokenArgs>;
   compressedProofArgs: Option<ProofArgs>;
   signers: Array<TransactionSyncSigners>;
 };
@@ -188,9 +192,7 @@ export type TokenTransferIntentInstructionData = {
 export type TokenTransferIntentInstructionDataArgs = {
   splInterfacePdaArgs: OptionOrNullable<SplInterfacePdaArgsArgs>;
   amount: number | bigint;
-  sourceCompressedTokenAccounts: OptionOrNullable<
-    Array<CompressedTokenArgsArgs>
-  >;
+  sourceCompressedTokenAccount: OptionOrNullable<CompressedTokenArgsArgs>;
   compressedProofArgs: OptionOrNullable<ProofArgsArgs>;
   signers: Array<TransactionSyncSignersArgs>;
 };
@@ -205,8 +207,8 @@ export function getTokenTransferIntentInstructionDataEncoder(): Encoder<TokenTra
       ],
       ["amount", getU64Encoder()],
       [
-        "sourceCompressedTokenAccounts",
-        getOptionEncoder(getArrayEncoder(getCompressedTokenArgsEncoder())),
+        "sourceCompressedTokenAccount",
+        getOptionEncoder(getCompressedTokenArgsEncoder()),
       ],
       ["compressedProofArgs", getOptionEncoder(getProofArgsEncoder())],
       ["signers", getArrayEncoder(getTransactionSyncSignersEncoder())],
@@ -224,8 +226,8 @@ export function getTokenTransferIntentInstructionDataDecoder(): Decoder<TokenTra
     ["splInterfacePdaArgs", getOptionDecoder(getSplInterfacePdaArgsDecoder())],
     ["amount", getU64Decoder()],
     [
-      "sourceCompressedTokenAccounts",
-      getOptionDecoder(getArrayDecoder(getCompressedTokenArgsDecoder())),
+      "sourceCompressedTokenAccount",
+      getOptionDecoder(getCompressedTokenArgsDecoder()),
     ],
     ["compressedProofArgs", getOptionDecoder(getProofArgsDecoder())],
     ["signers", getArrayDecoder(getTransactionSyncSignersDecoder())],
@@ -265,6 +267,7 @@ export type TokenTransferIntentAsyncInput<
   TAccountCompressibleConfig extends string = string,
   TAccountRentSponsor extends string = string,
   TAccountCompressedTokenProgram extends string = string,
+  TAccountDelegate extends string = string,
 > = {
   settings: Address<TAccountSettings>;
   payer: TransactionSigner<TAccountPayer>;
@@ -284,9 +287,10 @@ export type TokenTransferIntentAsyncInput<
   compressibleConfig: Address<TAccountCompressibleConfig>;
   rentSponsor?: Address<TAccountRentSponsor>;
   compressedTokenProgram?: Address<TAccountCompressedTokenProgram>;
+  delegate?: Address<TAccountDelegate>;
   splInterfacePdaArgs: TokenTransferIntentInstructionDataArgs["splInterfacePdaArgs"];
   amount: TokenTransferIntentInstructionDataArgs["amount"];
-  sourceCompressedTokenAccounts: TokenTransferIntentInstructionDataArgs["sourceCompressedTokenAccounts"];
+  sourceCompressedTokenAccount: TokenTransferIntentInstructionDataArgs["sourceCompressedTokenAccount"];
   compressedProofArgs: TokenTransferIntentInstructionDataArgs["compressedProofArgs"];
   signers: TokenTransferIntentInstructionDataArgs["signers"];
   remainingAccounts: TokenTransferIntentInstructionExtraArgs["remainingAccounts"];
@@ -311,6 +315,7 @@ export async function getTokenTransferIntentInstructionAsync<
   TAccountCompressibleConfig extends string,
   TAccountRentSponsor extends string,
   TAccountCompressedTokenProgram extends string,
+  TAccountDelegate extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
   input: TokenTransferIntentAsyncInput<
@@ -331,7 +336,8 @@ export async function getTokenTransferIntentInstructionAsync<
     TAccountSplInterfacePda,
     TAccountCompressibleConfig,
     TAccountRentSponsor,
-    TAccountCompressedTokenProgram
+    TAccountCompressedTokenProgram,
+    TAccountDelegate
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
@@ -354,7 +360,8 @@ export async function getTokenTransferIntentInstructionAsync<
     TAccountSplInterfacePda,
     TAccountCompressibleConfig,
     TAccountRentSponsor,
-    TAccountCompressedTokenProgram
+    TAccountCompressedTokenProgram,
+    TAccountDelegate
   >
 > {
   // Program address.
@@ -404,6 +411,7 @@ export async function getTokenTransferIntentInstructionAsync<
       value: input.compressedTokenProgram ?? null,
       isWritable: false,
     },
+    delegate: { value: input.delegate ?? null, isWritable: true },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -538,6 +546,7 @@ export async function getTokenTransferIntentInstructionAsync<
       getAccountMeta(accounts.compressibleConfig),
       getAccountMeta(accounts.rentSponsor),
       getAccountMeta(accounts.compressedTokenProgram),
+      getAccountMeta(accounts.delegate),
       ...remainingAccounts,
     ],
     data: getTokenTransferIntentInstructionDataEncoder().encode(
@@ -563,7 +572,8 @@ export async function getTokenTransferIntentInstructionAsync<
     TAccountSplInterfacePda,
     TAccountCompressibleConfig,
     TAccountRentSponsor,
-    TAccountCompressedTokenProgram
+    TAccountCompressedTokenProgram,
+    TAccountDelegate
   >);
 }
 
@@ -586,6 +596,7 @@ export type TokenTransferIntentInput<
   TAccountCompressibleConfig extends string = string,
   TAccountRentSponsor extends string = string,
   TAccountCompressedTokenProgram extends string = string,
+  TAccountDelegate extends string = string,
 > = {
   settings: Address<TAccountSettings>;
   payer: TransactionSigner<TAccountPayer>;
@@ -605,9 +616,10 @@ export type TokenTransferIntentInput<
   compressibleConfig: Address<TAccountCompressibleConfig>;
   rentSponsor?: Address<TAccountRentSponsor>;
   compressedTokenProgram?: Address<TAccountCompressedTokenProgram>;
+  delegate?: Address<TAccountDelegate>;
   splInterfacePdaArgs: TokenTransferIntentInstructionDataArgs["splInterfacePdaArgs"];
   amount: TokenTransferIntentInstructionDataArgs["amount"];
-  sourceCompressedTokenAccounts: TokenTransferIntentInstructionDataArgs["sourceCompressedTokenAccounts"];
+  sourceCompressedTokenAccount: TokenTransferIntentInstructionDataArgs["sourceCompressedTokenAccount"];
   compressedProofArgs: TokenTransferIntentInstructionDataArgs["compressedProofArgs"];
   signers: TokenTransferIntentInstructionDataArgs["signers"];
   remainingAccounts: TokenTransferIntentInstructionExtraArgs["remainingAccounts"];
@@ -632,6 +644,7 @@ export function getTokenTransferIntentInstruction<
   TAccountCompressibleConfig extends string,
   TAccountRentSponsor extends string,
   TAccountCompressedTokenProgram extends string,
+  TAccountDelegate extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
   input: TokenTransferIntentInput<
@@ -652,7 +665,8 @@ export function getTokenTransferIntentInstruction<
     TAccountSplInterfacePda,
     TAccountCompressibleConfig,
     TAccountRentSponsor,
-    TAccountCompressedTokenProgram
+    TAccountCompressedTokenProgram,
+    TAccountDelegate
   >,
   config?: { programAddress?: TProgramAddress },
 ): TokenTransferIntentInstruction<
@@ -674,7 +688,8 @@ export function getTokenTransferIntentInstruction<
   TAccountSplInterfacePda,
   TAccountCompressibleConfig,
   TAccountRentSponsor,
-  TAccountCompressedTokenProgram
+  TAccountCompressedTokenProgram,
+  TAccountDelegate
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -723,6 +738,7 @@ export function getTokenTransferIntentInstruction<
       value: input.compressedTokenProgram ?? null,
       isWritable: false,
     },
+    delegate: { value: input.delegate ?? null, isWritable: true },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -786,6 +802,7 @@ export function getTokenTransferIntentInstruction<
       getAccountMeta(accounts.compressibleConfig),
       getAccountMeta(accounts.rentSponsor),
       getAccountMeta(accounts.compressedTokenProgram),
+      getAccountMeta(accounts.delegate),
       ...remainingAccounts,
     ],
     data: getTokenTransferIntentInstructionDataEncoder().encode(
@@ -811,7 +828,8 @@ export function getTokenTransferIntentInstruction<
     TAccountSplInterfacePda,
     TAccountCompressibleConfig,
     TAccountRentSponsor,
-    TAccountCompressedTokenProgram
+    TAccountCompressedTokenProgram,
+    TAccountDelegate
   >);
 }
 
@@ -839,6 +857,7 @@ export type ParsedTokenTransferIntentInstruction<
     compressibleConfig: TAccountMetas[15];
     rentSponsor?: TAccountMetas[16] | undefined;
     compressedTokenProgram: TAccountMetas[17];
+    delegate?: TAccountMetas[18] | undefined;
   };
   data: TokenTransferIntentInstructionData;
 };
@@ -851,7 +870,7 @@ export function parseTokenTransferIntentInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedTokenTransferIntentInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 18) {
+  if (instruction.accounts.length < 19) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -888,6 +907,7 @@ export function parseTokenTransferIntentInstruction<
       compressibleConfig: getNextAccount(),
       rentSponsor: getNextOptionalAccount(),
       compressedTokenProgram: getNextAccount(),
+      delegate: getNextOptionalAccount(),
     },
     data: getTokenTransferIntentInstructionDataDecoder().decode(
       instruction.data,
