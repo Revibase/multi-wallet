@@ -1,7 +1,6 @@
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "@revibase/core";
 import { address, type AddressesByLookupTableAddress } from "gill";
 import {
-  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
   COMPUTE_BUDGET_PROGRAM_ADDRESS,
   MEMO_PROGRAM_ADDRESS,
 } from "gill/programs";
@@ -14,7 +13,6 @@ export const WHITELISTED_PROGRAMS = new Set([
   MULTI_WALLET_PROGRAM_ADDRESS,
   SECP256R1_VERIFY_PROGRAM,
   MEMO_PROGRAM_ADDRESS,
-  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
 ]);
 
 export const REVIBASE_LOOKUP_TABLE_ADDRESS =

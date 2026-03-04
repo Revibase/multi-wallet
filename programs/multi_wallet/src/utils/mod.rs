@@ -40,9 +40,6 @@ pub use transaction_action_type::*;
 pub mod user_role;
 pub use user_role::*;
 
-pub mod compressed_token;
-pub use compressed_token::*;
-
 pub mod transports;
 pub use transports::*;
 

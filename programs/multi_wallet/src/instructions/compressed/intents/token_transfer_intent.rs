@@ -1,12 +1,19 @@
 use crate::{
     state::{Settings, SettingsMutArgs},
     utils::TransactionSyncSigners,
-    utils::{CompressedTokenArgs, SourceType, SplInterfacePdaArgs, TokenTransfer},
     CompressedSettings, CompressedSettingsData, MultisigError, ProofArgs, TransactionActionType,
-    ID, LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
+    LIGHT_CPI_SIGNER, SEED_MULTISIG, SEED_VAULT,
 };
-use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use anchor_spl::associated_token::{self};
+use anchor_lang::{
+    prelude::*,
+    solana_program::{program::invoke_signed, sysvar::SysvarId},
+};
+use anchor_spl::{
+    associated_token::{
+        self, AssociatedToken, spl_associated_token_account::instruction::create_associated_token_account_idempotent
+    },
+    token_interface::{Mint, TokenInterface, TransferChecked, transfer_checked},
+};
 use light_sdk::{
     cpi::{
         v2::{CpiAccounts, LightSystemProgramCpi},
@@ -16,11 +23,8 @@ use light_sdk::{
     light_hasher::{Hasher, Sha256},
     LightAccount,
 };
-use light_token::{constants::LIGHT_TOKEN_PROGRAM_ID, instruction::LIGHT_TOKEN_CPI_AUTHORITY};
-use light_token_interface::find_spl_interface_pda_with_index;
 
 #[derive(Accounts)]
-#[instruction(spl_interface_pda_args: Option<SplInterfacePdaArgs>)]
 pub struct TokenTransferIntentCompressed<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -35,6 +39,7 @@ pub struct TokenTransferIntentCompressed<'info> {
     )]
     pub instructions_sysvar: UncheckedAccount<'info>,
     /// CHECK: checked in instructions
+    #[account(mut)]
     pub source: UncheckedAccount<'info>,
     /// CHECK:
     #[account(
@@ -49,18 +54,6 @@ pub struct TokenTransferIntentCompressed<'info> {
     )]
     pub source_spl_token_account: UncheckedAccount<'info>,
     /// CHECK:
-    #[account(
-        mut,
-        seeds = [
-            source.key().as_ref(),
-            LIGHT_TOKEN_PROGRAM_ID.as_ref(),
-            mint.key().as_ref(),
-        ],
-        bump,
-        seeds::program = LIGHT_TOKEN_PROGRAM_ID
-    )]
-    pub source_ctoken_token_account: UncheckedAccount<'info>,
-    /// CHECK:
     pub destination: UncheckedAccount<'info>,
     /// CHECK:
     #[account(
@@ -73,54 +66,11 @@ pub struct TokenTransferIntentCompressed<'info> {
         bump,
         seeds::program = associated_token::ID
     )]
-    pub destination_spl_token_account: Option<UncheckedAccount<'info>>,
-    /// CHECK:
-    #[account(
-        mut,
-        seeds = [
-            destination.key().as_ref(),
-            LIGHT_TOKEN_PROGRAM_ID.as_ref(),
-            mint.key().as_ref(),
-        ],
-        bump,
-        seeds::program = LIGHT_TOKEN_PROGRAM_ID
-    )]
-    pub destination_ctoken_token_account: Option<UncheckedAccount<'info>>,
-    /// CHECK:
-    pub token_program: UncheckedAccount<'info>,
-    /// CHECK:
-    pub mint: UncheckedAccount<'info>,
+    pub destination_spl_token_account: UncheckedAccount<'info>,
+    pub token_program: Interface<'info, TokenInterface>,
+    pub mint: InterfaceAccount<'info, Mint>,
+    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
-    /// CHECK:
-    #[account(
-        address = LIGHT_TOKEN_CPI_AUTHORITY
-    )]
-    pub compressed_token_program_authority: UncheckedAccount<'info>,
-    /// CHECK:
-    #[account(
-        mut,
-        address = {
-            if let Some(args) = &spl_interface_pda_args {
-                find_spl_interface_pda_with_index(mint.key, args.index, args.restricted).0
-            }else{
-                ID
-            }
-        }
-    )]
-    pub spl_interface_pda: Option<UncheckedAccount<'info>>,
-    /// CHECK:
-    pub compressible_config: UncheckedAccount<'info>,
-    /// CHECK:
-    #[account(mut)]
-    pub rent_sponsor: Option<UncheckedAccount<'info>>,
-    /// CHECK:
-    #[account(
-        address = LIGHT_TOKEN_PROGRAM_ID,
-    )]
-    pub compressed_token_program: UncheckedAccount<'info>,
-    /// CHECK:
-    #[account(mut)]
-    pub delegate: Option<UncheckedAccount<'info>>,
 }
 
 impl<'info> TokenTransferIntentCompressed<'info> {
@@ -164,9 +114,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
 
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
-        spl_interface_pda_args: Option<SplInterfacePdaArgs>,
         amount: u64,
-        source_compressed_token_account: Option<CompressedTokenArgs>,
         signers: Vec<TransactionSyncSigners>,
         settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
@@ -211,73 +159,40 @@ impl<'info> TokenTransferIntentCompressed<'info> {
             MultisigError::SourceAccountMismatch
         );
 
-        let token_transfer = TokenTransfer {
-            source: &ctx.accounts.source,
-            destination: &ctx.accounts.destination,
-            mint: &ctx.accounts.mint,
-            payer: &ctx.accounts.payer,
-            delegate: ctx.accounts.delegate.as_deref(),
-            source_spl_token_account: &ctx.accounts.source_spl_token_account,
-            source_ctoken_token_account: &ctx.accounts.source_ctoken_token_account,
-            destination_spl_token_account: ctx.accounts.destination_spl_token_account.as_deref(),
-            destination_ctoken_token_account: ctx
-                .accounts
-                .destination_ctoken_token_account
-                .as_deref(),
-            spl_interface_pda: ctx.accounts.spl_interface_pda.as_deref(),
-            token_program: &ctx.accounts.token_program,
-            compressed_token_program_authority: &ctx.accounts.compressed_token_program_authority,
-            compressible_config: &ctx.accounts.compressible_config,
-            rent_sponsor: ctx.accounts.rent_sponsor.as_deref(),
-            system_program: &ctx.accounts.system_program,
-            spl_interface_pda_args,
-        };
+        let ix = create_associated_token_account_idempotent(
+            ctx.accounts.source.key,
+            ctx.accounts.destination.key,
+            &ctx.accounts.mint.key(),
+            &ctx.accounts.token_program.key(),
+        );
 
-        let spl_interface_pda_data =
-            token_transfer.create_spl_interface_pda_if_needed(ctx.remaining_accounts)?;
-
-        let source_type = token_transfer.load_ata(
-            amount,
-            &source_compressed_token_account,
-            Some(&light_cpi_accounts),
-            Some(&compressed_proof_args),
-            &spl_interface_pda_data,
-            signer_seeds,
+        invoke_signed(
+            &ix,
+            &[
+                ctx.accounts.source.to_account_info(),
+                ctx.accounts.destination_spl_token_account.to_account_info(),
+                ctx.accounts.destination.to_account_info(),
+                ctx.accounts.mint.to_account_info(),
+                ctx.accounts.system_program.to_account_info(),
+                ctx.accounts.token_program.to_account_info(),
+            ],
+            &[signer_seeds],
         )?;
 
-        let has_dst_spl = ctx.accounts.destination_spl_token_account.is_some();
-        let has_dst_ctoken = ctx.accounts.destination_ctoken_token_account.is_some();
-        match (source_type, has_dst_spl, has_dst_ctoken) {
-            (SourceType::Spl, true, false) => {
-                token_transfer.spl_to_spl_transfer(amount, signer_seeds)?;
-            }
-            (SourceType::Spl, false, true) => {
-                token_transfer.spl_to_ctoken_transfer(
-                    amount,
-                    &spl_interface_pda_data,
-                    signer_seeds,
-                )?;
-            }
-
-            (SourceType::CToken, true, false) => {
-                let destination_token_account = ctx
-                    .accounts
-                    .destination_spl_token_account
-                    .as_ref()
-                    .ok_or(MultisigError::MissingDestinationTokenAccount)?;
-                token_transfer.ctoken_to_spl_transfer(
-                    amount,
-                    &spl_interface_pda_data,
-                    signer_seeds,
-                    destination_token_account,
-                )?;
-            }
-            (SourceType::CToken, false, true) => {
-                token_transfer.ctoken_to_ctoken_transfer(amount, signer_seeds)?;
-            }
-
-            _ => return err!(MultisigError::InvalidTokenSourceType),
-        }
+        transfer_checked(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                TransferChecked {
+                    from: ctx.accounts.source_spl_token_account.to_account_info(),
+                    mint: ctx.accounts.mint.to_account_info(),
+                    to: ctx.accounts.destination_spl_token_account.to_account_info(),
+                    authority: ctx.accounts.source.to_account_info(),
+                },
+            )
+            .with_signer(&[signer_seeds]),
+            amount,
+            ctx.accounts.mint.decimals,
+        )?;
 
         let slot_numbers = TransactionSyncSigners::collect_slot_numbers(&signers);
         settings_account.latest_slot_number_check(&slot_numbers, &ctx.accounts.slot_hash_sysvar)?;
