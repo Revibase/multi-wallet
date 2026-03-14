@@ -231,4 +231,38 @@ mod tests {
         let parsed = config.parse_origins().unwrap();
         assert_eq!(parsed, vec!["https://new.com".to_string()]);
     }
+
+    #[test]
+    fn test_parse_origins_cursor_past_end_fails() {
+        let mut config = create_test_domain_config();
+        config.num_origins = 3;
+        let len200 = 200u16.to_le_bytes();
+        config.origins[0] = len200[0];
+        config.origins[1] = len200[1];
+        for i in 2..202 {
+            config.origins[i] = b'a';
+        }
+        config.origins[202] = len200[0];
+        config.origins[203] = len200[1];
+        for i in 204..404 {
+            config.origins[i] = b'b';
+        }
+        config.origins[404] = len200[0];
+        config.origins[405] = len200[1];
+        let res = config.parse_origins();
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_parse_origins_invalid_utf8_fails() {
+        let mut config = create_test_domain_config();
+        config.num_origins = 1;
+        config.origins[0] = 3;
+        config.origins[1] = 0;
+        config.origins[2] = 0xFF;
+        config.origins[3] = 0xFF;
+        config.origins[4] = 0xFE;
+        let res = config.parse_origins();
+        assert!(res.is_err());
+    }
 }

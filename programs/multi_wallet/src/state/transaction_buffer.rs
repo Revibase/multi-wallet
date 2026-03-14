@@ -121,13 +121,9 @@ impl TransactionBuffer {
         )
     }
 
-    pub fn execute(&mut self) -> Result<()> {
-        self.validate_hash()?;
-        self.validate_size()?;
-        require!(
-            Clock::get()?.unix_timestamp as u64 <= self.valid_till,
-            MultisigError::TransactionHasExpired
-        );
+    /// Checks that every expected signer is either creator, executor, or a voter.
+    /// Used by execute() and by unit tests without needing Clock.
+    pub fn check_expected_signers(&self) -> Result<()> {
         require!(
             self.expected_signers
                 .iter()
@@ -136,6 +132,17 @@ impl TransactionBuffer {
                     || self.voters.contains(&f.member_key)),
             MultisigError::UnexpectedSigner
         );
+        Ok(())
+    }
+
+    pub fn execute(&mut self) -> Result<()> {
+        self.validate_hash()?;
+        self.validate_size()?;
+        require!(
+            Clock::get()?.unix_timestamp as u64 <= self.valid_till,
+            MultisigError::TransactionHasExpired
+        );
+        self.check_expected_signers()?;
 
         self.can_execute = true;
         Ok(())
@@ -190,6 +197,38 @@ impl TransactionBuffer {
 
     pub fn add_executor(&mut self, executor: MemberKey) -> Result<()> {
         self.executor = executor;
+        Ok(())
+    }
+
+    /// Validates that a chunk can be appended (size and hash). Used by extend instruction and unit tests.
+    pub fn validate_extend_chunk(&self, chunk: &[u8]) -> Result<()> {
+        let current_buffer_size =
+            u16::try_from(self.buffer.len()).map_err(|_| MultisigError::FinalBufferSizeExceeded)?;
+        let remaining_space = self
+            .final_buffer_size
+            .checked_sub(current_buffer_size)
+            .ok_or(MultisigError::FinalBufferSizeExceeded)?;
+
+        let new_data_size =
+            u16::try_from(chunk.len()).map_err(|_| MultisigError::FinalBufferSizeExceeded)?;
+        require!(
+            new_data_size <= remaining_space,
+            MultisigError::FinalBufferSizeExceeded
+        );
+
+        let required_buffer_hash = self
+            .buffer_extend_hashes
+            .get(0)
+            .ok_or(MultisigError::InvalidBuffer)?;
+
+        let current_buffer_hash =
+            Sha256::hash(chunk).map_err(|_| MultisigError::HashComputationFailed)?;
+
+        require!(
+            required_buffer_hash.eq(&current_buffer_hash),
+            MultisigError::InvalidBuffer
+        );
+
         Ok(())
     }
 }
@@ -434,5 +473,162 @@ mod tests {
         };
         assert!(buffer.add_executor(member_key).is_ok());
         assert_eq!(buffer.executor, member_key);
+    }
+
+    #[test]
+    fn test_check_expected_signers_fails_when_expected_signer_not_creator_executor_or_voter() {
+        use crate::ExpectedSigner;
+        let creator = MemberKey::convert_ed25519(&Pubkey::new_unique()).unwrap();
+        let executor = MemberKey::convert_ed25519(&Pubkey::new_unique()).unwrap();
+        let voter = MemberKey::convert_ed25519(&Pubkey::new_unique()).unwrap();
+        let other = MemberKey::convert_ed25519(&Pubkey::new_unique()).unwrap();
+
+        let buffer = TransactionBuffer {
+            multi_wallet_settings: Pubkey::new_unique(),
+            multi_wallet_bump: 0,
+            can_execute: false,
+            preauthorize_execution: false,
+            valid_till: u64::MAX,
+            payer: Pubkey::new_unique(),
+            bump: 0,
+            buffer_index: 0,
+            final_buffer_hash: [0u8; 32],
+            final_buffer_size: 0,
+            creator,
+            executor,
+            buffer_extend_hashes: vec![],
+            voters: vec![voter],
+            expected_signers: vec![
+                ExpectedSigner {
+                    member_key: creator,
+                    message_hash: None,
+                },
+                ExpectedSigner {
+                    member_key: other,
+                    message_hash: None,
+                },
+            ],
+            buffer: vec![],
+        };
+        assert!(buffer.check_expected_signers().is_err());
+    }
+
+    #[test]
+    fn test_check_expected_signers_ok_when_all_covered() {
+        use crate::ExpectedSigner;
+        let creator = MemberKey::convert_ed25519(&Pubkey::new_unique()).unwrap();
+        let executor = MemberKey::convert_ed25519(&Pubkey::new_unique()).unwrap();
+        let voter = MemberKey::convert_ed25519(&Pubkey::new_unique()).unwrap();
+
+        let buffer = TransactionBuffer {
+            multi_wallet_settings: Pubkey::new_unique(),
+            multi_wallet_bump: 0,
+            can_execute: false,
+            preauthorize_execution: false,
+            valid_till: 0,
+            payer: Pubkey::new_unique(),
+            bump: 0,
+            buffer_index: 0,
+            final_buffer_hash: [0u8; 32],
+            final_buffer_size: 0,
+            creator,
+            executor,
+            buffer_extend_hashes: vec![],
+            voters: vec![voter],
+            expected_signers: vec![
+                ExpectedSigner {
+                    member_key: creator,
+                    message_hash: None,
+                },
+                ExpectedSigner {
+                    member_key: executor,
+                    message_hash: None,
+                },
+                ExpectedSigner {
+                    member_key: voter,
+                    message_hash: None,
+                },
+            ],
+            buffer: vec![],
+        };
+        assert!(buffer.check_expected_signers().is_ok());
+    }
+
+    #[test]
+    fn test_validate_extend_chunk_exceeds_remaining_space_fails() {
+        use light_sdk::light_hasher::{Hasher, Sha256};
+        let chunk_hash = Sha256::hash(&[1u8; 10]).unwrap();
+        let buffer = TransactionBuffer {
+            multi_wallet_settings: Pubkey::new_unique(),
+            multi_wallet_bump: 0,
+            can_execute: false,
+            preauthorize_execution: false,
+            valid_till: 0,
+            payer: Pubkey::new_unique(),
+            bump: 0,
+            buffer_index: 0,
+            final_buffer_hash: [0u8; 32],
+            final_buffer_size: 20,
+            creator: MemberKey::default(),
+            executor: MemberKey::default(),
+            buffer_extend_hashes: vec![chunk_hash],
+            voters: vec![],
+            expected_signers: vec![],
+            buffer: vec![0u8; 15],
+        };
+        let chunk = [2u8; 10];
+        assert!(buffer.validate_extend_chunk(&chunk).is_err());
+    }
+
+    #[test]
+    fn test_validate_extend_chunk_wrong_hash_fails() {
+        use light_sdk::light_hasher::{Hasher, Sha256};
+        let wrong_hash = Sha256::hash(&[99u8; 5]).unwrap();
+        let buffer = TransactionBuffer {
+            multi_wallet_settings: Pubkey::new_unique(),
+            multi_wallet_bump: 0,
+            can_execute: false,
+            preauthorize_execution: false,
+            valid_till: 0,
+            payer: Pubkey::new_unique(),
+            bump: 0,
+            buffer_index: 0,
+            final_buffer_hash: [0u8; 32],
+            final_buffer_size: 20,
+            creator: MemberKey::default(),
+            executor: MemberKey::default(),
+            buffer_extend_hashes: vec![wrong_hash],
+            voters: vec![],
+            expected_signers: vec![],
+            buffer: vec![0u8; 5],
+        };
+        let chunk = [1u8; 10];
+        assert!(buffer.validate_extend_chunk(&chunk).is_err());
+    }
+
+    #[test]
+    fn test_validate_extend_chunk_ok() {
+        use light_sdk::light_hasher::{Hasher, Sha256};
+        let chunk = [1u8; 10];
+        let chunk_hash = Sha256::hash(&chunk).unwrap();
+        let buffer = TransactionBuffer {
+            multi_wallet_settings: Pubkey::new_unique(),
+            multi_wallet_bump: 0,
+            can_execute: false,
+            preauthorize_execution: false,
+            valid_till: 0,
+            payer: Pubkey::new_unique(),
+            bump: 0,
+            buffer_index: 0,
+            final_buffer_hash: [0u8; 32],
+            final_buffer_size: 20,
+            creator: MemberKey::default(),
+            executor: MemberKey::default(),
+            buffer_extend_hashes: vec![chunk_hash],
+            voters: vec![],
+            expected_signers: vec![],
+            buffer: vec![0u8; 5],
+        };
+        assert!(buffer.validate_extend_chunk(&chunk).is_ok());
     }
 }

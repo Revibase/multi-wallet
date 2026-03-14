@@ -248,3 +248,151 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
         Ok(executable_instructions)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn leak_pubkey(pk: Pubkey) -> &'static Pubkey {
+        Box::leak(Box::new(pk))
+    }
+
+    fn make_account(
+        key: Pubkey,
+        owner: Pubkey,
+        is_signer: bool,
+        is_writable: bool,
+        data_len: usize,
+    ) -> AccountInfo<'static> {
+        let key = leak_pubkey(key);
+        let owner = leak_pubkey(owner);
+        let lamports: &'static mut u64 = Box::leak(Box::new(0u64));
+        let data: &'static mut [u8] = Box::leak(vec![0u8; data_len].into_boxed_slice());
+        AccountInfo::new(key, is_signer, is_writable, lamports, data, owner, false, 0)
+    }
+
+    #[test]
+    fn test_signer_required_for_non_vault_signer_index() {
+        let k0 = Pubkey::new_unique();
+        let vault = Pubkey::new_unique();
+        let owner = Pubkey::new_unique();
+
+        let message = VaultTransactionMessage {
+            num_signers: 1,
+            num_writable_signers: 0,
+            num_writable_non_signers: 0,
+            account_keys: vec![k0],
+            instructions: vec![],
+            address_table_lookups: vec![],
+        };
+
+        let a0 = make_account(k0, owner, false, false, 0);
+        let accounts = [a0];
+        let res = ExecutableTransactionMessage::new_validated(message, &accounts, &[], &vault);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_signer_not_required_for_vault_pubkey() {
+        let vault = Pubkey::new_unique();
+        let owner = Pubkey::new_unique();
+
+        let message = VaultTransactionMessage {
+            num_signers: 1,
+            num_writable_signers: 0,
+            num_writable_non_signers: 0,
+            account_keys: vec![vault],
+            instructions: vec![],
+            address_table_lookups: vec![],
+        };
+
+        let a0 = make_account(vault, owner, false, false, 0);
+        let vault_pk = *a0.key;
+        let accounts = [a0];
+        ExecutableTransactionMessage::new_validated(message, &accounts, &[], &vault_pk).unwrap();
+    }
+
+    #[test]
+    fn test_static_writable_index_requires_writable_accountinfo() {
+        let k0 = Pubkey::new_unique();
+        let vault = Pubkey::new_unique();
+        let owner = Pubkey::new_unique();
+
+        let message = VaultTransactionMessage {
+            num_signers: 1,
+            num_writable_signers: 1,
+            num_writable_non_signers: 0,
+            account_keys: vec![k0],
+            instructions: vec![],
+            address_table_lookups: vec![],
+        };
+
+        let a0 = make_account(k0, owner, true, false, 0);
+        let accounts = [a0];
+        let res = ExecutableTransactionMessage::new_validated(message, &accounts, &[], &vault);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_alt_owner_mismatch_fails_before_deserialize() {
+        let k0 = Pubkey::new_unique();
+        let vault = Pubkey::new_unique();
+        let owner = Pubkey::new_unique();
+
+        let alt_key = Pubkey::new_unique();
+        let wrong_alt_owner = Pubkey::new_unique();
+
+        let message = VaultTransactionMessage {
+            num_signers: 0,
+            num_writable_signers: 0,
+            num_writable_non_signers: 0,
+            account_keys: vec![k0],
+            instructions: vec![],
+            address_table_lookups: vec![crate::MessageAddressTableLookup {
+                lookup_table_address: alt_key,
+                writable_indexes: vec![],
+                readonly_indexes: vec![],
+            }],
+        };
+
+        let a0 = make_account(k0, owner, false, false, 0);
+        let alt_info = make_account(alt_key, wrong_alt_owner, false, false, 0);
+
+        let accounts = [a0];
+        let alts = [alt_info];
+        let res = ExecutableTransactionMessage::new_validated(message, &accounts, &alts, &vault);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_alt_key_mismatch_fails_before_deserialize() {
+        let k0 = Pubkey::new_unique();
+        let vault = Pubkey::new_unique();
+        let owner = Pubkey::new_unique();
+
+        let alt_key_in_message = Pubkey::new_unique();
+        let alt_key_provided = Pubkey::new_unique();
+        let alt_owner = Pubkey::new_from_array(solana_address_lookup_table_interface::program::ID.to_bytes());
+
+        let message = VaultTransactionMessage {
+            num_signers: 0,
+            num_writable_signers: 0,
+            num_writable_non_signers: 0,
+            account_keys: vec![k0],
+            instructions: vec![],
+            address_table_lookups: vec![crate::MessageAddressTableLookup {
+                lookup_table_address: alt_key_in_message,
+                writable_indexes: vec![],
+                readonly_indexes: vec![],
+            }],
+        };
+
+        let a0 = make_account(k0, owner, false, false, 0);
+        let alt_info = make_account(alt_key_provided, alt_owner, false, false, 0);
+
+        let accounts = [a0];
+        let alts = [alt_info];
+        let res = ExecutableTransactionMessage::new_validated(message, &accounts, &alts, &vault);
+        assert!(res.is_err());
+    }
+}

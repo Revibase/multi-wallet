@@ -431,3 +431,108 @@ impl Secp256r1VerifyArgs {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn write_u16_le(buf: &mut [u8], offset: usize, value: u16) {
+        buf[offset..offset + 2].copy_from_slice(&value.to_le_bytes());
+    }
+
+    #[test]
+    fn test_read_signature_offsets_oob_fails() {
+        // Too short to contain signature offsets.
+        let data = vec![0u8; SIGNATURE_OFFSETS_START + SIGNATURE_OFFSETS_SERIALIZED_SIZE - 1];
+        let err = Secp256r1VerifyArgs::read_signature_offsets(&data, 0, 1)
+            .err()
+            .unwrap()
+            .to_string();
+        assert!(err.contains("Failed to deserialize secp256r1 signature offsets"));
+    }
+
+    #[test]
+    fn test_extract_message_data_requires_min_len() {
+        // Create data large enough to hold offsets + message.
+        let offsets_start = SIGNATURE_OFFSETS_START;
+        let offsets_len = SIGNATURE_OFFSETS_SERIALIZED_SIZE;
+        let message_offset = offsets_start + offsets_len;
+
+        let mut data = vec![0u8; message_offset + 10];
+
+        // Offsets struct layout: 7 u16 fields in order.
+        // message_data_offset (field 4) at bytes 8..10, message_data_size (field 5) at 10..12
+        write_u16_le(&mut data, offsets_start + 8, message_offset as u16);
+        write_u16_le(&mut data, offsets_start + 10, 10u16);
+
+        let offsets = Secp256r1VerifyArgs::read_signature_offsets(&data, 0, 1).unwrap();
+        let err = Secp256r1VerifyArgs::extract_message_data(&data, &offsets)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("Failed to deserialize secp256r1 signature offsets"));
+    }
+
+    #[test]
+    fn test_extract_public_key_data_oob_fails() {
+        let offsets_start = SIGNATURE_OFFSETS_START;
+        let offsets_len = SIGNATURE_OFFSETS_SERIALIZED_SIZE;
+        let public_key_offset = offsets_start + offsets_len;
+
+        let mut data = vec![0u8; public_key_offset + COMPRESSED_PUBKEY_SERIALIZED_SIZE - 1];
+
+        // public_key_offset (field 2) at bytes 4..6
+        write_u16_le(&mut data, offsets_start + 4, public_key_offset as u16);
+
+        let offsets = Secp256r1VerifyArgs::read_signature_offsets(&data, 0, 1).unwrap();
+        let err = Secp256r1VerifyArgs::extract_public_key_data(&data, &offsets)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("invalid length or encoding"));
+    }
+
+    #[test]
+    fn test_fetch_slot_hash_found() {
+        let args = Secp256r1VerifyArgs {
+            signed_message_index: 0,
+            slot_number: 42,
+            origin_index: 0,
+            cross_origin: false,
+            truncated_client_data_json: vec![],
+            client_and_device_hash: [0u8; 32],
+        };
+
+        // Sysvar layout expected here:
+        // [0..8) u64 num_slot_hashes
+        // then num_slot_hashes entries: (u64 slot, [u8;32] hash) in descending slot order.
+        let num = 3u64;
+        let mut data = vec![0u8; 8 + (num as usize) * 40];
+        data[..8].copy_from_slice(&num.to_le_bytes());
+
+        // slots: 50, 42, 10
+        let entries = [(50u64, 0xAAu8), (42u64, 0xBBu8), (10u64, 0xCCu8)];
+        for (i, (slot, fill)) in entries.iter().enumerate() {
+            let pos = 8 + i * 40;
+            data[pos..pos + 8].copy_from_slice(&slot.to_le_bytes());
+            data[pos + 8..pos + 40].fill(*fill);
+        }
+
+        // Create a fake account for UncheckedAccount.
+        let key = Pubkey::new_unique();
+        let mut lamports = 0u64;
+        let owner = Pubkey::new_unique();
+        let mut data_boxed = data.into_boxed_slice();
+        let account_info = AccountInfo::new(
+            &key,
+            false,
+            false,
+            &mut lamports,
+            &mut data_boxed,
+            &owner,
+            false,
+            0,
+        );
+        let unchecked: UncheckedAccount = UncheckedAccount::try_from(&account_info);
+        let hash = args.fetch_slot_hash(&Some(unchecked)).unwrap();
+        assert_eq!(hash, [0xBBu8; 32]);
+    }
+}
