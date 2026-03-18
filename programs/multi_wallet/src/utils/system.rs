@@ -16,6 +16,25 @@ pub fn durable_nonce_check<'info>(instructions_sysvar: &UncheckedAccount<'info>)
     Ok(())
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use anchor_lang::solana_program::sysvar::SysvarId;
+
+    #[test]
+    fn test_durable_nonce_check_invalid_sysvar_data_fails() {
+        let key = Box::leak(Box::new(Instructions::id()));
+        let owner = Box::leak(Box::new(system_program::ID));
+        let lamports = Box::leak(Box::new(0u64));
+        let data: &mut [u8] = Box::leak(vec![0u8; 0].into_boxed_slice());
+        let account_info = AccountInfo::new(key, false, false, lamports, data, owner, false, 0);
+        let account_info: &'static AccountInfo<'static> = Box::leak(Box::new(account_info));
+        let instructions_sysvar = UncheckedAccount::try_from(account_info);
+        let res = durable_nonce_check(&instructions_sysvar);
+        assert!(res.is_err());
+    }
+}
+
 pub fn resize_account_if_necessary<'info>(
     account: &AccountInfo<'info>,
     payer: &AccountInfo<'info>,

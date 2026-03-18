@@ -13,7 +13,7 @@ impl<'info> DisableDomainConfig<'info> {
         #[cfg(feature = "mainnet")]
         require!(
             ctx.accounts.admin.key().eq(&crate::ADMIN),
-            crate::MultisigError::InvalidAccount
+            crate::MultisigError::UnauthorizedAdminOnly
         );
         let domain_config = &mut ctx.accounts.domain_config.load_mut()?;
         domain_config.is_disabled = if disable { 1 } else { 0 };

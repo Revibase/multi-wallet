@@ -387,6 +387,7 @@ impl TransactionBufferSigners {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anchor_lang::solana_program::sysvar::SysvarId;
 
     fn make_secp256r1_args(slot_number: u64) -> Secp256r1VerifyArgs {
         Secp256r1VerifyArgs {
@@ -437,5 +438,60 @@ mod tests {
         ];
         let result = TransactionSyncSigners::collect_slot_numbers(&signers);
         assert_eq!(result, vec![100, 200]);
+    }
+
+    fn leak_pubkey(pk: Pubkey) -> &'static Pubkey {
+        Box::leak(Box::new(pk))
+    }
+
+    fn make_account_info_static(key: Pubkey, is_signer: bool) -> AccountInfo<'static> {
+        let key = leak_pubkey(key);
+        let owner = leak_pubkey(Pubkey::new_unique());
+        let lamports: &'static mut u64 = Box::leak(Box::new(0u64));
+        let data: &'static mut [u8] = Box::leak(vec![0u8; 0].into_boxed_slice());
+        AccountInfo::new(key, is_signer, false, lamports, data, owner, false, 0)
+    }
+
+    fn make_instructions_sysvar_static() -> UncheckedAccount<'static> {
+        let key = leak_pubkey(Instructions::id());
+        let owner = leak_pubkey(Pubkey::new_unique());
+        let lamports: &'static mut u64 = Box::leak(Box::new(0u64));
+        let data: &'static mut [u8] = Box::leak(vec![0u8; 0].into_boxed_slice());
+        let account_info = AccountInfo::new(key, false, false, lamports, data, owner, false, 0);
+        let account_info: &'static AccountInfo<'static> = Box::leak(Box::new(account_info));
+        UncheckedAccount::try_from(account_info)
+    }
+
+    #[test]
+    fn test_resolve_ed25519_index_oob_fails() {
+        let signers = vec![TransactionSyncSigners::Ed25519(0)];
+        let remaining: &[AccountInfo] = &[];
+        let sysvar = make_instructions_sysvar_static();
+        let res = TransactionSyncSigners::resolve(signers.as_slice(), remaining, &sysvar);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_resolve_ed25519_non_signer_fails() {
+        let signers = vec![TransactionSyncSigners::Ed25519(0)];
+        let acc = make_account_info_static(Pubkey::new_unique(), false);
+        let remaining: &'static [AccountInfo<'static>] = Box::leak(Box::new([acc]));
+        let sysvar = make_instructions_sysvar_static();
+        let res = TransactionSyncSigners::resolve(&signers, remaining, &sysvar);
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_resolve_ed25519_signer_ok() {
+        let pk = Pubkey::new_unique();
+        let signers = vec![TransactionSyncSigners::Ed25519(0)];
+        let acc = make_account_info_static(pk, true);
+        let remaining: &'static [AccountInfo<'static>] = Box::leak(Box::new([acc]));
+        let sysvar = make_instructions_sysvar_static();
+        let resolved = TransactionSyncSigners::resolve(&signers, remaining, &sysvar).unwrap();
+        assert_eq!(resolved.len(), 1);
+        assert!(resolved[0].1.is_none());
+        assert_eq!(resolved[0].0.get_type(), crate::KeyType::Ed25519);
+        assert_eq!(resolved[0].0.to_pubkey().unwrap(), pk);
     }
 }

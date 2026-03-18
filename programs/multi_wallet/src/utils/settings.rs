@@ -262,3 +262,101 @@ pub trait MultisigSettings {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::Settings;
+    use anchor_lang::prelude::AccountInfo;
+
+    fn leak_pubkey(pk: Pubkey) -> &'static Pubkey {
+        Box::leak(Box::new(pk))
+    }
+
+    fn make_unchecked_account_with_data(data: Vec<u8>) -> UncheckedAccount<'static> {
+        let key = leak_pubkey(Pubkey::new_unique());
+        let owner = leak_pubkey(Pubkey::new_unique());
+        let lamports: &'static mut u64 = Box::leak(Box::new(0u64));
+        let data: &'static mut [u8] = Box::leak(data.into_boxed_slice());
+        let account_info = AccountInfo::new(key, false, false, lamports, data, owner, false, 0);
+        let account_info: &'static AccountInfo<'static> = Box::leak(Box::new(account_info));
+        UncheckedAccount::try_from(account_info)
+    }
+
+    fn mk_settings(latest_slot_number: u64) -> Settings {
+        Settings {
+            index: 0,
+            members: vec![],
+            threshold: 1,
+            multi_wallet_bump: 0,
+            bump: 0,
+            settings_address_tree_index: 0,
+            latest_slot_number,
+        }
+    }
+
+    #[test]
+    fn test_latest_slot_number_check_rejects_non_monotonic() {
+        let mut settings = mk_settings(10);
+
+        // num_slot_hashes=200, first_slot=100 (so offset is in-range)
+        let mut data = vec![0u8; 16];
+        data[..8].copy_from_slice(&200u64.to_le_bytes());
+        data[8..16].copy_from_slice(&100u64.to_le_bytes());
+        let unchecked = make_unchecked_account_with_data(data);
+
+        let err = settings
+            .latest_slot_number_check(&[10], &Some(unchecked))
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("InvalidSlotNumber"));
+    }
+
+    #[test]
+    fn test_latest_slot_number_check_slot_newer_than_first_slot_fails() {
+        let mut settings = mk_settings(0);
+
+        let mut data = vec![0u8; 16];
+        data[..8].copy_from_slice(&100u64.to_le_bytes());
+        data[8..16].copy_from_slice(&50u64.to_le_bytes());
+        let unchecked = make_unchecked_account_with_data(data);
+
+        let err = settings
+            .latest_slot_number_check(&[60], &Some(unchecked))
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("SlotNumberNotFound"));
+    }
+
+    #[test]
+    fn test_latest_slot_number_check_offset_out_of_range_fails() {
+        let mut settings = mk_settings(0);
+
+        // offset = 100 - 10 = 90, but num_slot_hashes=50 so offset >= num_slot_hashes.
+        let mut data = vec![0u8; 16];
+        data[..8].copy_from_slice(&50u64.to_le_bytes());
+        data[8..16].copy_from_slice(&100u64.to_le_bytes());
+        let unchecked = make_unchecked_account_with_data(data);
+
+        let err = settings
+            .latest_slot_number_check(&[10], &Some(unchecked))
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("SlotNumberNotFound"));
+    }
+
+    #[test]
+    fn test_latest_slot_number_check_updates_latest_slot_number() {
+        let mut settings = mk_settings(0);
+
+        let mut data = vec![0u8; 16];
+        data[..8].copy_from_slice(&200u64.to_le_bytes());
+        data[8..16].copy_from_slice(&100u64.to_le_bytes());
+        let unchecked = make_unchecked_account_with_data(data);
+
+        settings
+            .latest_slot_number_check(&[10, 12], &Some(unchecked))
+            .unwrap();
+        assert_eq!(settings.latest_slot_number, 12);
+    }
+}

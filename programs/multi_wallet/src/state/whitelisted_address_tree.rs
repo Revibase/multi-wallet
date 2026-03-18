@@ -17,11 +17,12 @@ impl WhitelistedAddressTree {
     }
 
     pub fn extract_address_tree_index(&self, address_tree: &Pubkey) -> Result<u8> {
-        Ok(self
+        let position = self
             .whitelisted_address_trees
             .iter()
             .position(|f| f.eq(address_tree))
-            .ok_or(MultisigError::InvalidAddressTree)? as u8)
+            .ok_or(MultisigError::InvalidAddressTree)?;
+        u8::try_from(position).map_err(|_| MultisigError::InvalidAddressTree.into())
     }
 }
 
