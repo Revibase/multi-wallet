@@ -69,6 +69,8 @@ export class RevibaseProvider {
   private channelWs = new Map<string, SenderChannelSocketHandle>();
   private readonly channelStatusListeners = new Set<ChannelStatusListener>();
   private readonly logger: Pick<Console, "info" | "warn" | "error">;
+  private static CHANNEL_ID_CHARSET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
+  private static CHANNEL_ID_LENGTH = 10;
 
   private defaultCallback: ClientAuthorizationCallback = async (
     request,
@@ -140,36 +142,22 @@ export class RevibaseProvider {
     }
   }
 
+  private generateChannelId() {
+    let id = "";
+    const len = RevibaseProvider.CHANNEL_ID_CHARSET.length;
+    for (let i = 0; i < RevibaseProvider.CHANNEL_ID_LENGTH; i++) {
+      id +=
+        RevibaseProvider.CHANNEL_ID_CHARSET[Math.floor(Math.random() * len)];
+    }
+    return id;
+  }
+
   async createChannel(): Promise<{ channelId: string; url: string }> {
-    const res = await fetch(`${this.providerOrigin}/api/channel/challenge`);
-    if (!res.ok) {
-      const data = await res.json();
-      throw new RevibaseAuthError(
-        (data as { error?: string }).error ?? "Unable to generate challenge",
-      );
-    }
-    const { id, challenge } = await res.json();
-    const device = {
-      jwk: (await DeviceKeyManager.getOrCreateDevicePublickey()).publicKey,
-      jws: await DeviceKeyManager.sign(new TextEncoder().encode(challenge)),
-    };
-    const response = await fetch(`${this.providerOrigin}/api/channel/create`, {
-      method: "POST",
-      body: JSON.stringify({
-        device,
-        challengeId: id,
-      }),
-    });
-    if (!response.ok) {
-      const data = await response.json();
-      throw new RevibaseAuthError(
-        (data as { error?: string }).error ?? "Unable to create channel",
-      );
-    }
-    const { channelId } = await response.json();
+    const channelId = this.generateChannelId();
+    const device = await this.getDeviceSignature(channelId);
     const handlers = createSenderChannelSocket({
       channelId,
-      getDevicePayload: this.getDeviceSignature,
+      device,
       providerOrigin: this.providerOrigin,
       callbacks: {
         onAwaitingRecipient: () =>

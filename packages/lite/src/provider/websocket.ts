@@ -1,8 +1,8 @@
+import type { DeviceSignature } from "src/utils";
 import { z } from "zod";
 
 const DEFAULT_MAX_RECONNECT_ATTEMPTS = 3;
 const DEFAULT_RECONNECT_BASE_DELAY_MS = 1000;
-const DEFAULT_AUTH_TIMEOUT_MS = 10_000;
 const DEFAULT_HEARTBEAT_INTERVAL_MS = 15_000;
 const DEFAULT_HEARTBEAT_TIMEOUT_MS = 8_000;
 const CHANNEL_WS_MAX_MESSAGE_BYTES = 64 * 1024;
@@ -64,14 +64,10 @@ export type SenderChannelSocketCallbacks = {
 export type SenderChannelSocketConfig = {
   providerOrigin: string;
   channelId: string;
-  getDevicePayload: (channelId: string) => Promise<{
-    jwk: string;
-    jws: string;
-  }>;
+  device: DeviceSignature;
   callbacks: SenderChannelSocketCallbacks;
   maxReconnectAttempts?: number;
   reconnectBaseDelayMs?: number;
-  authTimeoutMs?: number;
   maxMessageBytes?: number;
   verboseLogging?: boolean;
   heartbeatIntervalMs?: number;
@@ -103,11 +99,10 @@ export function createSenderChannelSocket(
   const {
     providerOrigin,
     channelId,
-    getDevicePayload,
+    device,
     callbacks,
     maxReconnectAttempts = DEFAULT_MAX_RECONNECT_ATTEMPTS,
     reconnectBaseDelayMs = DEFAULT_RECONNECT_BASE_DELAY_MS,
-    authTimeoutMs = DEFAULT_AUTH_TIMEOUT_MS,
     maxMessageBytes = CHANNEL_WS_MAX_MESSAGE_BYTES,
     verboseLogging = false,
     heartbeatIntervalMs = DEFAULT_HEARTBEAT_INTERVAL_MS,
@@ -125,7 +120,7 @@ export function createSenderChannelSocket(
   const providerUrl = new URL(providerOrigin);
   const protocol = providerUrl.protocol === "https:" ? "wss:" : "ws:";
   const host = providerUrl.host;
-  const wsUrl = `${protocol}//${host}/api/channel/ws?channelId=${encodeURIComponent(channelId)}`;
+  const wsUrl = `${protocol}//${host}/api/channel/ws?channelId=${encodeURIComponent(channelId)}&role=sender&device=${encodeURIComponent(JSON.stringify(device))}`;
   const log = config.logger ?? console;
   const HEARTBEAT_TIMEOUT_REASON = "Heartbeat timeout";
 
@@ -175,34 +170,13 @@ export function createSenderChannelSocket(
     } catch {}
   }
 
-  async function getDevicePayloadWithTimeout(channelId: string): Promise<{
-    jwk: string;
-    jws: string;
-  }> {
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    const timeout = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(
-        () => reject(new Error("Auth timeout")),
-        authTimeoutMs,
-      );
-    });
-    try {
-      return await Promise.race([getDevicePayload(channelId), timeout]);
-    } finally {
-      if (timeoutId != null) clearTimeout(timeoutId);
-    }
-  }
-
   function attachHandlers(ws: WebSocket): void {
     ws.onopen = async (): Promise<void> => {
       if (closed || ws !== currentWs) return;
       log.info("[Channel WS Sender] Socket opened", { channelId });
       try {
-        const device = await getDevicePayloadWithTimeout(channelId);
         if (closed || ws !== currentWs || ws.readyState !== WebSocket.OPEN)
           return;
-        ws.send(JSON.stringify({ type: "auth", device }));
-        log.info("[Channel WS Sender] Auth sent", { channelId });
         retryCount = 0;
         manualReconnectInProgress = false;
         onConnected?.();
@@ -220,7 +194,7 @@ export function createSenderChannelSocket(
               return;
             }
             try {
-              currentWs.send(JSON.stringify({ type: "ping" }));
+              currentWs.send("ping");
             } catch {
               return;
             }
@@ -264,16 +238,13 @@ export function createSenderChannelSocket(
         } catch {}
         return;
       }
-      try {
-        const parsed = JSON.parse(raw) as { event?: string };
-        if (parsed?.event === "pong") {
-          if (pendingPongTimeoutId != null) {
-            clearTimeout(pendingPongTimeoutId);
-            pendingPongTimeoutId = null;
-          }
-          return;
+      if (raw === "pong") {
+        if (pendingPongTimeoutId != null) {
+          clearTimeout(pendingPongTimeoutId);
+          pendingPongTimeoutId = null;
         }
-      } catch {}
+        return;
+      }
       const msg = parseSenderIncomingMessage(raw);
       if (!msg) {
         if (verboseLogging) {
