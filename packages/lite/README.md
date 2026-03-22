@@ -6,7 +6,7 @@ Passkey Solana wallet: sign in and approve transactions in a popup. Backend auth
 pnpm add @revibase/lite
 ```
 
-**API** — Frontend: `RevibaseProvider`, `signIn`, `transferTokens`, `executeTransaction`. Backend: `processClientAuthCallback`. Types: `UserInfo`, `ChannelStatus`, `AuthorizationFlowOptions`, `RevibaseProviderOptions`. Errors: `RevibaseError` + subclasses (`.code`). [AGENTS.md](./AGENTS.md) for automation.
+**API** — Frontend: `RevibaseProvider`, `signIn`, `transferTokens`, `executeTransaction`. Backend: `processClientAuthCallback`. Types: `UserInfo`, `ChannelStatus`, `StartChannelRequest`, `AuthorizationFlowOptions`, `RevibaseProviderOptions`. Errors: `RevibaseError` + subclasses (`.code`). [AGENTS.md](./AGENTS.md) for automation.
 
 ---
 
@@ -28,6 +28,7 @@ Example handler:
 import {
   processClientAuthCallback,
   type DeviceSignature,
+  type StartChannelRequest,
   type StartMessageRequest,
   type StartTransactionRequest,
 } from "@revibase/lite";
@@ -35,7 +36,10 @@ import {
 export async function POST(req: Request) {
   try {
     const { request, device, channelId } = (await req.json()) as {
-      request: StartMessageRequest | StartTransactionRequest;
+      request:
+        | StartMessageRequest
+        | StartTransactionRequest
+        | StartChannelRequest;
       device?: DeviceSignature;
       channelId?: string;
     };
@@ -46,6 +50,7 @@ export async function POST(req: Request) {
       device,
       channelId,
     });
+    // Message/transaction: { user, txSig? }. Channel registration (createChannel): { ok: true }.
     return Response.json(result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -105,7 +110,7 @@ Default: auth in popup. For auth on another device, use a channel (below).
 
 ## Auth on another device (channel)
 
-Channel: auth on another device; requests go there. `createChannel()` → open `url` on that device:
+Channel: auth on another device; requests go there. `createChannel()` first POSTs to your `/api/clientAuthorization` with a `StartChannelRequest` so the server can register the channel with Revibase; then it returns `{ channelId, url }`. Open `url` on that device:
 
 ```ts
 const { channelId, url } = await provider.createChannel();

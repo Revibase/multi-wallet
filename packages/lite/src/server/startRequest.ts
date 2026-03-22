@@ -20,7 +20,7 @@ export async function startRequest({
 }: {
   privateKey: string;
   request: StartTransactionRequest | StartMessageRequest;
-  signal: AbortSignal;
+  signal?: AbortSignal;
   channelId?: string;
   device?: {
     jwk: string;

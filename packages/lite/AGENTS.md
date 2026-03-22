@@ -19,13 +19,13 @@ Passkey Solana wallet: sign-in and transactions in popup or on another device (c
 | **Provider**          | `RevibaseProvider`, `RevibaseProviderOptions`, `ChannelStatus`, `ChannelStatusEntry`, `ChannelStatusListener`                                                                                                                                            |
 | **Client (frontend)** | `signIn`, `transferTokens`, `executeTransaction`                                                                                                                                                                                                         |
 | **Server (backend)**  | `processClientAuthCallback`                                                                                                                                                                                                                              |
-| **Types**             | `UserInfo`, `StartMessageRequest`, `StartTransactionRequest`, `CompleteMessageRequest`, `CompleteTransactionRequest`, `DeviceSignature`, `ClientAuthorizationCallback`, `AuthorizationFlowOptions`                                                       |
+| **Types**             | `UserInfo`, `StartMessageRequest`, `StartTransactionRequest`, `StartChannelRequest`, `StartChannelRequestSchema`, `CompleteMessageRequest`, `CompleteTransactionRequest`, `DeviceSignature`, `ClientAuthorizationCallback`, `AuthorizationFlowOptions`         |
 | **Errors**            | `RevibaseError`, `RevibasePopupBlockedError`, `RevibasePopupClosedError`, `RevibaseTimeoutError`, `RevibaseFlowInProgressError`, `RevibaseAbortedError`, `RevibaseAuthError`, `RevibaseEnvironmentError`, `RevibasePopupNotOpenError` (all have `.code`) |
 
 ## Main flows
 
 1. **Popup (default)** — `new RevibaseProvider()`, then `signIn(provider)`, `transferTokens(provider, args)`, or `executeTransaction(provider, args)`. Auth in same-device popup.
-2. **Channel (auth on another device)** — `provider.createChannel()` → `{ channelId, url }`. Open `url` on other device. Then `signIn(provider, { channelId })`, etc. `subscribeToChannelStatus` for status; `reconnectChannel(channelId)` for manual retry.
+2. **Channel (auth on another device)** — `provider.createChannel()` first calls `onClientAuthorizationCallback` with a `StartChannelRequest` (register channel with backend / Revibase), then returns `{ channelId, url }`. Open `url` on other device. Then `signIn(provider, { channelId })`, etc. `subscribeToChannelStatus` for status; `reconnectChannel(channelId)` for manual retry.
 
 ## Provider constructor
 
@@ -34,6 +34,7 @@ new RevibaseProvider(options?: RevibaseProviderOptions)
 ```
 
 - `RevibaseProviderOptions`: all optional — `providerOrigin?`, `onClientAuthorizationCallback?`, `rpcEndpoint?` (needed for `executeTransaction`), `logger?`.
+- `ClientAuthorizationCallback`: overloads for `StartMessageRequest`, `StartTransactionRequest`, and `StartChannelRequest`; `signal` is optional on all. Message/transaction return `{ user }` or `{ txSig?, user }`; channel (`data.type === "channel"`) returns `{ ok: true }`.
 
 ## Client function signatures
 
@@ -45,7 +46,8 @@ new RevibaseProvider(options?: RevibaseProviderOptions)
 
 ## Server
 
-- Backend POST at `/api/clientAuthorization`. Body: `{ request, device?, channelId? }`. Call `processClientAuthCallback({ request, privateKey, signal, device, channelId?, providerOrigin?, rpId? })` and return the result as JSON.
+- Backend POST at `/api/clientAuthorization`. Body: `{ request, device?, channelId? }`. Call `processClientAuthCallback({ request, privateKey, signal?, device, channelId?, providerOrigin?, rpId? })` and return the result as JSON.
+- `request` is `StartMessageRequest | StartTransactionRequest | StartChannelRequest`. Message/transaction responses include `user` (and optionally `txSig`); channel registration returns `{ ok: true }` (no `user`). `processClientAuthCallback` handles channel by signing and calling Revibase `startChannel` (see `src/server/startChannel.ts`).
 
 ## Channel status (for channel flow)
 
@@ -60,7 +62,7 @@ Provider methods: `createChannel()`, `subscribeToChannelStatus(listener)`, `canc
 | `src/index.ts`         | Re-exports from client, provider, server, utils                          |
 | `src/client/`          | `signIn`, `transferTokens`, `executeTransaction`, `runAuthorizationFlow` |
 | `src/provider/main.ts` | `RevibaseProvider`, `ChannelStatus`, options, channel methods            |
-| `src/server/`          | `processClientAuthCallback`, `startRequest`, `validateMessage`           |
+| `src/server/`          | `processClientAuthCallback`, `startRequest`, `startChannel`, `validateMessage` |
 | `src/utils/`           | Types, errors, consts                                                    |
 
 ## Agent rules

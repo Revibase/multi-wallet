@@ -10,8 +10,13 @@ import {
   StartTransactionRequestSchema,
 } from "@revibase/core";
 import { DEFAULT_TIMEOUT } from "src/provider/utils";
-import type { DeviceSignature } from "src/utils";
+import {
+  StartChannelRequestSchema,
+  type DeviceSignature,
+  type StartChannelRequest,
+} from "src/utils";
 import z from "zod";
+import { startChannel } from "./startChannel";
 import { startRequest } from "./startRequest";
 import { validateMessage } from "./validateMessage";
 
@@ -25,19 +30,23 @@ export async function processClientAuthCallback({
   device,
   channelId,
 }: {
-  request: StartTransactionRequest | StartMessageRequest;
-  signal: AbortSignal;
+  request: StartTransactionRequest | StartMessageRequest | StartChannelRequest;
+  signal?: AbortSignal;
   privateKey: string;
   channelId?: string;
   device?: DeviceSignature;
   providerOrigin?: string;
   rpId?: string;
-}): Promise<{ txSig?: string; user: UserInfo }> {
+}): Promise<{ txSig?: string; user?: UserInfo; ok?: boolean }> {
   const parsedResult = z
-    .union([StartMessageRequestSchema, StartTransactionRequestSchema])
+    .union([
+      StartMessageRequestSchema,
+      StartTransactionRequestSchema,
+      StartChannelRequestSchema,
+    ])
     .parse(request);
 
-  const { data, signer, redirectOrigin, rid } = parsedResult;
+  const { data, redirectOrigin } = parsedResult;
   // Server always overwrites validTill and sendTx; client values are ignored.
   const validTill = Date.now() + DEFAULT_TIMEOUT;
 
@@ -46,8 +55,8 @@ export async function processClientAuthCallback({
       request: {
         phase: "start",
         redirectOrigin,
-        signer,
-        rid,
+        signer: (parsedResult as StartMessageRequest).signer,
+        rid: (parsedResult as StartMessageRequest).rid,
         validTill,
         data: {
           type: "message",
@@ -66,31 +75,47 @@ export async function processClientAuthCallback({
       providerOrigin,
       rpId,
     );
-  }
-
-  const result = (await startRequest({
-    request: {
-      phase: "start",
-      redirectOrigin,
-      signer,
-      rid,
-      validTill,
-      data: {
-        type: "transaction",
-        payload: data.payload,
-        sendTx: true,
-        additionalSigners: data.additionalSigners,
+  } else if (data.type === "transaction") {
+    const result = (await startRequest({
+      request: {
+        phase: "start",
+        redirectOrigin,
+        signer: (parsedResult as StartTransactionRequest).signer,
+        rid: (parsedResult as StartTransactionRequest).rid,
+        validTill,
+        data: {
+          type: "transaction",
+          payload: data.payload,
+          sendTx: true,
+          additionalSigners: data.additionalSigners,
+        },
       },
-    },
-    providerOrigin,
-    privateKey,
-    signal,
-    device,
-    channelId,
-  })) as CompleteSendTransactionRequest;
+      providerOrigin,
+      privateKey,
+      signal,
+      device,
+      channelId,
+    })) as CompleteSendTransactionRequest;
 
-  return {
-    txSig: result.data.payload.txSig,
-    user: result.data.payload.user,
-  };
+    return {
+      txSig: result.data.payload.txSig,
+      user: result.data.payload.user,
+    };
+  } else {
+    await startChannel({
+      privateKey,
+      request: {
+        phase: "start",
+        redirectOrigin,
+        data: {
+          channelId: data.channelId,
+          device: data.device,
+          type: "channel",
+        },
+      },
+      signal,
+      providerOrigin,
+    });
+    return { ok: true };
+  }
 }

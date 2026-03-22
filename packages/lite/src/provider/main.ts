@@ -155,6 +155,12 @@ export class RevibaseProvider {
   async createChannel(): Promise<{ channelId: string; url: string }> {
     const channelId = this.generateChannelId();
     const device = await this.getDeviceSignature(channelId);
+    const redirectOrigin = window.origin;
+    await this.onClientAuthorizationCallback({
+      phase: "start",
+      redirectOrigin,
+      data: { channelId, device, type: "channel" },
+    });
     const handlers = createSenderChannelSocket({
       channelId,
       device,
