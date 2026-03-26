@@ -1,20 +1,5 @@
 import {
   type AccountProofInput,
-  batchCpiContext1,
-  batchCpiContext2,
-  batchCpiContext3,
-  batchCpiContext4,
-  batchCpiContext5,
-  batchMerkleTree1,
-  batchMerkleTree2,
-  batchMerkleTree3,
-  batchMerkleTree4,
-  batchMerkleTree5,
-  batchQueue1,
-  batchQueue2,
-  batchQueue3,
-  batchQueue4,
-  batchQueue5,
   getLightSystemAccountMetasV2,
   type NewAddressProofInput,
   type PackedAddressTreeInfo,
@@ -32,51 +17,12 @@ import {
   address,
 } from "gill";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
+import { getLightProtocolRpc } from "../initialize";
 
 interface MapData {
   index: number;
   accountMeta: AccountMeta;
 }
-
-export const defaultStateTreeInfos: TreeInfo[] = [
-  {
-    tree: new PublicKey(batchMerkleTree1),
-    queue: new PublicKey(batchQueue1),
-    cpiContext: new PublicKey(batchCpiContext1),
-    nextTreeInfo: null,
-    treeType: TreeType.StateV2,
-  },
-  {
-    tree: new PublicKey(batchMerkleTree2),
-    queue: new PublicKey(batchQueue2),
-    cpiContext: new PublicKey(batchCpiContext2),
-    nextTreeInfo: null,
-    treeType: TreeType.StateV2,
-  },
-  {
-    tree: new PublicKey(batchMerkleTree3),
-    queue: new PublicKey(batchQueue3),
-    cpiContext: new PublicKey(batchCpiContext3),
-
-    nextTreeInfo: null,
-    treeType: TreeType.StateV2,
-  },
-  {
-    tree: new PublicKey(batchMerkleTree4),
-    queue: new PublicKey(batchQueue4),
-    cpiContext: new PublicKey(batchCpiContext4),
-
-    nextTreeInfo: null,
-    treeType: TreeType.StateV2,
-  },
-  {
-    tree: new PublicKey(batchMerkleTree5),
-    queue: new PublicKey(batchQueue5),
-    cpiContext: new PublicKey(batchCpiContext5),
-    nextTreeInfo: null,
-    treeType: TreeType.StateV2,
-  },
-];
 
 export class PackedAccounts {
   systemAccounts: AccountMeta[];
@@ -156,7 +102,8 @@ export class PackedAccounts {
     if (this.outputTreeIndex !== -1) {
       return this.outputTreeIndex;
     }
-    const selectedStateTree = selectStateTreeInfo(defaultStateTreeInfos);
+    const stateTreeInfos = await getLightProtocolRpc().getStateTreeInfos();
+    const selectedStateTree = selectStateTreeInfo(stateTreeInfos);
     const outputStateTreeIndex = this.packOutputTreeIndex(selectedStateTree);
     return outputStateTreeIndex;
   }

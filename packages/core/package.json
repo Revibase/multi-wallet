@@ -1,6 +1,6 @@
 {
   "name": "@revibase/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "scripts": {
     "build": "rimraf dist && tsup",
     "clean": "rimraf dist",
@@ -43,11 +43,10 @@
     "bn.js": "^5.2.2",
     "gill": "^0.14.0",
     "json-canonicalize": "^2.0.0",
-    "superstruct": "^2.0.2",
     "zod": "^4.3.5"
   },
   "peerDependencies": {
-    "@lightprotocol/stateless.js": "0.23.0-beta.9",
+    "@lightprotocol/stateless.js": "0.23.0",
     "@solana/web3.js": "^1.98.4"
   },
   "devDependencies": {

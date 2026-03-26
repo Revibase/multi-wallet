@@ -36,7 +36,6 @@ import {
 } from "../cache";
 import { getLightProtocolRpc, getSolanaRpc } from "../initialize";
 import { retryWithBackoff } from "../retry";
-import { fetchCompressedAccount } from "./helper";
 import { PackedAccounts } from "./packedAccounts";
 
 export async function fetchCachedCompressedAccount(
@@ -45,7 +44,7 @@ export async function fetchCachedCompressedAccount(
 ): Promise<CompressedAccount | null> {
   const key = createCompressedAccountCacheKey(address);
   return getCachedOrFetch(cachedAccounts, key, () =>
-    fetchCompressedAccount(address),
+    getLightProtocolRpc().getCompressedAccount(address),
   );
 }
 
@@ -300,29 +299,4 @@ export async function getCachedWhitelistedAddressTree() {
     cachedWhitelistedAddressTrees = data.whitelistedAddressTrees;
   }
   return cachedWhitelistedAddressTrees;
-}
-
-enum TokenDataVersion {
-  V1 = 1,
-  V2 = 2,
-  ShaFlat = 3,
-}
-
-export function getVersionFromDiscriminator(
-  discriminator: number[] | undefined,
-): number {
-  if (!discriminator || discriminator.length < 8) {
-    return TokenDataVersion.ShaFlat;
-  }
-  if (discriminator[0] === 2) {
-    return TokenDataVersion.V1;
-  }
-  const versionByte = discriminator[7];
-  if (versionByte === 3) {
-    return TokenDataVersion.V2;
-  }
-  if (versionByte === 4) {
-    return TokenDataVersion.ShaFlat;
-  }
-  return TokenDataVersion.ShaFlat;
 }
