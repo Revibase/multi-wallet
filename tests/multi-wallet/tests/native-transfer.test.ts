@@ -21,6 +21,7 @@ import { TEST_AMOUNT_MEDIUM, TEST_AMOUNT_SMALL } from "../constants.ts";
 import {
   assertTestContext,
   createMultiWallet,
+  expectFailure,
   fundMultiWalletVault,
   generateSecp256r1KeyPair,
   mockAuthenticationResponse,
@@ -161,8 +162,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
       ).to.equal(expectedBalance);
 
       // Attempt to submit the same intent again - should fail
-      let duplicateIntentFailed = false;
-      try {
+      await expectFailure(async () => {
         const duplicateTransfer = await nativeTransferIntent({
           settings: await getSettingsFromIndex(ctx.index),
           payer: ctx.payer,
@@ -177,14 +177,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
           ctx.payer,
           ctx.addressLookUpTable,
         );
-      } catch (error) {
-        duplicateIntentFailed = true;
-      }
-
-      expect(
-        duplicateIntentFailed,
-        "Submitting the same intent twice should fail",
-      ).to.be.true;
+      });
     });
   });
 

@@ -9,6 +9,7 @@ import { runThresholdManagementTests } from "./tests/threshold-management.test.t
 import { runTokenTransferTest } from "./tests/token-transfer.test.ts";
 import { runTransactionManagerTests } from "./tests/transaction-manager.test.ts";
 import { runTransactionTests } from "./tests/transactions.test.ts";
+import { runUserCreationTests } from "./tests/user-creation.test.ts";
 import { runWalletCreationTests } from "./tests/wallet-creation.test.ts";
 import type { TestContext } from "./types.ts";
 
@@ -21,6 +22,10 @@ describe("Multi Wallet Tests", function () {
 
   describe("Wallet Creation", () => {
     runWalletCreationTests(() => ctx);
+  });
+
+  describe("User Creation", () => {
+    runUserCreationTests(() => ctx);
   });
 
   describe("Member Management", () => {

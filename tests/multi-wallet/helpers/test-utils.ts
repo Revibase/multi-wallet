@@ -71,3 +71,36 @@ export function assertTransactionSuccess(signature: string | undefined): void {
   expect(signature).to.be.a("string", "Transaction should return a signature");
   expect(signature).to.not.be.empty;
 }
+
+/**
+ * Asserts that an async operation throws.
+ * Optionally validates that the message includes a substring, or any of several substrings.
+ */
+export async function expectFailure(
+  operation: () => Promise<unknown>,
+  expectedMessage?: string | readonly string[],
+): Promise<void> {
+  try {
+    await operation();
+  } catch (error) {
+    if (expectedMessage === undefined) {
+      return;
+    }
+    const patterns = Array.isArray(expectedMessage)
+      ? [...expectedMessage]
+      : [expectedMessage];
+    if (patterns.length === 0) {
+      return;
+    }
+    const message =
+      error instanceof Error ? error.message : JSON.stringify(error);
+    const matched = patterns.some((p) => message.includes(p));
+    expect(
+      matched,
+      `Expected error message to include one of: ${patterns.join(", ")}\nGot: ${message}`,
+    ).to.be.true;
+    return;
+  }
+
+  throw new Error("Expected operation to fail, but it succeeded");
+}

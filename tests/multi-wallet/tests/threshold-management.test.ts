@@ -8,6 +8,7 @@ import { expect } from "chai";
 import {
   assertTestContext,
   createMultiWallet,
+  expectFailure,
   sendTransaction,
   withErrorHandling,
 } from "../helpers/index.ts";
@@ -104,8 +105,7 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
           ],
         });
 
-        let transactionFailed = false;
-        try {
+        await expectFailure(async () => {
           await sendTransaction(
             await changeConfig({
               signers: [ctx.wallet],
@@ -115,14 +115,7 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
             ctx.payer,
             ctx.addressLookUpTable,
           );
-        } catch (error) {
-          transactionFailed = true;
-        }
-
-        expect(
-          transactionFailed,
-          "Removing member when threshold would become invalid should fail",
-        ).to.be.true;
+        });
 
         // Verify threshold and member count remain unchanged
         const settings = await getSettingsFromIndex(ctx.index);

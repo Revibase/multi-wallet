@@ -9,7 +9,9 @@ import { TEST_AMOUNT_MEDIUM, TEST_AMOUNT_SMALL } from "../constants.ts";
 import {
   assertTestContext,
   createMultiWallet,
+  expectFailure,
   fundMultiWalletVault,
+  NATIVE_TRANSFER_INSUFFICIENT_BALANCE,
   sendTransaction,
   withErrorHandling,
 } from "../helpers/index.ts";
@@ -35,8 +37,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
         ],
       });
 
-      let transactionFailed = false;
-      try {
+      await expectFailure(async () => {
         const instructions = await changeConfig({
           signers: [ctx.wallet],
           payer: ctx.payer,
@@ -44,12 +45,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
         });
 
         await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
-      } catch (error) {
-        transactionFailed = true;
-      }
-
-      expect(transactionFailed, "Removing the last member should fail").to.be
-        .true;
+      });
     });
   });
 
@@ -73,8 +69,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
         ],
       });
 
-      let transactionFailed = false;
-      try {
+      await expectFailure(async () => {
         const instructions = await changeConfig({
           signers: [ctx.wallet],
           payer: ctx.payer,
@@ -82,14 +77,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
         });
 
         await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
-      } catch (error) {
-        transactionFailed = true;
-      }
-
-      expect(
-        transactionFailed,
-        "Setting threshold higher than voting members should fail",
-      ).to.be.true;
+      });
     });
   });
 
@@ -111,8 +99,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
         await addPayerAsNewMember(ctx);
 
         // Try to transfer more than available
-        let transactionFailed = false;
-        try {
+        await expectFailure(async () => {
           const nativeTransfer = await nativeTransferIntent({
             settings: await getSettingsFromIndex(ctx.index),
             payer: ctx.payer,
@@ -127,14 +114,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
             ctx.payer,
             ctx.addressLookUpTable,
           );
-        } catch (error) {
-          transactionFailed = true;
-        }
-
-        expect(
-          transactionFailed,
-          "Transferring more than wallet balance should fail",
-        ).to.be.true;
+        }, NATIVE_TRANSFER_INSUFFICIENT_BALANCE);
       },
     );
   });
@@ -162,8 +142,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
         ],
       });
 
-      let transactionFailed = false;
-      try {
+      await expectFailure(async () => {
         const instructions = await changeConfig({
           signers: [ctx.wallet],
           payer: ctx.payer,
@@ -171,12 +150,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
         });
 
         await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
-      } catch (error) {
-        transactionFailed = true;
-      }
-
-      expect(transactionFailed, "Adding duplicate member should fail").to.be
-        .true;
+      });
     });
   });
 
@@ -204,8 +178,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
           ],
         });
 
-        let transactionFailed = false;
-        try {
+        await expectFailure(async () => {
           const instructions = await changeConfig({
             signers: [ctx.wallet],
             payer: ctx.payer,
@@ -217,12 +190,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
             ctx.payer,
             ctx.addressLookUpTable,
           );
-        } catch (error) {
-          transactionFailed = true;
-        }
-
-        expect(transactionFailed, "Removing non-existent member should fail").to
-          .be.true;
+        });
       },
     );
   });
@@ -279,8 +247,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
           ],
         });
 
-        let transactionFailed = false;
-        try {
+        await expectFailure(async () => {
           const instructions = await changeConfig({
             signers: [ctx.payer], // Payer doesn't have initiate permission
             payer: ctx.payer,
@@ -292,14 +259,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
             ctx.payer,
             ctx.addressLookUpTable,
           );
-        } catch (error) {
-          transactionFailed = true;
-        }
-
-        expect(
-          transactionFailed,
-          "Changing config without initiate permission should fail",
-        ).to.be.true;
+        });
       },
     );
   });
