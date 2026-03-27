@@ -12,6 +12,7 @@ use light_sdk::{
     instruction::ValidityProof,
     PackedAddressTreeInfoExt,
 };
+use std::collections::HashSet;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct CreateUserAccountArgs {
@@ -39,14 +40,24 @@ impl<'info> CreateUserAccounts<'info> {
         compressed_proof_args: ProofArgs,
         args: Vec<CreateUserAccountArgs>,
     ) -> Result<()> {
+        let cpi_start = compressed_proof_args.light_cpi_accounts_start_index as usize;
+        require!(
+            cpi_start <= ctx.remaining_accounts.len(),
+            MultisigError::InvalidNumberOfAccounts
+        );
         let light_cpi_accounts = CpiAccounts::new(
             &ctx.accounts.payer,
-            &ctx.remaining_accounts
-                [compressed_proof_args.light_cpi_accounts_start_index as usize..],
+            &ctx.remaining_accounts[cpi_start..],
             LIGHT_CPI_SIGNER,
         );
 
-        let mut new_addressess = vec![];
+        let mut new_addressess = Vec::with_capacity(args.len());
+        let signer_keys: HashSet<Pubkey> = ctx
+            .remaining_accounts
+            .iter()
+            .filter(|account| account.is_signer)
+            .map(|account| *account.key)
+            .collect();
         let mut cpi = LightSystemProgramCpi::new_cpi(
             LIGHT_CPI_SIGNER,
             ValidityProof(compressed_proof_args.proof),
@@ -57,9 +68,7 @@ impl<'info> CreateUserAccounts<'info> {
                 MultisigError::InvalidUserRole
             );
             require!(
-                ctx.remaining_accounts
-                    .iter()
-                    .any(|f| f.key.eq(&args.member) && f.is_signer),
+                signer_keys.contains(&args.member),
                 MultisigError::NoSignerFound
             );
 
@@ -77,7 +86,7 @@ impl<'info> CreateUserAccounts<'info> {
             let user = User {
                 member: MemberKey::convert_ed25519(&args.member)?,
                 role: args.role,
-                wallets: vec![],
+                wallets: Vec::new(),
                 credential_id: None,
                 transports: None,
                 domain_config: None,

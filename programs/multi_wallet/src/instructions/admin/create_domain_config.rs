@@ -60,10 +60,14 @@ impl<'info> CreateDomainConfig<'info> {
             crate::MultisigError::UnauthorizedAdminOnly
         );
 
+        let cpi_start = args.compressed_proof_args.light_cpi_accounts_start_index as usize;
+        require!(
+            cpi_start <= ctx.remaining_accounts.len(),
+            MultisigError::InvalidNumberOfAccounts
+        );
         let light_cpi_accounts = CpiAccounts::new(
             &ctx.accounts.payer,
-            &ctx.remaining_accounts
-                [args.compressed_proof_args.light_cpi_accounts_start_index as usize..],
+            &ctx.remaining_accounts[cpi_start..],
             LIGHT_CPI_SIGNER,
         );
 
@@ -78,10 +82,11 @@ impl<'info> CreateDomainConfig<'info> {
             .whitelisted_address_trees
             .extract_address_tree_index(&address_tree)?;
 
+        let authority_key = ctx.accounts.authority.key();
         let user = User {
-            member: MemberKey::convert_ed25519(&ctx.accounts.authority.key())?,
+            member: MemberKey::convert_ed25519(&authority_key)?,
             role: UserRole::Administrator,
-            wallets: vec![],
+            wallets: Vec::new(),
             transports: None,
             credential_id: None,
             domain_config: Some(ctx.accounts.domain_config.key()),
@@ -107,7 +112,7 @@ impl<'info> CreateDomainConfig<'info> {
             .map_err(|_| MultisigError::HashComputationFailed)?;
         domain_config.write_rp_id(args.rp_id)?;
         domain_config.write_origins(&args.origins)?;
-        domain_config.authority = ctx.accounts.authority.key();
+        domain_config.authority = authority_key;
         domain_config.bump = ctx.bumps.domain_config;
         domain_config.is_disabled = 0;
 

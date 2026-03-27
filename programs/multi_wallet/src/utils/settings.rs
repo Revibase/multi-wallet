@@ -31,14 +31,16 @@ pub trait MultisigSettings {
         sysvar_slot_history: &Option<UncheckedAccount>,
     ) -> Result<()> {
         if !slot_numbers.is_empty() {
-            let min_slot_number = slot_numbers
-                .iter()
-                .min()
-                .ok_or(MultisigError::EmptySlotNumbers)?;
-            let max_slot_number = slot_numbers
-                .iter()
-                .max()
-                .ok_or(MultisigError::EmptySlotNumbers)?;
+            let mut min_slot_number = slot_numbers[0];
+            let mut max_slot_number = slot_numbers[0];
+            for &slot_number in &slot_numbers[1..] {
+                if slot_number < min_slot_number {
+                    min_slot_number = slot_number;
+                }
+                if slot_number > max_slot_number {
+                    max_slot_number = slot_number;
+                }
+            }
             let sysvar_slot_history = sysvar_slot_history
                 .as_ref()
                 .ok_or(MultisigError::MissingSysvarSlotHistory)?;
@@ -61,7 +63,7 @@ pub trait MultisigSettings {
 
             // Validate slot number ordering: max_slot_number must be <= first_slot
             let offset = first_slot
-                .checked_sub(*max_slot_number)
+                .checked_sub(max_slot_number)
                 .ok_or(MultisigError::SlotNumberNotFound)? as usize;
 
             // Validate offset is within bounds
@@ -71,11 +73,11 @@ pub trait MultisigSettings {
 
             // Validate slot numbers are in the future relative to latest_slot_number
             require!(
-                self.get_latest_slot_number()? < *min_slot_number,
+                self.get_latest_slot_number()? < min_slot_number,
                 MultisigError::InvalidSlotNumber
             );
 
-            self.set_latest_slot_number(*max_slot_number)?;
+            self.set_latest_slot_number(max_slot_number)?;
         }
 
         Ok(())
@@ -191,7 +193,7 @@ pub trait MultisigSettings {
     }
 
     fn set_members(&mut self, members: Vec<Member>) -> Result<()> {
-        let exisiting_members = self.get_members()?.iter().map(|f| f.pubkey).collect();
+        let exisiting_members: Vec<MemberKey> = self.get_members()?.iter().map(|f| f.pubkey).collect();
         self.delete_members(exisiting_members)?;
         self.extend_members(members)?;
         self.sort_members()?;

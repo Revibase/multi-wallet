@@ -53,10 +53,14 @@ impl<'info> CreateDomainUserAccount<'info> {
         compressed_proof_args: ProofArgs,
         args: CreateDomainUserAccountArgs,
     ) -> Result<()> {
+        let cpi_start = compressed_proof_args.light_cpi_accounts_start_index as usize;
+        require!(
+            cpi_start <= ctx.remaining_accounts.len(),
+            MultisigError::InvalidNumberOfAccounts
+        );
         let light_cpi_accounts = CpiAccounts::new(
             &ctx.accounts.payer,
-            &ctx.remaining_accounts
-                [compressed_proof_args.light_cpi_accounts_start_index as usize..],
+            &ctx.remaining_accounts[cpi_start..],
             LIGHT_CPI_SIGNER,
         );
 
@@ -82,7 +86,7 @@ impl<'info> CreateDomainUserAccount<'info> {
             LIGHT_CPI_SIGNER,
             ValidityProof(compressed_proof_args.proof),
         );
-        let mut wallets = vec![];
+        let mut wallets = Vec::with_capacity(1);
         // This operation transfers ownership - the administrator is removed and replaced with new members.
         // This is intentional as the domain authority is transferring control of the wallet.
         if let Some(link_wallet_args) = args.link_wallet_args {
@@ -114,9 +118,11 @@ impl<'info> CreateDomainUserAccount<'info> {
                 MultisigError::ExpectedAdministratorRoleMismatch
             );
 
-            let mut new_members = Vec::new();
+            let mut new_members = Vec::with_capacity(2);
 
-            let mut permissions = vec![Permission::VoteTransaction, Permission::ExecuteTransaction];
+            let mut permissions = Vec::with_capacity(3);
+            permissions.push(Permission::VoteTransaction);
+            permissions.push(Permission::ExecuteTransaction);
 
             if let Some(transaction_manager) = link_wallet_args.transaction_manager {
                 let transaction_manager_account = LightAccount::<User>::new_read_only(

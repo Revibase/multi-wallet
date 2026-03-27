@@ -5,6 +5,7 @@ use crate::{
     SEED_TRANSACTION_BUFFER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
+use std::collections::HashSet;
 
 #[derive(Accounts)]
 #[instruction(args: TransactionBufferCreateArgs, secp256r1_verify_args: Option<Secp256r1VerifyArgs> )]
@@ -73,10 +74,11 @@ impl TransactionBufferCreate<'_> {
             args.preauthorize_execution,
         )?;
 
+        let member_keys: HashSet<_> = settings.members.iter().map(|member| member.pubkey).collect();
         require!(
             args.expected_signers
                 .iter()
-                .all(|f| settings.members.iter().any(|x| x.pubkey.eq(&f.member_key))),
+                .all(|signer| member_keys.contains(&signer.member_key)),
             MultisigError::InvalidArguments
         );
 

@@ -12,7 +12,7 @@ pub struct TransactionBufferExtend<'info> {
 }
 
 impl TransactionBufferExtend<'_> {
-    fn validate(&self, buffer: &Vec<u8>) -> Result<()> {
+    fn validate(&self, buffer: &[u8]) -> Result<()> {
         self.transaction_buffer.validate_extend_chunk(buffer)
     }
 

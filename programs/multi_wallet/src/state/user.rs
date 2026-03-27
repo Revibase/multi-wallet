@@ -174,6 +174,7 @@ impl User {
         user_account.domain_config = user.domain_config;
         user_account.role = user.role;
         user_account.transaction_manager_url = user.transaction_manager_url;
+        user_account.user_address_tree_index = user.user_address_tree_index;
 
         Ok((user_account, new_address_params))
     }

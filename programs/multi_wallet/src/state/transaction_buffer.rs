@@ -1,6 +1,7 @@
 use crate::{MemberKey, MultisigError};
 use anchor_lang::prelude::*;
 use light_sdk::light_hasher::{Hasher, Sha256};
+use std::collections::HashSet;
 
 // Maximum PDA allocation size in an inner ix is 10240 bytes.
 // 10240 - account contents = 10128 bytes
@@ -71,6 +72,7 @@ impl TransactionBuffer {
         args: TransactionBufferCreateArgs,
         bump: u8,
     ) -> Result<()> {
+        let expected_signers = args.expected_signers;
         self.multi_wallet_settings = settings_key;
         self.multi_wallet_bump = multi_wallet_bump;
         self.can_execute = false;
@@ -80,15 +82,15 @@ impl TransactionBuffer {
         self.buffer_index = args.buffer_index;
         self.final_buffer_hash = args.final_buffer_hash;
         self.final_buffer_size = args.final_buffer_size;
-        self.buffer = Vec::new();
+        self.buffer = Vec::with_capacity(usize::from(args.final_buffer_size));
         self.bump = bump;
         self.valid_till = Clock::get()?
             .unix_timestamp
             .checked_add(TRANSACTION_TIME_LIMIT as i64)
             .and_then(|ts| u64::try_from(ts).ok())
             .ok_or(MultisigError::InvalidArguments)?;
-        self.voters = Vec::new();
-        self.expected_signers = args.expected_signers;
+        self.voters = Vec::with_capacity(expected_signers.len());
+        self.expected_signers = expected_signers;
         Ok(())
     }
 
@@ -124,12 +126,16 @@ impl TransactionBuffer {
     /// Checks that every expected signer is either creator, executor, or a voter.
     /// Used by execute() and by unit tests without needing Clock.
     pub fn check_expected_signers(&self) -> Result<()> {
+        let mut approved_signers: HashSet<MemberKey> = HashSet::with_capacity(self.voters.len() + 2);
+        approved_signers.insert(self.creator);
+        approved_signers.insert(self.executor);
+        for voter in &self.voters {
+            approved_signers.insert(*voter);
+        }
         require!(
             self.expected_signers
                 .iter()
-                .all(|f| self.creator.eq(&f.member_key)
-                    || self.executor.eq(&f.member_key)
-                    || self.voters.contains(&f.member_key)),
+                .all(|signer| approved_signers.contains(&signer.member_key)),
             MultisigError::UnexpectedSigner
         );
         Ok(())

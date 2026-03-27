@@ -24,9 +24,9 @@ impl<'info> AddWhitelistedAddressTrees<'info> {
             crate::MultisigError::UnauthorizedAdminOnly
         );
         let account = &mut ctx.accounts.whitelisted_address_trees;
+        let current_len = account.whitelisted_address_trees.len();
         require!(
-            account.whitelisted_address_trees.len()
-                < WhitelistedAddressTree::MAX_WHITELISTED_ADDRESS_TREES,
+            current_len < WhitelistedAddressTree::MAX_WHITELISTED_ADDRESS_TREES,
             MultisigError::MaxLengthExceeded
         );
         require!(

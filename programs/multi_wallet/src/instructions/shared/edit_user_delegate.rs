@@ -163,10 +163,14 @@ impl<'info> EditUserDelegate<'info> {
         new_settings_mut_args: Option<SettingsMutArgs>,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
+        let cpi_start = compressed_proof_args.light_cpi_accounts_start_index as usize;
+        require!(
+            cpi_start <= ctx.remaining_accounts.len(),
+            MultisigError::InvalidNumberOfAccounts
+        );
         let light_cpi_accounts = CpiAccounts::new(
             &ctx.accounts.fee_payer,
-            &ctx.remaining_accounts
-                [compressed_proof_args.light_cpi_accounts_start_index as usize..],
+            &ctx.remaining_accounts[cpi_start..],
             LIGHT_CPI_SIGNER,
         );
 

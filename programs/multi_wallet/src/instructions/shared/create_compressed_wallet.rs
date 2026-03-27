@@ -58,10 +58,14 @@ impl<'info> CreateCompressedWallet<'info> {
             &id(),
         );
 
+        let cpi_start = compressed_proof_args.light_cpi_accounts_start_index as usize;
+        require!(
+            cpi_start <= ctx.remaining_accounts.len(),
+            MultisigError::InvalidNumberOfAccounts
+        );
         let light_cpi_accounts = CpiAccounts::new(
             &ctx.accounts.payer,
-            &ctx.remaining_accounts
-                [compressed_proof_args.light_cpi_accounts_start_index as usize..],
+            &ctx.remaining_accounts[cpi_start..],
             LIGHT_CPI_SIGNER,
         );
         let address_tree = PackedAddressTreeInfoExt::get_tree_pubkey(
@@ -84,7 +88,7 @@ impl<'info> CreateCompressedWallet<'info> {
                     bump,
                     index: settings_index,
                     multi_wallet_bump: multi_wallet_bump,
-                    members: vec![],
+                    members: Vec::new(),
                     settings_address_tree_index,
                     latest_slot_number: 0u64,
                 },
@@ -104,10 +108,7 @@ impl<'info> CreateCompressedWallet<'info> {
         settings_account.invariant()?;
 
         let account_infos = User::process_user_wallet_operations(
-            wallet_operations
-                .into_iter()
-                .map(UserWalletOperation::Add)
-                .collect(),
+            wallet_operations.into_iter().map(UserWalletOperation::Add).collect(),
             SettingsIndexWithAddress {
                 index: settings_index,
                 settings_address_tree_index,

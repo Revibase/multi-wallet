@@ -28,7 +28,10 @@ pub struct TransactionBufferExecute<'info> {
 }
 
 impl<'info> TransactionBufferExecute<'info> {
-    fn validate(&mut self, secp256r1_verify_args: &Option<Secp256r1VerifyArgs>) -> Result<()> {
+    fn validate(
+        &mut self,
+        secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
+    ) -> Result<Option<MemberKey>> {
         let Self {
             settings,
             transaction_buffer,
@@ -53,10 +56,10 @@ impl<'info> TransactionBufferExecute<'info> {
                 vote_count >= settings.get_threshold()? as usize,
                 MultisigError::InsufficientSignersWithVotePermission
             );
-            return Ok(());
+            return Ok(None);
         }
 
-        TransactionBufferSigners::verify_execute(
+        let signer = TransactionBufferSigners::verify_execute(
             executor,
             secp256r1_verify_args,
             instructions_sysvar,
@@ -74,22 +77,16 @@ impl<'info> TransactionBufferExecute<'info> {
         settings.latest_slot_number_check(&slot_numbers, &slot_hash_sysvar)?;
         settings.invariant()?;
 
-        Ok(())
+        Ok(Some(signer))
     }
 
-    #[access_control(ctx.accounts.validate(&secp256r1_verify_args))]
     pub fn process(
         ctx: Context<'_, '_, '_, 'info, Self>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
-        let transaction_buffer = &mut ctx.accounts.transaction_buffer;
+        let maybe_signer = ctx.accounts.validate(&secp256r1_verify_args)?;
 
-        if !transaction_buffer.preauthorize_execution {
-            let signer = MemberKey::get_signer(
-                &ctx.accounts.executor,
-                &secp256r1_verify_args,
-                ctx.accounts.instructions_sysvar.as_ref(),
-            )?;
+        if let Some(signer) = maybe_signer {
             ctx.accounts.transaction_buffer.add_executor(signer)?;
         }
 

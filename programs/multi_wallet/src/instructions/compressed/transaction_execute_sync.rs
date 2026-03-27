@@ -34,26 +34,19 @@ pub struct TransactionExecuteSyncCompressed<'info> {
 }
 
 impl<'info> TransactionExecuteSyncCompressed<'info> {
-    fn validate(
+    fn verify_signers(
         &self,
         remaining_accounts: &'info [AccountInfo<'info>],
-        transaction_message: &TransactionMessage,
         signers: &[TransactionSyncSigners],
         settings: &CompressedSettingsData,
         settings_key: &Pubkey,
+        message_hash: [u8; 32],
     ) -> Result<()> {
         let Self {
             slot_hash_sysvar,
             instructions_sysvar,
             ..
         } = &self;
-
-        let vault_transaction_message =
-            transaction_message.convert_to_vault_transaction_message(remaining_accounts)?;
-        let mut writer = Vec::new();
-        vault_transaction_message.serialize(&mut writer)?;
-        let message_hash =
-            Sha256::hash(&writer).map_err(|_| MultisigError::HashComputationFailed)?;
 
         TransactionSyncSigners::verify(
             signers,
@@ -80,6 +73,9 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
         let vault_transaction_message =
             transaction_message.convert_to_vault_transaction_message(ctx.remaining_accounts)?;
         vault_transaction_message.validate()?;
+        let mut writer = Vec::new();
+        vault_transaction_message.serialize(&mut writer)?;
+        let message_hash = Sha256::hash(&writer).map_err(|_| MultisigError::HashComputationFailed)?;
         let num_lookups = vault_transaction_message.address_table_lookups.len();
         let message_end_index = num_lookups + vault_transaction_message.num_all_account_keys();
 
@@ -117,12 +113,12 @@ impl<'info> TransactionExecuteSyncCompressed<'info> {
             settings_data.bump,
         )?;
 
-        ctx.accounts.validate(
+        ctx.accounts.verify_signers(
             ctx.remaining_accounts,
-            &transaction_message,
             &signers,
             &settings_data,
             &settings_key,
+            message_hash,
         )?;
 
         let vault_signer_seed: &[&[u8]] = &[

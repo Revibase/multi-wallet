@@ -64,10 +64,14 @@ impl<'info> EditDomainConfig<'info> {
                 .as_ref()
                 .ok_or(MultisigError::MissingWhitelistedAddressTrees)?;
 
+            let cpi_start = args.compressed_proof_args.light_cpi_accounts_start_index as usize;
+            require!(
+                cpi_start <= ctx.remaining_accounts.len(),
+                MultisigError::InvalidNumberOfAccounts
+            );
             let light_cpi_accounts = CpiAccounts::new(
                 &ctx.accounts.authority,
-                &ctx.remaining_accounts
-                    [args.compressed_proof_args.light_cpi_accounts_start_index as usize..],
+                &ctx.remaining_accounts[cpi_start..],
                 LIGHT_CPI_SIGNER,
             );
             let address_tree = PackedAddressTreeInfoExt::get_tree_pubkey(
@@ -82,7 +86,7 @@ impl<'info> EditDomainConfig<'info> {
             let user: User = User {
                 member: MemberKey::convert_ed25519(&new_authority.key())?,
                 role: UserRole::Administrator,
-                wallets: vec![],
+                wallets: Vec::new(),
                 credential_id: None,
                 transports: None,
                 domain_config: Some(ctx.accounts.domain_config.key()),

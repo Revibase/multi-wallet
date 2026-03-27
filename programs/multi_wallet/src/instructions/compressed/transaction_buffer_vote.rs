@@ -36,7 +36,7 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
         settings_readonly_args: &SettingsReadonlyArgs,
         compressed_proof_args: &ProofArgs,
-    ) -> Result<()> {
+    ) -> Result<MemberKey> {
         let Self {
             voter,
             transaction_buffer,
@@ -62,7 +62,7 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
             MultisigError::InvalidAccount
         );
 
-        TransactionBufferSigners::verify_vote(
+        let signer = TransactionBufferSigners::verify_vote(
             voter,
             secp256r1_verify_args,
             instructions_sysvar,
@@ -74,7 +74,7 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
             transaction_buffer.expected_signers.as_ref(),
         )?;
 
-        Ok(())
+        Ok(signer)
     }
 
     pub fn process(
@@ -83,19 +83,13 @@ impl<'info> TransactionBufferVoteCompressed<'info> {
         settings_readonly_args: SettingsReadonlyArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
-        ctx.accounts.validate(
+        let signer = ctx.accounts.validate(
             ctx.remaining_accounts,
             &secp256r1_verify_args,
             &settings_readonly_args,
             &compressed_proof_args,
         )?;
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
-        let voter = &ctx.accounts.voter;
-        let signer = MemberKey::get_signer(
-            voter,
-            &secp256r1_verify_args,
-            ctx.accounts.instructions_sysvar.as_ref(),
-        )?;
 
         transaction_buffer.add_voter(&signer)?;
 

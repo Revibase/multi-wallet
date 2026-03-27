@@ -76,7 +76,7 @@ impl<'info> TokenTransferIntent<'info> {
         &self,
         amount: u64,
         remaining_accounts: &'info [AccountInfo<'info>],
-        signers: &Vec<TransactionSyncSigners>,
+        signers: &[TransactionSyncSigners],
     ) -> Result<()> {
         let Self {
             slot_hash_sysvar,
@@ -88,7 +88,7 @@ impl<'info> TokenTransferIntent<'info> {
             ..
         } = &self;
 
-        let mut buffer = vec![];
+        let mut buffer = Vec::with_capacity(72);
         buffer.extend_from_slice(amount.to_le_bytes().as_ref());
         buffer.extend_from_slice(destination.key().as_ref());
         buffer.extend_from_slice(mint.key().as_ref());

@@ -14,7 +14,6 @@ use light_sdk::{
     light_hasher::{Hasher, Sha256},
     LightAccount,
 };
-use std::vec;
 
 #[derive(Accounts)]
 #[instruction(settings_mut_args: SettingsMutArgs)]
@@ -90,11 +89,15 @@ impl<'info> DecompressSettingsAccount<'info> {
         signers: Vec<TransactionSyncSigners>,
     ) -> Result<()> {
         let settings = &mut ctx.accounts.settings;
+        let cpi_start = compressed_proof_args.light_cpi_accounts_start_index as usize;
+        require!(
+            cpi_start <= ctx.remaining_accounts.len(),
+            MultisigError::InvalidNumberOfAccounts
+        );
 
         let light_cpi_accounts = CpiAccounts::new(
             ctx.accounts.payer.as_ref(),
-            &ctx.remaining_accounts
-                [compressed_proof_args.light_cpi_accounts_start_index as usize..],
+            &ctx.remaining_accounts[cpi_start..],
             LIGHT_CPI_SIGNER,
         );
 

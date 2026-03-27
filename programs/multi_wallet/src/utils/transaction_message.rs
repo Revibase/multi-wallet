@@ -28,27 +28,27 @@ impl TransactionMessage {
     ) -> Result<VaultTransactionMessage> {
         let num_lookups = self.address_table_lookups.len();
         let account_keys_end_index = num_lookups + usize::from(self.num_account_keys);
-        let account_keys = remaining_accounts
+        let account_keys_slice = remaining_accounts
             .get(num_lookups..account_keys_end_index)
-            .ok_or(MultisigError::InvalidNumberOfAccounts)?
-            .iter()
-            .map(|f| f.key())
-            .collect::<Vec<_>>();
+            .ok_or(MultisigError::InvalidNumberOfAccounts)?;
+        let mut account_keys = Vec::with_capacity(account_keys_slice.len());
+        for account in account_keys_slice {
+            account_keys.push(account.key());
+        }
 
-        let message_address_table_loopups: Vec<MessageAddressTableLookup> = self
-            .address_table_lookups
-            .iter()
-            .map(|f| {
-                Ok(MessageAddressTableLookup {
-                    lookup_table_address: remaining_accounts
-                        .get(f.lookup_table_address_index as usize)
-                        .ok_or(MultisigError::InvalidNumberOfAccounts)?
-                        .key(),
-                    writable_indexes: f.writable_indexes.clone(),
-                    readonly_indexes: f.readonly_indexes.clone(),
-                })
-            })
-            .collect::<Result<Vec<MessageAddressTableLookup>>>()?;
+        let mut message_address_table_loopups: Vec<MessageAddressTableLookup> =
+            Vec::with_capacity(self.address_table_lookups.len());
+        for lookup in &self.address_table_lookups {
+            let lookup_table_address = remaining_accounts
+                .get(lookup.lookup_table_address_index as usize)
+                .ok_or(MultisigError::InvalidNumberOfAccounts)?
+                .key();
+            message_address_table_loopups.push(MessageAddressTableLookup {
+                lookup_table_address,
+                writable_indexes: lookup.writable_indexes.clone(),
+                readonly_indexes: lookup.readonly_indexes.clone(),
+            });
+        }
 
         Ok(VaultTransactionMessage {
             num_signers: self.num_signers,

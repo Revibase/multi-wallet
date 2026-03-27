@@ -25,11 +25,11 @@ pub struct TransactionExecuteSync<'info> {
 }
 
 impl<'info> TransactionExecuteSync<'info> {
-    fn validate(
+    fn verify_signers(
         &self,
         ctx: &Context<'_, '_, 'info, 'info, Self>,
-        transaction_message: &TransactionMessage,
-        signers: &Vec<TransactionSyncSigners>,
+        signers: &[TransactionSyncSigners],
+        message_hash: [u8; 32],
     ) -> Result<()> {
         let Self {
             settings,
@@ -39,12 +39,6 @@ impl<'info> TransactionExecuteSync<'info> {
         } = self;
 
         let remaining_accounts = ctx.remaining_accounts;
-        let vault_transaction_message =
-            transaction_message.convert_to_vault_transaction_message(remaining_accounts)?;
-        let mut writer = Vec::new();
-        vault_transaction_message.serialize(&mut writer)?;
-        let message_hash =
-            Sha256::hash(&writer).map_err(|_| MultisigError::HashComputationFailed)?;
 
         TransactionSyncSigners::verify(
             signers,
@@ -61,16 +55,19 @@ impl<'info> TransactionExecuteSync<'info> {
         Ok(())
     }
 
-    #[access_control(ctx.accounts.validate(&ctx, &transaction_message, &signers))]
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
         transaction_message: TransactionMessage,
         signers: Vec<TransactionSyncSigners>,
     ) -> Result<()> {
-        let settings = &mut ctx.accounts.settings;
         let vault_transaction_message =
             transaction_message.convert_to_vault_transaction_message(ctx.remaining_accounts)?;
         vault_transaction_message.validate()?;
+        let mut writer = Vec::new();
+        vault_transaction_message.serialize(&mut writer)?;
+        let message_hash = Sha256::hash(&writer).map_err(|_| MultisigError::HashComputationFailed)?;
+        ctx.accounts
+            .verify_signers(&ctx, &signers, message_hash)?;
         let num_lookups = vault_transaction_message.address_table_lookups.len();
         let message_end_index = num_lookups + vault_transaction_message.num_all_account_keys();
 
@@ -84,6 +81,7 @@ impl<'info> TransactionExecuteSync<'info> {
             .get(num_lookups..message_end_index)
             .ok_or(MultisigError::InvalidNumberOfAccounts)?;
 
+        let settings = &ctx.accounts.settings;
         let settings_key = settings.key();
         let vault_signer_seed: &[&[u8]] = &[
             SEED_MULTISIG,
@@ -107,6 +105,7 @@ impl<'info> TransactionExecuteSync<'info> {
         executable_message.execute_message(vault_signer_seed, protected_accounts)?;
 
         let slot_numbers = TransactionSyncSigners::collect_slot_numbers(&signers);
+        let settings = &mut ctx.accounts.settings;
         settings.latest_slot_number_check(&slot_numbers, &ctx.accounts.slot_hash_sysvar)?;
 
         settings.invariant()?;

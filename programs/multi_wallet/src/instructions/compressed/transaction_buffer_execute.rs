@@ -44,7 +44,7 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
         secp256r1_verify_args: &Option<Secp256r1VerifyArgs>,
         settings_mut_args: SettingsMutArgs,
         compressed_proof_args: &ProofArgs,
-    ) -> Result<()> {
+    ) -> Result<Option<MemberKey>> {
         let Self {
             transaction_buffer,
             executor,
@@ -98,10 +98,10 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
                 vote_count >= settings_account.get_threshold()? as usize,
                 MultisigError::InsufficientSignersWithVotePermission
             );
-            return Ok(());
+            return Ok(None);
         }
 
-        TransactionBufferSigners::verify_execute(
+        let signer = TransactionBufferSigners::verify_execute(
             executor,
             secp256r1_verify_args,
             instructions_sysvar,
@@ -126,24 +126,23 @@ impl<'info> TransactionBufferExecuteCompressed<'info> {
         .with_light_account(settings_account)?
         .invoke(light_cpi_accounts)?;
 
-        Ok(())
+        Ok(Some(signer))
     }
 
-    #[access_control(ctx.accounts.validate(ctx.remaining_accounts,&secp256r1_verify_args,settings_mut_args,&compressed_proof_args))]
     pub fn process(
         ctx: Context<'_, '_, '_, 'info, Self>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
-        let transaction_buffer = &mut ctx.accounts.transaction_buffer;
+        let maybe_signer = ctx.accounts.validate(
+            ctx.remaining_accounts,
+            &secp256r1_verify_args,
+            settings_mut_args,
+            &compressed_proof_args,
+        )?;
 
-        if !transaction_buffer.preauthorize_execution {
-            let signer = MemberKey::get_signer(
-                &ctx.accounts.executor,
-                &secp256r1_verify_args,
-                ctx.accounts.instructions_sysvar.as_ref(),
-            )?;
+        if let Some(signer) = maybe_signer {
             ctx.accounts.transaction_buffer.add_executor(signer)?;
         }
 

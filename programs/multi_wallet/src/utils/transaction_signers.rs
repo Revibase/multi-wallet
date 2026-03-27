@@ -31,44 +31,41 @@ impl TransactionSyncSigners {
             Option<&'a Secp256r1VerifyArgsWithDomainConfigIndex>,
         )>,
     > {
-        signers
-            .iter()
-            .map(|s| {
-                Ok(match s {
-                    TransactionSyncSigners::Ed25519(index) => {
-                        let account = remaining_accounts
-                            .get(*index as usize)
-                            .ok_or(MultisigError::InvalidNumberOfAccounts)?;
-                        require!(account.is_signer, MultisigError::NoSignerFound);
-                        let member_key = MemberKey::convert_ed25519(account.key)
-                            .map_err(|_| MultisigError::InvalidAccount)?;
-                        (member_key, None)
-                    }
-                    TransactionSyncSigners::Secp256r1(args) => {
-                        let pubkey = args
-                            .verify_args
-                            .extract_public_key_from_instruction(Some(instructions_sysvar))
-                            .map_err(|_| MultisigError::InvalidAccount)?;
-                        let member_key = MemberKey::convert_secp256r1(&pubkey)
-                            .map_err(|_| MultisigError::InvalidAccount)?;
-                        (member_key, Some(args))
-                    }
-                })
-            })
-            .collect::<Result<Vec<_>>>()
+        let mut resolved = Vec::with_capacity(signers.len());
+        for signer in signers {
+            let entry = match signer {
+                TransactionSyncSigners::Ed25519(index) => {
+                    let account = remaining_accounts
+                        .get(*index as usize)
+                        .ok_or(MultisigError::InvalidNumberOfAccounts)?;
+                    require!(account.is_signer, MultisigError::NoSignerFound);
+                    let member_key =
+                        MemberKey::convert_ed25519(account.key).map_err(|_| MultisigError::InvalidAccount)?;
+                    (member_key, None)
+                }
+                TransactionSyncSigners::Secp256r1(args) => {
+                    let pubkey = args
+                        .verify_args
+                        .extract_public_key_from_instruction(Some(instructions_sysvar))
+                        .map_err(|_| MultisigError::InvalidAccount)?;
+                    let member_key =
+                        MemberKey::convert_secp256r1(&pubkey).map_err(|_| MultisigError::InvalidAccount)?;
+                    (member_key, Some(args))
+                }
+            };
+            resolved.push(entry);
+        }
+        Ok(resolved)
     }
 
     pub fn collect_slot_numbers(signers: &[TransactionSyncSigners]) -> Vec<u64> {
-        signers
-            .iter()
-            .filter_map(|s| {
-                if let TransactionSyncSigners::Secp256r1(args) = s {
-                    Some(args.verify_args.slot_number)
-                } else {
-                    None
-                }
-            })
-            .collect()
+        let mut slot_numbers = Vec::with_capacity(signers.len());
+        for signer in signers {
+            if let TransactionSyncSigners::Secp256r1(args) = signer {
+                slot_numbers.push(args.verify_args.slot_number);
+            }
+        }
+        slot_numbers
     }
 
     pub fn verify<'info>(
@@ -219,7 +216,7 @@ impl TransactionBufferSigners {
         settings_key: Pubkey,
         message_hash: [u8; 32],
         expected_signers: &[ExpectedSigner],
-    ) -> Result<()> {
+    ) -> Result<MemberKey> {
         let instructions_sysvar = instructions_sysvar
             .as_ref()
             .ok_or(MultisigError::MissingInstructionsSysvar)?;
@@ -258,7 +255,7 @@ impl TransactionBufferSigners {
             );
         }
 
-        Ok(())
+        Ok(member_key)
     }
 
     pub fn verify_execute<'info>(
@@ -273,7 +270,7 @@ impl TransactionBufferSigners {
         message_hash: [u8; 32],
         voters: &[MemberKey],
         expected_signers: &[ExpectedSigner],
-    ) -> Result<()> {
+    ) -> Result<MemberKey> {
         let instructions_sysvar = instructions_sysvar
             .as_ref()
             .ok_or(MultisigError::MissingInstructionsSysvar)?;
@@ -325,7 +322,7 @@ impl TransactionBufferSigners {
             );
         };
 
-        Ok(())
+        Ok(member_key)
     }
 
     pub fn verify_close<'info>(
@@ -379,7 +376,7 @@ impl TransactionBufferSigners {
         if let Some(args) = secp256r1_verify_args {
             vec![args.slot_number]
         } else {
-            vec![]
+            Vec::new()
         }
     }
 }

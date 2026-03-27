@@ -14,8 +14,6 @@ use light_sdk::{
     instruction::ValidityProof,
     light_hasher::{Hasher, Sha256},
 };
-use std::vec;
-
 #[derive(Accounts)]
 pub struct ChangeConfig<'info> {
     #[account(mut)]
@@ -39,8 +37,8 @@ impl<'info> ChangeConfig<'info> {
     fn validate(
         &self,
         ctx: &Context<'_, '_, 'info, 'info, Self>,
-        config_actions: &Vec<ConfigAction>,
-        signers: &Vec<TransactionSyncSigners>,
+        config_actions: &[ConfigAction],
+        signers: &[TransactionSyncSigners],
     ) -> Result<()> {
         let Self {
             settings,
@@ -80,7 +78,7 @@ impl<'info> ChangeConfig<'info> {
         let payer = &ctx.accounts.payer;
         let remaining_accounts = ctx.remaining_accounts;
 
-        let mut wallet_operations: Vec<UserWalletOperation> = vec![];
+        let mut wallet_operations: Vec<UserWalletOperation> = Vec::new();
         for action in config_actions {
             match action {
                 ConfigAction::EditPermissions(members) => {

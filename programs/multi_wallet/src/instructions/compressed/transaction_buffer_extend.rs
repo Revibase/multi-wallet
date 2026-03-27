@@ -8,7 +8,7 @@ pub struct TransactionBufferExtendCompressed<'info> {
 }
 
 impl<'info> TransactionBufferExtendCompressed<'info> {
-    fn validate(&self, buffer: &Vec<u8>, settings_key: &Pubkey) -> Result<()> {
+    fn validate(&self, buffer: &[u8], settings_key: &Pubkey) -> Result<()> {
         require!(
             settings_key.eq(&self.transaction_buffer.multi_wallet_settings),
             MultisigError::SettingsKeyMismatch

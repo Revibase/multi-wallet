@@ -31,10 +31,14 @@ impl<'info> EditTransactionManagerUrl<'info> {
         transaction_manager_url: String,
         compressed_proof_args: ProofArgs,
     ) -> Result<()> {
+        let cpi_start = compressed_proof_args.light_cpi_accounts_start_index as usize;
+        require!(
+            cpi_start <= ctx.remaining_accounts.len(),
+            MultisigError::InvalidNumberOfAccounts
+        );
         let light_cpi_accounts = CpiAccounts::new(
             &ctx.accounts.authority,
-            &ctx.remaining_accounts
-                [compressed_proof_args.light_cpi_accounts_start_index as usize..],
+            &ctx.remaining_accounts[cpi_start..],
             LIGHT_CPI_SIGNER,
         );
         let mut user_account = LightAccount::<User>::new_mut(

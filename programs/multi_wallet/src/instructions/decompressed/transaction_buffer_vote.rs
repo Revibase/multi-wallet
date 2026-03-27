@@ -28,7 +28,7 @@ pub struct TransactionBufferVote<'info> {
 }
 
 impl TransactionBufferVote<'_> {
-    fn validate(&self, secp256r1_verify_args: &Option<Secp256r1VerifyArgs>) -> Result<()> {
+    fn validate(&self, secp256r1_verify_args: &Option<Secp256r1VerifyArgs>) -> Result<MemberKey> {
         let Self {
             settings,
             voter,
@@ -42,7 +42,7 @@ impl TransactionBufferVote<'_> {
         transaction_buffer.validate_hash()?;
         transaction_buffer.validate_size()?;
 
-        TransactionBufferSigners::verify_vote(
+        let signer = TransactionBufferSigners::verify_vote(
             voter,
             secp256r1_verify_args,
             instructions_sysvar,
@@ -54,21 +54,15 @@ impl TransactionBufferVote<'_> {
             &transaction_buffer.expected_signers,
         )?;
 
-        Ok(())
+        Ok(signer)
     }
 
-    #[access_control(ctx.accounts.validate(&secp256r1_verify_args))]
     pub fn process(
         ctx: Context<Self>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
+        let signer = ctx.accounts.validate(&secp256r1_verify_args)?;
         let transaction_buffer = &mut ctx.accounts.transaction_buffer;
-        let voter = &ctx.accounts.voter;
-        let signer = MemberKey::get_signer(
-            voter,
-            &secp256r1_verify_args,
-            ctx.accounts.instructions_sysvar.as_ref(),
-        )?;
 
         transaction_buffer.add_voter(&signer)?;
 

@@ -18,8 +18,6 @@ use light_sdk::{
     cpi::{v2::LightSystemProgramCpi, InvokeLightSystemProgram, LightCpiInstruction},
     instruction::ValidityProof,
 };
-use std::vec;
-
 #[derive(Accounts)]
 pub struct ChangeConfigCompressed<'info> {
     #[account(mut)]
@@ -40,7 +38,7 @@ impl<'info> ChangeConfigCompressed<'info> {
     fn validate(
         &self,
         remaining_accounts: &'info [AccountInfo<'info>],
-        config_actions: &Vec<ConfigAction>,
+        config_actions: &[ConfigAction],
         signers: &[TransactionSyncSigners],
         settings: &CompressedSettingsData,
         settings_key: &Pubkey,
@@ -107,7 +105,7 @@ impl<'info> ChangeConfigCompressed<'info> {
         let payer: &Signer<'info> = &ctx.accounts.payer;
         let remaining_accounts = ctx.remaining_accounts;
 
-        let mut wallet_operations: Vec<UserWalletOperation> = vec![];
+        let mut wallet_operations: Vec<UserWalletOperation> = Vec::new();
 
         for action in config_actions {
             match action {
@@ -141,24 +139,26 @@ impl<'info> ChangeConfigCompressed<'info> {
         let light_cpi_accounts =
             CpiAccounts::new(&payer, &remaining_accounts[start_index..], LIGHT_CPI_SIGNER);
 
-        let account_infos = User::process_user_wallet_operations(
-            wallet_operations,
-            SettingsIndexWithAddress {
-                index: settings_index,
-                settings_address_tree_index,
-            },
-            &light_cpi_accounts,
-        )?;
-
         let mut cpi = LightSystemProgramCpi::new_cpi(
             LIGHT_CPI_SIGNER,
             ValidityProof(compressed_proof_args.proof),
         )
         .with_light_account(settings)?;
 
-        for user_account in account_infos {
-            user_account.invariant()?;
-            cpi = cpi.with_light_account(user_account)?;
+        if !wallet_operations.is_empty() {
+            let account_infos = User::process_user_wallet_operations(
+                wallet_operations,
+                SettingsIndexWithAddress {
+                    index: settings_index,
+                    settings_address_tree_index,
+                },
+                &light_cpi_accounts,
+            )?;
+
+            for user_account in account_infos {
+                user_account.invariant()?;
+                cpi = cpi.with_light_account(user_account)?;
+            }
         }
 
         cpi.invoke(light_cpi_accounts)?;

@@ -54,7 +54,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
             MultisigError::InvalidNumberOfAccounts
         );
 
-        let mut static_accounts = Vec::new();
+        let mut static_accounts = Vec::with_capacity(message.account_keys.len());
 
         for (i, account_key) in message.account_keys.iter().enumerate() {
             let account_info = &message_account_infos[i];
@@ -75,8 +75,18 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
             static_accounts.push(account_info);
         }
 
-        let mut writable_accounts = Vec::new();
-        let mut readonly_accounts = Vec::new();
+        let total_loaded_writable: usize = message
+            .address_table_lookups
+            .iter()
+            .map(|lookup| lookup.writable_indexes.len())
+            .sum();
+        let total_loaded_readonly: usize = message
+            .address_table_lookups
+            .iter()
+            .map(|lookup| lookup.readonly_indexes.len())
+            .sum();
+        let mut writable_accounts = Vec::with_capacity(total_loaded_writable);
+        let mut readonly_accounts = Vec::with_capacity(total_loaded_readonly);
 
         let mut message_indexes_cursor = message.account_keys.len();
         for lookup in message.address_table_lookups.iter() {
@@ -204,7 +214,7 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
     pub fn to_instructions_and_accounts(
         mut self,
     ) -> Result<Vec<(Instruction, Vec<AccountInfo<'info>>)>> {
-        let mut executable_instructions = vec![];
+        let mut executable_instructions = Vec::with_capacity(self.message.instructions.len());
 
         for ms_compiled_instruction in core::mem::take(&mut self.message.instructions) {
             let ix_accounts: Vec<(AccountInfo<'info>, AccountMeta)> = ms_compiled_instruction
