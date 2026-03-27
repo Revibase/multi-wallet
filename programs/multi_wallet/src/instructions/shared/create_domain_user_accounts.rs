@@ -75,13 +75,6 @@ impl<'info> CreateDomainUserAccount<'info> {
             .whitelisted_address_trees
             .extract_address_tree_index(&address_tree)?;
 
-        if args.role.eq(&UserRole::PermanentMember) {
-            require!(
-                args.link_wallet_args.is_some(),
-                MultisigError::InvalidUserRole
-            );
-        }
-
         let mut cpi = LightSystemProgramCpi::new_cpi(
             LIGHT_CPI_SIGNER,
             ValidityProof(compressed_proof_args.proof),
@@ -185,13 +178,6 @@ impl<'info> CreateDomainUserAccount<'info> {
             transaction_manager_url: None,
             user_address_tree_index,
         };
-
-        if user.role.eq(&UserRole::PermanentMember) {
-            require!(
-                user.wallets.len() == 1 && user.wallets[0].is_delegate,
-                MultisigError::InvalidUserRole
-            );
-        }
 
         let (account_info, new_address_params) = User::create_user_account(
             args.user_account_creation_args,

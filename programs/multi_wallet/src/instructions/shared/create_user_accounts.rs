@@ -51,7 +51,7 @@ impl<'info> CreateUserAccounts<'info> {
             LIGHT_CPI_SIGNER,
         );
 
-        let mut new_addressess = Vec::with_capacity(args.len());
+        let mut new_addresses = Vec::with_capacity(args.len());
         let signer_keys: HashSet<Pubkey> = ctx
             .remaining_accounts
             .iter()
@@ -63,10 +63,6 @@ impl<'info> CreateUserAccounts<'info> {
             ValidityProof(compressed_proof_args.proof),
         );
         for args in args {
-            require!(
-                args.role.ne(&UserRole::Administrator),
-                MultisigError::InvalidUserRole
-            );
             require!(
                 signer_keys.contains(&args.member),
                 MultisigError::NoSignerFound
@@ -102,10 +98,10 @@ impl<'info> CreateUserAccounts<'info> {
             )?;
             account_info.invariant()?;
             cpi = cpi.with_light_account(account_info)?;
-            new_addressess.push(new_address_params);
+            new_addresses.push(new_address_params);
         }
 
-        cpi.with_new_addresses(&new_addressess)
+        cpi.with_new_addresses(&new_addresses)
             .invoke(light_cpi_accounts)?;
 
         Ok(())

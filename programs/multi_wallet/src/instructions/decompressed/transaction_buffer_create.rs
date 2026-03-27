@@ -1,8 +1,7 @@
 use crate::utils::TransactionBufferSigners;
 use crate::{
     DomainConfig, MemberKey, MultisigError, Permission, Secp256r1VerifyArgs, Settings,
-    TransactionBuffer, TransactionBufferCreateArgs, MAX_BUFFER_SIZE, SEED_MULTISIG,
-    SEED_TRANSACTION_BUFFER,
+    TransactionBuffer, TransactionBufferCreateArgs, SEED_MULTISIG, SEED_TRANSACTION_BUFFER,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
 use std::collections::HashSet;
@@ -56,11 +55,6 @@ impl TransactionBufferCreate<'_> {
             slot_hash_sysvar,
             ..
         } = self;
-
-        require!(
-            args.final_buffer_size as usize <= MAX_BUFFER_SIZE,
-            MultisigError::FinalBufferSizeExceeded
-        );
 
         TransactionBufferSigners::verify_create(
             creator,

@@ -19,7 +19,7 @@ pub struct DomainConfig {
 
 impl DomainConfig {
     pub fn size() -> usize {
-        return 8 + 32 + 32 + 1 + 1 + 1 + 1 + MAX_RP_ID_LEN + MAX_ORIGINS_LEN;
+        8 + 32 + 32 + 1 + 1 + 1 + 1 + MAX_RP_ID_LEN + MAX_ORIGINS_LEN
     }
 
     pub fn write_rp_id(&mut self, rp_id: impl AsRef<str>) -> Result<()> {
@@ -31,14 +31,8 @@ impl DomainConfig {
         );
 
         self.rp_id_length = rp_id.len().try_into()?;
-
-        for i in 0..MAX_RP_ID_LEN {
-            if i < rp_id.len() {
-                self.rp_id[i] = rp_id[i];
-            } else {
-                self.rp_id[i] = 0;
-            }
-        }
+        self.rp_id.fill(0);
+        self.rp_id[..rp_id.len()].copy_from_slice(rp_id);
         Ok(())
     }
 
@@ -100,9 +94,6 @@ impl DomainConfig {
                 return err!(MultisigError::MaxLengthExceeded);
             }
 
-            // Validate string length is reasonable (prevent excessive memory allocation)
-            require!(str_len <= MAX_ORIGINS_LEN, MultisigError::MaxLengthExceeded);
-
             let str_bytes = &self.origins[cursor..cursor + str_len];
             match from_utf8(str_bytes) {
                 Ok(s) => origins.push(s.to_string()),
@@ -119,17 +110,10 @@ impl DomainConfig {
         remaining_accounts: &'a [AccountInfo<'a>],
         domain_config_index: u8,
     ) -> Result<AccountLoader<'a, DomainConfig>> {
-        let domain_config_key = remaining_accounts
-            .get(domain_config_index as usize)
-            .ok_or(MultisigError::MissingAccount)?
-            .key;
         let domain_account = remaining_accounts
-            .iter()
-            .find(|f| f.key.eq(&domain_config_key))
+            .get(domain_config_index as usize)
             .ok_or(MultisigError::MissingAccount)?;
-        let account_loader = AccountLoader::<DomainConfig>::try_from(domain_account)?;
-
-        Ok(account_loader)
+        AccountLoader::<DomainConfig>::try_from(domain_account)
     }
 }
 
