@@ -59,15 +59,6 @@ export async function createDomainUserAccounts({
   const addresses = [];
 
   if (createUserArgs.settings) {
-    addresses.push({
-      address: (
-        await getCompressedSettingsAddress(
-          createUserArgs.settings,
-          createUserArgs.settingsAddressTreeIndex,
-        )
-      ).address,
-      type: "Settings" as const,
-    });
     if (createUserArgs.transactionManager) {
       addresses.push({
         address: (
@@ -79,6 +70,15 @@ export async function createDomainUserAccounts({
         type: "User" as const,
       });
     }
+    addresses.push({
+      address: (
+        await getCompressedSettingsAddress(
+          createUserArgs.settings,
+          createUserArgs.settingsAddressTreeIndex,
+        )
+      ).address,
+      type: "Settings" as const,
+    });
   }
 
   const hashesWithTree = addresses.length
@@ -109,36 +109,41 @@ export async function createDomainUserAccounts({
   const transactionManagerHash = hashesWithTree.filter(
     (x) => x.type === "User",
   );
-  if (settingsHash.length) {
-    settingsMutArgs = getCompressedAccountMutArgs<CompressedSettings>(
-      packedAccounts,
-      proof.treeInfos.slice(0, 1),
-      proof.leafIndices.slice(0, 1),
-      proof.rootIndices.slice(0, 1),
-      proof.proveByIndices.slice(0, 1),
-      settingsHash,
-      getCompressedSettingsDecoder(),
-    )[0];
-  }
   if (transactionManagerHash.length) {
+    const start = 0;
+    const end = 1;
     transactionManagerMutArgs = getCompressedAccountMutArgs<User>(
       packedAccounts,
-      proof.treeInfos.slice(1, 2),
-      proof.leafIndices.slice(1, 2),
-      proof.rootIndices.slice(1, 2),
-      proof.proveByIndices.slice(1, 2),
+      proof.treeInfos.slice(start, end),
+      proof.leafIndices.slice(start, end),
+      proof.rootIndices.slice(start, end),
+      proof.proveByIndices.slice(start, end),
       transactionManagerHash,
       getUserDecoder(),
     )[0];
   }
-
-  const userCreationArgs = await getCompressedAccountInitArgs(
-    packedAccounts,
-    proof.treeInfos.slice(hashesWithTree.length),
-    proof.roots.slice(hashesWithTree.length),
-    proof.rootIndices.slice(hashesWithTree.length),
-    newAddressParams,
-  );
+  if (settingsHash.length) {
+    const start = transactionManagerHash.length;
+    const end = start + 1;
+    settingsMutArgs = getCompressedAccountMutArgs<CompressedSettings>(
+      packedAccounts,
+      proof.treeInfos.slice(start, end),
+      proof.leafIndices.slice(start, end),
+      proof.rootIndices.slice(start, end),
+      proof.proveByIndices.slice(start, end),
+      settingsHash,
+      getCompressedSettingsDecoder(),
+    )[0];
+  }
+  const userAccountCreationArgs = (
+    await getCompressedAccountInitArgs(
+      packedAccounts,
+      proof.treeInfos.slice(hashesWithTree.length),
+      proof.roots.slice(hashesWithTree.length),
+      proof.rootIndices.slice(hashesWithTree.length),
+      newAddressParams,
+    )
+  )[0];
 
   const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
   const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
@@ -161,7 +166,7 @@ export async function createDomainUserAccounts({
             : none(),
         })
       : none(),
-    userAccountCreationArgs: userCreationArgs[0],
+    userAccountCreationArgs,
     domainConfig,
     remainingAccounts,
   });
