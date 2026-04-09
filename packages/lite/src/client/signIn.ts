@@ -3,13 +3,13 @@ import { getBase64Decoder } from "gill";
 import { RevibaseProvider } from "src/provider/main";
 import { DEFAULT_TIMEOUT } from "src/provider/utils";
 import { createSignInMessageText } from "src/utils/internal";
-import type { AuthorizationFlowOptions } from "src/utils/types";
+import type { SignInAuthorizationFlowOptions } from "src/utils/types";
 import { runAuthorizationFlow } from "./runAuthorizationFlow";
 
 /** Opens auth popup (or channel when options.channelId). Returns user after passkey auth. Options: signal?, channelId?. */
 export async function signIn(
   provider: RevibaseProvider,
-  options?: AuthorizationFlowOptions,
+  options?: SignInAuthorizationFlowOptions,
 ): Promise<{ user: UserInfo }> {
   return runAuthorizationFlow(
     provider,
@@ -20,6 +20,7 @@ export async function signIn(
         validTill: Date.now() + DEFAULT_TIMEOUT,
         data: {
           type: "message" as const,
+          trustedDeviceCheck: options?.trustedDeviceCheck ?? false,
           payload: createSignInMessageText({
             domain: redirectOrigin,
             nonce: getBase64Decoder().decode(

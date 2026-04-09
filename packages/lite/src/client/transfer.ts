@@ -12,7 +12,7 @@ import {
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 import type { RevibaseProvider } from "src/provider/main";
 import { DEFAULT_TIMEOUT } from "src/provider/utils";
-import type { AuthorizationFlowOptions } from "src/utils/types";
+import type { TransactionAuthorizationFlowOptions } from "src/utils/types";
 import { runAuthorizationFlow } from "./runAuthorizationFlow";
 
 /** Transfers SOL or SPL (set mint for SPL). amount &gt; 0, destination required. Options: signal?, channelId?. */
@@ -25,7 +25,7 @@ export async function transferTokens(
     mint?: string;
     tokenProgram?: string;
   },
-  options?: AuthorizationFlowOptions,
+  options?: TransactionAuthorizationFlowOptions,
 ): Promise<{ txSig?: string; user: UserInfo }> {
   if (args.amount <= 0) {
     throw new Error("Transfer amount must be greater than 0");

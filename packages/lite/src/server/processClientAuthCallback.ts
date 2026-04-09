@@ -61,6 +61,7 @@ export async function processClientAuthCallback({
         data: {
           type: "message",
           payload: data.payload,
+          trustedDeviceCheck: data.trustedDeviceCheck,
         },
       },
       privateKey,

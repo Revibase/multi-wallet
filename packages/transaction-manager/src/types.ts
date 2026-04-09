@@ -79,12 +79,6 @@ export interface WellKnownClientCacheEntry {
   /** The client's public key, encoded as a Base64 string in JWK format. */
   clientJwk: string;
 
-  /**
-   * Optional list of device public keys trusted by this client,
-   * each encoded as a Base64 string in JWK format.
-   */
-  trustedDeviceJwks?: string[];
-
   /** Unix timestamp (milliseconds) when this entry was cached. */
   cachedAt: number;
 }

@@ -18,7 +18,7 @@ import {
 } from "gill";
 import type { RevibaseProvider } from "src/provider/main";
 import { DEFAULT_TIMEOUT } from "src/provider/utils";
-import type { AuthorizationFlowOptions } from "src/utils/types";
+import type { TransactionAuthorizationFlowOptions } from "src/utils/types";
 import { runAuthorizationFlow } from "./runAuthorizationFlow";
 
 /** Custom transaction. Action from wallet settings (TransactionManager). Provider needs rpcEndpoint. Options: signal?, channelId?. */
@@ -34,7 +34,7 @@ export async function executeTransaction(
     additionalSigners?: AdditionalSignersParam;
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
-  options?: AuthorizationFlowOptions,
+  options?: TransactionAuthorizationFlowOptions,
 ): Promise<{ txSig?: string; user: UserInfo }> {
   const {
     instructions,

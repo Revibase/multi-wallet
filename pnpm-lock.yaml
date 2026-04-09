@@ -12,11 +12,11 @@ importers:
         specifier: 0.31.1
         version: 0.31.1(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
       '@lightprotocol/compressed-token':
-        specifier: 0.23.0
-        version: 0.23.0(@coral-xyz/borsh@0.31.1(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)))(@lightprotocol/stateless.js@0.23.0(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)))(@solana/spl-token@0.4.14(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.2)(utf-8-validate@5.0.10))(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
+        specifier: 0.23.3
+        version: 0.23.3(@coral-xyz/borsh@0.31.1(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)))(@lightprotocol/stateless.js@0.23.3(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)))(@solana/spl-token@0.4.14(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.2)(utf-8-validate@5.0.10))(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
       '@lightprotocol/stateless.js':
-        specifier: 0.23.0
-        version: 0.23.0(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))
+        specifier: 0.23.3
+        version: 0.23.3(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))
       '@noble/curves':
         specifier: 2.0.1
         version: 2.0.1
@@ -64,8 +64,8 @@ importers:
         specifier: 0.3.2
         version: 0.3.2
       '@lightprotocol/stateless.js':
-        specifier: 0.23.0
-        version: 0.23.0(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10))
+        specifier: 0.23.3
+        version: 0.23.3(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10))
       '@noble/curves':
         specifier: 2.0.1
         version: 2.0.1
@@ -447,16 +447,16 @@ packages:
   '@levischuck/tiny-cbor@0.3.2':
     resolution: {integrity: sha512-v15eUU94R54eghlKZJtO/hwJmYC7w4ZIj/ybAJT2tMKdcrJNlXm7axCHS8xrQiC1wPlAQNemiwEpuBUaFGwJlQ==}
 
-  '@lightprotocol/compressed-token@0.23.0':
-    resolution: {integrity: sha512-A/NWqsFN89NrPRIaiwgntfsVowUenuHuH6zcpTp0qYhmlkSxMV+iUFlz28ChpBX6UlZnY0AZbI2pxx1rTyqozg==}
+  '@lightprotocol/compressed-token@0.23.3':
+    resolution: {integrity: sha512-0KP3PD9OtkBOb9pgEWB5wV7OYE0uM1+K0QYFKC+UeSYzM1lnM4xHJ6n/1uDfBRTQA+++1IwpQ37MpN1cJST3yQ==}
     peerDependencies:
       '@coral-xyz/borsh': ^0.29.0
-      '@lightprotocol/stateless.js': 0.23.0
+      '@lightprotocol/stateless.js': 0.23.3
       '@solana/spl-token': '>=0.3.9'
       '@solana/web3.js': '>=1.73.5'
 
-  '@lightprotocol/stateless.js@0.23.0':
-    resolution: {integrity: sha512-5o3QbQey1AMBiRpNWuhd/8YF9zRJv9KXw+CFq5Boad/rqgOBLzTYBRytblLe6UNl/kwPU8+nNvVYRT+oIKCMBg==}
+  '@lightprotocol/stateless.js@0.23.3':
+    resolution: {integrity: sha512-ox0pPN1X4IAkGsMB/E03S3ttQvY6JWlGan90Bw4vvFWCD0Q5ivfd9Og1AqYJI+xliYzn7m8ngHcUJtCka+5Tyg==}
     peerDependencies:
       '@solana/web3.js': '>=1.73.5'
 
@@ -2430,10 +2430,10 @@ snapshots:
 
   '@levischuck/tiny-cbor@0.3.2': {}
 
-  '@lightprotocol/compressed-token@0.23.0(@coral-xyz/borsh@0.31.1(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)))(@lightprotocol/stateless.js@0.23.0(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)))(@solana/spl-token@0.4.14(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.2)(utf-8-validate@5.0.10))(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)':
+  '@lightprotocol/compressed-token@0.23.3(@coral-xyz/borsh@0.31.1(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)))(@lightprotocol/stateless.js@0.23.3(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)))(@solana/spl-token@0.4.14(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.2)(utf-8-validate@5.0.10))(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)':
     dependencies:
       '@coral-xyz/borsh': 0.31.1(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))
-      '@lightprotocol/stateless.js': 0.23.0(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))
+      '@lightprotocol/stateless.js': 0.23.3(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))
       '@solana/buffer-layout': 4.0.1
       '@solana/buffer-layout-utils': 0.2.0(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10)
       '@solana/spl-token': 0.4.14(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.2)(utf-8-validate@5.0.10)
@@ -2446,7 +2446,7 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@lightprotocol/stateless.js@0.23.0(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))':
+  '@lightprotocol/stateless.js@0.23.3(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))':
     dependencies:
       '@coral-xyz/borsh': 0.29.0(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.2)(utf-8-validate@5.0.10))
       '@noble/hashes': 1.5.0
@@ -2459,7 +2459,7 @@ snapshots:
       camelcase-keys: 9.1.3
       superstruct: 2.0.2
 
-  '@lightprotocol/stateless.js@0.23.0(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10))':
+  '@lightprotocol/stateless.js@0.23.3(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10))':
     dependencies:
       '@coral-xyz/borsh': 0.29.0(@solana/web3.js@1.98.4(bufferutil@4.0.9)(typescript@5.9.3)(utf-8-validate@5.0.10))
       '@noble/hashes': 1.5.0

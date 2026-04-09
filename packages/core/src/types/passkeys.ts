@@ -69,6 +69,7 @@ export const StartMessageRequestSchema = z
       .object({
         type: z.literal("message"),
         payload: z.string(),
+        trustedDeviceCheck: z.boolean(),
       })
       .strict(),
   })

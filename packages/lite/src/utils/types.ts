@@ -30,8 +30,15 @@ export type ClientAuthorizationCallback = {
   ): Promise<{ ok: true }>;
 };
 
-/** signIn / transferTokens / executeTransaction options. */
-export type AuthorizationFlowOptions = {
+/** signIn options. */
+export type SignInAuthorizationFlowOptions = {
+  trustedDeviceCheck?: boolean;
+  signal?: AbortSignal;
+  channelId?: string;
+};
+
+/** transferTokens / executeTransaction options. */
+export type TransactionAuthorizationFlowOptions = {
   signal?: AbortSignal;
   channelId?: string;
 };

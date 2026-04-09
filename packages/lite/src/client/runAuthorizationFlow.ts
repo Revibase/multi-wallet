@@ -4,8 +4,8 @@ import type {
 } from "@revibase/core";
 import type { RevibaseProvider } from "src/provider/main";
 import type {
-  AuthorizationFlowOptions,
   AuthorizationFlowResult,
+  TransactionAuthorizationFlowOptions,
 } from "src/utils";
 
 /** Shared flow: startRequest → payload → popup or device signature → callback. Used by signIn, transferTokens, executeTransaction. */
@@ -15,7 +15,7 @@ export async function runAuthorizationFlow(
     rid: string,
     redirectOrigin: string,
   ) => StartMessageRequest | StartTransactionRequest,
-  options?: AuthorizationFlowOptions,
+  options?: TransactionAuthorizationFlowOptions,
 ): Promise<AuthorizationFlowResult> {
   const { rid, redirectOrigin } = provider.startRequest(options?.channelId);
 
