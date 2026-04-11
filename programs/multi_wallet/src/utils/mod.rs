@@ -45,3 +45,6 @@ pub use transports::*;
 
 pub mod transaction_signers;
 pub use transaction_signers::*;
+
+pub mod compressed_token;
+pub use compressed_token::*;

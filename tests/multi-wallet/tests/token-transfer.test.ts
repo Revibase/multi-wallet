@@ -1,5 +1,11 @@
-import { getAssociatedTokenAddressInterface } from "@lightprotocol/compressed-token";
-import { getAtaInterface } from "@lightprotocol/compressed-token/unified";
+import {
+  compress,
+  createAtaInterfaceIdempotent,
+  createSplInterface,
+  getAssociatedTokenAddressInterface,
+  getAtaInterface,
+  wrap,
+} from "@lightprotocol/compressed-token";
 import {
   bufferToBase64URLString,
   createDomainUserAccounts,
@@ -30,6 +36,7 @@ import {
   getInitializeMintInstruction,
   getMintSize,
   getMintToCheckedInstruction,
+  getTransferCheckedInstruction,
   TOKEN_2022_PROGRAM_ADDRESS,
 } from "gill/programs";
 import {
@@ -50,7 +57,14 @@ import {
 import { addPayerAsNewMember } from "../helpers/transaction.ts";
 import type { TestContext } from "../types.ts";
 
-type SourceKind = "spl";
+type SourceKind =
+  | "spl"
+  | "ctoken"
+  | "compressed"
+  | "spl&compressed"
+  | "ctoken+compressed"
+  | "spl+ctoken"
+  | "spl+ctoken+compressed";
 
 type Scenario = {
   name: string;
@@ -69,6 +83,66 @@ const SCENARIOS: Scenario[] = [
     source: "spl",
     destinationAtaExists: false,
   },
+  {
+    name: "when source ata is ctoken and destination ata exist",
+    source: "ctoken",
+    destinationAtaExists: true,
+  },
+  {
+    name: "when source ata is ctoken and destination ata does not exist",
+    source: "ctoken",
+    destinationAtaExists: false,
+  },
+  {
+    name: "when source ata is compressed token and destination ata exist",
+    source: "compressed",
+    destinationAtaExists: true,
+  },
+  {
+    name: "when source ata is compressed token and destination ata does not exist",
+    source: "compressed",
+    destinationAtaExists: false,
+  },
+  {
+    name: "when source ata is spl & compressed token and destination ata exist",
+    source: "spl&compressed",
+    destinationAtaExists: true,
+  },
+  {
+    name: "when source ata is spl & compressed token and destination ata does not exist",
+    source: "spl&compressed",
+    destinationAtaExists: false,
+  },
+  {
+    name: "when source ata is spl & ctoken and destination ata exist",
+    source: "spl+ctoken",
+    destinationAtaExists: true,
+  },
+  {
+    name: "when source ata is spl & ctoken and destination ata does not exist",
+    source: "spl+ctoken",
+    destinationAtaExists: false,
+  },
+  {
+    name: "when source ata is ctoken & compressed token and destination ata exist",
+    source: "ctoken+compressed",
+    destinationAtaExists: true,
+  },
+  {
+    name: "when source ata is ctoken & compressed token and destination ata does not exist",
+    source: "ctoken+compressed",
+    destinationAtaExists: false,
+  },
+  {
+    name: "when source ata is spl & ctoken & compressed token and destination ata exist",
+    source: "spl+ctoken+compressed",
+    destinationAtaExists: true,
+  },
+  {
+    name: "when source ata is spl & ctoken & compressed token and destination ata does not exist",
+    source: "spl+ctoken+compressed",
+    destinationAtaExists: false,
+  },
 ];
 
 export function runTokenTransferTest(getCtx: () => TestContext) {
@@ -79,13 +153,14 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
       });
     });
   }
-  it("when source ata is spl and destination ata does not exist with secp256r1 signer", async () => {
+  it("when source ata is spl & ctoken & compressed token and destination ata does not exist with secp256r1 signer", async () => {
     await withErrorHandling(
       "token transfer with Secp256r1 signer",
       async () => {
         let ctx = getCtx();
         ctx = await createMultiWallet(ctx);
-        const mint = await createMintAndMintToSplAccount(ctx);
+        const mint =
+          await createMintAndMintToSplAndCTokenAndCompressedAccount(ctx);
         assertTestContext(ctx, [
           "index",
           "multiWalletVault",
@@ -184,6 +259,7 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
         const ata = getAssociatedTokenAddressInterface(
           new PublicKey(mint),
           new PublicKey(ctx.wallet.address),
+          true,
         );
         const { parsed } = await getAtaInterface(
           getLightProtocolRpc(),
@@ -255,6 +331,722 @@ const createMintAndMintToSplAccount = async (ctx: TestContext) => {
   return ephemeralKeypair.address;
 };
 
+const createMintAndMintToCTokenAccount = async (ctx: TestContext) => {
+  if (
+    !ctx.index ||
+    !ctx.multiWalletVault ||
+    !ctx.wallet ||
+    !ctx.payer ||
+    !ctx.newMember ||
+    !ctx.newMemberSecretKey
+  )
+    return;
+  await fundMultiWalletVault(ctx, BigInt(10 ** 8));
+  // Create ephemeral keypair
+  const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
+    crypto.getRandomValues(new Uint8Array(32)),
+  );
+
+  // Create account instruction
+  const createAccount = getCreateAccountInstruction({
+    payer: ctx.payer,
+    newAccount: ephemeralKeypair,
+    space: getMintSize(),
+    lamports: await getSolanaRpc()
+      .getMinimumBalanceForRentExemption(BigInt(getMintSize()))
+      .send(),
+    programAddress: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+
+  // Create mint instruction
+  const createMint = getInitializeMintInstruction({
+    mint: ephemeralKeypair.address,
+    decimals: 5,
+    mintAuthority: ctx.newMember.address,
+  });
+  const senderAta = await getAssociatedTokenAccountAddress(
+    ephemeralKeypair.address,
+    ctx.newMember,
+    TOKEN_2022_PROGRAM_ADDRESS,
+  );
+  const senderCTokenAta = getAssociatedTokenAddressInterface(
+    new PublicKey(ephemeralKeypair.address),
+    new PublicKey(ctx.newMember.address),
+    true,
+  );
+  const ataIx = getCreateAssociatedTokenIdempotentInstruction({
+    ata: senderAta,
+    mint: ephemeralKeypair.address,
+    owner: ctx.newMember.address,
+    payer: ctx.payer,
+    tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+
+  const mintTo = getMintToCheckedInstruction({
+    amount: 10 ** 9,
+    decimals: 5,
+    mint: ephemeralKeypair.address,
+    mintAuthority: ctx.newMember,
+    token: senderAta,
+  });
+  await sendTransaction(
+    [createAccount, createMint, ataIx, mintTo],
+    ctx.payer,
+    ctx.addressLookUpTable,
+  );
+
+  const mint = new PublicKey(ephemeralKeypair.address.toString());
+  const payer = {
+    publicKey: new PublicKey(ctx.payer.address.toString()),
+    secretKey: ctx.payerSecretKey,
+  };
+  const newMember = {
+    publicKey: new PublicKey(ctx.newMember.address.toString()),
+    secretKey: ctx.newMemberSecretKey,
+  };
+
+  const recipientCTokenAta = getAssociatedTokenAddressInterface(
+    mint,
+    new PublicKey(ctx.multiWalletVault),
+    true,
+  );
+  await createAtaInterfaceIdempotent(
+    getLightProtocolRpc(),
+    payer,
+    mint,
+    new PublicKey(ctx.multiWalletVault),
+    true,
+  );
+  await createAtaInterfaceIdempotent(
+    getLightProtocolRpc(),
+    payer,
+    mint,
+    new PublicKey(ctx.newMember.address),
+    true,
+  );
+
+  await createSplInterface(getLightProtocolRpc(), payer, mint);
+
+  await wrap(
+    getLightProtocolRpc(),
+    payer,
+    new PublicKey(senderAta),
+    recipientCTokenAta,
+    newMember,
+    mint,
+    BigInt(10 ** 9),
+  );
+
+  return address(mint.toString());
+};
+
+const createMintAndMintToCompressedAccount = async (ctx: TestContext) => {
+  if (
+    !ctx.index ||
+    !ctx.multiWalletVault ||
+    !ctx.wallet ||
+    !ctx.payer ||
+    !ctx.newMember ||
+    !ctx.newMemberSecretKey
+  )
+    return;
+  await fundMultiWalletVault(ctx, BigInt(10 ** 8));
+  // Create ephemeral keypair
+  const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
+    crypto.getRandomValues(new Uint8Array(32)),
+  );
+
+  // Create account instruction
+  const createAccount = getCreateAccountInstruction({
+    payer: ctx.payer,
+    newAccount: ephemeralKeypair,
+    space: getMintSize(),
+    lamports: await getSolanaRpc()
+      .getMinimumBalanceForRentExemption(BigInt(getMintSize()))
+      .send(),
+    programAddress: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+
+  // Create mint instruction
+  const createMint = getInitializeMintInstruction({
+    mint: ephemeralKeypair.address,
+    decimals: 5,
+    mintAuthority: ctx.newMember.address,
+  });
+
+  const newMemberSplAta = await getAssociatedTokenAccountAddress(
+    ephemeralKeypair.address,
+    ctx.newMember,
+    TOKEN_2022_PROGRAM_ADDRESS,
+  );
+  const ataIx = getCreateAssociatedTokenIdempotentInstruction({
+    ata: newMemberSplAta,
+    mint: ephemeralKeypair.address,
+    owner: ctx.newMember.address,
+    payer: ctx.payer,
+    tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+
+  const mintTo = getMintToCheckedInstruction({
+    amount: 10 ** 9,
+    decimals: 5,
+    mint: ephemeralKeypair.address,
+    mintAuthority: ctx.newMember,
+    token: newMemberSplAta,
+  });
+  await sendTransaction(
+    [createAccount, createMint, ataIx, mintTo],
+    ctx.payer,
+    ctx.addressLookUpTable,
+  );
+
+  const mint = new PublicKey(ephemeralKeypair.address.toString());
+  const payer = {
+    publicKey: new PublicKey(ctx.payer.address.toString()),
+    secretKey: ctx.payerSecretKey,
+  };
+  const newMember = {
+    publicKey: new PublicKey(ctx.newMember.address.toString()),
+    secretKey: ctx.newMemberSecretKey,
+  };
+
+  await createSplInterface(getLightProtocolRpc(), payer, mint);
+
+  await compress(
+    getLightProtocolRpc(),
+    payer,
+    mint,
+    10 ** 9,
+    newMember,
+    new PublicKey(newMemberSplAta),
+    new PublicKey(ctx.multiWalletVault),
+  );
+
+  return address(mint.toString());
+};
+
+const createMintAndMintToSplAndCompressedTokenAccount = async (
+  ctx: TestContext,
+) => {
+  if (
+    !ctx.index ||
+    !ctx.multiWalletVault ||
+    !ctx.wallet ||
+    !ctx.payer ||
+    !ctx.newMember ||
+    !ctx.newMemberSecretKey
+  )
+    return;
+  await fundMultiWalletVault(ctx, BigInt(10 ** 8));
+  // Create ephemeral keypair
+  const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
+    crypto.getRandomValues(new Uint8Array(32)),
+  );
+
+  // Create account instruction
+  const createAccount = getCreateAccountInstruction({
+    payer: ctx.payer,
+    newAccount: ephemeralKeypair,
+    space: getMintSize(),
+    lamports: await getSolanaRpc()
+      .getMinimumBalanceForRentExemption(BigInt(getMintSize()))
+      .send(),
+    programAddress: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+
+  // Create mint instruction
+  const createMint = getInitializeMintInstruction({
+    mint: ephemeralKeypair.address,
+    decimals: 5,
+    mintAuthority: ctx.newMember.address,
+  });
+  const newMemberSplAta = await getAssociatedTokenAccountAddress(
+    ephemeralKeypair.address,
+    ctx.newMember,
+    TOKEN_2022_PROGRAM_ADDRESS,
+  );
+
+  const ataIx = getCreateAssociatedTokenIdempotentInstruction({
+    ata: newMemberSplAta,
+    mint: ephemeralKeypair.address,
+    owner: ctx.newMember.address,
+    payer: ctx.payer,
+    tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+
+  const mintTo = getMintToCheckedInstruction({
+    amount: 10 ** 9,
+    decimals: 5,
+    mint: ephemeralKeypair.address,
+    mintAuthority: ctx.newMember,
+    token: newMemberSplAta,
+  });
+  await sendTransaction(
+    [createAccount, createMint, ataIx, mintTo],
+    ctx.payer,
+    ctx.addressLookUpTable,
+  );
+
+  const mint = new PublicKey(ephemeralKeypair.address.toString());
+  const payer = {
+    publicKey: new PublicKey(ctx.payer.address.toString()),
+    secretKey: ctx.payerSecretKey,
+  };
+  const newMember = {
+    publicKey: new PublicKey(ctx.newMember.address.toString()),
+    secretKey: ctx.newMemberSecretKey,
+  };
+
+  const recipientSplAta = await getAssociatedTokenAccountAddress(
+    ephemeralKeypair.address,
+    ctx.multiWalletVault,
+    TOKEN_2022_PROGRAM_ADDRESS,
+  );
+  const ataIx2 = getCreateAssociatedTokenIdempotentInstruction({
+    ata: recipientSplAta,
+    mint: ephemeralKeypair.address,
+    owner: ctx.multiWalletVault,
+    payer: ctx.payer,
+    tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+  await sendTransaction([ataIx2], ctx.payer);
+
+  await createSplInterface(getLightProtocolRpc(), payer, mint);
+
+  //transfer half to multiwalletSplToken
+  const ix = getTransferCheckedInstruction({
+    amount: 10 ** 9 / 2,
+    authority: ctx.newMember,
+    decimals: 5,
+    destination: recipientSplAta,
+    mint: ephemeralKeypair.address,
+    source: newMemberSplAta,
+  });
+
+  await sendTransaction([ix], ctx.payer);
+
+  // transfer half to multiWallet compressed token
+  await compress(
+    getLightProtocolRpc(),
+    payer,
+    mint,
+    10 ** 9 / 2,
+    newMember,
+    new PublicKey(newMemberSplAta),
+    new PublicKey(ctx.multiWalletVault),
+  );
+
+  return address(mint.toString());
+};
+
+const createMintAndMintToSplAndCTokenAccount = async (ctx: TestContext) => {
+  if (
+    !ctx.index ||
+    !ctx.multiWalletVault ||
+    !ctx.wallet ||
+    !ctx.payer ||
+    !ctx.newMember ||
+    !ctx.newMemberSecretKey
+  )
+    return;
+  await fundMultiWalletVault(ctx, BigInt(10 ** 8));
+  // Create ephemeral keypair
+  const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
+    crypto.getRandomValues(new Uint8Array(32)),
+  );
+
+  // Create account instruction
+  const createAccount = getCreateAccountInstruction({
+    payer: ctx.payer,
+    newAccount: ephemeralKeypair,
+    space: getMintSize(),
+    lamports: await getSolanaRpc()
+      .getMinimumBalanceForRentExemption(BigInt(getMintSize()))
+      .send(),
+    programAddress: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+
+  // Create mint instruction
+  const createMint = getInitializeMintInstruction({
+    mint: ephemeralKeypair.address,
+    decimals: 5,
+    mintAuthority: ctx.newMember.address,
+  });
+  const newMemberSplAta = await getAssociatedTokenAccountAddress(
+    ephemeralKeypair.address,
+    ctx.newMember,
+    TOKEN_2022_PROGRAM_ADDRESS,
+  );
+  const senderCTokenAta = getAssociatedTokenAddressInterface(
+    new PublicKey(ephemeralKeypair.address),
+    new PublicKey(ctx.newMember.address),
+    true,
+  );
+  const ataIx = getCreateAssociatedTokenIdempotentInstruction({
+    ata: newMemberSplAta,
+    mint: ephemeralKeypair.address,
+    owner: ctx.newMember.address,
+    payer: ctx.payer,
+    tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+
+  const mintTo = getMintToCheckedInstruction({
+    amount: 10 ** 9,
+    decimals: 5,
+    mint: ephemeralKeypair.address,
+    mintAuthority: ctx.newMember,
+    token: newMemberSplAta,
+  });
+  await sendTransaction(
+    [createAccount, createMint, ataIx, mintTo],
+    ctx.payer,
+    ctx.addressLookUpTable,
+  );
+
+  const mint = new PublicKey(ephemeralKeypair.address.toString());
+  const payer = {
+    publicKey: new PublicKey(ctx.payer.address.toString()),
+    secretKey: ctx.payerSecretKey,
+  };
+  const newMember = {
+    publicKey: new PublicKey(ctx.newMember.address.toString()),
+    secretKey: ctx.newMemberSecretKey,
+  };
+
+  const recipientCTokenAta = getAssociatedTokenAddressInterface(
+    mint,
+    new PublicKey(ctx.multiWalletVault),
+    true,
+  );
+  const recipientSplAta = await getAssociatedTokenAccountAddress(
+    ephemeralKeypair.address,
+    ctx.multiWalletVault,
+    TOKEN_2022_PROGRAM_ADDRESS,
+  );
+  const ataIx2 = getCreateAssociatedTokenIdempotentInstruction({
+    ata: recipientSplAta,
+    mint: ephemeralKeypair.address,
+    owner: ctx.multiWalletVault,
+    payer: ctx.payer,
+    tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+  await sendTransaction([ataIx2], ctx.payer);
+
+  //transfer half to multiwalletSplToken
+  const ix = getTransferCheckedInstruction({
+    amount: 10 ** 9 / 2,
+    authority: ctx.newMember,
+    decimals: 5,
+    destination: recipientSplAta,
+    mint: ephemeralKeypair.address,
+    source: newMemberSplAta,
+  });
+
+  await sendTransaction([ix], ctx.payer);
+
+  await createAtaInterfaceIdempotent(
+    getLightProtocolRpc(),
+    payer,
+    mint,
+    new PublicKey(ctx.multiWalletVault),
+    true,
+  );
+  await createAtaInterfaceIdempotent(
+    getLightProtocolRpc(),
+    payer,
+    mint,
+    new PublicKey(ctx.newMember.address),
+  );
+
+  await createSplInterface(getLightProtocolRpc(), payer, mint);
+
+  // transfer remaining half to sender ctoken then send senderCtoken to multiwalletCToken
+  await wrap(
+    getLightProtocolRpc(),
+    payer,
+    new PublicKey(newMemberSplAta),
+    recipientCTokenAta,
+    newMember,
+    mint,
+    BigInt(10 ** 9 / 2),
+  );
+
+  return address(mint.toString());
+};
+
+const createMintAndMintToCTokenAndCompressedAccount = async (
+  ctx: TestContext,
+) => {
+  if (
+    !ctx.index ||
+    !ctx.multiWalletVault ||
+    !ctx.wallet ||
+    !ctx.payer ||
+    !ctx.newMember ||
+    !ctx.newMemberSecretKey
+  )
+    return;
+  await fundMultiWalletVault(ctx, BigInt(10 ** 8));
+  // Create ephemeral keypair
+  const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
+    crypto.getRandomValues(new Uint8Array(32)),
+  );
+
+  // Create account instruction
+  const createAccount = getCreateAccountInstruction({
+    payer: ctx.payer,
+    newAccount: ephemeralKeypair,
+    space: getMintSize(),
+    lamports: await getSolanaRpc()
+      .getMinimumBalanceForRentExemption(BigInt(getMintSize()))
+      .send(),
+    programAddress: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+
+  // Create mint instruction
+  const createMint = getInitializeMintInstruction({
+    mint: ephemeralKeypair.address,
+    decimals: 5,
+    mintAuthority: ctx.newMember.address,
+  });
+  const newMemberSplAta = await getAssociatedTokenAccountAddress(
+    ephemeralKeypair.address,
+    ctx.newMember,
+    TOKEN_2022_PROGRAM_ADDRESS,
+  );
+  const senderCTokenAta = getAssociatedTokenAddressInterface(
+    new PublicKey(ephemeralKeypair.address),
+    new PublicKey(ctx.newMember.address),
+    true,
+  );
+  const ataIx = getCreateAssociatedTokenIdempotentInstruction({
+    ata: newMemberSplAta,
+    mint: ephemeralKeypair.address,
+    owner: ctx.newMember.address,
+    payer: ctx.payer,
+    tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+
+  const mintTo = getMintToCheckedInstruction({
+    amount: 10 ** 9,
+    decimals: 5,
+    mint: ephemeralKeypair.address,
+    mintAuthority: ctx.newMember,
+    token: newMemberSplAta,
+  });
+  await sendTransaction(
+    [createAccount, createMint, ataIx, mintTo],
+    ctx.payer,
+    ctx.addressLookUpTable,
+  );
+
+  const mint = new PublicKey(ephemeralKeypair.address.toString());
+  const payer = {
+    publicKey: new PublicKey(ctx.payer.address.toString()),
+    secretKey: ctx.payerSecretKey,
+  };
+  const newMember = {
+    publicKey: new PublicKey(ctx.newMember.address.toString()),
+    secretKey: ctx.newMemberSecretKey,
+  };
+
+  const recipientCTokenAta = getAssociatedTokenAddressInterface(
+    mint,
+    new PublicKey(ctx.multiWalletVault),
+    true,
+  );
+
+  await createSplInterface(getLightProtocolRpc(), payer, mint);
+
+  //transfer half to multiwalletCompressedToken
+  await compress(
+    getLightProtocolRpc(),
+    payer,
+    mint,
+    10 ** 9 / 2,
+    newMember,
+    new PublicKey(newMemberSplAta),
+    new PublicKey(ctx.multiWalletVault),
+  );
+
+  await createAtaInterfaceIdempotent(
+    getLightProtocolRpc(),
+    payer,
+    mint,
+    new PublicKey(ctx.multiWalletVault),
+    true,
+  );
+  await createAtaInterfaceIdempotent(
+    getLightProtocolRpc(),
+    payer,
+    mint,
+    new PublicKey(ctx.newMember.address),
+  );
+
+  // transfer remaining to sender ctoken then send to multiwalletCToken
+  await wrap(
+    getLightProtocolRpc(),
+    payer,
+    new PublicKey(newMemberSplAta),
+    recipientCTokenAta,
+    newMember,
+    mint,
+    BigInt(10 ** 9 / 2),
+  );
+
+  return address(mint.toString());
+};
+
+const createMintAndMintToSplAndCTokenAndCompressedAccount = async (
+  ctx: TestContext,
+) => {
+  if (
+    !ctx.index ||
+    !ctx.multiWalletVault ||
+    !ctx.wallet ||
+    !ctx.payer ||
+    !ctx.newMember ||
+    !ctx.newMemberSecretKey
+  )
+    return;
+  await fundMultiWalletVault(ctx, BigInt(10 ** 8));
+  // Create ephemeral keypair
+  const ephemeralKeypair = await createKeyPairSignerFromPrivateKeyBytes(
+    crypto.getRandomValues(new Uint8Array(32)),
+  );
+
+  // Create account instruction
+  const createAccount = getCreateAccountInstruction({
+    payer: ctx.payer,
+    newAccount: ephemeralKeypair,
+    space: getMintSize(),
+    lamports: await getSolanaRpc()
+      .getMinimumBalanceForRentExemption(BigInt(getMintSize()))
+      .send(),
+    programAddress: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+
+  // Create mint instruction
+  const createMint = getInitializeMintInstruction({
+    mint: ephemeralKeypair.address,
+    decimals: 5,
+    mintAuthority: ctx.newMember.address,
+  });
+  const newMemberSplAta = await getAssociatedTokenAccountAddress(
+    ephemeralKeypair.address,
+    ctx.newMember,
+    TOKEN_2022_PROGRAM_ADDRESS,
+  );
+  const senderCTokenAta = getAssociatedTokenAddressInterface(
+    new PublicKey(ephemeralKeypair.address),
+    new PublicKey(ctx.newMember.address),
+    true,
+  );
+  const ataIx = getCreateAssociatedTokenIdempotentInstruction({
+    ata: newMemberSplAta,
+    mint: ephemeralKeypair.address,
+    owner: ctx.newMember.address,
+    payer: ctx.payer,
+    tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+
+  const mintTo = getMintToCheckedInstruction({
+    amount: 10 ** 9,
+    decimals: 5,
+    mint: ephemeralKeypair.address,
+    mintAuthority: ctx.newMember,
+    token: newMemberSplAta,
+  });
+  await sendTransaction(
+    [createAccount, createMint, ataIx, mintTo],
+    ctx.payer,
+    ctx.addressLookUpTable,
+  );
+
+  const mint = new PublicKey(ephemeralKeypair.address.toString());
+  const payer = {
+    publicKey: new PublicKey(ctx.payer.address.toString()),
+    secretKey: ctx.payerSecretKey,
+  };
+  const newMember = {
+    publicKey: new PublicKey(ctx.newMember.address.toString()),
+    secretKey: ctx.newMemberSecretKey,
+  };
+
+  const recipientCTokenAta = getAssociatedTokenAddressInterface(
+    mint,
+    new PublicKey(ctx.multiWalletVault),
+    true,
+  );
+  const recipientSplAta = await getAssociatedTokenAccountAddress(
+    ephemeralKeypair.address,
+    ctx.multiWalletVault,
+    TOKEN_2022_PROGRAM_ADDRESS,
+  );
+  const ataIx2 = getCreateAssociatedTokenIdempotentInstruction({
+    ata: recipientSplAta,
+    mint: ephemeralKeypair.address,
+    owner: ctx.multiWalletVault,
+    payer: ctx.payer,
+    tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+  });
+  await sendTransaction([ataIx2], ctx.payer);
+
+  //transfer one third to multiwalletSplToken
+
+  const ix = getTransferCheckedInstruction({
+    amount: Math.floor(10 ** 9 / 3),
+    authority: ctx.newMember,
+    decimals: 5,
+    destination: recipientSplAta,
+    mint: ephemeralKeypair.address,
+    source: newMemberSplAta,
+  });
+
+  await sendTransaction([ix], ctx.payer);
+
+  await createSplInterface(getLightProtocolRpc(), payer, mint);
+
+  //transfer one third to multiwalletCompressedToken
+  await compress(
+    getLightProtocolRpc(),
+    payer,
+    mint,
+    Math.floor(10 ** 9 / 3),
+    newMember,
+    new PublicKey(newMemberSplAta),
+    new PublicKey(ctx.multiWalletVault),
+  );
+
+  await createAtaInterfaceIdempotent(
+    getLightProtocolRpc(),
+    payer,
+    mint,
+    new PublicKey(ctx.multiWalletVault),
+    true,
+  );
+  await createAtaInterfaceIdempotent(
+    getLightProtocolRpc(),
+    payer,
+    mint,
+    new PublicKey(ctx.newMember.address),
+  );
+
+  // transfer remaining to sender ctoken then send to multiwalletCToken
+  const remaining = 10 ** 9 - 2 * Math.floor(10 ** 9 / 3);
+  await wrap(
+    getLightProtocolRpc(),
+    payer,
+    new PublicKey(newMemberSplAta),
+    recipientCTokenAta,
+    newMember,
+    mint,
+    BigInt(remaining),
+  );
+
+  return address(mint.toString());
+};
+
 async function createDestinationAta(mint: Address, ctx: TestContext) {
   assertTestContext(ctx, ["wallet", "payer"]);
   const destinationAta = await getAssociatedTokenAccountAddress(
@@ -277,6 +1069,18 @@ async function mintForScenario(ctx: TestContext, source: SourceKind) {
   switch (source) {
     case "spl":
       return createMintAndMintToSplAccount(ctx);
+    case "ctoken":
+      return createMintAndMintToCTokenAccount(ctx);
+    case "compressed":
+      return createMintAndMintToCompressedAccount(ctx);
+    case "spl&compressed":
+      return createMintAndMintToSplAndCompressedTokenAccount(ctx);
+    case "ctoken+compressed":
+      return createMintAndMintToCTokenAndCompressedAccount(ctx);
+    case "spl+ctoken":
+      return createMintAndMintToSplAndCTokenAccount(ctx);
+    case "spl+ctoken+compressed":
+      return createMintAndMintToSplAndCTokenAndCompressedAccount(ctx);
     default: {
       const _exhaustive: never = source;
       return _exhaustive;

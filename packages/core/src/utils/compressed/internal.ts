@@ -300,3 +300,28 @@ export async function getCachedWhitelistedAddressTree() {
   }
   return cachedWhitelistedAddressTrees;
 }
+
+enum TokenDataVersion {
+  V1 = 1,
+  V2 = 2,
+  ShaFlat = 3,
+}
+
+export function getVersionFromDiscriminator(
+  discriminator: number[] | undefined,
+): number {
+  if (!discriminator || discriminator.length < 8) {
+    return TokenDataVersion.ShaFlat;
+  }
+  if (discriminator[0] === 2) {
+    return TokenDataVersion.V1;
+  }
+  const versionByte = discriminator[7];
+  if (versionByte === 3) {
+    return TokenDataVersion.V2;
+  }
+  if (versionByte === 4) {
+    return TokenDataVersion.ShaFlat;
+  }
+  return TokenDataVersion.ShaFlat;
+}
