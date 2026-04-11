@@ -1,14 +1,11 @@
 import {
+  compress,
   createAtaInterfaceIdempotent,
   createSplInterface,
   getAssociatedTokenAddressInterface,
+  getAtaInterface,
   wrap,
 } from "@lightprotocol/compressed-token";
-import {
-  compress,
-  getAtaInterface,
-  transferInterface,
-} from "@lightprotocol/compressed-token/unified";
 import {
   bufferToBase64URLString,
   createDomainUserAccounts,
@@ -39,6 +36,7 @@ import {
   getInitializeMintInstruction,
   getMintSize,
   getMintToCheckedInstruction,
+  getTransferCheckedInstruction,
   TOKEN_2022_PROGRAM_ADDRESS,
 } from "gill/programs";
 import {
@@ -261,6 +259,7 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
         const ata = getAssociatedTokenAddressInterface(
           new PublicKey(mint),
           new PublicKey(ctx.wallet.address),
+          true,
         );
         const { parsed } = await getAtaInterface(
           getLightProtocolRpc(),
@@ -373,6 +372,7 @@ const createMintAndMintToCTokenAccount = async (ctx: TestContext) => {
   const senderCTokenAta = getAssociatedTokenAddressInterface(
     new PublicKey(ephemeralKeypair.address),
     new PublicKey(ctx.newMember.address),
+    true,
   );
   const ataIx = getCreateAssociatedTokenIdempotentInstruction({
     ata: senderAta,
@@ -422,6 +422,7 @@ const createMintAndMintToCTokenAccount = async (ctx: TestContext) => {
     payer,
     mint,
     new PublicKey(ctx.newMember.address),
+    true,
   );
 
   await createSplInterface(getLightProtocolRpc(), payer, mint);
@@ -430,20 +431,10 @@ const createMintAndMintToCTokenAccount = async (ctx: TestContext) => {
     getLightProtocolRpc(),
     payer,
     new PublicKey(senderAta),
-    senderCTokenAta,
+    recipientCTokenAta,
     newMember,
     mint,
     BigInt(10 ** 9),
-  );
-
-  await transferInterface(
-    getLightProtocolRpc(),
-    payer,
-    senderCTokenAta,
-    mint,
-    recipientCTokenAta,
-    newMember,
-    10 ** 9,
   );
 
   return address(mint.toString());
@@ -623,15 +614,16 @@ const createMintAndMintToSplAndCompressedTokenAccount = async (
   await createSplInterface(getLightProtocolRpc(), payer, mint);
 
   //transfer half to multiwalletSplToken
-  await transferInterface(
-    getLightProtocolRpc(),
-    payer,
-    new PublicKey(newMemberSplAta),
-    mint,
-    new PublicKey(recipientSplAta),
-    newMember,
-    10 ** 9 / 2,
-  );
+  const ix = getTransferCheckedInstruction({
+    amount: 10 ** 9 / 2,
+    authority: ctx.newMember,
+    decimals: 5,
+    destination: recipientSplAta,
+    mint: ephemeralKeypair.address,
+    source: newMemberSplAta,
+  });
+
+  await sendTransaction([ix], ctx.payer);
 
   // transfer half to multiWallet compressed token
   await compress(
@@ -688,6 +680,7 @@ const createMintAndMintToSplAndCTokenAccount = async (ctx: TestContext) => {
   const senderCTokenAta = getAssociatedTokenAddressInterface(
     new PublicKey(ephemeralKeypair.address),
     new PublicKey(ctx.newMember.address),
+    true,
   );
   const ataIx = getCreateAssociatedTokenIdempotentInstruction({
     ata: newMemberSplAta,
@@ -740,15 +733,16 @@ const createMintAndMintToSplAndCTokenAccount = async (ctx: TestContext) => {
   await sendTransaction([ataIx2], ctx.payer);
 
   //transfer half to multiwalletSplToken
-  await transferInterface(
-    getLightProtocolRpc(),
-    payer,
-    new PublicKey(newMemberSplAta),
-    mint,
-    new PublicKey(recipientSplAta),
-    newMember,
-    10 ** 9 / 2,
-  );
+  const ix = getTransferCheckedInstruction({
+    amount: 10 ** 9 / 2,
+    authority: ctx.newMember,
+    decimals: 5,
+    destination: recipientSplAta,
+    mint: ephemeralKeypair.address,
+    source: newMemberSplAta,
+  });
+
+  await sendTransaction([ix], ctx.payer);
 
   await createAtaInterfaceIdempotent(
     getLightProtocolRpc(),
@@ -771,20 +765,10 @@ const createMintAndMintToSplAndCTokenAccount = async (ctx: TestContext) => {
     getLightProtocolRpc(),
     payer,
     new PublicKey(newMemberSplAta),
-    senderCTokenAta,
+    recipientCTokenAta,
     newMember,
     mint,
     BigInt(10 ** 9 / 2),
-  );
-
-  await transferInterface(
-    getLightProtocolRpc(),
-    payer,
-    senderCTokenAta,
-    mint,
-    recipientCTokenAta,
-    newMember,
-    10 ** 9 / 2,
   );
 
   return address(mint.toString());
@@ -833,6 +817,7 @@ const createMintAndMintToCTokenAndCompressedAccount = async (
   const senderCTokenAta = getAssociatedTokenAddressInterface(
     new PublicKey(ephemeralKeypair.address),
     new PublicKey(ctx.newMember.address),
+    true,
   );
   const ataIx = getCreateAssociatedTokenIdempotentInstruction({
     ata: newMemberSplAta,
@@ -903,20 +888,10 @@ const createMintAndMintToCTokenAndCompressedAccount = async (
     getLightProtocolRpc(),
     payer,
     new PublicKey(newMemberSplAta),
-    senderCTokenAta,
+    recipientCTokenAta,
     newMember,
     mint,
     BigInt(10 ** 9 / 2),
-  );
-
-  await transferInterface(
-    getLightProtocolRpc(),
-    payer,
-    senderCTokenAta,
-    mint,
-    recipientCTokenAta,
-    newMember,
-    10 ** 9 / 2,
   );
 
   return address(mint.toString());
@@ -965,6 +940,7 @@ const createMintAndMintToSplAndCTokenAndCompressedAccount = async (
   const senderCTokenAta = getAssociatedTokenAddressInterface(
     new PublicKey(ephemeralKeypair.address),
     new PublicKey(ctx.newMember.address),
+    true,
   );
   const ataIx = getCreateAssociatedTokenIdempotentInstruction({
     ata: newMemberSplAta,
@@ -1017,15 +993,17 @@ const createMintAndMintToSplAndCTokenAndCompressedAccount = async (
   await sendTransaction([ataIx2], ctx.payer);
 
   //transfer one third to multiwalletSplToken
-  await transferInterface(
-    getLightProtocolRpc(),
-    payer,
-    new PublicKey(newMemberSplAta),
-    mint,
-    new PublicKey(recipientSplAta),
-    newMember,
-    Math.floor(10 ** 9 / 3),
-  );
+
+  const ix = getTransferCheckedInstruction({
+    amount: Math.floor(10 ** 9 / 3),
+    authority: ctx.newMember,
+    decimals: 5,
+    destination: recipientSplAta,
+    mint: ephemeralKeypair.address,
+    source: newMemberSplAta,
+  });
+
+  await sendTransaction([ix], ctx.payer);
 
   await createSplInterface(getLightProtocolRpc(), payer, mint);
 
@@ -1060,20 +1038,10 @@ const createMintAndMintToSplAndCTokenAndCompressedAccount = async (
     getLightProtocolRpc(),
     payer,
     new PublicKey(newMemberSplAta),
-    senderCTokenAta,
+    recipientCTokenAta,
     newMember,
     mint,
     BigInt(remaining),
-  );
-
-  await transferInterface(
-    getLightProtocolRpc(),
-    payer,
-    senderCTokenAta,
-    mint,
-    recipientCTokenAta,
-    newMember,
-    Math.floor(remaining),
   );
 
   return address(mint.toString());

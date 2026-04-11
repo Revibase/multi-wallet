@@ -89,6 +89,7 @@ pub struct TokenTransferIntentCompressed<'info> {
     /// CHECK:
     pub token_program: UncheckedAccount<'info>,
     /// CHECK:
+    #[account(mut)]
     pub mint: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
     /// CHECK:
@@ -118,9 +119,6 @@ pub struct TokenTransferIntentCompressed<'info> {
         address = LIGHT_TOKEN_PROGRAM_ID,
     )]
     pub compressed_token_program: UncheckedAccount<'info>,
-    /// CHECK:
-    #[account(mut)]
-    pub delegate: Option<UncheckedAccount<'info>>,
 }
 
 impl<'info> TokenTransferIntentCompressed<'info> {
@@ -166,7 +164,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
         ctx: Context<'_, '_, 'info, 'info, Self>,
         spl_interface_pda_args: Option<SplInterfacePdaArgs>,
         amount: u64,
-        source_compressed_token_account: Option<CompressedTokenArgs>,
+        source_compressed_token_accounts: Vec<CompressedTokenArgs>,
         signers: Vec<TransactionSyncSigners>,
         settings_mut_args: SettingsMutArgs,
         compressed_proof_args: ProofArgs,
@@ -216,7 +214,6 @@ impl<'info> TokenTransferIntentCompressed<'info> {
             destination: &ctx.accounts.destination,
             mint: &ctx.accounts.mint,
             payer: &ctx.accounts.payer,
-            delegate: ctx.accounts.delegate.as_deref(),
             source_spl_token_account: &ctx.accounts.source_spl_token_account,
             source_ctoken_token_account: &ctx.accounts.source_ctoken_token_account,
             destination_spl_token_account: ctx.accounts.destination_spl_token_account.as_deref(),
@@ -238,7 +235,7 @@ impl<'info> TokenTransferIntentCompressed<'info> {
 
         let source_type = token_transfer.load_ata(
             amount,
-            &source_compressed_token_account,
+            source_compressed_token_accounts.as_ref(),
             Some(&light_cpi_accounts),
             Some(&compressed_proof_args),
             &spl_interface_pda_data,

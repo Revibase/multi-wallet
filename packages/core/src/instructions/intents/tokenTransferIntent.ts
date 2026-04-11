@@ -1,10 +1,13 @@
+import { selectMinCompressedTokenAccountsForDecompression } from "@lightprotocol/compressed-token";
 import {
+  TreeType,
   type CompressedAccount,
   type HashWithTree,
   type ParsedTokenAccount,
   type ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
 import { PublicKey } from "@solana/web3.js";
+import BN from "bn.js";
 import {
   AccountRole,
   address,
@@ -150,14 +153,15 @@ export async function tokenTransferIntent({
     useDestinationSplAccount,
   );
 
-  const [compressedTokenAccount, splInterfaceNeedsInitialization] =
+  const [compressedTokenAccounts, splInterfaceNeedsInitialization] =
     await Promise.all([
-      getCompressedTokenAccount(
+      getCompressedTokenAccounts(
         walletAddress,
         mint,
         balances.splBalance,
         balances.cTokenBalance,
         BigInt(amount),
+        compressed,
       ),
       checkIfSplInterfaceNeedsToBeInitialized(
         balances.requireSplInterface,
@@ -167,7 +171,10 @@ export async function tokenTransferIntent({
     ]);
 
   const compressedTotalBalance = BigInt(
-    compressedTokenAccount?.parsed.amount.toNumber() ?? 0,
+    compressedTokenAccounts.reduce(
+      (sum, x) => sum + (x.parsed.amount.toNumber() ?? 0),
+      0,
+    ),
   );
   if (
     balances.splBalance + balances.cTokenBalance + compressedTotalBalance <
@@ -184,7 +191,7 @@ export async function tokenTransferIntent({
   }
 
   const hashesWithTree = buildHashesWithTree(
-    compressedTokenAccount,
+    compressedTokenAccounts,
     compressedSettings,
   );
   const { proof, settingsMutArgs } = await resolveCompressedProofAndSettings(
@@ -193,8 +200,8 @@ export async function tokenTransferIntent({
     compressedSettings,
   );
 
-  const sourceCompressedTokenAccount = buildSourceCompressedTokenAccounts(
-    compressedTokenAccount,
+  const sourceCompressedTokenAccounts = buildSourceCompressedTokenAccounts(
+    compressedTokenAccounts,
     proof,
     packedAccounts,
   );
@@ -223,12 +230,9 @@ export async function tokenTransferIntent({
     tokenProgram,
     remainingAccounts,
     payer,
-    sourceCompressedTokenAccount,
+    sourceCompressedTokenAccounts,
     compressedProofArgs,
     splInterfacePdaArgs,
-    delegate: compressedTokenAccount?.parsed.delegate
-      ? address(compressedTokenAccount.parsed.delegate.toString())
-      : undefined,
   });
 
   if (compressed) {
@@ -378,19 +382,19 @@ function computeBalancesAndDestinations(
 }
 
 function buildHashesWithTree(
-  compressedTokenAccount: ParsedTokenAccount | null,
+  compressedTokenAccounts: ParsedTokenAccount[],
   compressedSettings: HashWithTreeAndAccount | null,
 ): HashWithTreeAndAccount[] {
   const hashesWithTree: HashWithTreeAndAccount[] = [];
-  if (compressedTokenAccount) {
+  compressedTokenAccounts.forEach((x) =>
     hashesWithTree.push({
-      hash: compressedTokenAccount.compressedAccount.hash,
-      tree: compressedTokenAccount.compressedAccount.treeInfo.tree,
-      queue: compressedTokenAccount.compressedAccount.treeInfo.queue,
-      data: compressedTokenAccount.compressedAccount.data,
-      address: compressedTokenAccount.compressedAccount.address,
-    });
-  }
+      hash: x.compressedAccount.hash,
+      tree: x.compressedAccount.treeInfo.tree,
+      queue: x.compressedAccount.treeInfo.queue,
+      data: x.compressedAccount.data,
+      address: x.compressedAccount.address,
+    }),
+  );
   if (compressedSettings) {
     hashesWithTree.push(compressedSettings);
   }
@@ -429,38 +433,34 @@ async function resolveCompressedProofAndSettings(
 }
 
 function buildSourceCompressedTokenAccounts(
-  compressedTokenAccount: ParsedTokenAccount | null,
+  compressedTokenAccounts: ParsedTokenAccount[],
   proof: ValidityProofWithContext | null,
   packedAccounts: PackedAccounts,
-): OptionOrNullable<CompressedTokenArgsArgs> {
-  if (!proof || !compressedTokenAccount) {
-    return none();
+): CompressedTokenArgsArgs[] {
+  if (!proof || !compressedTokenAccounts.length) {
+    return [];
   }
-  return some({
-    amount: compressedTokenAccount.parsed.amount.toNumber(),
+  return compressedTokenAccounts.map((x) => ({
+    amount: x.parsed.amount.toNumber(),
     merkleContext: {
-      leafIndex: compressedTokenAccount.compressedAccount.leafIndex,
+      leafIndex: x.compressedAccount.leafIndex,
       merkleTreePubkeyIndex: packedAccounts.insertOrGet(
-        compressedTokenAccount.compressedAccount.treeInfo.tree.toString(),
+        x.compressedAccount.treeInfo.tree.toString(),
       ),
       queuePubkeyIndex: packedAccounts.insertOrGet(
-        compressedTokenAccount.compressedAccount.treeInfo.queue.toString(),
+        x.compressedAccount.treeInfo.queue.toString(),
       ),
-      proveByIndex: compressedTokenAccount.compressedAccount.proveByIndex,
+      proveByIndex: x.compressedAccount.proveByIndex,
     },
     rootIndex: proof.rootIndices[0],
     version: getVersionFromDiscriminator(
-      compressedTokenAccount.compressedAccount.data?.discriminator,
+      x.compressedAccount.data?.discriminator,
     ),
-    tlv: compressedTokenAccount.parsed.tlv
-      ? some(
-          getArrayDecoder(getExtensionStructDecoder()).decode(
-            compressedTokenAccount.parsed.tlv,
-          ),
-        )
+    tlv: x.parsed.tlv
+      ? some(getArrayDecoder(getExtensionStructDecoder()).decode(x.parsed.tlv))
       : none(),
-    state: compressedTokenAccount.parsed.state,
-  });
+    state: x.parsed.state,
+  }));
 }
 
 function buildCommonParams({
@@ -474,10 +474,9 @@ function buildCommonParams({
   tokenProgram,
   remainingAccounts,
   payer,
-  sourceCompressedTokenAccount,
+  sourceCompressedTokenAccounts,
   compressedProofArgs,
   splInterfacePdaArgs,
-  delegate,
 }: {
   amount: number | bigint;
   transactionSyncSigners: TransactionSyncSignersArgs[];
@@ -491,10 +490,9 @@ function buildCommonParams({
     PackedAccounts["toAccountMetas"]
   >["remainingAccounts"];
   payer: TransactionSigner;
-  sourceCompressedTokenAccount: OptionOrNullable<CompressedTokenArgsArgs>;
+  sourceCompressedTokenAccounts: CompressedTokenArgsArgs[];
   compressedProofArgs: ReturnType<typeof convertToCompressedProofArgs>;
   splInterfacePdaArgs: SplInterfacePdaArgsArgs;
-  delegate?: Address;
 }) {
   return {
     amount,
@@ -509,7 +507,7 @@ function buildCommonParams({
     tokenProgram,
     remainingAccounts,
     payer,
-    sourceCompressedTokenAccount,
+    sourceCompressedTokenAccounts,
     compressedProofArgs,
     compressibleConfig,
     splInterfacePda: balances.requireSplInterface
@@ -519,7 +517,6 @@ function buildCommonParams({
     splInterfacePdaArgs: (balances.requireSplInterface
       ? some(splInterfacePdaArgs)
       : none()) as OptionOrNullable<SplInterfacePdaArgsArgs>,
-    delegate,
   };
 }
 
@@ -536,16 +533,17 @@ async function checkIfSplInterfaceNeedsToBeInitialized(
   return !value;
 }
 
-async function getCompressedTokenAccount(
+async function getCompressedTokenAccounts(
   walletAddress: string,
   mint: string,
   splBalance: bigint,
   cTokenBalance: bigint,
   total: bigint,
+  compressed: boolean,
 ) {
   const transferAmount = total - splBalance - cTokenBalance;
   if (transferAmount <= 0) {
-    return null;
+    return [];
   }
   const compressedResult =
     await getLightProtocolRpc().getCompressedTokenAccountsByOwner(
@@ -558,18 +556,20 @@ async function getCompressedTokenAccount(
       !!x.compressedAccount.data?.data.length &&
       x.compressedAccount.owner.toString() ===
         ctokenProgramAddress.toString() &&
-      !x.parsed.amount.isZero() &&
-      !!x.parsed.tlv &&
-      getArrayDecoder(getExtensionStructDecoder())
-        .decode(x.parsed.tlv)
-        .some((e) => e.__kind === "CompressedOnly" && e.fields[0].isAta),
+      !x.parsed.amount.isZero(),
   );
 
   if (accounts.length === 0) {
-    return null;
+    return [];
   }
+  const minAccounts = selectMinCompressedTokenAccountsForDecompression(
+    accounts,
+    new BN(transferAmount),
+    compressed ? 3 : 4,
+    { treeType: TreeType.StateV2 },
+  );
 
-  return accounts[0];
+  return minAccounts.selectedAccounts;
 }
 
 async function getCompressedSettings(

@@ -1027,7 +1027,8 @@
           "name": "token_program"
         },
         {
-          "name": "mint"
+          "name": "mint",
+          "writable": true
         },
         {
           "name": "system_program",
@@ -1053,11 +1054,6 @@
         {
           "name": "compressed_token_program",
           "address": "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m"
-        },
-        {
-          "name": "delegate",
-          "writable": true,
-          "optional": true
         }
       ],
       "args": [
@@ -1076,9 +1072,9 @@
           "type": "u64"
         },
         {
-          "name": "source_compressed_token_account",
+          "name": "source_compressed_token_accounts",
           "type": {
-            "option": {
+            "vec": {
               "defined": {
                 "name": "CompressedTokenArgs"
               }
@@ -1261,7 +1257,8 @@
           "name": "token_program"
         },
         {
-          "name": "mint"
+          "name": "mint",
+          "writable": true
         },
         {
           "name": "system_program",
@@ -1287,11 +1284,6 @@
         {
           "name": "compressed_token_program",
           "address": "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m"
-        },
-        {
-          "name": "delegate",
-          "writable": true,
-          "optional": true
         }
       ],
       "args": [
@@ -1310,9 +1302,9 @@
           "type": "u64"
         },
         {
-          "name": "source_compressed_token_account",
+          "name": "source_compressed_token_accounts",
           "type": {
-            "option": {
+            "vec": {
               "defined": {
                 "name": "CompressedTokenArgs"
               }

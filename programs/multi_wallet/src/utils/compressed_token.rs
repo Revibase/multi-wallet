@@ -8,7 +8,7 @@ use light_compressed_token_sdk::compressed_token::transfer2::{
 };
 use light_compressed_token_sdk::compressed_token::CTokenAccount2;
 use light_sdk::cpi::v2::CpiAccounts;
-use light_sdk::instruction::{PackedMerkleContext, PackedStateTreeInfo};
+use light_sdk::instruction::PackedMerkleContext;
 use light_token::compat::AccountState;
 use light_token::instruction::{
     CreateTokenAtaCpi, TransferCpi, TransferFromSplCpi, TransferToSplCpi,
@@ -20,6 +20,7 @@ use light_token::ExtensionInstructionData;
 use light_token_interface::instructions::extensions::CompressedOnlyExtensionInstructionData;
 use light_token_interface::instructions::transfer2::MultiInputTokenDataWithContext;
 use light_token_interface::state::ExtensionStruct;
+use std::collections::HashMap;
 
 #[derive(AnchorDeserialize, AnchorSerialize)]
 pub struct SplInterfacePdaArgs {
@@ -43,12 +44,18 @@ pub enum SourceType {
     Spl,
 }
 
+struct PackedAccount<'info> {
+    index: u8,
+    writable: bool,
+    signer: bool,
+    account_info: AccountInfo<'info>,
+}
+
 pub struct TokenTransfer<'a, 'info> {
     pub source: &'a AccountInfo<'info>,
     pub destination: &'a AccountInfo<'info>,
     pub mint: &'a AccountInfo<'info>,
     pub payer: &'a AccountInfo<'info>,
-    pub delegate: Option<&'a AccountInfo<'info>>,
     pub source_spl_token_account: &'a AccountInfo<'info>,
     pub source_ctoken_token_account: &'a AccountInfo<'info>,
     pub destination_spl_token_account: Option<&'a AccountInfo<'info>>,
@@ -66,7 +73,7 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
     pub fn load_ata(
         &self,
         amount: u64,
-        source_compressed_token: &Option<CompressedTokenArgs>,
+        source_compressed_token: &[CompressedTokenArgs],
         light_cpi_accounts: Option<&CpiAccounts<'_, 'info>>,
         compressed_proof_args: Option<&ProofArgs>,
         spl_interface_pda_data: &Option<SplInterfacePda>,
@@ -88,10 +95,7 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
 
         let ctoken_balance = ctoken_account.as_ref().map(|acc| acc.amount).unwrap_or(0);
 
-        let compressed_token_balance = source_compressed_token
-            .as_ref()
-            .map(|acc| acc.amount)
-            .unwrap_or(0);
+        let compressed_token_balance = source_compressed_token.iter().map(|acc| acc.amount).sum();
 
         let total = spl_balance
             .saturating_add(ctoken_balance)
@@ -106,7 +110,7 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
 
         // If SPL ATA exists → consolidate into SPL and return Spl
         if spl_token_account.is_some() {
-            // If SPL+CToken still insufficient, decompress compressed into SPL
+            // If SPL+CToken still insufficient, decompress compressed into CToken
             if spl_balance.saturating_add(ctoken_balance) < amount {
                 self.decompress_to_ctoken(
                     source_compressed_token,
@@ -142,203 +146,258 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
 
     pub fn decompress_to_ctoken(
         &self,
-        source_compressed_token_account: &Option<CompressedTokenArgs>,
+        source_compressed_token_accounts: &[CompressedTokenArgs],
         light_cpi_accounts: Option<&CpiAccounts<'_, 'info>>,
         compressed_proof_args: Option<&ProofArgs>,
         signer_seeds: &[&[u8]],
     ) -> Result<()> {
+        require!(
+            !source_compressed_token_accounts.is_empty(),
+            MultisigError::MissingCompressedTokenAccount
+        );
+
         self.create_ctoken_ata(self.source, self.source_ctoken_token_account)?;
 
-        let light_cpi_accounts = light_cpi_accounts
-            .as_ref()
-            .ok_or(MultisigError::MissingLightCpiAccounts)?;
-        let source_compressed_token_account = source_compressed_token_account
-            .as_ref()
-            .ok_or(MultisigError::MissingCompressedTokenAccount)?;
-        let compressed_proof_args = compressed_proof_args
-            .as_ref()
-            .ok_or(MultisigError::MissingCompressedProofArgs)?;
+        let light_cpi_accounts =
+            light_cpi_accounts.ok_or(MultisigError::MissingLightCpiAccounts)?;
 
-        let merkle_tree = light_cpi_accounts
-            .get_tree_account_info(
-                source_compressed_token_account
-                    .merkle_context
-                    .merkle_tree_pubkey_index as usize,
-            )
-            .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
+        let compressed_proof_args =
+            compressed_proof_args.ok_or(MultisigError::MissingCompressedProofArgs)?;
 
-        let queue = light_cpi_accounts
-            .get_tree_account_info(
-                source_compressed_token_account
-                    .merkle_context
-                    .queue_pubkey_index as usize,
-            )
-            .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
+        /*
+        -------------------------------------------------
+        collect unique trees + queues (Vec only)
+        -------------------------------------------------
+        */
 
-        // Build packed accounts
-        // Note: Don't add system accounts here - Transfer2AccountsMetaConfig adds them
-        let mut packed_accounts = Vec::new();
+        let mut trees: Vec<AccountInfo<'info>> =
+            Vec::with_capacity(source_compressed_token_accounts.len());
 
-        // Insert merkle tree and queue to get their indices
-        let merkle_tree_pubkey_index = packed_accounts.len() as u8;
-        packed_accounts.push(AccountMeta::new(merkle_tree.key(), false));
+        let mut queues: Vec<AccountInfo<'info>> =
+            Vec::with_capacity(source_compressed_token_accounts.len());
 
-        let queue_pubkey_index = packed_accounts.len() as u8;
-        packed_accounts.push(AccountMeta::new(queue.key(), false));
+        for f in source_compressed_token_accounts {
+            let tree = light_cpi_accounts
+                .get_tree_account_info(f.merkle_context.merkle_tree_pubkey_index as usize)
+                .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
 
-        // Build PackedStateTreeInfo
-        // prove_by_index is true if validity proof is None (no ZK proof)
-        let prove_by_index = source_compressed_token_account
-            .merkle_context
-            .prove_by_index;
-        let tree_info = PackedStateTreeInfo {
-            merkle_tree_pubkey_index,
-            queue_pubkey_index,
-            leaf_index: source_compressed_token_account.merkle_context.leaf_index,
-            root_index: source_compressed_token_account.root_index,
-            prove_by_index,
-        };
-        // Check if this is an ATA decompress (is_ata flag in stored TLV)
-        let is_ata = source_compressed_token_account
-            .tlv
-            .as_ref()
-            .is_some_and(|exts| {
-                exts.iter()
-                    .any(|e| matches!(e, ExtensionStruct::CompressedOnly(co) if co.is_ata != 0))
-            });
+            if !trees.iter().any(|x| x.key == tree.key) {
+                trees.push(tree.to_account_info());
+            }
 
-        // For ATA decompress, derive the bump from wallet owner + mint
-        // The signer is the wallet owner for ATAs
-        let ata_bump = if is_ata {
-            let (_, bump) = get_associated_token_address_and_bump(self.source.key, self.mint.key);
-            bump
-        } else {
-            0
-        };
+            let queue = light_cpi_accounts
+                .get_tree_account_info(f.merkle_context.queue_pubkey_index as usize)
+                .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
 
-        let owner_index = packed_accounts.len() as u8;
-        packed_accounts.push(AccountMeta::new_readonly(self.source.key(), true));
-        let delegate_index = if let Some(delegate) = self.delegate {
-            let delegate_index = packed_accounts.len() as u8;
-            packed_accounts.push(AccountMeta::new(delegate.key(), false));
-            delegate_index
-        } else {
-            0
-        };
-        let mint_index = packed_accounts.len() as u8;
-        packed_accounts.push(AccountMeta::new(self.source.key(), false));
-        let destination_index = packed_accounts.len() as u8;
-        packed_accounts.push(AccountMeta::new(
-            self.source_ctoken_token_account.key(),
+            if !queues.iter().any(|x| x.key == queue.key) {
+                queues.push(queue.to_account_info());
+            }
+        }
+
+        /*
+        -------------------------------------------------
+        deterministic ordering
+        -------------------------------------------------
+        */
+
+        let mut accounts: HashMap<Pubkey, PackedAccount<'info>> =
+            HashMap::with_capacity(trees.len() + queues.len() + 3);
+
+        let mut next_index: u8 = 0;
+
+        // 1. trees
+        for ai in trees {
+            Self::get_or_insert(&mut accounts, &mut next_index, ai, true, false);
+        }
+
+        // 2. queues
+        for ai in queues {
+            Self::get_or_insert(&mut accounts, &mut next_index, ai, true, false);
+        }
+
+        // 3. source
+        let owner_index = Self::get_or_insert(
+            &mut accounts,
+            &mut next_index,
+            self.source.to_account_info(),
             false,
-        ));
+            true,
+        );
 
-        // Convert TLV extensions from state format to instruction format
-        let is_frozen = source_compressed_token_account.state == AccountState::Frozen;
-        let tlv: Option<Vec<ExtensionInstructionData>> = source_compressed_token_account
-            .tlv
-            .as_ref()
-            .map(|extensions| {
-                extensions
-                    .iter()
-                    .filter_map(|ext| match ext {
-                        ExtensionStruct::CompressedOnly(compressed_only) => {
-                            Some(ExtensionInstructionData::CompressedOnly(
-                                CompressedOnlyExtensionInstructionData {
-                                    delegated_amount: compressed_only.delegated_amount,
-                                    withheld_transfer_fee: compressed_only.withheld_transfer_fee,
-                                    is_frozen,
-                                    compression_index: 0,
-                                    is_ata: compressed_only.is_ata != 0,
-                                    bump: ata_bump,
-                                    owner_index,
-                                },
-                            ))
-                        }
-                        _ => None,
-                    })
-                    .collect()
+        // 4. mint
+        let mint_index = Self::get_or_insert(
+            &mut accounts,
+            &mut next_index,
+            self.mint.to_account_info(),
+            true,
+            false,
+        );
+
+        // 5. destination
+        let destination_index = Self::get_or_insert(
+            &mut accounts,
+            &mut next_index,
+            self.source_ctoken_token_account.to_account_info(),
+            true,
+            false,
+        );
+
+        /*
+        -------------------------------------------------
+        build token inputs
+        -------------------------------------------------
+        */
+
+        let mut total_amount = 0;
+
+        let mut sources = Vec::with_capacity(source_compressed_token_accounts.len());
+
+        let mut tlv_inputs = Vec::with_capacity(source_compressed_token_accounts.len());
+
+        let ata_bump = get_associated_token_address_and_bump(self.source.key, self.mint.key).1;
+
+        for f in source_compressed_token_accounts {
+            total_amount += f.amount;
+
+            let tree = light_cpi_accounts
+                .get_tree_account_info(f.merkle_context.merkle_tree_pubkey_index as usize)
+                .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
+
+            let queue = light_cpi_accounts
+                .get_tree_account_info(f.merkle_context.queue_pubkey_index as usize)
+                .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
+
+            let merkle_tree_pubkey_index = accounts[tree.key].index;
+
+            let queue_pubkey_index = accounts[queue.key].index;
+
+            let is_frozen = f.state == AccountState::Frozen;
+
+            let mut tlv_vec = Vec::with_capacity(f.tlv.as_ref().map_or(0, |v| v.len()));
+
+            if let Some(exts) = &f.tlv {
+                for ext in exts {
+                    if let ExtensionStruct::CompressedOnly(co) = ext {
+                        tlv_vec.push(ExtensionInstructionData::CompressedOnly(
+                            CompressedOnlyExtensionInstructionData {
+                                delegated_amount: co.delegated_amount,
+                                withheld_transfer_fee: co.withheld_transfer_fee,
+                                is_frozen,
+                                compression_index: 0,
+                                is_ata: co.is_ata != 0,
+                                bump: if co.is_ata != 0 { ata_bump } else { 0 },
+                                owner_index,
+                            },
+                        ));
+                    }
+                }
+            }
+
+            tlv_inputs.push(tlv_vec);
+
+            sources.push(MultiInputTokenDataWithContext {
+                owner: owner_index,
+                amount: f.amount,
+                has_delegate: false,
+                delegate: 0,
+                mint: mint_index,
+                version: f.version,
+                merkle_context: PackedMerkleContext {
+                    merkle_tree_pubkey_index,
+                    queue_pubkey_index,
+                    prove_by_index: f.merkle_context.prove_by_index,
+                    leaf_index: f.merkle_context.leaf_index,
+                },
+                root_index: f.root_index,
             });
+        }
 
-        // Clone tlv for passing to Transfer2Inputs.in_tlv
-        let in_tlv = tlv.clone().map(|t| vec![t]);
-        let source = MultiInputTokenDataWithContext {
-            owner: owner_index,
-            amount: source_compressed_token_account.amount,
-            has_delegate: self.delegate.is_some(),
-            delegate: delegate_index,
-            mint: mint_index,
-            version: source_compressed_token_account.version,
-            merkle_context: PackedMerkleContext {
-                merkle_tree_pubkey_index: tree_info.merkle_tree_pubkey_index,
-                queue_pubkey_index: tree_info.queue_pubkey_index,
-                prove_by_index: tree_info.prove_by_index,
-                leaf_index: tree_info.leaf_index,
-            },
-            root_index: tree_info.root_index,
-        };
+        /*
+        -------------------------------------------------
+        build token account
+        -------------------------------------------------
+        */
 
-        // Build CTokenAccount2 with decompress operation
         let mut token_account =
-            CTokenAccount2::new(vec![source]).map_err(|_| ProgramError::InvalidAccountData)?;
+            CTokenAccount2::new(sources).map_err(|_| ProgramError::InvalidAccountData)?;
+
         token_account
-            .decompress(source_compressed_token_account.amount, destination_index)
+            .decompress(total_amount, destination_index)
             .map_err(|_| ProgramError::InvalidAccountData)?;
 
-        // Build instruction inputs
-        let meta_config = Transfer2AccountsMetaConfig::new(self.payer.key(), packed_accounts);
-        let transfer_config = Transfer2Config::default().filter_zero_amount_outputs();
+        /*
+        -------------------------------------------------
+        pack metas
+        -------------------------------------------------
+        */
+
+        let mut packed_accounts = vec![AccountMeta::default(); accounts.len()];
+
+        let mut ordered_infos = vec![None; accounts.len()];
+
+        for acc in accounts.values() {
+            packed_accounts[acc.index as usize] = if acc.writable {
+                AccountMeta::new(*acc.account_info.key, acc.signer)
+            } else {
+                AccountMeta::new_readonly(*acc.account_info.key, acc.signer)
+            };
+
+            ordered_infos[acc.index as usize] = Some(acc.account_info.to_account_info());
+        }
+
+        /*
+        -------------------------------------------------
+        instruction
+        -------------------------------------------------
+        */
 
         let inputs = Transfer2Inputs {
-            meta_config,
+            meta_config: Transfer2AccountsMetaConfig::new(self.payer.key(), packed_accounts),
             token_accounts: vec![token_account],
-            transfer_config,
+            transfer_config: Transfer2Config::default().filter_zero_amount_outputs(),
             validity_proof: light_token::ValidityProof(compressed_proof_args.proof),
-            in_tlv,
+            in_tlv: if tlv_inputs.iter().all(|f| f.is_empty()) {
+                None
+            } else {
+                Some(tlv_inputs)
+            },
             ..Default::default()
         };
 
         let ix = create_transfer2_instruction(inputs).map_err(ProgramError::from)?;
 
-        let mut account_info = Vec::new();
-        account_info.push(light_cpi_accounts.account_infos()[0].to_account_info());
-        account_info.push(light_cpi_accounts.fee_payer().to_account_info());
-        account_info.push(self.compressed_token_program_authority.to_account_info());
-        account_info.push(
+        /*
+        -------------------------------------------------
+        cpi
+        -------------------------------------------------
+        */
+
+        let mut account_infos = vec![
+            light_cpi_accounts.account_infos()[0].to_account_info(),
+            light_cpi_accounts.fee_payer().to_account_info(),
+            self.compressed_token_program_authority.to_account_info(),
             light_cpi_accounts
                 .registered_program_pda()
                 .map_err(|_| MultisigError::LightCpiAccountError)?
                 .to_account_info(),
-        );
-        account_info.push(
             light_cpi_accounts
                 .account_compression_authority()
                 .map_err(|_| MultisigError::LightCpiAccountError)?
                 .to_account_info(),
-        );
-        account_info.push(
             light_cpi_accounts
                 .account_compression_program()
                 .map_err(|_| MultisigError::LightCpiAccountError)?
                 .to_account_info(),
-        );
-        account_info.push(
             light_cpi_accounts
                 .system_program()
                 .map_err(|_| MultisigError::LightCpiAccountError)?
                 .to_account_info(),
-        );
+        ];
 
-        account_info.push(merkle_tree.to_account_info());
-        account_info.push(queue.to_account_info());
-        account_info.push(self.source.to_account_info());
-        if self.delegate.is_some() {
-            account_info.push(self.delegate.unwrap().to_account_info());
-        }
-        account_info.push(self.mint.to_account_info());
-        account_info.push(self.source_ctoken_token_account.to_account_info());
+        account_infos.extend(ordered_infos.into_iter().map(|x| x.unwrap()));
 
-        invoke_signed(&ix, &account_info, &[signer_seeds])?;
+        invoke_signed(&ix, &account_infos, &[signer_seeds])?;
+
         Ok(())
     }
 
@@ -532,5 +591,33 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
         }
 
         Ok(Some(spl_interface_pda_data))
+    }
+
+    fn get_or_insert(
+        map: &mut HashMap<Pubkey, PackedAccount<'info>>,
+        next_index: &mut u8,
+        account_info: AccountInfo<'info>,
+        writable: bool,
+        signer: bool,
+    ) -> u8 {
+        let key = *account_info.key;
+        if let Some(existing) = map.get_mut(&key) {
+            existing.writable |= writable;
+            existing.signer |= signer;
+            existing.index
+        } else {
+            let index = *next_index;
+            *next_index += 1;
+            map.insert(
+                key,
+                PackedAccount {
+                    index,
+                    writable,
+                    signer,
+                    account_info,
+                },
+            );
+            index
+        }
     }
 }

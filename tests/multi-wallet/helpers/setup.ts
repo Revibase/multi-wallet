@@ -18,9 +18,9 @@ import {
 } from "@revibase/core";
 import {
   address,
-  createKeyPairSignerFromPrivateKeyBytes,
+  extractBytesFromKeyPairSigner,
   fetchAddressesForLookupTables,
-  getAddressEncoder,
+  generateExtractableKeyPairSigner,
 } from "gill";
 import {
   findAddressLookupTablePda,
@@ -44,15 +44,10 @@ export async function setupTestEnvironment(): Promise<TestContext> {
     compressionApiEndpoint: LOCAL_INDEXER_URL,
     proverEndpoint: LOCAL_PROVER_URL,
   });
-  // Create keypairs with deterministic seeds for testing
-  const payerSeed = crypto.getRandomValues(new Uint8Array(32));
 
-  const payer = await createKeyPairSignerFromPrivateKeyBytes(payerSeed, true);
+  const payer = await generateExtractableKeyPairSigner();
 
-  const payerSecretKey = new Uint8Array([
-    ...payerSeed,
-    ...getAddressEncoder().encode(address(payer.address.toString())),
-  ]);
+  const payerSecretKey = await extractBytesFromKeyPairSigner(payer);
 
   // Fund the payer account
   await getSolanaRpc().requestAirdrop(payer.address, AIRDROP_AMOUNT).send();
@@ -180,26 +175,13 @@ export async function createMultiWallet(
   const rpId = crypto.randomUUID();
   const origin = crypto.randomUUID();
 
-  const payerSeed = crypto.getRandomValues(new Uint8Array(32));
-  const walletSeed = crypto.getRandomValues(new Uint8Array(32));
-  const newMemberSeed = crypto.getRandomValues(new Uint8Array(32));
+  const payer = await generateExtractableKeyPairSigner();
+  const wallet = await generateExtractableKeyPairSigner();
+  const newMember = await generateExtractableKeyPairSigner();
 
-  const payer = await createKeyPairSignerFromPrivateKeyBytes(payerSeed, true);
-  const wallet = await createKeyPairSignerFromPrivateKeyBytes(walletSeed, true);
-  const newMember = await createKeyPairSignerFromPrivateKeyBytes(
-    newMemberSeed,
-    true,
-  );
+  const payerSecretKey = await extractBytesFromKeyPairSigner(payer);
 
-  const payerSecretKey = new Uint8Array([
-    ...payerSeed,
-    ...getAddressEncoder().encode(address(payer.address.toString())),
-  ]);
-
-  const newMemberSecretKey = new Uint8Array([
-    ...newMemberSeed,
-    ...getAddressEncoder().encode(address(newMember.address.toString())),
-  ]);
+  const newMemberSecretKey = await extractBytesFromKeyPairSigner(newMember);
 
   // Fund the payer account
   await getSolanaRpc().requestAirdrop(payer.address, AIRDROP_AMOUNT).send();
