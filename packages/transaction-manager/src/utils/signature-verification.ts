@@ -19,22 +19,6 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
   return diff === 0;
 }
 
-export async function verifyAuthProviderSignature(
-  authProvider: TransactionAuthDetails["authProvider"],
-  messageHash: Uint8Array<ArrayBuffer>,
-): Promise<void> {
-  if (!authProvider) return;
-  try {
-    const key = await importJWK(convertBase64StringToJWK(authProvider.jwk));
-    const result = await compactVerify(authProvider.jws, key);
-    if (!equalBytes(result.payload, messageHash)) {
-      throw new Error("Invalid Payload");
-    }
-  } catch {
-    throw new Error(`Auth provider signature verification failed`);
-  }
-}
-
 export async function verifyDeviceSignature(
   device: TransactionAuthDetails["device"],
   messageHash: Uint8Array<ArrayBuffer>,

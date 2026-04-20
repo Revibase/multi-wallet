@@ -2,7 +2,7 @@
 
 Core types and helpers for Revibase multi-wallet: transfer intents and custom vault-paid transactions (sync or Jito bundles).
 
-**Contents:** [Create user](#create-a-user-account) → [Create wallet](#create-a-wallet) → [Transfer intents](#transfer-intents) (SOL / SPL) → [Custom transactions](#custom-transactions-sync-vs-bundle) (sync or Jito).
+**Contents:** [Create user](#create-a-user-account) → [Create wallet](#create-a-wallet) → [Transfer intents](#transfer-intents) → [Custom transactions](#custom-transactions-sync-vs-bundle) (sync or Jito).
 
 ---
 
@@ -105,13 +105,21 @@ const walletAddress = await getWalletAddressFromSettings(settings);
 
 Use `settings`, `compressed`, and (optionally) `walletAddress` in the following steps.
 
-### 2. Native SOL transfer
+### 2. Transaction manager signer (when required)
+
+If the wallet uses a [transaction manager](https://github.com/Revibase/multi-wallet/tree/main/packages/transaction-manager) member, add its signer for the native/SPL steps below and for [custom transactions](#custom-transactions-sync-vs-bundle). The manager’s HTTPS URL is stored on-chain on that member’s user account.
+
+1. After you have `settingsAccount`, call `retrieveTransactionManager(memberAddress, settingsAccount)`. It returns **`null`** when the member already has Initiate, Vote, and Execute (no transaction manager signer is required). Otherwise it returns **`{ transactionManagerAddress, userAddressTreeIndex }`** — then load the user account with `fetchUserAccountData(transactionManagerAddress, userAddressTreeIndex)` and read `transactionManagerUrl` (a Gill `Option`: use it when `__option === "Some"` via `.value`).
+2. Call `createTransactionManagerSigner({ address, url, authResponses?, transactionMessageBytes?, onPendingApprovalsCallback?, onPendingApprovalsSuccess?, abortController?, opts? })` to obtain a `TransactionSigner`.
+
+### 3. Native SOL transfer
 
 ```ts
 import {
+  createTransactionManagerSigner,
+  fetchUserAccountData,
   nativeTransferIntent,
   retrieveTransactionManager,
-  getSignedTransactionManager,
 } from "@revibase/core";
 import type { TransactionSigner } from "gill";
 
@@ -119,18 +127,27 @@ declare const payer: TransactionSigner;
 declare const memberSigner: TransactionSigner;
 declare const destination: string;
 
-// For wallets with a transaction manager, add its signer. See Custom transactions for full flow.
+// For wallets with a transaction manager, add its signer. See [step 2](#2-transaction-manager-signer-when-required).
 const tmResult = retrieveTransactionManager(
   memberSigner.address.toString(),
   settingsAccount,
 );
-const transactionManagerSigner =
-  "transactionManagerAddress" in tmResult
-    ? await getSignedTransactionManager({
-        transactionManagerAddress: tmResult.transactionManagerAddress,
-        userAddressTreeIndex: tmResult.userAddressTreeIndex,
-      })
-    : null;
+let transactionManagerSigner: TransactionSigner | null = null;
+if (tmResult !== null) {
+  const userAccountData = await fetchUserAccountData(
+    tmResult.transactionManagerAddress,
+    tmResult.userAddressTreeIndex,
+  );
+  if (userAccountData.transactionManagerUrl.__option === "None") {
+    throw new Error(
+      "Transaction manager endpoint is missing for this account",
+    );
+  }
+  transactionManagerSigner = createTransactionManagerSigner({
+    address: tmResult.transactionManagerAddress,
+    url: userAccountData.transactionManagerUrl.value,
+  });
+}
 
 const instructions = await nativeTransferIntent({
   settings,
@@ -146,13 +163,14 @@ const instructions = await nativeTransferIntent({
 // Build tx from instructions with prepareTransactionMessage (or similar), then send.
 ```
 
-### 3. SPL / Token-2022 transfer
+### 4. SPL / Token-2022 transfer
 
 ```ts
 import {
-  tokenTransferIntent,
+  createTransactionManagerSigner,
+  fetchUserAccountData,
   retrieveTransactionManager,
-  getSignedTransactionManager,
+  tokenTransferIntent,
 } from "@revibase/core";
 import type { Address, TransactionSigner } from "gill";
 import { TOKEN_2022_PROGRAM_ADDRESS } from "gill/programs";
@@ -166,13 +184,20 @@ const tmResult = retrieveTransactionManager(
   memberSigner.address.toString(),
   settingsAccount,
 );
-const transactionManagerSigner =
-  "transactionManagerAddress" in tmResult
-    ? await getSignedTransactionManager({
-        transactionManagerAddress: tmResult.transactionManagerAddress,
-        userAddressTreeIndex: tmResult.userAddressTreeIndex,
-      })
-    : null;
+let transactionManagerSigner: TransactionSigner | null = null;
+if (tmResult !== null) {
+  const userAccountData = await fetchUserAccountData(
+    tmResult.transactionManagerAddress,
+    tmResult.userAddressTreeIndex,
+  );
+  if (userAccountData.transactionManagerUrl.__option === "None") {
+    throw new Error("Transaction manager endpoint is missing for this account");
+  }
+  transactionManagerSigner = createTransactionManagerSigner({
+    address: tmResult.transactionManagerAddress,
+    url: userAccountData.transactionManagerUrl.value,
+  });
+}
 
 const instructions = await tokenTransferIntent({
   settings,
@@ -203,11 +228,12 @@ Prerequisite: `settings`, `compressed`, `walletAddress`, and `settingsAccount` f
 
 ```ts
 import {
+  createTransactionManagerSigner,
+  fetchUserAccountData,
   prepareTransactionMessage,
   prepareTransactionSync,
   signAndSendTransaction,
   retrieveTransactionManager,
-  getSignedTransactionManager,
 } from "@revibase/core";
 import {
   createNoopSigner,
@@ -234,13 +260,25 @@ const transactionMessageBytes = prepareTransactionMessage({
   addressesByLookupTableAddress: addressLookups,
 });
 
-const { transactionManagerAddress, userAddressTreeIndex } =
-  retrieveTransactionManager(memberSigner.address.toString(), settingsAccount);
-const transactionManagerSigner = await getSignedTransactionManager({
-  transactionMessageBytes,
-  transactionManagerAddress,
-  userAddressTreeIndex,
-});
+const tmResult = retrieveTransactionManager(
+  memberSigner.address.toString(),
+  settingsAccount,
+);
+let transactionManagerSigner: TransactionSigner | null = null;
+if (tmResult !== null) {
+  const userAccountData = await fetchUserAccountData(
+    tmResult.transactionManagerAddress,
+    tmResult.userAddressTreeIndex,
+  );
+  if (userAccountData.transactionManagerUrl.__option === "None") {
+    throw new Error("Transaction manager endpoint is missing for this account");
+  }
+  transactionManagerSigner = createTransactionManagerSigner({
+    address: tmResult.transactionManagerAddress,
+    url: userAccountData.transactionManagerUrl.value,
+    transactionMessageBytes,
+  });
+}
 
 const details = await prepareTransactionSync({
   compressed,
@@ -261,12 +299,13 @@ const signature = await signAndSendTransaction(details);
 
 ```ts
 import {
+  createTransactionManagerSigner,
+  fetchUserAccountData,
   prepareTransactionMessage,
   prepareTransactionBundle,
   signAndSendBundledTransactions,
   pollJitoBundleConfirmation,
   retrieveTransactionManager,
-  getSignedTransactionManager,
 } from "@revibase/core";
 import {
   createNoopSigner,
@@ -292,13 +331,25 @@ const transactionMessageBytes = prepareTransactionMessage({
   addressesByLookupTableAddress: addressLookups,
 });
 
-const { transactionManagerAddress, userAddressTreeIndex } =
-  retrieveTransactionManager(memberSigner.address.toString(), settingsAccount);
-const transactionManagerSigner = await getSignedTransactionManager({
-  transactionMessageBytes,
-  transactionManagerAddress,
-  userAddressTreeIndex,
-});
+const tmResult = retrieveTransactionManager(
+  memberSigner.address.toString(),
+  settingsAccount,
+);
+let transactionManagerSigner: TransactionSigner | null = null;
+if (tmResult !== null) {
+  const userAccountData = await fetchUserAccountData(
+    tmResult.transactionManagerAddress,
+    tmResult.userAddressTreeIndex,
+  );
+  if (userAccountData.transactionManagerUrl.__option === "None") {
+    throw new Error("Transaction manager endpoint is missing for this account");
+  }
+  transactionManagerSigner = createTransactionManagerSigner({
+    address: tmResult.transactionManagerAddress,
+    url: userAccountData.transactionManagerUrl.value,
+    transactionMessageBytes,
+  });
+}
 
 const bundle = await prepareTransactionBundle({
   payer,

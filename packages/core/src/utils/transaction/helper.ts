@@ -25,22 +25,22 @@ import {
   type ConfigAction,
   type MemberKey,
 } from "../../generated";
-import type { AccountCache } from "../../types";
 import {
   KeyType,
   Permission,
   Permissions,
   type TransactionAuthDetails,
 } from "../../types";
-import { fetchUserAccountData } from "../compressed";
-import { retryFetch } from "../retry";
 
 export function retrieveTransactionManager(
   signer: string,
   settingsData: CompressedSettingsData & {
     isCompressed: boolean;
   },
-) {
+): {
+  transactionManagerAddress: Address;
+  userAddressTreeIndex: number;
+} | null {
   if (settingsData.threshold > 1) {
     throw new ValidationError(
       "Multi-signature transactions with threshold > 1 are not supported yet.",
@@ -70,7 +70,7 @@ export function retrieveTransactionManager(
     Permission.ExecuteTransaction,
   );
   if (hasInitiate && hasVote && hasExecute) {
-    return {};
+    return null;
   }
 
   if (!hasVote || !hasExecute) {
@@ -102,92 +102,222 @@ export function retrieveTransactionManager(
   };
 }
 
-export async function getSignedTransactionManager({
-  authResponses,
-  transactionManagerAddress,
-  userAddressTreeIndex,
-  transactionMessageBytes,
-  cachedAccounts,
-}: {
-  authResponses?: TransactionAuthDetails[];
-  transactionMessageBytes?: ReadonlyUint8Array;
-  transactionManagerAddress?: Address;
-  userAddressTreeIndex?: number;
-  cachedAccounts?: AccountCache;
-}): Promise<TransactionSigner | null> {
-  if (!transactionManagerAddress) return null;
-  const userAccountData = await fetchUserAccountData(
-    transactionManagerAddress,
-    userAddressTreeIndex,
-    cachedAccounts,
-  );
-
-  if (userAccountData.transactionManagerUrl.__option === "None") {
-    throw new NotFoundError(
-      "Transaction manager endpoint",
-      "Transaction manager endpoint is missing for this account",
-    );
-  }
-
-  return createTransactionManagerSigner(
-    transactionManagerAddress,
-    userAccountData.transactionManagerUrl.value,
-    authResponses,
-    transactionMessageBytes,
-  );
+function toWebSocketUrl(httpUrl: string): string {
+  const u = new URL(httpUrl);
+  if (u.protocol === "https:") u.protocol = "wss:";
+  else if (u.protocol === "http:") u.protocol = "ws:";
+  return u.toString();
 }
 
-export function createTransactionManagerSigner(
-  address: Address,
-  url: string,
-  authResponses?: TransactionAuthDetails[],
-  transactionMessageBytes?: ReadonlyUint8Array,
-): TransactionSigner {
+function openWebSocket(url: string, signal: AbortSignal): Promise<WebSocket> {
+  return new Promise((resolve, reject) => {
+    const ws = new WebSocket(url);
+
+    const onAbort = () => {
+      try {
+        ws.close();
+      } catch {
+        /* ignore */
+      }
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+
+    ws.onopen = () => {
+      signal.removeEventListener("abort", onAbort);
+      resolve(ws);
+    };
+    ws.onerror = () => {
+      signal.removeEventListener("abort", onAbort);
+      reject(new Error("WebSocket connection failed"));
+    };
+  });
+}
+
+async function readWebSocketJsonEvents(
+  ws: WebSocket,
+  signal: AbortSignal,
+  onEvent: (event: string, data: any) => boolean,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+
+    const cleanup = () => {
+      signal.removeEventListener("abort", onAbort);
+      ws.removeEventListener("message", onMessage);
+      ws.removeEventListener("error", onError);
+      ws.removeEventListener("close", onClose);
+    };
+
+    const finish = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      fn();
+    };
+
+    const onAbort = () => {
+      try {
+        ws.close();
+      } catch {
+        /* ignore */
+      }
+    };
+    signal.addEventListener("abort", onAbort);
+
+    const onMessage = (ev: MessageEvent) => {
+      if (typeof ev.data !== "string") return;
+      let parsed: { event?: string; data?: unknown };
+      try {
+        parsed = JSON.parse(ev.data);
+      } catch {
+        return;
+      }
+      const event = typeof parsed.event === "string" ? parsed.event : "message";
+      const data = parsed.data;
+      try {
+        if (onEvent(event, data)) {
+          finish(() => resolve());
+        }
+      } catch (e) {
+        finish(() => reject(e));
+      }
+    };
+
+    const onError = () => {
+      finish(() =>
+        reject(
+          new NetworkError("Transaction manager request failed", 0, ws.url),
+        ),
+      );
+    };
+
+    const onClose = () => {
+      finish(() => resolve());
+    };
+
+    ws.addEventListener("message", onMessage);
+    ws.addEventListener("error", onError);
+    ws.addEventListener("close", onClose);
+  });
+}
+
+function createAbortError(message = "Aborted"): Error {
+  const err = new Error(message);
+  err.name = "AbortError";
+  return err;
+}
+
+const sleep = (ms: number, s: AbortSignal) =>
+  new Promise<void>((resolve, reject) => {
+    if (s.aborted) return reject(createAbortError());
+    const id = setTimeout(resolve, ms);
+    s.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(id);
+        reject(createAbortError());
+      },
+      { once: true },
+    );
+  });
+
+export function createTransactionManagerSigner(args: {
+  address: Address;
+  url: string;
+  authResponses?: TransactionAuthDetails[];
+  transactionMessageBytes?: ReadonlyUint8Array;
+  onPendingApprovalsCallback?: (validTill: number) => void;
+  onPendingApprovalsSuccess?: () => void;
+  abortController?: AbortController;
+  opts?: { maxAttempts?: number; retryDelayMs?: number };
+}): TransactionSigner {
+  const {
+    address,
+    url,
+    authResponses,
+    transactionMessageBytes,
+    onPendingApprovalsCallback,
+    onPendingApprovalsSuccess,
+    abortController,
+    opts,
+  } = args;
+  const controller = abortController ?? new AbortController();
+  const maxAttempts = opts?.maxAttempts ?? 10;
+  const retryDelayMs = opts?.retryDelayMs ?? 400;
   return {
     address,
     async signTransactions(transactions) {
-      const response = await retryFetch(() =>
-        fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            publicKey: address.toString(),
-            payload: transactions.map((x) => ({
-              transaction: getBase64Decoder().decode(
-                getTransactionEncoder().encode(x),
-              ),
-              transactionMessageBytes: transactionMessageBytes
-                ? getBase64Decoder().decode(transactionMessageBytes)
-                : undefined,
-              authResponses,
-            })),
-          }),
-        }),
-      );
-
-      if (!response.ok) {
-        throw new NetworkError(
-          `Transaction manager request failed: ${response.statusText}`,
-          response.status,
-          url,
-        );
+      const { signal } = controller;
+      const wsUrl = toWebSocketUrl(url);
+      const payload = JSON.stringify({
+        publicKey: address.toString(),
+        payload: transactions.map((x) => ({
+          transaction: getBase64Decoder().decode(
+            getTransactionEncoder().encode(x),
+          ),
+          transactionMessageBytes: transactionMessageBytes
+            ? getBase64Decoder().decode(transactionMessageBytes)
+            : undefined,
+          authResponses,
+        })),
+      });
+      for (let i = 0; i < maxAttempts; i++) {
+        if (signal.aborted) throw createAbortError();
+        let signatures: string[] | undefined;
+        let ws: WebSocket | undefined;
+        try {
+          ws = await openWebSocket(wsUrl, signal);
+          ws.send(payload);
+          await readWebSocketJsonEvents(ws, signal, (event, data) => {
+            if (event === "error") {
+              const err =
+                data &&
+                typeof data === "object" &&
+                typeof (data as { error?: string }).error === "string"
+                  ? (data as { error: string }).error
+                  : "Unknown error";
+              const e = new Error(err) as Error & { noRetry: true };
+              e.noRetry = true;
+              throw e;
+            }
+            if (event === "signatures") {
+              signatures = (data as { signatures?: string[] }).signatures;
+              return true;
+            }
+            if (event === "pending_transaction_approval") {
+              onPendingApprovalsCallback?.(
+                (data as { validTill: number }).validTill,
+              );
+            } else if (event === "transaction_approved") {
+              onPendingApprovalsSuccess?.();
+            }
+            return false;
+          });
+        } catch (e: unknown) {
+          if (e && typeof e === "object" && (e as { noRetry?: true }).noRetry) {
+            throw new NetworkError(`${(e as Error).message}`);
+          }
+          if (
+            e &&
+            typeof e === "object" &&
+            (e as { name?: string }).name === "AbortError"
+          )
+            throw e;
+        } finally {
+          try {
+            ws?.close();
+          } catch {
+            /* ignore */
+          }
+        }
+        if (signatures?.length) {
+          return signatures.map((sig) => ({
+            [address]: getBase58Encoder().encode(sig) as SignatureBytes,
+          }));
+        }
+        if (i < maxAttempts - 1) await sleep(retryDelayMs, signal);
       }
-
-      const data = (await response.json()) as
-        | { signatures: string[] }
-        | { error: string };
-
-      if ("error" in data) {
-        throw new NetworkError(
-          `Transaction manager error: ${data.error}`,
-          response.status,
-          url,
-        );
-      }
-
-      return data.signatures.map((sig) => ({
-        [address]: getBase58Encoder().encode(sig) as SignatureBytes,
-      }));
+      throw new NetworkError("Transaction manager: missing signatures");
     },
   };
 }

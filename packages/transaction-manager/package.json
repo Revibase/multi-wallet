@@ -1,6 +1,6 @@
 {
   "name": "@revibase/transaction-manager",
-  "version": "0.3.0",
+  "version": "0.3.4",
   "scripts": {
     "build": "rimraf dist & tsup",
     "clean": "rimraf dist",

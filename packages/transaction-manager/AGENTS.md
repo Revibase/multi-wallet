@@ -23,10 +23,10 @@ Agents should use this package to implement a single, auditable signing service 
 
 Public exports from `src/index.ts`:
 
-| Category         | Exports                                                                                           |
-| ---------------- | ------------------------------------------------------------------------------------------------- |
-| **Function**     | `verifyTransaction`                                                                               |
-| **Types**        | `TransactionManagerConfig`, `VerificationResults`, `ExpectedTransactionSigner`, `WellKnownClientCacheEntry` |
+| Category     | Exports                                                                                                     |
+| ------------ | ----------------------------------------------------------------------------------------------------------- |
+| **Function** | `verifyTransaction`                                                                                         |
+| **Types**    | `TransactionManagerConfig`, `VerificationResults`, `ExpectedTransactionSigner`, `WellKnownClientCacheEntry` |
 
 ### `verifyTransaction`
 
@@ -67,12 +67,12 @@ Union of:
   - `walletAddress`: `Address`
   - `client`: `{ origin: string } & WellKnownClientCacheEntry`
   - `device`: string identifier
-  - `authProvider`: `string | undefined`
+  - `startRequest`: `initial transaction request`
 - Plain address signer:
   - `signer`: `Address`
   - `walletAddress`: `Address`
 
-Use this type in policies to understand *who* is authorizing a transaction (`origin`, device, wallet address).
+Use this type in policies to understand _who_ is authorizing a transaction (`origin`, device, wallet address).
 
 ### `WellKnownClientCacheEntry`
 
@@ -112,16 +112,16 @@ To integrate `@revibase/transaction-manager` into a backend:
 
 ## File map
 
-| Path                                   | Contents                                                            |
-| -------------------------------------- | ------------------------------------------------------------------- |
-| `src/index.ts`                         | Public exports (`verifyTransaction`, types)                         |
+| Path                                  | Contents                                                            |
+| ------------------------------------- | ------------------------------------------------------------------- |
+| `src/index.ts`                        | Public exports (`verifyTransaction`, types)                         |
 | `src/verify-transaction.ts`           | Core decoding, whitelist checks, and routing into processors        |
-| `src/types.ts`                         | `TransactionManagerConfig`, `VerificationResults`, signer types     |
-| `src/processors/*.ts`                  | Per-instruction handlers (change config, transfer intents, buffers) |
-| `src/utils/transaction-parsing.ts`     | Transaction message parsing and LUT resolution                      |
-| `src/utils/signature-verification.ts`  | WebAuthn / secp256r1 verification helpers                          |
-| `src/utils/consts.ts`                  | Whitelisted programs, lookup table addresses                        |
-| `src/utils/fetch-well-known.ts`        | Fetching and caching well-known client metadata                     |
+| `src/types.ts`                        | `TransactionManagerConfig`, `VerificationResults`, signer types     |
+| `src/processors/*.ts`                 | Per-instruction handlers (change config, transfer intents, buffers) |
+| `src/utils/transaction-parsing.ts`    | Transaction message parsing and LUT resolution                      |
+| `src/utils/signature-verification.ts` | WebAuthn / secp256r1 verification helpers                           |
+| `src/utils/consts.ts`                 | Whitelisted programs, lookup table addresses                        |
+| `src/utils/fetch-well-known.ts`       | Fetching and caching well-known client metadata                     |
 
 ## Agent rules
 
@@ -134,4 +134,3 @@ To integrate `@revibase/transaction-manager` into a backend:
     2. Run policy checks on `VerificationResults`
     3. Only then sign `transactionMessage`
 - Never hardcode private keys in the repository. Use environment / secret management only.
-

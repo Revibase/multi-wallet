@@ -112,13 +112,6 @@ export const AuthenticationContextSchema = z
         jws: z.string(),
       })
       .strict(),
-    authProvider: z
-      .object({
-        jwk: z.base64(),
-        jws: z.string(),
-      })
-      .strict()
-      .optional(),
   })
   .strict();
 

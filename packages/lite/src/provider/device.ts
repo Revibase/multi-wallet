@@ -59,7 +59,7 @@ export class DeviceKeyManager {
       await DeviceKeyManager.saveToDB(PRIVATE_KEY_ID, keyPair.privateKey);
     } catch (err) {
       const isCloneError =
-        err instanceof DOMException && err.name === "DataCloneError";
+        err instanceof Error && err.name === "DataCloneError";
       if (isCloneError) {
         throw new Error(
           "Storing device key in this browser is not supported. Try Chrome or ensure you are in a secure context.",

@@ -1,4 +1,4 @@
-import type { Secp256r1Key } from "@revibase/core";
+import type { Secp256r1Key, StartTransactionRequest } from "@revibase/core";
 import type {
   Address,
   Instruction,
@@ -104,11 +104,7 @@ export type ExpectedTransactionSigner =
        * Uniquely identifies the device that requested the signature for this transaction.
        */
       device: string;
-      /**
-       * The authentication provider, if known.
-       * When set, indicates the transaction was already verified once by that provider.
-       */
-      authProvider: string | undefined;
+      startRequest: StartTransactionRequest;
     }
   | {
       /** The public key of the signer. */
