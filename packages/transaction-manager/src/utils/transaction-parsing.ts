@@ -109,7 +109,6 @@ export async function verifyAndParseSigners(
   instructions: Instruction[],
   settingsAddress: string,
   signers: SignerInfo[],
-  lastValidBlockHeight: bigint,
   authResponses?: TransactionAuthDetails[],
   wellKnownProxyUrl?: URL,
 ) {

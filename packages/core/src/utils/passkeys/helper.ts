@@ -175,7 +175,7 @@ export async function createTransactionChallenge(
   estimatedSlotHashExpiry?: number,
 ) {
   let slotHashBytes: ReadonlyUint8Array;
-  if (!slotHash || !slotNumber) {
+  if (!slotHash || !slotNumber || !estimatedSlotHashExpiry) {
     const slotSysvarData = (
       await getSolanaRpc()
         .getAccountInfo(
