@@ -113,7 +113,7 @@ export async function mockAuthenticationResponse(
       phase: "start",
       redirectOrigin: clientOrigin,
       rid: nonce,
-      validTill: Date.now() + 10 * 60 * 1000,
+      validTill: Date.now() + 3 * 60 * 1000,
       data: {
         type: "transaction",
         payload: {

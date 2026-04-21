@@ -2,7 +2,23 @@
 
 Core types and helpers for Revibase multi-wallet: transfer intents and custom vault-paid transactions (sync or Jito bundles).
 
-**Contents:** [Create user](#create-a-user-account) → [Create wallet](#create-a-wallet) → [Transfer intents](#transfer-intents) → [Custom transactions](#custom-transactions-sync-vs-bundle) (sync or Jito).
+**Contents:** [Initialize](#initialize) → [Create user](#create-a-user-account) → [Create wallet](#create-a-wallet) → [Transfer intents](#transfer-intents) → [Custom transactions](#custom-transactions-sync-vs-chunked-bundle) (sync or chunked).
+
+---
+
+## Initialize
+
+Call `initialize()` once before using helpers that rely on shared RPC clients (for example `getSolanaRpc()` or compressed account helpers).
+
+```ts
+import { initialize } from "@revibase/core";
+
+initialize({
+  rpcEndpoint: "https://api.mainnet-beta.solana.com",
+  // proverEndpoint?: string;
+  // compressionApiEndpoint?: string;
+});
+```
 
 ---
 
@@ -139,9 +155,7 @@ if (tmResult !== null) {
     tmResult.userAddressTreeIndex,
   );
   if (userAccountData.transactionManagerUrl.__option === "None") {
-    throw new Error(
-      "Transaction manager endpoint is missing for this account",
-    );
+    throw new Error("Transaction manager endpoint is missing for this account");
   }
   transactionManagerSigner = createTransactionManagerSigner({
     address: tmResult.transactionManagerAddress,
@@ -217,10 +231,12 @@ const instructions = await tokenTransferIntent({
 
 ---
 
-## Custom transactions (sync vs bundle)
+## Custom transactions (sync vs chunked bundle)
 
-- **Small tx size** → **sync**: `prepareTransactionMessage` → `prepareTransactionSync` → `signAndSendTransaction`
-- **Larger tx size** → **Jito bundle**: `prepareTransactionMessage` → `prepareTransactionBundle` → `signAndSendBundledTransactions`
+- **Small tx size** → **sync**: `prepareTransactionMessage` → `prepareTransactionSync` → send
+- **Larger tx size** → **chunked bundle**: `prepareTransactionMessage` → `prepareTransactionBundle` → send the returned transactions in order
+
+In both cases, use `getSendAndConfirmTransaction()` (after `initialize()`) or your own Gill client to send.
 
 Prerequisite: `settings`, `compressed`, `walletAddress`, and `settingsAccount` from [Resolve settings and compressed flag](#1-resolve-settings-and-compressed-flag).
 
@@ -230,9 +246,9 @@ Prerequisite: `settings`, `compressed`, `walletAddress`, and `settingsAccount` f
 import {
   createTransactionManagerSigner,
   fetchUserAccountData,
+  getSendAndConfirmTransaction,
   prepareTransactionMessage,
   prepareTransactionSync,
-  signAndSendTransaction,
   retrieveTransactionManager,
 } from "@revibase/core";
 import {
@@ -292,19 +308,25 @@ const details = await prepareTransactionSync({
   addressesByLookupTableAddress: addressLookups,
 });
 
-const signature = await signAndSendTransaction(details);
+const sendAndConfirm = getSendAndConfirmTransaction();
+const signature = await sendAndConfirm({
+  payer: details.payer,
+  instructions: details.instructions,
+  addressesByLookupTableAddress: details.addressesByLookupTableAddress,
+});
 ```
 
-### Jito bundle
+### Chunked bundle: prepareTransactionBundle
+
+`prepareTransactionBundle()` returns multiple `TransactionDetails` objects (create buffer → extend buffer chunks → approvals → execute). Submit them in order.
 
 ```ts
 import {
   createTransactionManagerSigner,
   fetchUserAccountData,
+  getSendAndConfirmTransaction,
   prepareTransactionMessage,
   prepareTransactionBundle,
-  signAndSendBundledTransactions,
-  pollJitoBundleConfirmation,
   retrieveTransactionManager,
 } from "@revibase/core";
 import {
@@ -362,6 +384,13 @@ const bundle = await prepareTransactionBundle({
   jitoBundlesTipAmount: 10_000, // optional, lamports
 });
 
-const bundleId = await signAndSendBundledTransactions(bundle);
-const signature = await pollJitoBundleConfirmation(bundleId);
+const sendAndConfirm = getSendAndConfirmTransaction();
+let lastSignature: string | undefined;
+for (const tx of bundle) {
+  lastSignature = await sendAndConfirm({
+    payer: tx.payer,
+    instructions: tx.instructions,
+    addressesByLookupTableAddress: tx.addressesByLookupTableAddress,
+  });
+}
 ```

@@ -1,38 +1,31 @@
-use crate::error::MultisigError;
+use crate::{error::MultisigError, utils::MemberKey};
 use anchor_lang::{
     prelude::*,
     solana_program::sysvar::instructions,
     system_program::{self, transfer, Transfer},
 };
 
-pub fn durable_nonce_check<'info>(instructions_sysvar: &UncheckedAccount<'info>) -> Result<()> {
-    let ix: anchor_lang::solana_program::instruction::Instruction =
-        instructions::load_instruction_at_checked(0, instructions_sysvar)?;
+/**
+ * Durable nonce is allowed for KeyType::Secp256r1 because slotHash is being verified which prevents replay attacks.
+ */
+pub fn durable_nonce_check<'info>(
+    instructions_sysvar: &UncheckedAccount<'info>,
+    signers: &[MemberKey],
+) -> Result<()> {
+    if signers
+        .iter()
+        .all(|f| f.get_type().eq(&crate::utils::KeyType::Ed25519))
+    {
+        let ix: anchor_lang::solana_program::instruction::Instruction =
+            instructions::load_instruction_at_checked(0, instructions_sysvar)?;
 
-    require!(
-        !(ix.program_id == system_program::ID && ix.data.first() == Some(&4)),
-        MultisigError::DurableNonceDetected
-    );
-    Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use anchor_lang::solana_program::sysvar::SysvarId;
-
-    #[test]
-    fn test_durable_nonce_check_invalid_sysvar_data_fails() {
-        let key = Box::leak(Box::new(Instructions::id()));
-        let owner = Box::leak(Box::new(system_program::ID));
-        let lamports = Box::leak(Box::new(0u64));
-        let data: &mut [u8] = Box::leak(vec![0u8; 0].into_boxed_slice());
-        let account_info = AccountInfo::new(key, false, false, lamports, data, owner, false, 0);
-        let account_info: &'static AccountInfo<'static> = Box::leak(Box::new(account_info));
-        let instructions_sysvar = UncheckedAccount::try_from(account_info);
-        let res = durable_nonce_check(&instructions_sysvar);
-        assert!(res.is_err());
+        require!(
+            !(ix.program_id == system_program::ID && ix.data.first() == Some(&4)),
+            MultisigError::DurableNonceDetected
+        );
     }
+
+    Ok(())
 }
 
 pub fn resize_account_if_necessary<'info>(

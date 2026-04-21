@@ -1,4 +1,4 @@
-export const DEFAULT_TIMEOUT = 10 * 60 * 1000;
+export const DEFAULT_TIMEOUT = 3 * 60 * 1000;
 export const HEARTBEAT_INTERVAL = 2000;
 
 export type PopupPortMessage =

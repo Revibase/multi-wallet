@@ -1,9 +1,5 @@
 import { equalBytes } from "@noble/curves/utils.js";
 import { sha256 } from "@noble/hashes/sha2.js";
-import type {
-  ExpectedSigner,
-  Secp256r1VerifyArgsWithDomainConfigIndex,
-} from "@revibase/core";
 import {
   convertMemberKeyToString,
   createClientAuthorizationStartRequestChallenge,
@@ -14,6 +10,8 @@ import {
   KeyType,
   Secp256r1Key,
   vaultTransactionMessageDeserialize,
+  type ExpectedSigner,
+  type Secp256r1VerifyArgsWithDomainConfigIndex,
   type SettingsMutArgs,
   type SettingsReadonlyArgs,
   type TransactionAuthDetails,
@@ -111,6 +109,7 @@ export async function verifyAndParseSigners(
   instructions: Instruction[],
   settingsAddress: string,
   signers: SignerInfo[],
+  lastValidBlockHeight: bigint,
   authResponses?: TransactionAuthDetails[],
   wellKnownProxyUrl?: URL,
 ) {
@@ -130,6 +129,7 @@ export async function verifyAndParseSigners(
   const walletAddress = await getWalletAddressFromSettings(
     address(settingsAddress),
   );
+
   const result = await Promise.all(
     signers.map(async ({ signer, messageHash }) => {
       if (signer instanceof Secp256r1Key) {
@@ -138,10 +138,16 @@ export async function verifyAndParseSigners(
           equalBytes(getSecp256r1MessageHash(x.authResponse), messageHash),
         );
         if (!authDetails) throw new Error("Hash mismatch");
-        const { client, device, startRequest } = authDetails;
+        const { client, device, startRequest, estimatedSlotHashExpiry } =
+          authDetails;
         if (startRequest.data.type !== "transaction")
           throw new Error("Invalid request type.");
-        if (startRequest.validTill < Date.now()) {
+
+        const estimatedValidTill = Math.min(
+          estimatedSlotHashExpiry,
+          startRequest.validTill,
+        );
+        if (estimatedValidTill < Date.now()) {
           throw new Error("Request has expired.");
         }
 
@@ -165,6 +171,7 @@ export async function verifyAndParseSigners(
           client: { origin: client.clientOrigin, ...clientDetails },
           device: device.jwk,
           startRequest,
+          estimatedValidTill,
         } as ExpectedTransactionSigner;
       }
 

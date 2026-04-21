@@ -9,9 +9,6 @@ export interface RetryConfig {
   shouldRetry?: (error: unknown, attempt: number) => boolean;
 }
 
-const HTTP_STATUS_BAD_REQUEST = 400;
-const HTTP_STATUS_TOO_MANY_REQUESTS = 429;
-const HTTP_STATUS_INTERNAL_SERVER_ERROR = 500;
 const DEFAULT_NETWORK_RETRY_MAX_RETRIES = 3;
 const DEFAULT_NETWORK_RETRY_DELAY_MS = 500;
 const EXPONENTIAL_BACKOFF_BASE = 2;
@@ -26,42 +23,6 @@ const DEFAULT_RETRY_CONFIG: Required<
   initialDelayMs: DEFAULT_NETWORK_RETRY_DELAY_MS,
   maxRetries: DEFAULT_NETWORK_RETRY_MAX_RETRIES,
 };
-
-function isRateLimitStatus(status: number): boolean {
-  return status === HTTP_STATUS_TOO_MANY_REQUESTS;
-}
-
-function isServerErrorStatus(status: number): boolean {
-  return status >= HTTP_STATUS_INTERNAL_SERVER_ERROR;
-}
-
-function isClientErrorStatus(status: number): boolean {
-  return (
-    status >= HTTP_STATUS_BAD_REQUEST &&
-    status < HTTP_STATUS_INTERNAL_SERVER_ERROR
-  );
-}
-
-function isRetryableHttpStatus(status: number): boolean {
-  return isRateLimitStatus(status) || isServerErrorStatus(status);
-}
-
-function defaultFetchShouldRetry(
-  error: unknown,
-  _attempt: number,
-  config: RetryConfig,
-): boolean {
-  if (error instanceof Response) {
-    if (isRateLimitStatus(error.status)) {
-      return config.retryOnRateLimit ?? true;
-    }
-    if (isClientErrorStatus(error.status)) {
-      return false;
-    }
-    return isServerErrorStatus(error.status);
-  }
-  return error instanceof TypeError || error instanceof Error;
-}
 
 export function calculateBackoffDelay(
   attempt: number,
@@ -117,36 +78,4 @@ export async function retryWithBackoff<T>(
     maxRetries,
     lastError,
   );
-}
-
-export async function retryFetch(
-  fetchFn: () => Promise<Response>,
-  config?: RetryConfig,
-): Promise<Response> {
-  const mergedConfig = { ...DEFAULT_RETRY_CONFIG, ...config };
-
-  const shouldRetry = (error: unknown, attempt: number): boolean =>
-    defaultFetchShouldRetry(error, attempt, mergedConfig);
-
-  const fetchAndThrowIfRetryable = async (): Promise<Response> => {
-    const response = await fetchFn();
-    if (!response.ok && isRetryableHttpStatus(response.status)) {
-      throw response;
-    }
-    return response;
-  };
-
-  return retryWithBackoff(fetchAndThrowIfRetryable, {
-    ...mergedConfig,
-    shouldRetry: config?.shouldRetry ?? shouldRetry,
-  });
-}
-
-export function createShouldRetryForErrors(
-  ...errorClasses: ReadonlyArray<new (...args: any[]) => unknown>
-): (error: unknown, _attempt: number) => boolean {
-  return (error: unknown): boolean =>
-    errorClasses.some(
-      (C) => error instanceof (C as new (...args: any[]) => Error),
-    );
 }

@@ -14,11 +14,11 @@ Use the packages together to add passkey-based wallets, configurable policies, a
 
 ## Packages
 
-| Package | Description |
-|--------|-------------|
-| **[@revibase/lite](packages/lite)** | Passkey wallet: sign-in and approve transactions in a popup (or on another device). Backend authorizes via `/api/clientAuthorization`. |
-| **[@revibase/core](packages/core)** | Core types and helpers: create users/wallets, transfer intents (SOL/SPL), and custom vault-paid transactions (sync or Jito bundles). |
-| **[@revibase/transaction-manager](packages/transaction-manager)** | Server-side verifier and signer: decode and verify transaction intents, apply your policy, then sign with an Ed25519 key. |
+| Package                                                           | Description                                                                                                                            |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| **[@revibase/lite](packages/lite)**                               | Passkey wallet: sign-in and approve transactions in a popup (or on another device). Backend authorizes via `/api/clientAuthorization`. |
+| **[@revibase/core](packages/core)**                               | Core types and helpers                                                                                                                 |
+| **[@revibase/transaction-manager](packages/transaction-manager)** | Server-side verifier and signer: decode and verify transaction intents, apply your policy, then sign with an Ed25519 key.              |
 
 - **Lite** and **core** are used in the frontend (and core in backend too) to build and submit transactions.
 - **Transaction-manager** runs in your backend: it verifies each request and signs only when your policy allows.
@@ -90,11 +90,11 @@ multi-wallet/
 
 ## Scripts (root)
 
-| Script | Description |
-|--------|-------------|
-| `pnpm test` | Run TypeScript integration tests |
-| `pnpm lint` | Check formatting (Prettier) |
-| `pnpm lint:fix` | Fix formatting |
+| Script          | Description                      |
+| --------------- | -------------------------------- |
+| `pnpm test`     | Run TypeScript integration tests |
+| `pnpm lint`     | Check formatting (Prettier)      |
+| `pnpm lint:fix` | Fix formatting                   |
 
 Per-package scripts (e.g. `build`, `generate`) are in each `packages/<name>/package.json`.
 

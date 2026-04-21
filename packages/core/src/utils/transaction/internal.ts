@@ -1,258 +1,26 @@
 import {
-  type AccountMeta,
   AccountRole,
   type Address,
   address,
-  appendTransactionMessageInstructions,
-  compileTransaction,
-  compressTransactionMessageUsingAddressLookupTables,
-  createTransactionMessage,
   getAddressEncoder,
-  getBase64EncodedWireTransaction,
-  getBlockhashDecoder,
   type Instruction,
   none,
   type OptionOrNullable,
-  pipe,
-  prependTransactionMessageInstructions,
-  type Rpc,
-  setTransactionMessageFeePayerSigner,
-  setTransactionMessageLifetimeUsingBlockhash,
-  signTransactionMessageWithSigners,
-  type SolanaRpcApi,
   some,
   type TransactionSigner,
 } from "gill";
-import {
-  getSetComputeUnitLimitInstruction,
-  getSetComputeUnitPriceInstruction,
-  getTransferSolInstruction,
-} from "gill/programs";
-import {
-  JITO_TIP_ACCOUNTS,
-  MIN_COMPUTE_UNITS,
-  TRANSACTION_SIZE_LIMIT,
-} from "../../constants";
-import { BundleError, ValidationError } from "../../errors";
+import { getTransferSolInstruction } from "gill/programs";
+import { JITO_TIP_ACCOUNTS } from "../../constants";
+import { ValidationError } from "../../errors";
 import type {
   MemberKey,
   Secp256r1VerifyArgsArgs,
   TransactionSyncSignersArgs,
 } from "../../generated";
-import {
-  KeyType,
-  Secp256r1Key,
-  SignedSecp256r1Key,
-  type TransactionDetails,
-} from "../../types";
-import { parseJson, validateResponse } from "../async";
-import { getSolanaRpc } from "../initialize";
-import { getSecp256r1Message } from "../passkeys/internal";
-import { retryFetch } from "../retry";
-import { requireNonEmpty } from "../validation";
 import type { Secp256r1VerifyInput } from "../../instructions/secp256r1Verify";
+import { KeyType, Secp256r1Key, SignedSecp256r1Key } from "../../types";
 import type { PackedAccounts } from "../compressed/packedAccounts";
-
-export async function createEncodedBundle(
-  bundle: (TransactionDetails & { unitsConsumed?: number })[],
-  isSimulate = false,
-): Promise<any[]> {
-  const latestBlockHash = isSimulate
-    ? {
-        blockhash: getBlockhashDecoder().decode(
-          crypto.getRandomValues(new Uint8Array(32)),
-        ),
-        lastValidBlockHeight: BigInt(Number.MAX_SAFE_INTEGER),
-      }
-    : (await getSolanaRpc().getLatestBlockhash().send()).value;
-  return await Promise.all(
-    bundle.map(async (x) => {
-      const tx = await pipe(
-        createTransactionMessage({ version: 0 }),
-        (tx) => appendTransactionMessageInstructions(x.instructions, tx),
-        (tx) => setTransactionMessageFeePayerSigner(x.payer, tx),
-        (tx) =>
-          setTransactionMessageLifetimeUsingBlockhash(latestBlockHash, tx),
-        (tx) =>
-          x.addressesByLookupTableAddress
-            ? compressTransactionMessageUsingAddressLookupTables(
-                tx,
-                x.addressesByLookupTableAddress,
-              )
-            : tx,
-        async (tx) => {
-          const computeUnits = Math.ceil((x.unitsConsumed ?? 0) * 1.1);
-          return computeUnits > MIN_COMPUTE_UNITS
-            ? prependTransactionMessageInstructions(
-                [
-                  getSetComputeUnitLimitInstruction({
-                    units: computeUnits,
-                  }),
-                ],
-                tx,
-              )
-            : tx;
-        },
-        async (tx) =>
-          isSimulate
-            ? compileTransaction(await tx)
-            : await signTransactionMessageWithSigners(await tx),
-      );
-      return tx;
-    }),
-  );
-}
-
-export async function getComputeUnitsEstimate(
-  transactionMessage: Parameters<typeof compileTransaction>[0],
-) {
-  const transactionMessageWithComputeUnitAndPriorityFees =
-    prependTransactionMessageInstructions(
-      [
-        getSetComputeUnitLimitInstruction({ units: 800_000 }),
-        getSetComputeUnitPriceInstruction({ microLamports: 10_000 }),
-      ],
-      transactionMessage,
-    );
-  const encodedTransaction = getBase64EncodedWireTransaction(
-    compileTransaction(transactionMessageWithComputeUnitAndPriorityFees),
-  );
-  if (encodedTransaction.length > TRANSACTION_SIZE_LIMIT) {
-    throw new ValidationError(
-      `Transaction exceeds maximum length of ${TRANSACTION_SIZE_LIMIT} bytes (actual: ${encodedTransaction.length} bytes)`,
-    );
-  }
-  const simulatedTransaction = await getSolanaRpc()
-    .simulateTransaction(encodedTransaction, {
-      encoding: "base64",
-    })
-    .send();
-  if (simulatedTransaction.value.err) {
-    if (simulatedTransaction.value.logs) {
-      const errorMessage = [
-        "Transaction simulation failed:",
-        "",
-        ...simulatedTransaction.value.logs,
-      ].join("\n");
-      throw new Error(errorMessage);
-    }
-    const errorMessage = [
-      "Transaction simulation failed:",
-      "",
-      simulatedTransaction.value.err.toString(),
-    ].join("\n");
-    throw new Error(errorMessage);
-  }
-  return simulatedTransaction.value.unitsConsumed;
-}
-
-export async function getMedianPriorityFees(
-  connection: Rpc<SolanaRpcApi>,
-  accounts: AccountMeta[],
-): Promise<number> {
-  const recentFees = await connection
-    .getRecentPrioritizationFees(
-      accounts
-        .filter(
-          (x) =>
-            x.role === AccountRole.WRITABLE ||
-            x.role === AccountRole.WRITABLE_SIGNER,
-        )
-        .map((x) => x.address),
-    )
-    .send();
-  const fees = recentFees.map((f) => Number(f.prioritizationFee));
-  fees.sort((a, b) => a - b);
-  const mid = Math.floor(fees.length / 2);
-
-  if (fees.length % 2 === 0) {
-    return Math.round((fees[mid - 1] + fees[mid]) / 2);
-  } else {
-    return fees[mid];
-  }
-}
-
-export async function simulateBundle(
-  bundle: string[],
-  connectionUrl: string,
-): Promise<number[]> {
-  requireNonEmpty(bundle, "bundle");
-
-  for (let i = 0; i < bundle.length; i++) {
-    if (bundle[i].length > TRANSACTION_SIZE_LIMIT) {
-      throw new ValidationError(
-        `Transaction ${i} exceeds maximum length of ${TRANSACTION_SIZE_LIMIT} bytes (actual: ${bundle[i].length} bytes)`,
-      );
-    }
-  }
-
-  const response = await retryFetch(() =>
-    fetch(connectionUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: "2",
-        method: "simulateBundle",
-        params: [
-          {
-            encodedTransactions: bundle,
-          },
-          {
-            skipSigVerify: true,
-            replaceRecentBlockhash: true,
-            preExecutionAccountsConfigs: bundle.map(() => ({
-              encoding: "base64",
-              addresses: [],
-            })),
-            postExecutionAccountsConfigs: bundle.map(() => ({
-              encoding: "base64",
-              addresses: [],
-            })),
-          },
-        ],
-      }),
-    }),
-  );
-
-  await validateResponse(response, connectionUrl);
-  const data = await parseJson<{
-    result?: {
-      value: {
-        transactionResults: { unitsConsumed: number }[];
-        summary:
-          | string
-          | {
-              failed?: {
-                error: {
-                  TransactionFailure: [unknown, string];
-                };
-              };
-            };
-      };
-    };
-    error?: unknown;
-  }>(response);
-
-  if (!data.result || data.error) {
-    throw new BundleError(
-      `Unable to simulate bundle: ${JSON.stringify(data.error ?? data.result)}`,
-    );
-  }
-
-  if (
-    typeof data.result.value.summary !== "string" &&
-    data.result.value.summary.failed
-  ) {
-    const { TransactionFailure } = data.result.value.summary.failed.error;
-    const [, programError] = TransactionFailure;
-    throw new BundleError(`Simulation failed: ${programError}`);
-  }
-
-  return data.result.value.transactionResults.map((x) => x.unitsConsumed);
-}
+import { getSecp256r1Message } from "../passkeys/internal";
 
 export function extractSecp256r1VerificationArgs(
   signer?: SignedSecp256r1Key | TransactionSigner,

@@ -127,6 +127,7 @@ export const TransactionDetailsSchema = z
   .object({
     slotHash: z.string(),
     slotNumber: z.string(),
+    estimatedSlotHashExpiry: z.number(),
     originIndex: z.number(),
     crossOrigin: z.boolean(),
   })

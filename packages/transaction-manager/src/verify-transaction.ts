@@ -13,6 +13,11 @@ import {
   type SolanaRpcApi,
 } from "gill";
 import {
+  identifySystemInstruction,
+  SYSTEM_PROGRAM_ADDRESS,
+  SystemInstruction,
+} from "gill/programs";
+import {
   processChangeConfig,
   processChangeConfigCompressed,
   processCompressedTransferIntent,
@@ -116,12 +121,22 @@ async function processInstruction(
     throw new Error("Instruction rejected by Transaction Manager.");
   }
 
-  if (programAddress !== MULTI_WALLET_PROGRAM_ADDRESS.toString()) {
+  if (!instruction.data) {
+    throw new Error("Invalid instruction data.");
+  }
+
+  if (programAddress === SYSTEM_PROGRAM_ADDRESS.toString()) {
+    const instructionType = identifySystemInstruction({
+      data: instruction.data,
+    });
+    if (instructionType !== SystemInstruction.AdvanceNonceAccount) {
+      throw new Error("Instruction rejected by Transaction Manager.");
+    }
     return null;
   }
 
-  if (!instruction.data) {
-    throw new Error("Invalid instruction data.");
+  if (programAddress !== MULTI_WALLET_PROGRAM_ADDRESS.toString()) {
+    return null;
   }
 
   const instructionType = identifyMultiWalletInstruction({

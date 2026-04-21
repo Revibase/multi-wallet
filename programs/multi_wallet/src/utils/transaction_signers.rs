@@ -39,8 +39,8 @@ impl TransactionSyncSigners {
                         .get(*index as usize)
                         .ok_or(MultisigError::InvalidNumberOfAccounts)?;
                     require!(account.is_signer, MultisigError::NoSignerFound);
-                    let member_key =
-                        MemberKey::convert_ed25519(account.key).map_err(|_| MultisigError::InvalidAccount)?;
+                    let member_key = MemberKey::convert_ed25519(account.key)
+                        .map_err(|_| MultisigError::InvalidAccount)?;
                     (member_key, None)
                 }
                 TransactionSyncSigners::Secp256r1(args) => {
@@ -48,8 +48,8 @@ impl TransactionSyncSigners {
                         .verify_args
                         .extract_public_key_from_instruction(Some(instructions_sysvar))
                         .map_err(|_| MultisigError::InvalidAccount)?;
-                    let member_key =
-                        MemberKey::convert_secp256r1(&pubkey).map_err(|_| MultisigError::InvalidAccount)?;
+                    let member_key = MemberKey::convert_secp256r1(&pubkey)
+                        .map_err(|_| MultisigError::InvalidAccount)?;
                     (member_key, Some(args))
                 }
             };
@@ -79,14 +79,14 @@ impl TransactionSyncSigners {
         message_hash: [u8; 32],
         action_type: TransactionActionType,
     ) -> Result<()> {
-        durable_nonce_check(instructions_sysvar)?;
-
         let mut initiate = false;
         let mut execute = false;
         let mut vote_count = 0u32;
         let mut are_delegates = true;
 
         let signer_member_keys = Self::resolve(signers, remaining_accounts, instructions_sysvar)?;
+        let keys: Vec<MemberKey> = signer_member_keys.iter().map(|f| f.0).collect();
+        durable_nonce_check(instructions_sysvar, &keys)?;
 
         for (signer, signer_args) in &signer_member_keys {
             let member = members
@@ -164,9 +164,10 @@ impl TransactionBufferSigners {
         message_hash: [u8; 32],
         preauthorize_execution: bool,
     ) -> Result<()> {
-        durable_nonce_check(instructions_sysvar)?;
         let member_key =
             MemberKey::get_signer(signer, secp256r1_verify_args, Some(instructions_sysvar))?;
+
+        durable_nonce_check(instructions_sysvar, &[member_key])?;
 
         let member = members
             .iter()

@@ -104,7 +104,14 @@ export type ExpectedTransactionSigner =
        * Uniquely identifies the device that requested the signature for this transaction.
        */
       device: string;
+      /**
+       * Initial Request
+       */
       startRequest: StartTransactionRequest;
+      /**
+       * Estimated trasaction expiry window (taking into account slot hash expiry, block hash expiry and request validTill)
+       */
+      estimatedValidTill: number;
     }
   | {
       /** The public key of the signer. */

@@ -1,6 +1,5 @@
 export * from "./cache";
 export * from "./configurationArgs";
-export * from "./jitoTipsConfig";
 export * from "./keyType";
 export * from "./passkeys";
 export * from "./permissions";

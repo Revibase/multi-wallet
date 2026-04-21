@@ -10,7 +10,7 @@ export class RevibaseError extends Error {
   constructor(
     message: string,
     public readonly code?: string,
-    public readonly cause?: unknown
+    public readonly cause?: unknown,
   ) {
     super(message);
     this.name = this.constructor.name;
@@ -28,7 +28,7 @@ export class NotInitializedError extends RevibaseError {
   constructor(service: string) {
     super(
       `${service} is not initialized. Please call initialize() first.`,
-      "NOT_INITIALIZED"
+      "NOT_INITIALIZED",
     );
   }
 }
@@ -38,10 +38,7 @@ export class NotInitializedError extends RevibaseError {
  */
 export class NotFoundError extends RevibaseError {
   constructor(resource: string, details?: string) {
-    super(
-      `${resource} not found.${details ? ` ${details}` : ""}`,
-      "NOT_FOUND"
-    );
+    super(`${resource} not found.${details ? ` ${details}` : ""}`, "NOT_FOUND");
   }
 }
 
@@ -61,35 +58,9 @@ export class NetworkError extends RevibaseError {
   constructor(
     message: string,
     public readonly statusCode?: number,
-    public readonly url?: string
+    public readonly url?: string,
   ) {
     super(message, "NETWORK_ERROR", { statusCode, url });
-  }
-}
-
-/**
- * Error thrown when a transaction fails
- */
-export class TransactionError extends RevibaseError {
-  constructor(
-    message: string,
-    public readonly signature?: string,
-    public readonly logs?: string[]
-  ) {
-    super(message, "TRANSACTION_ERROR", { signature, logs });
-  }
-}
-
-/**
- * Error thrown when bundle operations fail
- */
-export class BundleError extends RevibaseError {
-  constructor(
-    message: string,
-    public readonly bundleId?: string,
-    public readonly attempt?: number
-  ) {
-    super(message, "BUNDLE_ERROR", { bundleId, attempt });
   }
 }
 
@@ -100,12 +71,12 @@ export class RetryExhaustedError extends RevibaseError {
   constructor(
     operation: string,
     public readonly attempts: number,
-    public readonly lastError?: unknown
+    public readonly lastError?: unknown,
   ) {
     super(
       `Operation "${operation}" failed after ${attempts} attempts.`,
       "RETRY_EXHAUSTED",
-      { lastError }
+      { lastError },
     );
   }
 }
@@ -117,7 +88,7 @@ export class PermissionError extends RevibaseError {
   constructor(
     message: string,
     public readonly required?: string[],
-    public readonly actual?: string[]
+    public readonly actual?: string[],
   ) {
     super(message, "PERMISSION_ERROR", { required, actual });
   }

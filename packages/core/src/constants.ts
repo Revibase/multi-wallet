@@ -1,7 +1,3 @@
-export const TRANSACTION_SIZE_LIMIT = 1644;
-export const MIN_COMPUTE_UNITS = 200000;
-export const COMPUTE_UNIT_MULTIPLIER = 1.1;
-
 export const JITO_TIP_ACCOUNTS = [
   "HFqU5x63VTqvQss8hp11i4wVV8bD44PvwucfZ2bU7gRe",
   "ADaUMid9yfUytqMBgopwjb2DTLSokTSzL1zt6iGPaS49",
@@ -12,9 +8,3 @@ export const JITO_TIP_ACCOUNTS = [
   "3AVi9Tg9Uo68tJfuvoKvqKNWKkC5wPdSSdeBnizKZ6jT",
   "DttWaMuVvTiduZRnguLF7jNxTgiMBZ1hyAumKUiL2KRL",
 ] as const;
-
-export const DEFAULT_JITO_BLOCK_ENGINE_URL =
-  "https://mainnet.block-engine.jito.wtf/api/v1";
-export const DEFAULT_JITO_TIPS_URL =
-  "https://bundles.jito.wtf/api/v1/bundles/tip_floor";
-export const DEFAULT_JITO_TIP_PRIORITY = "landed_tips_75th_percentile";

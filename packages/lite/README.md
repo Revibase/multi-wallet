@@ -14,6 +14,8 @@ pnpm add @revibase/lite
 
 Three steps: keys, backend route, provider.
 
+**Timeouts:** Auth flows expire after **3 minutes** by default (the `validTill` on requests and the popup flow timeout). Use `AuthorizationFlowOptions.signal` to abort early.
+
 ### 1. Keys
 
 Get keys at [developers.revibase.com](https://developers.revibase.com). Add `/.well-known/revibase.json` with `clientJwk`, `title`, `description`.
