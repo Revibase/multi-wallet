@@ -1,24 +1,6 @@
 export const DEFAULT_TIMEOUT = 3 * 60 * 1000;
 export const HEARTBEAT_INTERVAL = 2000;
 
-export type PopupPortMessage =
-  | { type: "popup-complete"; payload: any }
-  | { type: "popup-error"; error: string }
-  | { type: "popup-closed" };
-
-export type PopupConnectMessage = {
-  type: "popup-connect";
-  rid: string;
-};
-
-export type Pending = {
-  rid: string;
-  resolve: (v: any) => void;
-  reject: (e: Error) => void;
-  timeoutId: ReturnType<typeof setTimeout>;
-  cancel?: (err: Error) => void;
-};
-
 export function createPopUp(url?: string): Window | null {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");

@@ -6,21 +6,12 @@ import {
   RevibaseAbortedError,
   RevibaseAuthError,
   RevibaseEnvironmentError,
-  RevibaseFlowInProgressError,
   RevibasePopupBlockedError,
   RevibasePopupClosedError,
   RevibasePopupNotOpenError,
-  RevibaseTimeoutError,
 } from "src/utils/errors";
 import { DeviceKeyManager } from "./device";
-import {
-  createPopUp,
-  DEFAULT_TIMEOUT,
-  HEARTBEAT_INTERVAL,
-  type Pending,
-  type PopupConnectMessage,
-  type PopupPortMessage,
-} from "./utils";
+import { createPopUp, HEARTBEAT_INTERVAL } from "./utils";
 import {
   createSenderChannelSocket,
   type SenderChannelSocketHandle,
@@ -62,7 +53,6 @@ export type RevibaseProviderOptions = {
 
 /** Provider: popup or channel auth. Default callback: POST /api/clientAuthorization. */
 export class RevibaseProvider {
-  private readonly pending = new Map<string, Pending>();
   public onClientAuthorizationCallback: ClientAuthorizationCallback;
   private readonly providerOrigin: string;
   private popUp: Window | null = null;
@@ -246,153 +236,55 @@ export class RevibaseProvider {
     return { rid, redirectOrigin };
   }
 
-  async sendPayloadToProviderViaPopup({
-    rid,
-    timeoutMs = DEFAULT_TIMEOUT,
-    signal,
-  }: {
-    rid: string;
-    signal: AbortSignal;
-    timeoutMs?: number;
-  }) {
+  watchPopupClosed(
+    signal: AbortSignal,
+    onClosed: (err: Error) => void,
+  ): () => void {
     if (typeof window === "undefined") {
       throw new RevibaseEnvironmentError();
     }
 
-    if (this.pending.size > 0) {
-      throw new RevibaseFlowInProgressError();
+    if (!this.popUp || this.popUp.closed) {
+      throw new RevibasePopupNotOpenError();
     }
 
-    return new Promise<{ rid: string }>((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        const entry = this.pending.get(rid);
-        if (!entry) return;
+    let stopped = false;
+    const popup = this.popUp;
 
-        if (entry.cancel) {
-          entry.cancel(new RevibaseTimeoutError());
-        } else {
-          this.pending.delete(rid);
-          reject(new RevibaseTimeoutError());
-        }
-      }, timeoutMs);
-
-      if (!this.popUp || this.popUp.closed) {
-        throw new RevibasePopupNotOpenError();
-      }
-      this.pending.set(rid, { rid, resolve, reject, timeoutId });
-
-      this.attachTransport({
-        popup: this.popUp,
-        origin: new URL(this.providerOrigin).origin,
-        rid,
-        signal,
-      });
-    });
-  }
-
-  private attachTransport(params: {
-    popup: Window;
-    origin: string;
-    rid: string;
-    signal: AbortSignal;
-  }) {
-    const { popup, origin, rid, signal } = params;
-
-    const entry = this.pending.get(rid);
-    if (!entry) return;
-
-    let port: MessagePort | null = null;
-    let finished = false;
-
-    const onAbort = (): void => {
-      fail(new RevibaseAbortedError());
-    };
-
-    const cleanup = (): void => {
+    const stop = (): void => {
+      if (stopped) return;
+      stopped = true;
       signal.removeEventListener("abort", onAbort);
-      window.removeEventListener("message", onConnect);
-
-      try {
-        port?.close();
-      } catch {}
-      port = null;
-
-      try {
-        if (popup && !popup.closed) {
-          popup.close();
-        }
-      } catch {}
-      this.popUp = null;
-
       clearInterval(heartbeatId);
     };
 
-    const fail = (err: Error): void => {
-      if (finished) return;
-      finished = true;
-      clearTimeout(entry.timeoutId);
-      this.pending.delete(rid);
-      cleanup();
-      entry.reject(err);
+    const onAbort = (): void => {
+      stop();
+      onClosed(new RevibaseAbortedError());
     };
-
-    const succeed = (): void => {
-      if (finished) return;
-      finished = true;
-      clearTimeout(entry.timeoutId);
-      this.pending.delete(rid);
-      cleanup();
-      entry.resolve({ rid });
-    };
-
-    entry.cancel = fail;
 
     if (signal.aborted) {
-      fail(new RevibaseAbortedError());
-      return;
+      onClosed(new RevibaseAbortedError());
+      return () => {};
     }
     signal.addEventListener("abort", onAbort);
 
     const heartbeatId = setInterval(() => {
-      if (!popup?.closed) return;
-      fail(new RevibasePopupClosedError());
+      if (stopped) return;
+      if (!popup || popup.closed) {
+        stop();
+        onClosed(new RevibasePopupClosedError());
+      }
     }, HEARTBEAT_INTERVAL);
 
-    const onConnect = (event: MessageEvent) => {
-      if (event.origin !== origin) return;
-      if (event.source !== popup) return;
+    return stop;
+  }
 
-      const data = event.data as PopupConnectMessage;
-      if (!data || data.type !== "popup-connect" || data.rid !== rid) return;
-      if (!event.ports?.[0]) return;
-
-      port = event.ports[0];
-      port.start();
-
-      port.postMessage({ type: "popup-init" });
-
-      port.onmessage = (ev: MessageEvent<PopupPortMessage>): void => {
-        switch (ev.data.type) {
-          case "popup-complete":
-            succeed();
-            break;
-
-          case "popup-error":
-            fail(new RevibaseAuthError(ev.data.error));
-            break;
-
-          case "popup-closed": {
-            fail(
-              new RevibasePopupClosedError("Lost connection with the popup."),
-            );
-            break;
-          }
-        }
-      };
-
-      window.removeEventListener("message", onConnect);
-    };
-
-    window.addEventListener("message", onConnect);
+  closePopup(): void {
+    const popup = this.popUp;
+    this.popUp = null;
+    try {
+      if (popup && !popup.closed) popup.close();
+    } catch {}
   }
 }

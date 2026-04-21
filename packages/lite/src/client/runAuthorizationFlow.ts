@@ -33,13 +33,12 @@ export async function runAuthorizationFlow(
     }
   }
 
+  let stopWatchingPopup: (() => void) | null = null;
   if (!options?.channelId) {
-    provider
-      .sendPayloadToProviderViaPopup({
-        rid,
-        signal: abortController.signal,
-      })
-      .catch((error) => abortController.abort(error));
+    stopWatchingPopup = provider.watchPopupClosed(
+      abortController.signal,
+      (error) => abortController.abort(error),
+    );
   }
 
   const device = options?.channelId
@@ -48,10 +47,17 @@ export async function runAuthorizationFlow(
       )
     : undefined;
 
-  return provider.onClientAuthorizationCallback(
-    payload as StartMessageRequest,
-    abortController.signal,
-    device,
-    options?.channelId,
-  ) as Promise<AuthorizationFlowResult>;
+  try {
+    return (await provider.onClientAuthorizationCallback(
+      payload as StartMessageRequest,
+      abortController.signal,
+      device,
+      options?.channelId,
+    )) as AuthorizationFlowResult;
+  } finally {
+    stopWatchingPopup?.();
+    if (!options?.channelId) {
+      provider.closePopup();
+    }
+  }
 }
