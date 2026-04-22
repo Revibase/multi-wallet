@@ -2,16 +2,9 @@ import { initialize } from "@revibase/core";
 import { getBase64Decoder } from "gill";
 import type { ClientAuthorizationCallback } from "src/utils";
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
-import {
-  RevibaseAbortedError,
-  RevibaseAuthError,
-  RevibaseEnvironmentError,
-  RevibasePopupBlockedError,
-  RevibasePopupClosedError,
-  RevibasePopupNotOpenError,
-} from "src/utils/errors";
+import { RevibaseAuthError, RevibasePopupBlockedError } from "src/utils/errors";
 import { DeviceKeyManager } from "./device";
-import { createPopUp, HEARTBEAT_INTERVAL } from "./utils";
+import { createPopUp } from "./utils";
 import {
   createSenderChannelSocket,
   type SenderChannelSocketHandle,
@@ -55,12 +48,37 @@ export type RevibaseProviderOptions = {
 export class RevibaseProvider {
   public onClientAuthorizationCallback: ClientAuthorizationCallback;
   private readonly providerOrigin: string;
-  private popUp: Window | null = null;
   private channelWs = new Map<string, SenderChannelSocketHandle>();
   private readonly channelStatusListeners = new Set<ChannelStatusListener>();
   private readonly logger: Pick<Console, "info" | "warn" | "error">;
   private static CHANNEL_ID_CHARSET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
   private static CHANNEL_ID_LENGTH = 10;
+  private static DEFAULT_RETRY_ATTEMPTS = 3;
+  private static DEFAULT_RETRY_BASE_DELAY_MS = 750;
+
+  private async sleep(ms: number, signal?: AbortSignal): Promise<void> {
+    if (ms <= 0) return;
+    if (signal?.aborted) return;
+
+    await new Promise<void>((resolve) => {
+      const id = setTimeout(() => {
+        cleanup();
+        resolve();
+      }, ms);
+
+      const onAbort = () => {
+        clearTimeout(id);
+        cleanup();
+        resolve();
+      };
+
+      const cleanup = () => {
+        signal?.removeEventListener("abort", onAbort);
+      };
+
+      signal?.addEventListener("abort", onAbort);
+    });
+  }
 
   private defaultCallback: ClientAuthorizationCallback = async (
     request,
@@ -68,18 +86,49 @@ export class RevibaseProvider {
     device,
     channelId,
   ) => {
-    const res = await fetch("/api/clientAuthorization", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ request, device, channelId }),
-      signal,
-    });
-    const data = await res.json();
-    if (!res.ok)
-      throw new RevibaseAuthError(
-        (data as { error?: string }).error ?? "Authorization failed",
-      );
-    return data;
+    const body = JSON.stringify({ request, device, channelId });
+    let attempt = 0;
+    const maxAttempts = RevibaseProvider.DEFAULT_RETRY_ATTEMPTS;
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      attempt += 1;
+      let res;
+      try {
+        res = await fetch("/api/clientAuthorization", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+          signal,
+        });
+      } catch (err) {
+        if (signal?.aborted) {
+          throw signal.reason ?? err;
+        }
+        if (attempt < maxAttempts) {
+          const base = RevibaseProvider.DEFAULT_RETRY_BASE_DELAY_MS;
+          const exp = base * Math.pow(2, attempt - 1);
+          const jitter = 0.8 + 0.4 * Math.random();
+          const delay = Math.min(Math.round(exp * jitter), 10_000);
+          this.logger.warn("[RevibaseProvider] Auth callback network retry", {
+            attempt,
+            delayMs: delay,
+          });
+          await this.sleep(delay, signal);
+          continue;
+        }
+        throw err;
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new RevibaseAuthError(
+          (data as { error?: string }).error ?? "Authorization failed",
+        );
+      }
+
+      return data;
+    }
   };
 
   constructor(options: RevibaseProviderOptions = {}) {
@@ -227,64 +276,12 @@ export class RevibaseProvider {
       url.searchParams.set("rid", rid);
       url.searchParams.set("redirectOrigin", redirectOrigin);
 
-      this.popUp = createPopUp(url.toString());
-      if (!this.popUp) {
+      const popUp = createPopUp(url.toString());
+      if (!popUp) {
         throw new RevibasePopupBlockedError();
       }
     }
 
     return { rid, redirectOrigin };
-  }
-
-  watchPopupClosed(
-    signal: AbortSignal,
-    onClosed: (err: Error) => void,
-  ): () => void {
-    if (typeof window === "undefined") {
-      throw new RevibaseEnvironmentError();
-    }
-
-    if (!this.popUp || this.popUp.closed) {
-      throw new RevibasePopupNotOpenError();
-    }
-
-    let stopped = false;
-    const popup = this.popUp;
-
-    const stop = (): void => {
-      if (stopped) return;
-      stopped = true;
-      signal.removeEventListener("abort", onAbort);
-      clearInterval(heartbeatId);
-    };
-
-    const onAbort = (): void => {
-      stop();
-      onClosed(new RevibaseAbortedError());
-    };
-
-    if (signal.aborted) {
-      onClosed(new RevibaseAbortedError());
-      return () => {};
-    }
-    signal.addEventListener("abort", onAbort);
-
-    const heartbeatId = setInterval(() => {
-      if (stopped) return;
-      if (!popup || popup.closed) {
-        stop();
-        onClosed(new RevibasePopupClosedError());
-      }
-    }, HEARTBEAT_INTERVAL);
-
-    return stop;
-  }
-
-  closePopup(): void {
-    const popup = this.popUp;
-    this.popUp = null;
-    try {
-      if (popup && !popup.closed) popup.close();
-    } catch {}
   }
 }

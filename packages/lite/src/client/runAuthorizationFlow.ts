@@ -33,31 +33,24 @@ export async function runAuthorizationFlow(
     }
   }
 
-  let stopWatchingPopup: (() => void) | null = null;
-  if (!options?.channelId) {
-    stopWatchingPopup = provider.watchPopupClosed(
-      abortController.signal,
-      (error) => abortController.abort(error),
-    );
-  }
-
   const device = options?.channelId
     ? await provider.getDeviceSignature(
         JSON.stringify({ rid, channelId: options.channelId }),
       )
     : undefined;
 
+  const timeout = setTimeout(
+    () => abortController?.abort("timeout"),
+    payload.validTill - Date.now(),
+  );
   try {
-    return (await provider.onClientAuthorizationCallback(
-      payload as StartMessageRequest,
+    return await provider.onClientAuthorizationCallback(
+      payload as any,
       abortController.signal,
       device,
       options?.channelId,
-    )) as AuthorizationFlowResult;
+    );
   } finally {
-    stopWatchingPopup?.();
-    if (!options?.channelId) {
-      provider.closePopup();
-    }
+    clearTimeout(timeout);
   }
 }

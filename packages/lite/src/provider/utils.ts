@@ -1,5 +1,4 @@
 export const DEFAULT_TIMEOUT = 3 * 60 * 1000;
-export const HEARTBEAT_INTERVAL = 2000;
 
 export function createPopUp(url?: string): Window | null {
   if (typeof window === "undefined") {
