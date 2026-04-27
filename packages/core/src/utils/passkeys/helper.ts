@@ -172,9 +172,10 @@ export async function createTransactionChallenge(
   nonce: string,
   slotHash?: string,
   slotNumber?: string,
+  estimatedSlotHashExpiry?: number,
 ) {
   let slotHashBytes: ReadonlyUint8Array;
-  if (!slotHash || !slotNumber) {
+  if (!slotHash || !slotNumber || !estimatedSlotHashExpiry) {
     const slotSysvarData = (
       await getSolanaRpc()
         .getAccountInfo(
@@ -197,6 +198,7 @@ export async function createTransactionChallenge(
     slotNumber = getU64Decoder().decode(slotHashData.subarray(0, 8)).toString();
     slotHashBytes = slotHashData.subarray(8, 40);
     slotHash = getBase58Decoder().decode(slotHashBytes);
+    estimatedSlotHashExpiry = Date.now() + 512 * 400;
   } else {
     slotHashBytes = getBase58Encoder().encode(slotHash);
   }
@@ -222,7 +224,7 @@ export async function createTransactionChallenge(
       ...clientDeviceHash,
     ]),
   ) as Uint8Array<ArrayBuffer>;
-  return { slotNumber, slotHash, challenge };
+  return { slotNumber, slotHash, challenge, estimatedSlotHashExpiry };
 }
 
 export function getSecp256r1MessageHash(

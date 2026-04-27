@@ -2,25 +2,9 @@ import { initialize } from "@revibase/core";
 import { getBase64Decoder } from "gill";
 import type { ClientAuthorizationCallback } from "src/utils";
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
-import {
-  RevibaseAbortedError,
-  RevibaseAuthError,
-  RevibaseEnvironmentError,
-  RevibaseFlowInProgressError,
-  RevibasePopupBlockedError,
-  RevibasePopupClosedError,
-  RevibasePopupNotOpenError,
-  RevibaseTimeoutError,
-} from "src/utils/errors";
+import { RevibaseAuthError, RevibasePopupBlockedError } from "src/utils/errors";
 import { DeviceKeyManager } from "./device";
-import {
-  createPopUp,
-  DEFAULT_TIMEOUT,
-  HEARTBEAT_INTERVAL,
-  type Pending,
-  type PopupConnectMessage,
-  type PopupPortMessage,
-} from "./utils";
+import { createPopUp } from "./utils";
 import {
   createSenderChannelSocket,
   type SenderChannelSocketHandle,
@@ -62,15 +46,39 @@ export type RevibaseProviderOptions = {
 
 /** Provider: popup or channel auth. Default callback: POST /api/clientAuthorization. */
 export class RevibaseProvider {
-  private readonly pending = new Map<string, Pending>();
   public onClientAuthorizationCallback: ClientAuthorizationCallback;
   private readonly providerOrigin: string;
-  private popUp: Window | null = null;
   private channelWs = new Map<string, SenderChannelSocketHandle>();
   private readonly channelStatusListeners = new Set<ChannelStatusListener>();
   private readonly logger: Pick<Console, "info" | "warn" | "error">;
   private static CHANNEL_ID_CHARSET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
   private static CHANNEL_ID_LENGTH = 10;
+  private static DEFAULT_RETRY_ATTEMPTS = 3;
+  private static DEFAULT_RETRY_BASE_DELAY_MS = 750;
+
+  private async sleep(ms: number, signal?: AbortSignal): Promise<void> {
+    if (ms <= 0) return;
+    if (signal?.aborted) return;
+
+    await new Promise<void>((resolve) => {
+      const id = setTimeout(() => {
+        cleanup();
+        resolve();
+      }, ms);
+
+      const onAbort = () => {
+        clearTimeout(id);
+        cleanup();
+        resolve();
+      };
+
+      const cleanup = () => {
+        signal?.removeEventListener("abort", onAbort);
+      };
+
+      signal?.addEventListener("abort", onAbort);
+    });
+  }
 
   private defaultCallback: ClientAuthorizationCallback = async (
     request,
@@ -78,18 +86,49 @@ export class RevibaseProvider {
     device,
     channelId,
   ) => {
-    const res = await fetch("/api/clientAuthorization", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ request, device, channelId }),
-      signal,
-    });
-    const data = await res.json();
-    if (!res.ok)
-      throw new RevibaseAuthError(
-        (data as { error?: string }).error ?? "Authorization failed",
-      );
-    return data;
+    const body = JSON.stringify({ request, device, channelId });
+    let attempt = 0;
+    const maxAttempts = RevibaseProvider.DEFAULT_RETRY_ATTEMPTS;
+
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      attempt += 1;
+      let res;
+      try {
+        res = await fetch("/api/clientAuthorization", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+          signal,
+        });
+      } catch (err) {
+        if (signal?.aborted) {
+          throw signal.reason ?? err;
+        }
+        if (attempt < maxAttempts) {
+          const base = RevibaseProvider.DEFAULT_RETRY_BASE_DELAY_MS;
+          const exp = base * Math.pow(2, attempt - 1);
+          const jitter = 0.8 + 0.4 * Math.random();
+          const delay = Math.min(Math.round(exp * jitter), 10_000);
+          this.logger.warn("[RevibaseProvider] Auth callback network retry", {
+            attempt,
+            delayMs: delay,
+          });
+          await this.sleep(delay, signal);
+          continue;
+        }
+        throw err;
+      }
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new RevibaseAuthError(
+          (data as { error?: string }).error ?? "Authorization failed",
+        );
+      }
+
+      return data;
+    }
   };
 
   constructor(options: RevibaseProviderOptions = {}) {
@@ -237,162 +276,12 @@ export class RevibaseProvider {
       url.searchParams.set("rid", rid);
       url.searchParams.set("redirectOrigin", redirectOrigin);
 
-      this.popUp = createPopUp(url.toString());
-      if (!this.popUp) {
+      const popUp = createPopUp(url.toString());
+      if (!popUp) {
         throw new RevibasePopupBlockedError();
       }
     }
 
     return { rid, redirectOrigin };
-  }
-
-  async sendPayloadToProviderViaPopup({
-    rid,
-    timeoutMs = DEFAULT_TIMEOUT,
-    signal,
-  }: {
-    rid: string;
-    signal: AbortSignal;
-    timeoutMs?: number;
-  }) {
-    if (typeof window === "undefined") {
-      throw new RevibaseEnvironmentError();
-    }
-
-    if (this.pending.size > 0) {
-      throw new RevibaseFlowInProgressError();
-    }
-
-    return new Promise<{ rid: string }>((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
-        const entry = this.pending.get(rid);
-        if (!entry) return;
-
-        if (entry.cancel) {
-          entry.cancel(new RevibaseTimeoutError());
-        } else {
-          this.pending.delete(rid);
-          reject(new RevibaseTimeoutError());
-        }
-      }, timeoutMs);
-
-      if (!this.popUp || this.popUp.closed) {
-        throw new RevibasePopupNotOpenError();
-      }
-      this.pending.set(rid, { rid, resolve, reject, timeoutId });
-
-      this.attachTransport({
-        popup: this.popUp,
-        origin: new URL(this.providerOrigin).origin,
-        rid,
-        signal,
-      });
-    });
-  }
-
-  private attachTransport(params: {
-    popup: Window;
-    origin: string;
-    rid: string;
-    signal: AbortSignal;
-  }) {
-    const { popup, origin, rid, signal } = params;
-
-    const entry = this.pending.get(rid);
-    if (!entry) return;
-
-    let port: MessagePort | null = null;
-    let finished = false;
-
-    const onAbort = (): void => {
-      fail(new RevibaseAbortedError());
-    };
-
-    const cleanup = (): void => {
-      signal.removeEventListener("abort", onAbort);
-      window.removeEventListener("message", onConnect);
-
-      try {
-        port?.close();
-      } catch {}
-      port = null;
-
-      try {
-        if (popup && !popup.closed) {
-          popup.close();
-        }
-      } catch {}
-      this.popUp = null;
-
-      clearInterval(heartbeatId);
-    };
-
-    const fail = (err: Error): void => {
-      if (finished) return;
-      finished = true;
-      clearTimeout(entry.timeoutId);
-      this.pending.delete(rid);
-      cleanup();
-      entry.reject(err);
-    };
-
-    const succeed = (): void => {
-      if (finished) return;
-      finished = true;
-      clearTimeout(entry.timeoutId);
-      this.pending.delete(rid);
-      cleanup();
-      entry.resolve({ rid });
-    };
-
-    entry.cancel = fail;
-
-    if (signal.aborted) {
-      fail(new RevibaseAbortedError());
-      return;
-    }
-    signal.addEventListener("abort", onAbort);
-
-    const heartbeatId = setInterval(() => {
-      if (!popup?.closed) return;
-      fail(new RevibasePopupClosedError());
-    }, HEARTBEAT_INTERVAL);
-
-    const onConnect = (event: MessageEvent) => {
-      if (event.origin !== origin) return;
-      if (event.source !== popup) return;
-
-      const data = event.data as PopupConnectMessage;
-      if (!data || data.type !== "popup-connect" || data.rid !== rid) return;
-      if (!event.ports?.[0]) return;
-
-      port = event.ports[0];
-      port.start();
-
-      port.postMessage({ type: "popup-init" });
-
-      port.onmessage = (ev: MessageEvent<PopupPortMessage>): void => {
-        switch (ev.data.type) {
-          case "popup-complete":
-            succeed();
-            break;
-
-          case "popup-error":
-            fail(new RevibaseAuthError(ev.data.error));
-            break;
-
-          case "popup-closed": {
-            fail(
-              new RevibasePopupClosedError("Lost connection with the popup."),
-            );
-            break;
-          }
-        }
-      };
-
-      window.removeEventListener("message", onConnect);
-    };
-
-    window.addEventListener("message", onConnect);
   }
 }

@@ -19,6 +19,7 @@ import z from "zod";
 import { startChannel } from "./startChannel";
 import { startRequest } from "./startRequest";
 import { validateMessage } from "./validateMessage";
+import { withValidTillDeadline } from "./withValidTillDeadline";
 
 /** Validates start request, calls Revibase start + getResult, returns user or tx. Pass req.signal for cancel on disconnect. */
 export async function processClientAuthCallback({
@@ -51,25 +52,30 @@ export async function processClientAuthCallback({
   const validTill = Date.now() + DEFAULT_TIMEOUT;
 
   if (data.type === "message") {
-    const result = (await startRequest({
-      request: {
-        phase: "start",
-        redirectOrigin,
-        signer: (parsedResult as StartMessageRequest).signer,
-        rid: (parsedResult as StartMessageRequest).rid,
-        validTill,
-        data: {
-          type: "message",
-          payload: data.payload,
-          trustedDeviceCheck: data.trustedDeviceCheck,
-        },
-      },
-      privateKey,
-      providerOrigin,
+    const result = (await withValidTillDeadline(
+      validTill,
       signal,
-      device,
-      channelId,
-    })) as CompleteMessageRequest;
+      (requestSignal) =>
+        startRequest({
+          request: {
+            phase: "start",
+            redirectOrigin,
+            signer: (parsedResult as StartMessageRequest).signer,
+            rid: (parsedResult as StartMessageRequest).rid,
+            validTill,
+            data: {
+              type: "message",
+              payload: data.payload,
+              trustedDeviceCheck: data.trustedDeviceCheck,
+            },
+          },
+          privateKey,
+          providerOrigin,
+          signal: requestSignal,
+          device,
+          channelId,
+        }),
+    )) as CompleteMessageRequest;
 
     return validateMessage(
       { phase: "complete", data: result.data },
@@ -77,26 +83,31 @@ export async function processClientAuthCallback({
       rpId,
     );
   } else if (data.type === "transaction") {
-    const result = (await startRequest({
-      request: {
-        phase: "start",
-        redirectOrigin,
-        signer: (parsedResult as StartTransactionRequest).signer,
-        rid: (parsedResult as StartTransactionRequest).rid,
-        validTill,
-        data: {
-          type: "transaction",
-          payload: data.payload,
-          sendTx: true,
-          additionalSigners: data.additionalSigners,
-        },
-      },
-      providerOrigin,
-      privateKey,
+    const result = (await withValidTillDeadline(
+      validTill,
       signal,
-      device,
-      channelId,
-    })) as CompleteSendTransactionRequest;
+      (requestSignal) =>
+        startRequest({
+          request: {
+            phase: "start",
+            redirectOrigin,
+            signer: (parsedResult as StartTransactionRequest).signer,
+            rid: (parsedResult as StartTransactionRequest).rid,
+            validTill,
+            data: {
+              type: "transaction",
+              payload: data.payload,
+              sendTx: true,
+              additionalSigners: data.additionalSigners,
+            },
+          },
+          providerOrigin,
+          privateKey,
+          signal: requestSignal,
+          device,
+          channelId,
+        }),
+    )) as CompleteSendTransactionRequest;
 
     return {
       txSig: result.data.payload.txSig,

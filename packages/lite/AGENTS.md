@@ -24,7 +24,7 @@ Passkey Solana wallet: sign-in and transactions in popup or on another device (c
 
 ## Main flows
 
-1. **Popup (default)** — `new RevibaseProvider()`, then `signIn(provider)`, `transferTokens(provider, args)`, or `executeTransaction(provider, args)`. Auth in same-device popup.
+1. **Popup (default)** — `new RevibaseProvider()`, then `signIn(provider)`, `transferTokens(provider, args)`, or `executeTransaction(provider, args)`. Auth in same-device popup. The SDK does not close the popup after the flow; the provider UI manages window lifecycle.
 2. **Channel (auth on another device)** — `provider.createChannel()` first calls `onClientAuthorizationCallback` with a `StartChannelRequest` (register channel with backend / Revibase), then returns `{ channelId, url }`. Open `url` on other device. Then `signIn(provider, { channelId })`, etc. `subscribeToChannelStatus` for status; `reconnectChannel(channelId)` for manual retry.
 
 ## Provider constructor

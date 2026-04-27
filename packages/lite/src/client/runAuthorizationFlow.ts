@@ -33,25 +33,24 @@ export async function runAuthorizationFlow(
     }
   }
 
-  if (!options?.channelId) {
-    provider
-      .sendPayloadToProviderViaPopup({
-        rid,
-        signal: abortController.signal,
-      })
-      .catch((error) => abortController.abort(error));
-  }
-
   const device = options?.channelId
     ? await provider.getDeviceSignature(
         JSON.stringify({ rid, channelId: options.channelId }),
       )
     : undefined;
 
-  return provider.onClientAuthorizationCallback(
-    payload as StartMessageRequest,
-    abortController.signal,
-    device,
-    options?.channelId,
-  ) as Promise<AuthorizationFlowResult>;
+  const timeout = setTimeout(
+    () => abortController?.abort("timeout"),
+    payload.validTill - Date.now(),
+  );
+  try {
+    return await provider.onClientAuthorizationCallback(
+      payload as any,
+      abortController.signal,
+      device,
+      options?.channelId,
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
 }
