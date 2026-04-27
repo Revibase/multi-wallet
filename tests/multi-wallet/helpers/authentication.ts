@@ -40,13 +40,15 @@ export async function mockAuthenticationResponse(
   let challenge: Uint8Array<ArrayBuffer>;
   let slotHash: string | undefined;
   let slotNumber: string | undefined;
+  let estimatedSlotHashExpiry: number | undefined;
 
-  ({ challenge, slotHash, slotNumber } = await createTransactionChallenge(
-    transaction,
-    clientOrigin,
-    deviceJwk,
-    nonce,
-  ));
+  ({ challenge, slotHash, slotNumber, estimatedSlotHashExpiry } =
+    await createTransactionChallenge(
+      transaction,
+      clientOrigin,
+      deviceJwk,
+      nonce,
+    ));
 
   const origin = "happy";
   const crossOrigin = false;
@@ -83,6 +85,7 @@ export async function mockAuthenticationResponse(
   return await getSignedSecp256r1Key({
     slotNumber,
     slotHash,
+    estimatedSlotHashExpiry,
     signer: new Secp256r1Key(publicKey).toString(),
     authResponse: {
       id: "",
@@ -107,6 +110,7 @@ export async function mockAuthenticationResponse(
         crypto.getRandomValues(new Uint8Array(64)),
       ),
     },
+
     originIndex,
     crossOrigin,
     startRequest: {
