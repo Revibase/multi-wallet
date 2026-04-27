@@ -105,6 +105,10 @@ export type ExpectedTransactionSigner =
        */
       device: string;
       /**
+       * The auth provider that managed the transaction
+       */
+      authProvider: string | undefined;
+      /**
        * Initial Request
        */
       startRequest: StartTransactionRequest;

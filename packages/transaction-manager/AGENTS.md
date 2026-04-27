@@ -67,6 +67,7 @@ Union of:
   - `walletAddress`: `Address`
   - `client`: `{ origin: string } & WellKnownClientCacheEntry`
   - `device`: string identifier
+  - `authProvider`: string indentifier (optional)
   - `startRequest`: `initial transaction request`
 - Plain address signer:
   - `signer`: `Address`

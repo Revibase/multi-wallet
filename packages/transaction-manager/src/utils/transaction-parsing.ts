@@ -40,6 +40,7 @@ import {
   REVIBASE_LOOKUP_TABLE_ADDRESS,
 } from "./consts";
 import {
+  verifyAuthProviderSignature,
   verifyClientSignature,
   verifyDeviceSignature,
   verifyTransactionAuthResponseWithMessageHash,
@@ -137,8 +138,13 @@ export async function verifyAndParseSigners(
           equalBytes(getSecp256r1MessageHash(x.authResponse), messageHash),
         );
         if (!authDetails) throw new Error("Hash mismatch");
-        const { client, device, startRequest, estimatedSlotHashExpiry } =
-          authDetails;
+        const {
+          client,
+          device,
+          startRequest,
+          estimatedSlotHashExpiry,
+          authProvider,
+        } = authDetails;
         if (startRequest.data.type !== "transaction")
           throw new Error("Invalid request type.");
 
@@ -148,6 +154,10 @@ export async function verifyAndParseSigners(
         );
         if (estimatedValidTill < Date.now()) {
           throw new Error("Request has expired.");
+        }
+
+        if (startRequest.data.sendTx && !authProvider) {
+          throw new Error("Auth provider is missing");
         }
 
         const [clientDetails] = await Promise.all([
@@ -163,12 +173,14 @@ export async function verifyAndParseSigners(
             messageHash,
           ),
           verifyDeviceSignature(device, messageHash),
+          verifyAuthProviderSignature(authProvider, messageHash),
         ]);
         return {
           signer,
           walletAddress,
           client: { origin: client.clientOrigin, ...clientDetails },
           device: device.jwk,
+          authProvider: authProvider?.jwk,
           startRequest,
           estimatedValidTill,
         } as ExpectedTransactionSigner;
