@@ -140,8 +140,10 @@ export function getTransactionExecuteInstruction<
     ResolvedAccount
   >;
 
+  const args = { ...input };
+
   // Resolver scope.
-  const resolverScope = { programAddress, accounts };
+  const resolverScope = { programAddress, accounts, args };
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
