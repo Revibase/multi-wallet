@@ -111,9 +111,7 @@ export async function processTransferIntent(
   );
 
   const numFixedAccounts =
-    instructionType === MultiWalletInstruction.NativeTransferIntentCompressed
-      ? 6
-      : 18;
+    instructionType === MultiWalletInstruction.NativeTransferIntent ? 6 : 18;
   const addressSigners = decodedInstructionData.signers
     .filter((x) => x.__kind === "Ed25519")
     .map((x) => ({
