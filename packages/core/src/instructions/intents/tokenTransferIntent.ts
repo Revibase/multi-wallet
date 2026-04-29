@@ -1,4 +1,3 @@
-import { selectMinCompressedTokenAccountsForDecompression } from "@lightprotocol/compressed-token";
 import {
   TreeType,
   type CompressedAccount,
@@ -7,7 +6,6 @@ import {
   type ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
 import { PublicKey } from "@solana/web3.js";
-import BN from "bn.js";
 import {
   AccountRole,
   address,
@@ -562,14 +560,84 @@ async function getCompressedTokenAccounts(
   if (accounts.length === 0) {
     return [];
   }
-  const minAccounts = selectMinCompressedTokenAccountsForDecompression(
+  const selectedAccounts = selectMinCompressedTokenAccountsForDecompression(
     accounts,
-    new BN(transferAmount),
+    Number(transferAmount),
     compressed ? 3 : 4,
     { treeType: TreeType.StateV2 },
   );
 
-  return minAccounts.selectedAccounts;
+  return selectedAccounts;
+}
+
+function selectMinCompressedTokenAccountsForDecompression(
+  accounts: ParsedTokenAccount[],
+  transferAmount: number,
+  maxInputs: number = 4,
+  options?: { treeType: TreeType },
+) {
+  const filteredAccounts = accounts.filter(
+    (x) => x.compressedAccount.treeInfo.treeType === options?.treeType,
+  );
+
+  if (filteredAccounts.length === 0) {
+    throw new Error("No accounts found");
+  }
+
+  let accumulatedAmount = 0;
+  let accumulatedLamports = 0;
+  let maxPossibleAmount = 0;
+
+  const selectedAccounts: ParsedTokenAccount[] = [];
+
+  filteredAccounts.sort((a, b) => b.parsed.amount.cmp(a.parsed.amount));
+
+  for (const account of filteredAccounts) {
+    if (selectedAccounts.length >= maxInputs) break;
+    if (accumulatedAmount >= transferAmount) break;
+
+    if (
+      !account.parsed.amount.isZero() ||
+      !account.compressedAccount.lamports.isZero()
+    ) {
+      accumulatedAmount = accumulatedAmount + account.parsed.amount.toNumber();
+      accumulatedLamports =
+        accumulatedLamports + account.compressedAccount.lamports.toNumber();
+
+      selectedAccounts.push(account);
+    }
+  }
+
+  // Max, considering maxInputs
+  maxPossibleAmount = filteredAccounts
+    .slice(0, maxInputs)
+    .reduce((total, account) => total + account.parsed.amount.toNumber(), 0);
+
+  if (selectedAccounts.length === 0) {
+    throw new Error("No accounts found.");
+  }
+
+  if (accumulatedAmount < transferAmount) {
+    const totalBalance = filteredAccounts.reduce(
+      (acc, account) => acc + account.parsed.amount.toNumber(),
+      0,
+    );
+    if (selectedAccounts.length >= maxInputs) {
+      throw new Error(
+        `Account limit exceeded: max ${maxPossibleAmount.toString()} (${maxInputs} accounts) per transaction. Total balance: ${totalBalance.toString()} (${filteredAccounts.length} accounts). Consider multiple transfers to spend full balance.`,
+      );
+    } else {
+      throw new Error(
+        `Insufficient balance for transfer. Required: ${transferAmount.toString()}, available: ${totalBalance.toString()}.`,
+      );
+    }
+  }
+
+  if (selectedAccounts.length === 0) {
+    throw new Error("No accounts found.");
+  }
+
+  return selectedAccounts;
 }
 
 async function getCompressedSettings(
