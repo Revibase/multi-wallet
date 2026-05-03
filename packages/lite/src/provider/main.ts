@@ -56,7 +56,9 @@ export class RevibaseProvider {
   }
 
   startRequest() {
-    this.popUp = createPopUp(`${new URL(this.providerOrigin).origin}/loading`);
+    this.popUp = createPopUp(
+      `${new URL(this.providerOrigin).origin}?clientOrigin=${window.origin}`,
+    );
     if (!this.popUp) {
       throw new Error("Popup blocked. Disable your popup blocker.");
     }
