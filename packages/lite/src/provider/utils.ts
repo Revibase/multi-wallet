@@ -10,7 +10,7 @@ import {
   type ClientAuthorizationCallback,
 } from "src/utils";
 
-export const DEFAULT_TIMEOUT = 5 * 60 * 1000;
+export const DEFAULT_TIMEOUT = 3 * 60 * 1000;
 export const HEARTBEAT_INTERVAL = 2000;
 
 export type PopupPortMessage =

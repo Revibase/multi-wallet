@@ -98,6 +98,7 @@ export async function executeTransaction(
     request: requestWithClientSignature,
     options,
     additionalSigners,
+    addressesByLookupTableAddress,
     payer,
   });
 }

@@ -12,13 +12,17 @@ import {
   getBase64Encoder,
   getU64Decoder,
   type Address,
+  type AddressesByLookupTableAddress,
   type TransactionSigner,
 } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
-import { ADDRESS_BY_LOOKUP_TABLE_ADDRESS } from "../lookuptable";
 import type { TransactionAuthorizationFlowOptions } from "../types";
 import { signAndSendTransaction } from "./solana-send";
-import { getRandomPayer, getTransactionManagerSigner } from "./utils";
+import {
+  fetchAdditionalLoopUpTableIfNecessary,
+  getRandomPayer,
+  getTransactionManagerSigner,
+} from "./utils";
 
 export async function processTokenTransfer(params: {
   authResponse: TransactionAuthenticationResponse;
@@ -26,9 +30,16 @@ export async function processTokenTransfer(params: {
   payer?: TransactionSigner;
   settingsAddressTreeIndex?: number;
   options?: TransactionAuthorizationFlowOptions;
+  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
 }): Promise<string> {
-  const { authResponse, settings, settingsAddressTreeIndex, options, payer } =
-    params;
+  const {
+    authResponse,
+    settings,
+    settingsAddressTreeIndex,
+    options,
+    payer,
+    addressesByLookupTableAddress,
+  } = params;
   const { startRequest, signer } = authResponse;
   if (startRequest.data.type !== "transaction")
     throw new Error("Invalid request type.");
@@ -103,6 +114,8 @@ export async function processTokenTransfer(params: {
   return signAndSendTransaction({
     instructions,
     payer: feePayer,
-    addressesByLookupTableAddress: ADDRESS_BY_LOOKUP_TABLE_ADDRESS,
+    addressesByLookupTableAddress: await fetchAdditionalLoopUpTableIfNecessary(
+      addressesByLookupTableAddress,
+    ),
   });
 }

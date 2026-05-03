@@ -4,7 +4,11 @@ import {
   UserInfoSchema,
   type CompleteTransactionRequest,
 } from "@revibase/core";
-import { address, type TransactionSigner } from "gill";
+import {
+  address,
+  type AddressesByLookupTableAddress,
+  type TransactionSigner,
+} from "gill";
 import type { RevibaseProvider } from "src/provider";
 import type { TransactionAuthorizationFlowOptions } from "src/utils";
 import { processBundledTransaction } from "src/utils/transactions/processBundledTransaction";
@@ -19,9 +23,16 @@ export async function sendTransaction(
     additionalSigners?: TransactionSigner[];
     options?: TransactionAuthorizationFlowOptions;
     payer?: TransactionSigner;
+    addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
 ): Promise<{ txSig: string; user: UserInfo }> {
-  const { request, additionalSigners, options, payer } = params;
+  const {
+    request,
+    additionalSigners,
+    options,
+    payer,
+    addressesByLookupTableAddress,
+  } = params;
   const { confirmTransaction = true } = options ?? {};
   if (request.data.payload.startRequest.data.type === "message") {
     throw new Error("Invalid request type.");
@@ -49,6 +60,7 @@ export async function sendTransaction(
         settings: address(settings),
         options,
         payer,
+        addressesByLookupTableAddress,
       });
       break;
     case "execute":

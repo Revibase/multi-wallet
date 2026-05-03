@@ -7,10 +7,13 @@ import {
 } from "@revibase/core";
 import { getBase64Encoder, type Address, type TransactionSigner } from "gill";
 import type { RevibaseProvider } from "src/provider";
-import { ADDRESS_BY_LOOKUP_TABLE_ADDRESS } from "../lookuptable";
 import type { TransactionAuthorizationFlowOptions } from "../types";
 import { signAndSendBundledTransactions } from "./solana-send";
-import { getRandomPayer, getTransactionManagerSigner } from "./utils";
+import {
+  fetchAdditionalLoopUpTableIfNecessary,
+  getRandomPayer,
+  getTransactionManagerSigner,
+} from "./utils";
 
 export async function processBundledTransaction(
   provider: RevibaseProvider,
@@ -92,15 +95,15 @@ export async function processBundledTransaction(
     cachedAccounts,
   });
 
-  const bundlesWithLookupTables = bundle.map((x) => ({
-    ...x,
-    addressesByLookupTableAddress: x.addressesByLookupTableAddress
-      ? {
-          ...x.addressesByLookupTableAddress,
-          ...ADDRESS_BY_LOOKUP_TABLE_ADDRESS,
-        }
-      : ADDRESS_BY_LOOKUP_TABLE_ADDRESS,
-  }));
+  const bundlesWithLookupTables = await Promise.all(
+    bundle.map(async (x) => ({
+      ...x,
+      addressesByLookupTableAddress:
+        await fetchAdditionalLoopUpTableIfNecessary(
+          x.addressesByLookupTableAddress,
+        ),
+    })),
+  );
 
   return signAndSendBundledTransactions(provider, bundlesWithLookupTables);
 }

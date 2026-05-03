@@ -8,6 +8,7 @@ import {
   getAddressEncoder,
   getBase64Decoder,
   getU64Encoder,
+  type AddressesByLookupTableAddress,
   type TransactionSigner,
 } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
@@ -26,6 +27,7 @@ export async function transferTokens(
     mint?: string;
     tokenProgram?: string;
     payer?: TransactionSigner;
+    addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
   options?: TransactionAuthorizationFlowOptions,
 ): Promise<{ txSig?: string; user: UserInfo }> {
@@ -44,6 +46,7 @@ export async function transferTokens(
     destination,
     signer,
     payer,
+    addressesByLookupTableAddress,
   } = args;
 
   const { signal } = options ?? {};
@@ -85,6 +88,7 @@ export async function transferTokens(
   return await sendTransaction(provider, {
     request: requestWithClientSignature,
     options,
+    addressesByLookupTableAddress,
     payer,
   });
 }

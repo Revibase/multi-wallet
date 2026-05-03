@@ -6,10 +6,13 @@ import {
   type TransactionAuthenticationResponse,
 } from "@revibase/core";
 import { getBase64Encoder, type Address, type TransactionSigner } from "gill";
-import { ADDRESS_BY_LOOKUP_TABLE_ADDRESS } from "../lookuptable";
 import type { TransactionAuthorizationFlowOptions } from "../types";
 import { signAndSendTransaction } from "./solana-send";
-import { getRandomPayer, getTransactionManagerSigner } from "./utils";
+import {
+  fetchAdditionalLoopUpTableIfNecessary,
+  getRandomPayer,
+  getTransactionManagerSigner,
+} from "./utils";
 
 export async function processSyncTransaction(params: {
   authResponse: TransactionAuthenticationResponse;
@@ -82,13 +85,11 @@ export async function processSyncTransaction(params: {
       additionalSigners,
     });
 
-  const mergedAddresses = addressesByLookupTableAddress
-    ? { ...addressesByLookupTableAddress, ...ADDRESS_BY_LOOKUP_TABLE_ADDRESS }
-    : ADDRESS_BY_LOOKUP_TABLE_ADDRESS;
-
   return signAndSendTransaction({
     instructions,
     payer: feePayer,
-    addressesByLookupTableAddress: mergedAddresses,
+    addressesByLookupTableAddress: await fetchAdditionalLoopUpTableIfNecessary(
+      addressesByLookupTableAddress,
+    ),
   });
 }
