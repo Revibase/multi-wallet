@@ -20,19 +20,6 @@ export async function processSendJitoBundleCallback(
     ],
   });
 
-  const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
-
-  const parseRetryAfterMs = (res: Response): number | null => {
-    const value = res.headers.get("retry-after");
-    if (!value) return null;
-    const seconds = Number(value);
-    if (Number.isFinite(seconds) && seconds >= 0)
-      return Math.round(seconds * 1000);
-    const dateMs = Date.parse(value);
-    if (!Number.isNaN(dateMs)) return Math.max(0, dateMs - Date.now());
-    return null;
-  };
-
   let response: Response | null = null;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     response = await fetch(url, {
@@ -47,9 +34,8 @@ export async function processSendJitoBundleCallback(
     if (response.status !== 429) break;
     if (attempt === maxRetries) break;
 
-    const retryAfterMs = parseRetryAfterMs(response);
     const backoffMs = Math.min(10_000, baseBackoffMs * 2 ** attempt);
-    await sleep(retryAfterMs ?? backoffMs);
+    await sleep(backoffMs);
   }
 
   if (!response) {
@@ -70,3 +56,5 @@ export async function processSendJitoBundleCallback(
 
   return data.result;
 }
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
