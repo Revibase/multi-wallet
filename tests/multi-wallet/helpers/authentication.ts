@@ -115,7 +115,7 @@ export async function mockAuthenticationResponse(
     crossOrigin,
     startRequest: {
       phase: "start",
-      redirectOrigin: clientOrigin,
+      clientOrigin: clientOrigin,
       rid: nonce,
       validTill: Date.now() + 3 * 60 * 1000,
       data: {
@@ -126,7 +126,6 @@ export async function mockAuthenticationResponse(
             transaction.transactionMessageBytes,
           ),
         },
-        sendTx: false,
       },
     },
   });

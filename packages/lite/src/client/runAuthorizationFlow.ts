@@ -1,56 +1,30 @@
 import type {
-  StartMessageRequest,
-  StartTransactionRequest,
+  CompleteMessageRequest,
+  CompleteTransactionRequest,
 } from "@revibase/core";
 import type { RevibaseProvider } from "src/provider/main";
-import type {
-  AuthorizationFlowResult,
-  TransactionAuthorizationFlowOptions,
-} from "src/utils";
+import type { StartPayload } from "src/utils";
 
 /** Shared flow: startRequest → payload → popup or device signature → callback. Used by signIn, transferTokens, executeTransaction. */
 export async function runAuthorizationFlow(
   provider: RevibaseProvider,
-  buildPayload: (
-    rid: string,
-    redirectOrigin: string,
-  ) => StartMessageRequest | StartTransactionRequest,
-  options?: TransactionAuthorizationFlowOptions,
-): Promise<AuthorizationFlowResult> {
-  const { rid, redirectOrigin } = provider.startRequest(options?.channelId);
+  buildPayload: (clientOrigin: string) => StartPayload,
+  signal?: AbortSignal,
+): Promise<CompleteMessageRequest | CompleteTransactionRequest> {
+  // 1. Opens the popup.
+  provider.startRequest();
 
-  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  // 2. Build start request payload
+  const payload = buildPayload(window.origin);
 
-  const payload = buildPayload(rid, redirectOrigin);
+  // 3. Get client to signature on start request payload
+  const { signature, rid, validTill } =
+    await provider.onClientAuthorizationCallback(payload);
 
-  const abortController = new AbortController();
-
-  if (options?.signal) {
-    if (options.signal.aborted) {
-      abortController.abort();
-    } else {
-      options.signal.addEventListener("abort", () => abortController.abort());
-    }
-  }
-
-  const device = options?.channelId
-    ? await provider.getDeviceSignature(
-        JSON.stringify({ rid, channelId: options.channelId }),
-      )
-    : undefined;
-
-  const timeout = setTimeout(
-    () => abortController?.abort("timeout"),
-    payload.validTill - Date.now(),
-  );
-  try {
-    return await provider.onClientAuthorizationCallback(
-      payload as any,
-      abortController.signal,
-      device,
-      options?.channelId,
-    );
-  } finally {
-    clearTimeout(timeout);
-  }
+  // 4. Get user signature on request
+  return await provider.sendPayloadToProviderViaPopup({
+    request: { ...payload, rid, validTill },
+    signal,
+    signature,
+  });
 }

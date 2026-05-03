@@ -34,22 +34,6 @@ export async function verifyDeviceSignature(
   }
 }
 
-export async function verifyAuthProviderSignature(
-  authProvider: TransactionAuthDetails["authProvider"],
-  messageHash: Uint8Array<ArrayBuffer>,
-): Promise<void> {
-  if (!authProvider) return;
-  try {
-    const key = await importJWK(convertBase64StringToJWK(authProvider.jwk));
-    const result = await compactVerify(authProvider.jws, key);
-    if (!equalBytes(result.payload, messageHash)) {
-      throw new Error("Invalid Payload");
-    }
-  } catch {
-    throw new Error(`Auth provider signature verification failed`);
-  }
-}
-
 export async function verifyClientSignature(
   client: TransactionAuthDetails["client"],
   messageHash: Uint8Array<ArrayBuffer>,

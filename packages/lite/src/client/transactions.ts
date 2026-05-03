@@ -1,6 +1,5 @@
 import type {
-  AdditionalSignersParam,
-  StartTransactionRequest,
+  CompleteTransactionRequest,
   TransactionPayloadWithBase64MessageBytes,
   UserInfo,
 } from "@revibase/core";
@@ -15,10 +14,11 @@ import {
   getBase64Decoder,
   type AddressesByLookupTableAddress,
   type Instruction,
+  type TransactionSigner,
 } from "gill";
 import type { RevibaseProvider } from "src/provider/main";
-import { DEFAULT_TIMEOUT } from "src/provider/utils";
 import type { TransactionAuthorizationFlowOptions } from "src/utils/types";
+import { sendTransaction } from "../utils/transactions";
 import { runAuthorizationFlow } from "./runAuthorizationFlow";
 
 /** Custom transaction. Action from wallet settings (TransactionManager). Provider needs rpcEndpoint. Options: signal?, channelId?. */
@@ -27,11 +27,12 @@ export async function executeTransaction(
   args: {
     instructions: Instruction[];
     signer: UserInfo;
+    payer?: TransactionSigner;
     settingsIndexWithAddress?: {
       index: number | bigint;
       settingsAddressTreeIndex: number;
     };
-    additionalSigners?: AdditionalSignersParam;
+    additionalSigners?: TransactionSigner[];
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
   options?: TransactionAuthorizationFlowOptions,
@@ -41,7 +42,11 @@ export async function executeTransaction(
     signer,
     addressesByLookupTableAddress,
     settingsIndexWithAddress,
+    additionalSigners,
+    payer,
   } = args;
+
+  const { signal } = options ?? {};
 
   const transactionMessageBytes = prepareTransactionMessage({
     payer: address(signer.walletAddress),
@@ -59,9 +64,9 @@ export async function executeTransaction(
     (x) => x.role === UserRole.TransactionManager,
   );
 
-  return runAuthorizationFlow(
+  const result = (await runAuthorizationFlow(
     provider,
-    (rid, redirectOrigin) => {
+    (clientOrigin) => {
       const transactionPayload: TransactionPayloadWithBase64MessageBytes = {
         transactionMessageBytes: getBase64Decoder().decode(
           transactionMessageBytes,
@@ -72,21 +77,27 @@ export async function executeTransaction(
           : "create_with_preauthorized_execution",
       };
 
-      const payload: StartTransactionRequest = {
-        phase: "start",
-        rid,
-        validTill: Date.now() + DEFAULT_TIMEOUT,
+      const payload = {
+        phase: "start" as const,
         data: {
           type: "transaction" as const,
           payload: transactionPayload,
-          sendTx: true,
-          additionalSigners: args.additionalSigners,
         },
-        redirectOrigin,
+        clientOrigin,
         signer: signer.publicKey,
       };
       return payload;
     },
+    signal,
+  )) as CompleteTransactionRequest;
+
+  const requestWithClientSignature =
+    await provider.onClientAuthorizationCallback(result);
+
+  return await sendTransaction(provider, {
+    request: requestWithClientSignature,
     options,
-  );
+    additionalSigners,
+    payer,
+  });
 }

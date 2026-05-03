@@ -1,7 +1,6 @@
-import type { StartMessageRequest, UserInfo } from "@revibase/core";
+import type { CompleteMessageRequest, UserInfo } from "@revibase/core";
 import { getBase64Decoder } from "gill";
 import { RevibaseProvider } from "src/provider/main";
-import { DEFAULT_TIMEOUT } from "src/provider/utils";
 import { createSignInMessageText } from "src/utils/internal";
 import type { SignInAuthorizationFlowOptions } from "src/utils/types";
 import { runAuthorizationFlow } from "./runAuthorizationFlow";
@@ -11,27 +10,27 @@ export async function signIn(
   provider: RevibaseProvider,
   options?: SignInAuthorizationFlowOptions,
 ): Promise<{ user: UserInfo }> {
-  return runAuthorizationFlow(
+  const { signal } = options ?? {};
+  const result = (await runAuthorizationFlow(
     provider,
-    (rid, redirectOrigin) => {
-      const payload: StartMessageRequest = {
-        phase: "start",
-        rid,
-        validTill: Date.now() + DEFAULT_TIMEOUT,
+    (clientOrigin) => {
+      const payload = {
+        phase: "start" as const,
         data: {
           type: "message" as const,
-          trustedDeviceCheck: options?.trustedDeviceCheck ?? false,
           payload: createSignInMessageText({
-            domain: redirectOrigin,
+            domain: clientOrigin,
             nonce: getBase64Decoder().decode(
               crypto.getRandomValues(new Uint8Array(16)),
             ),
           }),
         },
-        redirectOrigin,
+        clientOrigin,
       };
       return payload;
     },
-    options,
-  ) as Promise<{ user: UserInfo }>;
+    signal,
+  )) as CompleteMessageRequest;
+
+  return await provider.onClientAuthorizationCallback(result);
 }

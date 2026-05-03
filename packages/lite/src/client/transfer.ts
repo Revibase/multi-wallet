@@ -1,5 +1,5 @@
 import type {
-  StartTransactionRequest,
+  CompleteTransactionRequest,
   TransactionPayloadWithBase64MessageBytes,
   UserInfo,
 } from "@revibase/core";
@@ -8,14 +8,15 @@ import {
   getAddressEncoder,
   getBase64Decoder,
   getU64Encoder,
+  type TransactionSigner,
 } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 import type { RevibaseProvider } from "src/provider/main";
-import { DEFAULT_TIMEOUT } from "src/provider/utils";
 import type { TransactionAuthorizationFlowOptions } from "src/utils/types";
+import { sendTransaction } from "../utils/transactions/sendTransaction";
 import { runAuthorizationFlow } from "./runAuthorizationFlow";
 
-/** Transfers SOL or SPL (set mint for SPL). amount &gt; 0, destination required. Options: signal?, channelId?. */
+/** Transfers SOL or SPL (set mint for SPL). amount &gt; 0, destination required */
 export async function transferTokens(
   provider: RevibaseProvider,
   args: {
@@ -24,6 +25,7 @@ export async function transferTokens(
     signer?: UserInfo;
     mint?: string;
     tokenProgram?: string;
+    payer?: TransactionSigner;
   },
   options?: TransactionAuthorizationFlowOptions,
 ): Promise<{ txSig?: string; user: UserInfo }> {
@@ -41,11 +43,14 @@ export async function transferTokens(
     amount,
     destination,
     signer,
+    payer,
   } = args;
 
-  return runAuthorizationFlow(
+  const { signal } = options ?? {};
+
+  const result = (await runAuthorizationFlow(
     provider,
-    (rid, redirectOrigin) => {
+    (clientOrigin) => {
       const transactionPayload: TransactionPayloadWithBase64MessageBytes = {
         transactionActionType: "transfer_intent",
         transactionAddress: mint ? tokenProgram : SYSTEM_PROGRAM_ADDRESS,
@@ -60,20 +65,26 @@ export async function transferTokens(
         ),
       };
 
-      const payload: StartTransactionRequest = {
-        phase: "start",
-        rid,
-        validTill: Date.now() + DEFAULT_TIMEOUT,
+      const payload = {
+        phase: "start" as const,
         data: {
           type: "transaction" as const,
           payload: transactionPayload,
-          sendTx: true,
         },
-        redirectOrigin,
+        clientOrigin,
         signer: signer?.publicKey,
       };
       return payload;
     },
+    signal,
+  )) as CompleteTransactionRequest;
+
+  const requestWithClientSignature =
+    await provider.onClientAuthorizationCallback(result);
+
+  return await sendTransaction(provider, {
+    request: requestWithClientSignature,
     options,
-  );
+    payer,
+  });
 }

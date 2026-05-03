@@ -1,58 +1,39 @@
 import {
   convertBase64StringToJWK,
   createClientAuthorizationStartRequestChallenge,
-  type CompleteMessageRequest,
-  type CompleteSendTransactionRequest,
   type StartMessageRequest,
   type StartTransactionRequest,
 } from "@revibase/core";
+import { getBase64Decoder } from "gill";
 import { CompactSign } from "jose";
-import { REVIBASE_AUTH_URL } from "src/utils/consts";
+import { DEFAULT_TIMEOUT } from "src/provider/utils";
 
-/** Signs start request, calls Revibase startRequest API. options.channelId for channel flow. */
-export async function startRequest({
-  privateKey,
-  request,
-  providerOrigin = REVIBASE_AUTH_URL,
-  signal,
-  device,
-  channelId,
-}: {
-  privateKey: string;
-  request: StartTransactionRequest | StartMessageRequest;
-  signal?: AbortSignal;
-  channelId?: string;
-  device?: {
-    jwk: string;
-    jws: string;
-  };
-  providerOrigin?: string;
-}) {
+export async function startRequest(
+  request:
+    | Omit<StartMessageRequest, "rid" | "validTill">
+    | Omit<StartTransactionRequest, "rid" | "validTill">,
+  allowedClientOrigins: string[],
+  privateKey: string,
+) {
+  if (!allowedClientOrigins.includes(request.clientOrigin)) {
+    throw new Error("Invalid client origin");
+  }
+  const rid = getBase64Decoder().decode(
+    crypto.getRandomValues(new Uint8Array(16)),
+  );
+  const validTill = Date.now() + DEFAULT_TIMEOUT;
   const pKey = convertBase64StringToJWK(privateKey);
   if (!pKey.alg) throw new Error("Property alg in JWK is missing.");
   const signature = await new CompactSign(
-    createClientAuthorizationStartRequestChallenge(request),
+    createClientAuthorizationStartRequestChallenge({
+      ...request,
+      rid,
+      validTill,
+    }),
   )
     .setProtectedHeader({
       alg: pKey.alg,
     })
     .sign(pKey);
-
-  const res = await fetch(`${providerOrigin}/api/startRequest`, {
-    method: "POST",
-    body: JSON.stringify({
-      signature,
-      request,
-      device,
-      channelId,
-    }),
-    signal,
-  });
-
-  if (!res.ok) {
-    throw new Error(((await res.json()) as { error: string }).error);
-  }
-  return (await res.json()) as
-    | CompleteMessageRequest
-    | CompleteSendTransactionRequest;
+  return { signature, validTill, rid };
 }

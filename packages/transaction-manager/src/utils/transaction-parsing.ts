@@ -2,7 +2,6 @@ import { equalBytes } from "@noble/curves/utils.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import {
   convertMemberKeyToString,
-  createClientAuthorizationStartRequestChallenge,
   getSecp256r1MessageHash,
   getSecp256r1VerifyInstructionDataDecoder,
   getSettingsFromIndex,
@@ -40,7 +39,6 @@ import {
   REVIBASE_LOOKUP_TABLE_ADDRESS,
 } from "./consts";
 import {
-  verifyAuthProviderSignature,
   verifyClientSignature,
   verifyDeviceSignature,
   verifyTransactionAuthResponseWithMessageHash,
@@ -138,13 +136,8 @@ export async function verifyAndParseSigners(
           equalBytes(getSecp256r1MessageHash(x.authResponse), messageHash),
         );
         if (!authDetails) throw new Error("Hash mismatch");
-        const {
-          client,
-          device,
-          startRequest,
-          estimatedSlotHashExpiry,
-          authProvider,
-        } = authDetails;
+        const { client, device, startRequest, estimatedSlotHashExpiry } =
+          authDetails;
         if (startRequest.data.type !== "transaction")
           throw new Error("Invalid request type.");
 
@@ -156,31 +149,19 @@ export async function verifyAndParseSigners(
           throw new Error("Request has expired.");
         }
 
-        if (startRequest.data.sendTx && !authProvider) {
-          throw new Error("Auth provider is missing");
-        }
-
         const [clientDetails] = await Promise.all([
-          verifyClientSignature(
-            client,
-            startRequest.data.sendTx
-              ? createClientAuthorizationStartRequestChallenge(startRequest)
-              : messageHash,
-            wellKnownProxyUrl,
-          ),
+          verifyClientSignature(client, messageHash, wellKnownProxyUrl),
           verifyTransactionAuthResponseWithMessageHash(
             authDetails,
             messageHash,
           ),
           verifyDeviceSignature(device, messageHash),
-          verifyAuthProviderSignature(authProvider, messageHash),
         ]);
         return {
           signer,
           walletAddress,
           client: { origin: client.clientOrigin, ...clientDetails },
           device: device.jwk,
-          authProvider: authProvider?.jwk,
           startRequest,
           estimatedValidTill,
         } as ExpectedTransactionSigner;
