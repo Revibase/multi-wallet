@@ -1,8 +1,6 @@
 import type {
   CompleteMessageRequest,
   CompleteTransactionRequest,
-  StartMessageRequest,
-  StartTransactionRequest,
 } from "@revibase/core";
 import {
   RevibaseApiError,
@@ -12,8 +10,10 @@ import {
 
 export const DEFAULT_TIMEOUT = 3 * 60 * 1000;
 export const HEARTBEAT_INTERVAL = 2000;
+export const CONNECT_TIMEOUT = 20000;
 
 export type PopupPortMessage =
+  | { type: "pong" }
   | {
       type: "popup-complete";
       payload: CompleteTransactionRequest | CompleteMessageRequest;
@@ -27,11 +27,10 @@ export type PopupConnectMessage = {
 };
 
 export type Pending = {
-  request: StartMessageRequest | StartTransactionRequest;
-  signature: string;
+  rid: string;
+  clientOrigin: string;
   resolve: (v: CompleteMessageRequest | CompleteTransactionRequest) => void;
   reject: (e: Error) => void;
-  timeoutId: ReturnType<typeof setTimeout>;
   cancel?: (err: Error) => void;
 };
 

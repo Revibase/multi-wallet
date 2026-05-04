@@ -9,16 +9,14 @@ import type { PendingApprovalsCallbacks } from "./transactions/transaction-signe
 
 /** Authorize start request: POST request/device/channelId to backend, return result. */
 export type ClientAuthorizationCallback = {
-  (
-    request: StartPayload,
-  ): Promise<{ signature: string; validTill: number; rid: string }>;
+  (request: StartPayload): Promise<{ signature: string; validTill: number }>;
   (request: CompleteMessageRequest): Promise<{ user: UserInfo }>;
   (request: CompleteTransactionRequest): Promise<CompleteTransactionRequest>;
 };
 
 export type StartPayload =
-  | Omit<StartMessageRequest, "rid" | "validTill">
-  | Omit<StartTransactionRequest, "rid" | "validTill">;
+  | Omit<StartMessageRequest, "validTill">
+  | Omit<StartTransactionRequest, "validTill">;
 
 /** signIn options. */
 export type SignInAuthorizationFlowOptions = {

@@ -26,13 +26,16 @@ import {
   getSetComputeUnitPriceInstruction,
 } from "gill/programs";
 import type { RevibaseProvider } from "src/provider";
+import { withRetry } from "../retry";
 
 export async function signAndSendTransaction({
   instructions,
   payer,
   addressesByLookupTableAddress,
 }: TransactionDetails): Promise<string> {
-  const latestBlockHash = await getSolanaRpc().getLatestBlockhash().send();
+  const latestBlockHash = await withRetry(() =>
+    getSolanaRpc().getLatestBlockhash().send(),
+  );
   const tx = await pipe(
     createTransactionMessage({ version: 0 }),
     (tx) => appendTransactionMessageInstructions(instructions, tx),
@@ -75,14 +78,17 @@ export async function signAndSendTransaction({
         tx,
       );
     },
-    async (tx) => await signTransactionMessageWithSigners(await tx),
+    async (tx) =>
+      await withRetry(async () => signTransactionMessageWithSigners(await tx)),
   );
-  await getSolanaRpc()
-    .sendTransaction(getBase64EncodedWireTransaction(tx), {
-      skipPreflight: true,
-      encoding: "base64",
-    })
-    .send();
+  await withRetry(() =>
+    getSolanaRpc()
+      .sendTransaction(getBase64EncodedWireTransaction(tx), {
+        skipPreflight: true,
+        encoding: "base64",
+      })
+      .send(),
+  );
 
   return getSignatureFromTransaction(tx);
 }
@@ -102,8 +108,10 @@ export async function signAndSendBundledTransactions(
       unitsConsumed: computeUnits[index],
     })),
   );
-  await provider.onSendJitoBundleCallback(
-    encodedBundle.map(getBase64EncodedWireTransaction),
+  await withRetry(() =>
+    provider.onSendJitoBundleCallback(
+      encodedBundle.map(getBase64EncodedWireTransaction),
+    ),
   );
   return getSignatureFromTransaction(encodedBundle[encodedBundle.length - 1]);
 }
@@ -112,34 +120,36 @@ export async function simulateBundle(
   bundle: string[],
   connectionUrl: string,
 ): Promise<number[]> {
-  const response = await fetch(connectionUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: "2",
-      method: "simulateBundle",
-      params: [
-        {
-          encodedTransactions: bundle,
-        },
-        {
-          skipSigVerify: true,
-          replaceRecentBlockhash: true,
-          preExecutionAccountsConfigs: bundle.map(() => ({
-            encoding: "base64",
-            addresses: [],
-          })),
-          postExecutionAccountsConfigs: bundle.map(() => ({
-            encoding: "base64",
-            addresses: [],
-          })),
-        },
-      ],
+  const response = await withRetry(() =>
+    fetch(connectionUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: "2",
+        method: "simulateBundle",
+        params: [
+          {
+            encodedTransactions: bundle,
+          },
+          {
+            skipSigVerify: true,
+            replaceRecentBlockhash: true,
+            preExecutionAccountsConfigs: bundle.map(() => ({
+              encoding: "base64",
+              addresses: [],
+            })),
+            postExecutionAccountsConfigs: bundle.map(() => ({
+              encoding: "base64",
+              addresses: [],
+            })),
+          },
+        ],
+      }),
     }),
-  });
+  );
 
   const data = (await response.json()) as {
     result?: {
@@ -188,7 +198,7 @@ async function createEncodedBundle(
         ),
         lastValidBlockHeight: BigInt(Number.MAX_SAFE_INTEGER),
       }
-    : (await getSolanaRpc().getLatestBlockhash().send()).value;
+    : (await withRetry(() => getSolanaRpc().getLatestBlockhash().send())).value;
   return await Promise.all(
     bundle.map(async (x) => {
       const tx = await pipe(
@@ -204,7 +214,7 @@ async function createEncodedBundle(
                 x.addressesByLookupTableAddress,
               )
             : tx,
-        async (tx) => {
+        (tx) => {
           const computeUnits = Math.ceil((x.unitsConsumed ?? 0) * 1.1);
           return computeUnits > 200_000
             ? prependTransactionMessageInstructions(
@@ -219,8 +229,8 @@ async function createEncodedBundle(
         },
         async (tx) =>
           isSimulate
-            ? compileTransaction(await tx)
-            : await signTransactionMessageWithSigners(await tx),
+            ? compileTransaction(tx)
+            : await withRetry(() => signTransactionMessageWithSigners(tx)),
       );
       return tx;
     }),
@@ -241,11 +251,13 @@ async function getComputeUnitsEstimate(
   const transaction = compileTransaction(
     transactionMessageWithComputeUnitAndPriorityFees,
   );
-  const simulatedTransaction = await getSolanaRpc()
-    .simulateTransaction(getBase64EncodedWireTransaction(transaction), {
-      encoding: "base64",
-    })
-    .send();
+  const simulatedTransaction = await withRetry(() =>
+    getSolanaRpc()
+      .simulateTransaction(getBase64EncodedWireTransaction(transaction), {
+        encoding: "base64",
+      })
+      .send(),
+  );
   if (simulatedTransaction.value.err) {
     if (simulatedTransaction.value.logs) {
       const errorMessage = [
@@ -269,17 +281,19 @@ export async function getMedianPriorityFees(
   connection: Rpc<SolanaRpcApi>,
   accounts: AccountMeta[],
 ): Promise<number> {
-  const recentFees = await connection
-    .getRecentPrioritizationFees(
-      accounts
-        .filter(
-          (x) =>
-            x.role === AccountRole.WRITABLE ||
-            x.role === AccountRole.WRITABLE_SIGNER,
-        )
-        .map((x) => x.address),
-    )
-    .send();
+  const recentFees = await withRetry(() =>
+    connection
+      .getRecentPrioritizationFees(
+        accounts
+          .filter(
+            (x) =>
+              x.role === AccountRole.WRITABLE ||
+              x.role === AccountRole.WRITABLE_SIGNER,
+          )
+          .map((x) => x.address),
+      )
+      .send(),
+  );
   const fees = recentFees.map((f) => Number(f.prioritizationFee));
   fees.sort((a, b) => a - b);
   const mid = Math.floor(fees.length / 2);

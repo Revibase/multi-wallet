@@ -19,8 +19,8 @@ export async function processClientAuthCallback({
   rpId,
 }: {
   request:
-    | Omit<StartMessageRequest, "rid" | "validTill">
-    | Omit<StartTransactionRequest, "rid" | "validTill">
+    | Omit<StartMessageRequest, "validTill">
+    | Omit<StartTransactionRequest, "validTill">
     | CompleteMessageRequest
     | CompleteTransactionRequest;
   allowedClientOrigins: string[];
@@ -29,7 +29,7 @@ export async function processClientAuthCallback({
   providerOrigin?: string;
   rpId?: string;
 }): Promise<
-  | { signature: string; validTill: number; rid: string }
+  | { signature: string; validTill: number }
   | { user: UserInfo }
   | CompleteTransactionRequest
 > {

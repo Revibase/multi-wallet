@@ -17,6 +17,7 @@ import {
   type TransactionSigner,
 } from "gill";
 import type { RevibaseProvider } from "src/provider/main";
+import { withRetry } from "src/utils/retry";
 import type { TransactionAuthorizationFlowOptions } from "src/utils/types";
 import { sendTransaction } from "../utils/transactions";
 import { runAuthorizationFlow } from "./runAuthorizationFlow";
@@ -48,6 +49,10 @@ export async function executeTransaction(
 
   const { signal } = options ?? {};
 
+  if (!signer.walletAddress || !signer.settingsIndexWithAddress) {
+    throw new Error("Signer is missing wallet address");
+  }
+
   const transactionMessageBytes = prepareTransactionMessage({
     payer: address(signer.walletAddress),
     instructions,
@@ -56,9 +61,8 @@ export async function executeTransaction(
   const settingsArgs =
     settingsIndexWithAddress ?? signer.settingsIndexWithAddress;
   const settings = await getSettingsFromIndex(settingsArgs.index);
-  const settingsData = await fetchSettingsAccountData(
-    settings,
-    settingsArgs.settingsAddressTreeIndex,
+  const settingsData = await withRetry(() =>
+    fetchSettingsAccountData(settings, settingsArgs.settingsAddressTreeIndex),
   );
   const hasTxManager = settingsData.members.some(
     (x) => x.role === UserRole.TransactionManager,
@@ -66,7 +70,7 @@ export async function executeTransaction(
 
   const result = (await runAuthorizationFlow(
     provider,
-    (clientOrigin) => {
+    (rid, clientOrigin) => {
       const transactionPayload: TransactionPayloadWithBase64MessageBytes = {
         transactionMessageBytes: getBase64Decoder().decode(
           transactionMessageBytes,
@@ -79,6 +83,7 @@ export async function executeTransaction(
 
       const payload = {
         phase: "start" as const,
+        rid,
         data: {
           type: "transaction" as const,
           payload: transactionPayload,
@@ -91,8 +96,9 @@ export async function executeTransaction(
     signal,
   )) as CompleteTransactionRequest;
 
-  const requestWithClientSignature =
-    await provider.onClientAuthorizationCallback(result);
+  const requestWithClientSignature = await withRetry(() =>
+    provider.onClientAuthorizationCallback(result),
+  );
 
   return await sendTransaction(provider, {
     request: requestWithClientSignature,

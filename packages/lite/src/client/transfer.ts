@@ -13,6 +13,7 @@ import {
 } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
 import type { RevibaseProvider } from "src/provider/main";
+import { withRetry } from "src/utils/retry";
 import type { TransactionAuthorizationFlowOptions } from "src/utils/types";
 import { sendTransaction } from "../utils/transactions/sendTransaction";
 import { runAuthorizationFlow } from "./runAuthorizationFlow";
@@ -53,7 +54,7 @@ export async function transferTokens(
 
   const result = (await runAuthorizationFlow(
     provider,
-    (clientOrigin) => {
+    (rid, clientOrigin) => {
       const transactionPayload: TransactionPayloadWithBase64MessageBytes = {
         transactionActionType: "transfer_intent",
         transactionAddress: mint ? tokenProgram : SYSTEM_PROGRAM_ADDRESS,
@@ -70,6 +71,7 @@ export async function transferTokens(
 
       const payload = {
         phase: "start" as const,
+        rid,
         data: {
           type: "transaction" as const,
           payload: transactionPayload,
@@ -82,8 +84,9 @@ export async function transferTokens(
     signal,
   )) as CompleteTransactionRequest;
 
-  const requestWithClientSignature =
-    await provider.onClientAuthorizationCallback(result);
+  const requestWithClientSignature = await withRetry(() =>
+    provider.onClientAuthorizationCallback(result),
+  );
 
   return await sendTransaction(provider, {
     request: requestWithClientSignature,

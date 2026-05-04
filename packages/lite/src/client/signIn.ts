@@ -2,6 +2,7 @@ import type { CompleteMessageRequest, UserInfo } from "@revibase/core";
 import { getBase64Decoder } from "gill";
 import { RevibaseProvider } from "src/provider/main";
 import { createSignInMessageText } from "src/utils/internal";
+import { withRetry } from "src/utils/retry";
 import type { SignInAuthorizationFlowOptions } from "src/utils/types";
 import { runAuthorizationFlow } from "./runAuthorizationFlow";
 
@@ -13,9 +14,10 @@ export async function signIn(
   const { signal } = options ?? {};
   const result = (await runAuthorizationFlow(
     provider,
-    (clientOrigin) => {
+    (rid, clientOrigin) => {
       const payload = {
         phase: "start" as const,
+        rid,
         data: {
           type: "message" as const,
           payload: createSignInMessageText({
@@ -32,5 +34,5 @@ export async function signIn(
     signal,
   )) as CompleteMessageRequest;
 
-  return await provider.onClientAuthorizationCallback(result);
+  return await withRetry(() => provider.onClientAuthorizationCallback(result));
 }

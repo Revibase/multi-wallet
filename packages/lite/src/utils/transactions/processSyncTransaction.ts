@@ -6,6 +6,7 @@ import {
   type TransactionAuthenticationResponse,
 } from "@revibase/core";
 import { getBase64Encoder, type Address, type TransactionSigner } from "gill";
+import { withRetry } from "../retry";
 import type { TransactionAuthorizationFlowOptions } from "../types";
 import { signAndSendTransaction } from "./solana-send";
 import {
@@ -44,10 +45,12 @@ export async function processSyncTransaction(params: {
   const cachedAccounts = new Map();
   const [feePayer, settingsData, signedSigner] = await Promise.all([
     payer ?? getRandomPayer(),
-    fetchSettingsAccountData(
-      settings,
-      settingsAddressTreeIndex,
-      cachedAccounts,
+    withRetry(() =>
+      fetchSettingsAccountData(
+        settings,
+        settingsAddressTreeIndex,
+        cachedAccounts,
+      ),
     ),
     getSignedSecp256r1Key(authResponse),
   ]);

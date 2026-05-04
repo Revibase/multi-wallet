@@ -16,6 +16,7 @@ import {
   type TransactionSigner,
 } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
+import { withRetry } from "../retry";
 import type { TransactionAuthorizationFlowOptions } from "../types";
 import { signAndSendTransaction } from "./solana-send";
 import {
@@ -59,10 +60,12 @@ export async function processTokenTransfer(params: {
   const cachedAccounts = new Map();
   const [feePayer, settingsData, signedSigner] = await Promise.all([
     payer ?? getRandomPayer(),
-    fetchSettingsAccountData(
-      settings,
-      settingsAddressTreeIndex,
-      cachedAccounts,
+    withRetry(() =>
+      fetchSettingsAccountData(
+        settings,
+        settingsAddressTreeIndex,
+        cachedAccounts,
+      ),
     ),
     getSignedSecp256r1Key(authResponse),
   ]);

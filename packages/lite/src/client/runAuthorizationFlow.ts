@@ -4,27 +4,24 @@ import type {
 } from "@revibase/core";
 import type { RevibaseProvider } from "src/provider/main";
 import type { StartPayload } from "src/utils";
+import { withRetry } from "src/utils/retry";
 
 /** Shared flow: startRequest → payload → popup or device signature → callback. Used by signIn, transferTokens, executeTransaction. */
 export async function runAuthorizationFlow(
   provider: RevibaseProvider,
-  buildPayload: (clientOrigin: string) => StartPayload,
+  buildPayload: (rid: string, clientOrigin: string) => StartPayload,
   signal?: AbortSignal,
 ): Promise<CompleteMessageRequest | CompleteTransactionRequest> {
-  // 1. Opens the popup.
-  provider.startRequest();
+  const onConnectedCallback = async (rid: string, clientOrigin: string) => {
+    const payload = buildPayload(rid, clientOrigin);
+    const { signature, validTill } = await withRetry(() =>
+      provider.onClientAuthorizationCallback(payload),
+    );
+    return { request: { ...payload, rid, validTill }, signature };
+  };
 
-  // 2. Build start request payload
-  const payload = buildPayload(window.origin);
-
-  // 3. Get client to signature on start request payload
-  const { signature, rid, validTill } =
-    await provider.onClientAuthorizationCallback(payload);
-
-  // 4. Get user signature on request
-  return await provider.sendPayloadToProviderViaPopup({
-    request: { ...payload, rid, validTill },
+  return await provider.sendRequestToPopupProvidr({
+    onConnectedCallback,
     signal,
-    signature,
   });
 }

@@ -7,6 +7,7 @@ import {
 } from "@revibase/core";
 import { getBase64Encoder, type Address, type TransactionSigner } from "gill";
 import type { RevibaseProvider } from "src/provider";
+import { withRetry } from "../retry";
 import type { TransactionAuthorizationFlowOptions } from "../types";
 import { signAndSendBundledTransactions } from "./solana-send";
 import {
@@ -52,10 +53,12 @@ export async function processBundledTransaction(
   const cachedAccounts = new Map();
   const [feePayer, settingsData, signedSigner] = await Promise.all([
     payer ?? getRandomPayer(),
-    fetchSettingsAccountData(
-      settings,
-      settingsAddressTreeIndex,
-      cachedAccounts,
+    withRetry(() =>
+      fetchSettingsAccountData(
+        settings,
+        settingsAddressTreeIndex,
+        cachedAccounts,
+      ),
     ),
     getSignedSecp256r1Key(authResponse),
   ]);
@@ -77,7 +80,7 @@ export async function processBundledTransaction(
       abortSignal: options?.signal,
       cachedAccounts,
     }),
-    provider.onEstimateJitoTipsCallback(),
+    withRetry(() => provider.onEstimateJitoTipsCallback()),
   ]);
 
   const bundle = await prepareTransactionBundle({

@@ -1,5 +1,6 @@
 import { getSolanaRpc } from "@revibase/core";
 import type { Signature } from "gill";
+import { withRetry } from "../retry";
 
 export async function pollTransactionConfirmation(
   txSig: string,
@@ -7,9 +8,11 @@ export async function pollTransactionConfirmation(
   delayMs = 2000,
 ): Promise<string> {
   for (let i = 0; i < maxRetries; i++) {
-    const status = await getSolanaRpc()
-      .getSignatureStatuses([txSig as Signature])
-      .send();
+    const status = await withRetry(() =>
+      getSolanaRpc()
+        .getSignatureStatuses([txSig as Signature])
+        .send(),
+    );
 
     const confirmation = status.value[0];
 
