@@ -16,7 +16,6 @@ import type { RevibaseProvider } from "src/provider/main";
 import { withRetry } from "src/utils/retry";
 import type { TransactionAuthorizationFlowOptions } from "src/utils/types";
 import { sendTransaction } from "../utils/transactions/sendTransaction";
-import { runAuthorizationFlow } from "./runAuthorizationFlow";
 
 /** Transfers SOL or SPL (set mint for SPL). amount &gt; 0, destination required */
 export async function transferTokens(
@@ -50,48 +49,52 @@ export async function transferTokens(
     addressesByLookupTableAddress,
   } = args;
 
-  const { signal } = options ?? {};
+  const onConnectedCallback = async (rid: string, clientOrigin: string) => {
+    const transactionPayload: TransactionPayloadWithBase64MessageBytes = {
+      transactionActionType: "transfer_intent",
+      transactionAddress: mint ? tokenProgram : SYSTEM_PROGRAM_ADDRESS,
+      transactionMessageBytes: getBase64Decoder().decode(
+        new Uint8Array([
+          ...getU64Encoder().encode(amount),
+          ...getAddressEncoder().encode(address(destination)),
+          ...getAddressEncoder().encode(
+            address(mint ?? SYSTEM_PROGRAM_ADDRESS),
+          ),
+        ]),
+      ),
+    };
 
-  const result = (await runAuthorizationFlow(
-    provider,
-    (rid, clientOrigin) => {
-      const transactionPayload: TransactionPayloadWithBase64MessageBytes = {
-        transactionActionType: "transfer_intent",
-        transactionAddress: mint ? tokenProgram : SYSTEM_PROGRAM_ADDRESS,
-        transactionMessageBytes: getBase64Decoder().decode(
-          new Uint8Array([
-            ...getU64Encoder().encode(amount),
-            ...getAddressEncoder().encode(address(destination)),
-            ...getAddressEncoder().encode(
-              address(mint ?? SYSTEM_PROGRAM_ADDRESS),
-            ),
-          ]),
-        ),
-      };
+    const payload = {
+      phase: "start" as const,
+      rid,
+      data: {
+        type: "transaction" as const,
+        payload: transactionPayload,
+      },
+      clientOrigin,
+      signer: signer?.publicKey,
+    };
+    const { signature, validTill } = await withRetry(() =>
+      provider.onClientAuthorizationCallback(payload),
+    );
+    return { request: { ...payload, rid, validTill }, signature };
+  };
 
-      const payload = {
-        phase: "start" as const,
-        rid,
-        data: {
-          type: "transaction" as const,
-          payload: transactionPayload,
-        },
-        clientOrigin,
-        signer: signer?.publicKey,
-      };
-      return payload;
-    },
-    signal,
-  )) as CompleteTransactionRequest;
+  const onSuccessCallback = async (
+    result: CompleteTransactionRequest,
+  ): Promise<{ txSig: string; user: UserInfo }> => {
+    const value = await provider.onClientAuthorizationCallback(result);
+    return sendTransaction(provider, {
+      request: value,
+      options,
+      addressesByLookupTableAddress,
+      payer,
+    });
+  };
 
-  const requestWithClientSignature = await withRetry(() =>
-    provider.onClientAuthorizationCallback(result),
-  );
-
-  return await sendTransaction(provider, {
-    request: requestWithClientSignature,
-    options,
-    addressesByLookupTableAddress,
-    payer,
+  return provider.sendRequestToPopupProvider({
+    onConnectedCallback,
+    onSuccessCallback,
+    signal: options?.signal,
   });
 }

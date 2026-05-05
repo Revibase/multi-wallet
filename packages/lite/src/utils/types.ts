@@ -14,6 +14,23 @@ export type ClientAuthorizationCallback = {
   (request: CompleteTransactionRequest): Promise<CompleteTransactionRequest>;
 };
 
+export type OnConnectedCallback = (
+  rid: string,
+  clientOrigin: string,
+) => Promise<{
+  request: StartMessageRequest | StartTransactionRequest;
+  signature: string;
+}>;
+
+type SuccessMap = {
+  message: { user: UserInfo };
+  transaction: { txSig: string; user: UserInfo };
+};
+
+export type OnSuccessCallback =
+  | ((req: CompleteMessageRequest) => Promise<SuccessMap["message"]>)
+  | ((req: CompleteTransactionRequest) => Promise<SuccessMap["transaction"]>);
+
 export type StartPayload =
   | Omit<StartMessageRequest, "validTill">
   | Omit<StartTransactionRequest, "validTill">;

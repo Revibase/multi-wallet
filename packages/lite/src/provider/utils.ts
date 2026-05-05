@@ -1,11 +1,14 @@
 import type {
   CompleteMessageRequest,
   CompleteTransactionRequest,
+  UserInfo,
 } from "@revibase/core";
 import {
   RevibaseApiError,
   RevibaseAuthError,
   type ClientAuthorizationCallback,
+  type OnConnectedCallback,
+  type OnSuccessCallback,
 } from "src/utils";
 
 export const DEFAULT_TIMEOUT = 3 * 60 * 1000;
@@ -29,9 +32,11 @@ export type PopupConnectMessage = {
 export type Pending = {
   rid: string;
   clientOrigin: string;
-  resolve: (v: CompleteMessageRequest | CompleteTransactionRequest) => void;
+  onConnectedCallback: OnConnectedCallback;
+  onSuccessCallback: OnSuccessCallback;
+  signal?: AbortSignal;
+  resolve: (v: { user: UserInfo } | { user: UserInfo; txSig: string }) => void;
   reject: (e: Error) => void;
-  cancel?: (err: Error) => void;
 };
 
 /** RevibaseProvider options. rpcEndpoint required for executeTransaction. */
@@ -94,7 +99,7 @@ export const defaultClientAuthorizationCallback: ClientAuthorizationCallback =
     return data;
   };
 
-export function createPopUp(url?: string): Window | null {
+export function createPopUp(url: string): Window | null {
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }
@@ -147,5 +152,5 @@ export function createPopUp(url?: string): Window | null {
     "resizable=yes",
   ].join(",");
 
-  return window.open(url ?? "", "_blank", features);
+  return window.open(url, "_blank", features);
 }

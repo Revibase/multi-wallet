@@ -1,12 +1,15 @@
 import type {
   CompleteMessageRequest,
   CompleteTransactionRequest,
-  StartMessageRequest,
-  StartTransactionRequest,
+  UserInfo,
 } from "@revibase/core";
 import { initialize } from "@revibase/core";
 import { getBase64Decoder } from "gill";
-import type { ClientAuthorizationCallback } from "src/utils";
+import type {
+  ClientAuthorizationCallback,
+  OnConnectedCallback,
+  OnSuccessCallback,
+} from "src/utils";
 import { REVIBASE_AUTH_URL } from "src/utils/consts";
 import {
   RevibaseAbortedError,
@@ -31,16 +34,11 @@ import {
 
 /** Provider: popup or channel auth. Default callback: POST /api/clientAuthorization. */
 export class RevibaseProvider {
-  private readonly pending = new Map<string, Pending>();
   public onClientAuthorizationCallback: ClientAuthorizationCallback;
   public onSendJitoBundleCallback: (request: string[]) => Promise<string>;
   public onEstimateJitoTipsCallback: () => Promise<number>;
   private providerOrigin: string;
-  private popUpConfig: {
-    popUp: Window;
-    rid: string;
-    clientOrigin: string;
-  } | null = null;
+  private popUp: Window | null = null;
 
   constructor(options: RevibaseProviderOptions) {
     const {
@@ -50,6 +48,8 @@ export class RevibaseProvider {
       onSendJitoBundleCallback,
       onEstimateJitoTipsCallback,
     } = options;
+
+    initialize({ rpcEndpoint });
     this.onClientAuthorizationCallback =
       onClientAuthorizationCallback ?? defaultClientAuthorizationCallback;
     this.onSendJitoBundleCallback =
@@ -57,128 +57,69 @@ export class RevibaseProvider {
     this.onEstimateJitoTipsCallback =
       onEstimateJitoTipsCallback ?? defaultEstimateJitoTipsCallback;
     this.providerOrigin = providerOrigin ?? REVIBASE_AUTH_URL;
-    initialize({ rpcEndpoint });
   }
 
-  public async startRequest() {
-    const rid = getBase64Decoder().decode(
-      crypto.getRandomValues(new Uint8Array(16)),
-    );
-    const clientOrigin = window.location.origin;
-
-    const popupUrl = `${new URL(this.providerOrigin).origin}?clientOrigin=${encodeURIComponent(clientOrigin)}&rid=${encodeURIComponent(rid)}`;
-    const popUp = createPopUp(popupUrl);
-
-    if (!popUp) {
-      throw new Error("Popup blocked. Please allow popups for this site.");
-    }
-
-    await new Promise((r) => setTimeout(r, 100));
-
-    this.popUpConfig = {
-      popUp,
-      rid,
-      clientOrigin,
-    };
-  }
-
-  sendRequestToPopupProvidr({
+  sendRequestToPopupProvider({
     onConnectedCallback,
+    onSuccessCallback,
     signal,
   }: {
-    onConnectedCallback: (
-      rid: string,
-      clientOrigin: string,
-    ) => Promise<{
-      request: StartMessageRequest | StartTransactionRequest;
-      signature: string;
-    }>;
+    onConnectedCallback: OnConnectedCallback;
+    onSuccessCallback: OnSuccessCallback;
     signal?: AbortSignal;
   }) {
     if (typeof window === "undefined") {
       throw new RevibaseEnvironmentError();
     }
 
-    if (this.pending.size > 0) {
+    if (this.popUp) {
       throw new RevibaseFlowInProgressError();
     }
 
-    // Check if already aborted
-    if (signal?.aborted) {
-      throw new RevibaseAbortedError();
+    const rid = getBase64Decoder().decode(
+      crypto.getRandomValues(new Uint8Array(16)),
+    );
+    const clientOrigin = window.location.origin;
+    const popupUrl = `${this.providerOrigin}?clientOrigin=${encodeURIComponent(clientOrigin)}&rid=${encodeURIComponent(rid)}`;
+
+    this.popUp = createPopUp(popupUrl);
+
+    if (!this.popUp) {
+      throw new Error("Popup blocked. Please allow popups for this site.");
     }
 
-    return new Promise<CompleteMessageRequest | CompleteTransactionRequest>(
+    return new Promise<{ user: UserInfo } | { txSig: string; user: UserInfo }>(
       (resolve, reject) => {
-        if (!this.popUpConfig) {
-          reject(new Error("Start request must be called first."));
-          return;
-        }
-        const { popUp, rid, clientOrigin } = this.popUpConfig;
-
-        const entry = {
-          rid,
-          clientOrigin,
-          resolve,
-          reject,
-          cancel: (error: Error) => {
-            reject(error);
-          },
-        };
-
-        this.pending.set(rid, entry);
-
-        // Setup abort handler immediately
-        const abortHandler = () => {
-          const entry = this.pending.get(rid);
-          if (entry) {
-            entry.cancel?.(new RevibaseAbortedError());
-            this.pending.delete(rid);
-          }
-        };
-        signal?.addEventListener("abort", abortHandler, { once: true });
-
-        // Attach transport with all handlers
-        this.attachTransport({
-          popup: popUp,
-          origin: new URL(this.providerOrigin).origin,
-          rid,
-          clientOrigin,
-          onConnectedCallback,
-          signal,
-          abortHandler,
-        });
+        setTimeout(() => {
+          this.attachTransport({
+            rid,
+            clientOrigin,
+            onConnectedCallback,
+            onSuccessCallback,
+            signal,
+            resolve,
+            reject,
+          });
+        }, 0);
       },
     );
   }
 
-  private attachTransport(params: {
-    popup: Window;
-    origin: string;
-    rid: string;
-    clientOrigin: string;
-    onConnectedCallback: (
-      rid: string,
-      clientOrigin: string,
-    ) => Promise<{
-      request: StartMessageRequest | StartTransactionRequest;
-      signature: string;
-    }>;
-    signal?: AbortSignal;
-    abortHandler: () => void;
-  }) {
+  private attachTransport(params: Pending) {
     const {
-      popup,
-      origin,
       rid,
       clientOrigin,
       onConnectedCallback,
+      onSuccessCallback,
       signal,
-      abortHandler,
+      reject,
+      resolve,
     } = params;
 
-    const entry = this.pending.get(rid);
-    if (!entry) return;
+    const abortHandler = () => {
+      reject(new RevibaseAbortedError());
+    };
+    signal?.addEventListener("abort", abortHandler, { once: true });
 
     let port: MessagePort | null = null;
     let finished = false;
@@ -186,7 +127,6 @@ export class RevibaseProvider {
     let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
     let connectTimeoutId: ReturnType<typeof setTimeout> | null = null;
     let requestTimeoutId: ReturnType<typeof setTimeout> | null = null;
-    let popupCheckInterval: ReturnType<typeof setInterval> | null = null;
 
     const cleanup = (): void => {
       // Remove all event listeners
@@ -206,10 +146,6 @@ export class RevibaseProvider {
         clearTimeout(requestTimeoutId);
         requestTimeoutId = null;
       }
-      if (popupCheckInterval) {
-        clearInterval(popupCheckInterval);
-        popupCheckInterval = null;
-      }
 
       // Close message port
       try {
@@ -221,24 +157,23 @@ export class RevibaseProvider {
 
       // Close popup
       try {
-        if (popup && !popup.closed) {
-          popup.close();
+        if (this.popUp && !this.popUp.closed) {
+          this.popUp.close();
         }
       } catch (err) {
         // Ignore close errors
       }
 
-      this.popUpConfig = null;
+      this.popUp = null;
     };
 
     const fail = (err: Error): void => {
       if (finished) return;
       finished = true;
 
-      this.pending.delete(rid);
-      cleanup();
+      reject(err);
 
-      entry.reject(err);
+      cleanup();
     };
 
     const succeed = (
@@ -247,31 +182,17 @@ export class RevibaseProvider {
       if (finished) return;
       finished = true;
 
-      this.pending.delete(rid);
-      cleanup();
-
-      entry.resolve(value);
+      onSuccessCallback(value as any)
+        .then((result) => {
+          resolve(result);
+        })
+        .catch((err) => {
+          reject(err);
+        })
+        .finally(() => cleanup());
     };
 
-    // Check if popup is closed periodically BEFORE connection established
-    popupCheckInterval = setInterval(() => {
-      if (finished || port) {
-        // Connection established, heartbeat will handle this
-        if (popupCheckInterval) {
-          clearInterval(popupCheckInterval);
-          popupCheckInterval = null;
-        }
-        return;
-      }
-
-      if (popup.closed) {
-        fail(
-          new RevibasePopupClosedError("Popup was closed before connection"),
-        );
-      }
-    }, 500);
-
-    // Connection timeout
+    // Connection timeout - handles popup closed before connection
     connectTimeoutId = setTimeout(() => {
       fail(new RevibaseTimeoutError("Popup connection timed out after 20s"));
     }, CONNECT_TIMEOUT);
@@ -280,9 +201,8 @@ export class RevibaseProvider {
       // Prevent race condition - only process once
       if (finished || port) return;
 
-      // Validate message origin and source
-      if (event.origin !== origin) return;
-      if (event.source !== popup) return;
+      // Validate message origin
+      if (event.origin !== this.providerOrigin) return;
 
       const data = event.data as PopupConnectMessage;
 
@@ -290,19 +210,10 @@ export class RevibaseProvider {
       if (!data || data.type !== "popup-connect") return;
       if (data.rid !== rid) return;
 
-      // Double-check we still have pending entry
-      if (!this.pending.has(rid)) return;
-
       // Clear connection timeout
       if (connectTimeoutId) {
         clearTimeout(connectTimeoutId);
         connectTimeoutId = null;
-      }
-
-      // Stop popup closed checking - heartbeat will handle it now
-      if (popupCheckInterval) {
-        clearInterval(popupCheckInterval);
-        popupCheckInterval = null;
       }
 
       // Create MessageChannel for bidirectional communication
@@ -312,7 +223,7 @@ export class RevibaseProvider {
 
       let lastPong = Date.now();
 
-      // Start heartbeat to detect popup closure
+      // Start heartbeat ONLY AFTER connection established
       heartbeatInterval = setInterval(() => {
         if (finished) {
           if (heartbeatInterval) {
@@ -322,8 +233,9 @@ export class RevibaseProvider {
           return;
         }
 
-        // Check if popup is closed
-        if (popup.closed) {
+        // NOW it's safe to check popup.closed
+        // Connection is established, browser won't flag as orchestration
+        if (this.popUp?.closed) {
           fail(new RevibasePopupClosedError("Popup was closed"));
           return;
         }
@@ -392,12 +304,12 @@ export class RevibaseProvider {
 
       // Send init message to popup with port2
       try {
-        popup.postMessage(
+        this.popUp?.postMessage(
           {
             type: "popup-init",
             rid,
           },
-          origin,
+          this.providerOrigin,
           [channel.port2],
         );
       } catch (err) {
@@ -409,7 +321,7 @@ export class RevibaseProvider {
       onConnectedCallback(rid, clientOrigin)
         .then((result) => {
           // Verify we're still active
-          if (finished || !port || !this.pending.has(rid) || popup.closed) {
+          if (finished || !port || this.popUp?.closed) {
             return;
           }
 
@@ -443,20 +355,7 @@ export class RevibaseProvider {
           }, timeoutDuration);
         })
         .catch((err) => {
-          // Preserve original error where possible
-          const errorMessage = err instanceof Error ? err.message : String(err);
-          const errorStack = err instanceof Error ? err.stack : undefined;
-
-          const authError = new RevibaseAuthError(
-            `Failed to prepare request: ${errorMessage}`,
-          );
-
-          // Preserve stack trace if available
-          if (errorStack) {
-            authError.stack = errorStack;
-          }
-
-          fail(authError);
+          fail(err);
         });
     };
 
