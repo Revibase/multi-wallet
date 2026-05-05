@@ -59,7 +59,7 @@ export class RevibaseProvider {
     this.providerOrigin = providerOrigin ?? REVIBASE_AUTH_URL;
   }
 
-  sendRequestToPopupProvider({
+  async sendRequestToPopupProvider({
     onConnectedCallback,
     onSuccessCallback,
     signal,
@@ -87,6 +87,8 @@ export class RevibaseProvider {
     if (!this.popUp) {
       throw new Error("Popup blocked. Please allow popups for this site.");
     }
+
+    await new Promise((r) => setTimeout(r, 0));
 
     return new Promise<{ user: UserInfo } | { txSig: string; user: UserInfo }>(
       (resolve, reject) => {
@@ -170,10 +172,8 @@ export class RevibaseProvider {
     const fail = (err: Error): void => {
       if (finished) return;
       finished = true;
-
-      reject(err);
-
       cleanup();
+      reject(err);
     };
 
     const succeed = (
@@ -181,15 +181,14 @@ export class RevibaseProvider {
     ): void => {
       if (finished) return;
       finished = true;
-
+      cleanup();
       onSuccessCallback(value as any)
         .then((result) => {
           resolve(result);
         })
         .catch((err) => {
           reject(err);
-        })
-        .finally(() => cleanup());
+        });
     };
 
     // Connection timeout - handles popup closed before connection

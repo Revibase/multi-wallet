@@ -104,7 +104,7 @@ export async function processTokenTransfer(params: {
           cachedAccounts,
         })
       : await nativeTransferIntent({
-          payer,
+          payer: feePayer,
           settings,
           settingsAddressTreeIndex,
           amount,
