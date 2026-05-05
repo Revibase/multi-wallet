@@ -20,7 +20,6 @@ import {
   some,
   type Address,
   type Instruction,
-  type OptionOrNullable,
   type ReadonlyUint8Array,
   type TransactionSigner,
 } from "gill";
@@ -38,7 +37,6 @@ import {
   type CompressedTokenArgsArgs,
   type SettingsMutArgs,
   type SplInterfacePdaArgsArgs,
-  type TransactionSyncSignersArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
 import type { AccountCache } from "../../types/cache";
@@ -81,7 +79,6 @@ export type TokenTransferIntentParams = {
   signers: (TransactionSigner | SignedSecp256r1Key)[];
   tokenProgram: Address;
   payer: TransactionSigner;
-  useDestinationSplAccount?: boolean;
   splInterfacePdaArgs?: SplInterfacePdaArgsArgs;
   compressed?: boolean;
   cachedAccounts?: AccountCache;
@@ -121,7 +118,6 @@ export async function tokenTransferIntent({
   tokenProgram,
   splInterfacePdaArgs = { index: 0, restricted: false },
   compressed = false,
-  useDestinationSplAccount = false,
 }: TokenTransferIntentParams): Promise<Instruction[]> {
   const dedupSigners = getDeduplicatedSigners(signers);
   const walletAddress = await getWalletAddressFromSettings(settings);
@@ -148,7 +144,6 @@ export async function tokenTransferIntent({
     accountInfos,
     addresses,
     amount,
-    useDestinationSplAccount,
   );
 
   const [compressedTokenAccounts, splInterfaceNeedsInitialization] =
@@ -217,37 +212,63 @@ export async function tokenTransferIntent({
     instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
   }
 
-  const commonParams = buildCommonParams({
-    amount,
-    transactionSyncSigners,
-    walletAddress,
-    destination,
-    addresses,
-    balances,
-    mint,
-    tokenProgram,
-    remainingAccounts,
-    payer,
-    sourceCompressedTokenAccounts,
-    compressedProofArgs,
-    splInterfacePdaArgs,
-  });
-
   if (compressed) {
     if (!settingsMutArgs) {
       throw new Error("Payer not found or proof args is missing.");
     }
     instructions.push(
       getTokenTransferIntentCompressedInstruction({
-        ...commonParams,
+        payer,
+        source: walletAddress,
+        sourceSplTokenAccount: addresses.sourceSplAta,
+        sourceCtokenTokenAccount: addresses.sourceCtokenAta,
+        destination,
+        destinationSplTokenAccount: balances.destinationSplTokenAccount,
+        destinationCtokenTokenAccount: balances.destinationCtokenTokenAccount,
+        tokenProgram,
+        mint,
+        splInterfacePda: balances.requireSplInterface
+          ? addresses.splInterfacePda
+          : undefined,
+        compressibleConfig,
+        rentSponsor: balances.requireRentSponsor ? rentSponsor : undefined,
+        amount,
+        signers: transactionSyncSigners,
+        sourceCompressedTokenAccounts,
+        compressedProofArgs,
+        splInterfacePdaArgs: balances.requireSplInterface
+          ? some(splInterfacePdaArgs)
+          : none(),
         settingsMutArgs,
+        remainingAccounts,
       }),
     );
   } else {
     instructions.push(
       getTokenTransferIntentInstruction({
-        ...commonParams,
         settings,
+        payer,
+        source: walletAddress,
+        sourceSplTokenAccount: addresses.sourceSplAta,
+        sourceCtokenTokenAccount: addresses.sourceCtokenAta,
+        destination,
+        destinationSplTokenAccount: balances.destinationSplTokenAccount,
+        destinationCtokenTokenAccount: balances.destinationCtokenTokenAccount,
+        tokenProgram,
+        mint,
+        splInterfacePda: balances.requireSplInterface
+          ? addresses.splInterfacePda
+          : undefined,
+        compressibleConfig,
+        rentSponsor: balances.requireRentSponsor ? rentSponsor : undefined,
+        amount,
+        signers: transactionSyncSigners,
+        sourceCompressedTokenAccounts,
+        compressedProofArgs,
+        splInterfacePdaArgs: balances.requireSplInterface
+          ? some(splInterfacePdaArgs)
+          : none(),
+        remainingAccounts,
       }),
     );
   }
@@ -330,7 +351,6 @@ function computeBalancesAndDestinations(
   accountInfos: Awaited<ReturnType<typeof fetchAccountInfos>>,
   addresses: ResolvedAddresses,
   amount: number | bigint,
-  useDestinationSplAccount: boolean,
 ): BalancesAndDestinations {
   const destinationSplExists = !!accountInfos.destinationSplAtaInfo.value;
   const sourceSplExists = !!accountInfos.sourceSplAtaInfo.value;
@@ -352,14 +372,12 @@ function computeBalancesAndDestinations(
       )
     : BigInt(0);
 
-  const destinationSplTokenAccount =
-    destinationSplExists || useDestinationSplAccount
-      ? addresses.destinationSplAta
-      : undefined;
-  const destinationCtokenTokenAccount =
-    destinationSplExists || useDestinationSplAccount
-      ? undefined
-      : addresses.destinationCTokenAta;
+  const destinationSplTokenAccount = destinationSplExists
+    ? addresses.destinationSplAta
+    : undefined;
+  const destinationCtokenTokenAccount = destinationSplExists
+    ? undefined
+    : addresses.destinationCTokenAta;
 
   const requireSplInterface =
     (sourceSplExists &&
@@ -459,63 +477,6 @@ function buildSourceCompressedTokenAccounts(
       : none(),
     state: x.parsed.state,
   }));
-}
-
-function buildCommonParams({
-  amount,
-  transactionSyncSigners,
-  walletAddress,
-  destination,
-  addresses,
-  balances,
-  mint,
-  tokenProgram,
-  remainingAccounts,
-  payer,
-  sourceCompressedTokenAccounts,
-  compressedProofArgs,
-  splInterfacePdaArgs,
-}: {
-  amount: number | bigint;
-  transactionSyncSigners: TransactionSyncSignersArgs[];
-  walletAddress: Address;
-  destination: Address;
-  addresses: ResolvedAddresses;
-  balances: BalancesAndDestinations;
-  mint: Address;
-  tokenProgram: Address;
-  remainingAccounts: ReturnType<
-    PackedAccounts["toAccountMetas"]
-  >["remainingAccounts"];
-  payer: TransactionSigner;
-  sourceCompressedTokenAccounts: CompressedTokenArgsArgs[];
-  compressedProofArgs: ReturnType<typeof convertToCompressedProofArgs>;
-  splInterfacePdaArgs: SplInterfacePdaArgsArgs;
-}) {
-  return {
-    amount,
-    signers: transactionSyncSigners,
-    source: walletAddress,
-    destination,
-    sourceCtokenTokenAccount: addresses.sourceCtokenAta,
-    sourceSplTokenAccount: addresses.sourceSplAta,
-    destinationCtokenTokenAccount: balances.destinationCtokenTokenAccount,
-    destinationSplTokenAccount: balances.destinationSplTokenAccount,
-    mint,
-    tokenProgram,
-    remainingAccounts,
-    payer,
-    sourceCompressedTokenAccounts,
-    compressedProofArgs,
-    compressibleConfig,
-    splInterfacePda: balances.requireSplInterface
-      ? addresses.splInterfacePda
-      : undefined,
-    rentSponsor: balances.requireRentSponsor ? rentSponsor : undefined,
-    splInterfacePdaArgs: (balances.requireSplInterface
-      ? some(splInterfacePdaArgs)
-      : none()) as OptionOrNullable<SplInterfacePdaArgsArgs>,
-  };
 }
 
 async function checkIfSplInterfaceNeedsToBeInitialized(
