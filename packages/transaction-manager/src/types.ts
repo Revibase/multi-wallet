@@ -1,5 +1,15 @@
-import type { Secp256r1Key, StartTransactionRequest } from "@revibase/core";
-import type { Address, Instruction, ReadonlyUint8Array } from "gill";
+import type {
+  CompleteMessageRequest,
+  Secp256r1Key,
+  StartTransactionRequest,
+  UserInfo,
+} from "@revibase/core";
+import type {
+  Address,
+  Instruction,
+  ReadonlyUint8Array,
+  TransactionMessageBytes,
+} from "gill";
 
 /**
  * Configuration for the Transaction Manager.
@@ -116,3 +126,17 @@ export type ExpectedTransactionSigner =
       /** The wallet address that this signer is signing for. */
       walletAddress: Address;
     };
+
+export type VerifyMessageResult = {
+  payload: CompleteMessageRequest;
+  clientDetails: WellKnownClientEntry;
+  user: UserInfo;
+};
+
+export type VerifyTransactionResult = {
+  transactionMessage: TransactionMessageBytes;
+  verificationResults: {
+    instructions: Instruction[];
+    signers: ExpectedTransactionSigner[];
+  }[];
+};

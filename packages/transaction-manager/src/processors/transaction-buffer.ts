@@ -6,13 +6,7 @@ import {
   MultiWalletInstruction,
   type TransactionAuthDetails,
 } from "@revibase/core";
-import {
-  AccountRole,
-  getBase64Encoder,
-  type Instruction,
-  type Rpc,
-  type SolanaRpcApi,
-} from "gill";
+import { AccountRole, getBase64Encoder, type Instruction } from "gill";
 import type {
   ProcessingResult,
   Secp256r1VerifyData,
@@ -33,7 +27,6 @@ import {
  * Processes transaction buffer creation and synchronous execution instructions.
  */
 export async function processTransactionBufferAndExecute(
-  rpc: Rpc<SolanaRpcApi>,
   instruction: Instruction,
   instructionType: MultiWalletInstruction,
   transactionManagerConfig: TransactionManagerConfig,
@@ -66,7 +59,6 @@ export async function processTransactionBufferAndExecute(
 
   if (isBufferCreateInstruction) {
     processingResult = await processBufferCreate(
-      rpc,
       instruction,
       isCompressedInstruction,
       transactionMessageBytes,
@@ -84,6 +76,7 @@ export async function processTransactionBufferAndExecute(
     processingResult.instructionsToVerify,
     processingResult.settingsAddress,
     processingResult.signers,
+    transactionManagerConfig,
     authResponses,
     getClientDetails,
   );
@@ -107,7 +100,6 @@ function validateTransactionManagerAccountRole(
 }
 
 async function processBufferCreate(
-  rpc: Rpc<SolanaRpcApi>,
   instruction: Instruction,
   isCompressedInstruction: boolean,
   transactionMessageBytes?: string,
@@ -124,14 +116,13 @@ async function processBufferCreate(
   ) as Uint8Array<ArrayBuffer>;
 
   if (isCompressedInstruction) {
-    return processCompressedBufferCreate(rpc, instruction, transactionMessage);
+    return processCompressedBufferCreate(instruction, transactionMessage);
   }
 
-  return processStandardBufferCreate(rpc, instruction, transactionMessage);
+  return processStandardBufferCreate(instruction, transactionMessage);
 }
 
 async function processCompressedBufferCreate(
-  rpc: Rpc<SolanaRpcApi>,
   instruction: Instruction,
   transactionMessage: Uint8Array<ArrayBuffer>,
 ): Promise<ProcessingResult> {
@@ -157,10 +148,8 @@ async function processCompressedBufferCreate(
     throw new Error("Hash mismatch.");
   }
 
-  const innerInstructions = await parseTransactionMessageBytes(
-    rpc,
-    transactionMessage,
-  );
+  const innerInstructions =
+    await parseTransactionMessageBytes(transactionMessage);
 
   return {
     settingsAddress,
@@ -170,7 +159,6 @@ async function processCompressedBufferCreate(
 }
 
 async function processStandardBufferCreate(
-  rpc: Rpc<SolanaRpcApi>,
   instruction: Instruction,
   transactionMessage: Uint8Array<ArrayBuffer>,
 ): Promise<ProcessingResult> {
@@ -192,10 +180,8 @@ async function processStandardBufferCreate(
     throw new Error("Hash mismatch.");
   }
 
-  const innerInstructions = await parseTransactionMessageBytes(
-    rpc,
-    transactionMessage,
-  );
+  const innerInstructions =
+    await parseTransactionMessageBytes(transactionMessage);
 
   return {
     settingsAddress,

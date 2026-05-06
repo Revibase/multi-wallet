@@ -1,6 +1,5 @@
 import {
-  fetchUserAccountByFilters,
-  getDomainConfigAddress,
+  UserInfoSchema,
   type CompleteTransactionRequest,
   type TransactionPayloadWithBase64MessageBytes,
   type UserInfo,
@@ -18,7 +17,6 @@ import type { RevibaseProvider } from "../provider/main";
 import { withRetry } from "../utils/retry";
 import { sendTransaction } from "../utils/transactions/sendTransaction";
 import type { TransactionAuthorizationFlowOptions } from "../utils/types";
-import { convertToUserInfo } from "../utils/user";
 
 /** Transfers SOL or SPL (set mint for SPL). amount &gt; 0, destination required */
 export async function transferTokens(
@@ -89,18 +87,7 @@ export async function transferTokens(
     result: CompleteTransactionRequest,
   ): Promise<{ txSig: string; user: UserInfo }> => {
     const { signature } = await provider.onClientAuthorizationCallback(result);
-    const userAccount = await withRetry(async () =>
-      fetchUserAccountByFilters(
-        await getDomainConfigAddress({
-          rpId: result.data.payload.startRequest.rpId,
-        }),
-        { credentialId: result.data.payload.authResponse.id },
-      ),
-    );
-    if (!userAccount) {
-      throw new Error("User not found.");
-    }
-    const user = await convertToUserInfo(userAccount);
+    const user = UserInfoSchema.parse(result.data.payload.additionalInfo);
     const txSig = await sendTransaction(provider, {
       user,
       request: {
