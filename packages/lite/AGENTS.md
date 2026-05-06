@@ -16,25 +16,24 @@ Passkey Solana wallet: sign-in and transactions in popup or on another device (c
 
 | Category              | Exports                                                                                                                                                                                                                                                  |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Provider**          | `RevibaseProvider`, `RevibaseProviderOptions`, `ChannelStatus`, `ChannelStatusEntry`, `ChannelStatusListener`                                                                                                                                            |
+| **Provider**          | `RevibaseProvider`, `RevibaseProviderOptions`                                                                                                                                                                                                            |
 | **Client (frontend)** | `signIn`, `transferTokens`, `executeTransaction`                                                                                                                                                                                                         |
-| **Server (backend)**  | `processClientAuthCallback`                                                                                                                                                                                                                              |
-| **Types**             | `UserInfo`, `StartMessageRequest`, `StartTransactionRequest`, `StartChannelRequest`, `StartChannelRequestSchema`, `CompleteMessageRequest`, `CompleteTransactionRequest`, `DeviceSignature`, `ClientAuthorizationCallback`, `AuthorizationFlowOptions`         |
+| **Server (backend)**  | `processClientAuthCallback`, `processSendJitoBundleCallback`, `processEstimateJitoTipsCallback`                                                                                                                                                          |
+| **Types**             | `UserInfo`, `StartMessageRequest`, `StartTransactionRequest`, `CompleteMessageRequest`, `CompleteTransactionRequest`, `ClientAuthorizationCallback`, `SignInAuthorizationFlowOptions`, `TransactionAuthorizationFlowOptions` |
 | **Errors**            | `RevibaseError`, `RevibasePopupBlockedError`, `RevibasePopupClosedError`, `RevibaseTimeoutError`, `RevibaseFlowInProgressError`, `RevibaseAbortedError`, `RevibaseAuthError`, `RevibaseEnvironmentError`, `RevibasePopupNotOpenError` (all have `.code`) |
 
 ## Main flows
 
-1. **Popup (default)** — `new RevibaseProvider()`, then `signIn(provider)`, `transferTokens(provider, args)`, or `executeTransaction(provider, args)`. Auth in same-device popup. The SDK does not close the popup after the flow; the provider UI manages window lifecycle.
-2. **Channel (auth on another device)** — `provider.createChannel()` first calls `onClientAuthorizationCallback` with a `StartChannelRequest` (register channel with backend / Revibase), then returns `{ channelId, url }`. Open `url` on other device. Then `signIn(provider, { channelId })`, etc. `subscribeToChannelStatus` for status; `reconnectChannel(channelId)` for manual retry.
+1. **Popup (default)** — `new RevibaseProvider({ rpcEndpoint })`, then `signIn(provider)`, `transferTokens(provider, args)`, or `executeTransaction(provider, args)`. Auth in same-device popup. The SDK does not close the popup after the flow; the provider UI manages window lifecycle.
 
 ## Provider constructor
 
 ```ts
-new RevibaseProvider(options?: RevibaseProviderOptions)
+new RevibaseProvider(options: RevibaseProviderOptions)
 ```
 
-- `RevibaseProviderOptions`: all optional — `providerOrigin?`, `onClientAuthorizationCallback?`, `rpcEndpoint?` (needed for `executeTransaction`), `logger?`.
-- `ClientAuthorizationCallback`: overloads for `StartMessageRequest`, `StartTransactionRequest`, and `StartChannelRequest`; `signal` is optional on all. Message/transaction return `{ user }` or `{ txSig?, user }`; channel (`data.type === "channel"`) returns `{ ok: true }`.
+- `RevibaseProviderOptions`: `rpcEndpoint` required. Optional: `providerOrigin?`, `onClientAuthorizationCallback?`, `rpId?`, `logger?`.
+- `ClientAuthorizationCallback`: overloads for `StartMessageRequest` / `StartTransactionRequest` and their completion payloads. Start returns `{ ok: true; signature: string; validTill: number }`. Complete-message returns `{ ok: true }`. Complete-transaction returns `{ ok: true; signature: string }`.
 
 ## Client function signatures
 
@@ -42,26 +41,23 @@ new RevibaseProvider(options?: RevibaseProviderOptions)
 - `transferTokens(provider, { amount, destination, signer?, mint?, tokenProgram? }, options?)` → `Promise<{ txSig?, user }>`
 - `executeTransaction(provider, { instructions, signer, settingsIndexWithAddress?, additionalSigners?, addressesByLookupTableAddress? }, options?)` → `Promise<{ txSig?, user }>`
 
-`options` for all: `AuthorizationFlowOptions` = `{ signal?, channelId? }`.
+`options`: `SignInAuthorizationFlowOptions` / `TransactionAuthorizationFlowOptions` — both support `{ signal? }`.
 
 ## Server
 
-- Backend POST at `/api/clientAuthorization`. Body: `{ request, device?, channelId? }`. Call `processClientAuthCallback({ request, privateKey, signal?, device, channelId?, providerOrigin?, rpId? })` and return the result as JSON.
-- `request` is `StartMessageRequest | StartTransactionRequest | StartChannelRequest`. Message/transaction responses include `user` (and optionally `txSig`); channel registration returns `{ ok: true }` (no `user`). `processClientAuthCallback` handles channel by signing and calling Revibase `startChannel` (see `src/server/startChannel.ts`).
-
-## Channel status (for channel flow)
-
-`ChannelStatus` enum: `AUTHENTICATING`, `AWAITING_RECIPIENT`, `RECIPIENT_CONNECTED`, `RECIPIENT_DISCONNECTED`, `AUTO_RECONNECTING`, `CONNECTION_LOST`, `CHANNEL_CLOSED`, `ERROR`.  
-`ChannelStatusEntry`: `status`, `recipient?`, `error?`, `reconnectAttempt?` (when `AUTO_RECONNECTING`).  
-Provider methods: `createChannel()`, `subscribeToChannelStatus(listener)`, `cancelChannelRequest(channelId)`, `reconnectChannel(channelId)`, `closeChannel(channelId)`, `closeAllChannels()`.
+- Backend POST at `/api/clientAuthorization`. Body: the `request` object itself (start/complete payload). Call `processClientAuthCallback({ request, publicKey, allowedClientOrigins, privateKey, require2FAChecks? })` and return the result as JSON.
+- `request` is `StartMessageRequest | StartTransactionRequest | CompleteMessageRequest | CompleteTransactionRequest`. Start returns `{ ok: true; signature; validTill }`. Complete-message returns `{ ok: true }`. Complete-transaction returns `{ ok: true; signature }`.
+- Optional endpoints used by `executeTransaction` when sending Jito bundles:
+  - `POST /api/sendJitoBundle` → call `processSendJitoBundleCallback(serializedTransactions, jitoUUID?)` and return the bundle ID as JSON.
+  - `GET /api/estimateJitoTips` → call `processEstimateJitoTipsCallback()` and return the tip amount (lamports) as JSON.
 
 ## File map
 
 | Path                   | Contents                                                                 |
 | ---------------------- | ------------------------------------------------------------------------ |
 | `src/index.ts`         | Re-exports from client, provider, server, utils                          |
-| `src/client/`          | `signIn`, `transferTokens`, `executeTransaction`, `runAuthorizationFlow` |
-| `src/provider/main.ts` | `RevibaseProvider`, `ChannelStatus`, options, channel methods            |
+| `src/client/`          | `signIn`, `transferTokens`, `executeTransaction` |
+| `src/provider/main.ts` | `RevibaseProvider`, options, popup transport                             |
 | `src/server/`          | `processClientAuthCallback`, `startRequest`, `startChannel`, `validateMessage` |
 | `src/utils/`           | Types, errors, consts                                                    |
 

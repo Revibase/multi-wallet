@@ -3,22 +3,26 @@ import type { CompleteMessageRequest } from "@revibase/core";
 import {
   bufferToBase64URLString,
   convertBase64StringToJWK,
+  convertMemberKeyToString,
   convertPubkeyCompressedToCose,
   createClientAuthorizationStartRequestChallenge,
   createMessageChallenge,
-  UserInfoSchema,
+  fetchSettingsAccountData,
+  fetchUserAccountByFilters,
+  getDomainConfigAddress,
+  getSettingsFromIndex,
+  UserRole,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
+import { address, verifySignatureForAddress } from "gill";
 import { compactVerify, importJWK } from "jose";
-import { REVIBASE_AUTH_URL, REVIBASE_RP_ID } from "src/utils/consts";
 
 /** Verifies WebAuthn message, returns user. */
 export async function verifyMessage(
   request: CompleteMessageRequest,
   expectedClientJwk: string,
   allowedClientOrigins: string[],
-  expectedOrigin = REVIBASE_AUTH_URL,
-  expectedRPID = REVIBASE_RP_ID,
+  require2FAChecks: boolean,
 ) {
   const { payload } = request.data;
   if (payload.startRequest.data.type !== "message")
@@ -56,8 +60,8 @@ export async function verifyMessage(
   const { verified } = await verifyAuthenticationResponse({
     response: payload.authResponse,
     expectedChallenge: bufferToBase64URLString(expectedChallenge),
-    expectedRPID,
-    expectedOrigin,
+    expectedRPID: payload.startRequest.rpId,
+    expectedOrigin: payload.startRequest.providerOrigin,
     requireUserVerification: false,
     credential: {
       counter: 0,
@@ -67,9 +71,52 @@ export async function verifyMessage(
   });
 
   if (!verified) {
-    throw new Error("Invalid client siganture");
+    throw new Error("Invalid user siganture");
   }
+
+  if (require2FAChecks) {
+    if (!payload.startRequest.data.requireTwoFactorAuthentication) {
+      throw new Error("Two factor authentication is required.");
+    }
+    if (!payload.transactionManager) {
+      throw new Error("Missing signature from transaction manager.");
+    }
+
+    const user = await fetchUserAccountByFilters(
+      await getDomainConfigAddress({ rpId: payload.startRequest.rpId }),
+      { credentialId: payload.authResponse.id },
+    );
+    const delegateTo = user?.wallets.find((x) => x.isDelegate);
+    if (!delegateTo) {
+      throw new Error("User does not have a delegated wallet");
+    }
+    const settingsData = await fetchSettingsAccountData(
+      await getSettingsFromIndex(delegateTo.index),
+    );
+    const transactionManager = settingsData.members.find(
+      (x) => x.role === UserRole.TransactionManager,
+    );
+    if (!transactionManager) {
+      throw new Error("No transaction manager found.");
+    }
+    if (
+      payload.transactionManager.publicKey !==
+      convertMemberKeyToString(transactionManager.pubkey)
+    ) {
+      throw new Error("Transaction manager mismatch.");
+    }
+    if (
+      !(await verifySignatureForAddress(
+        address(payload.transactionManager.publicKey),
+        payload.transactionManager.signature,
+        expectedChallenge,
+      ))
+    ) {
+      throw new Error("Invalid transaction manager signature.");
+    }
+  }
+
   return {
-    user: UserInfoSchema.parse(request.data.payload.additionalInfo),
+    ok: true,
   };
 }

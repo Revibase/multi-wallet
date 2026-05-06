@@ -1,10 +1,5 @@
 import type { Secp256r1Key, StartTransactionRequest } from "@revibase/core";
-import type {
-  Address,
-  Instruction,
-  ReadonlyUint8Array,
-  TransactionMessageBytes,
-} from "gill";
+import type { Address, Instruction, ReadonlyUint8Array } from "gill";
 
 /**
  * Configuration for the Transaction Manager.
@@ -69,16 +64,18 @@ export interface ClientDataJSON {
   challenge: Base64URLString;
 }
 
+export interface WellKnownClientEntry {
+  /** The client's public key, encoded as a Base64 string in JWK format. */
+  clientJwk: string;
+}
+
 /**
  * Cached entry for a well-known client (e.g. from /.well-known or config).
  *
  * Stores the client's public key and optionally the device keys it has
  * explicitly trusted, plus cache metadata for freshness.
  */
-export interface WellKnownClientCacheEntry {
-  /** The client's public key, encoded as a Base64 string in JWK format. */
-  clientJwk: string;
-
+export interface WellKnownClientCacheEntry extends WellKnownClientEntry {
   /** Unix timestamp (milliseconds) when this entry was cached. */
   cachedAt: number;
 }
@@ -98,7 +95,7 @@ export type ExpectedTransactionSigner =
        */
       client: {
         origin: string;
-      } & WellKnownClientCacheEntry;
+      } & WellKnownClientEntry;
       /**
        * The device public key or identifier that produced the signature.
        * Uniquely identifies the device that requested the signature for this transaction.
@@ -119,22 +116,3 @@ export type ExpectedTransactionSigner =
       /** The wallet address that this signer is signing for. */
       walletAddress: Address;
     };
-
-/**
- * Result of verifying a transaction.
- *
- * Contains the serialized transaction message and an array of verification
- * batches. Each batch pairs the extracted instructions with the
- * signers that successfully passed verification for those instructions.
- */
-export interface VerificationResults {
-  /** The raw transaction message bytes that needs to be signed. */
-  transactionMessage: TransactionMessageBytes;
-  /**
-   * One entry per verification batch. Each entry lists the decoded instructions from the transaction message as well as the signers.
-   */
-  verificationResults: {
-    instructions: Instruction[];
-    signers: ExpectedTransactionSigner[];
-  }[];
-}

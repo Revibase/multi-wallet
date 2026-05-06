@@ -25,7 +25,7 @@ Public exports from `src/index.ts`:
 
 | Category     | Exports                                                                                                     |
 | ------------ | ----------------------------------------------------------------------------------------------------------- |
-| **Function** | `verifyTransaction`                                                                                         |
+| **Function** | `verifyTransaction`, `verifyMessage`                                                                        |
 | **Types**    | `TransactionManagerConfig`, `VerificationResults`, `ExpectedTransactionSigner`, `WellKnownClientCacheEntry` |
 
 ### `verifyTransaction`
@@ -52,6 +52,19 @@ Return type: `VerificationResults`:
 
 - `transactionMessage`: `TransactionMessageBytes` — raw message bytes to sign (Ed25519).
 - `verificationResults`: `Array<{ instructions: Instruction[]; signers: ExpectedTransactionSigner[] }>` — one batch per multi-wallet instruction group.
+
+### `verifyMessage`
+
+```ts
+import { verifyMessage } from "@revibase/transaction-manager";
+import type { CompleteMessageRequest } from "@revibase/core";
+
+declare const payload: CompleteMessageRequest;
+
+const { payload: verifiedPayload, clientDetails } = await verifyMessage(payload);
+```
+
+Use this to verify sign-in / message auth payloads (client signature + device signature + user signature), optionally providing `getClientDetails(origin)` for custom well-known client lookup.
 
 ### `TransactionManagerConfig`
 
@@ -115,8 +128,9 @@ To integrate `@revibase/transaction-manager` into a backend:
 
 | Path                                  | Contents                                                            |
 | ------------------------------------- | ------------------------------------------------------------------- |
-| `src/index.ts`                        | Public exports (`verifyTransaction`, types)                         |
+| `src/index.ts`                        | Public exports (`verifyTransaction`, `verifyMessage`, types)        |
 | `src/verify-transaction.ts`           | Core decoding, whitelist checks, and routing into processors        |
+| `src/verify-message.ts`               | Verify sign-in/message auth payloads                                |
 | `src/types.ts`                        | `TransactionManagerConfig`, `VerificationResults`, signer types     |
 | `src/processors/*.ts`                 | Per-instruction handlers (change config, transfer intents, buffers) |
 | `src/utils/transaction-parsing.ts`    | Transaction message parsing and LUT resolution                      |

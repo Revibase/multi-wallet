@@ -10,8 +10,8 @@ import type { PendingApprovalsCallbacks } from "./transactions/transaction-signe
 /** Authorize start request: POST request/device/channelId to backend, return result. */
 export type ClientAuthorizationCallback = {
   (request: StartPayload): Promise<{ signature: string; validTill: number }>;
-  (request: CompleteMessageRequest): Promise<{ user: UserInfo }>;
-  (request: CompleteTransactionRequest): Promise<CompleteTransactionRequest>;
+  (request: CompleteMessageRequest): Promise<void>;
+  (request: CompleteTransactionRequest): Promise<{ signature: string }>;
 };
 
 export type OnConnectedCallback = (
@@ -37,6 +37,8 @@ export type StartPayload =
 
 /** signIn options. */
 export type SignInAuthorizationFlowOptions = {
+  requireTwoFactorAuthentication?: boolean;
+  pendingApprovalsCallback?: PendingApprovalsCallbacks;
   signal?: AbortSignal;
 };
 

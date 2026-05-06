@@ -13,12 +13,13 @@ import {
   type Rpc,
   type SolanaRpcApi,
 } from "gill";
-import { verifyTransactionBufferHash } from "src/utils/signature-verification";
 import type {
   ProcessingResult,
   Secp256r1VerifyData,
   TransactionManagerConfig,
+  WellKnownClientEntry,
 } from "../types";
+import { verifyTransactionBufferHash } from "../utils/signature-verification";
 import {
   extractSettingsFromCompressed,
   getSecp256r1Signers,
@@ -40,7 +41,7 @@ export async function processTransactionBufferAndExecute(
   authResponses?: TransactionAuthDetails[],
   secp256r1VerifyDataList?: Secp256r1VerifyData[],
   transactionMessageBytes?: string,
-  wellKnownProxyUrl?: URL,
+  getClientDetails?: (clientOrigin: string) => Promise<WellKnownClientEntry>,
 ) {
   if (!instruction.accounts) {
     throw new Error("Invalid instruction accounts");
@@ -84,7 +85,7 @@ export async function processTransactionBufferAndExecute(
     processingResult.settingsAddress,
     processingResult.signers,
     authResponses,
-    wellKnownProxyUrl,
+    getClientDetails,
   );
 }
 

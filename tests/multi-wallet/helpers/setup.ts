@@ -173,8 +173,9 @@ export async function setupTestEnvironment(): Promise<TestContext> {
  */
 export async function createMultiWallet(
   ctx: TestContext,
-  isCompressed: boolean,
+  isCompressed?: boolean,
 ): Promise<TestContext> {
+  const compressed = isCompressed ?? ctx.compressed ?? true;
   const rpId = crypto.randomUUID();
   const origin = crypto.randomUUID();
 
@@ -232,7 +233,7 @@ export async function createMultiWallet(
 
   await sendTransaction([instruction], payer);
 
-  if (!isCompressed) {
+  if (!compressed) {
     const ix = await decompressSettingsAccount({
       settings: await getSettingsFromIndex(createIndex),
       payer,
@@ -244,7 +245,7 @@ export async function createMultiWallet(
   // Return a new context with the updated settings and multiWalletVault
   return {
     ...ctx,
-    compressed: isCompressed,
+    compressed,
     rpId,
     origin,
     domainConfig,

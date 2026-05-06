@@ -250,16 +250,19 @@ export function createTransactionManagerSigner(args: {
       const { signal } = controller;
       const wsUrl = toWebSocketUrl(url);
       const payload = JSON.stringify({
-        publicKey: address.toString(),
-        payload: transactions.map((x) => ({
-          transaction: getBase64Decoder().decode(
-            getTransactionEncoder().encode(x),
-          ),
-          transactionMessageBytes: transactionMessageBytes
-            ? getBase64Decoder().decode(transactionMessageBytes)
-            : undefined,
-          authResponses,
-        })),
+        type: "transaction",
+        data: {
+          publicKey: address.toString(),
+          payload: transactions.map((x) => ({
+            transaction: getBase64Decoder().decode(
+              getTransactionEncoder().encode(x),
+            ),
+            transactionMessageBytes: transactionMessageBytes
+              ? getBase64Decoder().decode(transactionMessageBytes)
+              : undefined,
+            authResponses,
+          })),
+        },
       });
       for (let i = 0; i < maxAttempts; i++) {
         if (signal.aborted) throw createAbortError();

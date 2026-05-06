@@ -33,6 +33,7 @@ import type {
   ExpectedTransactionSigner,
   Secp256r1VerifyData,
   SignerInfo,
+  WellKnownClientEntry,
 } from "../types";
 import {
   getRevibaseLookupTableAddresses,
@@ -109,7 +110,7 @@ export async function verifyAndParseSigners(
   settingsAddress: string,
   signers: SignerInfo[],
   authResponses?: TransactionAuthDetails[],
-  wellKnownProxyUrl?: URL,
+  getClientDetails?: (clientOrigin: string) => Promise<WellKnownClientEntry>,
 ) {
   if (!authResponses) {
     throw new Error("Transaction Auth Response is missing");
@@ -150,7 +151,7 @@ export async function verifyAndParseSigners(
         }
 
         const [clientDetails] = await Promise.all([
-          verifyClientSignature(client, messageHash, wellKnownProxyUrl),
+          verifyClientSignature(client, messageHash, getClientDetails),
           verifyTransactionAuthResponseWithMessageHash(
             authDetails,
             messageHash,

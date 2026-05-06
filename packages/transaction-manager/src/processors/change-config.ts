@@ -4,7 +4,7 @@ import {
   type TransactionAuthDetails,
 } from "@revibase/core";
 import type { Instruction } from "gill";
-import type { Secp256r1VerifyData } from "../types";
+import type { Secp256r1VerifyData, WellKnownClientEntry } from "../types";
 import {
   extractSettingsFromCompressed,
   getSecp256r1Signers,
@@ -19,7 +19,7 @@ export async function processChangeConfigCompressed(
   secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
   instructionIndex: number,
   authResponses: TransactionAuthDetails[] | undefined,
-  wellKnownProxyUrl?: URL,
+  getClientDetails?: (clientOrigin: string) => Promise<WellKnownClientEntry>,
 ) {
   if (!instruction.data) {
     throw new Error("Invalid instruction data.");
@@ -56,7 +56,7 @@ export async function processChangeConfigCompressed(
     settingsAddress,
     sepcp256r1Signers.concat(addressSigners),
     authResponses,
-    wellKnownProxyUrl,
+    getClientDetails,
   );
 }
 
@@ -68,7 +68,7 @@ export async function processChangeConfig(
   secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
   instructionIndex: number,
   authResponses: TransactionAuthDetails[] | undefined,
-  wellKnownProxyUrl?: URL,
+  getClientDetails?: (clientOrigin: string) => Promise<WellKnownClientEntry>,
 ) {
   if (!instruction.data) {
     throw new Error("Invalid instruction data.");
@@ -103,6 +103,6 @@ export async function processChangeConfig(
     settingsAddress,
     sepcp256r1Signers.concat(addressSigners),
     authResponses,
-    wellKnownProxyUrl,
+    getClientDetails,
   );
 }

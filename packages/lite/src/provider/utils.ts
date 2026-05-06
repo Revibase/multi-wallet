@@ -9,7 +9,7 @@ import {
   type ClientAuthorizationCallback,
   type OnConnectedCallback,
   type OnSuccessCallback,
-} from "src/utils";
+} from "../utils";
 
 export const DEFAULT_TIMEOUT = 3 * 60 * 1000;
 export const HEARTBEAT_INTERVAL = 2000;
@@ -43,6 +43,7 @@ export type Pending = {
 export type RevibaseProviderOptions = {
   rpcEndpoint: string;
   providerOrigin?: string;
+  rpId?: string;
   onClientAuthorizationCallback?: ClientAuthorizationCallback;
   onEstimateJitoTipsCallback?: () => Promise<number>;
   onSendJitoBundleCallback?: (request: string[]) => Promise<string>;

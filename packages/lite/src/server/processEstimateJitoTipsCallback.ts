@@ -1,4 +1,4 @@
-import { DEFAULT_JITO_TIPS_URL } from "src/utils/consts";
+import { DEFAULT_JITO_TIPS_URL } from "../utils/consts";
 
 export async function processEstimateJitoTipsCallback(
   priority = "landed_tips_75th_percentile",

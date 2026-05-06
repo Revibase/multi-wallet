@@ -1,7 +1,6 @@
 import type { UserInfo } from "@revibase/core";
 import {
   getSettingsFromIndex,
-  UserInfoSchema,
   type CompleteTransactionRequest,
 } from "@revibase/core";
 import {
@@ -9,24 +8,26 @@ import {
   type AddressesByLookupTableAddress,
   type TransactionSigner,
 } from "gill";
-import type { RevibaseProvider } from "src/provider";
-import type { TransactionAuthorizationFlowOptions } from "src/utils";
-import { processBundledTransaction } from "src/utils/transactions/processBundledTransaction";
-import { processSyncTransaction } from "src/utils/transactions/processSyncTransaction";
-import { processTokenTransfer } from "src/utils/transactions/processTokenTransfer";
+import type { RevibaseProvider } from "../../provider";
+import type { TransactionAuthorizationFlowOptions } from "../../utils";
+import { processBundledTransaction } from "../../utils/transactions/processBundledTransaction";
+import { processSyncTransaction } from "../../utils/transactions/processSyncTransaction";
+import { processTokenTransfer } from "../../utils/transactions/processTokenTransfer";
 import { pollTransactionConfirmation } from "./pollTransactionConfirmation";
 
 export async function sendTransaction(
   provider: RevibaseProvider,
   params: {
+    user: UserInfo;
     request: CompleteTransactionRequest;
     additionalSigners?: TransactionSigner[];
     options?: TransactionAuthorizationFlowOptions;
     payer?: TransactionSigner;
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
-): Promise<{ txSig: string; user: UserInfo }> {
+): Promise<string> {
   const {
+    user,
     request,
     additionalSigners,
     options,
@@ -34,17 +35,14 @@ export async function sendTransaction(
     addressesByLookupTableAddress,
   } = params;
   const { confirmTransaction = true } = options ?? {};
-  if (request.data.payload.startRequest.data.type === "message") {
-    throw new Error("Invalid request type.");
-  }
-  const userInfo = UserInfoSchema.parse(request.data.payload.additionalInfo);
+
   const settings =
     request.data.type === "transaction" &&
     request.data.payload.startRequest.data.payload.transactionActionType !==
       "transfer_intent"
       ? request.data.payload.startRequest.data.payload.transactionAddress
-      : userInfo.settingsIndexWithAddress?.index
-        ? await getSettingsFromIndex(userInfo.settingsIndexWithAddress.index)
+      : user.settingsIndexWithAddress?.index
+        ? await getSettingsFromIndex(user.settingsIndexWithAddress.index)
         : null;
 
   if (!settings) {
@@ -90,5 +88,5 @@ export async function sendTransaction(
     await pollTransactionConfirmation(txSig);
   }
 
-  return { txSig, user: userInfo };
+  return txSig;
 }

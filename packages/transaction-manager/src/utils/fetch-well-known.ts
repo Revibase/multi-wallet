@@ -1,11 +1,10 @@
-import type { WellKnownClientCacheEntry } from "src/types";
+import type { WellKnownClientCacheEntry, WellKnownClientEntry } from "../types";
 
 const WELL_KNOWN_CACHE_TTL_MS = 300_000;
 const wellKnownClientCache = new Map<string, WellKnownClientCacheEntry>();
 export async function fetchWellKnownClient(
   clientOrigin: string,
-  wellKnownProxyUrl?: URL,
-): Promise<WellKnownClientCacheEntry> {
+): Promise<WellKnownClientEntry> {
   const currentTimestamp = Date.now();
   const cachedEntry = wellKnownClientCache.get(clientOrigin);
 
@@ -16,9 +15,7 @@ export async function fetchWellKnownClient(
     return cachedEntry;
   }
 
-  const fetchUrl = wellKnownProxyUrl
-    ? `${wellKnownProxyUrl.origin}?origin=${encodeURIComponent(clientOrigin)}`
-    : `${clientOrigin}/.well-known/revibase.json`;
+  const fetchUrl = `${clientOrigin}/.well-known/revibase.json`;
 
   const response = await fetch(fetchUrl);
   if (!response.ok) {

@@ -1,9 +1,16 @@
-import type { CompleteMessageRequest, UserInfo } from "@revibase/core";
+import {
+  fetchUserAccountByFilters,
+  getDomainConfigAddress,
+  type CompleteMessageRequest,
+  type UserInfo,
+} from "@revibase/core";
 import { getBase64Decoder } from "gill";
-import { RevibaseProvider } from "src/provider/main";
-import { createSignInMessageText } from "src/utils/internal";
-import { withRetry } from "src/utils/retry";
-import type { SignInAuthorizationFlowOptions } from "src/utils/types";
+import { RevibaseProvider } from "../provider/main";
+import { createSignInMessageText } from "../utils/internal";
+import { send2FARequestIfNeeded } from "../utils/message";
+import { withRetry } from "../utils/retry";
+import type { SignInAuthorizationFlowOptions } from "../utils/types";
+import { convertToUserInfo } from "../utils/user";
 
 /** Opens auth popup (or channel when options.channelId). Returns user after passkey auth. Options: signal?, channelId?. */
 export async function signIn(
@@ -14,6 +21,8 @@ export async function signIn(
     const payload = {
       phase: "start" as const,
       rid,
+      providerOrigin: provider.providerOrigin,
+      rpId: provider.rpId,
       data: {
         type: "message" as const,
         payload: createSignInMessageText({
@@ -22,6 +31,8 @@ export async function signIn(
             crypto.getRandomValues(new Uint8Array(16)),
           ),
         }),
+        requireTwoFactorAuthentication:
+          options?.requireTwoFactorAuthentication ?? false,
       },
       clientOrigin,
     };
@@ -35,7 +46,35 @@ export async function signIn(
   const onSuccessCallback = async (
     result: CompleteMessageRequest,
   ): Promise<{ user: UserInfo }> => {
-    return provider.onClientAuthorizationCallback(result);
+    const userAccount = await withRetry(async () =>
+      fetchUserAccountByFilters(
+        await getDomainConfigAddress({
+          rpId: result.data.payload.startRequest.rpId,
+        }),
+        { credentialId: result.data.payload.authResponse.id },
+      ),
+    );
+    if (!userAccount) {
+      throw new Error("User not found.");
+    }
+    const user = await convertToUserInfo(userAccount);
+    const transactionManager = await send2FARequestIfNeeded(
+      user,
+      result,
+      options,
+    );
+    await provider.onClientAuthorizationCallback(
+      !transactionManager
+        ? result
+        : {
+            ...result,
+            data: {
+              ...result.data,
+              payload: { ...result.data.payload, transactionManager },
+            },
+          },
+    );
+    return { user };
   };
 
   return provider.sendRequestToPopupProvider({
