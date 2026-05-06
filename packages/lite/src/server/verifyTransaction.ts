@@ -10,7 +10,6 @@ import {
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import { CompactSign, compactVerify, importJWK } from "jose";
-import { REVIBASE_AUTH_URL, REVIBASE_RP_ID } from "src/utils/consts";
 
 /** Verifies WebAuthn message, returns signature. */
 export async function verifyTransaction(
@@ -18,9 +17,7 @@ export async function verifyTransaction(
   expectedClientJwk: string,
   allowedClientOrigins: string[],
   privateKey: string,
-  expectedOrigin = REVIBASE_AUTH_URL,
-  expectedRPID = REVIBASE_RP_ID,
-): Promise<CompleteTransactionRequest> {
+) {
   const { payload } = request.data;
   if (payload.startRequest.data.type !== "transaction")
     throw new Error("Invalid request type.");
@@ -63,8 +60,8 @@ export async function verifyTransaction(
   const { verified } = await verifyAuthenticationResponse({
     response: payload.authResponse,
     expectedChallenge: bufferToBase64URLString(expectedChallenge),
-    expectedRPID,
-    expectedOrigin,
+    expectedRPID: payload.startRequest.rpId,
+    expectedOrigin: payload.startRequest.providerOrigin,
     requireUserVerification: false,
     credential: {
       counter: 0,
@@ -86,14 +83,5 @@ export async function verifyTransaction(
     })
     .sign(pKey);
 
-  return {
-    ...request,
-    data: {
-      ...request.data,
-      payload: {
-        ...request.data.payload,
-        client: { ...request.data.payload.client, jws: signature },
-      },
-    },
-  };
+  return { ok: true, signature };
 }

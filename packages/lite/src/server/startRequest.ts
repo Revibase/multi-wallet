@@ -5,7 +5,7 @@ import {
   type StartTransactionRequest,
 } from "@revibase/core";
 import { CompactSign } from "jose";
-import { DEFAULT_TIMEOUT } from "src/provider/utils";
+import { DEFAULT_TIMEOUT } from "../provider/utils";
 
 export async function startRequest(
   request:
@@ -30,5 +30,5 @@ export async function startRequest(
       alg: pKey.alg,
     })
     .sign(pKey);
-  return { signature, validTill };
+  return { ok: true, signature, validTill };
 }

@@ -1,7 +1,9 @@
-import type {
-  CompleteTransactionRequest,
-  TransactionPayloadWithBase64MessageBytes,
-  UserInfo,
+import {
+  fetchUserAccountByFilters,
+  getDomainConfigAddress,
+  type CompleteTransactionRequest,
+  type TransactionPayloadWithBase64MessageBytes,
+  type UserInfo,
 } from "@revibase/core";
 import {
   address,
@@ -12,10 +14,11 @@ import {
   type TransactionSigner,
 } from "gill";
 import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
-import type { RevibaseProvider } from "src/provider/main";
-import { withRetry } from "src/utils/retry";
-import type { TransactionAuthorizationFlowOptions } from "src/utils/types";
+import type { RevibaseProvider } from "../provider/main";
+import { withRetry } from "../utils/retry";
 import { sendTransaction } from "../utils/transactions/sendTransaction";
+import type { TransactionAuthorizationFlowOptions } from "../utils/types";
+import { convertToUserInfo } from "../utils/user";
 
 /** Transfers SOL or SPL (set mint for SPL). amount &gt; 0, destination required */
 export async function transferTokens(
@@ -67,6 +70,8 @@ export async function transferTokens(
     const payload = {
       phase: "start" as const,
       rid,
+      providerOrigin: provider.providerOrigin,
+      rpId: provider.rpId,
       data: {
         type: "transaction" as const,
         payload: transactionPayload,
@@ -83,13 +88,37 @@ export async function transferTokens(
   const onSuccessCallback = async (
     result: CompleteTransactionRequest,
   ): Promise<{ txSig: string; user: UserInfo }> => {
-    const value = await provider.onClientAuthorizationCallback(result);
-    return sendTransaction(provider, {
-      request: value,
+    const { signature } = await provider.onClientAuthorizationCallback(result);
+    const userAccount = await withRetry(async () =>
+      fetchUserAccountByFilters(
+        await getDomainConfigAddress({
+          rpId: result.data.payload.startRequest.rpId,
+        }),
+        { credentialId: result.data.payload.authResponse.id },
+      ),
+    );
+    if (!userAccount) {
+      throw new Error("User not found.");
+    }
+    const user = await convertToUserInfo(userAccount);
+    const txSig = await sendTransaction(provider, {
+      user,
+      request: {
+        ...result,
+        data: {
+          ...result.data,
+          payload: {
+            ...result.data.payload,
+            client: { ...result.data.payload.client, jws: signature },
+          },
+        },
+      },
       options,
       addressesByLookupTableAddress,
       payer,
     });
+
+    return { txSig, user };
   };
 
   return provider.sendRequestToPopupProvider({

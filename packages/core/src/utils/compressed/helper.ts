@@ -7,25 +7,26 @@ import {
   type Address,
   type Base64EncodedBytes,
 } from "gill";
+import { NotFoundError, ValidationError } from "../../errors";
 import {
-  base64URLStringToBuffer,
   fetchMaybeSettings,
-  getCompressedSettingsAddress,
   getCompressedSettingsDecoder,
   getMemberKeyEncoder,
   getSettingsDecoder,
-  getSettingsFromIndex,
-  getUserAccountAddress,
   getUserDecoder,
   MULTI_WALLET_PROGRAM_ADDRESS,
-  Secp256r1Key,
   UserRole,
   type CompressedSettingsData,
   type User,
-} from "../..";
-import { NotFoundError, ValidationError } from "../../errors";
-import type { AccountCache } from "../../types";
+} from "../../generated";
+import type { AccountCache, Secp256r1Key } from "../../types";
+import {
+  getCompressedSettingsAddress,
+  getSettingsFromIndex,
+  getUserAccountAddress,
+} from "../addresses";
 import { getLightProtocolRpc, getSolanaRpc } from "../initialize";
+import { base64URLStringToBuffer } from "../passkeys/helper";
 import { convertPubkeyToMemberkey } from "../transaction/internal";
 import { requireNonNegative } from "../validation";
 import {

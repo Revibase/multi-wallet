@@ -1,15 +1,20 @@
 import { sha256 } from "@noble/hashes/sha2.js";
 import {
   base64URLStringToBuffer,
+  bufferToBase64URLString,
   convertBase64StringToJWK,
+  convertPubkeyCompressedToCose,
+  createMessageChallenge,
   createTransactionChallenge,
   getSecp256r1MessageHash,
+  type CompleteMessageRequest,
   type TransactionAuthDetails,
   type TransactionBufferCreateArgs,
 } from "@revibase/core";
+import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import { getUtf8Decoder } from "gill";
 import { compactVerify, importJWK } from "jose";
-import type { ClientDataJSON, WellKnownClientCacheEntry } from "../types";
+import type { ClientDataJSON, WellKnownClientEntry } from "../types";
 import { fetchWellKnownClient } from "./fetch-well-known";
 
 function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
@@ -37,12 +42,11 @@ export async function verifyDeviceSignature(
 export async function verifyClientSignature(
   client: TransactionAuthDetails["client"],
   messageHash: Uint8Array<ArrayBuffer>,
-  wellKnownProxyUrl?: URL,
-): Promise<WellKnownClientCacheEntry> {
-  const clientDetails = await fetchWellKnownClient(
-    client.clientOrigin,
-    wellKnownProxyUrl,
-  );
+  getClientDetails?: (clientOrigin: string) => Promise<WellKnownClientEntry>,
+): Promise<WellKnownClientEntry> {
+  const clientDetails =
+    (await getClientDetails?.(client.clientOrigin)) ??
+    (await fetchWellKnownClient(client.clientOrigin));
   try {
     const key = await importJWK(
       convertBase64StringToJWK(clientDetails.clientJwk),
@@ -58,6 +62,11 @@ export async function verifyClientSignature(
   return clientDetails;
 }
 
+/**
+ * Make sure that transaction auth response matches message hash that is being verified on chain
+ * @param authDetails
+ * @param expectedMessageHash
+ */
 export async function verifyTransactionAuthResponseWithMessageHash(
   authDetails: TransactionAuthDetails,
   expectedMessageHash: Uint8Array<ArrayBuffer>,
@@ -73,6 +82,9 @@ export async function verifyTransactionAuthResponseWithMessageHash(
   } = authDetails;
   if (startRequest.data.type !== "transaction")
     throw new Error("Invalid request type.");
+  if (client.clientOrigin !== startRequest.clientOrigin) {
+    throw new Error("Client mismatch");
+  }
   const { response } = authResponse;
 
   const clientDataJsonBytes = base64URLStringToBuffer(response.clientDataJSON);
@@ -82,7 +94,7 @@ export async function verifyTransactionAuthResponseWithMessageHash(
 
   const { challenge: expectedChallenge } = await createTransactionChallenge(
     startRequest.data.payload,
-    client.clientOrigin,
+    startRequest.clientOrigin,
     device.jwk,
     startRequest.rid,
     slotHash,
@@ -99,14 +111,45 @@ export async function verifyTransactionAuthResponseWithMessageHash(
   if (!equalBytes(actualMessageHash, expectedMessageHash)) {
     throw new Error("Invalid message hash");
   }
-} /**
+}
+
+/**
  * Verifies that transaction buffer hash matches the provided transaction bytes.
  */
-
 export async function verifyTransactionBufferHash(
   bufferArgs: TransactionBufferCreateArgs,
   transactionMessage: Uint8Array<ArrayBuffer>,
 ): Promise<boolean> {
   const computedHash = sha256(transactionMessage);
   return equalBytes(bufferArgs.finalBufferHash as Uint8Array, computedHash);
+}
+
+/**
+ * Verify user signature
+ */
+export async function verifyUserSignature(payload: CompleteMessageRequest) {
+  const { startRequest } = payload.data.payload;
+  const expectedChallenge = createMessageChallenge(
+    startRequest.data.payload,
+    startRequest.clientOrigin,
+    payload.data.payload.device.jwk,
+    startRequest.rid,
+  );
+
+  const { verified } = await verifyAuthenticationResponse({
+    response: payload.data.payload.authResponse,
+    expectedChallenge: bufferToBase64URLString(expectedChallenge),
+    expectedRPID: startRequest.rpId,
+    expectedOrigin: startRequest.providerOrigin,
+    requireUserVerification: false,
+    credential: {
+      counter: 0,
+      id: payload.data.payload.authResponse.id,
+      publicKey: convertPubkeyCompressedToCose(payload.data.payload.signer),
+    },
+  });
+
+  if (!verified) {
+    throw new Error("Invalid user siganture");
+  }
 }

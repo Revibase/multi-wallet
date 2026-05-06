@@ -22,6 +22,8 @@ export async function mockAuthenticationResponse(
   publicKey: Uint8Array,
   ctx: TestContext,
 ): Promise<SignedSecp256r1Key> {
+  if (!ctx.rpId) throw new Error("Missing rpid");
+
   const nonce = getBase64Decoder().decode(
     crypto.getRandomValues(new Uint8Array(16)),
   );
@@ -118,6 +120,8 @@ export async function mockAuthenticationResponse(
       clientOrigin: clientOrigin,
       rid: nonce,
       validTill: Date.now() + 3 * 60 * 1000,
+      providerOrigin: origin,
+      rpId: ctx.rpId,
       data: {
         type: "transaction",
         payload: {

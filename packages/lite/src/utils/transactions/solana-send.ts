@@ -25,7 +25,7 @@ import {
   getSetComputeUnitLimitInstruction,
   getSetComputeUnitPriceInstruction,
 } from "gill/programs";
-import type { RevibaseProvider } from "src/provider";
+import type { RevibaseProvider } from "../../provider";
 import { withRetry } from "../retry";
 
 export async function signAndSendTransaction({

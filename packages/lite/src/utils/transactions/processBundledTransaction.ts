@@ -6,7 +6,7 @@ import {
   type TransactionAuthenticationResponse,
 } from "@revibase/core";
 import { getBase64Encoder, type Address, type TransactionSigner } from "gill";
-import type { RevibaseProvider } from "src/provider";
+import type { RevibaseProvider } from "../../provider";
 import { withRetry } from "../retry";
 import type { TransactionAuthorizationFlowOptions } from "../types";
 import { signAndSendBundledTransactions } from "./solana-send";

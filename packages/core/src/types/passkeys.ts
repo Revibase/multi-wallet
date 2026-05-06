@@ -8,8 +8,6 @@ export const UserInfoSchema = z.looseObject({
     index: z.union([z.number(), z.bigint()]),
     settingsAddressTreeIndex: z.number(),
   }),
-  username: z.string().optional(),
-  profilePictureUrl: z.string().optional(),
 });
 
 export const TransactionActionTypeSchema = z.enum([
@@ -50,10 +48,13 @@ export const StartMessageRequestSchema = z
     signer: z.string().optional(),
     rid: z.string(),
     validTill: z.number(),
+    providerOrigin: z.string(),
+    rpId: z.string(),
     data: z
       .object({
         type: z.literal("message"),
         payload: z.string(),
+        requireTwoFactorAuthentication: z.boolean().default(false),
       })
       .strict(),
   })
@@ -66,6 +67,8 @@ export const StartTransactionRequestSchema = z
     signer: z.string().optional(),
     rid: z.string(),
     validTill: z.number(),
+    providerOrigin: z.string(),
+    rpId: z.string(),
     data: z
       .object({
         type: z.literal("transaction"),
@@ -121,7 +124,17 @@ export const CompleteMessageRequestSchema = z
     data: z
       .object({
         type: z.literal("message"),
-        payload: BaseResponseSchema.extend(AuthenticationContextSchema.shape),
+        payload: BaseResponseSchema.extend(
+          AuthenticationContextSchema.shape,
+        ).extend({
+          startRequest: StartMessageRequestSchema,
+          transactionManager: z
+            .object({
+              publicKey: z.string(),
+              signature: z.string(),
+            })
+            .optional(),
+        }),
       })
       .strict(),
   })
@@ -133,28 +146,11 @@ export const CompleteTransactionRequestSchema = z
     data: z
       .object({
         type: z.literal("transaction"),
-        payload: BaseResponseSchema.extend(
-          AuthenticationContextSchema.shape,
-        ).extend(TransactionDetailsSchema.shape),
-      })
-      .strict(),
-  })
-  .strict();
-
-export const CompleteSendTransactionRequestSchema = z
-  .object({
-    phase: z.literal("complete"),
-    data: z
-      .object({
-        type: z.literal("transaction"),
-        payload: z.object({
-          startRequest: z.union([
-            StartTransactionRequestSchema,
-            StartMessageRequestSchema,
-          ]),
-          txSig: z.string(),
-          user: UserInfoSchema,
-        }),
+        payload: BaseResponseSchema.extend(AuthenticationContextSchema.shape)
+          .extend(TransactionDetailsSchema.shape)
+          .extend({
+            startRequest: StartTransactionRequestSchema,
+          }),
       })
       .strict(),
   })
@@ -172,9 +168,7 @@ export type StartTransactionRequest = z.infer<
 export type CompleteTransactionRequest = z.infer<
   typeof CompleteTransactionRequestSchema
 >;
-export type CompleteSendTransactionRequest = z.infer<
-  typeof CompleteSendTransactionRequestSchema
->;
+
 export type CompleteMessageRequest = z.infer<
   typeof CompleteMessageRequestSchema
 >;

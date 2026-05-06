@@ -1,4 +1,4 @@
-import { DEFAULT_JITO_BLOCK_ENGINE_SEND_BUNDLE_URL } from "src/utils/consts";
+import { DEFAULT_JITO_BLOCK_ENGINE_SEND_BUNDLE_URL } from "../utils/consts";
 
 export async function processSendJitoBundleCallback(
   serializedTransactions: string[],

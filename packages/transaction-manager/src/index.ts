@@ -1,7 +1,7 @@
 export type {
   ExpectedTransactionSigner,
   TransactionManagerConfig,
-  VerificationResults,
   WellKnownClientCacheEntry,
 } from "./types";
+export { verifyMessage } from "./verify-message";
 export { verifyTransaction } from "./verify-transaction";

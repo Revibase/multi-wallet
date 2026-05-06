@@ -63,7 +63,7 @@ Set the following environment variables for your signing service:
 
 - **`TX_MANAGER_PRIVATE_KEY`**: Manager private key (JWK JSON string).
 - **`TX_MANAGER_PUBLIC_KEY`**: Manager public key (base58).
-- **`TX_MANAGER_URL`**: Public HTTPS URL of your signing endpoint.
+- **`TX_MANAGER_URL`**: Public HTTPS URL of your signing endpoint (the client will connect via WebSocket at the same URL).
 - **`RPC_URL`** (optional): Solana RPC URL. Defaults to `https://api.mainnet-beta.solana.com`.
 
 ### 3. Implement a basic signing endpoint
@@ -71,6 +71,12 @@ Set the following environment variables for your signing service:
 Expose a public HTTPS endpoint, for example:
 
 `https://your-transaction-manager.com/sign`
+
+This section uses the [`ws`](https://www.npmjs.com/package/ws) package for the WebSocket server:
+
+```bash
+npm install ws
+```
 
 This endpoint:
 
@@ -81,9 +87,19 @@ This endpoint:
 - Returns base58-encoded signatures.
 
 ```ts
-import { verifyTransaction } from "@revibase/transaction-manager";
+import {
+  verifyMessage,
+  verifyTransaction,
+} from "@revibase/transaction-manager";
 import { createSolanaRpc, getBase58Decoder } from "gill";
 import { enforcePolicies } from "@/lib/policy";
+import {
+  createMessageChallenge,
+  type CompleteMessageRequest,
+  type TransactionAuthDetails,
+} from "@revibase/core";
+import http from "node:http";
+import { WebSocketServer } from "ws";
 
 const rpc = createSolanaRpc(
   process.env.RPC_URL ?? "https://api.mainnet-beta.solana.com",
@@ -94,24 +110,75 @@ const transactionManagerConfig = {
   url: process.env.TX_MANAGER_URL!, // public HTTPS URL of this endpoint
 };
 
-export async function POST(req: Request) {
-  try {
-    const { publicKey, payload } = (await req.json()) as {
-      publicKey: string;
-      payload: {
-        transaction: string;
-        transactionMessageBytes?: string;
-        authResponses?: unknown[];
-      }[];
-    };
+/**
+ * The @revibase/core client connects using WebSocket (wss://...) and sends one JSON message.
+ * This is the exact shape produced by createTransactionManagerSigner():
+ *
+ * Transaction signing:
+ * {
+ *   type: "transaction",
+ *   data: {
+ *     publicKey: string,
+ *     payload: Array<{
+ *       transaction: string,
+ *       transactionMessageBytes?: string,
+ *       authResponses?: TransactionAuthDetails[],
+ *     }>,
+ *   }
+ * }
+ *
+ * Message signing:
+ * {
+ *   type: "message",
+ *   data: CompleteMessageRequest
+ * }
+ *
+ * Your service should respond with JSON events:
+ * - { event: "signatures", data: { signatures: string[] } }  // base58 signatures
+ * - { event: "error", data: { error: string } }
+ *
+ * (Optional) approval UX:
+ * - { event: "pending_transaction_approval", data: { validTill: number } }
+ * - { event: "transaction_approved", data: {} }
+ */
+const server = http.createServer();
 
-    if (publicKey !== transactionManagerConfig.publicKey) {
-      return Response.json(
-        { error: "Invalid transaction manager public key" },
-        { status: 400 },
+// Route upgrade requests for "/sign" to WebSocket.
+const wss = new WebSocketServer({ noServer: true });
+server.on("upgrade", (req, socket, head) => {
+  try {
+    const url = new URL(req.url ?? "/", "http://localhost");
+    if (url.pathname !== "/sign") {
+      socket.destroy();
+      return;
+    }
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit("connection", ws, req);
+    });
+  } catch {
+    socket.destroy();
+  }
+});
+
+wss.on("connection", async (ws) => {
+  try {
+    // Read exactly one request message from the client.
+    const msg = (await readJsonOnce(ws)) as {
+      type: string;
+      data?: unknown;
+    };
+    if (msg.type !== "transaction" && msg.type !== "message") {
+      ws.send(
+        JSON.stringify({
+          event: "error",
+          data: { error: `Unsupported request type: ${msg.type}` },
+        }),
       );
+      ws.close();
+      return;
     }
 
+    // Shared: load signer key once per connection.
     const jwk = JSON.parse(process.env.TX_MANAGER_PRIVATE_KEY!);
     const privateKey = await crypto.subtle.importKey(
       "jwk",
@@ -121,33 +188,124 @@ export async function POST(req: Request) {
       ["sign"],
     );
 
-    const signatures: string[] = [];
+    if (msg.type === "transaction") {
+      const { publicKey, payload } = (msg.data ?? {}) as {
+        publicKey: string;
+        payload: {
+          transaction: string;
+          transactionMessageBytes?: string;
+          authResponses?: TransactionAuthDetails[];
+        }[];
+      };
 
-    for (const payloadItem of payload) {
-      const result = await verifyTransaction(
-        rpc,
-        transactionManagerConfig,
-        payloadItem,
+      if (publicKey !== transactionManagerConfig.publicKey) {
+        ws.send(
+          JSON.stringify({
+            event: "error",
+            data: { error: "Invalid transaction manager public key" },
+          }),
+        );
+        ws.close();
+        return;
+      }
+
+      const signatures: string[] = [];
+      for (const payloadItem of payload) {
+        const result = await verifyTransaction(
+          rpc,
+          transactionManagerConfig,
+          payloadItem,
+        );
+
+        await enforcePolicies(result);
+
+        // (Optional) if your policy requires an out-of-band human approval:
+        // ws.send(JSON.stringify({ event: "pending_transaction_approval", data: { validTill: Date.now() + 60_000 } }));
+
+        // await waitForYourApprovalSystem(...);
+
+        // ws.send(JSON.stringify({ event: "transaction_approved", data: {} }));
+
+        const signatureBytes = await crypto.subtle.sign(
+          { name: "Ed25519" },
+          privateKey,
+          result.transactionMessage,
+        );
+
+        signatures.push(
+          getBase58Decoder().decode(new Uint8Array(signatureBytes)),
+        );
+      }
+
+      ws.send(JSON.stringify({ event: "signatures", data: { signatures } }));
+      ws.close();
+    } else {
+      // msg.type === "message"
+      const payload = msg.data as CompleteMessageRequest;
+
+      await verifyMessage(payload);
+
+      // (Optional) if your policy requires an out-of-band human approval:
+
+      // ws.send(JSON.stringify({ event: "pending_transaction_approval", data: { validTill: Date.now() + 60_000 } }));
+
+      // await waitForYourApprovalSystem(...);
+
+      // ws.send(JSON.stringify({ event: "transaction_approved", data: {} }));
+
+      const expectedChallenge = createMessageChallenge(
+        payload.data.payload.startRequest.data.payload,
+        payload.data.payload.startRequest.clientOrigin,
+        payload.data.payload.device.jwk,
+        payload.data.payload.startRequest.rid,
       );
-
-      await enforcePolicies(result);
 
       const signatureBytes = await crypto.subtle.sign(
         { name: "Ed25519" },
         privateKey,
-        result.transactionMessage,
+        expectedChallenge,
       );
 
-      signatures.push(
-        getBase58Decoder().decode(new Uint8Array(signatureBytes)),
+      ws.send(
+        JSON.stringify({
+          event: "signatures",
+          data: {
+            signatures: [
+              getBase58Decoder().decode(new Uint8Array(signatureBytes)),
+            ],
+          },
+        }),
       );
+      ws.close();
     }
-
-    return Response.json({ signatures });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    return Response.json({ error: msg }, { status: 500 });
+    try {
+      ws.send(JSON.stringify({ event: "error", data: { error: msg } }));
+    } finally {
+      ws.close();
+    }
   }
+});
+
+server.listen(3000, () => {
+  console.log("Transaction manager listening on http://localhost:3000/sign");
+});
+
+function readJsonOnce(ws: import("ws").WebSocket): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const onMessage = (data: import("ws").RawData) => {
+      try {
+        const text = typeof data === "string" ? data : data.toString("utf8");
+        resolve(JSON.parse(text));
+      } catch (e) {
+        reject(e);
+      } finally {
+        ws.off("message", onMessage);
+      }
+    };
+    ws.on("message", onMessage);
+  });
 }
 ```
 
@@ -233,9 +391,14 @@ export async function enforcePolicies(results: VerificationResults) {
 
 This package exports the following public API:
 
-- **`verifyTransaction(rpc, transactionManagerConfig, payload, wellKnownProxyUrl?)`**
+- **`verifyTransaction(rpc, transactionManagerConfig, payload, getClientDetails?)`**
   - Decodes and verifies a serialized Solana transaction.
   - Returns a `VerificationResults` object with the transaction message bytes and verification batches.
+
+- **`verifyMessage(payload, getClientDetails?)`**
+  - Verifies a sign-in / message authorization payload (`CompleteMessageRequest`).
+  - Returns `{ payload, clientDetails }` after verifying client, device, and user signatures.
+  - Uses `payload.data.payload.startRequest.rpId` and `payload.data.payload.startRequest.providerOrigin` for WebAuthn verification (RP ID + expected origin).
 
 - **`TransactionManagerConfig`**
   - `publicKey`: Transaction manager public key (base58 string).

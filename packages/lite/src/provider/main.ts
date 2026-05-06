@@ -9,8 +9,8 @@ import type {
   ClientAuthorizationCallback,
   OnConnectedCallback,
   OnSuccessCallback,
-} from "src/utils";
-import { REVIBASE_AUTH_URL } from "src/utils/consts";
+} from "../utils";
+import { REVIBASE_AUTH_URL, REVIBASE_RP_ID } from "../utils/consts";
 import {
   RevibaseAbortedError,
   RevibaseAuthError,
@@ -18,7 +18,7 @@ import {
   RevibaseFlowInProgressError,
   RevibasePopupClosedError,
   RevibaseTimeoutError,
-} from "src/utils/errors";
+} from "../utils/errors";
 import {
   CONNECT_TIMEOUT,
   createPopUp,
@@ -37,11 +37,13 @@ export class RevibaseProvider {
   public onClientAuthorizationCallback: ClientAuthorizationCallback;
   public onSendJitoBundleCallback: (request: string[]) => Promise<string>;
   public onEstimateJitoTipsCallback: () => Promise<number>;
-  private providerOrigin: string;
+  public providerOrigin: string;
+  public rpId: string;
   private popUp: Window | null = null;
 
   constructor(options: RevibaseProviderOptions) {
     const {
+      rpId,
       rpcEndpoint,
       providerOrigin,
       onClientAuthorizationCallback,
@@ -57,6 +59,7 @@ export class RevibaseProvider {
     this.onEstimateJitoTipsCallback =
       onEstimateJitoTipsCallback ?? defaultEstimateJitoTipsCallback;
     this.providerOrigin = providerOrigin ?? REVIBASE_AUTH_URL;
+    this.rpId = rpId ?? REVIBASE_RP_ID;
   }
 
   async sendRequestToPopupProvider({
@@ -87,8 +90,6 @@ export class RevibaseProvider {
     if (!this.popUp) {
       throw new Error("Popup blocked. Please allow popups for this site.");
     }
-
-    await new Promise((r) => setTimeout(r, 0));
 
     return new Promise<{ user: UserInfo } | { txSig: string; user: UserInfo }>(
       (resolve, reject) => {

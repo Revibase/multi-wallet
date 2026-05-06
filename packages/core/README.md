@@ -121,14 +121,7 @@ const walletAddress = await getWalletAddressFromSettings(settings);
 
 Use `settings`, `compressed`, and (optionally) `walletAddress` in the following steps.
 
-### 2. Transaction manager signer (when required)
-
-If the wallet uses a [transaction manager](https://github.com/Revibase/multi-wallet/tree/main/packages/transaction-manager) member, add its signer for the native/SPL steps below and for [custom transactions](#custom-transactions-sync-vs-bundle). The manager’s HTTPS URL is stored on-chain on that member’s user account.
-
-1. After you have `settingsAccount`, call `retrieveTransactionManager(memberAddress, settingsAccount)`. It returns **`null`** when the member already has Initiate, Vote, and Execute (no transaction manager signer is required). Otherwise it returns **`{ transactionManagerAddress, userAddressTreeIndex }`** — then load the user account with `fetchUserAccountData(transactionManagerAddress, userAddressTreeIndex)` and read `transactionManagerUrl` (a Gill `Option`: use it when `__option === "Some"` via `.value`).
-2. Call `createTransactionManagerSigner({ address, url, authResponses?, transactionMessageBytes?, onPendingApprovalsCallback?, onPendingApprovalsSuccess?, abortController?, opts? })` to obtain a `TransactionSigner`.
-
-### 3. Native SOL transfer
+### 2. Native SOL transfer
 
 ```ts
 import {

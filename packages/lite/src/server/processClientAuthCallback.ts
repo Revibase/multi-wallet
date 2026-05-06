@@ -1,22 +1,29 @@
-import type {
-  CompleteMessageRequest,
-  CompleteTransactionRequest,
-  StartMessageRequest,
-  StartTransactionRequest,
-  UserInfo,
+import {
+  initialize,
+  type CompleteMessageRequest,
+  type CompleteTransactionRequest,
+  type StartMessageRequest,
+  type StartTransactionRequest,
 } from "@revibase/core";
 import { startRequest } from "./startRequest";
 import { verifyMessage } from "./verifyMessage";
 import { verifyTransaction } from "./verifyTransaction";
 
+let initialized = false;
+function ensureInitialize(rpcEndpoint?: string) {
+  if (initialized) return;
+  if (rpcEndpoint) {
+    initialize({ rpcEndpoint });
+    initialized = true;
+  }
+}
 /** Validates start request, calls Revibase start + getResult, returns user or tx. Pass req.signal for cancel on disconnect. */
 export async function processClientAuthCallback({
   request,
   publicKey,
   allowedClientOrigins,
   privateKey,
-  providerOrigin,
-  rpId,
+  require2FAChecks,
 }: {
   request:
     | Omit<StartMessageRequest, "validTill">
@@ -26,14 +33,19 @@ export async function processClientAuthCallback({
   allowedClientOrigins: string[];
   publicKey: string;
   privateKey: string;
-  providerOrigin?: string;
-  rpId?: string;
-}): Promise<
-  | { signature: string; validTill: number }
-  | { user: UserInfo }
-  | CompleteTransactionRequest
-> {
+  require2FAChecks?: {
+    rpcEndpoint: string;
+  };
+}) {
+  ensureInitialize(require2FAChecks?.rpcEndpoint);
+
   if (request.phase === "start") {
+    if (
+      request.data.type === "message" &&
+      !!require2FAChecks !== request.data.requireTwoFactorAuthentication
+    ) {
+      throw new Error("Require 2fa check mismatch");
+    }
     return await startRequest(request, allowedClientOrigins, privateKey);
   } else if (request.phase === "complete") {
     if (request.data.type === "message") {
@@ -41,8 +53,7 @@ export async function processClientAuthCallback({
         request as CompleteMessageRequest,
         publicKey,
         allowedClientOrigins,
-        providerOrigin,
-        rpId,
+        !!require2FAChecks,
       );
     } else if (request.data.type === "transaction") {
       return await verifyTransaction(
@@ -50,8 +61,6 @@ export async function processClientAuthCallback({
         publicKey,
         allowedClientOrigins,
         privateKey,
-        providerOrigin,
-        rpId,
       );
     } else {
       throw new Error("Invalid request type");

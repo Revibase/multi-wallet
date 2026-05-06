@@ -5,6 +5,8 @@ import type {
 } from "@revibase/core";
 import {
   fetchSettingsAccountData,
+  fetchUserAccountByFilters,
+  getDomainConfigAddress,
   getSettingsFromIndex,
   prepareTransactionMessage,
   UserRole,
@@ -16,10 +18,11 @@ import {
   type Instruction,
   type TransactionSigner,
 } from "gill";
-import type { RevibaseProvider } from "src/provider/main";
-import { withRetry } from "src/utils/retry";
-import type { TransactionAuthorizationFlowOptions } from "src/utils/types";
+import type { RevibaseProvider } from "../provider/main";
+import { withRetry } from "../utils/retry";
 import { sendTransaction } from "../utils/transactions";
+import type { TransactionAuthorizationFlowOptions } from "../utils/types";
+import { convertToUserInfo } from "../utils/user";
 
 /** Custom transaction. Action from wallet settings (TransactionManager). Provider needs rpcEndpoint. Options: signal?, channelId?. */
 export async function executeTransaction(
@@ -45,10 +48,6 @@ export async function executeTransaction(
     additionalSigners,
     payer,
   } = args;
-
-  if (!signer.walletAddress || !signer.settingsIndexWithAddress) {
-    throw new Error("Signer is missing wallet address");
-  }
 
   const onConnectedCallback = async (rid: string, clientOrigin: string) => {
     const transactionMessageBytes = prepareTransactionMessage({
@@ -78,6 +77,8 @@ export async function executeTransaction(
     const payload = {
       phase: "start" as const,
       rid,
+      providerOrigin: provider.providerOrigin,
+      rpId: provider.rpId,
       data: {
         type: "transaction" as const,
         payload: transactionPayload,
@@ -94,14 +95,38 @@ export async function executeTransaction(
   const onSuccessCallback = async (
     result: CompleteTransactionRequest,
   ): Promise<{ txSig: string; user: UserInfo }> => {
-    const value = await provider.onClientAuthorizationCallback(result);
-    return sendTransaction(provider, {
-      request: value,
+    const { signature } = await provider.onClientAuthorizationCallback(result);
+    const userAccount = await withRetry(async () =>
+      fetchUserAccountByFilters(
+        await getDomainConfigAddress({
+          rpId: result.data.payload.startRequest.rpId,
+        }),
+        { credentialId: result.data.payload.authResponse.id },
+      ),
+    );
+    if (!userAccount) {
+      throw new Error("User not found.");
+    }
+    const user = await convertToUserInfo(userAccount);
+    const txSig = await sendTransaction(provider, {
+      user,
+      request: {
+        ...result,
+        data: {
+          ...result.data,
+          payload: {
+            ...result.data.payload,
+            client: { ...result.data.payload.client, jws: signature },
+          },
+        },
+      },
       options,
       additionalSigners,
       addressesByLookupTableAddress,
       payer,
     });
+
+    return { user, txSig };
   };
 
   return provider.sendRequestToPopupProvider({

@@ -29,7 +29,7 @@ import {
 import type {
   Secp256r1VerifyData,
   TransactionManagerConfig,
-  VerificationResults,
+  WellKnownClientEntry,
 } from "./types";
 import { SECP256R1_VERIFY_PROGRAM, WHITELISTED_PROGRAMS } from "./utils/consts";
 import { decompileTransactionMessageFetchingLookupTablesWithCache } from "./utils/transaction-parsing";
@@ -40,7 +40,7 @@ import { decompileTransactionMessageFetchingLookupTablesWithCache } from "./util
  * @param rpc - Solana RPC client used to fetch lookup tables.
  * @param transactionManagerConfig - Public key and URL of the transaction manager.
  * @param payload - Verification input.
- * @param wellKnownProxyUrl - Optional proxy URL for fetching well-known client config.
+ * @param getClientDetails - Optional callback for fetching well-known client config.
  * @returns The transaction message bytes and, per multi-wallet instruction batch,
  *   the extracted instructions and the signers that passed verification.
  */
@@ -52,8 +52,8 @@ export async function verifyTransaction(
     transactionMessageBytes?: string;
     authResponses?: TransactionAuthDetails[];
   },
-  wellKnownProxyUrl?: URL,
-): Promise<VerificationResults> {
+  getClientDetails?: (clientOrigin: string) => Promise<WellKnownClientEntry>,
+) {
   const { transaction, transactionMessageBytes, authResponses } = payload;
   const { messageBytes } = getTransactionDecoder().decode(
     getBase64Encoder().encode(transaction),
@@ -81,7 +81,7 @@ export async function verifyTransaction(
           authResponses,
           secp256r1VerifyDataList,
           transactionMessageBytes,
-          wellKnownProxyUrl,
+          getClientDetails,
         ),
       ),
     )
@@ -113,7 +113,7 @@ async function processInstruction(
   authResponses?: TransactionAuthDetails[],
   secp256r1VerifyDataList?: Secp256r1VerifyData[],
   transactionMessageBytes?: string,
-  wellKnownProxyUrl?: URL,
+  getClientDetails?: (clientOrigin: string) => Promise<WellKnownClientEntry>,
 ) {
   const programAddress = instruction.programAddress.toString();
 
@@ -152,7 +152,7 @@ async function processInstruction(
     authResponses,
     secp256r1VerifyDataList,
     transactionMessageBytes,
-    wellKnownProxyUrl,
+    getClientDetails,
   );
 }
 
@@ -165,7 +165,7 @@ async function routeInstruction(
   authResponses?: TransactionAuthDetails[],
   secp256r1VerifyDataList?: Secp256r1VerifyData[],
   transactionMessageBytes?: string,
-  wellKnownProxyUrl?: URL,
+  getClientDetails?: (clientOrigin: string) => Promise<WellKnownClientEntry>,
 ) {
   switch (instructionType) {
     case MultiWalletInstruction.DecompressSettingsAccount:
@@ -179,7 +179,7 @@ async function routeInstruction(
         secp256r1VerifyDataList,
         instructionIndex,
         authResponses,
-        wellKnownProxyUrl,
+        getClientDetails,
       );
 
     case MultiWalletInstruction.ChangeConfigCompressed:
@@ -188,7 +188,7 @@ async function routeInstruction(
         secp256r1VerifyDataList,
         instructionIndex,
         authResponses,
-        wellKnownProxyUrl,
+        getClientDetails,
       );
 
     case MultiWalletInstruction.CreateUserAccounts:
@@ -208,7 +208,7 @@ async function routeInstruction(
         secp256r1VerifyDataList,
         instructionIndex,
         authResponses,
-        wellKnownProxyUrl,
+        getClientDetails,
       );
 
     case MultiWalletInstruction.NativeTransferIntentCompressed:
@@ -219,7 +219,7 @@ async function routeInstruction(
         secp256r1VerifyDataList,
         instructionIndex,
         authResponses,
-        wellKnownProxyUrl,
+        getClientDetails,
       );
 
     case MultiWalletInstruction.TransactionBufferCreate:
@@ -235,7 +235,7 @@ async function routeInstruction(
         authResponses,
         secp256r1VerifyDataList,
         transactionMessageBytes,
-        wellKnownProxyUrl,
+        getClientDetails,
       );
 
     default:
