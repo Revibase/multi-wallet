@@ -10,15 +10,15 @@ use light_compressed_token_sdk::compressed_token::CTokenAccount2;
 use light_sdk::cpi::v2::CpiAccounts;
 use light_sdk::instruction::PackedMerkleContext;
 use light_token::compat::AccountState;
-use light_token::instruction::{
-    CreateTokenAtaCpi, TransferCpi, TransferFromSplCpi, TransferToSplCpi,
-};
+use light_token::instruction::{CreateTokenAtaCpi, TransferCpi, TransferFromSplCpi};
 use light_token::spl_interface::derive_spl_interface_pda;
 use light_token::spl_interface::{CreateSplInterfacePda, SplInterfacePda};
 use light_token::utils::get_associated_token_address_and_bump;
-use light_token::ExtensionInstructionData;
+use light_token::{ExtensionInstructionData, ValidityProof};
 use light_token_interface::instructions::extensions::CompressedOnlyExtensionInstructionData;
-use light_token_interface::instructions::transfer2::MultiInputTokenDataWithContext;
+use light_token_interface::instructions::transfer2::{
+    Compression, MultiInputTokenDataWithContext, MultiTokenTransferOutputData,
+};
 use light_token_interface::state::ExtensionStruct;
 use std::collections::HashMap;
 
@@ -499,22 +499,84 @@ impl<'a, 'info> TokenTransfer<'a, 'info> {
             .ok_or(MultisigError::MissingSplInterfacePda)?;
         let mint_data = self.mint.data.borrow();
         let mint = Mint::try_deserialize(&mut mint_data.as_ref())?;
-        TransferToSplCpi {
-            source: self.source_ctoken_token_account.to_account_info(),
-            destination_spl_token_account: destination_token_account.to_account_info(),
-            amount,
-            authority: self.source.to_account_info(),
-            mint: self.mint.to_account_info(),
-            payer: self.payer.to_account_info(),
-            spl_interface_pda: spl_interface_pda.to_account_info(),
-            spl_interface_pda_bump: spl_interface_pda_data.bump,
-            spl_token_program: self.token_program.to_account_info(),
-            compressed_token_program_authority: self
-                .compressed_token_program_authority
-                .to_account_info(),
-            decimals: mint.decimals,
-        }
-        .invoke_signed(&[signer_seeds])?;
+
+        let packed_accounts = vec![
+            // Mint (index 0)
+            AccountMeta::new_readonly(self.mint.key(), false),
+            // Source ctoken account (index 1) - writable
+            AccountMeta::new(self.source_ctoken_token_account.key(), false),
+            // Destination SPL token account (index 2) - writable
+            AccountMeta::new(destination_token_account.key(), false),
+            // Authority (index 3) - signer
+            AccountMeta::new_readonly(self.source.key(), true),
+            // SPL interface PDA (index 4) - writable
+            AccountMeta::new(spl_interface_pda.key(), false),
+            // SPL Token program (index 5) - needed for CPI
+            AccountMeta::new_readonly(self.token_program.key(), false),
+            // System program (index 6) - needed for topups
+            AccountMeta::new_readonly(self.system_program.key(), false),
+        ];
+
+        // First operation: compress from ctoken account to pool using compress_spl
+        let compress_to_pool = CTokenAccount2 {
+            inputs: vec![],
+            output: MultiTokenTransferOutputData::default(),
+            compression: Some(Compression::compress(
+                amount, 0, // mint index
+                1, // source ctoken account index
+                3, // authority index
+            )),
+            delegate_is_set: false,
+            method_used: true,
+        };
+
+        // Second operation: decompress from pool to SPL token account using decompress_spl
+        let decompress_to_spl = CTokenAccount2 {
+            inputs: vec![],
+            output: MultiTokenTransferOutputData::default(),
+            compression: Some(Compression::decompress_spl(
+                amount,
+                0, // mint index
+                2, // destination SPL token account index
+                4, // pool_account_index
+                0, // pool_index (TODO: make dynamic)
+                spl_interface_pda_data.bump,
+                mint.decimals,
+            )),
+            delegate_is_set: false,
+            method_used: true,
+        };
+
+        let inputs = Transfer2Inputs {
+            validity_proof: ValidityProof::new(None),
+            transfer_config: Transfer2Config::default().filter_zero_amount_outputs(),
+            meta_config: Transfer2AccountsMetaConfig::new_decompressed_accounts_only(
+                self.payer.key(),
+                packed_accounts,
+            ),
+            in_lamports: None,
+            out_lamports: None,
+            token_accounts: vec![compress_to_pool, decompress_to_spl],
+            output_queue: 0, // Decompressed accounts only, no output queue needed
+            in_tlv: None,
+        };
+
+        let ix = create_transfer2_instruction(inputs).map_err(ProgramError::from)?;
+
+        // Account order must match instruction metas: cpi_authority_pda, fee_payer, packed_accounts...
+        let account_infos = [
+            self.compressed_token_program_authority.to_account_info(), // CPI authority PDA (first)
+            self.payer.to_account_info(),                              // Fee payer (second)
+            self.mint.to_account_info(),                               // Index 0: Mint
+            self.source_ctoken_token_account.to_account_info(), // Index 1: Source ctoken account
+            destination_token_account.to_account_info(), // Index 2: Destination SPL token account
+            self.source.to_account_info(),               // Index 3: Authority (signer)
+            spl_interface_pda.to_account_info(),         // Index 4: SPL interface PDA
+            self.token_program.to_account_info(),        // Index 5: SPL Token program
+            self.system_program.to_account_info(),
+        ];
+
+        invoke_signed(&ix, &account_infos, &[signer_seeds])?;
 
         Ok(())
     }
