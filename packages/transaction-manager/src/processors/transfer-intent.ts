@@ -7,7 +7,11 @@ import {
   type TransactionAuthDetails,
 } from "@revibase/core";
 import type { Instruction } from "gill";
-import type { Secp256r1VerifyData, WellKnownClientEntry } from "../types";
+import type {
+  Secp256r1VerifyData,
+  TransactionManagerConfig,
+  WellKnownClientEntry,
+} from "../types";
 import {
   extractSettingsFromCompressed,
   getSecp256r1Signers,
@@ -23,6 +27,7 @@ export async function processCompressedTransferIntent(
   secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
   instructionIndex: number,
   authResponses: TransactionAuthDetails[] | undefined,
+  transactionManagerConfig: TransactionManagerConfig,
   getClientDetails?: (clientOrigin: string) => Promise<WellKnownClientEntry>,
 ) {
   if (!instruction.data) {
@@ -68,6 +73,7 @@ export async function processCompressedTransferIntent(
     [instruction],
     settingsAddress,
     sepcp256r1Signers.concat(addressSigners),
+    transactionManagerConfig,
     authResponses,
     getClientDetails,
   );
@@ -82,6 +88,7 @@ export async function processTransferIntent(
   secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
   instructionIndex: number,
   authResponses: TransactionAuthDetails[] | undefined,
+  transactionManagerConfig: TransactionManagerConfig,
   getClientDetails?: (clientOrigin: string) => Promise<WellKnownClientEntry>,
 ) {
   if (!instruction.data) {
@@ -122,6 +129,7 @@ export async function processTransferIntent(
     [instruction],
     settingsAddress,
     sepcp256r1Signers.concat(addressSigners),
+    transactionManagerConfig,
     authResponses,
     getClientDetails,
   );

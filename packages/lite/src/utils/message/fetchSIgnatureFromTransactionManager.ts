@@ -2,11 +2,14 @@ import type { CompleteMessageRequest } from "@revibase/core";
 import type { SignInAuthorizationFlowOptions } from "../types";
 
 export async function fetchSignatureFromTransactionManager({
-  payload,
+  data,
   url,
   options,
 }: {
-  payload: CompleteMessageRequest;
+  data: {
+    publicKey: string;
+    payload: CompleteMessageRequest;
+  };
   url: string;
   options?: SignInAuthorizationFlowOptions;
 }) {
@@ -21,7 +24,7 @@ export async function fetchSignatureFromTransactionManager({
     let ws: WebSocket | undefined;
     try {
       ws = await openWebSocket(wsUrl, signal);
-      ws.send(JSON.stringify({ type: "message", data: payload }));
+      ws.send(JSON.stringify({ type: "message", data }));
       await readWebSocketJsonEvents(
         ws,
         (event, data) => {

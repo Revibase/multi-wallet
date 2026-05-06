@@ -23,12 +23,9 @@ export async function send2FARequestIfNeeded(
     return null;
   }
 
-  if (!user.settingsIndexWithAddress) {
-    throw new Error("User does not have a delegated wallet");
-  }
   const settingsData = await withRetry(async () =>
     fetchSettingsAccountData(
-      await getSettingsFromIndex(user.settingsIndexWithAddress!.index),
+      await getSettingsFromIndex(user.settingsIndexWithAddress.index),
     ),
   );
   const transactionManager = settingsData.members.find(
@@ -48,7 +45,10 @@ export async function send2FARequestIfNeeded(
     throw new Error("No transaction manager url found.");
   }
   const signature = await fetchSignatureFromTransactionManager({
-    payload: request,
+    data: {
+      publicKey,
+      payload: request,
+    },
     url: userAccountData.transactionManagerUrl.value,
     options,
   });

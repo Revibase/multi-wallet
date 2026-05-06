@@ -1,4 +1,5 @@
 import {
+  getSolanaRpc,
   identifyMultiWalletInstruction,
   MULTI_WALLET_PROGRAM_ADDRESS,
   MultiWalletInstruction,
@@ -9,8 +10,6 @@ import {
   getCompiledTransactionMessageDecoder,
   getTransactionDecoder,
   type Instruction,
-  type Rpc,
-  type SolanaRpcApi,
 } from "gill";
 import {
   identifySystemInstruction,
@@ -29,6 +28,7 @@ import {
 import type {
   Secp256r1VerifyData,
   TransactionManagerConfig,
+  VerifyTransactionResult,
   WellKnownClientEntry,
 } from "./types";
 import { SECP256R1_VERIFY_PROGRAM, WHITELISTED_PROGRAMS } from "./utils/consts";
@@ -37,7 +37,6 @@ import { decompileTransactionMessageFetchingLookupTablesWithCache } from "./util
 /**
  * Decode and verify a serialized Solana transaction.
  *
- * @param rpc - Solana RPC client used to fetch lookup tables.
  * @param transactionManagerConfig - Public key and URL of the transaction manager.
  * @param payload - Verification input.
  * @param getClientDetails - Optional callback for fetching well-known client config.
@@ -45,7 +44,6 @@ import { decompileTransactionMessageFetchingLookupTablesWithCache } from "./util
  *   the extracted instructions and the signers that passed verification.
  */
 export async function verifyTransaction(
-  rpc: Rpc<SolanaRpcApi>,
   transactionManagerConfig: TransactionManagerConfig,
   payload: {
     transaction: string;
@@ -53,7 +51,7 @@ export async function verifyTransaction(
     authResponses?: TransactionAuthDetails[];
   },
   getClientDetails?: (clientOrigin: string) => Promise<WellKnownClientEntry>,
-) {
+): Promise<VerifyTransactionResult> {
   const { transaction, transactionMessageBytes, authResponses } = payload;
   const { messageBytes } = getTransactionDecoder().decode(
     getBase64Encoder().encode(transaction),
@@ -65,7 +63,7 @@ export async function verifyTransaction(
   const { instructions } =
     await decompileTransactionMessageFetchingLookupTablesWithCache(
       compiledMessage,
-      rpc,
+      getSolanaRpc(),
     );
 
   const secp256r1VerifyDataList = extractSecp256r1VerifyData(instructions);
@@ -74,7 +72,6 @@ export async function verifyTransaction(
     await Promise.all(
       instructions.map((instruction, instructionIndex) =>
         processInstruction(
-          rpc,
           instruction,
           transactionManagerConfig,
           instructionIndex,
@@ -106,7 +103,6 @@ function extractSecp256r1VerifyData(
 }
 
 async function processInstruction(
-  rpc: Rpc<SolanaRpcApi>,
   instruction: Instruction,
   transactionManagerConfig: TransactionManagerConfig,
   instructionIndex: number,
@@ -144,7 +140,6 @@ async function processInstruction(
   });
 
   return routeInstruction(
-    rpc,
     instruction,
     instructionType,
     transactionManagerConfig,
@@ -157,7 +152,6 @@ async function processInstruction(
 }
 
 async function routeInstruction(
-  rpc: Rpc<SolanaRpcApi>,
   instruction: Instruction,
   instructionType: MultiWalletInstruction,
   transactionManagerConfig: TransactionManagerConfig,
@@ -179,6 +173,7 @@ async function routeInstruction(
         secp256r1VerifyDataList,
         instructionIndex,
         authResponses,
+        transactionManagerConfig,
         getClientDetails,
       );
 
@@ -188,6 +183,7 @@ async function routeInstruction(
         secp256r1VerifyDataList,
         instructionIndex,
         authResponses,
+        transactionManagerConfig,
         getClientDetails,
       );
 
@@ -208,6 +204,7 @@ async function routeInstruction(
         secp256r1VerifyDataList,
         instructionIndex,
         authResponses,
+        transactionManagerConfig,
         getClientDetails,
       );
 
@@ -219,6 +216,7 @@ async function routeInstruction(
         secp256r1VerifyDataList,
         instructionIndex,
         authResponses,
+        transactionManagerConfig,
         getClientDetails,
       );
 
@@ -227,7 +225,6 @@ async function routeInstruction(
     case MultiWalletInstruction.TransactionExecuteSync:
     case MultiWalletInstruction.TransactionExecuteSyncCompressed:
       return processTransactionBufferAndExecute(
-        rpc,
         instruction,
         instructionType,
         transactionManagerConfig,

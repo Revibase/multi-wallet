@@ -1,6 +1,5 @@
 import {
-  fetchUserAccountByFilters,
-  getDomainConfigAddress,
+  UserInfoSchema,
   type CompleteMessageRequest,
   type UserInfo,
 } from "@revibase/core";
@@ -10,7 +9,6 @@ import { createSignInMessageText } from "../utils/internal";
 import { send2FARequestIfNeeded } from "../utils/message";
 import { withRetry } from "../utils/retry";
 import type { SignInAuthorizationFlowOptions } from "../utils/types";
-import { convertToUserInfo } from "../utils/user";
 
 /** Opens auth popup (or channel when options.channelId). Returns user after passkey auth. Options: signal?, channelId?. */
 export async function signIn(
@@ -46,18 +44,7 @@ export async function signIn(
   const onSuccessCallback = async (
     result: CompleteMessageRequest,
   ): Promise<{ user: UserInfo }> => {
-    const userAccount = await withRetry(async () =>
-      fetchUserAccountByFilters(
-        await getDomainConfigAddress({
-          rpId: result.data.payload.startRequest.rpId,
-        }),
-        { credentialId: result.data.payload.authResponse.id },
-      ),
-    );
-    if (!userAccount) {
-      throw new Error("User not found.");
-    }
-    const user = await convertToUserInfo(userAccount);
+    const user = UserInfoSchema.parse(result.data.payload.additionalInfo);
     const transactionManager = await send2FARequestIfNeeded(
       user,
       result,

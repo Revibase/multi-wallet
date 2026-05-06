@@ -88,22 +88,21 @@ This endpoint:
 
 ```ts
 import {
-  verifyMessage,
-  verifyTransaction,
-} from "@revibase/transaction-manager";
-import { createSolanaRpc, getBase58Decoder } from "gill";
-import { enforcePolicies } from "@/lib/policy";
-import {
+  initialize,
   createMessageChallenge,
   type CompleteMessageRequest,
   type TransactionAuthDetails,
-} from "@revibase/core";
+  verifyMessage,
+  verifyTransaction,
+} from "@revibase/transaction-manager";
+import { getBase58Decoder } from "gill";
+import { enforcePolicies } from "@/lib/policy";
 import http from "node:http";
 import { WebSocketServer } from "ws";
 
-const rpc = createSolanaRpc(
-  process.env.RPC_URL ?? "https://api.mainnet-beta.solana.com",
-);
+initialize({
+  rpcEndpoint: process.env.RPC_URL ?? "https://api.mainnet-beta.solana.com",
+});
 
 const transactionManagerConfig = {
   publicKey: process.env.TX_MANAGER_PUBLIC_KEY!, // base58
@@ -130,7 +129,10 @@ const transactionManagerConfig = {
  * Message signing:
  * {
  *   type: "message",
- *   data: CompleteMessageRequest
+ *   data: {
+ *      publicKey: string,
+ *      payload: CompleteMessageRequest
+ *    }
  * }
  *
  * Your service should respond with JSON events:
@@ -212,7 +214,6 @@ wss.on("connection", async (ws) => {
       const signatures: string[] = [];
       for (const payloadItem of payload) {
         const result = await verifyTransaction(
-          rpc,
           transactionManagerConfig,
           payloadItem,
         );
@@ -241,9 +242,23 @@ wss.on("connection", async (ws) => {
       ws.close();
     } else {
       // msg.type === "message"
-      const payload = msg.data as CompleteMessageRequest;
+      const { publicKey, payload } = (msg.data ?? {}) as {
+        publicKey: string;
+        payload: CompleteMessageRequest;
+      };
 
-      await verifyMessage(payload);
+      if (publicKey !== transactionManagerConfig.publicKey) {
+        ws.send(
+          JSON.stringify({
+            event: "error",
+            data: { error: "Invalid transaction manager public key" },
+          }),
+        );
+        ws.close();
+        return;
+      }
+
+      await verifyMessage(publicKey, payload);
 
       // (Optional) if your policy requires an out-of-band human approval:
 
@@ -391,11 +406,11 @@ export async function enforcePolicies(results: VerificationResults) {
 
 This package exports the following public API:
 
-- **`verifyTransaction(rpc, transactionManagerConfig, payload, getClientDetails?)`**
+- **`verifyTransaction(transactionManagerConfig, payload, getClientDetails?)`**
   - Decodes and verifies a serialized Solana transaction.
   - Returns a `VerificationResults` object with the transaction message bytes and verification batches.
 
-- **`verifyMessage(payload, getClientDetails?)`**
+- **`verifyMessage(publicKey, payload, getClientDetails?)`**
   - Verifies a sign-in / message authorization payload (`CompleteMessageRequest`).
   - Returns `{ payload, clientDetails }` after verifying client, device, and user signatures.
   - Uses `payload.data.payload.startRequest.rpId` and `payload.data.payload.startRequest.providerOrigin` for WebAuthn verification (RP ID + expected origin).

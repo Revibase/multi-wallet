@@ -5,6 +5,7 @@ import {
   getSecp256r1MessageHash,
   getSecp256r1VerifyInstructionDataDecoder,
   getSettingsFromIndex,
+  getSolanaRpc,
   getWalletAddressFromSettings,
   KeyType,
   Secp256r1Key,
@@ -33,6 +34,7 @@ import type {
   ExpectedTransactionSigner,
   Secp256r1VerifyData,
   SignerInfo,
+  TransactionManagerConfig,
   WellKnownClientEntry,
 } from "../types";
 import {
@@ -109,6 +111,7 @@ export async function verifyAndParseSigners(
   instructions: Instruction[],
   settingsAddress: string,
   signers: SignerInfo[],
+  transactionManagerConfig: TransactionManagerConfig,
   authResponses?: TransactionAuthDetails[],
   getClientDetails?: (clientOrigin: string) => Promise<WellKnownClientEntry>,
 ) {
@@ -123,6 +126,14 @@ export async function verifyAndParseSigners(
     throw new Error(
       `Signer count mismatch. Expected ${signers.length} auth responses, got ${authResponses.length}`,
     );
+  }
+
+  if (
+    signers
+      .filter((x) => !(x.signer instanceof Secp256r1Key))
+      .every((x) => x.signer.toString() !== transactionManagerConfig.publicKey)
+  ) {
+    throw new Error(`Transaction manager not found in instructions.`);
   }
 
   const walletAddress = await getWalletAddressFromSettings(
@@ -198,7 +209,6 @@ export async function extractSettingsFromCompressed(
  * Parses raw transaction message bytes into decompiled instructions.
  */
 export async function parseTransactionMessageBytes(
-  rpc: Rpc<SolanaRpcApi>,
   transactionMessage: Uint8Array<ArrayBuffer>,
 ): Promise<Instruction[]> {
   const compiledMessage =
@@ -206,7 +216,7 @@ export async function parseTransactionMessageBytes(
   const decompiledMessage =
     await decompileTransactionMessageFetchingLookupTablesWithCache(
       compiledMessage,
-      rpc,
+      getSolanaRpc(),
     );
   return decompiledMessage.instructions as Instruction[];
 }

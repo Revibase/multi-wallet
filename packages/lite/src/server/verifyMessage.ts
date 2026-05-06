@@ -117,6 +117,6 @@ export async function verifyMessage(
   }
 
   return {
-    ok: true,
+    user: true,
   };
 }

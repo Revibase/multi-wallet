@@ -5,10 +5,9 @@ import type {
 } from "@revibase/core";
 import {
   fetchSettingsAccountData,
-  fetchUserAccountByFilters,
-  getDomainConfigAddress,
   getSettingsFromIndex,
   prepareTransactionMessage,
+  UserInfoSchema,
   UserRole,
 } from "@revibase/core";
 import {
@@ -22,7 +21,6 @@ import type { RevibaseProvider } from "../provider/main";
 import { withRetry } from "../utils/retry";
 import { sendTransaction } from "../utils/transactions";
 import type { TransactionAuthorizationFlowOptions } from "../utils/types";
-import { convertToUserInfo } from "../utils/user";
 
 /** Custom transaction. Action from wallet settings (TransactionManager). Provider needs rpcEndpoint. Options: signal?, channelId?. */
 export async function executeTransaction(
@@ -96,18 +94,7 @@ export async function executeTransaction(
     result: CompleteTransactionRequest,
   ): Promise<{ txSig: string; user: UserInfo }> => {
     const { signature } = await provider.onClientAuthorizationCallback(result);
-    const userAccount = await withRetry(async () =>
-      fetchUserAccountByFilters(
-        await getDomainConfigAddress({
-          rpId: result.data.payload.startRequest.rpId,
-        }),
-        { credentialId: result.data.payload.authResponse.id },
-      ),
-    );
-    if (!userAccount) {
-      throw new Error("User not found.");
-    }
-    const user = await convertToUserInfo(userAccount);
+    const user = UserInfoSchema.parse(result.data.payload.additionalInfo);
     const txSig = await sendTransaction(provider, {
       user,
       request: {
