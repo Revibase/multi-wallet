@@ -10,6 +10,7 @@ import {
   bufferToBase64URLString,
   createDomainUserAccounts,
   createUserAccounts,
+  decompressSettingsAccount,
   editUserDelegate,
   getLightProtocolRpc,
   getSettingsFromIndex,
@@ -146,19 +147,27 @@ const SCENARIOS: Scenario[] = [
 ];
 
 export function runTokenTransferTest(getCtx: () => TestContext) {
+  runTestInCompressedMode(getCtx, true);
+  runTestInCompressedMode(getCtx, false);
+}
+
+function runTestInCompressedMode(
+  getCtx: () => TestContext,
+  compressed: boolean,
+) {
   for (const s of SCENARIOS) {
-    it(s.name, async () => {
+    it(`${compressed ? "Compressed" : "Decompressed"}: ${s.name}`, async () => {
       await withErrorHandling(`token transfer: ${s.name}`, async () => {
-        await runScenario(getCtx, s);
+        await runScenario(getCtx, s, compressed);
       });
     });
   }
-  it("when source ata is spl & ctoken & compressed token and destination ata does not exist with secp256r1 signer", async () => {
+  it(`${compressed ? "Compressed" : "Decompressed"}: when source ata is spl & ctoken & compressed token and destination ata does not exist with secp256r1 signer`, async () => {
     await withErrorHandling(
       "token transfer with Secp256r1 signer",
       async () => {
         let ctx = getCtx();
-        ctx = await createMultiWallet(ctx);
+        ctx = await createMultiWallet(ctx, true);
         const mint =
           await createMintAndMintToSplAndCTokenAndCompressedAccount(ctx);
         assertTestContext(ctx, [
@@ -222,6 +231,27 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
           ctx.addressLookUpTable,
         );
 
+        if (!compressed) {
+          const signedSigner = await mockAuthenticationResponse(
+            {
+              transactionActionType: "decompress",
+              transactionAddress: await getSettingsFromIndex(ctx.index),
+              transactionMessageBytes: getAddressEncoder().encode(
+                address(await getSettingsFromIndex(ctx.index)),
+              ) as Uint8Array<ArrayBuffer>,
+            },
+            secp256r1Keys.privateKey,
+            secp256r1Keys.publicKey,
+            ctx,
+          );
+          const ix = await decompressSettingsAccount({
+            settings: await getSettingsFromIndex(ctx.index),
+            payer: ctx.payer,
+            signers: [transactionManager, signedSigner],
+          });
+          await sendTransaction(ix, ctx.payer);
+        }
+
         await fundMultiWalletVault(ctx, BigInt(TEST_AMOUNT_MEDIUM));
 
         const signedSigner = await mockAuthenticationResponse(
@@ -245,7 +275,7 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
           signers: [signedSigner, transactionManager],
           destination: ctx.wallet.address,
           amount: TEST_AMOUNT_LARGE,
-          compressed: ctx.compressed,
+          compressed,
           mint,
           tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
         });
@@ -1155,9 +1185,13 @@ async function doTokenTransfer(ctx: TestContext, mint: Address) {
   await sendTransaction([...tokenTransfer], ctx.payer, ctx.addressLookUpTable);
 }
 
-async function runScenario(getCtx: () => TestContext, s: Scenario) {
+async function runScenario(
+  getCtx: () => TestContext,
+  s: Scenario,
+  isCompressed: boolean,
+) {
   let ctx = getCtx();
-  ctx = await createMultiWallet(ctx);
+  ctx = await createMultiWallet(ctx, isCompressed);
   assertTestContext(ctx, ["index", "multiWalletVault", "wallet", "payer"]);
 
   const mint = await mintForScenario(ctx, s.source);

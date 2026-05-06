@@ -5,11 +5,13 @@ import {
   createGlobalCounter,
   createUserAccounts,
   createWallet,
+  decompressSettingsAccount,
   fetchGlobalCounter,
   fetchMaybeGlobalCounter,
   fetchMaybeWhitelistedAddressTree,
   getDomainConfigAddress,
   getGlobalCounterAddress,
+  getSettingsFromIndex,
   getSolanaRpc,
   getWalletAddressFromIndex,
   getWhitelistedAddressTreesAddress,
@@ -171,6 +173,7 @@ export async function setupTestEnvironment(): Promise<TestContext> {
  */
 export async function createMultiWallet(
   ctx: TestContext,
+  isCompressed: boolean,
 ): Promise<TestContext> {
   const rpId = crypto.randomUUID();
   const origin = crypto.randomUUID();
@@ -229,9 +232,19 @@ export async function createMultiWallet(
 
   await sendTransaction([instruction], payer);
 
+  if (!isCompressed) {
+    const ix = await decompressSettingsAccount({
+      settings: await getSettingsFromIndex(createIndex),
+      payer,
+      signers: [wallet],
+    });
+    await sendTransaction(ix, payer);
+  }
+
   // Return a new context with the updated settings and multiWalletVault
   return {
     ...ctx,
+    compressed: isCompressed,
     rpId,
     origin,
     domainConfig,
