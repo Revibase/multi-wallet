@@ -1,20 +1,18 @@
 # @revibase/lite
 
-Passkey Solana wallet: sign in and approve transactions in a popup. Backend authorizes with a server-side private key.
+Passkey Solana wallet: sign in and approve transactions in an **iframe overlay (default)** or **popup (opt-in)**. Backend authorizes with a server-side private key.
 
 ```bash
 pnpm add @revibase/lite
 ```
 
-**API** — Frontend: `RevibaseProvider`, `signIn`, `transferTokens`, `executeTransaction`. Backend: `processClientAuthCallback`. Types: `UserInfo`, `StartMessageRequest`, `StartTransactionRequest`, `CompleteMessageRequest`, `CompleteTransactionRequest`, `SignInAuthorizationFlowOptions`, `TransactionAuthorizationFlowOptions`, `RevibaseProviderOptions`. Errors: `RevibaseError` + subclasses (`.code`). [AGENTS.md](./AGENTS.md) for automation.
+Frontend: `RevibaseProvider`, `signIn`, `transferTokens`, `executeTransaction`. Backend: `processClientAuthCallback`. See [AGENTS.md](./AGENTS.md) for the full export list.
 
 ---
 
 ## Get started
 
-Three steps: keys, backend route, provider.
-
-**Timeouts:** Auth flows expire after **3 minutes** by default (the `validTill` on requests and the popup flow timeout). Use the flow options `signal` to abort early.
+**Timeouts:** flows expire after **3 minutes** by default. Use flow option `signal` to abort early.
 
 ### 1. Keys
 
@@ -22,15 +20,11 @@ Get keys at [developers.revibase.com](https://developers.revibase.com). Add `/.w
 
 ### 2. Backend
 
-Expose **POST** at **`/api/clientAuthorization`** (default). Keep `PRIVATE_KEY` server-only; HTTPS in production.
-
-Example handler:
+Expose **POST** at **`/api/clientAuthorization`**. Keep `PRIVATE_KEY` server-only.
 
 ```ts
 import {
   processClientAuthCallback,
-  processEstimateJitoTipsCallback,
-  processSendJitoBundleCallback,
   type CompleteMessageRequest,
   type CompleteTransactionRequest,
   type StartMessageRequest,
@@ -50,7 +44,6 @@ export async function POST(req: Request) {
       allowedClientOrigins: [process.env.CLIENT_ORIGIN!], // e.g. "https://your-app.com"
       privateKey: process.env.PRIVATE_KEY!,
     });
-    // Start: { ok: true, signature, validTill }. Complete-message: { ok: true }. Complete-transaction: { ok: true, signature }.
     return Response.json(result);
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -59,33 +52,14 @@ export async function POST(req: Request) {
 }
 ```
 
-Optional (only needed if you plan to use executeTransactions):
+If you plan to send Jito bundles via `executeTransaction`, also implement:
 
-- `POST /api/sendJitoBundle` — expects JSON body `string[]` (serialized txs). Returns Jito bundle ID (string):
-
-```ts
-export async function POST(req: Request) {
-  const serializedTransactions = (await req.json()) as string[];
-  const bundleId = await processSendJitoBundleCallback(
-    serializedTransactions,
-    process.env.JITO_UUID, // optional
-  );
-  return Response.json(bundleId);
-}
-```
-
-- `GET /api/estimateJitoTips` — returns estimated tip amount (lamports, number):
-
-```ts
-export async function GET() {
-  const tipsLamports = await processEstimateJitoTipsCallback();
-  return Response.json(tipsLamports);
-}
-```
+- `POST /api/sendJitoBundle`
+- `GET /api/estimateJitoTips`
 
 ### 3. Frontend
 
-Create a provider. `rpcEndpoint` is required.
+Create a provider (`rpcEndpoint` required), then call `signIn` / `transferTokens` / `executeTransaction`.
 
 ```ts
 import {
@@ -106,7 +80,7 @@ const { txSig } = await transferTokens(provider, {
 });
 ```
 
-**Custom instructions** — Build instructions with `gill` (Solana instruction builder) or similar, then pass to `executeTransaction`.
+Custom instructions via `executeTransaction`:
 
 ```ts
 import { RevibaseProvider, signIn, executeTransaction } from "@revibase/lite";
@@ -130,4 +104,50 @@ const { txSig } = await executeTransaction(provider, {
 });
 ```
 
-Default: auth in popup.
+Default: iframe overlay.
+
+### Popup mode (opt-in)
+
+Use a popup instead of the default iframe:
+
+```ts
+const provider = new RevibaseProvider({
+  rpcEndpoint: "https://api.mainnet-beta.solana.com",
+  ui: { mode: "popup" },
+});
+```
+
+### When iframe mode can be unusable (use popup instead)
+
+If embedded auth is flaky (passkey prompt doesn’t show, broken sessions, unresponsive UI), switch to popup (or provide `ui.render`), especially in:
+
+- **In-app browsers / webviews** (e.g. links opened inside social apps): WebAuthn + storage policies can be incomplete or inconsistent.
+- **Apps already embedded in an iframe** (nested iframes): privacy and permissions restrictions get stricter.
+- **Apps with aggressive event/scroll locking**: touch/focus handling can interfere with an iframe overlay.
+
+Your CSP must allow the provider origin in `frame-src` (or `child-src`) and must not block your configured `providerOrigin`.
+
+### Iframe mode (best practice): render it yourself
+
+For strict CSP / custom modals / theming, provide `ui.render`. Return the iframe `targetWindow` plus `close()` cleanup.
+
+```ts
+const provider = new RevibaseProvider({
+  rpcEndpoint: "https://api.mainnet-beta.solana.com",
+  ui: {
+    mode: "iframe",
+    render: (url) => {
+      const iframe = document.createElement("iframe");
+      iframe.src = url;
+      iframe.allow = "publickey-credentials-get *";
+      document.querySelector("#revibase-modal")!.appendChild(iframe);
+
+      return {
+        targetWindow: iframe.contentWindow!,
+        close: () => iframe.remove(),
+        isClosed: () => !iframe.isConnected,
+      };
+    },
+  },
+});
+```
