@@ -24,7 +24,8 @@ Passkey Solana wallet: sign-in and transactions in popup or on another device (c
 
 ## Main flows
 
-1. **Popup (default)** — `new RevibaseProvider({ rpcEndpoint })`, then `signIn(provider)`, `transferTokens(provider, args)`, or `executeTransaction(provider, args)`. Auth in same-device popup. The SDK does not close the popup after the flow; the provider UI manages window lifecycle.
+1. **Iframe (default)** — `new RevibaseProvider({ rpcEndpoint })`, then `signIn(provider)`, `transferTokens(provider, args)`, or `executeTransaction(provider, args)`. Auth in same-device iframe overlay. The SDK cleans up the iframe when the flow finishes or is dismissed.
+2. **Popup (opt-in)** — pass `new RevibaseProvider({ rpcEndpoint, ui: { mode: "popup" } })` to open a popup window instead of an iframe.
 
 ## Provider constructor
 
@@ -32,7 +33,7 @@ Passkey Solana wallet: sign-in and transactions in popup or on another device (c
 new RevibaseProvider(options: RevibaseProviderOptions)
 ```
 
-- `RevibaseProviderOptions`: `rpcEndpoint` required. Optional: `providerOrigin?`, `onClientAuthorizationCallback?`, `rpId?`, `logger?`.
+- `RevibaseProviderOptions`: `rpcEndpoint` required. Optional: `providerOrigin?`, `rpId?`, `ui?: { mode?: "popup" | "iframe"; render?: (url) => ({ targetWindow, close, isClosed? }) }`, `onClientAuthorizationCallback?`, `logger?`.
 - `ClientAuthorizationCallback`: overloads for `StartMessageRequest` / `StartTransactionRequest` and their completion payloads. Start returns `{ ok: true; signature: string; validTill: number }`. Complete-message returns `{ ok: true }`. Complete-transaction returns `{ ok: true; signature: string }`.
 
 ## Client function signatures
