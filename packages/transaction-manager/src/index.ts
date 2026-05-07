@@ -1,4 +1,4 @@
-export { createMessageChallenge, initialize } from "@revibase/core";
+export { initialize } from "@revibase/core";
 export type {
   CompleteMessageRequest,
   TransactionAuthDetails,

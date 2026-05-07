@@ -1,15 +1,10 @@
 import type {
   CompleteMessageRequest,
   Secp256r1Key,
+  StartMessageRequest,
   StartTransactionRequest,
-  UserInfo,
 } from "@revibase/core";
-import type {
-  Address,
-  Instruction,
-  ReadonlyUint8Array,
-  TransactionMessageBytes,
-} from "gill";
+import type { Address, Instruction, ReadonlyUint8Array } from "gill";
 
 /**
  * Configuration for the Transaction Manager.
@@ -90,51 +85,57 @@ export interface WellKnownClientCacheEntry extends WellKnownClientEntry {
   cachedAt: number;
 }
 
+interface Secp256r1Signer {
+  /** The public key of the verified signer. */
+  signer: Secp256r1Key;
+  /** The wallet address that this signer is signing for. */
+  walletAddress: Address;
+  /**
+   * Client identity and cache entry: origin plus JWK and trusted devices.
+   * Identifies which application requested the signature for this transaction.
+   */
+  client: {
+    origin: string;
+  } & WellKnownClientEntry;
+  /**
+   * The device public key or identifier that produced the signature.
+   * Uniquely identifies the device that requested the signature for this transaction.
+   */
+  device: string;
+  /**
+   * Initial Request
+   */
+  startRequest: StartTransactionRequest;
+  /**
+   * Estimated trasaction expiry window (taking into account slot hash expiry, block hash expiry and request validTill)
+   */
+  estimatedValidTill: number;
+}
+
+interface Ed25519Signer {
+  /** The public key of the signer. */
+  signer: Address;
+  /** The wallet address that this signer is signing for. */
+  walletAddress: Address;
+}
+
 /**
  * Signers that are expected to sign the transaction.
  */
-export type ExpectedTransactionSigner =
-  | {
-      /** The public key of the verified signer. */
-      signer: Secp256r1Key;
-      /** The wallet address that this signer is signing for. */
-      walletAddress: Address;
-      /**
-       * Client identity and cache entry: origin plus JWK and trusted devices.
-       * Identifies which application requested the signature for this transaction.
-       */
-      client: {
-        origin: string;
-      } & WellKnownClientEntry;
-      /**
-       * The device public key or identifier that produced the signature.
-       * Uniquely identifies the device that requested the signature for this transaction.
-       */
-      device: string;
-      /**
-       * Initial Request
-       */
-      startRequest: StartTransactionRequest;
-      /**
-       * Estimated trasaction expiry window (taking into account slot hash expiry, block hash expiry and request validTill)
-       */
-      estimatedValidTill: number;
-    }
-  | {
-      /** The public key of the signer. */
-      signer: Address;
-      /** The wallet address that this signer is signing for. */
-      walletAddress: Address;
-    };
+export type ExpectedTransactionSigner = Secp256r1Signer | Ed25519Signer;
 
 export type VerifyMessageResult = {
-  payload: CompleteMessageRequest;
-  clientDetails: WellKnownClientEntry;
-  user: UserInfo;
+  messageBytes: Uint8Array<ArrayBuffer>;
+  verificationResults: {
+    payload: CompleteMessageRequest;
+    signer: Omit<Secp256r1Signer, "startRequest"> & {
+      startRequest: StartMessageRequest;
+    };
+  };
 };
 
 export type VerifyTransactionResult = {
-  transactionMessage: TransactionMessageBytes;
+  messageBytes: Uint8Array<ArrayBuffer>;
   verificationResults: {
     instructions: Instruction[];
     signers: ExpectedTransactionSigner[];

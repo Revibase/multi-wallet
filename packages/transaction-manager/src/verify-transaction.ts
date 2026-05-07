@@ -84,7 +84,7 @@ export async function verifyTransaction(
     )
   ).filter((result) => result !== null);
 
-  return { transactionMessage: messageBytes, verificationResults };
+  return { messageBytes: new Uint8Array(messageBytes), verificationResults };
 }
 
 function extractSecp256r1VerifyData(

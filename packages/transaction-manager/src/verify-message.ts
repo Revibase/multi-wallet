@@ -1,12 +1,14 @@
 import {
   convertMemberKeyToString,
   createClientAuthorizationStartRequestChallenge,
+  createMessageChallenge,
   fetchSettingsAccountData,
   fetchUserAccountByFilters,
   getDomainConfigAddress,
   getSecp256r1MessageHash,
   getSettingsFromIndex,
   getWalletAddressFromIndex,
+  Secp256r1Key,
   UserRole,
   type CompleteMessageRequest,
 } from "@revibase/core";
@@ -67,17 +69,27 @@ export async function verifyMessage(
     throw new Error("Transaction manager mismatch.");
   }
 
+  const messageBytes = createMessageChallenge(
+    payload.data.payload.startRequest.data.payload,
+    payload.data.payload.startRequest.clientOrigin,
+    payload.data.payload.device.jwk,
+    payload.data.payload.startRequest.rid,
+  );
+
   return {
-    payload,
-    clientDetails,
-    user: {
-      publicKey: convertMemberKeyToString(user.member),
-      walletAddress: (
-        await getWalletAddressFromIndex(delegateTo.index)
-      ).toString(),
-      settingsIndexWithAddress: {
-        index: Number(delegateTo.index),
-        settingsAddressTreeIndex: delegateTo.settingsAddressTreeIndex,
+    messageBytes,
+    verificationResults: {
+      payload,
+      signer: {
+        client: {
+          origin: payload.data.payload.startRequest.clientOrigin,
+          ...clientDetails,
+        },
+        device: payload.data.payload.device.jwk,
+        estimatedValidTill: payload.data.payload.startRequest.validTill,
+        signer: new Secp256r1Key(convertMemberKeyToString(user.member)),
+        startRequest: payload.data.payload.startRequest,
+        walletAddress: await getWalletAddressFromIndex(delegateTo.index),
       },
     },
   };
