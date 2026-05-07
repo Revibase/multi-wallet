@@ -34,37 +34,34 @@ Use this package when you want a single, auditable place in your backend where e
 Generate one keypair for the manager and keep the private key server-side only.
 
 ```ts
-import { getBase58Decoder } from "gill";
+import {
+  getBase58Decoder,
+  generateExtractableKeyPairSigner,
+  extractBytesFromKeyPairSigner,
+} from "gill";
 
-const keyPair = await crypto.subtle.generateKey({ name: "Ed25519" }, true, [
-  "sign",
-  "verify",
-]);
-
-const [pubRaw, privJwk] = await Promise.all([
-  crypto.subtle.exportKey("raw", keyPair.publicKey),
-  crypto.subtle.exportKey("jwk", keyPair.privateKey),
-]);
+const keypair = await generateExtractableKeyPairSigner();
+const secretKey = await extractBytesFromKeyPairSigner(keypair);
 
 console.log({
-  publicKey: getBase58Decoder().decode(new Uint8Array(pubRaw)),
-  privateKey: JSON.stringify(privJwk),
+  publicKey: getBase58Decoder().decode(secretKey.slice(32)),
+  secretKey: getBase58Decoder().decode(secretKey),
 });
 ```
 
 Store:
 
 - **`publicKey`**: as the transaction manager public key (base58).
-- **`privateKey`**: as a JWK JSON string in a secure secret store.
+- **`secretKey`**: as a base58 string in a secure secret store.
 
 ### 2. Configure environment
 
 Set the following environment variables for your signing service:
 
-- **`TX_MANAGER_PRIVATE_KEY`**: Manager private key (JWK JSON string).
+- **`TX_MANAGER_SECRET_KEY`**: Manager secret key (base58 string).
 - **`TX_MANAGER_PUBLIC_KEY`**: Manager public key (base58).
 - **`TX_MANAGER_URL`**: Public HTTPS URL of your signing endpoint (the client will connect via WebSocket at the same URL).
-- **`RPC_URL`** (optional): Solana RPC URL. Defaults to `https://api.mainnet-beta.solana.com`.
+- **`RPC_URL`** Solana RPC URL.
 
 ### 3. Implement a basic signing endpoint
 
@@ -89,19 +86,22 @@ This endpoint:
 ```ts
 import {
   initialize,
-  createMessageChallenge,
   type CompleteMessageRequest,
   type TransactionAuthDetails,
   verifyMessage,
   verifyTransaction,
 } from "@revibase/transaction-manager";
-import { getBase58Decoder } from "gill";
+import {
+  getBase58Decoder,
+  createKeypairSignerFromBase58,
+  signBytes,
+} from "gill";
 import { enforcePolicies } from "@/lib/policy";
 import http from "node:http";
 import { WebSocketServer } from "ws";
 
 initialize({
-  rpcEndpoint: process.env.RPC_URL ?? "https://api.mainnet-beta.solana.com",
+  rpcEndpoint: process.env.RPC_URL,
 });
 
 const transactionManagerConfig = {
@@ -181,13 +181,8 @@ wss.on("connection", async (ws) => {
     }
 
     // Shared: load signer key once per connection.
-    const jwk = JSON.parse(process.env.TX_MANAGER_PRIVATE_KEY!);
-    const privateKey = await crypto.subtle.importKey(
-      "jwk",
-      jwk,
-      { name: "Ed25519" },
-      false,
-      ["sign"],
+    const { keyPair } = await createKeypairSignerFromBase58(
+      process.env.TX_MANAGER_SECRET_KEY!,
     );
 
     if (msg.type === "transaction") {
@@ -213,12 +208,12 @@ wss.on("connection", async (ws) => {
 
       const signatures: string[] = [];
       for (const payloadItem of payload) {
-        const result = await verifyTransaction(
+        const { messageBytes, verificationResults } = await verifyTransaction(
           transactionManagerConfig,
           payloadItem,
         );
 
-        await enforcePolicies(result);
+        await enforcePolicies(verificationResults);
 
         // (Optional) if your policy requires an out-of-band human approval:
         // ws.send(JSON.stringify({ event: "pending_transaction_approval", data: { validTill: Date.now() + 60_000 } }));
@@ -227,15 +222,12 @@ wss.on("connection", async (ws) => {
 
         // ws.send(JSON.stringify({ event: "transaction_approved", data: {} }));
 
-        const signatureBytes = await crypto.subtle.sign(
-          { name: "Ed25519" },
-          privateKey,
-          result.transactionMessage,
+        const signatureBytes = await signBytes(
+          keyPair.privateKey,
+          messageBytes,
         );
 
-        signatures.push(
-          getBase58Decoder().decode(new Uint8Array(signatureBytes)),
-        );
+        signatures.push(getBase58Decoder().decode(signatureBytes));
       }
 
       ws.send(JSON.stringify({ event: "signatures", data: { signatures } }));
@@ -258,7 +250,10 @@ wss.on("connection", async (ws) => {
         return;
       }
 
-      await verifyMessage(publicKey, payload);
+      const { messageBytes, verificationResults } = await verifyMessage(
+        publicKey,
+        payload,
+      );
 
       // (Optional) if your policy requires an out-of-band human approval:
 
@@ -268,26 +263,13 @@ wss.on("connection", async (ws) => {
 
       // ws.send(JSON.stringify({ event: "transaction_approved", data: {} }));
 
-      const expectedChallenge = createMessageChallenge(
-        payload.data.payload.startRequest.data.payload,
-        payload.data.payload.startRequest.clientOrigin,
-        payload.data.payload.device.jwk,
-        payload.data.payload.startRequest.rid,
-      );
-
-      const signatureBytes = await crypto.subtle.sign(
-        { name: "Ed25519" },
-        privateKey,
-        expectedChallenge,
-      );
+      const signatureBytes = await signBytes(keyPair.privateKey, messageBytes);
 
       ws.send(
         JSON.stringify({
           event: "signatures",
           data: {
-            signatures: [
-              getBase58Decoder().decode(new Uint8Array(signatureBytes)),
-            ],
+            signatures: [getBase58Decoder().decode(signatureBytes)],
           },
         }),
       );
@@ -330,9 +312,9 @@ function readJsonOnce(ws: import("ws").WebSocket): Promise<unknown> {
 
 Your transaction manager should express your security model in one place.
 
-`verifyTransaction` returns a `VerificationResults` object with:
+`verifyTransaction` returns a `VerifyTransactionResult` object with:
 
-- **`transactionMessage`**: Raw transaction message bytes to sign.
+- **`messageBytes`**: Raw transaction message bytes to sign.
 - **`verificationResults`**: An array of batches, where each batch contains:
   - **`instructions`**: Decoded on-chain instructions.
   - **`signers`**: The signers that successfully passed verification for those instructions.
@@ -345,7 +327,8 @@ The example below:
 - Caps each transfer at **1 SOL**.
 
 ```ts
-import type { VerificationResults } from "@revibase/transaction-manager";
+import type { ExpectedTransactionSigner } from "@revibase/transaction-manager";
+import type { Instruction } from "gill";
 import {
   SYSTEM_PROGRAM_ADDRESS,
   identifySystemInstruction,
@@ -357,13 +340,18 @@ import {
 const ALLOWED_ORIGINS = new Set(["https://app.revibase.com"]);
 const MAX_TRANSFER_LAMPORTS = 1_000_000_000n; // 1 SOL
 
-export async function enforcePolicies(results: VerificationResults) {
-  for (const batch of results.verificationResults) {
+export async function enforcePolicies(
+  verificationResults: {
+    instructions: Instruction[];
+    signers: ExpectedTransactionSigner[];
+  }[],
+) {
+  for (const batch of verificationResults) {
     const { signers, instructions } = batch;
 
     for (const signer of signers) {
-      const origin = "client" in signer ? signer.client?.origin : undefined;
-      if (origin && !ALLOWED_ORIGINS.has(origin)) {
+      // Only secp256r1/passkey signers include `client` metadata (origin + client JWK).
+      if ("client" in signer && !ALLOWED_ORIGINS.has(signer.client.origin)) {
         throw new Error("Unauthorized app origin");
       }
     }
@@ -408,19 +396,21 @@ This package exports the following public API:
 
 - **`verifyTransaction(transactionManagerConfig, payload, getClientDetails?)`**
   - Decodes and verifies a serialized Solana transaction.
-  - Returns a `VerificationResults` object with the transaction message bytes and verification batches.
+  - Returns a `VerifyTransactionResult` object with the transaction message bytes and verification batches.
 
 - **`verifyMessage(publicKey, payload, getClientDetails?)`**
   - Verifies a sign-in / message authorization payload (`CompleteMessageRequest`).
-  - Returns `{ payload, clientDetails }` after verifying client, device, and user signatures.
-  - Uses `payload.data.payload.startRequest.rpId` and `payload.data.payload.startRequest.providerOrigin` for WebAuthn verification (RP ID + expected origin).
+  - Returns a `VerifyMessageResult` containing:
+    - `messageBytes`: the message bytes to sign (Ed25519).
+    - `verificationResults`: the verified payload plus the extracted signer metadata.
+  - Uses `payload.data.payload.startRequest.rpId` and `payload.data.payload.startRequest.clientOrigin` for WebAuthn verification (RP ID + expected origin).
 
 - **`TransactionManagerConfig`**
   - `publicKey`: Transaction manager public key (base58 string).
   - `url`: Public URL of your transaction manager endpoint.
 
-- **`VerificationResults`**
-  - `transactionMessage`: Transaction message bytes to sign.
+- **`VerifyTransactionResult`**
+  - `messageBytes`: Transaction message bytes to sign.
   - `verificationResults`: Array of `{ instructions, signers }` batches used by your policy.
 
 ---
