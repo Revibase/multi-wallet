@@ -7,12 +7,10 @@ import {
   createClientAuthorizationCompleteRequestChallenge,
   createClientAuthorizationStartRequestChallenge,
   createTransactionChallenge,
-  getSecp256r1MessageHash,
+  getDeviceMessageHash,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
-import { getUtf8Encoder } from "gill";
 import { CompactSign, compactVerify, importJWK } from "jose";
-import { canonicalize } from "json-canonicalize";
 
 /** Verifies WebAuthn message, returns signature. */
 export async function verifyTransaction(
@@ -62,12 +60,10 @@ export async function verifyTransaction(
     if (
       !equalBytes(
         result.payload,
-        new Uint8Array([
-          ...getSecp256r1MessageHash(request.data.payload.authResponse),
-          ...getUtf8Encoder().encode(
-            canonicalize(payload.device.deviceProfile),
-          ),
-        ]),
+        getDeviceMessageHash(
+          payload.authResponse,
+          payload.device.deviceProfile,
+        ),
       )
     ) {
       throw new Error("Invalid device signature");

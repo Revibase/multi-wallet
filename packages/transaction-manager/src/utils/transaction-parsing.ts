@@ -167,7 +167,7 @@ export async function verifyAndParseSigners(
             authDetails,
             messageHash,
           ),
-          verifyDeviceSignature(device, messageHash),
+          verifyDeviceSignature(device, authDetails.authResponse),
         ]);
         return {
           signer,

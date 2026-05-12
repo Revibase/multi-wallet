@@ -6,15 +6,18 @@ import {
   convertPubkeyCompressedToCose,
   createMessageChallenge,
   createTransactionChallenge,
+  getDeviceMessageHash,
   getSecp256r1MessageHash,
   type CompleteMessageRequest,
   type TransactionAuthDetails,
   type TransactionBufferCreateArgs,
 } from "@revibase/core";
-import { verifyAuthenticationResponse } from "@simplewebauthn/server";
-import { getUtf8Decoder, getUtf8Encoder } from "gill";
+import {
+  verifyAuthenticationResponse,
+  type AuthenticationResponseJSON,
+} from "@simplewebauthn/server";
+import { getUtf8Decoder } from "gill";
 import { compactVerify, importJWK } from "jose";
-import { canonicalize } from "json-canonicalize";
 import type { ClientDataJSON, WellKnownClientEntry } from "../types";
 import { fetchWellKnownClient } from "./fetch-well-known";
 
@@ -27,7 +30,7 @@ function equalBytes(a: Uint8Array, b: Uint8Array): boolean {
 
 export async function verifyDeviceSignature(
   device: TransactionAuthDetails["device"],
-  messageHash: Uint8Array<ArrayBuffer>,
+  authResponse: AuthenticationResponseJSON,
 ): Promise<void> {
   if (device.jwk !== device.deviceProfile.devicePublicKey) {
     throw new Error("Device publickey mismatch");
@@ -38,10 +41,7 @@ export async function verifyDeviceSignature(
     if (
       !equalBytes(
         result.payload,
-        new Uint8Array([
-          ...messageHash,
-          ...getUtf8Encoder().encode(canonicalize(device.deviceProfile)),
-        ]),
+        getDeviceMessageHash(authResponse, device.deviceProfile),
       )
     ) {
       throw new Error("Invalid Payload");

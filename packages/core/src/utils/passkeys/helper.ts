@@ -21,6 +21,7 @@ import {
   SignedSecp256r1Key,
   type CompleteMessageRequest,
   type CompleteTransactionRequest,
+  type DeviceProfile,
   type StartMessageRequest,
   type StartTransactionRequest,
   type TransactionAuthenticationResponse,
@@ -225,6 +226,16 @@ export async function createTransactionChallenge(
     ]),
   ) as Uint8Array<ArrayBuffer>;
   return { slotNumber, slotHash, challenge, estimatedSlotHashExpiry };
+}
+
+export function getDeviceMessageHash(
+  authResponse: AuthenticationResponseJSON,
+  deviceProfile: DeviceProfile,
+): Uint8Array<ArrayBuffer> {
+  return new Uint8Array([
+    ...getSecp256r1Message(authResponse),
+    ...getUtf8Encoder().encode(canonicalize(deviceProfile)),
+  ]);
 }
 
 export function getSecp256r1MessageHash(

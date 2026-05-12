@@ -9,15 +9,14 @@ import {
   createMessageChallenge,
   fetchSettingsAccountData,
   fetchUserAccountByFilters,
+  getDeviceMessageHash,
   getDomainConfigAddress,
-  getSecp256r1MessageHash,
   getSettingsFromIndex,
   UserRole,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
-import { address, getUtf8Encoder, verifySignatureForAddress } from "gill";
+import { address, verifySignatureForAddress } from "gill";
 import { compactVerify, importJWK } from "jose";
-import { canonicalize } from "json-canonicalize";
 
 /** Verifies WebAuthn message, returns user. */
 export async function verifyMessage(
@@ -64,12 +63,10 @@ export async function verifyMessage(
     if (
       !equalBytes(
         result.payload,
-        new Uint8Array([
-          ...getSecp256r1MessageHash(request.data.payload.authResponse),
-          ...getUtf8Encoder().encode(
-            canonicalize(payload.device.deviceProfile),
-          ),
-        ]),
+        getDeviceMessageHash(
+          payload.authResponse,
+          payload.device.deviceProfile,
+        ),
       )
     ) {
       throw new Error("Invalid device signature");
