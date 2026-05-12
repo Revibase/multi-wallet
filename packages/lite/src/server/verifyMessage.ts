@@ -10,19 +10,21 @@ import {
   fetchSettingsAccountData,
   fetchUserAccountByFilters,
   getDomainConfigAddress,
+  getSecp256r1MessageHash,
   getSettingsFromIndex,
   UserRole,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
-import { address, verifySignatureForAddress } from "gill";
+import { address, getUtf8Encoder, verifySignatureForAddress } from "gill";
 import { compactVerify, importJWK } from "jose";
+import { canonicalize } from "json-canonicalize";
 
 /** Verifies WebAuthn message, returns user. */
 export async function verifyMessage(
   request: CompleteMessageRequest,
   expectedClientJwk: string,
   allowedClientOrigins: string[],
-  require2FAChecks: boolean,
+  requireTwoFactorAuthentication: boolean,
 ) {
   const { payload } = request.data;
   if (payload.startRequest.data.type !== "message")
@@ -38,17 +40,40 @@ export async function verifyMessage(
     throw new Error("Invalid client origin");
   }
 
-  const key = await importJWK(convertBase64StringToJWK(expectedClientJwk));
-  const result = await compactVerify(request.data.payload.client.jws, key);
-  if (
-    !equalBytes(
-      result.payload,
-      createClientAuthorizationStartRequestChallenge(
-        request.data.payload.startRequest,
-      ),
-    )
-  ) {
-    throw new Error("Invalid client signature");
+  {
+    const key = await importJWK(convertBase64StringToJWK(expectedClientJwk));
+    const result = await compactVerify(request.data.payload.client.jws, key);
+    if (
+      !equalBytes(
+        result.payload,
+        createClientAuthorizationStartRequestChallenge(
+          request.data.payload.startRequest,
+        ),
+      )
+    ) {
+      throw new Error("Invalid client signature");
+    }
+  }
+
+  {
+    if (payload.device.jwk !== payload.device.deviceProfile.devicePublicKey) {
+      throw new Error("Device publickey mismatch");
+    }
+    const key = await importJWK(convertBase64StringToJWK(payload.device.jwk));
+    const result = await compactVerify(payload.device.jws, key);
+    if (
+      !equalBytes(
+        result.payload,
+        new Uint8Array([
+          ...getSecp256r1MessageHash(request.data.payload.authResponse),
+          ...getUtf8Encoder().encode(
+            canonicalize(payload.device.deviceProfile),
+          ),
+        ]),
+      )
+    ) {
+      throw new Error("Invalid device signature");
+    }
   }
 
   const expectedChallenge = createMessageChallenge(
@@ -74,7 +99,7 @@ export async function verifyMessage(
     throw new Error("Invalid user siganture");
   }
 
-  if (require2FAChecks) {
+  if (requireTwoFactorAuthentication) {
     if (!payload.startRequest.data.requireTwoFactorAuthentication) {
       throw new Error("Two factor authentication is required.");
     }
@@ -117,6 +142,6 @@ export async function verifyMessage(
   }
 
   return {
-    user: true,
+    ok: true,
   };
 }

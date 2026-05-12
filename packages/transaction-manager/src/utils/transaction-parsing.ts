@@ -173,7 +173,7 @@ export async function verifyAndParseSigners(
           signer,
           walletAddress,
           client: { origin: client.clientOrigin, ...clientDetails },
-          device: device.jwk,
+          device: device.deviceProfile,
           startRequest,
           estimatedValidTill,
         } as ExpectedTransactionSigner;
