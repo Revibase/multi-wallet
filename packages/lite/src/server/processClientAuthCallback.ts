@@ -23,7 +23,7 @@ export async function processClientAuthCallback({
   publicKey,
   allowedClientOrigins,
   privateKey,
-  require2FAChecks,
+  requireTwoFactorAuthentication,
 }: {
   request:
     | Omit<StartMessageRequest, "validTill">
@@ -33,16 +33,17 @@ export async function processClientAuthCallback({
   allowedClientOrigins: string[];
   publicKey: string;
   privateKey: string;
-  require2FAChecks?: {
+  requireTwoFactorAuthentication?: {
     rpcEndpoint: string;
   };
 }) {
-  ensureInitialize(require2FAChecks?.rpcEndpoint);
+  ensureInitialize(requireTwoFactorAuthentication?.rpcEndpoint);
 
   if (request.phase === "start") {
     if (
       request.data.type === "message" &&
-      !!require2FAChecks !== request.data.requireTwoFactorAuthentication
+      !!requireTwoFactorAuthentication !==
+        request.data.requireTwoFactorAuthentication
     ) {
       throw new Error("Require 2fa check mismatch");
     }
@@ -53,7 +54,7 @@ export async function processClientAuthCallback({
         request as CompleteMessageRequest,
         publicKey,
         allowedClientOrigins,
-        !!require2FAChecks,
+        !!requireTwoFactorAuthentication,
       );
     } else if (request.data.type === "transaction") {
       return await verifyTransaction(

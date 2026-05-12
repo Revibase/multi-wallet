@@ -1,5 +1,6 @@
 import type {
   CompleteMessageRequest,
+  DeviceProfile,
   Secp256r1Key,
   StartMessageRequest,
   StartTransactionRequest,
@@ -101,7 +102,7 @@ interface Secp256r1Signer {
    * The device public key or identifier that produced the signature.
    * Uniquely identifies the device that requested the signature for this transaction.
    */
-  device: string;
+  device: DeviceProfile;
   /**
    * Initial Request
    */

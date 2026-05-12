@@ -12,8 +12,9 @@ import {
   type TransactionBufferCreateArgs,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
-import { getUtf8Decoder } from "gill";
+import { getUtf8Decoder, getUtf8Encoder } from "gill";
 import { compactVerify, importJWK } from "jose";
+import { canonicalize } from "json-canonicalize";
 import type { ClientDataJSON, WellKnownClientEntry } from "../types";
 import { fetchWellKnownClient } from "./fetch-well-known";
 
@@ -28,10 +29,21 @@ export async function verifyDeviceSignature(
   device: TransactionAuthDetails["device"],
   messageHash: Uint8Array<ArrayBuffer>,
 ): Promise<void> {
+  if (device.jwk !== device.deviceProfile.devicePublicKey) {
+    throw new Error("Device publickey mismatch");
+  }
   try {
     const key = await importJWK(convertBase64StringToJWK(device.jwk));
     const result = await compactVerify(device.jws, key);
-    if (!equalBytes(result.payload, messageHash)) {
+    if (
+      !equalBytes(
+        result.payload,
+        new Uint8Array([
+          ...messageHash,
+          ...getUtf8Encoder().encode(canonicalize(device.deviceProfile)),
+        ]),
+      )
+    ) {
       throw new Error("Invalid Payload");
     }
   } catch {

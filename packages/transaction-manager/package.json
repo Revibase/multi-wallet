@@ -1,6 +1,6 @@
 {
   "name": "@revibase/transaction-manager",
-  "version": "0.5.3",
+  "version": "0.6.0",
   "scripts": {
     "build": "rimraf dist & tsup",
     "clean": "rimraf dist",
@@ -39,7 +39,8 @@
     "@noble/hashes": "2.0.1",
     "@revibase/core": "workspace:*",
     "@simplewebauthn/server": "^13.2.2",
-    "jose": "^6.1.3"
+    "jose": "^6.1.3",
+    "json-canonicalize": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "24.3.1",
