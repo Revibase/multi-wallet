@@ -85,7 +85,7 @@ export async function verifyMessage(
           origin: payload.data.payload.startRequest.clientOrigin,
           ...clientDetails,
         },
-        device: payload.data.payload.device.jwk,
+        device: payload.data.payload.device.deviceProfile,
         estimatedValidTill: payload.data.payload.startRequest.validTill,
         signer: new Secp256r1Key(convertMemberKeyToString(user.member)),
         startRequest: payload.data.payload.startRequest,

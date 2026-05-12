@@ -111,6 +111,10 @@ export async function mockAuthenticationResponse(
       jws: getBase64Decoder().decode(
         crypto.getRandomValues(new Uint8Array(64)),
       ),
+      deviceProfile: {
+        devicePublicKey: deviceJwk,
+        platform: "web",
+      },
     },
 
     originIndex,
