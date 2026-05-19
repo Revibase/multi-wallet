@@ -6,8 +6,6 @@ pub enum TransactionActionType {
     Vote,
     Sync,
     Close,
-    Compress,
-    Decompress,
     TransferIntent,
     ChangeDelegate,
     ChangeConfig,
@@ -24,8 +22,6 @@ impl TransactionActionType {
             TransactionActionType::Vote => b"vote",
             TransactionActionType::Sync => b"sync",
             TransactionActionType::Close => b"close",
-            TransactionActionType::Compress => b"compress",
-            TransactionActionType::Decompress => b"decompress",
             TransactionActionType::TransferIntent => b"transfer_intent",
             TransactionActionType::ChangeDelegate => b"change_delegate",
             TransactionActionType::ChangeConfig => b"change_config",
@@ -48,8 +44,6 @@ mod tests {
         assert_eq!(TransactionActionType::Vote.to_bytes(), b"vote");
         assert_eq!(TransactionActionType::Sync.to_bytes(), b"sync");
         assert_eq!(TransactionActionType::Close.to_bytes(), b"close");
-        assert_eq!(TransactionActionType::Compress.to_bytes(), b"compress");
-        assert_eq!(TransactionActionType::Decompress.to_bytes(), b"decompress");
         assert_eq!(
             TransactionActionType::TransferIntent.to_bytes(),
             b"transfer_intent"
