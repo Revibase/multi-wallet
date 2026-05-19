@@ -18,7 +18,6 @@ import {
   getBytesEncoder,
   getOptionDecoder,
   getOptionEncoder,
-  getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
   getU32Decoder,
@@ -47,12 +46,6 @@ import {
 import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
-import {
-  getNewAuthorityArgsDecoder,
-  getNewAuthorityArgsEncoder,
-  type NewAuthorityArgs,
-  type NewAuthorityArgsArgs,
-} from "../types";
 
 export const EDIT_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([1]);
 
@@ -67,7 +60,7 @@ export type EditDomainConfigInstruction<
   TAccountDomainConfig extends string | AccountMeta<string> = string,
   TAccountAuthority extends string | AccountMeta<string> = string,
   TAccountNewAuthority extends string | AccountMeta<string> = string,
-  TAccountWhitelistedAddressTrees extends string | AccountMeta<string> = string,
+  TAccountUserAccount extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
     | AccountMeta<string> = "11111111111111111111111111111111",
@@ -87,9 +80,9 @@ export type EditDomainConfigInstruction<
         ? ReadonlySignerAccount<TAccountNewAuthority> &
             AccountSignerMeta<TAccountNewAuthority>
         : TAccountNewAuthority,
-      TAccountWhitelistedAddressTrees extends string
-        ? ReadonlyAccount<TAccountWhitelistedAddressTrees>
-        : TAccountWhitelistedAddressTrees,
+      TAccountUserAccount extends string
+        ? WritableAccount<TAccountUserAccount>
+        : TAccountUserAccount,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
@@ -100,12 +93,10 @@ export type EditDomainConfigInstruction<
 export type EditDomainConfigInstructionData = {
   discriminator: ReadonlyUint8Array;
   newOrigins: Option<Array<string>>;
-  newAuthorityArgs: Option<NewAuthorityArgs>;
 };
 
 export type EditDomainConfigInstructionDataArgs = {
   newOrigins: OptionOrNullable<Array<string>>;
-  newAuthorityArgs: OptionOrNullable<NewAuthorityArgsArgs>;
 };
 
 export function getEditDomainConfigInstructionDataEncoder(): Encoder<EditDomainConfigInstructionDataArgs> {
@@ -120,7 +111,6 @@ export function getEditDomainConfigInstructionDataEncoder(): Encoder<EditDomainC
           ),
         ),
       ],
-      ["newAuthorityArgs", getOptionEncoder(getNewAuthorityArgsEncoder())],
     ]),
     (value) => ({ ...value, discriminator: EDIT_DOMAIN_CONFIG_DISCRIMINATOR }),
   );
@@ -137,7 +127,6 @@ export function getEditDomainConfigInstructionDataDecoder(): Decoder<EditDomainC
         ),
       ),
     ],
-    ["newAuthorityArgs", getOptionDecoder(getNewAuthorityArgsDecoder())],
   ]);
 }
 
@@ -155,135 +144,19 @@ export type EditDomainConfigInstructionExtraArgs = {
   remainingAccounts: Array<{ address: Address; role: number }>;
 };
 
-export type EditDomainConfigAsyncInput<
-  TAccountDomainConfig extends string = string,
-  TAccountAuthority extends string = string,
-  TAccountNewAuthority extends string = string,
-  TAccountWhitelistedAddressTrees extends string = string,
-  TAccountSystemProgram extends string = string,
-> = {
-  domainConfig: Address<TAccountDomainConfig>;
-  authority: TransactionSigner<TAccountAuthority>;
-  newAuthority?: TransactionSigner<TAccountNewAuthority>;
-  whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
-  systemProgram?: Address<TAccountSystemProgram>;
-  newOrigins: EditDomainConfigInstructionDataArgs["newOrigins"];
-  newAuthorityArgs: EditDomainConfigInstructionDataArgs["newAuthorityArgs"];
-  remainingAccounts: EditDomainConfigInstructionExtraArgs["remainingAccounts"];
-};
-
-export async function getEditDomainConfigInstructionAsync<
-  TAccountDomainConfig extends string,
-  TAccountAuthority extends string,
-  TAccountNewAuthority extends string,
-  TAccountWhitelistedAddressTrees extends string,
-  TAccountSystemProgram extends string,
-  TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
->(
-  input: EditDomainConfigAsyncInput<
-    TAccountDomainConfig,
-    TAccountAuthority,
-    TAccountNewAuthority,
-    TAccountWhitelistedAddressTrees,
-    TAccountSystemProgram
-  >,
-  config?: { programAddress?: TProgramAddress },
-): Promise<
-  EditDomainConfigInstruction<
-    TProgramAddress,
-    TAccountDomainConfig,
-    TAccountAuthority,
-    TAccountNewAuthority,
-    TAccountWhitelistedAddressTrees,
-    TAccountSystemProgram
-  >
-> {
-  // Program address.
-  const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
-
-  // Original accounts.
-  const originalAccounts = {
-    domainConfig: { value: input.domainConfig ?? null, isWritable: true },
-    authority: { value: input.authority ?? null, isWritable: true },
-    newAuthority: { value: input.newAuthority ?? null, isWritable: false },
-    whitelistedAddressTrees: {
-      value: input.whitelistedAddressTrees ?? null,
-      isWritable: false,
-    },
-    systemProgram: { value: input.systemProgram ?? null, isWritable: false },
-  };
-  const accounts = originalAccounts as Record<
-    keyof typeof originalAccounts,
-    ResolvedAccount
-  >;
-
-  // Original args.
-  const args = { ...input };
-
-  // Resolver scope.
-  const resolverScope = { programAddress, accounts, args };
-
-  // Resolve default values.
-  if (!accounts.whitelistedAddressTrees.value) {
-    accounts.whitelistedAddressTrees.value = await getProgramDerivedAddress({
-      programAddress,
-      seeds: [
-        getBytesEncoder().encode(
-          new Uint8Array([
-            119, 104, 105, 116, 101, 108, 105, 115, 116, 101, 100, 95, 97, 100,
-            100, 114, 101, 115, 115, 95, 116, 114, 101, 101, 115,
-          ]),
-        ),
-      ],
-    });
-  }
-  if (!accounts.systemProgram.value) {
-    accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
-  }
-
-  // Remaining accounts.
-  const remainingAccounts: AccountMeta[] =
-    parseRemainingAccounts(resolverScope);
-
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
-  return Object.freeze({
-    accounts: [
-      getAccountMeta(accounts.domainConfig),
-      getAccountMeta(accounts.authority),
-      getAccountMeta(accounts.newAuthority),
-      getAccountMeta(accounts.whitelistedAddressTrees),
-      getAccountMeta(accounts.systemProgram),
-      ...remainingAccounts,
-    ],
-    data: getEditDomainConfigInstructionDataEncoder().encode(
-      args as EditDomainConfigInstructionDataArgs,
-    ),
-    programAddress,
-  } as EditDomainConfigInstruction<
-    TProgramAddress,
-    TAccountDomainConfig,
-    TAccountAuthority,
-    TAccountNewAuthority,
-    TAccountWhitelistedAddressTrees,
-    TAccountSystemProgram
-  >);
-}
-
 export type EditDomainConfigInput<
   TAccountDomainConfig extends string = string,
   TAccountAuthority extends string = string,
   TAccountNewAuthority extends string = string,
-  TAccountWhitelistedAddressTrees extends string = string,
+  TAccountUserAccount extends string = string,
   TAccountSystemProgram extends string = string,
 > = {
   domainConfig: Address<TAccountDomainConfig>;
   authority: TransactionSigner<TAccountAuthority>;
   newAuthority?: TransactionSigner<TAccountNewAuthority>;
-  whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
+  userAccount?: Address<TAccountUserAccount>;
   systemProgram?: Address<TAccountSystemProgram>;
   newOrigins: EditDomainConfigInstructionDataArgs["newOrigins"];
-  newAuthorityArgs: EditDomainConfigInstructionDataArgs["newAuthorityArgs"];
   remainingAccounts: EditDomainConfigInstructionExtraArgs["remainingAccounts"];
 };
 
@@ -291,7 +164,7 @@ export function getEditDomainConfigInstruction<
   TAccountDomainConfig extends string,
   TAccountAuthority extends string,
   TAccountNewAuthority extends string,
-  TAccountWhitelistedAddressTrees extends string,
+  TAccountUserAccount extends string,
   TAccountSystemProgram extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
@@ -299,7 +172,7 @@ export function getEditDomainConfigInstruction<
     TAccountDomainConfig,
     TAccountAuthority,
     TAccountNewAuthority,
-    TAccountWhitelistedAddressTrees,
+    TAccountUserAccount,
     TAccountSystemProgram
   >,
   config?: { programAddress?: TProgramAddress },
@@ -308,7 +181,7 @@ export function getEditDomainConfigInstruction<
   TAccountDomainConfig,
   TAccountAuthority,
   TAccountNewAuthority,
-  TAccountWhitelistedAddressTrees,
+  TAccountUserAccount,
   TAccountSystemProgram
 > {
   // Program address.
@@ -319,10 +192,7 @@ export function getEditDomainConfigInstruction<
     domainConfig: { value: input.domainConfig ?? null, isWritable: true },
     authority: { value: input.authority ?? null, isWritable: true },
     newAuthority: { value: input.newAuthority ?? null, isWritable: false },
-    whitelistedAddressTrees: {
-      value: input.whitelistedAddressTrees ?? null,
-      isWritable: false,
-    },
+    userAccount: { value: input.userAccount ?? null, isWritable: true },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
   };
   const accounts = originalAccounts as Record<
@@ -352,7 +222,7 @@ export function getEditDomainConfigInstruction<
       getAccountMeta(accounts.domainConfig),
       getAccountMeta(accounts.authority),
       getAccountMeta(accounts.newAuthority),
-      getAccountMeta(accounts.whitelistedAddressTrees),
+      getAccountMeta(accounts.userAccount),
       getAccountMeta(accounts.systemProgram),
       ...remainingAccounts,
     ],
@@ -365,7 +235,7 @@ export function getEditDomainConfigInstruction<
     TAccountDomainConfig,
     TAccountAuthority,
     TAccountNewAuthority,
-    TAccountWhitelistedAddressTrees,
+    TAccountUserAccount,
     TAccountSystemProgram
   >);
 }
@@ -379,7 +249,7 @@ export type ParsedEditDomainConfigInstruction<
     domainConfig: TAccountMetas[0];
     authority: TAccountMetas[1];
     newAuthority?: TAccountMetas[2] | undefined;
-    whitelistedAddressTrees?: TAccountMetas[3] | undefined;
+    userAccount?: TAccountMetas[3] | undefined;
     systemProgram: TAccountMetas[4];
   };
   data: EditDomainConfigInstructionData;
@@ -415,7 +285,7 @@ export function parseEditDomainConfigInstruction<
       domainConfig: getNextAccount(),
       authority: getNextAccount(),
       newAuthority: getNextOptionalAccount(),
-      whitelistedAddressTrees: getNextOptionalAccount(),
+      userAccount: getNextOptionalAccount(),
       systemProgram: getNextAccount(),
     },
     data: getEditDomainConfigInstructionDataDecoder().decode(instruction.data),

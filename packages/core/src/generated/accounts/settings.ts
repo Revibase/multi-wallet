@@ -62,7 +62,7 @@ export type Settings = {
   threshold: number;
   multiWalletBump: number;
   bump: number;
-  settingsAddressTreeIndex: number;
+  padding: number;
   latestSlotNumber: bigint;
 };
 
@@ -72,7 +72,7 @@ export type SettingsArgs = {
   threshold: number;
   multiWalletBump: number;
   bump: number;
-  settingsAddressTreeIndex: number;
+  padding: number;
   latestSlotNumber: number | bigint;
 };
 
@@ -85,7 +85,7 @@ export function getSettingsEncoder(): Encoder<SettingsArgs> {
       ["threshold", getU8Encoder()],
       ["multiWalletBump", getU8Encoder()],
       ["bump", getU8Encoder()],
-      ["settingsAddressTreeIndex", getU8Encoder()],
+      ["padding", getU8Encoder()],
       ["latestSlotNumber", getU64Encoder()],
     ]),
     (value) => ({ ...value, discriminator: SETTINGS_DISCRIMINATOR }),
@@ -100,7 +100,7 @@ export function getSettingsDecoder(): Decoder<Settings> {
     ["threshold", getU8Decoder()],
     ["multiWalletBump", getU8Decoder()],
     ["bump", getU8Decoder()],
-    ["settingsAddressTreeIndex", getU8Decoder()],
+    ["padding", getU8Decoder()],
     ["latestSlotNumber", getU64Decoder()],
   ]);
 }

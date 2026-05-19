@@ -1,8 +1,8 @@
 import {
   createTransactionManagerSigner,
-  fetchUserAccountData,
+  fetchUser,
   getSolanaRpc,
-  type AccountCache,
+  getUserAddress,
   type TransactionAuthDetails,
 } from "@revibase/core";
 import {
@@ -91,25 +91,21 @@ function createTransactionSigner(
 
 export async function getTransactionManagerSigner(args: {
   transactionManagerAddress: Address | undefined;
-  userAddressTreeIndex: number | undefined;
   authResponses?: TransactionAuthDetails[];
   transactionMessageBytes?: ReadonlyUint8Array;
   onPendingApprovalsCallback?: (validTill: number) => void;
   onPendingApprovalsSuccess?: () => void;
   abortController?: AbortController;
   abortSignal?: AbortSignal;
-  cachedAccounts?: AccountCache;
 }) {
   const {
     transactionManagerAddress,
     transactionMessageBytes,
-    userAddressTreeIndex,
     authResponses,
     onPendingApprovalsCallback,
     onPendingApprovalsSuccess,
     abortController: abortControllerArg,
     abortSignal,
-    cachedAccounts,
   } = args;
 
   let abortController = abortControllerArg;
@@ -125,14 +121,13 @@ export async function getTransactionManagerSigner(args: {
   let url;
   if (transactionManagerAddress) {
     const txManagerUrl = (
-      await withRetry(() =>
-        fetchUserAccountData(
-          transactionManagerAddress,
-          userAddressTreeIndex,
-          cachedAccounts,
+      await withRetry(async () =>
+        fetchUser(
+          getSolanaRpc(),
+          await getUserAddress(transactionManagerAddress),
         ),
       )
-    ).transactionManagerUrl;
+    ).data.transactionManagerUrl;
     url = txManagerUrl.__option === "Some" ? txManagerUrl.value : null;
   }
 

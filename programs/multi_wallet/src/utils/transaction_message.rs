@@ -88,7 +88,10 @@ mod tests {
             instructions: vec![],
             address_table_lookups: vec![],
         };
-        let accounts = vec![make_account_info(Pubkey::new_unique()), make_account_info(Pubkey::new_unique())];
+        let accounts = vec![
+            make_account_info(Pubkey::new_unique()),
+            make_account_info(Pubkey::new_unique()),
+        ];
         let res = msg.convert_to_vault_transaction_message(&accounts);
         assert!(res.is_err());
     }

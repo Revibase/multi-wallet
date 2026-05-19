@@ -1,23 +1,18 @@
-import type { ValidityProofWithContext } from "@lightprotocol/stateless.js";
 import { AccountRole, type Address, type TransactionSigner } from "gill";
 import {
-  getChangeConfigCompressedInstruction,
   getChangeConfigInstruction,
   type ConfigAction,
-  type SettingsMutArgs,
   type TransactionSyncSignersArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
-import { ValidationError } from "../../errors";
-import { convertToCompressedProofArgs } from "../../utils/compressed/internal";
-import type { PackedAccounts } from "../../utils/compressed/packedAccounts";
 import {
   extractSecp256r1VerificationArgs,
   getDeduplicatedSigners,
 } from "../../utils/transaction/internal";
+import type { PackedAccounts } from "../../utils/transaction/packedAccounts";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
-export async function changeConfig({
+export function changeConfig({
   signers,
   payer,
   changeConfigArgs,
@@ -25,22 +20,12 @@ export async function changeConfig({
   changeConfigArgs: {
     configActions: ConfigAction[];
     settings: Address;
-    compressed: boolean;
     packedAccounts: PackedAccounts;
-    proof: ValidityProofWithContext | null;
-    settingsMutArgs: SettingsMutArgs | null;
   };
   signers: (TransactionSigner | SignedSecp256r1Key)[];
   payer: TransactionSigner;
 }) {
-  const {
-    settings,
-    configActions,
-    compressed,
-    packedAccounts,
-    proof,
-    settingsMutArgs,
-  } = changeConfigArgs;
+  const { settings, configActions, packedAccounts } = changeConfigArgs;
   const dedupSigners = getDeduplicatedSigners(signers);
   const transactionSyncSigners: TransactionSyncSignersArgs[] = [];
   const secp256r1VerifyInput = [];
@@ -81,41 +66,21 @@ export async function changeConfig({
     }
   }
 
-  const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
-  const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
+  const { remainingAccounts } = packedAccounts.toAccountMetas();
   const instructions = [];
   if (secp256r1VerifyInput.length > 0) {
     instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
   }
 
-  if (compressed) {
-    if (!settingsMutArgs) {
-      throw new ValidationError(
-        "Proof args are missing for compressed changeConfig.",
-      );
-    }
-    instructions.push(
-      getChangeConfigCompressedInstruction({
-        configActions,
-        payer,
-        compressedProofArgs,
-        settingsMutArgs,
-        remainingAccounts,
-        signers: transactionSyncSigners,
-      }),
-    );
-  } else {
-    instructions.push(
-      getChangeConfigInstruction({
-        settings,
-        configActions,
-        payer,
-        compressedProofArgs,
-        remainingAccounts,
-        signers: transactionSyncSigners,
-      }),
-    );
-  }
+  instructions.push(
+    getChangeConfigInstruction({
+      settings,
+      configActions,
+      payer,
+      remainingAccounts,
+      signers: transactionSyncSigners,
+    }),
+  );
 
   return instructions;
 }

@@ -4,8 +4,9 @@ import type {
   UserInfo,
 } from "@revibase/core";
 import {
-  fetchSettingsAccountData,
+  fetchSettings,
   getSettingsFromIndex,
+  getSolanaRpc,
   prepareTransactionMessage,
   UserInfoSchema,
   UserRole,
@@ -31,7 +32,6 @@ export async function executeTransaction(
     payer?: TransactionSigner;
     settingsIndexWithAddress?: {
       index: number | bigint;
-      settingsAddressTreeIndex: number;
     };
     additionalSigners?: TransactionSigner[];
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
@@ -56,9 +56,9 @@ export async function executeTransaction(
     const settingsArgs =
       settingsIndexWithAddress ?? signer.settingsIndexWithAddress;
     const settings = await getSettingsFromIndex(settingsArgs.index);
-    const settingsData = await withRetry(() =>
-      fetchSettingsAccountData(settings, settingsArgs.settingsAddressTreeIndex),
-    );
+    const settingsData = (
+      await withRetry(() => fetchSettings(getSolanaRpc(), settings))
+    ).data;
     const hasTxManager = settingsData.members.some(
       (x) => x.role === UserRole.TransactionManager,
     );

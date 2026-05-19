@@ -68,7 +68,11 @@ impl TransactionBufferCreate<'_> {
             args.preauthorize_execution,
         )?;
 
-        let member_keys: HashSet<_> = settings.members.iter().map(|member| member.pubkey).collect();
+        let member_keys: HashSet<_> = settings
+            .members
+            .iter()
+            .map(|member| member.pubkey)
+            .collect();
         require!(
             args.expected_signers
                 .iter()

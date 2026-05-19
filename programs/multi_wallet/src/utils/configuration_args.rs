@@ -1,17 +1,15 @@
-use crate::{state::UserReadOnlyOrMutateArgs, MemberKey, Permissions};
+use crate::{MemberKey, Permissions};
 use anchor_lang::prelude::*;
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug)]
 pub struct AddMemberArgs {
     pub member_key: MemberKey,
     pub permissions: Permissions,
-    pub user_args: UserReadOnlyOrMutateArgs,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug)]
 pub struct RemoveMemberArgs {
     pub member_key: MemberKey,
-    pub user_args: UserReadOnlyOrMutateArgs,
 }
 
 #[derive(AnchorSerialize, AnchorDeserialize, PartialEq, Debug)]

@@ -1,8 +1,9 @@
 import {
-  fetchSettingsAccountData,
-  fetchUserAccountData,
+  fetchSettings,
+  fetchUser,
   getSettingsFromIndex,
   getSolanaRpc,
+  getUserAddress,
   getWalletAddressFromIndex,
   prepareTransactionMessage,
   prepareTransactionSync,
@@ -71,7 +72,6 @@ export function runTransactionTests(getCtx: () => TestContext) {
 
       // Prepare transaction
       const result = await prepareTransactionSync({
-        compressed: ctx.compressed,
         payer: ctx.payer,
         transactionMessageBytes,
         signers: [ctx.wallet],
@@ -87,8 +87,13 @@ export function runTransactionTests(getCtx: () => TestContext) {
 
       // Verify transaction was successful
       const settings = await getSettingsFromIndex(ctx.index);
-      const accountData = await fetchSettingsAccountData(settings);
-      const userAccountData = await fetchUserAccountData(ctx.wallet.address);
+      const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
+      const userAccountData = (
+        await fetchUser(
+          getSolanaRpc(),
+          await getUserAddress(ctx.wallet.address),
+        )
+      ).data;
       const settingsIndex =
         userAccountData.wallets.find((x) => x.isDelegate) ?? null;
 

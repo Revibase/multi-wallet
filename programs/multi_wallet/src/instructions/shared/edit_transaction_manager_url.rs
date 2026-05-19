@@ -1,53 +1,27 @@
 use crate::{
     error::MultisigError,
-    state::{ProofArgs, User, UserMutArgs},
-    utils::UserRole,
-    LIGHT_CPI_SIGNER,
+    state::User,
+    utils::{UserRole, SEED_USER},
 };
 use anchor_lang::prelude::*;
-use light_sdk::{
-    cpi::{
-        v2::{CpiAccounts, LightSystemProgramCpi},
-        InvokeLightSystemProgram, LightCpiInstruction,
-    },
-    instruction::ValidityProof,
-    LightAccount,
-};
 
 #[derive(Accounts)]
-#[instruction(user_mut_args: UserMutArgs)]
 pub struct EditTransactionManagerUrl<'info> {
+    pub signer: Signer<'info>,
     #[account(
         mut,
-        address = user_mut_args.data.member.to_pubkey()?
+        seeds = [SEED_USER, signer.key.as_ref()],
+        bump = transaction_manager_account.bump
     )]
-    pub authority: Signer<'info>,
+    pub transaction_manager_account: Account<'info, User>,
 }
 
 impl<'info> EditTransactionManagerUrl<'info> {
     pub fn process(
         ctx: Context<'_, '_, 'info, 'info, Self>,
-        user_mut_args: UserMutArgs,
         transaction_manager_url: String,
-        compressed_proof_args: ProofArgs,
     ) -> Result<()> {
-        let cpi_start = compressed_proof_args.light_cpi_accounts_start_index as usize;
-        require!(
-            cpi_start <= ctx.remaining_accounts.len(),
-            MultisigError::InvalidNumberOfAccounts
-        );
-        let light_cpi_accounts = CpiAccounts::new(
-            &ctx.accounts.authority,
-            &ctx.remaining_accounts[cpi_start..],
-            LIGHT_CPI_SIGNER,
-        );
-        let mut user_account = LightAccount::<User>::new_mut(
-            &crate::ID,
-            &user_mut_args.account_meta,
-            user_mut_args.data,
-        )
-        .map_err(ProgramError::from)?;
-
+        let user_account = &mut ctx.accounts.transaction_manager_account;
         require!(
             user_account.role.eq(&UserRole::TransactionManager)
                 && user_account.transaction_manager_url.is_some(),
@@ -56,13 +30,6 @@ impl<'info> EditTransactionManagerUrl<'info> {
         user_account.transaction_manager_url = Some(transaction_manager_url);
 
         user_account.invariant()?;
-
-        LightSystemProgramCpi::new_cpi(
-            LIGHT_CPI_SIGNER,
-            ValidityProof(compressed_proof_args.proof),
-        )
-        .with_light_account(user_account)?
-        .invoke(light_cpi_accounts)?;
 
         Ok(())
     }

@@ -107,7 +107,9 @@ mod tests {
             num_signers,
             num_writable_signers,
             num_writable_non_signers,
-            account_keys: (0..account_keys_len).map(|_| Pubkey::new_unique()).collect(),
+            account_keys: (0..account_keys_len)
+                .map(|_| Pubkey::new_unique())
+                .collect(),
             instructions,
             address_table_lookups,
         }

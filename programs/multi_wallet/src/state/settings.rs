@@ -12,7 +12,7 @@ pub struct Settings {
     pub threshold: u8,
     pub multi_wallet_bump: u8,
     pub bump: u8,
-    pub settings_address_tree_index: u8,
+    pub _padding: u8,
     pub latest_slot_number: u64,
 }
 
@@ -24,14 +24,18 @@ impl Settings {
         1  + // threshold
         1  + // multi_wallet bump
         1  + // settings bump
-        1  + // settings_address_tree_index
+        1  + // _padding
         8 // latest slot number
     }
     pub fn edit_permissions(&mut self, members: Vec<EditMemberArgs>) -> Result<()> {
         MultisigSettings::edit_permissions(self, members)
     }
-    pub fn add_members(&mut self, new_members: Vec<AddMemberArgs>) -> Result<Vec<AddMemberArgs>> {
-        MultisigSettings::add_members(self, new_members)
+    pub fn add_members(
+        &mut self,
+        new_members: Vec<AddMemberArgs>,
+        remaining_accounts: &[AccountInfo],
+    ) -> Result<Vec<AddMemberArgs>> {
+        MultisigSettings::add_members(self, new_members, remaining_accounts)
     }
 
     pub fn remove_members(
@@ -146,7 +150,7 @@ mod tests {
             pubkey: member_key,
             role: role.to_u8(),
             permissions: Permissions::from_permissions(perms),
-            user_address_tree_index: 0,
+            _padding: 0,
             is_delegate: if is_delegate { 1 } else { 0 },
         }
     }
@@ -163,7 +167,7 @@ mod tests {
             pubkey: member_key,
             role: role.to_u8(),
             permissions: Permissions::from_permissions(perms),
-            user_address_tree_index: 0,
+            _padding: 0,
             is_delegate: 0,
         }
     }
@@ -185,7 +189,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_ok());
@@ -216,7 +220,7 @@ mod tests {
             threshold: 2,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_ok());
@@ -230,7 +234,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_err());
@@ -253,7 +257,7 @@ mod tests {
             threshold: 0,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_err());
@@ -277,7 +281,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_err());
@@ -300,7 +304,7 @@ mod tests {
             threshold: 2,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_err());
@@ -319,7 +323,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_err());
@@ -338,7 +342,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_err());
@@ -361,7 +365,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_err());
@@ -384,7 +388,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_ok());
@@ -407,7 +411,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_err());
@@ -438,7 +442,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_ok());
@@ -469,7 +473,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_err());
@@ -499,7 +503,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_err());
@@ -534,7 +538,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_ok());
@@ -568,7 +572,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_err());
@@ -603,7 +607,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_err());
@@ -640,7 +644,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_err());
@@ -675,7 +679,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         assert!(settings.invariant().is_err());
@@ -702,7 +706,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number: 0,
         };
         settings.sort_members().unwrap();

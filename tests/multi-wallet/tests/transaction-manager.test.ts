@@ -2,9 +2,11 @@ import {
   changeConfig,
   convertMemberKeyToString,
   createUserAccounts,
-  fetchSettingsAccountData,
-  fetchUserAccountData,
+  fetchSettings,
+  fetchUser,
   getSettingsFromIndex,
+  getSolanaRpc,
+  getUserAddress,
   prepareChangeConfigArgs,
   UserRole,
 } from "@revibase/core";
@@ -32,13 +34,11 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
       );
       const createUserAccountIx = await createUserAccounts({
         payer: ctx.payer,
-        createUserArgs: [
-          {
-            member: ephemeralKeypair,
-            role: UserRole.TransactionManager,
-            transactionManagerUrl: TEST_TRANSACTION_MANAGER_URL,
-          },
-        ],
+        createUserArgs: {
+          member: ephemeralKeypair,
+          role: UserRole.TransactionManager,
+          transactionManagerUrl: TEST_TRANSACTION_MANAGER_URL,
+        },
       });
 
       await sendTransaction(
@@ -48,7 +48,6 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
       );
 
       const changeConfigArgs = await prepareChangeConfigArgs({
-        compressed: ctx.compressed,
         settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
@@ -72,11 +71,14 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
       await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
 
       // Verify member was added
-      const userAccountData = await fetchUserAccountData(
-        ephemeralKeypair.address,
-      );
+      const userAccountData = (
+        await fetchUser(
+          getSolanaRpc(),
+          await getUserAddress(ephemeralKeypair.address),
+        )
+      ).data;
       const settings = await getSettingsFromIndex(ctx.index);
-      const accountData = await fetchSettingsAccountData(settings);
+      const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
       const settingsIndex =
         userAccountData.wallets.find((x) => x.isDelegate) ?? null;
 

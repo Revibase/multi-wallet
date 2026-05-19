@@ -19,8 +19,8 @@ import type {
 } from "../../generated";
 import type { Secp256r1VerifyInput } from "../../instructions/secp256r1Verify";
 import { KeyType, Secp256r1Key, SignedSecp256r1Key } from "../../types";
-import type { PackedAccounts } from "../compressed/packedAccounts";
 import { getSecp256r1Message } from "../passkeys/internal";
+import type { PackedAccounts } from "./packedAccounts";
 
 export function extractSecp256r1VerificationArgs(
   signer?: SignedSecp256r1Key | TransactionSigner,

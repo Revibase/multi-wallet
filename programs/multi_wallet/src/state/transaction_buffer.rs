@@ -126,7 +126,8 @@ impl TransactionBuffer {
     /// Checks that every expected signer is either creator, executor, or a voter.
     /// Used by execute() and by unit tests without needing Clock.
     pub fn check_expected_signers(&self) -> Result<()> {
-        let mut approved_signers: HashSet<MemberKey> = HashSet::with_capacity(self.voters.len() + 2);
+        let mut approved_signers: HashSet<MemberKey> =
+            HashSet::with_capacity(self.voters.len() + 2);
         approved_signers.insert(self.creator);
         approved_signers.insert(self.executor);
         for voter in &self.voters {

@@ -1,7 +1,8 @@
 import {
   changeConfig,
-  fetchSettingsAccountData,
+  fetchSettings,
   getSettingsFromIndex,
+  getSolanaRpc,
   prepareChangeConfigArgs,
 } from "@revibase/core";
 import { expect } from "chai";
@@ -25,7 +26,6 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
       await addPayerAsNewMember(ctx);
 
       const changeConfigArgs = await prepareChangeConfigArgs({
-        compressed: ctx.compressed,
         settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
@@ -43,7 +43,7 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
 
       await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
       const settings = await getSettingsFromIndex(ctx.index);
-      const accountData = await fetchSettingsAccountData(settings);
+      const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
       expect(
         accountData.threshold,
         "Threshold should be updated to 2",
@@ -72,7 +72,6 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
 
         // Set threshold to 2
         const setThresholdArgs = await prepareChangeConfigArgs({
-          compressed: ctx.compressed,
           settings: await getSettingsFromIndex(ctx.index),
           configActionsArgs: [
             {
@@ -95,7 +94,6 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
         // Try to remove payer member - this should fail because threshold is 2
         // and removing a member would leave only 1 member
         const removeMemberArgs = await prepareChangeConfigArgs({
-          compressed: ctx.compressed,
           settings: await getSettingsFromIndex(ctx.index),
           configActionsArgs: [
             {
@@ -119,7 +117,8 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
 
         // Verify threshold and member count remain unchanged
         const settings = await getSettingsFromIndex(ctx.index);
-        const accountData = await fetchSettingsAccountData(settings);
+        const accountData = (await fetchSettings(getSolanaRpc(), settings))
+          .data;
         expect(
           accountData.threshold,
           "Threshold should remain 2 after failed removal",
@@ -149,7 +148,6 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
 
         // Set threshold to 2
         const setThresholdArgs = await prepareChangeConfigArgs({
-          compressed: ctx.compressed,
           settings: await getSettingsFromIndex(ctx.index),
           configActionsArgs: [
             {
@@ -171,7 +169,6 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
 
         // First reduce threshold to 1
         const reduceThresholdArgs = await prepareChangeConfigArgs({
-          compressed: ctx.compressed,
           settings: await getSettingsFromIndex(ctx.index),
           configActionsArgs: [
             {
@@ -193,7 +190,6 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
 
         // Now remove payer member - this should succeed
         const removeMemberArgs = await prepareChangeConfigArgs({
-          compressed: ctx.compressed,
           settings: await getSettingsFromIndex(ctx.index),
           configActionsArgs: [
             {
@@ -213,7 +209,8 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
           ctx.addressLookUpTable,
         );
         const settings = await getSettingsFromIndex(ctx.index);
-        const accountData = await fetchSettingsAccountData(settings);
+        const accountData = (await fetchSettings(getSolanaRpc(), settings))
+          .data;
         expect(
           accountData.threshold,
           "Threshold should remain 1 after member removal",

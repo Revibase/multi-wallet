@@ -1,8 +1,8 @@
 use crate::{
-    state::UserReadOnlyOrMutateArgs,
-    utils::{bool_to_u8_delegate, UserRole},
+    state::User,
+    utils::{UserRole, SEED_USER},
     AddMemberArgs, EditMemberArgs, KeyType, Member, MemberKey, MultisigError, Permission,
-    PermissionCounts, RemoveMemberArgs,
+    PermissionCounts, RemoveMemberArgs, ID,
 };
 use anchor_lang::prelude::*;
 use std::collections::{HashMap, HashSet};
@@ -193,32 +193,42 @@ pub trait MultisigSettings {
     }
 
     fn set_members(&mut self, members: Vec<Member>) -> Result<()> {
-        let exisiting_members: Vec<MemberKey> = self.get_members()?.iter().map(|f| f.pubkey).collect();
+        let exisiting_members: Vec<MemberKey> =
+            self.get_members()?.iter().map(|f| f.pubkey).collect();
         self.delete_members(exisiting_members)?;
         self.extend_members(members)?;
         self.sort_members()?;
         Ok(())
     }
 
-    fn add_members<'a>(&mut self, new_members: Vec<AddMemberArgs>) -> Result<Vec<AddMemberArgs>> {
-        let new_member_data = new_members
-            .iter()
-            .map(|member| {
-                let data = match &member.user_args {
-                    UserReadOnlyOrMutateArgs::Read(user_read_only_args) => {
-                        &user_read_only_args.data
-                    }
-                    UserReadOnlyOrMutateArgs::Mutate(user_mut_args) => &user_mut_args.data,
-                };
-                Member {
-                    pubkey: member.member_key,
-                    permissions: member.permissions,
-                    role: data.role.to_u8(),
-                    user_address_tree_index: data.user_address_tree_index,
-                    is_delegate: bool_to_u8_delegate(false),
-                }
-            })
-            .collect::<Vec<_>>();
+    fn add_members<'a>(
+        &mut self,
+        new_members: Vec<AddMemberArgs>,
+        remaining_accounts: &[AccountInfo],
+    ) -> Result<Vec<AddMemberArgs>> {
+        let mut new_member_data = Vec::with_capacity(new_members.len());
+
+        for member in &new_members {
+            let seed = member.member_key.get_seed()?;
+
+            let (user_account_pubkey, _) = Pubkey::find_program_address(&[SEED_USER, &seed], &ID);
+
+            let user_account_info = remaining_accounts
+                .iter()
+                .find(|acc| acc.key == &user_account_pubkey)
+                .ok_or(MultisigError::MissingAccount)?;
+
+            let data = user_account_info.try_borrow_data()?;
+
+            let user = User::try_deserialize(&mut &data[..])?;
+
+            new_member_data.push(Member::new(
+                member.member_key,
+                user.role,
+                member.permissions,
+                false,
+            ));
+        }
 
         self.extend_members(new_member_data)?;
         self.sort_members()?;
@@ -292,7 +302,7 @@ mod tests {
             threshold: 1,
             multi_wallet_bump: 0,
             bump: 0,
-            settings_address_tree_index: 0,
+            _padding: 0,
             latest_slot_number,
         }
     }

@@ -1,10 +1,7 @@
-import type { AccountMeta, Address, TransactionSigner } from "gill";
+import type { Address, TransactionSigner } from "gill";
 import {
-  getTransactionBufferCreateCompressedInstruction,
   getTransactionBufferCreateInstruction,
   type ExpectedSignerArgs,
-  type ProofArgsArgs,
-  type SettingsReadonlyArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
 import { extractSecp256r1VerificationArgs } from "../../utils/transaction/internal";
@@ -20,7 +17,6 @@ export function createTransactionBuffer({
   finalBufferSize,
   preauthorizeExecution,
   bufferExtendHashes,
-  compressedArgs,
   expectedSigners,
 }: {
   finalBufferHash: Uint8Array<ArrayBuffer>;
@@ -32,11 +28,6 @@ export function createTransactionBuffer({
   transactionBufferAddress: Address;
   preauthorizeExecution: boolean;
   bufferExtendHashes: Uint8Array<ArrayBuffer>[];
-  compressedArgs: {
-    settingsReadonlyArgs: SettingsReadonlyArgs;
-    compressedProofArgs: ProofArgsArgs;
-    remainingAccounts: AccountMeta[];
-  } | null;
   expectedSigners: ExpectedSignerArgs[];
 }) {
   const { domainConfig, verifyArgs, message, signature, publicKey } =
@@ -54,50 +45,23 @@ export function createTransactionBuffer({
     );
   }
 
-  if (compressedArgs) {
-    const { settingsReadonlyArgs, compressedProofArgs, remainingAccounts } =
-      compressedArgs;
-    instructions.push(
-      getTransactionBufferCreateCompressedInstruction({
-        transactionBuffer: transactionBufferAddress,
-        payer,
-        secp256r1VerifyArgs: verifyArgs,
-        creator: creator instanceof SignedSecp256r1Key ? undefined : creator,
-        domainConfig,
-        args: {
-          bufferIndex,
-          finalBufferHash,
-          finalBufferSize,
-          bufferExtendHashes,
-          preauthorizeExecution,
-          expectedSigners,
-        },
-        settingsReadonlyArgs,
-        compressedProofArgs,
-        remainingAccounts,
-      }),
-    );
-  } else {
-    instructions.push(
-      getTransactionBufferCreateInstruction({
-        settings,
-        transactionBuffer: transactionBufferAddress,
-        payer,
-        secp256r1VerifyArgs: verifyArgs,
-        creator: creator instanceof SignedSecp256r1Key ? undefined : creator,
-        domainConfig,
-        args: {
-          bufferIndex,
-          finalBufferHash,
-          finalBufferSize,
-          bufferExtendHashes,
-          preauthorizeExecution,
-          expectedSigners,
-        },
-        remainingAccounts: [],
-      }),
-    );
-  }
+  instructions.push(
+    getTransactionBufferCreateInstruction({
+      settings,
+      transactionBuffer: transactionBufferAddress,
+      payer,
+      secp256r1VerifyArgs: verifyArgs,
+      creator: creator instanceof SignedSecp256r1Key ? undefined : creator,
+      domainConfig,
+      bufferIndex,
+      finalBufferHash,
+      finalBufferSize,
+      bufferExtendHashes,
+      preauthorizeExecution,
+      expectedSigners,
+      remainingAccounts: [],
+    }),
+  );
 
   return instructions;
 }

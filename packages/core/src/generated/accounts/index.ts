@@ -10,4 +10,4 @@ export * from './domainConfig';
 export * from './globalCounter';
 export * from './settings';
 export * from './transactionBuffer';
-export * from './whitelistedAddressTree';
+export * from './user';

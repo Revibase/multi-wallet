@@ -1,7 +1,7 @@
 use crate::{
-    state::ProofArgs,
     utils::{
-        CompressedTokenArgs, SourceType, SplInterfacePdaArgs, TokenTransfer, TransactionSyncSigners,
+        CompressedTokenArgs, ProofArgs, SourceType, SplInterfacePdaArgs, TokenTransfer,
+        TransactionSyncSigners,
     },
     MultisigError, Settings, TransactionActionType, ID, LIGHT_CPI_SIGNER, SEED_MULTISIG,
     SEED_VAULT,
@@ -44,7 +44,7 @@ pub struct TokenTransferIntent<'info> {
     pub source: UncheckedAccount<'info>,
     /// CHECK:
     #[account(
-        mut,  
+        mut,
         seeds = [
             source.key().as_ref(),
             token_program.key().as_ref(),
@@ -70,7 +70,7 @@ pub struct TokenTransferIntent<'info> {
     pub destination: UncheckedAccount<'info>,
     /// CHECK:
     #[account(
-        mut,  
+        mut,
         seeds = [
             destination.key().as_ref(),
             token_program.key().as_ref(),

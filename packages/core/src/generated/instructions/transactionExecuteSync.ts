@@ -16,6 +16,8 @@ import {
   getBytesEncoder,
   getStructDecoder,
   getStructEncoder,
+  getU8Decoder,
+  getU8Encoder,
   transformEncoder,
   type AccountMeta,
   type Address,
@@ -33,17 +35,21 @@ import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
-  getTransactionMessageDecoder,
-  getTransactionMessageEncoder,
+  getCompiledInstructionDecoder,
+  getCompiledInstructionEncoder,
+  getTransactionMessageAddressTableLookupDecoder,
+  getTransactionMessageAddressTableLookupEncoder,
   getTransactionSyncSignersDecoder,
   getTransactionSyncSignersEncoder,
-  type TransactionMessage,
-  type TransactionMessageArgs,
+  type CompiledInstruction,
+  type CompiledInstructionArgs,
+  type TransactionMessageAddressTableLookup,
+  type TransactionMessageAddressTableLookupArgs,
   type TransactionSyncSigners,
   type TransactionSyncSignersArgs,
 } from "../types";
 
-export const TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR = new Uint8Array([16]);
+export const TRANSACTION_EXECUTE_SYNC_DISCRIMINATOR = new Uint8Array([15]);
 
 export function getTransactionExecuteSyncDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
@@ -80,12 +86,22 @@ export type TransactionExecuteSyncInstruction<
 
 export type TransactionExecuteSyncInstructionData = {
   discriminator: ReadonlyUint8Array;
-  transactionMessage: TransactionMessage;
+  numSigners: number;
+  numWritableSigners: number;
+  numWritableNonSigners: number;
+  numAccountKeys: number;
+  instructions: Array<CompiledInstruction>;
+  addressTableLookups: Array<TransactionMessageAddressTableLookup>;
   signers: Array<TransactionSyncSigners>;
 };
 
 export type TransactionExecuteSyncInstructionDataArgs = {
-  transactionMessage: TransactionMessageArgs;
+  numSigners: number;
+  numWritableSigners: number;
+  numWritableNonSigners: number;
+  numAccountKeys: number;
+  instructions: Array<CompiledInstructionArgs>;
+  addressTableLookups: Array<TransactionMessageAddressTableLookupArgs>;
   signers: Array<TransactionSyncSignersArgs>;
 };
 
@@ -93,7 +109,15 @@ export function getTransactionExecuteSyncInstructionDataEncoder(): Encoder<Trans
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["transactionMessage", getTransactionMessageEncoder()],
+      ["numSigners", getU8Encoder()],
+      ["numWritableSigners", getU8Encoder()],
+      ["numWritableNonSigners", getU8Encoder()],
+      ["numAccountKeys", getU8Encoder()],
+      ["instructions", getArrayEncoder(getCompiledInstructionEncoder())],
+      [
+        "addressTableLookups",
+        getArrayEncoder(getTransactionMessageAddressTableLookupEncoder()),
+      ],
       ["signers", getArrayEncoder(getTransactionSyncSignersEncoder())],
     ]),
     (value) => ({
@@ -106,7 +130,15 @@ export function getTransactionExecuteSyncInstructionDataEncoder(): Encoder<Trans
 export function getTransactionExecuteSyncInstructionDataDecoder(): Decoder<TransactionExecuteSyncInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["transactionMessage", getTransactionMessageDecoder()],
+    ["numSigners", getU8Decoder()],
+    ["numWritableSigners", getU8Decoder()],
+    ["numWritableNonSigners", getU8Decoder()],
+    ["numAccountKeys", getU8Decoder()],
+    ["instructions", getArrayDecoder(getCompiledInstructionDecoder())],
+    [
+      "addressTableLookups",
+      getArrayDecoder(getTransactionMessageAddressTableLookupDecoder()),
+    ],
     ["signers", getArrayDecoder(getTransactionSyncSignersDecoder())],
   ]);
 }
@@ -133,7 +165,12 @@ export type TransactionExecuteSyncInput<
   settings: Address<TAccountSettings>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
-  transactionMessage: TransactionExecuteSyncInstructionDataArgs["transactionMessage"];
+  numSigners: TransactionExecuteSyncInstructionDataArgs["numSigners"];
+  numWritableSigners: TransactionExecuteSyncInstructionDataArgs["numWritableSigners"];
+  numWritableNonSigners: TransactionExecuteSyncInstructionDataArgs["numWritableNonSigners"];
+  numAccountKeys: TransactionExecuteSyncInstructionDataArgs["numAccountKeys"];
+  instructions: TransactionExecuteSyncInstructionDataArgs["instructions"];
+  addressTableLookups: TransactionExecuteSyncInstructionDataArgs["addressTableLookups"];
   signers: TransactionExecuteSyncInstructionDataArgs["signers"];
   remainingAccounts: TransactionExecuteSyncInstructionExtraArgs["remainingAccounts"];
 };

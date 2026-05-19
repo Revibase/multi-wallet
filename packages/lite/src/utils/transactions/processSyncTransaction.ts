@@ -1,6 +1,7 @@
 import {
-  fetchSettingsAccountData,
+  fetchSettings,
   getSignedSecp256r1Key,
+  getSolanaRpc,
   prepareTransactionSync,
   retrieveTransactionManager,
   type TransactionAuthenticationResponse,
@@ -20,17 +21,9 @@ export async function processSyncTransaction(params: {
   settings: Address;
   payer?: TransactionSigner;
   additionalSigners?: TransactionSigner[];
-  settingsAddressTreeIndex?: number;
   options?: TransactionAuthorizationFlowOptions;
 }): Promise<string> {
-  const {
-    authResponse,
-    settings,
-    payer,
-    additionalSigners,
-    settingsAddressTreeIndex,
-    options,
-  } = params;
+  const { authResponse, settings, payer, additionalSigners, options } = params;
   const { startRequest, signer } = authResponse;
   if (startRequest.data.type !== "transaction")
     throw new Error("Invalid request type.");
@@ -42,16 +35,9 @@ export async function processSyncTransaction(params: {
     throw new Error("Transaction action type must be 'sync'");
   }
 
-  const cachedAccounts = new Map();
   const [feePayer, settingsData, signedSigner] = await Promise.all([
     payer ?? getRandomPayer(),
-    withRetry(() =>
-      fetchSettingsAccountData(
-        settings,
-        settingsAddressTreeIndex,
-        cachedAccounts,
-      ),
-    ),
+    (await withRetry(() => fetchSettings(getSolanaRpc(), settings))).data,
     getSignedSecp256r1Key(authResponse),
   ]);
 
@@ -60,14 +46,12 @@ export async function processSyncTransaction(params: {
   const transactionManagerSigner = await getTransactionManagerSigner({
     authResponses: [authResponse],
     transactionManagerAddress: tm?.transactionManagerAddress,
-    userAddressTreeIndex: tm?.userAddressTreeIndex,
     transactionMessageBytes: getBase64Encoder().encode(transactionMessageBytes),
     onPendingApprovalsCallback:
       options?.pendingApprovalsCallback?.onPendingApprovalsCallback,
     onPendingApprovalsSuccess:
       options?.pendingApprovalsCallback?.onPendingApprovalsSuccess,
     abortSignal: options?.signal,
-    cachedAccounts,
   });
 
   const signers = transactionManagerSigner
@@ -76,15 +60,12 @@ export async function processSyncTransaction(params: {
 
   const { instructions, addressesByLookupTableAddress } =
     await prepareTransactionSync({
-      compressed: settingsData.isCompressed,
       signers,
       payer: feePayer,
       transactionMessageBytes: getBase64Encoder().encode(
         transactionMessageBytes,
       ),
       settings,
-      settingsAddressTreeIndex,
-      cachedAccounts,
       additionalSigners,
     });
 

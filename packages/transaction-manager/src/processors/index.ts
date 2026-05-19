@@ -1,15 +1,9 @@
-export {
-  processChangeConfig,
-  processChangeConfigCompressed,
-} from "./change-config";
+export { processChangeConfig } from "./change-config";
+
+export { processTransferIntent } from "./transfer-intent";
 
 export {
-  processCompressedTransferIntent,
-  processTransferIntent,
-} from "./transfer-intent";
-
-export {
-  processCreateUserAccounts,
+  processCreateUserAccount,
   processEditTransactionManagerUrl,
 } from "./user-accounts";
 

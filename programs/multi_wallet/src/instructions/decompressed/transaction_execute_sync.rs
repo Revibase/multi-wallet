@@ -65,9 +65,9 @@ impl<'info> TransactionExecuteSync<'info> {
         vault_transaction_message.validate()?;
         let mut writer = Vec::new();
         vault_transaction_message.serialize(&mut writer)?;
-        let message_hash = Sha256::hash(&writer).map_err(|_| MultisigError::HashComputationFailed)?;
-        ctx.accounts
-            .verify_signers(&ctx, &signers, message_hash)?;
+        let message_hash =
+            Sha256::hash(&writer).map_err(|_| MultisigError::HashComputationFailed)?;
+        ctx.accounts.verify_signers(&ctx, &signers, message_hash)?;
         let num_lookups = vault_transaction_message.address_table_lookups.len();
         let message_end_index = num_lookups + vault_transaction_message.num_all_account_keys();
 

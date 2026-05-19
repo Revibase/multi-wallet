@@ -128,7 +128,6 @@ export async function addPayerAsNewMember(ctx: TestContext) {
   assertTestContext(ctx, ["index", "multiWalletVault", "payer", "wallet"]);
 
   const changeConfigArgs = await prepareChangeConfigArgs({
-    compressed: ctx.compressed,
     settings: await getSettingsFromIndex(ctx.index),
     configActionsArgs: [
       {

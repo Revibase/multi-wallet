@@ -8,7 +8,7 @@ Core types and helpers for Revibase multi-wallet: transfer intents and custom va
 
 ## Initialize
 
-Call `initialize()` once before using helpers that rely on shared RPC clients (for example `getSolanaRpc()` or compressed account helpers).
+Call `initialize()` once before using helpers that rely on shared RPC clients (for example `getSolanaRpc()`).
 
 ```ts
 import { initialize } from "@revibase/core";
@@ -35,7 +35,7 @@ declare const memberSigner: TransactionSigner;
 
 const createUserIx = await createUserAccounts({
   payer,
-  createUserArgs: [{ member: memberSigner, role: UserRole.Member }],
+  createUserArgs: { member: memberSigner, role: UserRole.Member },
 });
 // Build a tx with createUserIx; sign with payer + memberSigner, then send.
 ```
@@ -75,16 +75,13 @@ const createWalletIx = await createWallet({
 const setWalletAsDelegateIx = await editUserDelegate({
   payer,
   user: memberSigner,
-  newDelegate: {
-    index: globalCounter.data.index,
-    settingsAddressTreeIndex: 0,
-  },
+  newDelegate: Number(globalCounter.data.index),
 });
 
 // Build a tx with setWalletAsDelegateIx; sign with payer + memberSigner, then send.
 ```
 
-After confirmation, use [Resolve settings and compressed flag](#1-resolve-settings-and-compressed-flag) with this index to get `settings`, `compressed`, and `walletAddress` for transfers or custom transactions.
+After confirmation, use [Resolve delegated wallet settings](#1-resolve-delegated-wallet-settings) with this index to get `settings` and `walletAddress` for transfers or custom transactions.
 
 ---
 
@@ -92,41 +89,46 @@ After confirmation, use [Resolve settings and compressed flag](#1-resolve-settin
 
 Move SOL or SPL tokens from a multi-wallet via on-chain intent instructions.
 
-### 1. Resolve settings and compressed flag
+### 1. Resolve delegated wallet settings
 
-Using the member signer, get the delegated wallet’s settings and compression flag:
+Using the member signer, get the delegated wallet’s settings PDA and vault address:
 
 ```ts
 import {
-  fetchUserAccountData,
-  fetchSettingsAccountData,
+  fetchSettings,
+  fetchUser,
   getSettingsFromIndex,
+  getSolanaRpc,
+  getUserAddress,
   getWalletAddressFromSettings,
 } from "@revibase/core";
 import type { TransactionSigner } from "gill";
 
 declare const memberSigner: TransactionSigner;
 
-const user = await fetchUserAccountData(memberSigner.address);
+const user = (
+  await fetchUser(getSolanaRpc(), await getUserAddress(memberSigner.address))
+).data;
 const delegatedWallet = user.wallets.find((w) => w.isDelegate);
 if (!delegatedWallet)
   throw new Error("memberSigner is not delegated to any wallet");
 
 const settingsIndex = delegatedWallet.index;
 const settings = await getSettingsFromIndex(settingsIndex);
-const settingsAccount = await fetchSettingsAccountData(settings);
-const compressed = settingsAccount.isCompressed;
+const settingsAccount = (await fetchSettings(getSolanaRpc(), settings)).data;
 const walletAddress = await getWalletAddressFromSettings(settings);
 ```
 
-Use `settings`, `compressed`, and (optionally) `walletAddress` in the following steps.
+Use `settings`, `settingsAccount`, and (optionally) `walletAddress` in the following steps.
 
 ### 2. Native SOL transfer
 
 ```ts
 import {
   createTransactionManagerSigner,
-  fetchUserAccountData,
+  fetchUser,
+  getSolanaRpc,
+  getUserAddress,
   nativeTransferIntent,
   retrieveTransactionManager,
 } from "@revibase/core";
@@ -143,10 +145,12 @@ const tmResult = retrieveTransactionManager(
 );
 let transactionManagerSigner: TransactionSigner | null = null;
 if (tmResult !== null) {
-  const userAccountData = await fetchUserAccountData(
-    tmResult.transactionManagerAddress,
-    tmResult.userAddressTreeIndex,
-  );
+  const userAccountData = (
+    await fetchUser(
+      getSolanaRpc(),
+      await getUserAddress(tmResult.transactionManagerAddress),
+    )
+  ).data;
   if (userAccountData.transactionManagerUrl.__option === "None") {
     throw new Error("Transaction manager endpoint is missing for this account");
   }
@@ -164,8 +168,6 @@ const instructions = await nativeTransferIntent({
     memberSigner,
     ...(transactionManagerSigner ? [transactionManagerSigner] : []),
   ],
-  payer,
-  compressed,
 });
 // Build tx from instructions with prepareTransactionMessage (or similar), then send.
 ```
@@ -175,7 +177,9 @@ const instructions = await nativeTransferIntent({
 ```ts
 import {
   createTransactionManagerSigner,
-  fetchUserAccountData,
+  fetchUser,
+  getSolanaRpc,
+  getUserAddress,
   retrieveTransactionManager,
   tokenTransferIntent,
 } from "@revibase/core";
@@ -193,10 +197,12 @@ const tmResult = retrieveTransactionManager(
 );
 let transactionManagerSigner: TransactionSigner | null = null;
 if (tmResult !== null) {
-  const userAccountData = await fetchUserAccountData(
-    tmResult.transactionManagerAddress,
-    tmResult.userAddressTreeIndex,
-  );
+  const userAccountData = (
+    await fetchUser(
+      getSolanaRpc(),
+      await getUserAddress(tmResult.transactionManagerAddress),
+    )
+  ).data;
   if (userAccountData.transactionManagerUrl.__option === "None") {
     throw new Error("Transaction manager endpoint is missing for this account");
   }
@@ -217,7 +223,6 @@ const instructions = await tokenTransferIntent({
   amount: 1_000_000n,
   mint,
   tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
-  compressed,
 });
 // Build tx from instructions, then send. Same signer pattern as native transfer if using a transaction manager.
 ```
@@ -231,15 +236,17 @@ const instructions = await tokenTransferIntent({
 
 In both cases, use `getSendAndConfirmTransaction()` (after `initialize()`) or your own Gill client to send.
 
-Prerequisite: `settings`, `compressed`, `walletAddress`, and `settingsAccount` from [Resolve settings and compressed flag](#1-resolve-settings-and-compressed-flag).
+Prerequisite: `settings`, `walletAddress`, and `settingsAccount` from [Resolve delegated wallet settings](#1-resolve-delegated-wallet-settings).
 
 ### Sync: prepareTransactionSync
 
 ```ts
 import {
   createTransactionManagerSigner,
-  fetchUserAccountData,
+  fetchUser,
   getSendAndConfirmTransaction,
+  getSolanaRpc,
+  getUserAddress,
   prepareTransactionMessage,
   prepareTransactionSync,
   retrieveTransactionManager,
@@ -275,10 +282,12 @@ const tmResult = retrieveTransactionManager(
 );
 let transactionManagerSigner: TransactionSigner | null = null;
 if (tmResult !== null) {
-  const userAccountData = await fetchUserAccountData(
-    tmResult.transactionManagerAddress,
-    tmResult.userAddressTreeIndex,
-  );
+  const userAccountData = (
+    await fetchUser(
+      getSolanaRpc(),
+      await getUserAddress(tmResult.transactionManagerAddress),
+    )
+  ).data;
   if (userAccountData.transactionManagerUrl.__option === "None") {
     throw new Error("Transaction manager endpoint is missing for this account");
   }
@@ -290,7 +299,6 @@ if (tmResult !== null) {
 }
 
 const details = await prepareTransactionSync({
-  compressed,
   payer,
   settings,
   transactionMessageBytes,
@@ -316,8 +324,10 @@ const signature = await sendAndConfirm({
 ```ts
 import {
   createTransactionManagerSigner,
-  fetchUserAccountData,
+  fetchUser,
   getSendAndConfirmTransaction,
+  getSolanaRpc,
+  getUserAddress,
   prepareTransactionMessage,
   prepareTransactionBundle,
   retrieveTransactionManager,
@@ -352,10 +362,12 @@ const tmResult = retrieveTransactionManager(
 );
 let transactionManagerSigner: TransactionSigner | null = null;
 if (tmResult !== null) {
-  const userAccountData = await fetchUserAccountData(
-    tmResult.transactionManagerAddress,
-    tmResult.userAddressTreeIndex,
-  );
+  const userAccountData = (
+    await fetchUser(
+      getSolanaRpc(),
+      await getUserAddress(tmResult.transactionManagerAddress),
+    )
+  ).data;
   if (userAccountData.transactionManagerUrl.__option === "None") {
     throw new Error("Transaction manager endpoint is missing for this account");
   }
@@ -372,7 +384,6 @@ const bundle = await prepareTransactionBundle({
   transactionMessageBytes,
   creator: transactionManagerSigner ?? memberSigner,
   executor: transactionManagerSigner ? memberSigner : undefined,
-  compressed,
   addressesByLookupTableAddress: addressLookups,
   jitoBundlesTipAmount: 10_000, // optional, lamports
 });

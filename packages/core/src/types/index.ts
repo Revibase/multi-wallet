@@ -1,4 +1,3 @@
-export * from "./cache";
 export * from "./configurationArgs";
 export * from "./keyType";
 export * from "./passkeys";

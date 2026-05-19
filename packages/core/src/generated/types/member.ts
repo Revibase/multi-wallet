@@ -31,7 +31,7 @@ export type Member = {
   pubkey: MemberKey;
   role: number;
   permissions: IPermissions;
-  userAddressTreeIndex: number;
+  padding: number;
   isDelegate: number;
 };
 
@@ -39,7 +39,7 @@ export type MemberArgs = {
   pubkey: MemberKeyArgs;
   role: number;
   permissions: PermissionsArgs;
-  userAddressTreeIndex: number;
+  padding: number;
   isDelegate: number;
 };
 
@@ -48,7 +48,7 @@ export function getMemberEncoder(): FixedSizeEncoder<MemberArgs> {
     ["pubkey", getMemberKeyEncoder()],
     ["role", getU8Encoder()],
     ["permissions", getPermissionsEncoder()],
-    ["userAddressTreeIndex", getU8Encoder()],
+    ["padding", getU8Encoder()],
     ["isDelegate", getU8Encoder()],
   ]);
 }
@@ -58,7 +58,7 @@ export function getMemberDecoder(): FixedSizeDecoder<Member> {
     ["pubkey", getMemberKeyDecoder()],
     ["role", getU8Decoder()],
     ["permissions", getPermissionsDecoder()],
-    ["userAddressTreeIndex", getU8Decoder()],
+    ["padding", getU8Decoder()],
     ["isDelegate", getU8Decoder()],
   ]);
 }

@@ -1,50 +1,51 @@
 import {
-  convertMemberKeyToString,
-  getCreateUserAccountsInstructionDataDecoder,
-  getEditTransactionManagerUrlInstructionDataDecoder,
+  parseCreateUserAccountInstruction,
+  parseEditTransactionManagerUrlInstruction,
 } from "@revibase/core";
 import type { Instruction } from "gill";
 import type { TransactionManagerConfig } from "../types";
 
 /**
- * Processes a CreateUserAccounts instruction.
+ * Processes a CreateUserAccount instruction.
  */
-export function processCreateUserAccounts(
+export function processCreateUserAccount(
   instruction: Instruction,
   transactionManagerConfig: TransactionManagerConfig,
 ) {
-  if (!instruction.data) {
-    throw new Error("Invalid instruction data");
+  if (!instruction.data || !instruction.accounts) {
+    throw new Error("Invalid instruction");
   }
 
-  const decodedInstructionData =
-    getCreateUserAccountsInstructionDataDecoder().decode(instruction.data);
+  const decodedInstruction = parseCreateUserAccountInstruction({
+    programAddress: instruction.programAddress,
+    data: instruction.data,
+    accounts: instruction.accounts,
+  });
 
-  for (const createUserArgs of decodedInstructionData.createUserArgs) {
-    if (
-      createUserArgs.member.toString() !== transactionManagerConfig.publicKey
-    ) {
-      throw new Error(
-        `Member public key mismatch. Expected: ${transactionManagerConfig.publicKey}, ` +
-          `got: ${createUserArgs.member.toString()}`,
-      );
-    }
+  if (
+    decodedInstruction.accounts.member.address.toString() !==
+    transactionManagerConfig.publicKey
+  ) {
+    throw new Error(
+      `Member public key mismatch. Expected: ${transactionManagerConfig.publicKey}, ` +
+        `got: ${decodedInstruction.accounts.member.address.toString()}`,
+    );
+  }
 
-    if (createUserArgs.transactionManagerUrl?.__option === "None") {
-      throw new Error(
-        "Transaction manager URL cannot be empty when creating user accounts",
-      );
-    }
+  if (decodedInstruction.data.transactionManagerUrl?.__option === "None") {
+    throw new Error(
+      "Transaction manager URL cannot be empty when creating user accounts",
+    );
+  }
 
-    if (
-      createUserArgs.transactionManagerUrl?.value !==
-      transactionManagerConfig.url
-    ) {
-      throw new Error(
-        `Transaction manager URL mismatch. Expected: ${transactionManagerConfig.url}, ` +
-          `got: ${createUserArgs.transactionManagerUrl?.value}`,
-      );
-    }
+  if (
+    decodedInstruction.data.transactionManagerUrl.value !==
+    transactionManagerConfig.url
+  ) {
+    throw new Error(
+      `Transaction manager URL mismatch. Expected: ${transactionManagerConfig.url}, ` +
+        `got: ${decodedInstruction.data.transactionManagerUrl.value}`,
+    );
   }
 
   return null;
@@ -57,18 +58,17 @@ export function processEditTransactionManagerUrl(
   instruction: Instruction,
   transactionManagerConfig: TransactionManagerConfig,
 ) {
-  if (!instruction.data) {
-    throw new Error("Invalid instruction data");
+  if (!instruction.data || !instruction.accounts) {
+    throw new Error("Invalid instruction ");
   }
 
-  const decodedInstructionData =
-    getEditTransactionManagerUrlInstructionDataDecoder().decode(
-      instruction.data,
-    );
+  const decodedInstruction = parseEditTransactionManagerUrlInstruction({
+    programAddress: instruction.programAddress,
+    data: instruction.data,
+    accounts: instruction.accounts,
+  });
 
-  const memberPublicKey = convertMemberKeyToString(
-    decodedInstructionData.userMutArgs.data.member,
-  );
+  const memberPublicKey = decodedInstruction.accounts.signer.address.toString();
 
   if (memberPublicKey !== transactionManagerConfig.publicKey) {
     throw new Error(
@@ -78,12 +78,12 @@ export function processEditTransactionManagerUrl(
   }
 
   if (
-    decodedInstructionData.transactionManagerUrl !==
+    decodedInstruction.data.transactionManagerUrl !==
     transactionManagerConfig.url
   ) {
     throw new Error(
       `Transaction manager URL mismatch. Expected: ${transactionManagerConfig.url}, ` +
-        `got: ${decodedInstructionData.transactionManagerUrl}`,
+        `got: ${decodedInstruction.data.transactionManagerUrl}`,
     );
   }
 

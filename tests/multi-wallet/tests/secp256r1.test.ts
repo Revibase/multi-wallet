@@ -3,9 +3,11 @@ import {
   changeConfig,
   createDomainUserAccounts,
   createUserAccounts,
-  fetchSettingsAccountData,
-  fetchUserAccountData,
+  fetchSettings,
+  fetchUser,
   getSettingsFromIndex,
+  getSolanaRpc,
+  getUserAddress,
   getWalletAddressFromIndex,
   prepareChangeConfigArgs,
   Secp256r1Key,
@@ -46,13 +48,11 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         );
         const createUserAccountIx = await createUserAccounts({
           payer: ctx.payer,
-          createUserArgs: [
-            {
-              member: transactionManager,
-              role: UserRole.TransactionManager,
-              transactionManagerUrl: TEST_TRANSACTION_MANAGER_URL,
-            },
-          ],
+          createUserArgs: {
+            member: transactionManager,
+            role: UserRole.TransactionManager,
+            transactionManagerUrl: TEST_TRANSACTION_MANAGER_URL,
+          },
         });
 
         await sendTransaction(
@@ -75,9 +75,9 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
             member: secp256r1Key,
             role: UserRole.Member,
             settings: await getSettingsFromIndex(ctx.index),
-            transactionManager: {
-              member: transactionManager.address,
-            },
+            transactionManagerAccount: await getUserAddress(
+              transactionManager.address,
+            ),
             credentialId,
             transports: [Transports.Internal, Transports.Hybrid],
           },
@@ -91,8 +91,11 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
 
         // Verify Secp256r1Key was added as member
         const settings = await getSettingsFromIndex(ctx.index);
-        const accountData = await fetchSettingsAccountData(settings);
-        const userAccountData = await fetchUserAccountData(secp256r1Key);
+        const accountData = (await fetchSettings(getSolanaRpc(), settings))
+          .data;
+        const userAccountData = (
+          await fetchUser(getSolanaRpc(), await getUserAddress(secp256r1Key))
+        ).data;
         const settingsIndex =
           userAccountData.wallets.find((x) => x.isDelegate) ?? null;
 
@@ -137,13 +140,11 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         );
         const createUserAccountIx = await createUserAccounts({
           payer: ctx.payer,
-          createUserArgs: [
-            {
-              member: transactionManager,
-              role: UserRole.TransactionManager,
-              transactionManagerUrl: TEST_TRANSACTION_MANAGER_URL,
-            },
-          ],
+          createUserArgs: {
+            member: transactionManager,
+            role: UserRole.TransactionManager,
+            transactionManagerUrl: TEST_TRANSACTION_MANAGER_URL,
+          },
         });
 
         await sendTransaction(
@@ -178,7 +179,6 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         );
 
         const changeConfigArgs = await prepareChangeConfigArgs({
-          compressed: ctx.compressed,
           settings: await getSettingsFromIndex(ctx.index),
           configActionsArgs: [
             {
@@ -218,7 +218,8 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
 
         // Verify payer was added as member
         const settings = await getSettingsFromIndex(ctx.index);
-        const accountData = await fetchSettingsAccountData(settings);
+        const accountData = (await fetchSettings(getSolanaRpc(), settings))
+          .data;
         expect(
           accountData.members.length,
           "Wallet should have at least two members after adding payer",

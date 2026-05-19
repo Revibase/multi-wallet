@@ -1,10 +1,5 @@
-import type { AccountMeta, Address, TransactionSigner } from "gill";
-import {
-  getTransactionBufferExecuteCompressedInstruction,
-  getTransactionBufferExecuteInstruction,
-  type ProofArgsArgs,
-  type SettingsMutArgs,
-} from "../../generated";
+import type { Address, TransactionSigner } from "gill";
+import { getTransactionBufferExecuteInstruction } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
 import { extractSecp256r1VerificationArgs } from "../../utils/transaction/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
@@ -13,17 +8,10 @@ export function executeTransactionBuffer({
   executor,
   transactionBufferAddress,
   settings,
-  compressedArgs,
 }: {
   executor?: TransactionSigner | SignedSecp256r1Key;
   transactionBufferAddress: Address;
   settings: Address;
-  compressedArgs: {
-    settingsMutArgs: SettingsMutArgs;
-    compressedProofArgs: ProofArgsArgs;
-    remainingAccounts: AccountMeta[];
-    payer: TransactionSigner;
-  } | null;
 }) {
   const { domainConfig, verifyArgs, signature, message, publicKey } =
     extractSecp256r1VerificationArgs(executor);
@@ -40,31 +28,16 @@ export function executeTransactionBuffer({
     );
   }
 
-  if (compressedArgs) {
-    instructions.push(
-      getTransactionBufferExecuteCompressedInstruction({
-        transactionBuffer: transactionBufferAddress,
-        secp256r1VerifyArgs: verifyArgs,
-        domainConfig,
-        executor: executor instanceof SignedSecp256r1Key ? undefined : executor,
-        settingsMutArgs: compressedArgs.settingsMutArgs,
-        payer: compressedArgs.payer,
-        compressedProofArgs: compressedArgs.compressedProofArgs,
-        remainingAccounts: compressedArgs.remainingAccounts,
-      }),
-    );
-  } else {
-    instructions.push(
-      getTransactionBufferExecuteInstruction({
-        settings,
-        transactionBuffer: transactionBufferAddress,
-        secp256r1VerifyArgs: verifyArgs,
-        domainConfig,
-        executor: executor instanceof SignedSecp256r1Key ? undefined : executor,
-        remainingAccounts: [],
-      }),
-    );
-  }
+  instructions.push(
+    getTransactionBufferExecuteInstruction({
+      settings,
+      transactionBuffer: transactionBufferAddress,
+      secp256r1VerifyArgs: verifyArgs,
+      domainConfig,
+      executor: executor instanceof SignedSecp256r1Key ? undefined : executor,
+      remainingAccounts: [],
+    }),
+  );
 
   return instructions;
 }

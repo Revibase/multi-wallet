@@ -1,5 +1,6 @@
 import {
   TreeType,
+  type AddressWithTree,
   type CompressedAccount,
   type HashWithTree,
   type ParsedTokenAccount,
@@ -20,6 +21,7 @@ import {
   some,
   type Address,
   type Instruction,
+  type OptionOrNullable,
   type ReadonlyUint8Array,
   type TransactionSigner,
 } from "gill";
@@ -29,35 +31,24 @@ import {
 } from "gill/programs";
 import { ValidationError } from "../../errors";
 import {
-  getCompressedSettingsDecoder,
   getExtensionStructDecoder,
-  getTokenTransferIntentCompressedInstruction,
   getTokenTransferIntentInstruction,
-  type CompressedSettings,
+  type CompressedProofArgs,
   type CompressedTokenArgsArgs,
-  type SettingsMutArgs,
   type SplInterfacePdaArgsArgs,
 } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
-import type { AccountCache } from "../../types/cache";
 import {
-  getCompressedSettingsAddress,
   getLightProtocolRpc,
+  getSolanaRpc,
   getWalletAddressFromSettings,
 } from "../../utils";
-import {
-  convertToCompressedProofArgs,
-  fetchCachedAccountInfo,
-  getCompressedAccountHashes,
-  getCompressedAccountMutArgs,
-  getValidityProofWithRetry,
-  getVersionFromDiscriminator,
-} from "../../utils/compressed/internal";
-import { PackedAccounts } from "../../utils/compressed/packedAccounts";
+import { retryWithBackoff } from "../../utils/retry";
 import {
   buildSignerAccounts,
   getDeduplicatedSigners,
 } from "../../utils/transaction/internal";
+import { PackedAccounts } from "../../utils/transaction/packedAccounts";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
 const compressibleConfig = address(
@@ -72,7 +63,6 @@ const ctokenProgramAddress = address(
 /** Input parameters for token transfer intent */
 export type TokenTransferIntentParams = {
   settings: Address;
-  settingsAddressTreeIndex?: number;
   destination: Address;
   mint: Address;
   amount: number | bigint;
@@ -80,8 +70,6 @@ export type TokenTransferIntentParams = {
   tokenProgram: Address;
   payer: TransactionSigner;
   splInterfacePdaArgs?: SplInterfacePdaArgsArgs;
-  compressed?: boolean;
-  cachedAccounts?: AccountCache;
 };
 
 type HashWithTreeAndAccount = HashWithTree & {
@@ -108,16 +96,13 @@ type BalancesAndDestinations = {
 
 export async function tokenTransferIntent({
   settings,
-  settingsAddressTreeIndex,
   destination,
   mint,
   signers,
-  cachedAccounts,
   amount,
   payer,
   tokenProgram,
   splInterfacePdaArgs = { index: 0, restricted: false },
-  compressed = false,
 }: TokenTransferIntentParams): Promise<Instruction[]> {
   const dedupSigners = getDeduplicatedSigners(signers);
   const walletAddress = await getWalletAddressFromSettings(settings);
@@ -130,15 +115,7 @@ export async function tokenTransferIntent({
     splInterfacePdaArgs,
   );
 
-  const [accountInfos, compressedSettings] = await Promise.all([
-    fetchAccountInfos(addresses, cachedAccounts),
-    getCompressedSettings(
-      compressed,
-      settings,
-      settingsAddressTreeIndex,
-      cachedAccounts,
-    ),
-  ]);
+  const accountInfos = await fetchAccountInfos(addresses);
 
   const balances = computeBalancesAndDestinations(
     accountInfos,
@@ -154,12 +131,10 @@ export async function tokenTransferIntent({
         balances.splBalance,
         balances.cTokenBalance,
         BigInt(amount),
-        compressed,
       ),
       checkIfSplInterfaceNeedsToBeInitialized(
         balances.requireSplInterface,
         addresses.splInterfacePda,
-        cachedAccounts,
       ),
     ]);
 
@@ -183,14 +158,10 @@ export async function tokenTransferIntent({
     ]);
   }
 
-  const hashesWithTree = buildHashesWithTree(
-    compressedTokenAccounts,
-    compressedSettings,
-  );
-  const { proof, settingsMutArgs } = await resolveCompressedProofAndSettings(
+  const hashesWithTree = buildHashesWithTree(compressedTokenAccounts);
+  const { proof } = await resolveCompressedProofAndSettings(
     packedAccounts,
     hashesWithTree,
-    compressedSettings,
   );
 
   const sourceCompressedTokenAccounts = buildSourceCompressedTokenAccounts(
@@ -212,66 +183,33 @@ export async function tokenTransferIntent({
     instructions.push(getSecp256r1VerifyInstruction(secp256r1VerifyInput));
   }
 
-  if (compressed) {
-    if (!settingsMutArgs) {
-      throw new Error("Payer not found or proof args is missing.");
-    }
-    instructions.push(
-      getTokenTransferIntentCompressedInstruction({
-        payer,
-        source: walletAddress,
-        sourceSplTokenAccount: addresses.sourceSplAta,
-        sourceCtokenTokenAccount: addresses.sourceCtokenAta,
-        destination,
-        destinationSplTokenAccount: balances.destinationSplTokenAccount,
-        destinationCtokenTokenAccount: balances.destinationCtokenTokenAccount,
-        tokenProgram,
-        mint,
-        splInterfacePda: balances.requireSplInterface
-          ? addresses.splInterfacePda
-          : undefined,
-        compressibleConfig,
-        rentSponsor: balances.requireRentSponsor ? rentSponsor : undefined,
-        amount,
-        signers: transactionSyncSigners,
-        sourceCompressedTokenAccounts,
-        compressedProofArgs,
-        splInterfacePdaArgs: balances.requireSplInterface
-          ? some(splInterfacePdaArgs)
-          : none(),
-        settingsMutArgs,
-        remainingAccounts,
-      }),
-    );
-  } else {
-    instructions.push(
-      getTokenTransferIntentInstruction({
-        settings,
-        payer,
-        source: walletAddress,
-        sourceSplTokenAccount: addresses.sourceSplAta,
-        sourceCtokenTokenAccount: addresses.sourceCtokenAta,
-        destination,
-        destinationSplTokenAccount: balances.destinationSplTokenAccount,
-        destinationCtokenTokenAccount: balances.destinationCtokenTokenAccount,
-        tokenProgram,
-        mint,
-        splInterfacePda: balances.requireSplInterface
-          ? addresses.splInterfacePda
-          : undefined,
-        compressibleConfig,
-        rentSponsor: balances.requireRentSponsor ? rentSponsor : undefined,
-        amount,
-        signers: transactionSyncSigners,
-        sourceCompressedTokenAccounts,
-        compressedProofArgs,
-        splInterfacePdaArgs: balances.requireSplInterface
-          ? some(splInterfacePdaArgs)
-          : none(),
-        remainingAccounts,
-      }),
-    );
-  }
+  instructions.push(
+    getTokenTransferIntentInstruction({
+      settings,
+      payer,
+      source: walletAddress,
+      sourceSplTokenAccount: addresses.sourceSplAta,
+      sourceCtokenTokenAccount: addresses.sourceCtokenAta,
+      destination,
+      destinationSplTokenAccount: balances.destinationSplTokenAccount,
+      destinationCtokenTokenAccount: balances.destinationCtokenTokenAccount,
+      tokenProgram,
+      mint,
+      splInterfacePda: balances.requireSplInterface
+        ? addresses.splInterfacePda
+        : undefined,
+      compressibleConfig,
+      rentSponsor: balances.requireRentSponsor ? rentSponsor : undefined,
+      amount,
+      signers: transactionSyncSigners,
+      sourceCompressedTokenAccounts,
+      compressedProofArgs,
+      splInterfacePdaArgs: balances.requireSplInterface
+        ? some(splInterfacePdaArgs)
+        : none(),
+      remainingAccounts,
+    }),
+  );
 
   return instructions;
 }
@@ -330,15 +268,18 @@ async function resolveAddresses(
   };
 }
 
-async function fetchAccountInfos(
-  addresses: ResolvedAddresses,
-  cachedAccounts?: AccountCache,
-) {
+async function fetchAccountInfos(addresses: ResolvedAddresses) {
   const [destinationSplAtaInfo, sourceSplAtaInfo, sourceCTokenAtaInfo] =
     await Promise.all([
-      fetchCachedAccountInfo(addresses.destinationSplAta, cachedAccounts),
-      fetchCachedAccountInfo(addresses.sourceSplAta, cachedAccounts),
-      fetchCachedAccountInfo(addresses.sourceCtokenAta, cachedAccounts),
+      getSolanaRpc()
+        .getAccountInfo(addresses.destinationSplAta, { encoding: "base64" })
+        .send(),
+      getSolanaRpc()
+        .getAccountInfo(addresses.sourceSplAta, { encoding: "base64" })
+        .send(),
+      getSolanaRpc()
+        .getAccountInfo(addresses.sourceCtokenAta, { encoding: "base64" })
+        .send(),
     ]);
   return {
     destinationSplAtaInfo,
@@ -399,7 +340,6 @@ function computeBalancesAndDestinations(
 
 function buildHashesWithTree(
   compressedTokenAccounts: ParsedTokenAccount[],
-  compressedSettings: HashWithTreeAndAccount | null,
 ): HashWithTreeAndAccount[] {
   const hashesWithTree: HashWithTreeAndAccount[] = [];
   compressedTokenAccounts.forEach((x) =>
@@ -411,41 +351,26 @@ function buildHashesWithTree(
       address: x.compressedAccount.address,
     }),
   );
-  if (compressedSettings) {
-    hashesWithTree.push(compressedSettings);
-  }
+
   return hashesWithTree;
 }
 
 async function resolveCompressedProofAndSettings(
   packedAccounts: PackedAccounts,
   hashesWithTree: HashWithTreeAndAccount[],
-  compressedSettings: HashWithTreeAndAccount | null,
 ): Promise<{
   proof: ValidityProofWithContext | null;
-  settingsMutArgs: SettingsMutArgs | null;
 }> {
-  let settingsMutArgs: SettingsMutArgs | null = null;
   let proof: ValidityProofWithContext | null = null;
 
   if (hashesWithTree.length === 0) {
-    return { proof, settingsMutArgs };
+    return { proof };
   }
 
   await packedAccounts.addSystemAccounts();
   proof = await getValidityProofWithRetry(hashesWithTree, []);
-  if (compressedSettings) {
-    settingsMutArgs = getCompressedAccountMutArgs<CompressedSettings>(
-      packedAccounts,
-      proof!.treeInfos.slice(-1),
-      proof!.leafIndices.slice(-1),
-      proof!.rootIndices.slice(-1),
-      proof!.proveByIndices.slice(-1),
-      hashesWithTree.slice(-1),
-      getCompressedSettingsDecoder(),
-    )[0];
-  }
-  return { proof, settingsMutArgs };
+
+  return { proof };
 }
 
 function buildSourceCompressedTokenAccounts(
@@ -482,13 +407,11 @@ function buildSourceCompressedTokenAccounts(
 async function checkIfSplInterfaceNeedsToBeInitialized(
   requireSplInterface: boolean,
   splInterfacePda: Address,
-  cachedAccounts?: AccountCache,
 ): Promise<boolean> {
   if (!requireSplInterface) return false;
-  const { value } = await fetchCachedAccountInfo(
-    splInterfacePda,
-    cachedAccounts,
-  );
+  const { value } = await getSolanaRpc()
+    .getAccountInfo(splInterfacePda, { encoding: "base64" })
+    .send();
   return !value;
 }
 
@@ -498,7 +421,6 @@ async function getCompressedTokenAccounts(
   splBalance: bigint,
   cTokenBalance: bigint,
   total: bigint,
-  compressed: boolean,
 ) {
   const transferAmount = total - splBalance - cTokenBalance;
   if (transferAmount <= 0) {
@@ -524,7 +446,7 @@ async function getCompressedTokenAccounts(
   const selectedAccounts = selectMinCompressedTokenAccountsForDecompression(
     accounts,
     Number(transferAmount),
-    compressed ? 3 : 4,
+    4,
     { treeType: TreeType.StateV2 },
   );
 
@@ -601,24 +523,6 @@ function selectMinCompressedTokenAccountsForDecompression(
   return selectedAccounts;
 }
 
-async function getCompressedSettings(
-  compressed: boolean,
-  settings: Address,
-  settingsAddressTreeIndex?: number,
-  cachedAccounts?: AccountCache,
-): Promise<HashWithTreeAndAccount | null> {
-  if (!compressed) return null;
-  const { address: settingsAddress } = await getCompressedSettingsAddress(
-    settings,
-    settingsAddressTreeIndex,
-  );
-  const hashes = await getCompressedAccountHashes(
-    [{ address: settingsAddress, type: "Settings" }],
-    cachedAccounts,
-  );
-  return (hashes[0] ?? null) as HashWithTreeAndAccount | null;
-}
-
 function parseTokenAmount(data: ReadonlyUint8Array): {
   amount: number | bigint;
 } | null {
@@ -632,4 +536,55 @@ function parseTokenAmount(data: ReadonlyUint8Array): {
     console.error("Token data parsing error:", error);
     return null;
   }
+}
+enum TokenDataVersion {
+  V1 = 1,
+  V2 = 2,
+  ShaFlat = 3,
+}
+
+export function getVersionFromDiscriminator(
+  discriminator: number[] | undefined,
+): number {
+  if (!discriminator || discriminator.length < 8) {
+    return TokenDataVersion.ShaFlat;
+  }
+  if (discriminator[0] === 2) {
+    return TokenDataVersion.V1;
+  }
+  const versionByte = discriminator[7];
+  if (versionByte === 3) {
+    return TokenDataVersion.V2;
+  }
+  if (versionByte === 4) {
+    return TokenDataVersion.ShaFlat;
+  }
+  return TokenDataVersion.ShaFlat;
+}
+
+function convertToCompressedProofArgs(
+  validityProof: ValidityProofWithContext | null,
+  offset: number,
+) {
+  const proof: OptionOrNullable<CompressedProofArgs> =
+    validityProof?.compressedProof
+      ? some({
+          a: new Uint8Array(validityProof.compressedProof.a),
+          b: new Uint8Array(validityProof.compressedProof.b),
+          c: new Uint8Array(validityProof.compressedProof.c),
+        })
+      : null;
+  return {
+    proof,
+    lightCpiAccountsStartIndex: offset,
+  };
+}
+
+async function getValidityProofWithRetry(
+  hashes?: HashWithTree[] | undefined,
+  newAddresses?: AddressWithTree[],
+): Promise<ValidityProofWithContext> {
+  return retryWithBackoff(() =>
+    getLightProtocolRpc().getValidityProofV0(hashes, newAddresses),
+  );
 }

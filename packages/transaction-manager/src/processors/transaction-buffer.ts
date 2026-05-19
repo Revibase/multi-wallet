@@ -1,7 +1,5 @@
 import {
-  getTransactionBufferCreateCompressedInstructionDataDecoder,
   getTransactionBufferCreateInstructionDataDecoder,
-  getTransactionExecuteSyncCompressedInstructionDataDecoder,
   getTransactionExecuteSyncInstructionDataDecoder,
   MultiWalletInstruction,
   type TransactionAuthDetails,
@@ -15,7 +13,6 @@ import type {
 } from "../types";
 import { verifyTransactionBufferHash } from "../utils/signature-verification";
 import {
-  extractSettingsFromCompressed,
   getSecp256r1Signers,
   mapExpectedSigners,
   parseInnerTransaction,
@@ -46,27 +43,18 @@ export async function processTransactionBufferAndExecute(
   validateTransactionManagerAccountRole(instruction, transactionManagerConfig);
 
   const isBufferCreateInstruction =
-    instructionType === MultiWalletInstruction.TransactionBufferCreate ||
-    instructionType ===
-      MultiWalletInstruction.TransactionBufferCreateCompressed;
-
-  const isCompressedInstruction =
-    instructionType ===
-      MultiWalletInstruction.TransactionBufferCreateCompressed ||
-    instructionType === MultiWalletInstruction.TransactionExecuteSyncCompressed;
+    instructionType === MultiWalletInstruction.TransactionBufferCreate;
 
   let processingResult: ProcessingResult;
 
   if (isBufferCreateInstruction) {
     processingResult = await processBufferCreate(
       instruction,
-      isCompressedInstruction,
       transactionMessageBytes,
     );
   } else {
     processingResult = await processExecuteSync(
       instruction,
-      isCompressedInstruction,
       secp256r1VerifyDataList,
       instructionIndex,
     );
@@ -101,7 +89,6 @@ function validateTransactionManagerAccountRole(
 
 async function processBufferCreate(
   instruction: Instruction,
-  isCompressedInstruction: boolean,
   transactionMessageBytes?: string,
 ): Promise<ProcessingResult> {
   if (!transactionMessageBytes) {
@@ -115,47 +102,7 @@ async function processBufferCreate(
     transactionMessageBytes,
   ) as Uint8Array<ArrayBuffer>;
 
-  if (isCompressedInstruction) {
-    return processCompressedBufferCreate(instruction, transactionMessage);
-  }
-
   return processStandardBufferCreate(instruction, transactionMessage);
-}
-
-async function processCompressedBufferCreate(
-  instruction: Instruction,
-  transactionMessage: Uint8Array<ArrayBuffer>,
-): Promise<ProcessingResult> {
-  const decodedInstructionData =
-    getTransactionBufferCreateCompressedInstructionDataDecoder().decode(
-      instruction.data!,
-    );
-
-  const settingsAddress = await extractSettingsFromCompressed(
-    decodedInstructionData.settingsReadonlyArgs,
-    "Settings account is required for compressed transaction buffer create",
-  );
-
-  const expectedSigners = mapExpectedSigners(
-    decodedInstructionData.args.expectedSigners,
-  );
-
-  const isHashValid = await verifyTransactionBufferHash(
-    decodedInstructionData.args,
-    transactionMessage,
-  );
-  if (!isHashValid) {
-    throw new Error("Hash mismatch.");
-  }
-
-  const innerInstructions =
-    await parseTransactionMessageBytes(transactionMessage);
-
-  return {
-    settingsAddress,
-    signers: expectedSigners,
-    instructionsToVerify: innerInstructions,
-  };
 }
 
 async function processStandardBufferCreate(
@@ -169,11 +116,11 @@ async function processStandardBufferCreate(
 
   const settingsAddress = instruction.accounts![0].address.toString();
   const expectedSigners = mapExpectedSigners(
-    decodedInstructionData.args.expectedSigners,
+    decodedInstructionData.expectedSigners,
   );
 
   const isHashValid = await verifyTransactionBufferHash(
-    decodedInstructionData.args,
+    decodedInstructionData,
     transactionMessage,
   );
   if (!isHashValid) {
@@ -192,7 +139,6 @@ async function processStandardBufferCreate(
 
 async function processExecuteSync(
   instruction: Instruction,
-  isCompressedInstruction: boolean,
   secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
   instructionIndex: number,
 ): Promise<ProcessingResult> {
@@ -200,64 +146,11 @@ async function processExecuteSync(
     throw new Error("Invalid instruction");
   }
 
-  if (isCompressedInstruction) {
-    return processCompressedExecuteSync(
-      instruction,
-      secp256r1VerifyDataList,
-      instructionIndex,
-    );
-  }
-
   return processStandardExecuteSync(
     instruction,
     secp256r1VerifyDataList,
     instructionIndex,
   );
-}
-
-async function processCompressedExecuteSync(
-  instruction: Instruction,
-  secp256r1VerifyDataList: Secp256r1VerifyData[] | undefined,
-  instructionIndex: number,
-): Promise<ProcessingResult> {
-  if (!instruction.accounts) {
-    throw new Error("Invalid instruction accounts.");
-  }
-  const decodedInstructionData =
-    getTransactionExecuteSyncCompressedInstructionDataDecoder().decode(
-      instruction.data!,
-    );
-
-  const settingsAddress = await extractSettingsFromCompressed(
-    decodedInstructionData.settingsMutArgs,
-    "Settings account is required for compressed transaction execute",
-  );
-
-  const sepcp256r1Signers = await getSecp256r1Signers(
-    secp256r1VerifyDataList,
-    instructionIndex,
-    decodedInstructionData.signers
-      .filter((x) => x.__kind === "Secp256r1")
-      .map((x) => x.fields[0]),
-  );
-
-  const numFixedAccounts = 3;
-  const addressSigners = decodedInstructionData.signers
-    .filter((x) => x.__kind === "Ed25519")
-    .map((x) => ({
-      signer: instruction.accounts![numFixedAccounts + x.fields[0]].address,
-    }));
-
-  const innerInstructions = parseInnerTransaction(
-    instruction.accounts,
-    decodedInstructionData.transactionMessage,
-  );
-
-  return {
-    settingsAddress,
-    signers: sepcp256r1Signers.concat(addressSigners),
-    instructionsToVerify: innerInstructions,
-  };
 }
 
 async function processStandardExecuteSync(
@@ -290,7 +183,7 @@ async function processStandardExecuteSync(
 
   const innerInstructions = parseInnerTransaction(
     instruction.accounts,
-    decodedInstructionData.transactionMessage,
+    decodedInstructionData,
   );
 
   return {
