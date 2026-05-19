@@ -18,9 +18,7 @@ import {
 } from "gill/programs";
 import {
   processChangeConfig,
-  processChangeConfigCompressed,
-  processCompressedTransferIntent,
-  processCreateUserAccounts,
+  processCreateUserAccount,
   processEditTransactionManagerUrl,
   processTransactionBufferAndExecute,
   processTransferIntent,
@@ -162,9 +160,7 @@ async function routeInstruction(
   getClientDetails?: (clientOrigin: string) => Promise<WellKnownClientEntry>,
 ) {
   switch (instructionType) {
-    case MultiWalletInstruction.DecompressSettingsAccount:
     case MultiWalletInstruction.TransactionBufferClose:
-    case MultiWalletInstruction.TransactionBufferCloseCompressed:
       return null;
 
     case MultiWalletInstruction.ChangeConfig:
@@ -177,18 +173,8 @@ async function routeInstruction(
         getClientDetails,
       );
 
-    case MultiWalletInstruction.ChangeConfigCompressed:
-      return processChangeConfigCompressed(
-        instruction,
-        secp256r1VerifyDataList,
-        instructionIndex,
-        authResponses,
-        transactionManagerConfig,
-        getClientDetails,
-      );
-
-    case MultiWalletInstruction.CreateUserAccounts:
-      return processCreateUserAccounts(instruction, transactionManagerConfig);
+    case MultiWalletInstruction.CreateUserAccount:
+      return processCreateUserAccount(instruction, transactionManagerConfig);
 
     case MultiWalletInstruction.EditTransactionManagerUrl:
       return processEditTransactionManagerUrl(
@@ -208,22 +194,8 @@ async function routeInstruction(
         getClientDetails,
       );
 
-    case MultiWalletInstruction.NativeTransferIntentCompressed:
-    case MultiWalletInstruction.TokenTransferIntentCompressed:
-      return processCompressedTransferIntent(
-        instructionType,
-        instruction,
-        secp256r1VerifyDataList,
-        instructionIndex,
-        authResponses,
-        transactionManagerConfig,
-        getClientDetails,
-      );
-
     case MultiWalletInstruction.TransactionBufferCreate:
-    case MultiWalletInstruction.TransactionBufferCreateCompressed:
     case MultiWalletInstruction.TransactionExecuteSync:
-    case MultiWalletInstruction.TransactionExecuteSyncCompressed:
       return processTransactionBufferAndExecute(
         instruction,
         instructionType,

@@ -13,13 +13,9 @@ import {
   voteTransactionBuffer,
   type Secp256r1VerifyInput,
 } from "../instructions";
-import { SignedSecp256r1Key, type AccountCache } from "../types";
+import { SignedSecp256r1Key } from "../types";
 import type { TransactionDetails } from "../types/transaction";
 import { getSecp256r1MessageHash, getTransactionBufferAddress } from "../utils";
-import {
-  constructSettingsProofArgs,
-  convertToCompressedProofArgs,
-} from "../utils/compressed/internal";
 import {
   convertPubkeyToMemberkey,
   getDeduplicatedSigners,
@@ -28,7 +24,6 @@ import {
 interface CreateTransactionBundleArgs {
   payer: TransactionSigner;
   settings: Address;
-  settingsAddressTreeIndex?: number;
   transactionMessageBytes: Uint8Array<ArrayBuffer>;
   creator: TransactionSigner | SignedSecp256r1Key;
   additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
@@ -36,27 +31,22 @@ interface CreateTransactionBundleArgs {
   additionalSigners?: TransactionSigner[];
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   jitoBundlesTipAmount?: number;
-  compressed?: boolean;
   chunkSize?: number;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
-  cachedAccounts?: AccountCache;
 }
 
 export async function prepareTransactionBundle({
   payer,
   settings,
-  settingsAddressTreeIndex,
   transactionMessageBytes,
   creator,
   executor,
   secp256r1VerifyInput,
   jitoBundlesTipAmount,
   addressesByLookupTableAddress,
-  compressed = false,
   additionalVoters = [],
   additionalSigners = [],
   chunkSize = Math.ceil(transactionMessageBytes.length / 2),
-  cachedAccounts,
 }: CreateTransactionBundleArgs): Promise<TransactionDetails[]> {
   const bufferIndex = Math.floor(Math.random() * 255);
   const transactionBufferAddress = await getTransactionBufferAddress(
@@ -75,29 +65,6 @@ export async function prepareTransactionBundle({
   const finalBufferHash = sha256(
     transactionMessageBytes,
   ) as Uint8Array<ArrayBuffer>;
-
-  const { settingsReadonlyArgs, settingsMutArgs, proof, packedAccounts } =
-    await constructSettingsProofArgs(
-      compressed,
-      settings,
-      settingsAddressTreeIndex,
-      false,
-      cachedAccounts,
-    );
-  const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
-  const compressedArgs =
-    proof && settingsReadonlyArgs && settingsMutArgs
-      ? {
-          settingsReadonlyArgs,
-          settingsMutArgs,
-          compressedProofArgs: convertToCompressedProofArgs(
-            proof,
-            systemOffset,
-          ),
-          remainingAccounts,
-          payer,
-        }
-      : null;
 
   const expectedSigners = getDeduplicatedSigners([
     creator,
@@ -121,7 +88,7 @@ export async function prepareTransactionBundle({
     creator,
     preauthorizeExecution: !executor,
     bufferExtendHashes: chunksHash,
-    compressedArgs,
+
     expectedSigners,
   });
 
@@ -130,7 +97,6 @@ export async function prepareTransactionBundle({
       transactionMessageBytes: bytes,
       transactionBufferAddress,
       settings,
-      compressed,
     }),
   );
 
@@ -139,12 +105,10 @@ export async function prepareTransactionBundle({
       voter,
       transactionBufferAddress,
       settings,
-      compressedArgs,
     }),
   );
 
   const executeApprovalIxs = executeTransactionBuffer({
-    compressedArgs,
     settings,
     executor,
     transactionBufferAddress,
@@ -152,7 +116,6 @@ export async function prepareTransactionBundle({
 
   const { instructions: executeIxs, addressLookupTableAccounts } =
     await executeTransaction({
-      compressed,
       settings,
       transactionMessageBytes,
       transactionBufferAddress,

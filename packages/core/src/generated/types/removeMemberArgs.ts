@@ -10,46 +10,30 @@ import {
   combineCodec,
   getStructDecoder,
   getStructEncoder,
-  type Codec,
-  type Decoder,
-  type Encoder,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
 } from "gill";
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
-  getUserReadOnlyOrMutateArgsDecoder,
-  getUserReadOnlyOrMutateArgsEncoder,
   type MemberKey,
   type MemberKeyArgs,
-  type UserReadOnlyOrMutateArgs,
-  type UserReadOnlyOrMutateArgsArgs,
 } from ".";
 
-export type RemoveMemberArgs = {
-  memberKey: MemberKey;
-  userArgs: UserReadOnlyOrMutateArgs;
-};
+export type RemoveMemberArgs = { memberKey: MemberKey };
 
-export type RemoveMemberArgsArgs = {
-  memberKey: MemberKeyArgs;
-  userArgs: UserReadOnlyOrMutateArgsArgs;
-};
+export type RemoveMemberArgsArgs = { memberKey: MemberKeyArgs };
 
-export function getRemoveMemberArgsEncoder(): Encoder<RemoveMemberArgsArgs> {
-  return getStructEncoder([
-    ["memberKey", getMemberKeyEncoder()],
-    ["userArgs", getUserReadOnlyOrMutateArgsEncoder()],
-  ]);
+export function getRemoveMemberArgsEncoder(): FixedSizeEncoder<RemoveMemberArgsArgs> {
+  return getStructEncoder([["memberKey", getMemberKeyEncoder()]]);
 }
 
-export function getRemoveMemberArgsDecoder(): Decoder<RemoveMemberArgs> {
-  return getStructDecoder([
-    ["memberKey", getMemberKeyDecoder()],
-    ["userArgs", getUserReadOnlyOrMutateArgsDecoder()],
-  ]);
+export function getRemoveMemberArgsDecoder(): FixedSizeDecoder<RemoveMemberArgs> {
+  return getStructDecoder([["memberKey", getMemberKeyDecoder()]]);
 }
 
-export function getRemoveMemberArgsCodec(): Codec<
+export function getRemoveMemberArgsCodec(): FixedSizeCodec<
   RemoveMemberArgsArgs,
   RemoveMemberArgs
 > {

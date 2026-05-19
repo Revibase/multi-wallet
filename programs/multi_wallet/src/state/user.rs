@@ -1,58 +1,23 @@
-use crate::state::SettingsIndexWithAddress;
 use crate::utils::{KeyType, Transports, UserRole};
-use crate::{AddMemberArgs, MemberKey, MultisigError, RemoveMemberArgs, SEED_USER};
+use crate::{AddMemberArgs, MemberKey, MultisigError, RemoveMemberArgs, ID, SEED_USER};
 use anchor_lang::prelude::*;
-use light_sdk::address::NewAddressParamsAssignedPacked;
-use light_sdk::cpi::v2::CpiAccounts;
-use light_sdk::instruction::account_meta::{CompressedAccountMeta, CompressedAccountMetaReadOnly};
-use light_sdk::{
-    account::LightAccount,
-    address::v2::derive_address,
-    instruction::PackedAddressTreeInfo,
-    {AnchorDiscriminator, LightDiscriminator},
-};
 
-#[derive(Default, AnchorDeserialize, AnchorSerialize, AnchorDiscriminator, PartialEq, Debug)]
+#[account]
 pub struct User {
     pub domain_config: Option<Pubkey>,
     pub member: MemberKey,
     pub credential_id: Option<Vec<u8>>,
     pub transports: Option<Vec<Transports>>,
-    pub wallets: Vec<SettingsIndexWithAddressAndDelegateInfo>,
+    pub wallets: Vec<SettingsIndexWithDelegateInfo>,
     pub role: UserRole,
     pub transaction_manager_url: Option<String>,
-    pub user_address_tree_index: u8,
+    pub bump: u8,
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, PartialEq, Debug)]
-pub struct SettingsIndexWithAddressAndDelegateInfo {
+#[derive(AnchorDeserialize, AnchorSerialize, PartialEq, Debug, Clone)]
+pub struct SettingsIndexWithDelegateInfo {
     pub index: u128,
-    pub settings_address_tree_index: u8,
     pub is_delegate: bool,
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize, PartialEq)]
-pub struct UserCreationArgs {
-    pub address_tree_info: PackedAddressTreeInfo,
-    pub output_state_tree_index: u8,
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize, PartialEq, Debug)]
-pub struct UserMutArgs {
-    pub account_meta: CompressedAccountMeta,
-    pub data: User,
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize, PartialEq, Debug)]
-pub struct UserReadOnlyArgs {
-    pub account_meta: CompressedAccountMetaReadOnly,
-    pub data: User,
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq)]
-pub enum UserReadOnlyOrMutateArgs {
-    Read(UserReadOnlyArgs),
-    Mutate(UserMutArgs),
 }
 
 #[derive(PartialEq)]
@@ -62,6 +27,22 @@ pub enum UserWalletOperation {
 }
 
 impl User {
+    pub fn size(
+        credential_id_len: usize,
+        transports_len: usize,
+        transaction_manager_url_len: usize,
+    ) -> usize {
+        8                                   // discriminator
+        + 1 + 32                            // optional domain config
+        + 34                                // member key
+        + 1 + 4 + credential_id_len         // optional credential id
+        + 1 + 4 + transports_len            // optional transports
+        + 4 + 16 + 1                        // list of settings index with delegate info
+        + 1                                 // user role
+        + 1 + 4 + transaction_manager_url_len   // transaction manager url
+        + 1 //bump
+    }
+
     pub fn invariant(&self) -> Result<()> {
         if self.role.eq(&UserRole::TransactionManager) {
             require!(
@@ -147,182 +128,82 @@ impl User {
         Ok(())
     }
 
-    pub fn create_user_account(
-        user_creation_args: UserCreationArgs,
-        address_tree: &Pubkey,
-        user: User,
-        index: Option<u8>,
-    ) -> Result<(LightAccount<User>, NewAddressParamsAssignedPacked)> {
-        let member_seed = user.member.get_seed()?;
-        let (address, address_seed) =
-            derive_address(&[SEED_USER, &member_seed], address_tree, &crate::ID);
-
-        let new_address_params = user_creation_args
-            .address_tree_info
-            .into_new_address_params_assigned_packed(address_seed, index);
-
-        let mut user_account = LightAccount::<User>::new_init(
-            &crate::ID,
-            Some(address),
-            user_creation_args.output_state_tree_index,
-        );
-
-        user_account.transports = user.transports;
-        user_account.credential_id = user.credential_id;
-        user_account.member = user.member;
-        user_account.wallets = user.wallets;
-        user_account.domain_config = user.domain_config;
-        user_account.role = user.role;
-        user_account.transaction_manager_url = user.transaction_manager_url;
-        user_account.user_address_tree_index = user.user_address_tree_index;
-
-        Ok((user_account, new_address_params))
-    }
-
     pub fn process_user_wallet_operations(
         wallet_operations: Vec<UserWalletOperation>,
-        settings_index_with_address: SettingsIndexWithAddress,
-        light_cpi_accounts: &CpiAccounts,
-    ) -> Result<Vec<LightAccount<User>>> {
-        let mut final_account_infos: Vec<LightAccount<User>> = vec![];
-
+        settings_index: u128,
+        remaining_accounts: &[AccountInfo],
+    ) -> Result<()> {
         for operation in wallet_operations.into_iter() {
             match operation {
                 UserWalletOperation::Remove(pk) => {
-                    final_account_infos.push(User::remove_wallet_from_user(
-                        pk.user_args,
-                        &settings_index_with_address,
-                        light_cpi_accounts,
-                    )?);
+                    User::remove_wallet_from_user(pk, settings_index, remaining_accounts)?;
                 }
                 UserWalletOperation::Add(pk) => {
-                    final_account_infos.push(User::add_wallet_to_user(
-                        pk.user_args,
-                        &settings_index_with_address,
-                        light_cpi_accounts,
-                    )?);
+                    User::add_wallet_to_user(pk, settings_index, remaining_accounts)?;
                 }
             }
         }
 
-        Ok(final_account_infos)
+        Ok(())
     }
 
     pub fn add_wallet_to_user(
-        user_args: UserReadOnlyOrMutateArgs,
-        settings_index_with_address: &SettingsIndexWithAddress,
-        light_cpi_accounts: &CpiAccounts,
-    ) -> Result<LightAccount<User>> {
-        match user_args {
-            UserReadOnlyOrMutateArgs::Mutate(user_mut_args) => {
-                let mut user_account = LightAccount::<User>::new_mut(
-                    &crate::ID,
-                    &user_mut_args.account_meta,
-                    user_mut_args.data,
-                )
-                .map_err(ProgramError::from)?;
+        args: AddMemberArgs,
+        settings_index: u128,
+        remaining_accounts: &[AccountInfo],
+    ) -> Result<()> {
+        let (user_account_pubkey, _) =
+            Pubkey::find_program_address(&[SEED_USER, &args.member_key.get_seed()?], &ID);
+        let user_account_info = remaining_accounts
+            .iter()
+            .find(|f| f.key.eq(&user_account_pubkey))
+            .ok_or(MultisigError::MissingAccount)?;
+        let mut data = user_account_info.try_borrow_mut_data()?;
+        let mut user = User::try_deserialize(&mut &data[..])?;
 
-                require!(
-                    user_account.role.ne(&UserRole::PermanentMember),
-                    MultisigError::OnlyOnePermanentMemberAllowed
-                );
+        require!(
+            user.role.ne(&UserRole::PermanentMember),
+            MultisigError::OnlyOnePermanentMemberAllowed
+        );
 
-                if user_account.role.eq(&UserRole::Member) {
-                    user_account
-                        .wallets
-                        .push(SettingsIndexWithAddressAndDelegateInfo {
-                            index: settings_index_with_address.index,
-                            settings_address_tree_index: settings_index_with_address
-                                .settings_address_tree_index,
-                            is_delegate: false,
-                        });
-                }
-
-                Ok(user_account)
-            }
-            UserReadOnlyOrMutateArgs::Read(user_readonly_args) => {
-                let user_account = LightAccount::<User>::new_read_only(
-                    &crate::ID,
-                    &user_readonly_args.account_meta,
-                    user_readonly_args.data,
-                    light_cpi_accounts
-                        .tree_pubkeys()
-                        .map_err(|_| MultisigError::MissingLightCpiAccounts)?
-                        .as_slice(),
-                )
-                .map_err(ProgramError::from)?;
-
-                require!(
-                    user_account.role.ne(&UserRole::PermanentMember),
-                    MultisigError::OnlyOnePermanentMemberAllowed
-                );
-
-                require!(
-                    user_account.role.ne(&UserRole::Member),
-                    MultisigError::MissingMutationUserArgs
-                );
-
-                Ok(user_account)
-            }
+        if user.role.eq(&UserRole::Member) {
+            user.wallets.push(SettingsIndexWithDelegateInfo {
+                index: settings_index,
+                is_delegate: false,
+            });
         }
+
+        user.invariant()?;
+        user.try_serialize(&mut &mut data[..])?;
+
+        Ok(())
     }
 
     fn remove_wallet_from_user(
-        user_args: UserReadOnlyOrMutateArgs,
-        settings_index_with_address: &SettingsIndexWithAddress,
-        light_cpi_accounts: &CpiAccounts,
-    ) -> Result<LightAccount<User>> {
-        match user_args {
-            UserReadOnlyOrMutateArgs::Mutate(user_mut_args) => {
-                let mut user_account = LightAccount::<User>::new_mut(
-                    &crate::ID,
-                    &user_mut_args.account_meta,
-                    user_mut_args.data,
-                )
-                .map_err(ProgramError::from)?;
+        args: RemoveMemberArgs,
+        settings_index: u128,
+        remaining_accounts: &[AccountInfo],
+    ) -> Result<()> {
+        let (user_account_pubkey, _) =
+            Pubkey::find_program_address(&[SEED_USER, &args.member_key.get_seed()?], &ID);
+        let user_account_info = remaining_accounts
+            .iter()
+            .find(|f| f.key.eq(&user_account_pubkey))
+            .ok_or(MultisigError::MissingAccount)?;
+        let mut data = user_account_info.try_borrow_mut_data()?;
+        let mut user = User::try_deserialize(&mut &data[..])?;
 
-                require!(
-                    user_account.role.ne(&UserRole::PermanentMember),
-                    MultisigError::PermanentMember
-                );
+        require!(
+            user.role.ne(&UserRole::PermanentMember),
+            MultisigError::PermanentMember
+        );
 
-                user_account.wallets.retain(|f| {
-                    f.index.ne(&settings_index_with_address.index)
-                        || f.settings_address_tree_index
-                            .ne(&settings_index_with_address.settings_address_tree_index)
-                });
+        user.wallets.retain(|f| f.index.ne(&settings_index));
 
-                Ok(user_account)
-            }
-            UserReadOnlyOrMutateArgs::Read(user_readonly_args) => {
-                let user_account = LightAccount::<User>::new_read_only(
-                    &crate::ID,
-                    &user_readonly_args.account_meta,
-                    user_readonly_args.data,
-                    light_cpi_accounts
-                        .tree_pubkeys()
-                        .map_err(|_| MultisigError::MissingLightCpiAccounts)?
-                        .as_slice(),
-                )
-                .map_err(ProgramError::from)?;
+        user.invariant()?;
+        user.try_serialize(&mut &mut data[..])?;
 
-                require!(
-                    user_account.role.ne(&UserRole::PermanentMember),
-                    MultisigError::PermanentMember
-                );
-
-                require!(
-                    user_account.wallets.iter().all(|f| {
-                        f.index.ne(&settings_index_with_address.index)
-                            || f.settings_address_tree_index
-                                .ne(&settings_index_with_address.settings_address_tree_index)
-                    }),
-                    MultisigError::MissingMutationUserArgs
-                );
-
-                Ok(user_account)
-            }
-        }
+        Ok(())
     }
 }
 
@@ -357,7 +238,7 @@ mod tests {
             wallets: vec![],
             role: UserRole::TransactionManager,
             transaction_manager_url: Some("https://tm.example.com".to_string()),
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_ok());
     }
@@ -372,7 +253,7 @@ mod tests {
             wallets: vec![],
             role: UserRole::TransactionManager,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -387,7 +268,7 @@ mod tests {
             wallets: vec![],
             role: UserRole::TransactionManager,
             transaction_manager_url: Some("https://tm.example.com".to_string()),
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -399,14 +280,13 @@ mod tests {
             member: mk_ed25519_member_key(1),
             credential_id: None,
             transports: None,
-            wallets: vec![SettingsIndexWithAddressAndDelegateInfo {
+            wallets: vec![SettingsIndexWithDelegateInfo {
                 index: 0,
-                settings_address_tree_index: 0,
                 is_delegate: false,
             }],
             role: UserRole::TransactionManager,
             transaction_manager_url: Some("https://tm.example.com".to_string()),
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -421,7 +301,7 @@ mod tests {
             wallets: vec![],
             role: UserRole::Member,
             transaction_manager_url: Some("https://tm.example.com".to_string()),
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -436,7 +316,7 @@ mod tests {
             wallets: vec![],
             role: UserRole::Member,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_ok());
     }
@@ -451,7 +331,7 @@ mod tests {
             wallets: vec![],
             role: UserRole::Administrator,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_ok());
     }
@@ -463,14 +343,13 @@ mod tests {
             member: mk_ed25519_member_key(1),
             credential_id: None,
             transports: None,
-            wallets: vec![SettingsIndexWithAddressAndDelegateInfo {
+            wallets: vec![SettingsIndexWithDelegateInfo {
                 index: 0,
-                settings_address_tree_index: 0,
                 is_delegate: false,
             }],
             role: UserRole::Administrator,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -485,7 +364,7 @@ mod tests {
             wallets: vec![],
             role: UserRole::Administrator,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -500,7 +379,7 @@ mod tests {
             wallets: vec![],
             role: UserRole::Administrator,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -515,7 +394,7 @@ mod tests {
             wallets: vec![],
             role: UserRole::Member,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_ok());
     }
@@ -530,7 +409,7 @@ mod tests {
             wallets: vec![],
             role: UserRole::Member,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -545,7 +424,7 @@ mod tests {
             wallets: vec![],
             role: UserRole::Member,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -560,7 +439,7 @@ mod tests {
             wallets: vec![],
             role: UserRole::Member,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -575,7 +454,7 @@ mod tests {
             wallets: vec![],
             role: UserRole::Administrator,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -590,7 +469,7 @@ mod tests {
             wallets: vec![],
             role: UserRole::Member,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -605,7 +484,7 @@ mod tests {
             wallets: vec![],
             role: UserRole::Member,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -617,14 +496,13 @@ mod tests {
             member: mk_secp256r1_member_key(1),
             credential_id: Some(vec![1, 2, 3]),
             transports: Some(vec![Transports::Usb]),
-            wallets: vec![SettingsIndexWithAddressAndDelegateInfo {
+            wallets: vec![SettingsIndexWithDelegateInfo {
                 index: 0,
-                settings_address_tree_index: 0,
                 is_delegate: true,
             }],
             role: UserRole::PermanentMember,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_ok());
     }
@@ -636,14 +514,13 @@ mod tests {
             member: mk_ed25519_member_key(1),
             credential_id: None,
             transports: None,
-            wallets: vec![SettingsIndexWithAddressAndDelegateInfo {
+            wallets: vec![SettingsIndexWithDelegateInfo {
                 index: 0,
-                settings_address_tree_index: 0,
                 is_delegate: true,
             }],
             role: UserRole::PermanentMember,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -655,14 +532,13 @@ mod tests {
             member: mk_secp256r1_member_key(1),
             credential_id: Some(vec![1, 2, 3]),
             transports: Some(vec![Transports::Usb]),
-            wallets: vec![SettingsIndexWithAddressAndDelegateInfo {
+            wallets: vec![SettingsIndexWithDelegateInfo {
                 index: 0,
-                settings_address_tree_index: 0,
                 is_delegate: false,
             }],
             role: UserRole::PermanentMember,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -677,7 +553,7 @@ mod tests {
             wallets: vec![],
             role: UserRole::PermanentMember,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -690,20 +566,18 @@ mod tests {
             credential_id: None,
             transports: None,
             wallets: vec![
-                SettingsIndexWithAddressAndDelegateInfo {
+                SettingsIndexWithDelegateInfo {
                     index: 0,
-                    settings_address_tree_index: 0,
                     is_delegate: true,
                 },
-                SettingsIndexWithAddressAndDelegateInfo {
+                SettingsIndexWithDelegateInfo {
                     index: 1,
-                    settings_address_tree_index: 0,
                     is_delegate: true,
                 },
             ],
             role: UserRole::Member,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_err());
     }
@@ -715,14 +589,13 @@ mod tests {
             member: mk_ed25519_member_key(1),
             credential_id: None,
             transports: None,
-            wallets: vec![SettingsIndexWithAddressAndDelegateInfo {
+            wallets: vec![SettingsIndexWithDelegateInfo {
                 index: 0,
-                settings_address_tree_index: 0,
                 is_delegate: false,
             }],
             role: UserRole::Member,
             transaction_manager_url: None,
-            user_address_tree_index: 0,
+            bump: 0,
         };
         assert!(user.invariant().is_ok());
     }

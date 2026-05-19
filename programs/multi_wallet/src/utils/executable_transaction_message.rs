@@ -382,7 +382,8 @@ mod tests {
 
         let alt_key_in_message = Pubkey::new_unique();
         let alt_key_provided = Pubkey::new_unique();
-        let alt_owner = Pubkey::new_from_array(solana_address_lookup_table_interface::program::ID.to_bytes());
+        let alt_owner =
+            Pubkey::new_from_array(solana_address_lookup_table_interface::program::ID.to_bytes());
 
         let message = VaultTransactionMessage {
             num_signers: 0,

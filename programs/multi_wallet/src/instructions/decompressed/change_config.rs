@@ -1,19 +1,15 @@
 use crate::{
     error::MultisigError,
-    state::{ProofArgs, Settings, SettingsIndexWithAddress, User, UserWalletOperation},
-    utils::TransactionSyncSigners,
-    utils::{resize_account_if_necessary, MultisigSettings, TransactionActionType},
-    ConfigAction, LIGHT_CPI_SIGNER,
+    state::{Settings, User, UserWalletOperation},
+    utils::{
+        resize_account_if_necessary, MultisigSettings, TransactionActionType,
+        TransactionSyncSigners,
+    },
+    ConfigAction,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use light_sdk::{
-    cpi::{
-        v2::{CpiAccounts, LightSystemProgramCpi},
-        InvokeLightSystemProgram, LightCpiInstruction,
-    },
-    instruction::ValidityProof,
-    light_hasher::{Hasher, Sha256},
-};
+use light_sdk::hasher::{Hasher, Sha256};
+
 #[derive(Accounts)]
 pub struct ChangeConfig<'info> {
     #[account(mut)]
@@ -72,11 +68,8 @@ impl<'info> ChangeConfig<'info> {
         ctx: Context<'_, '_, 'info, 'info, Self>,
         config_actions: Vec<ConfigAction>,
         signers: Vec<TransactionSyncSigners>,
-        compressed_proof_args: Option<ProofArgs>,
     ) -> Result<()> {
         let settings = &mut ctx.accounts.settings;
-        let payer = &ctx.accounts.payer;
-        let remaining_accounts = ctx.remaining_accounts;
 
         let mut wallet_operations: Vec<UserWalletOperation> = Vec::new();
         for action in config_actions {
@@ -85,7 +78,7 @@ impl<'info> ChangeConfig<'info> {
                     settings.edit_permissions(members)?;
                 }
                 ConfigAction::AddMembers(members) => {
-                    let ops = settings.add_members(members)?;
+                    let ops = settings.add_members(members, ctx.remaining_accounts)?;
                     wallet_operations.extend(ops.into_iter().map(UserWalletOperation::Add));
                 }
                 ConfigAction::RemoveMembers(members) => {
@@ -110,36 +103,11 @@ impl<'info> ChangeConfig<'info> {
 
         settings.invariant()?;
 
-        if !wallet_operations.is_empty() {
-            let compressed_proof_args =
-                compressed_proof_args.ok_or(MultisigError::MissingCompressedProofArgs)?;
-            let light_cpi_accounts = CpiAccounts::new(
-                &payer,
-                &remaining_accounts
-                    [compressed_proof_args.light_cpi_accounts_start_index as usize..],
-                LIGHT_CPI_SIGNER,
-            );
-            let account_infos = User::process_user_wallet_operations(
-                wallet_operations,
-                SettingsIndexWithAddress {
-                    index: settings.index,
-                    settings_address_tree_index: settings.settings_address_tree_index,
-                },
-                &light_cpi_accounts,
-            )?;
-
-            let mut cpi = LightSystemProgramCpi::new_cpi(
-                LIGHT_CPI_SIGNER,
-                ValidityProof(compressed_proof_args.proof),
-            );
-
-            for user_account in account_infos {
-                user_account.invariant()?;
-                cpi = cpi.with_light_account(user_account)?;
-            }
-
-            cpi.invoke(light_cpi_accounts)?;
-        }
+        User::process_user_wallet_operations(
+            wallet_operations,
+            settings.index,
+            ctx.remaining_accounts,
+        )?;
 
         Ok(())
     }

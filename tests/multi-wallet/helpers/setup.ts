@@ -1,20 +1,14 @@
-import { batchAddressTree } from "@lightprotocol/stateless.js";
 import {
-  addWhitelistedAddressTrees,
   createDomainConfig,
   createGlobalCounter,
   createUserAccounts,
   createWallet,
-  decompressSettingsAccount,
   fetchGlobalCounter,
   fetchMaybeGlobalCounter,
-  fetchMaybeWhitelistedAddressTree,
   getDomainConfigAddress,
   getGlobalCounterAddress,
-  getSettingsFromIndex,
   getSolanaRpc,
   getWalletAddressFromIndex,
-  getWhitelistedAddressTreesAddress,
   initialize,
   UserRole,
 } from "@revibase/core";
@@ -141,21 +135,7 @@ export async function setupTestEnvironment(): Promise<TestContext> {
     await sendTransaction([globalCounterIx], payer);
   }
 
-  const whitelistedAddressTreesAccount = await fetchMaybeWhitelistedAddressTree(
-    getSolanaRpc(),
-    await getWhitelistedAddressTreesAddress(),
-  );
-
-  if (!whitelistedAddressTreesAccount.exists) {
-    const addWhitelistedAddressTree = await addWhitelistedAddressTrees({
-      admin: payer,
-      addressTree: address(batchAddressTree),
-    });
-    await sendTransaction([addWhitelistedAddressTree], payer);
-  }
-
   return {
-    compressed: true,
     addressLookUpTable,
     payer: undefined,
     wallet: undefined,
@@ -173,9 +153,7 @@ export async function setupTestEnvironment(): Promise<TestContext> {
  */
 export async function createMultiWallet(
   ctx: TestContext,
-  isCompressed?: boolean,
 ): Promise<TestContext> {
-  const compressed = isCompressed ?? ctx.compressed ?? true;
   const rpId = crypto.randomUUID();
   const origin = crypto.randomUUID();
 
@@ -212,7 +190,6 @@ export async function createMultiWallet(
   const createIndex = globalCounter.data.index;
   const multiWalletVault = await getWalletAddressFromIndex(createIndex);
 
-  // Create wallet
   const instructions = await createWallet({
     payer,
     initialMember: wallet,
@@ -222,30 +199,18 @@ export async function createMultiWallet(
   await sendTransaction([instructions], payer);
 
   const instruction = await createUserAccounts({
-    createUserArgs: [
-      {
-        member: payer,
-        role: UserRole.Member,
-      },
-    ],
+    createUserArgs: {
+      member: payer,
+      role: UserRole.Member,
+    },
     payer,
   });
 
   await sendTransaction([instruction], payer);
 
-  if (!compressed) {
-    const ix = await decompressSettingsAccount({
-      settings: await getSettingsFromIndex(createIndex),
-      payer,
-      signers: [wallet],
-    });
-    await sendTransaction(ix, payer);
-  }
-
   // Return a new context with the updated settings and multiWalletVault
   return {
     ...ctx,
-    compressed,
     rpId,
     origin,
     domainConfig,

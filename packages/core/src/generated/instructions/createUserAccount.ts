@@ -7,27 +7,37 @@
  */
 
 import {
+  addDecoderSizePrefix,
+  addEncoderSizePrefix,
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
-  getAddressDecoder,
   getAddressEncoder,
   getBytesDecoder,
   getBytesEncoder,
+  getOptionDecoder,
+  getOptionEncoder,
   getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
+  getU32Decoder,
+  getU32Encoder,
+  getUtf8Decoder,
+  getUtf8Encoder,
   transformEncoder,
   type AccountMeta,
   type AccountSignerMeta,
   type Address,
-  type FixedSizeCodec,
-  type FixedSizeDecoder,
-  type FixedSizeEncoder,
+  type Codec,
+  type Decoder,
+  type Encoder,
   type Instruction,
   type InstructionWithAccounts,
   type InstructionWithData,
+  type Option,
+  type OptionOrNullable,
   type ReadonlyAccount,
+  type ReadonlySignerAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableAccount,
@@ -35,115 +45,145 @@ import {
 } from "gill";
 import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+import {
+  expectAddress,
+  getAccountMetaFactory,
+  type ResolvedAccount,
+} from "../shared";
+import {
+  getUserRoleDecoder,
+  getUserRoleEncoder,
+  type UserRole,
+  type UserRoleArgs,
+} from "../types";
 
-export const ADD_WHITELISTED_ADDRESS_TREES_DISCRIMINATOR = new Uint8Array([8]);
+export const CREATE_USER_ACCOUNT_DISCRIMINATOR = new Uint8Array([5]);
 
-export function getAddWhitelistedAddressTreesDiscriminatorBytes() {
+export function getCreateUserAccountDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    ADD_WHITELISTED_ADDRESS_TREES_DISCRIMINATOR,
+    CREATE_USER_ACCOUNT_DISCRIMINATOR,
   );
 }
 
-export type AddWhitelistedAddressTreesInstruction<
+export type CreateUserAccountInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountWhitelistedAddressTrees extends string | AccountMeta<string> = string,
   TAccountPayer extends string | AccountMeta<string> = string,
+  TAccountMember extends string | AccountMeta<string> = string,
   TAccountSystemProgram extends
     | string
     | AccountMeta<string> = "11111111111111111111111111111111",
+  TAccountUserAccount extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
   InstructionWithAccounts<
     [
-      TAccountWhitelistedAddressTrees extends string
-        ? WritableAccount<TAccountWhitelistedAddressTrees>
-        : TAccountWhitelistedAddressTrees,
       TAccountPayer extends string
         ? WritableSignerAccount<TAccountPayer> &
             AccountSignerMeta<TAccountPayer>
         : TAccountPayer,
+      TAccountMember extends string
+        ? ReadonlySignerAccount<TAccountMember> &
+            AccountSignerMeta<TAccountMember>
+        : TAccountMember,
       TAccountSystemProgram extends string
         ? ReadonlyAccount<TAccountSystemProgram>
         : TAccountSystemProgram,
+      TAccountUserAccount extends string
+        ? WritableAccount<TAccountUserAccount>
+        : TAccountUserAccount,
       ...TRemainingAccounts,
     ]
   >;
 
-export type AddWhitelistedAddressTreesInstructionData = {
+export type CreateUserAccountInstructionData = {
   discriminator: ReadonlyUint8Array;
-  addressTree: Address;
+  role: UserRole;
+  transactionManagerUrl: Option<string>;
 };
 
-export type AddWhitelistedAddressTreesInstructionDataArgs = {
-  addressTree: Address;
+export type CreateUserAccountInstructionDataArgs = {
+  role: UserRoleArgs;
+  transactionManagerUrl: OptionOrNullable<string>;
 };
 
-export function getAddWhitelistedAddressTreesInstructionDataEncoder(): FixedSizeEncoder<AddWhitelistedAddressTreesInstructionDataArgs> {
+export function getCreateUserAccountInstructionDataEncoder(): Encoder<CreateUserAccountInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["addressTree", getAddressEncoder()],
+      ["role", getUserRoleEncoder()],
+      [
+        "transactionManagerUrl",
+        getOptionEncoder(
+          addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder()),
+        ),
+      ],
     ]),
-    (value) => ({
-      ...value,
-      discriminator: ADD_WHITELISTED_ADDRESS_TREES_DISCRIMINATOR,
-    }),
+    (value) => ({ ...value, discriminator: CREATE_USER_ACCOUNT_DISCRIMINATOR }),
   );
 }
 
-export function getAddWhitelistedAddressTreesInstructionDataDecoder(): FixedSizeDecoder<AddWhitelistedAddressTreesInstructionData> {
+export function getCreateUserAccountInstructionDataDecoder(): Decoder<CreateUserAccountInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["addressTree", getAddressDecoder()],
+    ["role", getUserRoleDecoder()],
+    [
+      "transactionManagerUrl",
+      getOptionDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
+    ],
   ]);
 }
 
-export function getAddWhitelistedAddressTreesInstructionDataCodec(): FixedSizeCodec<
-  AddWhitelistedAddressTreesInstructionDataArgs,
-  AddWhitelistedAddressTreesInstructionData
+export function getCreateUserAccountInstructionDataCodec(): Codec<
+  CreateUserAccountInstructionDataArgs,
+  CreateUserAccountInstructionData
 > {
   return combineCodec(
-    getAddWhitelistedAddressTreesInstructionDataEncoder(),
-    getAddWhitelistedAddressTreesInstructionDataDecoder(),
+    getCreateUserAccountInstructionDataEncoder(),
+    getCreateUserAccountInstructionDataDecoder(),
   );
 }
 
-export type AddWhitelistedAddressTreesInstructionExtraArgs = {
+export type CreateUserAccountInstructionExtraArgs = {
   remainingAccounts: Array<{ address: Address; role: number }>;
 };
 
-export type AddWhitelistedAddressTreesAsyncInput<
-  TAccountWhitelistedAddressTrees extends string = string,
+export type CreateUserAccountAsyncInput<
   TAccountPayer extends string = string,
+  TAccountMember extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountUserAccount extends string = string,
 > = {
-  whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
   payer: TransactionSigner<TAccountPayer>;
+  member: TransactionSigner<TAccountMember>;
   systemProgram?: Address<TAccountSystemProgram>;
-  addressTree: AddWhitelistedAddressTreesInstructionDataArgs["addressTree"];
-  remainingAccounts: AddWhitelistedAddressTreesInstructionExtraArgs["remainingAccounts"];
+  userAccount?: Address<TAccountUserAccount>;
+  role: CreateUserAccountInstructionDataArgs["role"];
+  transactionManagerUrl: CreateUserAccountInstructionDataArgs["transactionManagerUrl"];
+  remainingAccounts: CreateUserAccountInstructionExtraArgs["remainingAccounts"];
 };
 
-export async function getAddWhitelistedAddressTreesInstructionAsync<
-  TAccountWhitelistedAddressTrees extends string,
+export async function getCreateUserAccountInstructionAsync<
   TAccountPayer extends string,
+  TAccountMember extends string,
   TAccountSystemProgram extends string,
+  TAccountUserAccount extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
-  input: AddWhitelistedAddressTreesAsyncInput<
-    TAccountWhitelistedAddressTrees,
+  input: CreateUserAccountAsyncInput<
     TAccountPayer,
-    TAccountSystemProgram
+    TAccountMember,
+    TAccountSystemProgram,
+    TAccountUserAccount
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
-  AddWhitelistedAddressTreesInstruction<
+  CreateUserAccountInstruction<
     TProgramAddress,
-    TAccountWhitelistedAddressTrees,
     TAccountPayer,
-    TAccountSystemProgram
+    TAccountMember,
+    TAccountSystemProgram,
+    TAccountUserAccount
   >
 > {
   // Program address.
@@ -151,12 +191,10 @@ export async function getAddWhitelistedAddressTreesInstructionAsync<
 
   // Original accounts.
   const originalAccounts = {
-    whitelistedAddressTrees: {
-      value: input.whitelistedAddressTrees ?? null,
-      isWritable: true,
-    },
     payer: { value: input.payer ?? null, isWritable: true },
+    member: { value: input.member ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    userAccount: { value: input.userAccount ?? null, isWritable: true },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -170,22 +208,18 @@ export async function getAddWhitelistedAddressTreesInstructionAsync<
   const resolverScope = { programAddress, accounts, args };
 
   // Resolve default values.
-  if (!accounts.whitelistedAddressTrees.value) {
-    accounts.whitelistedAddressTrees.value = await getProgramDerivedAddress({
-      programAddress,
-      seeds: [
-        getBytesEncoder().encode(
-          new Uint8Array([
-            119, 104, 105, 116, 101, 108, 105, 115, 116, 101, 100, 95, 97, 100,
-            100, 114, 101, 115, 115, 95, 116, 114, 101, 101, 115,
-          ]),
-        ),
-      ],
-    });
-  }
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
       "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+  }
+  if (!accounts.userAccount.value) {
+    accounts.userAccount.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(new Uint8Array([117, 115, 101, 114])),
+        getAddressEncoder().encode(expectAddress(accounts.member.value)),
+      ],
+    });
   }
 
   // Remaining accounts.
@@ -195,64 +229,70 @@ export async function getAddWhitelistedAddressTreesInstructionAsync<
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
-      getAccountMeta(accounts.whitelistedAddressTrees),
       getAccountMeta(accounts.payer),
+      getAccountMeta(accounts.member),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.userAccount),
       ...remainingAccounts,
     ],
-    data: getAddWhitelistedAddressTreesInstructionDataEncoder().encode(
-      args as AddWhitelistedAddressTreesInstructionDataArgs,
+    data: getCreateUserAccountInstructionDataEncoder().encode(
+      args as CreateUserAccountInstructionDataArgs,
     ),
     programAddress,
-  } as AddWhitelistedAddressTreesInstruction<
+  } as CreateUserAccountInstruction<
     TProgramAddress,
-    TAccountWhitelistedAddressTrees,
     TAccountPayer,
-    TAccountSystemProgram
+    TAccountMember,
+    TAccountSystemProgram,
+    TAccountUserAccount
   >);
 }
 
-export type AddWhitelistedAddressTreesInput<
-  TAccountWhitelistedAddressTrees extends string = string,
+export type CreateUserAccountInput<
   TAccountPayer extends string = string,
+  TAccountMember extends string = string,
   TAccountSystemProgram extends string = string,
+  TAccountUserAccount extends string = string,
 > = {
-  whitelistedAddressTrees: Address<TAccountWhitelistedAddressTrees>;
   payer: TransactionSigner<TAccountPayer>;
+  member: TransactionSigner<TAccountMember>;
   systemProgram?: Address<TAccountSystemProgram>;
-  addressTree: AddWhitelistedAddressTreesInstructionDataArgs["addressTree"];
-  remainingAccounts: AddWhitelistedAddressTreesInstructionExtraArgs["remainingAccounts"];
+  userAccount: Address<TAccountUserAccount>;
+  role: CreateUserAccountInstructionDataArgs["role"];
+  transactionManagerUrl: CreateUserAccountInstructionDataArgs["transactionManagerUrl"];
+  remainingAccounts: CreateUserAccountInstructionExtraArgs["remainingAccounts"];
 };
 
-export function getAddWhitelistedAddressTreesInstruction<
-  TAccountWhitelistedAddressTrees extends string,
+export function getCreateUserAccountInstruction<
   TAccountPayer extends string,
+  TAccountMember extends string,
   TAccountSystemProgram extends string,
+  TAccountUserAccount extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
-  input: AddWhitelistedAddressTreesInput<
-    TAccountWhitelistedAddressTrees,
+  input: CreateUserAccountInput<
     TAccountPayer,
-    TAccountSystemProgram
+    TAccountMember,
+    TAccountSystemProgram,
+    TAccountUserAccount
   >,
   config?: { programAddress?: TProgramAddress },
-): AddWhitelistedAddressTreesInstruction<
+): CreateUserAccountInstruction<
   TProgramAddress,
-  TAccountWhitelistedAddressTrees,
   TAccountPayer,
-  TAccountSystemProgram
+  TAccountMember,
+  TAccountSystemProgram,
+  TAccountUserAccount
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
-    whitelistedAddressTrees: {
-      value: input.whitelistedAddressTrees ?? null,
-      isWritable: true,
-    },
     payer: { value: input.payer ?? null, isWritable: true },
+    member: { value: input.member ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
+    userAccount: { value: input.userAccount ?? null, isWritable: true },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -278,45 +318,48 @@ export function getAddWhitelistedAddressTreesInstruction<
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
     accounts: [
-      getAccountMeta(accounts.whitelistedAddressTrees),
       getAccountMeta(accounts.payer),
+      getAccountMeta(accounts.member),
       getAccountMeta(accounts.systemProgram),
+      getAccountMeta(accounts.userAccount),
       ...remainingAccounts,
     ],
-    data: getAddWhitelistedAddressTreesInstructionDataEncoder().encode(
-      args as AddWhitelistedAddressTreesInstructionDataArgs,
+    data: getCreateUserAccountInstructionDataEncoder().encode(
+      args as CreateUserAccountInstructionDataArgs,
     ),
     programAddress,
-  } as AddWhitelistedAddressTreesInstruction<
+  } as CreateUserAccountInstruction<
     TProgramAddress,
-    TAccountWhitelistedAddressTrees,
     TAccountPayer,
-    TAccountSystemProgram
+    TAccountMember,
+    TAccountSystemProgram,
+    TAccountUserAccount
   >);
 }
 
-export type ParsedAddWhitelistedAddressTreesInstruction<
+export type ParsedCreateUserAccountInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    whitelistedAddressTrees: TAccountMetas[0];
-    payer: TAccountMetas[1];
+    payer: TAccountMetas[0];
+    member: TAccountMetas[1];
     systemProgram: TAccountMetas[2];
+    userAccount: TAccountMetas[3];
   };
-  data: AddWhitelistedAddressTreesInstructionData;
+  data: CreateUserAccountInstructionData;
 };
 
-export function parseAddWhitelistedAddressTreesInstruction<
+export function parseCreateUserAccountInstruction<
   TProgram extends string,
   TAccountMetas extends readonly AccountMeta[],
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
-): ParsedAddWhitelistedAddressTreesInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 3) {
+): ParsedCreateUserAccountInstruction<TProgram, TAccountMetas> {
+  if (instruction.accounts.length < 4) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -329,12 +372,11 @@ export function parseAddWhitelistedAddressTreesInstruction<
   return {
     programAddress: instruction.programAddress,
     accounts: {
-      whitelistedAddressTrees: getNextAccount(),
       payer: getNextAccount(),
+      member: getNextAccount(),
       systemProgram: getNextAccount(),
+      userAccount: getNextAccount(),
     },
-    data: getAddWhitelistedAddressTreesInstructionDataDecoder().decode(
-      instruction.data,
-    ),
+    data: getCreateUserAccountInstructionDataDecoder().decode(instruction.data),
   };
 }

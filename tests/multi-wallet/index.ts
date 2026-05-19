@@ -1,5 +1,4 @@
 import { setupTestEnvironment } from "./helpers/index.ts";
-import { runDecompressionTests } from "./tests/decompression.test.ts";
 import { runErrorCasesTests } from "./tests/error-cases.test.ts";
 import { runMemberManagementTests } from "./tests/member-management.test.ts";
 import { runNativeTransferTest } from "./tests/native-transfer.test.ts";
@@ -50,10 +49,6 @@ describe("Multi Wallet Tests", function () {
 
   describe("Transaction Manager", () => {
     runTransactionManagerTests(() => ctx);
-  });
-
-  describe("Decompression Test", () => {
-    runDecompressionTests(() => ctx);
   });
 
   describe("Native Transfer Intent Test", () => {

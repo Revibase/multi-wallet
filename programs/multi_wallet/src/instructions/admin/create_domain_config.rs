@@ -1,26 +1,15 @@
 use crate::{
     error::MultisigError,
-    state::{DomainConfig, ProofArgs, User, UserCreationArgs, WhitelistedAddressTree},
-    utils::{MemberKey, UserRole, SEED_DOMAIN_CONFIG, SEED_WHITELISTED_ADDRESS_TREE},
-    LIGHT_CPI_SIGNER,
+    state::{DomainConfig, User},
+    utils::{MemberKey, UserRole, SEED_DOMAIN_CONFIG, SEED_USER},
 };
 use anchor_lang::prelude::*;
-use light_sdk::{
-    cpi::{
-        v2::{CpiAccounts, LightSystemProgramCpi},
-        InvokeLightSystemProgram, LightCpiInstruction,
-    },
-    instruction::ValidityProof,
-    light_hasher::{Hasher, Sha256},
-    PackedAddressTreeInfoExt,
-};
+use light_sdk::hasher::{Hasher, Sha256};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateDomainConfigArgs {
     rp_id: String,
     origins: Vec<String>,
-    authority_creation_args: UserCreationArgs,
-    compressed_proof_args: ProofArgs,
 }
 
 #[derive(Accounts)]
@@ -43,10 +32,13 @@ pub struct CreateDomainConfig<'info> {
     pub authority: Signer<'info>,
     pub system_program: Program<'info, System>,
     #[account(
-        seeds = [SEED_WHITELISTED_ADDRESS_TREE],
-        bump = whitelisted_address_trees.bump
+        init,
+        payer = payer,
+        space = User::size(0, 0, 0),
+        seeds = [SEED_USER, authority.key.as_ref()],
+        bump
     )]
-    pub whitelisted_address_trees: Account<'info, WhitelistedAddressTree>,
+    pub user_account: Account<'info, User>,
 }
 
 impl<'info> CreateDomainConfig<'info> {
@@ -60,52 +52,19 @@ impl<'info> CreateDomainConfig<'info> {
             crate::MultisigError::UnauthorizedAdminOnly
         );
 
-        let cpi_start = args.compressed_proof_args.light_cpi_accounts_start_index as usize;
-        require!(
-            cpi_start <= ctx.remaining_accounts.len(),
-            MultisigError::InvalidNumberOfAccounts
-        );
-        let light_cpi_accounts = CpiAccounts::new(
-            &ctx.accounts.payer,
-            &ctx.remaining_accounts[cpi_start..],
-            LIGHT_CPI_SIGNER,
-        );
-
-        let address_tree = PackedAddressTreeInfoExt::get_tree_pubkey(
-            &args.authority_creation_args.address_tree_info,
-            &light_cpi_accounts,
-        )
-        .map_err(|_| ErrorCode::AccountNotEnoughKeys)?;
-
-        let user_address_tree_index = ctx
-            .accounts
-            .whitelisted_address_trees
-            .extract_address_tree_index(&address_tree)?;
-
         let authority_key = ctx.accounts.authority.key();
-        let user = User {
-            member: MemberKey::convert_ed25519(&authority_key)?,
-            role: UserRole::Administrator,
-            wallets: Vec::new(),
-            transports: None,
-            credential_id: None,
-            domain_config: Some(ctx.accounts.domain_config.key()),
-            transaction_manager_url: None,
-            user_address_tree_index,
-        };
 
-        let (account_info, new_address_params) =
-            User::create_user_account(args.authority_creation_args, &address_tree, user, Some(0))?;
+        let user = &mut ctx.accounts.user_account;
+        user.member = MemberKey::convert_ed25519(&authority_key)?;
+        user.role = UserRole::Administrator;
+        user.wallets = Vec::new();
+        user.transports = None;
+        user.credential_id = None;
+        user.domain_config = Some(ctx.accounts.domain_config.key());
+        user.transaction_manager_url = None;
+        user.bump = ctx.bumps.user_account;
 
-        account_info.invariant()?;
-
-        LightSystemProgramCpi::new_cpi(
-            LIGHT_CPI_SIGNER,
-            ValidityProof(args.compressed_proof_args.proof),
-        )
-        .with_light_account(account_info)?
-        .with_new_addresses(&[new_address_params])
-        .invoke(light_cpi_accounts)?;
+        user.invariant()?;
 
         let domain_config = &mut ctx.accounts.domain_config.load_init()?;
         domain_config.rp_id_hash = Sha256::hash(args.rp_id.as_bytes())

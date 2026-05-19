@@ -1,54 +1,18 @@
 import type { TransactionSigner } from "gill";
-import {
-  getEditTransactionManagerUrlInstruction,
-  getUserDecoder,
-  type User,
-} from "../../generated";
-import { getUserAccountAddress } from "../../utils";
-import {
-  convertToCompressedProofArgs,
-  getCompressedAccountHashes,
-  getCompressedAccountMutArgs,
-  getValidityProofWithRetry,
-} from "../../utils/compressed/internal";
-import { PackedAccounts } from "../../utils/compressed/packedAccounts";
+import { getEditTransactionManagerUrlInstruction } from "../../generated";
+import { getUserAddress } from "../../utils";
 
 export async function editTransactionManagerUrl({
-  authority,
-  userAddressTreeIndex,
+  signer,
   transactionManagerUrl,
 }: {
-  authority: TransactionSigner;
-  userAddressTreeIndex?: number;
+  signer: TransactionSigner;
   transactionManagerUrl: string;
 }) {
-  const packedAccounts = new PackedAccounts();
-  await packedAccounts.addSystemAccounts();
-  const hashesWithTree = await getCompressedAccountHashes([
-    {
-      address: (
-        await getUserAccountAddress(authority.address, userAddressTreeIndex)
-      ).address,
-      type: "User",
-    },
-  ]);
-  const proof = await getValidityProofWithRetry(hashesWithTree, []);
-  const userMutArgs = getCompressedAccountMutArgs<User>(
-    packedAccounts,
-    proof.treeInfos,
-    proof.leafIndices,
-    proof.rootIndices,
-    proof.proveByIndices,
-    hashesWithTree,
-    getUserDecoder(),
-  )[0];
-  const { remainingAccounts, systemOffset } = packedAccounts.toAccountMetas();
-  const compressedProofArgs = convertToCompressedProofArgs(proof, systemOffset);
   return getEditTransactionManagerUrlInstruction({
-    authority,
+    signer,
+    transactionManagerAccount: await getUserAddress(signer.address),
     transactionManagerUrl,
-    compressedProofArgs,
-    userMutArgs,
-    remainingAccounts,
+    remainingAccounts: [],
   });
 }

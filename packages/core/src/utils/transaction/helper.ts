@@ -21,9 +21,9 @@ import {
   getConfigActionDecoder,
   getConfigActionEncoder,
   UserRole,
-  type CompressedSettingsData,
   type ConfigAction,
   type MemberKey,
+  type Settings,
 } from "../../generated";
 import {
   KeyType,
@@ -34,12 +34,9 @@ import {
 
 export function retrieveTransactionManager(
   signer: string,
-  settingsData: CompressedSettingsData & {
-    isCompressed: boolean;
-  },
+  settingsData: Settings,
 ): {
   transactionManagerAddress: Address;
-  userAddressTreeIndex: number;
 } | null {
   if (settingsData.threshold > 1) {
     throw new ValidationError(
@@ -98,7 +95,6 @@ export function retrieveTransactionManager(
     transactionManagerAddress: address(
       convertMemberKeyToString(transactionManager.pubkey),
     ),
-    userAddressTreeIndex: transactionManager.userAddressTreeIndex,
   };
 }
 

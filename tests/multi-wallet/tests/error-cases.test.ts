@@ -4,7 +4,6 @@ import {
   nativeTransferIntent,
   prepareChangeConfigArgs,
 } from "@revibase/core";
-import { expect } from "chai";
 import { TEST_AMOUNT_MEDIUM, TEST_AMOUNT_SMALL } from "../constants.ts";
 import {
   assertTestContext,
@@ -27,7 +26,6 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
 
       // Try to remove the only member (wallet)
       const changeConfigArgs = await prepareChangeConfigArgs({
-        compressed: ctx.compressed,
         settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
@@ -59,7 +57,6 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
 
       // Try to set threshold to 3 when we only have 2 members
       const changeConfigArgs = await prepareChangeConfigArgs({
-        compressed: ctx.compressed,
         settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
@@ -102,11 +99,9 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
         await expectFailure(async () => {
           const nativeTransfer = await nativeTransferIntent({
             settings: await getSettingsFromIndex(ctx.index),
-            payer: ctx.payer,
             signers: [ctx.payer],
             destination: ctx.wallet.address,
             amount: TEST_AMOUNT_MEDIUM, // More than available
-            compressed: ctx.compressed,
           });
 
           await sendTransaction(
@@ -127,7 +122,6 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
 
       // Try to add wallet as member again (it's already a member)
       const changeConfigArgs = await prepareChangeConfigArgs({
-        compressed: ctx.compressed,
         settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
@@ -168,7 +162,6 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
         ]);
 
         const changeConfigArgs = await prepareChangeConfigArgs({
-          compressed: ctx.compressed,
           settings: await getSettingsFromIndex(ctx.index),
           configActionsArgs: [
             {
@@ -210,7 +203,6 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
 
         // Add payer as member with only vote permission (no initiate/execute)
         const addMemberArgs = await prepareChangeConfigArgs({
-          compressed: ctx.compressed,
           settings: await getSettingsFromIndex(ctx.index),
           configActionsArgs: [
             {
@@ -237,7 +229,6 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
 
         // Try to change config using payer (who doesn't have initiate permission)
         const changeConfigArgs = await prepareChangeConfigArgs({
-          compressed: ctx.compressed,
           settings: await getSettingsFromIndex(ctx.index),
           configActionsArgs: [
             {

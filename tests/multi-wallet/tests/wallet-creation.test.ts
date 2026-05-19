@@ -1,5 +1,5 @@
 import {
-  fetchSettingsAccountData,
+  fetchSettings,
   getSettingsFromIndex,
   getSolanaRpc,
 } from "@revibase/core";
@@ -23,7 +23,7 @@ export function runWalletCreationTests(getCtx: () => TestContext) {
 
       // Verify wallet settings
       const settings = await getSettingsFromIndex(ctx.index);
-      const accountData = await fetchSettingsAccountData(settings);
+      const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
 
       expect(
         accountData.members.length,

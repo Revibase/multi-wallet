@@ -10,12 +10,20 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
+  getArrayDecoder,
+  getArrayEncoder,
+  getBooleanDecoder,
+  getBooleanEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getOptionDecoder,
   getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
+  getU16Decoder,
+  getU16Encoder,
+  getU8Decoder,
+  getU8Encoder,
   transformEncoder,
   type AccountMeta,
   type AccountSignerMeta,
@@ -39,17 +47,17 @@ import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
+  getExpectedSignerDecoder,
+  getExpectedSignerEncoder,
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
-  getTransactionBufferCreateArgsDecoder,
-  getTransactionBufferCreateArgsEncoder,
+  type ExpectedSigner,
+  type ExpectedSignerArgs,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-  type TransactionBufferCreateArgs,
-  type TransactionBufferCreateArgsArgs,
 } from "../types";
 
-export const TRANSACTION_BUFFER_CREATE_DISCRIMINATOR = new Uint8Array([10]);
+export const TRANSACTION_BUFFER_CREATE_DISCRIMINATOR = new Uint8Array([9]);
 
 export function getTransactionBufferCreateDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
@@ -110,12 +118,22 @@ export type TransactionBufferCreateInstruction<
 
 export type TransactionBufferCreateInstructionData = {
   discriminator: ReadonlyUint8Array;
-  args: TransactionBufferCreateArgs;
+  bufferIndex: number;
+  preauthorizeExecution: boolean;
+  bufferExtendHashes: Array<ReadonlyUint8Array>;
+  finalBufferHash: ReadonlyUint8Array;
+  finalBufferSize: number;
+  expectedSigners: Array<ExpectedSigner>;
   secp256r1VerifyArgs: Option<Secp256r1VerifyArgs>;
 };
 
 export type TransactionBufferCreateInstructionDataArgs = {
-  args: TransactionBufferCreateArgsArgs;
+  bufferIndex: number;
+  preauthorizeExecution: boolean;
+  bufferExtendHashes: Array<ReadonlyUint8Array>;
+  finalBufferHash: ReadonlyUint8Array;
+  finalBufferSize: number;
+  expectedSigners: Array<ExpectedSignerArgs>;
   secp256r1VerifyArgs: OptionOrNullable<Secp256r1VerifyArgsArgs>;
 };
 
@@ -123,7 +141,15 @@ export function getTransactionBufferCreateInstructionDataEncoder(): Encoder<Tran
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["args", getTransactionBufferCreateArgsEncoder()],
+      ["bufferIndex", getU8Encoder()],
+      ["preauthorizeExecution", getBooleanEncoder()],
+      [
+        "bufferExtendHashes",
+        getArrayEncoder(fixEncoderSize(getBytesEncoder(), 32)),
+      ],
+      ["finalBufferHash", fixEncoderSize(getBytesEncoder(), 32)],
+      ["finalBufferSize", getU16Encoder()],
+      ["expectedSigners", getArrayEncoder(getExpectedSignerEncoder())],
       [
         "secp256r1VerifyArgs",
         getOptionEncoder(getSecp256r1VerifyArgsEncoder()),
@@ -139,7 +165,15 @@ export function getTransactionBufferCreateInstructionDataEncoder(): Encoder<Tran
 export function getTransactionBufferCreateInstructionDataDecoder(): Decoder<TransactionBufferCreateInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["args", getTransactionBufferCreateArgsDecoder()],
+    ["bufferIndex", getU8Decoder()],
+    ["preauthorizeExecution", getBooleanDecoder()],
+    [
+      "bufferExtendHashes",
+      getArrayDecoder(fixDecoderSize(getBytesDecoder(), 32)),
+    ],
+    ["finalBufferHash", fixDecoderSize(getBytesDecoder(), 32)],
+    ["finalBufferSize", getU16Decoder()],
+    ["expectedSigners", getArrayDecoder(getExpectedSignerDecoder())],
     ["secp256r1VerifyArgs", getOptionDecoder(getSecp256r1VerifyArgsDecoder())],
   ]);
 }
@@ -176,7 +210,12 @@ export type TransactionBufferCreateInput<
   systemProgram?: Address<TAccountSystemProgram>;
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   slotHashSysvar?: Address<TAccountSlotHashSysvar>;
-  args: TransactionBufferCreateInstructionDataArgs["args"];
+  bufferIndex: TransactionBufferCreateInstructionDataArgs["bufferIndex"];
+  preauthorizeExecution: TransactionBufferCreateInstructionDataArgs["preauthorizeExecution"];
+  bufferExtendHashes: TransactionBufferCreateInstructionDataArgs["bufferExtendHashes"];
+  finalBufferHash: TransactionBufferCreateInstructionDataArgs["finalBufferHash"];
+  finalBufferSize: TransactionBufferCreateInstructionDataArgs["finalBufferSize"];
+  expectedSigners: TransactionBufferCreateInstructionDataArgs["expectedSigners"];
   secp256r1VerifyArgs: TransactionBufferCreateInstructionDataArgs["secp256r1VerifyArgs"];
   remainingAccounts: TransactionBufferCreateInstructionExtraArgs["remainingAccounts"];
 };

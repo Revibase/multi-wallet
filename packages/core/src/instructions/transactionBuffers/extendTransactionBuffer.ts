@@ -1,33 +1,19 @@
 import type { Address } from "gill";
-import {
-  getTransactionBufferExtendCompressedInstruction,
-  getTransactionBufferExtendInstruction,
-} from "../../generated";
+import { getTransactionBufferExtendInstruction } from "../../generated";
 
 export function extendTransactionBuffer({
   transactionMessageBytes,
   transactionBufferAddress,
   settings,
-  compressed = false,
 }: {
   transactionMessageBytes: Uint8Array<ArrayBuffer>;
   transactionBufferAddress: Address;
   settings: Address;
-  compressed?: boolean;
 }) {
-  if (compressed) {
-    return getTransactionBufferExtendCompressedInstruction({
-      transactionBuffer: transactionBufferAddress,
-      buffer: transactionMessageBytes,
-      settingsKey: settings,
-      remainingAccounts: [],
-    });
-  } else {
-    return getTransactionBufferExtendInstruction({
-      transactionBuffer: transactionBufferAddress,
-      buffer: transactionMessageBytes,
-      settings,
-      remainingAccounts: [],
-    });
-  }
+  return getTransactionBufferExtendInstruction({
+    transactionBuffer: transactionBufferAddress,
+    buffer: transactionMessageBytes,
+    settings,
+    remainingAccounts: [],
+  });
 }

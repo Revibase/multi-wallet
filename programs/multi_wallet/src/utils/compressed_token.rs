@@ -1,5 +1,4 @@
 use crate::error::MultisigError;
-use crate::state::ProofArgs;
 use anchor_lang::solana_program::program::invoke_signed;
 use anchor_lang::{prelude::*, solana_program::program::invoke};
 use anchor_spl::token_interface::{transfer_checked, Mint, TokenAccount, TransferChecked};
@@ -14,7 +13,7 @@ use light_token::instruction::{CreateTokenAtaCpi, TransferCpi, TransferFromSplCp
 use light_token::spl_interface::derive_spl_interface_pda;
 use light_token::spl_interface::{CreateSplInterfacePda, SplInterfacePda};
 use light_token::utils::get_associated_token_address_and_bump;
-use light_token::{ExtensionInstructionData, ValidityProof};
+use light_token::{CompressedProof, ExtensionInstructionData, ValidityProof};
 use light_token_interface::instructions::extensions::CompressedOnlyExtensionInstructionData;
 use light_token_interface::instructions::transfer2::{
     Compression, MultiInputTokenDataWithContext, MultiTokenTransferOutputData,
@@ -67,6 +66,12 @@ pub struct TokenTransfer<'a, 'info> {
     pub rent_sponsor: Option<&'a AccountInfo<'info>>,
     pub system_program: &'a AccountInfo<'info>,
     pub spl_interface_pda_args: Option<SplInterfacePdaArgs>,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize, PartialEq)]
+pub struct ProofArgs {
+    pub proof: Option<CompressedProof>,
+    pub light_cpi_accounts_start_index: u8,
 }
 
 impl<'a, 'info> TokenTransfer<'a, 'info> {

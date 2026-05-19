@@ -1,9 +1,11 @@
 import type { UserInfo } from "@revibase/core";
 import {
   convertMemberKeyToString,
-  fetchSettingsAccountData,
-  fetchUserAccountData,
+  fetchSettings,
+  fetchUser,
   getSettingsFromIndex,
+  getSolanaRpc,
+  getUserAddress,
   UserRole,
   type CompleteMessageRequest,
 } from "@revibase/core";
@@ -23,11 +25,14 @@ export async function send2FARequestIfNeeded(
     return null;
   }
 
-  const settingsData = await withRetry(async () =>
-    fetchSettingsAccountData(
-      await getSettingsFromIndex(user.settingsIndexWithAddress.index),
-    ),
-  );
+  const settingsData = (
+    await withRetry(async () =>
+      fetchSettings(
+        getSolanaRpc(),
+        await getSettingsFromIndex(user.settingsIndexWithAddress.index),
+      ),
+    )
+  ).data;
   const transactionManager = settingsData.members.find(
     (x) => x.role === UserRole.TransactionManager,
   );
@@ -35,12 +40,11 @@ export async function send2FARequestIfNeeded(
     throw new Error("No transaction manager found.");
   }
   const publicKey = convertMemberKeyToString(transactionManager.pubkey);
-  const userAccountData = await withRetry(() =>
-    fetchUserAccountData(
-      address(publicKey),
-      transactionManager.userAddressTreeIndex,
-    ),
-  );
+  const userAccountData = (
+    await withRetry(async () =>
+      fetchUser(getSolanaRpc(), await getUserAddress(address(publicKey))),
+    )
+  ).data;
   if (userAccountData.transactionManagerUrl.__option === "None") {
     throw new Error("No transaction manager url found.");
   }

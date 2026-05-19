@@ -12,8 +12,10 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
+  getAddressEncoder,
   getBytesDecoder,
   getBytesEncoder,
+  getProgramDerivedAddress,
   getStructDecoder,
   getStructEncoder,
   getU32Decoder,
@@ -30,23 +32,18 @@ import {
   type Instruction,
   type InstructionWithAccounts,
   type InstructionWithData,
+  type ReadonlySignerAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
-  type WritableSignerAccount,
+  type WritableAccount,
 } from "gill";
 import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
-  getProofArgsDecoder,
-  getProofArgsEncoder,
-  getUserMutArgsDecoder,
-  getUserMutArgsEncoder,
-  type ProofArgs,
-  type ProofArgsArgs,
-  type UserMutArgs,
-  type UserMutArgsArgs,
-} from "../types";
+  expectAddress,
+  getAccountMetaFactory,
+  type ResolvedAccount,
+} from "../shared";
 
 export const EDIT_TRANSACTION_MANAGER_URL_DISCRIMINATOR = new Uint8Array([6]);
 
@@ -58,43 +55,43 @@ export function getEditTransactionManagerUrlDiscriminatorBytes() {
 
 export type EditTransactionManagerUrlInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
-  TAccountAuthority extends string | AccountMeta<string> = string,
+  TAccountSigner extends string | AccountMeta<string> = string,
+  TAccountTransactionManagerAccount extends
+    | string
+    | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
   InstructionWithAccounts<
     [
-      TAccountAuthority extends string
-        ? WritableSignerAccount<TAccountAuthority> &
-            AccountSignerMeta<TAccountAuthority>
-        : TAccountAuthority,
+      TAccountSigner extends string
+        ? ReadonlySignerAccount<TAccountSigner> &
+            AccountSignerMeta<TAccountSigner>
+        : TAccountSigner,
+      TAccountTransactionManagerAccount extends string
+        ? WritableAccount<TAccountTransactionManagerAccount>
+        : TAccountTransactionManagerAccount,
       ...TRemainingAccounts,
     ]
   >;
 
 export type EditTransactionManagerUrlInstructionData = {
   discriminator: ReadonlyUint8Array;
-  userMutArgs: UserMutArgs;
   transactionManagerUrl: string;
-  compressedProofArgs: ProofArgs;
 };
 
 export type EditTransactionManagerUrlInstructionDataArgs = {
-  userMutArgs: UserMutArgsArgs;
   transactionManagerUrl: string;
-  compressedProofArgs: ProofArgsArgs;
 };
 
 export function getEditTransactionManagerUrlInstructionDataEncoder(): Encoder<EditTransactionManagerUrlInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["userMutArgs", getUserMutArgsEncoder()],
       [
         "transactionManagerUrl",
         addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder()),
       ],
-      ["compressedProofArgs", getProofArgsEncoder()],
     ]),
     (value) => ({
       ...value,
@@ -106,12 +103,10 @@ export function getEditTransactionManagerUrlInstructionDataEncoder(): Encoder<Ed
 export function getEditTransactionManagerUrlInstructionDataDecoder(): Decoder<EditTransactionManagerUrlInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["userMutArgs", getUserMutArgsDecoder()],
     [
       "transactionManagerUrl",
       addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder()),
     ],
-    ["compressedProofArgs", getProofArgsDecoder()],
   ]);
 }
 
@@ -129,29 +124,123 @@ export type EditTransactionManagerUrlInstructionExtraArgs = {
   remainingAccounts: Array<{ address: Address; role: number }>;
 };
 
-export type EditTransactionManagerUrlInput<
-  TAccountAuthority extends string = string,
+export type EditTransactionManagerUrlAsyncInput<
+  TAccountSigner extends string = string,
+  TAccountTransactionManagerAccount extends string = string,
 > = {
-  authority: TransactionSigner<TAccountAuthority>;
-  userMutArgs: EditTransactionManagerUrlInstructionDataArgs["userMutArgs"];
+  signer: TransactionSigner<TAccountSigner>;
+  transactionManagerAccount?: Address<TAccountTransactionManagerAccount>;
   transactionManagerUrl: EditTransactionManagerUrlInstructionDataArgs["transactionManagerUrl"];
-  compressedProofArgs: EditTransactionManagerUrlInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: EditTransactionManagerUrlInstructionExtraArgs["remainingAccounts"];
 };
 
-export function getEditTransactionManagerUrlInstruction<
-  TAccountAuthority extends string,
+export async function getEditTransactionManagerUrlInstructionAsync<
+  TAccountSigner extends string,
+  TAccountTransactionManagerAccount extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
-  input: EditTransactionManagerUrlInput<TAccountAuthority>,
+  input: EditTransactionManagerUrlAsyncInput<
+    TAccountSigner,
+    TAccountTransactionManagerAccount
+  >,
   config?: { programAddress?: TProgramAddress },
-): EditTransactionManagerUrlInstruction<TProgramAddress, TAccountAuthority> {
+): Promise<
+  EditTransactionManagerUrlInstruction<
+    TProgramAddress,
+    TAccountSigner,
+    TAccountTransactionManagerAccount
+  >
+> {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
 
   // Original accounts.
   const originalAccounts = {
-    authority: { value: input.authority ?? null, isWritable: true },
+    signer: { value: input.signer ?? null, isWritable: false },
+    transactionManagerAccount: {
+      value: input.transactionManagerAccount ?? null,
+      isWritable: true,
+    },
+  };
+  const accounts = originalAccounts as Record<
+    keyof typeof originalAccounts,
+    ResolvedAccount
+  >;
+
+  // Original args.
+  const args = { ...input };
+
+  // Resolver scope.
+  const resolverScope = { programAddress, accounts, args };
+
+  // Resolve default values.
+  if (!accounts.transactionManagerAccount.value) {
+    accounts.transactionManagerAccount.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(new Uint8Array([117, 115, 101, 114])),
+        getAddressEncoder().encode(expectAddress(accounts.signer.value)),
+      ],
+    });
+  }
+
+  // Remaining accounts.
+  const remainingAccounts: AccountMeta[] =
+    parseRemainingAccounts(resolverScope);
+
+  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  return Object.freeze({
+    accounts: [
+      getAccountMeta(accounts.signer),
+      getAccountMeta(accounts.transactionManagerAccount),
+      ...remainingAccounts,
+    ],
+    data: getEditTransactionManagerUrlInstructionDataEncoder().encode(
+      args as EditTransactionManagerUrlInstructionDataArgs,
+    ),
+    programAddress,
+  } as EditTransactionManagerUrlInstruction<
+    TProgramAddress,
+    TAccountSigner,
+    TAccountTransactionManagerAccount
+  >);
+}
+
+export type EditTransactionManagerUrlInput<
+  TAccountSigner extends string = string,
+  TAccountTransactionManagerAccount extends string = string,
+> = {
+  signer: TransactionSigner<TAccountSigner>;
+  transactionManagerAccount: Address<TAccountTransactionManagerAccount>;
+  transactionManagerUrl: EditTransactionManagerUrlInstructionDataArgs["transactionManagerUrl"];
+  remainingAccounts: EditTransactionManagerUrlInstructionExtraArgs["remainingAccounts"];
+};
+
+export function getEditTransactionManagerUrlInstruction<
+  TAccountSigner extends string,
+  TAccountTransactionManagerAccount extends string,
+  TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
+>(
+  input: EditTransactionManagerUrlInput<
+    TAccountSigner,
+    TAccountTransactionManagerAccount
+  >,
+  config?: { programAddress?: TProgramAddress },
+): EditTransactionManagerUrlInstruction<
+  TProgramAddress,
+  TAccountSigner,
+  TAccountTransactionManagerAccount
+> {
+  // Program address.
+  const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
+
+  // Original accounts.
+  const originalAccounts = {
+    signer: { value: input.signer ?? null, isWritable: false },
+    transactionManagerAccount: {
+      value: input.transactionManagerAccount ?? null,
+      isWritable: true,
+    },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -170,14 +259,19 @@ export function getEditTransactionManagerUrlInstruction<
 
   const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
   return Object.freeze({
-    accounts: [getAccountMeta(accounts.authority), ...remainingAccounts],
+    accounts: [
+      getAccountMeta(accounts.signer),
+      getAccountMeta(accounts.transactionManagerAccount),
+      ...remainingAccounts,
+    ],
     data: getEditTransactionManagerUrlInstructionDataEncoder().encode(
       args as EditTransactionManagerUrlInstructionDataArgs,
     ),
     programAddress,
   } as EditTransactionManagerUrlInstruction<
     TProgramAddress,
-    TAccountAuthority
+    TAccountSigner,
+    TAccountTransactionManagerAccount
   >);
 }
 
@@ -187,7 +281,8 @@ export type ParsedEditTransactionManagerUrlInstruction<
 > = {
   programAddress: Address<TProgram>;
   accounts: {
-    authority: TAccountMetas[0];
+    signer: TAccountMetas[0];
+    transactionManagerAccount: TAccountMetas[1];
   };
   data: EditTransactionManagerUrlInstructionData;
 };
@@ -200,7 +295,7 @@ export function parseEditTransactionManagerUrlInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedEditTransactionManagerUrlInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 1) {
+  if (instruction.accounts.length < 2) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -212,7 +307,10 @@ export function parseEditTransactionManagerUrlInstruction<
   };
   return {
     programAddress: instruction.programAddress,
-    accounts: { authority: getNextAccount() },
+    accounts: {
+      signer: getNextAccount(),
+      transactionManagerAccount: getNextAccount(),
+    },
     data: getEditTransactionManagerUrlInstructionDataDecoder().decode(
       instruction.data,
     ),

@@ -2,8 +2,9 @@ import {
   changeConfig,
   convertMemberKeyToString,
   createUserAccounts,
-  fetchSettingsAccountData,
+  fetchSettings,
   getSettingsFromIndex,
+  getSolanaRpc,
   Permission,
   Permissions,
   prepareChangeConfigArgs,
@@ -31,7 +32,6 @@ export function runPermissionsTests(getCtx: () => TestContext) {
 
       // Update permissions to only vote
       const changeConfigArgs = await prepareChangeConfigArgs({
-        compressed: ctx.compressed,
         settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
@@ -54,7 +54,7 @@ export function runPermissionsTests(getCtx: () => TestContext) {
 
       await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
       const settings = await getSettingsFromIndex(ctx.index);
-      const accountData = await fetchSettingsAccountData(settings);
+      const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
       const payerMember = accountData.members.find(
         (m) =>
           convertMemberKeyToString(m.pubkey) === ctx.payer.address.toString(),
@@ -89,7 +89,6 @@ export function runPermissionsTests(getCtx: () => TestContext) {
       assertTestContext(ctx, ["index", "multiWalletVault", "payer", "wallet"]);
 
       const changeConfigArgs = await prepareChangeConfigArgs({
-        compressed: ctx.compressed,
         settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
@@ -112,7 +111,7 @@ export function runPermissionsTests(getCtx: () => TestContext) {
 
       await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
       const settings = await getSettingsFromIndex(ctx.index);
-      const accountData = await fetchSettingsAccountData(settings);
+      const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
       const addedMember = accountData.members.find(
         (m) =>
           convertMemberKeyToString(m.pubkey) === ctx.payer.address.toString(),
@@ -147,7 +146,6 @@ export function runPermissionsTests(getCtx: () => TestContext) {
       assertTestContext(ctx, ["index", "multiWalletVault", "payer", "wallet"]);
 
       const changeConfigArgs = await prepareChangeConfigArgs({
-        compressed: ctx.compressed,
         settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
@@ -170,7 +168,7 @@ export function runPermissionsTests(getCtx: () => TestContext) {
 
       await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
       const settings = await getSettingsFromIndex(ctx.index);
-      const accountData = await fetchSettingsAccountData(settings);
+      const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
       const addedMember = accountData.members.find(
         (m) =>
           convertMemberKeyToString(m.pubkey) === ctx.payer.address.toString(),
@@ -213,25 +211,27 @@ export function runPermissionsTests(getCtx: () => TestContext) {
         crypto.getRandomValues(new Uint8Array(32)),
       );
 
-      const instruction = await createUserAccounts({
-        createUserArgs: [
-          {
-            member: member1,
-            role: UserRole.Member,
-          },
-          {
-            member: member2,
-            role: UserRole.Member,
-          },
-        ],
+      const instruction1 = await createUserAccounts({
+        createUserArgs: {
+          member: member1,
+          role: UserRole.Member,
+        },
+
+        payer: ctx.payer,
+      });
+      const instruction2 = await createUserAccounts({
+        createUserArgs: {
+          member: member2,
+          role: UserRole.Member,
+        },
+
         payer: ctx.payer,
       });
 
-      await sendTransaction([instruction], ctx.payer);
+      await sendTransaction([instruction1, instruction2], ctx.payer);
 
       // Add two members first
       const addMembersArgs = await prepareChangeConfigArgs({
-        compressed: ctx.compressed,
         settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
@@ -262,7 +262,6 @@ export function runPermissionsTests(getCtx: () => TestContext) {
 
       // Update both members' permissions
       const editPermissionsArgs = await prepareChangeConfigArgs({
-        compressed: ctx.compressed,
         settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
@@ -291,7 +290,7 @@ export function runPermissionsTests(getCtx: () => TestContext) {
         ctx.addressLookUpTable,
       );
       const settings = await getSettingsFromIndex(ctx.index);
-      const accountData = await fetchSettingsAccountData(settings);
+      const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
       const updatedMember1 = accountData.members.find(
         (m) =>
           convertMemberKeyToString(m.pubkey) === member1.address.toString(),

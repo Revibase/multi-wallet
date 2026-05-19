@@ -7,11 +7,12 @@ import {
   convertPubkeyCompressedToCose,
   createClientAuthorizationStartRequestChallenge,
   createMessageChallenge,
-  fetchSettingsAccountData,
+  fetchSettings,
   fetchUserAccountByFilters,
   getDeviceMessageHash,
   getDomainConfigAddress,
   getSettingsFromIndex,
+  getSolanaRpc,
   UserRole,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
@@ -112,9 +113,12 @@ export async function verifyMessage(
     if (!delegateTo) {
       throw new Error("User does not have a delegated wallet");
     }
-    const settingsData = await fetchSettingsAccountData(
-      await getSettingsFromIndex(delegateTo.index),
-    );
+    const settingsData = (
+      await fetchSettings(
+        getSolanaRpc(),
+        await getSettingsFromIndex(delegateTo.index),
+      )
+    ).data;
     const transactionManager = settingsData.members.find(
       (x) => x.role === UserRole.TransactionManager,
     );

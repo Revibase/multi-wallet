@@ -1,6 +1,7 @@
 import {
-  fetchSettingsAccountData,
+  fetchSettings,
   getSignedSecp256r1Key,
+  getSolanaRpc,
   nativeTransferIntent,
   retrieveTransactionManager,
   tokenTransferIntent,
@@ -29,14 +30,12 @@ export async function processTokenTransfer(params: {
   authResponse: TransactionAuthenticationResponse;
   settings: Address;
   payer?: TransactionSigner;
-  settingsAddressTreeIndex?: number;
   options?: TransactionAuthorizationFlowOptions;
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
 }): Promise<string> {
   const {
     authResponse,
     settings,
-    settingsAddressTreeIndex,
     options,
     payer,
     addressesByLookupTableAddress,
@@ -57,16 +56,9 @@ export async function processTokenTransfer(params: {
   const destination = getAddressDecoder().decode(message.slice(8, 40));
   const mint = getAddressDecoder().decode(message.slice(40, 72));
 
-  const cachedAccounts = new Map();
   const [feePayer, settingsData, signedSigner] = await Promise.all([
     payer ?? getRandomPayer(),
-    withRetry(() =>
-      fetchSettingsAccountData(
-        settings,
-        settingsAddressTreeIndex,
-        cachedAccounts,
-      ),
-    ),
+    (await withRetry(() => fetchSettings(getSolanaRpc(), settings))).data,
     getSignedSecp256r1Key(authResponse),
   ]);
 
@@ -75,14 +67,12 @@ export async function processTokenTransfer(params: {
   const transactionManagerSigner = await getTransactionManagerSigner({
     authResponses: [authResponse],
     transactionManagerAddress: tm?.transactionManagerAddress,
-    userAddressTreeIndex: tm?.userAddressTreeIndex,
     transactionMessageBytes: getBase64Encoder().encode(transactionMessageBytes),
     onPendingApprovalsCallback:
       options?.pendingApprovalsCallback?.onPendingApprovalsCallback,
     onPendingApprovalsSuccess:
       options?.pendingApprovalsCallback?.onPendingApprovalsSuccess,
     abortSignal: options?.signal,
-    cachedAccounts,
   });
 
   const signers = transactionManagerSigner
@@ -94,24 +84,17 @@ export async function processTokenTransfer(params: {
       ? await tokenTransferIntent({
           payer: feePayer,
           settings,
-          settingsAddressTreeIndex,
           amount,
           signers,
           destination,
           mint,
           tokenProgram: address(transactionAddress),
-          compressed: settingsData.isCompressed,
-          cachedAccounts,
         })
       : await nativeTransferIntent({
-          payer: feePayer,
           settings,
-          settingsAddressTreeIndex,
           amount,
           signers,
           destination,
-          compressed: settingsData.isCompressed,
-          cachedAccounts,
         });
 
   return signAndSendTransaction({

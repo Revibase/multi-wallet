@@ -4,7 +4,6 @@ import {
   convertMemberKeyToString,
   getSecp256r1MessageHash,
   getSecp256r1VerifyInstructionDataDecoder,
-  getSettingsFromIndex,
   getSolanaRpc,
   getWalletAddressFromSettings,
   KeyType,
@@ -12,10 +11,8 @@ import {
   vaultTransactionMessageDeserialize,
   type ExpectedSigner,
   type Secp256r1VerifyArgsWithDomainConfigIndex,
-  type SettingsMutArgs,
-  type SettingsReadonlyArgs,
   type TransactionAuthDetails,
-  type TransactionMessage,
+  type TransactionExecuteSyncInstructionData,
 } from "@revibase/core";
 import type {
   Address,
@@ -190,22 +187,6 @@ export async function verifyAndParseSigners(
 }
 
 /**
- * Extracts the settings account address from compressed state arguments.
- */
-export async function extractSettingsFromCompressed(
-  settingsArgs: SettingsMutArgs | SettingsReadonlyArgs,
-  errorMessage: string,
-): Promise<string> {
-  const settingsOption = settingsArgs?.data?.data;
-
-  if (!settingsOption || settingsOption.__option === "None") {
-    throw new Error(errorMessage);
-  }
-
-  return getSettingsFromIndex(settingsOption.value.index);
-}
-
-/**
  * Parses raw transaction message bytes into decompiled instructions.
  */
 export async function parseTransactionMessageBytes(
@@ -226,7 +207,7 @@ export async function parseTransactionMessageBytes(
  */
 export function parseInnerTransaction(
   outerInstructionAccounts: Instruction["accounts"],
-  innerTransactionMessage: TransactionMessage,
+  innerTransactionMessage: TransactionExecuteSyncInstructionData,
 ): Instruction[] {
   if (!outerInstructionAccounts) {
     throw new Error("Invalid instruction accounts.");

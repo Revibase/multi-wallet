@@ -47,7 +47,7 @@ import {
   type TransactionSyncSignersArgs,
 } from "../types";
 
-export const NATIVE_TRANSFER_INTENT_DISCRIMINATOR = new Uint8Array([29]);
+export const NATIVE_TRANSFER_INTENT_DISCRIMINATOR = new Uint8Array([17]);
 
 export function getNativeTransferIntentDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(

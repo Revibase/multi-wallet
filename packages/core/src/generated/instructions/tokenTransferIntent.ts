@@ -66,7 +66,7 @@ import {
   type TransactionSyncSignersArgs,
 } from "../types";
 
-export const TOKEN_TRANSFER_INTENT_DISCRIMINATOR = new Uint8Array([30]);
+export const TOKEN_TRANSFER_INTENT_DISCRIMINATOR = new Uint8Array([18]);
 
 export function getTokenTransferIntentDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(

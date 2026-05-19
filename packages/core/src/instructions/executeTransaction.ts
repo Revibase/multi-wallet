@@ -5,10 +5,7 @@ import type {
   ReadonlyUint8Array,
   TransactionSigner,
 } from "gill";
-import {
-  getTransactionExecuteCompressedInstruction,
-  getTransactionExecuteInstruction,
-} from "../generated";
+import { getTransactionExecuteInstruction } from "../generated";
 import { getWalletAddressFromSettings } from "../utils";
 import { addJitoTip } from "../utils/transaction/internal";
 import { accountsForTransactionExecute } from "../utils/transactionMessage/internal";
@@ -26,7 +23,6 @@ export async function executeTransaction({
   secp256r1VerifyInput = [],
   additionalSigners = [],
   jitoBundlesTipAmount,
-  compressed = false,
 }: {
   settings: Address;
   payer: TransactionSigner;
@@ -36,7 +32,6 @@ export async function executeTransaction({
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   additionalSigners?: TransactionSigner[];
   jitoBundlesTipAmount?: number;
-  compressed?: boolean;
 }) {
   const walletAddress = await getWalletAddressFromSettings(settings);
 
@@ -54,19 +49,12 @@ export async function executeTransaction({
   }
 
   instructions.push(
-    compressed
-      ? getTransactionExecuteCompressedInstruction({
-          transactionBuffer: transactionBufferAddress,
-          payer: payer.address,
-          remainingAccounts: accountMetas,
-          settingsKey: settings,
-        })
-      : getTransactionExecuteInstruction({
-          transactionBuffer: transactionBufferAddress,
-          payer: payer.address,
-          remainingAccounts: accountMetas,
-          settings,
-        }),
+    getTransactionExecuteInstruction({
+      transactionBuffer: transactionBufferAddress,
+      payer: payer.address,
+      remainingAccounts: accountMetas,
+      settings,
+    }),
   );
 
   if (jitoBundlesTipAmount) {

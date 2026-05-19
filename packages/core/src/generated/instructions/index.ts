@@ -6,34 +6,22 @@
  * @see https://github.com/codama-idl/codama
  */
 
-export * from './addWhitelistedAddressTrees';
 export * from './changeConfig';
-export * from './changeConfigCompressed';
-export * from './createCompressedWallet';
 export * from './createDomainConfig';
 export * from './createDomainUserAccount';
 export * from './createGlobalCounter';
-export * from './createUserAccounts';
-export * from './decompressSettingsAccount';
+export * from './createUserAccount';
+export * from './createWallet';
 export * from './disableDomainConfig';
 export * from './editDomainConfig';
 export * from './editTransactionManagerUrl';
 export * from './editUserDelegate';
 export * from './nativeTransferIntent';
-export * from './nativeTransferIntentCompressed';
 export * from './tokenTransferIntent';
-export * from './tokenTransferIntentCompressed';
 export * from './transactionBufferClose';
-export * from './transactionBufferCloseCompressed';
 export * from './transactionBufferCreate';
-export * from './transactionBufferCreateCompressed';
 export * from './transactionBufferExecute';
-export * from './transactionBufferExecuteCompressed';
 export * from './transactionBufferExtend';
-export * from './transactionBufferExtendCompressed';
 export * from './transactionBufferVote';
-export * from './transactionBufferVoteCompressed';
 export * from './transactionExecute';
-export * from './transactionExecuteCompressed';
 export * from './transactionExecuteSync';
-export * from './transactionExecuteSyncCompressed';

@@ -9,19 +9,16 @@ export type PermissionArgs = {
 
 type AddMemberArgs = {
   member: Address | Secp256r1Key;
-  userAddressTreeIndex?: number;
   permissions: PermissionArgs;
 };
 
 type EditMemberArgs = {
   member: Address | Secp256r1Key;
-  userAddressTreeIndex?: number;
   permissions: PermissionArgs;
 };
 
 type RemoveMemberArgs = {
   member: Address | Secp256r1Key;
-  userAddressTreeIndex?: number;
 };
 
 export type ConfigurationArgs =

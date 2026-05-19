@@ -10,7 +10,7 @@ import {
   getSecp256r1MessageHash,
   type CompleteMessageRequest,
   type TransactionAuthDetails,
-  type TransactionBufferCreateArgs,
+  type TransactionBufferCreateInstructionData,
 } from "@revibase/core";
 import {
   verifyAuthenticationResponse,
@@ -129,7 +129,7 @@ export async function verifyTransactionAuthResponseWithMessageHash(
  * Verifies that transaction buffer hash matches the provided transaction bytes.
  */
 export async function verifyTransactionBufferHash(
-  bufferArgs: TransactionBufferCreateArgs,
+  bufferArgs: TransactionBufferCreateInstructionData,
   transactionMessage: Uint8Array<ArrayBuffer>,
 ): Promise<boolean> {
   const computedHash = sha256(transactionMessage);

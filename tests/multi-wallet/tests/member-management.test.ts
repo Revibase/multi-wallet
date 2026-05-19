@@ -3,9 +3,11 @@ import {
   changeConfig,
   convertMemberKeyToString,
   createDomainUserAccounts,
-  fetchSettingsAccountData,
-  fetchUserAccountData,
+  fetchSettings,
+  fetchUser,
   getSettingsFromIndex,
+  getSolanaRpc,
+  getUserAddress,
   prepareChangeConfigArgs,
   Secp256r1Key,
   Transports,
@@ -33,8 +35,10 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
 
       // Verify member was added
       const settings = await getSettingsFromIndex(ctx.index);
-      const accountData = await fetchSettingsAccountData(settings);
-      const userAccountData = await fetchUserAccountData(ctx.payer.address);
+      const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
+      const userAccountData = (
+        await fetchUser(getSolanaRpc(), await getUserAddress(ctx.payer.address))
+      ).data;
 
       expect(
         userAccountData.wallets.every((x) => !x.isDelegate),
@@ -60,7 +64,6 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       await addPayerAsNewMember(ctx);
 
       const changeConfigArgs = await prepareChangeConfigArgs({
-        compressed: ctx.compressed,
         settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
@@ -84,7 +87,9 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
 
       // Verify permissions were updated
-      const userAccountData = await fetchUserAccountData(ctx.payer.address);
+      const userAccountData = (
+        await fetchUser(getSolanaRpc(), await getUserAddress(ctx.payer.address))
+      ).data;
       expect(
         userAccountData.wallets.every((x) => !x.isDelegate),
         "Payer should not be a delegate after permission edit",
@@ -101,7 +106,6 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       await addPayerAsNewMember(ctx);
 
       const changeConfigArgs = await prepareChangeConfigArgs({
-        compressed: ctx.compressed,
         settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
@@ -125,8 +129,10 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
 
       // Verify member was removed
       const settings = await getSettingsFromIndex(ctx.index);
-      const accountData = await fetchSettingsAccountData(settings);
-      const userAccountData = await fetchUserAccountData(ctx.payer.address);
+      const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
+      const userAccountData = (
+        await fetchUser(getSolanaRpc(), await getUserAddress(ctx.payer.address))
+      ).data;
 
       expect(
         userAccountData.wallets.every((x) => !x.isDelegate),
@@ -184,7 +190,6 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       );
 
       const changeConfigArgs = await prepareChangeConfigArgs({
-        compressed: ctx.compressed,
         settings: await getSettingsFromIndex(ctx.index),
         configActionsArgs: [
           {
@@ -208,8 +213,10 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
 
       // Verify member was added
       const settings = await getSettingsFromIndex(ctx.index);
-      const accountData = await fetchSettingsAccountData(settings);
-      const userAccountData = await fetchUserAccountData(secp256r1Key);
+      const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
+      const userAccountData = (
+        await fetchUser(getSolanaRpc(), await getUserAddress(secp256r1Key))
+      ).data;
 
       expect(
         userAccountData.wallets.every((x) => !x.isDelegate),

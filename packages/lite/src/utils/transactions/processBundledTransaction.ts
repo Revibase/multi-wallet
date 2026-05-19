@@ -1,6 +1,7 @@
 import {
-  fetchSettingsAccountData,
+  fetchSettings,
   getSignedSecp256r1Key,
+  getSolanaRpc,
   prepareTransactionBundle,
   retrieveTransactionManager,
   type TransactionAuthenticationResponse,
@@ -22,19 +23,11 @@ export async function processBundledTransaction(
     authResponse: TransactionAuthenticationResponse;
     settings: Address;
     payer?: TransactionSigner;
-    settingsAddressTreeIndex?: number;
     additionalSigners?: TransactionSigner[];
     options?: TransactionAuthorizationFlowOptions;
   },
 ): Promise<string> {
-  const {
-    authResponse,
-    settings,
-    additionalSigners,
-    options,
-    payer,
-    settingsAddressTreeIndex,
-  } = params;
+  const { authResponse, settings, additionalSigners, options, payer } = params;
   const { startRequest, signer } = authResponse;
   if (startRequest.data.type !== "transaction")
     throw new Error("Invalid request type.");
@@ -50,16 +43,10 @@ export async function processBundledTransaction(
       "Transaction action type must be 'execute' or 'create_with_preauthorized_execution'",
     );
   }
-  const cachedAccounts = new Map();
+
   const [feePayer, settingsData, signedSigner] = await Promise.all([
     payer ?? getRandomPayer(),
-    withRetry(() =>
-      fetchSettingsAccountData(
-        settings,
-        settingsAddressTreeIndex,
-        cachedAccounts,
-      ),
-    ),
+    (await withRetry(() => fetchSettings(getSolanaRpc(), settings))).data,
     getSignedSecp256r1Key(authResponse),
   ]);
 
@@ -69,7 +56,6 @@ export async function processBundledTransaction(
     getTransactionManagerSigner({
       authResponses: [authResponse],
       transactionManagerAddress: tm?.transactionManagerAddress,
-      userAddressTreeIndex: tm?.userAddressTreeIndex,
       transactionMessageBytes: getBase64Encoder().encode(
         transactionMessageBytes,
       ),
@@ -78,15 +64,12 @@ export async function processBundledTransaction(
       onPendingApprovalsSuccess:
         options?.pendingApprovalsCallback?.onPendingApprovalsSuccess,
       abortSignal: options?.signal,
-      cachedAccounts,
     }),
     withRetry(() => provider.onEstimateJitoTipsCallback()),
   ]);
 
   const bundle = await prepareTransactionBundle({
-    compressed: settingsData.isCompressed,
     settings,
-    settingsAddressTreeIndex,
     transactionMessageBytes: getBase64Encoder().encode(
       transactionMessageBytes,
     ) as Uint8Array<ArrayBuffer>,
@@ -95,7 +78,6 @@ export async function processBundledTransaction(
     jitoBundlesTipAmount,
     additionalSigners,
     payer: feePayer,
-    cachedAccounts,
   });
 
   const bundlesWithLookupTables = await Promise.all(

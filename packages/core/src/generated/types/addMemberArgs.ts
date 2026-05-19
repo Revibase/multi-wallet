@@ -10,54 +10,43 @@ import {
   combineCodec,
   getStructDecoder,
   getStructEncoder,
-  type Codec,
-  type Decoder,
-  type Encoder,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
 } from "gill";
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
   getPermissionsDecoder,
   getPermissionsEncoder,
-  getUserReadOnlyOrMutateArgsDecoder,
-  getUserReadOnlyOrMutateArgsEncoder,
   type IPermissions,
   type MemberKey,
   type MemberKeyArgs,
   type PermissionsArgs,
-  type UserReadOnlyOrMutateArgs,
-  type UserReadOnlyOrMutateArgsArgs,
 } from ".";
 
-export type AddMemberArgs = {
-  memberKey: MemberKey;
-  permissions: IPermissions;
-  userArgs: UserReadOnlyOrMutateArgs;
-};
+export type AddMemberArgs = { memberKey: MemberKey; permissions: IPermissions };
 
 export type AddMemberArgsArgs = {
   memberKey: MemberKeyArgs;
   permissions: PermissionsArgs;
-  userArgs: UserReadOnlyOrMutateArgsArgs;
 };
 
-export function getAddMemberArgsEncoder(): Encoder<AddMemberArgsArgs> {
+export function getAddMemberArgsEncoder(): FixedSizeEncoder<AddMemberArgsArgs> {
   return getStructEncoder([
     ["memberKey", getMemberKeyEncoder()],
     ["permissions", getPermissionsEncoder()],
-    ["userArgs", getUserReadOnlyOrMutateArgsEncoder()],
   ]);
 }
 
-export function getAddMemberArgsDecoder(): Decoder<AddMemberArgs> {
+export function getAddMemberArgsDecoder(): FixedSizeDecoder<AddMemberArgs> {
   return getStructDecoder([
     ["memberKey", getMemberKeyDecoder()],
     ["permissions", getPermissionsDecoder()],
-    ["userArgs", getUserReadOnlyOrMutateArgsDecoder()],
   ]);
 }
 
-export function getAddMemberArgsCodec(): Codec<
+export function getAddMemberArgsCodec(): FixedSizeCodec<
   AddMemberArgsArgs,
   AddMemberArgs
 > {

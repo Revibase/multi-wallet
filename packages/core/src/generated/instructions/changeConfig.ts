@@ -14,8 +14,6 @@ import {
   getArrayEncoder,
   getBytesDecoder,
   getBytesEncoder,
-  getOptionDecoder,
-  getOptionEncoder,
   getStructDecoder,
   getStructEncoder,
   transformEncoder,
@@ -28,8 +26,6 @@ import {
   type Instruction,
   type InstructionWithAccounts,
   type InstructionWithData,
-  type Option,
-  type OptionOrNullable,
   type ReadonlyAccount,
   type ReadonlyUint8Array,
   type TransactionSigner,
@@ -42,19 +38,15 @@ import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
   getConfigActionDecoder,
   getConfigActionEncoder,
-  getProofArgsDecoder,
-  getProofArgsEncoder,
   getTransactionSyncSignersDecoder,
   getTransactionSyncSignersEncoder,
   type ConfigAction,
   type ConfigActionArgs,
-  type ProofArgs,
-  type ProofArgsArgs,
   type TransactionSyncSigners,
   type TransactionSyncSignersArgs,
 } from "../types";
 
-export const CHANGE_CONFIG_DISCRIMINATOR = new Uint8Array([9]);
+export const CHANGE_CONFIG_DISCRIMINATOR = new Uint8Array([8]);
 
 export function getChangeConfigDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
@@ -104,13 +96,11 @@ export type ChangeConfigInstructionData = {
   discriminator: ReadonlyUint8Array;
   configActions: Array<ConfigAction>;
   signers: Array<TransactionSyncSigners>;
-  compressedProofArgs: Option<ProofArgs>;
 };
 
 export type ChangeConfigInstructionDataArgs = {
   configActions: Array<ConfigActionArgs>;
   signers: Array<TransactionSyncSignersArgs>;
-  compressedProofArgs: OptionOrNullable<ProofArgsArgs>;
 };
 
 export function getChangeConfigInstructionDataEncoder(): Encoder<ChangeConfigInstructionDataArgs> {
@@ -119,7 +109,6 @@ export function getChangeConfigInstructionDataEncoder(): Encoder<ChangeConfigIns
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
       ["configActions", getArrayEncoder(getConfigActionEncoder())],
       ["signers", getArrayEncoder(getTransactionSyncSignersEncoder())],
-      ["compressedProofArgs", getOptionEncoder(getProofArgsEncoder())],
     ]),
     (value) => ({ ...value, discriminator: CHANGE_CONFIG_DISCRIMINATOR }),
   );
@@ -130,7 +119,6 @@ export function getChangeConfigInstructionDataDecoder(): Decoder<ChangeConfigIns
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
     ["configActions", getArrayDecoder(getConfigActionDecoder())],
     ["signers", getArrayDecoder(getTransactionSyncSignersDecoder())],
-    ["compressedProofArgs", getOptionDecoder(getProofArgsDecoder())],
   ]);
 }
 
@@ -162,7 +150,6 @@ export type ChangeConfigInput<
   instructionsSysvar?: Address<TAccountInstructionsSysvar>;
   configActions: ChangeConfigInstructionDataArgs["configActions"];
   signers: ChangeConfigInstructionDataArgs["signers"];
-  compressedProofArgs: ChangeConfigInstructionDataArgs["compressedProofArgs"];
   remainingAccounts: ChangeConfigInstructionExtraArgs["remainingAccounts"];
 };
 

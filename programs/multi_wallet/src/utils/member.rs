@@ -1,5 +1,5 @@
 use crate::{
-    KeyType, MultisigError, Permissions, Secp256r1Pubkey, Secp256r1VerifyArgs,
+    utils::UserRole, KeyType, MultisigError, Permissions, Secp256r1Pubkey, Secp256r1VerifyArgs,
     COMPRESSED_PUBKEY_SERIALIZED_SIZE,
 };
 use anchor_lang::prelude::*;
@@ -14,16 +14,32 @@ use bytemuck::{Pod, Zeroable};
     Clone,
     Zeroable,
     Pod,
-    Default,
     Debug,
+    Default,
 )]
 #[repr(C)]
 pub struct Member {
     pub pubkey: MemberKey,
     pub role: u8,
     pub permissions: Permissions,
-    pub user_address_tree_index: u8,
+    pub _padding: u8,
     pub is_delegate: u8,
+}
+impl Member {
+    pub fn new(
+        pubkey: MemberKey,
+        role: UserRole,
+        permissions: Permissions,
+        is_delegate: bool,
+    ) -> Self {
+        Self {
+            pubkey,
+            role: UserRole::to_u8(role),
+            permissions,
+            is_delegate: bool_to_u8_delegate(is_delegate),
+            _padding: 0,
+        }
+    }
 }
 
 #[derive(
@@ -220,7 +236,6 @@ mod tests {
         let member = Member::default();
         assert_eq!(member.role, 0);
         assert_eq!(member.is_delegate, 0);
-        assert_eq!(member.user_address_tree_index, 0);
     }
 
     #[test]
@@ -232,13 +247,7 @@ mod tests {
             Permission::VoteTransaction,
             Permission::ExecuteTransaction,
         ]);
-        let member = Member {
-            pubkey: member_key,
-            role: UserRole::Member.to_u8(),
-            permissions: perms,
-            user_address_tree_index: 0,
-            is_delegate: 0,
-        };
+        let member = Member::new(member_key, UserRole::Member, perms, false);
         assert!(member.permissions.has(Permission::InitiateTransaction));
         assert!(member.permissions.has(Permission::VoteTransaction));
         assert!(member.permissions.has(Permission::ExecuteTransaction));

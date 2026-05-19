@@ -6,7 +6,6 @@ export const UserInfoSchema = z.looseObject({
   walletAddress: z.string(),
   settingsIndexWithAddress: z.object({
     index: z.union([z.number(), z.bigint()]),
-    settingsAddressTreeIndex: z.number(),
   }),
 });
 
@@ -131,7 +130,6 @@ export const TransactionActionTypeSchema = z.enum([
   "vote",
   "sync",
   "close",
-  "decompress",
   "transfer_intent",
   "change_delegate",
   "change_config",
@@ -218,7 +216,6 @@ export const AuthenticationContextSchema = z
 export const BaseResponseSchema = z
   .object({
     signer: z.string(),
-    userAddressTreeIndex: z.number().optional(),
     additionalInfo: z.looseObject({}).optional(),
   })
   .strict();

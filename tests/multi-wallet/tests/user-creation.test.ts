@@ -2,15 +2,20 @@ import {
   bufferToBase64URLString,
   createDomainUserAccounts,
   createUserAccounts,
-  fetchUserAccountData,
+  fetchUser,
   getSettingsFromIndex,
+  getSolanaRpc,
+  getUserAddress,
   Secp256r1Key,
   Transports,
   UserRole,
 } from "@revibase/core";
 import { expect } from "chai";
 import { createKeyPairSignerFromPrivateKeyBytes } from "gill";
-import { TEST_AMOUNT_MEDIUM, TEST_TRANSACTION_MANAGER_URL } from "../constants.ts";
+import {
+  TEST_AMOUNT_MEDIUM,
+  TEST_TRANSACTION_MANAGER_URL,
+} from "../constants.ts";
 import {
   assertTestContext,
   createMultiWallet,
@@ -42,12 +47,10 @@ export function runUserCreationTests(getCtx: () => TestContext) {
       );
       const createUserAccountIx = await createUserAccounts({
         payer: ctx.payer,
-        createUserArgs: [
-          {
-            member: user,
-            role: UserRole.Member,
-          },
-        ],
+        createUserArgs: {
+          member: user,
+          role: UserRole.Member,
+        },
       });
 
       await sendTransaction(
@@ -56,10 +59,13 @@ export function runUserCreationTests(getCtx: () => TestContext) {
         ctx.addressLookUpTable,
       );
 
-      const userAccount = await fetchUserAccountData(user.address);
-      expect(userAccount.role, "Created user should have member role").to.equal(
-        UserRole.Member,
-      );
+      const userAccountData = (
+        await fetchUser(getSolanaRpc(), await getUserAddress(user.address))
+      ).data;
+      expect(
+        userAccountData.role,
+        "Created user should have member role",
+      ).to.equal(UserRole.Member);
     });
   });
 
@@ -83,13 +89,11 @@ export function runUserCreationTests(getCtx: () => TestContext) {
       );
       const createUserAccountIx = await createUserAccounts({
         payer: ctx.payer,
-        createUserArgs: [
-          {
-            member: transactionManager,
-            role: UserRole.TransactionManager,
-            transactionManagerUrl: TEST_TRANSACTION_MANAGER_URL,
-          },
-        ],
+        createUserArgs: {
+          member: transactionManager,
+          role: UserRole.TransactionManager,
+          transactionManagerUrl: TEST_TRANSACTION_MANAGER_URL,
+        },
       });
 
       await sendTransaction(
@@ -98,14 +102,19 @@ export function runUserCreationTests(getCtx: () => TestContext) {
         ctx.addressLookUpTable,
       );
 
-      const userAccount = await fetchUserAccountData(transactionManager.address);
+      const userAccountData = (
+        await fetchUser(
+          getSolanaRpc(),
+          await getUserAddress(transactionManager.address),
+        )
+      ).data;
       expect(
-        userAccount.role,
+        userAccountData.role,
         "Created user should have transaction manager role",
       ).to.equal(UserRole.TransactionManager);
-      if (userAccount.transactionManagerUrl.__option === "Some") {
+      if (userAccountData.transactionManagerUrl.__option === "Some") {
         expect(
-          userAccount.transactionManagerUrl.value,
+          userAccountData.transactionManagerUrl.value,
           "Transaction manager URL should match configured value",
         ).to.equal(TEST_TRANSACTION_MANAGER_URL);
       } else {
@@ -152,12 +161,14 @@ export function runUserCreationTests(getCtx: () => TestContext) {
         ctx.addressLookUpTable,
       );
 
-      const userAccount = await fetchUserAccountData(secp256r1Key);
+      const userAccountData = (
+        await fetchUser(getSolanaRpc(), await getUserAddress(secp256r1Key))
+      ).data;
       expect(
-        userAccount.role,
+        userAccountData.role,
         "Created domain user should have member role",
       ).to.equal(UserRole.Member);
-      const delegatedWallet = userAccount.wallets.find((x) => x.isDelegate);
+      const delegatedWallet = userAccountData.wallets.find((x) => x.isDelegate);
       expect(
         delegatedWallet?.index,
         "Domain user should be delegated to the created wallet index",
@@ -185,13 +196,11 @@ export function runUserCreationTests(getCtx: () => TestContext) {
       );
       const createUserAccountIx = await createUserAccounts({
         payer: ctx.payer,
-        createUserArgs: [
-          {
-            member: transactionManager,
-            role: UserRole.TransactionManager,
-            transactionManagerUrl: TEST_TRANSACTION_MANAGER_URL,
-          },
-        ],
+        createUserArgs: {
+          member: transactionManager,
+          role: UserRole.TransactionManager,
+          transactionManagerUrl: TEST_TRANSACTION_MANAGER_URL,
+        },
       });
 
       await sendTransaction(
@@ -215,9 +224,9 @@ export function runUserCreationTests(getCtx: () => TestContext) {
           role: UserRole.PermanentMember,
           settings: await getSettingsFromIndex(ctx.index),
           credentialId,
-          transactionManager: {
-            member: transactionManager.address,
-          },
+          transactionManagerAccount: await getUserAddress(
+            transactionManager.address,
+          ),
           transports: [Transports.Internal, Transports.Hybrid],
         },
       });
@@ -228,12 +237,14 @@ export function runUserCreationTests(getCtx: () => TestContext) {
         ctx.addressLookUpTable,
       );
 
-      const userAccount = await fetchUserAccountData(secp256r1Key);
+      const userAccountData = (
+        await fetchUser(getSolanaRpc(), await getUserAddress(secp256r1Key))
+      ).data;
       expect(
-        userAccount.role,
+        userAccountData.role,
         "Created domain user should have permanent member role",
       ).to.equal(UserRole.PermanentMember);
-      const delegatedWallet = userAccount.wallets.find((x) => x.isDelegate);
+      const delegatedWallet = userAccountData.wallets.find((x) => x.isDelegate);
       expect(
         delegatedWallet?.index,
         "Domain user should be delegated to the created wallet index",

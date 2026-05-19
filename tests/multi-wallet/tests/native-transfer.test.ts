@@ -5,6 +5,7 @@ import {
   editUserDelegate,
   getSettingsFromIndex,
   getSolanaRpc,
+  getUserAddress,
   nativeTransferIntent,
   Secp256r1Key,
   Transports,
@@ -51,20 +52,15 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
         const instructions = await editUserDelegate({
           payer: ctx.payer,
           user: ctx.payer,
-          newDelegate: {
-            index: BigInt(ctx.index),
-            settingsAddressTreeIndex: 0,
-          },
+          newDelegate: Number(ctx.index),
         });
         await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
 
         const nativeTransfer = await nativeTransferIntent({
           settings: await getSettingsFromIndex(ctx.index),
-          payer: ctx.payer,
           signers: [ctx.payer],
           destination: ctx.wallet.address,
           amount: TEST_AMOUNT_SMALL,
-          compressed: ctx.compressed,
         });
 
         await sendTransaction(
@@ -142,11 +138,9 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
 
       const nativeTransfer = await nativeTransferIntent({
         settings: await getSettingsFromIndex(ctx.index),
-        payer: ctx.payer,
         signers: [signedSigner],
         destination: ctx.wallet.address,
         amount: TEST_AMOUNT_SMALL,
-        compressed: ctx.compressed,
       });
 
       await sendTransaction(nativeTransfer, ctx.payer, ctx.addressLookUpTable);
@@ -165,11 +159,9 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
       await expectFailure(async () => {
         const duplicateTransfer = await nativeTransferIntent({
           settings: await getSettingsFromIndex(ctx.index),
-          payer: ctx.payer,
           signers: [signedSigner],
           destination: ctx.wallet.address,
           amount: TEST_AMOUNT_SMALL,
-          compressed: ctx.compressed,
         });
 
         await sendTransaction(
@@ -203,13 +195,11 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
         );
         const createUserAccountIx = await createUserAccounts({
           payer: ctx.payer,
-          createUserArgs: [
-            {
-              member: transactionManager,
-              role: UserRole.TransactionManager,
-              transactionManagerUrl: "https://xyz.com",
-            },
-          ],
+          createUserArgs: {
+            member: transactionManager,
+            role: UserRole.TransactionManager,
+            transactionManagerUrl: "https://xyz.com",
+          },
         });
 
         await sendTransaction(
@@ -232,9 +222,9 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
             member: secp256r1Key,
             role: UserRole.PermanentMember,
             settings: await getSettingsFromIndex(ctx.index),
-            transactionManager: {
-              member: transactionManager.address,
-            },
+            transactionManagerAccount: await getUserAddress(
+              transactionManager.address,
+            ),
             credentialId,
             transports: [Transports.Internal, Transports.Hybrid],
           },
@@ -263,11 +253,9 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
 
         const nativeTransfer = await nativeTransferIntent({
           settings: await getSettingsFromIndex(ctx.index),
-          payer: ctx.payer,
           signers: [signedSigner, transactionManager],
           destination: ctx.wallet.address,
           amount: TEST_AMOUNT_SMALL,
-          compressed: ctx.compressed,
         });
 
         await sendTransaction(

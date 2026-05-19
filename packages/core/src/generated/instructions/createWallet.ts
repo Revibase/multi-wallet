@@ -10,6 +10,7 @@ import {
   combineCodec,
   fixDecoderSize,
   fixEncoderSize,
+  getAddressEncoder,
   getBytesDecoder,
   getBytesEncoder,
   getProgramDerivedAddress,
@@ -17,15 +18,13 @@ import {
   getStructEncoder,
   getU128Decoder,
   getU128Encoder,
-  getU8Decoder,
-  getU8Encoder,
   transformEncoder,
   type AccountMeta,
   type AccountSignerMeta,
   type Address,
-  type Codec,
-  type Decoder,
-  type Encoder,
+  type FixedSizeCodec,
+  type FixedSizeDecoder,
+  type FixedSizeEncoder,
   type Instruction,
   type InstructionWithAccounts,
   type InstructionWithData,
@@ -38,31 +37,22 @@ import {
 } from "gill";
 import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
 import {
-  getPackedAddressTreeInfoDecoder,
-  getPackedAddressTreeInfoEncoder,
-  getProofArgsDecoder,
-  getProofArgsEncoder,
-  getUserReadOnlyOrMutateArgsDecoder,
-  getUserReadOnlyOrMutateArgsEncoder,
-  type PackedAddressTreeInfo,
-  type PackedAddressTreeInfoArgs,
-  type ProofArgs,
-  type ProofArgsArgs,
-  type UserReadOnlyOrMutateArgs,
-  type UserReadOnlyOrMutateArgsArgs,
-} from "../types";
+  expectAddress,
+  expectSome,
+  getAccountMetaFactory,
+  type ResolvedAccount,
+} from "../shared";
 
-export const CREATE_COMPRESSED_WALLET_DISCRIMINATOR = new Uint8Array([18]);
+export const CREATE_WALLET_DISCRIMINATOR = new Uint8Array([16]);
 
-export function getCreateCompressedWalletDiscriminatorBytes() {
+export function getCreateWalletDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    CREATE_COMPRESSED_WALLET_DISCRIMINATOR,
+    CREATE_WALLET_DISCRIMINATOR,
   );
 }
 
-export type CreateCompressedWalletInstruction<
+export type CreateWalletInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountPayer extends string | AccountMeta<string> = string,
   TAccountInitialMember extends string | AccountMeta<string> = string,
@@ -70,7 +60,8 @@ export type CreateCompressedWalletInstruction<
     | string
     | AccountMeta<string> = "11111111111111111111111111111111",
   TAccountGlobalCounter extends string | AccountMeta<string> = string,
-  TAccountWhitelistedAddressTrees extends string | AccountMeta<string> = string,
+  TAccountUserAccount extends string | AccountMeta<string> = string,
+  TAccountSettings extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -90,116 +81,101 @@ export type CreateCompressedWalletInstruction<
       TAccountGlobalCounter extends string
         ? WritableAccount<TAccountGlobalCounter>
         : TAccountGlobalCounter,
-      TAccountWhitelistedAddressTrees extends string
-        ? ReadonlyAccount<TAccountWhitelistedAddressTrees>
-        : TAccountWhitelistedAddressTrees,
+      TAccountUserAccount extends string
+        ? WritableAccount<TAccountUserAccount>
+        : TAccountUserAccount,
+      TAccountSettings extends string
+        ? WritableAccount<TAccountSettings>
+        : TAccountSettings,
       ...TRemainingAccounts,
     ]
   >;
 
-export type CreateCompressedWalletInstructionData = {
+export type CreateWalletInstructionData = {
   discriminator: ReadonlyUint8Array;
-  compressedProofArgs: ProofArgs;
-  addressTreeInfo: PackedAddressTreeInfo;
-  outputStateTreeIndex: number;
-  userArgs: UserReadOnlyOrMutateArgs;
   settingsIndex: bigint;
 };
 
-export type CreateCompressedWalletInstructionDataArgs = {
-  compressedProofArgs: ProofArgsArgs;
-  addressTreeInfo: PackedAddressTreeInfoArgs;
-  outputStateTreeIndex: number;
-  userArgs: UserReadOnlyOrMutateArgsArgs;
+export type CreateWalletInstructionDataArgs = {
   settingsIndex: number | bigint;
 };
 
-export function getCreateCompressedWalletInstructionDataEncoder(): Encoder<CreateCompressedWalletInstructionDataArgs> {
+export function getCreateWalletInstructionDataEncoder(): FixedSizeEncoder<CreateWalletInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
       ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["compressedProofArgs", getProofArgsEncoder()],
-      ["addressTreeInfo", getPackedAddressTreeInfoEncoder()],
-      ["outputStateTreeIndex", getU8Encoder()],
-      ["userArgs", getUserReadOnlyOrMutateArgsEncoder()],
       ["settingsIndex", getU128Encoder()],
     ]),
-    (value) => ({
-      ...value,
-      discriminator: CREATE_COMPRESSED_WALLET_DISCRIMINATOR,
-    }),
+    (value) => ({ ...value, discriminator: CREATE_WALLET_DISCRIMINATOR }),
   );
 }
 
-export function getCreateCompressedWalletInstructionDataDecoder(): Decoder<CreateCompressedWalletInstructionData> {
+export function getCreateWalletInstructionDataDecoder(): FixedSizeDecoder<CreateWalletInstructionData> {
   return getStructDecoder([
     ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["compressedProofArgs", getProofArgsDecoder()],
-    ["addressTreeInfo", getPackedAddressTreeInfoDecoder()],
-    ["outputStateTreeIndex", getU8Decoder()],
-    ["userArgs", getUserReadOnlyOrMutateArgsDecoder()],
     ["settingsIndex", getU128Decoder()],
   ]);
 }
 
-export function getCreateCompressedWalletInstructionDataCodec(): Codec<
-  CreateCompressedWalletInstructionDataArgs,
-  CreateCompressedWalletInstructionData
+export function getCreateWalletInstructionDataCodec(): FixedSizeCodec<
+  CreateWalletInstructionDataArgs,
+  CreateWalletInstructionData
 > {
   return combineCodec(
-    getCreateCompressedWalletInstructionDataEncoder(),
-    getCreateCompressedWalletInstructionDataDecoder(),
+    getCreateWalletInstructionDataEncoder(),
+    getCreateWalletInstructionDataDecoder(),
   );
 }
 
-export type CreateCompressedWalletInstructionExtraArgs = {
+export type CreateWalletInstructionExtraArgs = {
   remainingAccounts: Array<{ address: Address; role: number }>;
 };
 
-export type CreateCompressedWalletAsyncInput<
+export type CreateWalletAsyncInput<
   TAccountPayer extends string = string,
   TAccountInitialMember extends string = string,
   TAccountSystemProgram extends string = string,
   TAccountGlobalCounter extends string = string,
-  TAccountWhitelistedAddressTrees extends string = string,
+  TAccountUserAccount extends string = string,
+  TAccountSettings extends string = string,
 > = {
   payer: TransactionSigner<TAccountPayer>;
   initialMember: TransactionSigner<TAccountInitialMember>;
   systemProgram?: Address<TAccountSystemProgram>;
   globalCounter?: Address<TAccountGlobalCounter>;
-  whitelistedAddressTrees?: Address<TAccountWhitelistedAddressTrees>;
-  compressedProofArgs: CreateCompressedWalletInstructionDataArgs["compressedProofArgs"];
-  addressTreeInfo: CreateCompressedWalletInstructionDataArgs["addressTreeInfo"];
-  outputStateTreeIndex: CreateCompressedWalletInstructionDataArgs["outputStateTreeIndex"];
-  userArgs: CreateCompressedWalletInstructionDataArgs["userArgs"];
-  settingsIndex: CreateCompressedWalletInstructionDataArgs["settingsIndex"];
-  remainingAccounts: CreateCompressedWalletInstructionExtraArgs["remainingAccounts"];
+  userAccount?: Address<TAccountUserAccount>;
+  settings?: Address<TAccountSettings>;
+  settingsIndex: CreateWalletInstructionDataArgs["settingsIndex"];
+  remainingAccounts: CreateWalletInstructionExtraArgs["remainingAccounts"];
 };
 
-export async function getCreateCompressedWalletInstructionAsync<
+export async function getCreateWalletInstructionAsync<
   TAccountPayer extends string,
   TAccountInitialMember extends string,
   TAccountSystemProgram extends string,
   TAccountGlobalCounter extends string,
-  TAccountWhitelistedAddressTrees extends string,
+  TAccountUserAccount extends string,
+  TAccountSettings extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
-  input: CreateCompressedWalletAsyncInput<
+  input: CreateWalletAsyncInput<
     TAccountPayer,
     TAccountInitialMember,
     TAccountSystemProgram,
     TAccountGlobalCounter,
-    TAccountWhitelistedAddressTrees
+    TAccountUserAccount,
+    TAccountSettings
   >,
   config?: { programAddress?: TProgramAddress },
 ): Promise<
-  CreateCompressedWalletInstruction<
+  CreateWalletInstruction<
     TProgramAddress,
     TAccountPayer,
     TAccountInitialMember,
     TAccountSystemProgram,
     TAccountGlobalCounter,
-    TAccountWhitelistedAddressTrees
+    TAccountUserAccount,
+    TAccountSettings
   >
 > {
   // Program address.
@@ -211,10 +187,8 @@ export async function getCreateCompressedWalletInstructionAsync<
     initialMember: { value: input.initialMember ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
     globalCounter: { value: input.globalCounter ?? null, isWritable: true },
-    whitelistedAddressTrees: {
-      value: input.whitelistedAddressTrees ?? null,
-      isWritable: false,
-    },
+    userAccount: { value: input.userAccount ?? null, isWritable: true },
+    settings: { value: input.settings ?? null, isWritable: true },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -244,16 +218,25 @@ export async function getCreateCompressedWalletInstructionAsync<
       ],
     });
   }
-  if (!accounts.whitelistedAddressTrees.value) {
-    accounts.whitelistedAddressTrees.value = await getProgramDerivedAddress({
+  if (!accounts.userAccount.value) {
+    accounts.userAccount.value = await getProgramDerivedAddress({
+      programAddress,
+      seeds: [
+        getBytesEncoder().encode(new Uint8Array([117, 115, 101, 114])),
+        getAddressEncoder().encode(expectAddress(accounts.initialMember.value)),
+      ],
+    });
+  }
+  if (!accounts.settings.value) {
+    accounts.settings.value = await getProgramDerivedAddress({
       programAddress,
       seeds: [
         getBytesEncoder().encode(
           new Uint8Array([
-            119, 104, 105, 116, 101, 108, 105, 115, 116, 101, 100, 95, 97, 100,
-            100, 114, 101, 115, 115, 95, 116, 114, 101, 101, 115,
+            109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116,
           ]),
         ),
+        getU128Encoder().encode(expectSome(args.settingsIndex)),
       ],
     });
   }
@@ -269,66 +252,69 @@ export async function getCreateCompressedWalletInstructionAsync<
       getAccountMeta(accounts.initialMember),
       getAccountMeta(accounts.systemProgram),
       getAccountMeta(accounts.globalCounter),
-      getAccountMeta(accounts.whitelistedAddressTrees),
+      getAccountMeta(accounts.userAccount),
+      getAccountMeta(accounts.settings),
       ...remainingAccounts,
     ],
-    data: getCreateCompressedWalletInstructionDataEncoder().encode(
-      args as CreateCompressedWalletInstructionDataArgs,
+    data: getCreateWalletInstructionDataEncoder().encode(
+      args as CreateWalletInstructionDataArgs,
     ),
     programAddress,
-  } as CreateCompressedWalletInstruction<
+  } as CreateWalletInstruction<
     TProgramAddress,
     TAccountPayer,
     TAccountInitialMember,
     TAccountSystemProgram,
     TAccountGlobalCounter,
-    TAccountWhitelistedAddressTrees
+    TAccountUserAccount,
+    TAccountSettings
   >);
 }
 
-export type CreateCompressedWalletInput<
+export type CreateWalletInput<
   TAccountPayer extends string = string,
   TAccountInitialMember extends string = string,
   TAccountSystemProgram extends string = string,
   TAccountGlobalCounter extends string = string,
-  TAccountWhitelistedAddressTrees extends string = string,
+  TAccountUserAccount extends string = string,
+  TAccountSettings extends string = string,
 > = {
   payer: TransactionSigner<TAccountPayer>;
   initialMember: TransactionSigner<TAccountInitialMember>;
   systemProgram?: Address<TAccountSystemProgram>;
   globalCounter: Address<TAccountGlobalCounter>;
-  whitelistedAddressTrees: Address<TAccountWhitelistedAddressTrees>;
-  compressedProofArgs: CreateCompressedWalletInstructionDataArgs["compressedProofArgs"];
-  addressTreeInfo: CreateCompressedWalletInstructionDataArgs["addressTreeInfo"];
-  outputStateTreeIndex: CreateCompressedWalletInstructionDataArgs["outputStateTreeIndex"];
-  userArgs: CreateCompressedWalletInstructionDataArgs["userArgs"];
-  settingsIndex: CreateCompressedWalletInstructionDataArgs["settingsIndex"];
-  remainingAccounts: CreateCompressedWalletInstructionExtraArgs["remainingAccounts"];
+  userAccount: Address<TAccountUserAccount>;
+  settings: Address<TAccountSettings>;
+  settingsIndex: CreateWalletInstructionDataArgs["settingsIndex"];
+  remainingAccounts: CreateWalletInstructionExtraArgs["remainingAccounts"];
 };
 
-export function getCreateCompressedWalletInstruction<
+export function getCreateWalletInstruction<
   TAccountPayer extends string,
   TAccountInitialMember extends string,
   TAccountSystemProgram extends string,
   TAccountGlobalCounter extends string,
-  TAccountWhitelistedAddressTrees extends string,
+  TAccountUserAccount extends string,
+  TAccountSettings extends string,
   TProgramAddress extends Address = typeof MULTI_WALLET_PROGRAM_ADDRESS,
 >(
-  input: CreateCompressedWalletInput<
+  input: CreateWalletInput<
     TAccountPayer,
     TAccountInitialMember,
     TAccountSystemProgram,
     TAccountGlobalCounter,
-    TAccountWhitelistedAddressTrees
+    TAccountUserAccount,
+    TAccountSettings
   >,
   config?: { programAddress?: TProgramAddress },
-): CreateCompressedWalletInstruction<
+): CreateWalletInstruction<
   TProgramAddress,
   TAccountPayer,
   TAccountInitialMember,
   TAccountSystemProgram,
   TAccountGlobalCounter,
-  TAccountWhitelistedAddressTrees
+  TAccountUserAccount,
+  TAccountSettings
 > {
   // Program address.
   const programAddress = config?.programAddress ?? MULTI_WALLET_PROGRAM_ADDRESS;
@@ -339,10 +325,8 @@ export function getCreateCompressedWalletInstruction<
     initialMember: { value: input.initialMember ?? null, isWritable: false },
     systemProgram: { value: input.systemProgram ?? null, isWritable: false },
     globalCounter: { value: input.globalCounter ?? null, isWritable: true },
-    whitelistedAddressTrees: {
-      value: input.whitelistedAddressTrees ?? null,
-      isWritable: false,
-    },
+    userAccount: { value: input.userAccount ?? null, isWritable: true },
+    settings: { value: input.settings ?? null, isWritable: true },
   };
   const accounts = originalAccounts as Record<
     keyof typeof originalAccounts,
@@ -372,24 +356,26 @@ export function getCreateCompressedWalletInstruction<
       getAccountMeta(accounts.initialMember),
       getAccountMeta(accounts.systemProgram),
       getAccountMeta(accounts.globalCounter),
-      getAccountMeta(accounts.whitelistedAddressTrees),
+      getAccountMeta(accounts.userAccount),
+      getAccountMeta(accounts.settings),
       ...remainingAccounts,
     ],
-    data: getCreateCompressedWalletInstructionDataEncoder().encode(
-      args as CreateCompressedWalletInstructionDataArgs,
+    data: getCreateWalletInstructionDataEncoder().encode(
+      args as CreateWalletInstructionDataArgs,
     ),
     programAddress,
-  } as CreateCompressedWalletInstruction<
+  } as CreateWalletInstruction<
     TProgramAddress,
     TAccountPayer,
     TAccountInitialMember,
     TAccountSystemProgram,
     TAccountGlobalCounter,
-    TAccountWhitelistedAddressTrees
+    TAccountUserAccount,
+    TAccountSettings
   >);
 }
 
-export type ParsedCreateCompressedWalletInstruction<
+export type ParsedCreateWalletInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountMetas extends readonly AccountMeta[] = readonly AccountMeta[],
 > = {
@@ -399,20 +385,21 @@ export type ParsedCreateCompressedWalletInstruction<
     initialMember: TAccountMetas[1];
     systemProgram: TAccountMetas[2];
     globalCounter: TAccountMetas[3];
-    whitelistedAddressTrees: TAccountMetas[4];
+    userAccount: TAccountMetas[4];
+    settings: TAccountMetas[5];
   };
-  data: CreateCompressedWalletInstructionData;
+  data: CreateWalletInstructionData;
 };
 
-export function parseCreateCompressedWalletInstruction<
+export function parseCreateWalletInstruction<
   TProgram extends string,
   TAccountMetas extends readonly AccountMeta[],
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
-): ParsedCreateCompressedWalletInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 5) {
+): ParsedCreateWalletInstruction<TProgram, TAccountMetas> {
+  if (instruction.accounts.length < 6) {
     // TODO: Coded error.
     throw new Error("Not enough accounts");
   }
@@ -429,10 +416,9 @@ export function parseCreateCompressedWalletInstruction<
       initialMember: getNextAccount(),
       systemProgram: getNextAccount(),
       globalCounter: getNextAccount(),
-      whitelistedAddressTrees: getNextAccount(),
+      userAccount: getNextAccount(),
+      settings: getNextAccount(),
     },
-    data: getCreateCompressedWalletInstructionDataDecoder().decode(
-      instruction.data,
-    ),
+    data: getCreateWalletInstructionDataDecoder().decode(instruction.data),
   };
 }
