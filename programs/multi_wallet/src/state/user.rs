@@ -1,4 +1,4 @@
-use crate::utils::{KeyType, Transports, UserRole};
+use crate::utils::{resize_account_if_necessary, KeyType, Transports, UserRole};
 use crate::{AddMemberArgs, MemberKey, MultisigError, RemoveMemberArgs, ID, SEED_USER};
 use anchor_lang::prelude::*;
 
@@ -14,7 +14,7 @@ pub struct User {
     pub bump: u8,
 }
 
-#[derive(AnchorDeserialize, AnchorSerialize, PartialEq, Debug, Clone)]
+#[derive(AnchorDeserialize, AnchorSerialize, PartialEq, Debug, Clone, InitSpace)]
 pub struct SettingsIndexWithDelegateInfo {
     pub index: u128,
     pub is_delegate: bool,
@@ -31,13 +31,14 @@ impl User {
         credential_id_len: usize,
         transports_len: usize,
         transaction_manager_url_len: usize,
+        wallets_len: usize,
     ) -> usize {
         8                                   // discriminator
         + 1 + 32                            // optional domain config
         + 34                                // member key
         + 1 + 4 + credential_id_len         // optional credential id
         + 1 + 4 + transports_len            // optional transports
-        + 4 + 16 + 1                        // list of settings index with delegate info
+        + 4 + (wallets_len * SettingsIndexWithDelegateInfo::INIT_SPACE) // list of settings index with delegate info
         + 1                                 // user role
         + 1 + 4 + transaction_manager_url_len   // transaction manager url
         + 1 //bump
@@ -128,10 +129,12 @@ impl User {
         Ok(())
     }
 
-    pub fn process_user_wallet_operations(
+    pub fn process_user_wallet_operations<'info>(
         wallet_operations: Vec<UserWalletOperation>,
         settings_index: u128,
-        remaining_accounts: &[AccountInfo],
+        payer: &AccountInfo<'info>,
+        system_program: &AccountInfo<'info>,
+        remaining_accounts: &[AccountInfo<'info>],
     ) -> Result<()> {
         for operation in wallet_operations.into_iter() {
             match operation {
@@ -139,7 +142,13 @@ impl User {
                     User::remove_wallet_from_user(pk, settings_index, remaining_accounts)?;
                 }
                 UserWalletOperation::Add(pk) => {
-                    User::add_wallet_to_user(pk, settings_index, remaining_accounts)?;
+                    User::add_wallet_to_user(
+                        pk,
+                        settings_index,
+                        payer,
+                        system_program,
+                        remaining_accounts,
+                    )?;
                 }
             }
         }
@@ -147,34 +156,53 @@ impl User {
         Ok(())
     }
 
-    pub fn add_wallet_to_user(
+    fn add_wallet_to_user<'info>(
         args: AddMemberArgs,
         settings_index: u128,
-        remaining_accounts: &[AccountInfo],
+        payer: &AccountInfo<'info>,
+        system_program: &AccountInfo<'info>,
+        remaining_accounts: &[AccountInfo<'info>],
     ) -> Result<()> {
         let (user_account_pubkey, _) =
             Pubkey::find_program_address(&[SEED_USER, &args.member_key.get_seed()?], &ID);
+
         let user_account_info = remaining_accounts
             .iter()
-            .find(|f| f.key.eq(&user_account_pubkey))
+            .find(|f| f.key == &user_account_pubkey)
             .ok_or(MultisigError::MissingAccount)?;
-        let mut data = user_account_info.try_borrow_mut_data()?;
-        let mut user = User::try_deserialize(&mut &data[..])?;
+
+        let mut user = {
+            let data = user_account_info.try_borrow_data()?;
+            User::try_deserialize(&mut &data[..])?
+        };
 
         require!(
-            user.role.ne(&UserRole::PermanentMember),
+            user.role != UserRole::PermanentMember,
             MultisigError::OnlyOnePermanentMemberAllowed
         );
 
-        if user.role.eq(&UserRole::Member) {
+        if user.role == UserRole::Member {
             user.wallets.push(SettingsIndexWithDelegateInfo {
                 index: settings_index,
                 is_delegate: false,
             });
         }
 
+        let new_size = User::size(
+            user.credential_id.as_ref().map_or(0, |f| f.len()),
+            user.transports.as_ref().map_or(0, |f| f.len()),
+            user.transaction_manager_url.as_ref().map_or(0, |f| f.len()),
+            user.wallets.len(),
+        );
+
+        resize_account_if_necessary(user_account_info, payer, system_program, new_size)?;
+
         user.invariant()?;
-        user.try_serialize(&mut &mut data[..])?;
+
+        {
+            let mut data = user_account_info.try_borrow_mut_data()?;
+            user.try_serialize(&mut &mut data[..])?;
+        }
 
         Ok(())
     }

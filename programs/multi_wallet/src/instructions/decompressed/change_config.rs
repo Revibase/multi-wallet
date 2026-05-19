@@ -106,6 +106,8 @@ impl<'info> ChangeConfig<'info> {
         User::process_user_wallet_operations(
             wallet_operations,
             settings.index,
+            &ctx.accounts.payer,
+            &ctx.accounts.system_program,
             ctx.remaining_accounts,
         )?;
 

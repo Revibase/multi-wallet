@@ -34,7 +34,7 @@ pub struct CreateDomainConfig<'info> {
     #[account(
         init,
         payer = payer,
-        space = User::size(0, 0, 0),
+        space = User::size(0, 0, 0, 0),
         seeds = [SEED_USER, authority.key.as_ref()],
         bump
     )]

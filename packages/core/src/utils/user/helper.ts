@@ -128,8 +128,14 @@ export async function fetchAllSettingsAccountByMember(
     return settingsAccount;
   } else {
     return await Promise.all(
-      user.wallets.map(async (x) =>
-        fetchSettings(getSolanaRpc(), await getSettingsFromIndex(x.index)),
+      user.wallets.map(
+        async (x) =>
+          (
+            await fetchSettings(
+              getSolanaRpc(),
+              await getSettingsFromIndex(x.index),
+            )
+          ).data,
       ),
     );
   }

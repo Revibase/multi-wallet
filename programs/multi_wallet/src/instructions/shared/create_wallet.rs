@@ -1,7 +1,6 @@
 use crate::{
     id,
-    utils::UserRole,
-    utils::{MultisigSettings, SEED_GLOBAL_COUNTER},
+    utils::{resize_account_if_necessary, MultisigSettings, UserRole, SEED_GLOBAL_COUNTER},
     AddMemberArgs, GlobalCounter, MultisigError, Permission, Permissions, Settings,
     SettingsIndexWithDelegateInfo, User, SEED_MULTISIG, SEED_USER, SEED_VAULT,
 };
@@ -42,10 +41,12 @@ pub struct CreateWallet<'info> {
 impl<'info> CreateWallet<'info> {
     pub fn process(ctx: Context<'_, '_, 'info, 'info, Self>, settings_index: u128) -> Result<()> {
         let global_counter = &mut ctx.accounts.global_counter.load_mut()?;
+
         require!(
-            settings_index.eq(&global_counter.index),
+            settings_index == global_counter.index,
             MultisigError::InvalidArguments
         );
+
         let (_, multi_wallet_bump) = Pubkey::find_program_address(
             &[
                 SEED_MULTISIG,
@@ -54,17 +55,21 @@ impl<'info> CreateWallet<'info> {
             ],
             &id(),
         );
+
         let settings = &mut ctx.accounts.settings;
+
         settings.set_threshold(1)?;
         settings.set_members(Vec::new())?;
-        settings.set_latest_slot_number(0u64)?;
+        settings.set_latest_slot_number(0)?;
         settings.multi_wallet_bump = multi_wallet_bump;
         settings.bump = ctx.bumps.settings;
         settings.index = settings_index;
 
+        let user_member = ctx.accounts.user_account.member;
+
         settings.add_members(
             vec![AddMemberArgs {
-                member_key: ctx.accounts.user_account.member,
+                member_key: user_member,
                 permissions: Permissions::from_permissions(vec![
                     Permission::InitiateTransaction,
                     Permission::VoteTransaction,
@@ -76,18 +81,46 @@ impl<'info> CreateWallet<'info> {
 
         settings.invariant()?;
 
-        if ctx.accounts.user_account.role.eq(&UserRole::Member) {
-            ctx.accounts
-                .user_account
-                .wallets
-                .push(SettingsIndexWithDelegateInfo {
+        {
+            let user_account = &ctx.accounts.user_account;
+
+            if user_account.role == UserRole::Member {
+                let new_wallet_len = user_account.wallets.len() + 1;
+
+                let new_size = User::size(
+                    user_account.credential_id.as_ref().map_or(0, |f| f.len()),
+                    user_account.transports.as_ref().map_or(0, |f| f.len()),
+                    user_account
+                        .transaction_manager_url
+                        .as_ref()
+                        .map_or(0, |f| f.len()),
+                    new_wallet_len,
+                );
+
+                resize_account_if_necessary(
+                    &user_account.to_account_info(),
+                    &ctx.accounts.payer.to_account_info(),
+                    &ctx.accounts.system_program.to_account_info(),
+                    new_size,
+                )?;
+            }
+        }
+
+        {
+            let user_account = &mut ctx.accounts.user_account;
+
+            if user_account.role == UserRole::Member {
+                user_account.wallets.push(SettingsIndexWithDelegateInfo {
                     index: settings_index,
                     is_delegate: false,
                 });
+            }
+
+            user_account.invariant()?;
         }
-        ctx.accounts.user_account.invariant()?;
 
         global_counter.index += 1;
+
         Ok(())
     }
 }

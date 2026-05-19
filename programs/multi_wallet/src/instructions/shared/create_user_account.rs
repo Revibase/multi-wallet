@@ -17,7 +17,7 @@ pub struct CreateUserAccount<'info> {
     #[account(
         init,
         payer = payer,
-        space = User::size(0 ,0, args.transaction_manager_url.map_or(0, |f| f.len())),
+        space = User::size(0 ,0, args.transaction_manager_url.map_or(0, |f| f.len()), 0),
         seeds = [SEED_USER, member.key.as_ref()],
         bump
     )]
