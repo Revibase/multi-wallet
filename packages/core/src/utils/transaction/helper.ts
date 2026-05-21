@@ -98,10 +98,9 @@ export function retrieveTransactionManager(
   };
 }
 
-function toWebSocketUrl(httpUrl: string): string {
+function toWebSocketUrl(httpUrl: string) {
   const u = new URL(httpUrl);
-  if (u.protocol === "https:") u.protocol = "wss:";
-  else if (u.protocol === "http:") u.protocol = "ws:";
+  u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
   return u.toString();
 }
 
@@ -109,44 +108,44 @@ function openWebSocket(url: string, signal: AbortSignal): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(url);
 
-    const onAbort = () => {
+    const abort = () => {
       try {
         ws.close();
-      } catch {
-        /* ignore */
-      }
+      } catch {}
     };
-    signal.addEventListener("abort", onAbort, { once: true });
+
+    signal.addEventListener("abort", abort, { once: true });
 
     ws.onopen = () => {
-      signal.removeEventListener("abort", onAbort);
+      signal.removeEventListener("abort", abort);
       resolve(ws);
     };
+
     ws.onerror = () => {
-      signal.removeEventListener("abort", onAbort);
+      signal.removeEventListener("abort", abort);
       reject(new Error("WebSocket connection failed"));
     };
   });
 }
 
-async function readWebSocketJsonEvents(
+async function readEvents(
   ws: WebSocket,
   signal: AbortSignal,
   onEvent: (event: string, data: any) => boolean,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
-    let settled = false;
+    let done = false;
 
     const cleanup = () => {
-      signal.removeEventListener("abort", onAbort);
       ws.removeEventListener("message", onMessage);
       ws.removeEventListener("error", onError);
       ws.removeEventListener("close", onClose);
+      signal.removeEventListener("abort", onAbort);
     };
 
     const finish = (fn: () => void) => {
-      if (settled) return;
-      settled = true;
+      if (done) return;
+      done = true;
       cleanup();
       fn();
     };
@@ -154,64 +153,63 @@ async function readWebSocketJsonEvents(
     const onAbort = () => {
       try {
         ws.close();
-      } catch {
-        /* ignore */
-      }
+      } catch {}
     };
-    signal.addEventListener("abort", onAbort);
 
     const onMessage = (ev: MessageEvent) => {
       if (typeof ev.data !== "string") return;
-      let parsed: { event?: string; data?: unknown };
+
+      let msg: any;
       try {
-        parsed = JSON.parse(ev.data);
+        msg = JSON.parse(ev.data);
       } catch {
         return;
       }
-      const event = typeof parsed.event === "string" ? parsed.event : "message";
-      const data = parsed.data;
+
+      const event = msg.event ?? "message";
+
       try {
-        if (onEvent(event, data)) {
-          finish(() => resolve());
+        if (onEvent(event, msg.data)) {
+          finish(resolve);
         }
       } catch (e) {
         finish(() => reject(e));
       }
     };
 
-    const onError = () => {
+    const onError = () =>
       finish(() =>
         reject(
           new NetworkError("Transaction manager request failed", 0, ws.url),
         ),
       );
-    };
 
-    const onClose = () => {
-      finish(() => resolve());
-    };
+    const onClose = () => finish(resolve);
 
+    signal.addEventListener("abort", onAbort, { once: true });
     ws.addEventListener("message", onMessage);
     ws.addEventListener("error", onError);
     ws.addEventListener("close", onClose);
   });
 }
 
-function createAbortError(message = "Aborted"): Error {
-  const err = new Error(message);
-  err.name = "AbortError";
-  return err;
-}
+const abortErr = () => {
+  const e = new Error("Aborted");
+  e.name = "AbortError";
+  return e;
+};
 
-const sleep = (ms: number, s: AbortSignal) =>
+const sleep = (ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
-    if (s.aborted) return reject(createAbortError());
+    if (signal.aborted) return reject(abortErr());
+
     const id = setTimeout(resolve, ms);
-    s.addEventListener(
+
+    signal.addEventListener(
       "abort",
       () => {
         clearTimeout(id);
-        reject(createAbortError());
+        reject(abortErr());
       },
       { once: true },
     );
@@ -237,85 +235,99 @@ export function createTransactionManagerSigner(args: {
     abortController,
     opts,
   } = args;
-  const controller = abortController ?? new AbortController();
+
+  const signal = abortController?.signal ?? new AbortController().signal;
+  const wsUrl = toWebSocketUrl(url);
+
   const maxAttempts = opts?.maxAttempts ?? 10;
   const retryDelayMs = opts?.retryDelayMs ?? 400;
+
   return {
     address,
     async signTransactions(transactions) {
-      const { signal } = controller;
-      const wsUrl = toWebSocketUrl(url);
+      if (signal.aborted) throw abortErr();
+
+      const payloadItems = new Array(transactions.length);
+
+      for (let i = 0; i < transactions.length; i++) {
+        payloadItems[i] = {
+          transaction: getBase64Decoder().decode(
+            getTransactionEncoder().encode(transactions[i]),
+          ),
+          transactionMessageBytes: transactionMessageBytes
+            ? getBase64Decoder().decode(transactionMessageBytes)
+            : undefined,
+          authResponses,
+        };
+      }
+
       const payload = JSON.stringify({
         type: "transaction",
         data: {
           publicKey: address.toString(),
-          payload: transactions.map((x) => ({
-            transaction: getBase64Decoder().decode(
-              getTransactionEncoder().encode(x),
-            ),
-            transactionMessageBytes: transactionMessageBytes
-              ? getBase64Decoder().decode(transactionMessageBytes)
-              : undefined,
-            authResponses,
-          })),
+          payload: payloadItems,
         },
       });
+
       for (let i = 0; i < maxAttempts; i++) {
-        if (signal.aborted) throw createAbortError();
-        let signatures: string[] | undefined;
+        if (signal.aborted) throw abortErr();
+
         let ws: WebSocket | undefined;
+        let signatures: string[] | undefined;
+
         try {
           ws = await openWebSocket(wsUrl, signal);
           ws.send(payload);
-          await readWebSocketJsonEvents(ws, signal, (event, data) => {
+
+          await readEvents(ws, signal, (event, data) => {
             if (event === "error") {
-              const err =
-                data &&
+              const errMsg =
                 typeof data === "object" &&
-                typeof (data as { error?: string }).error === "string"
-                  ? (data as { error: string }).error
+                data &&
+                typeof (data as any).error === "string"
+                  ? (data as any).error
                   : "Unknown error";
-              const e = new Error(err) as Error & { noRetry: true };
-              e.noRetry = true;
-              throw e;
+
+              const err: any = new Error(errMsg);
+              err.noRetry = true;
+              throw err;
             }
+
             if (event === "signatures") {
-              signatures = (data as { signatures?: string[] }).signatures;
+              signatures = (data as any).signatures;
               return true;
             }
+
             if (event === "pending_transaction_approval") {
-              onPendingApprovalsCallback?.(
-                (data as { validTill: number }).validTill,
-              );
-            } else if (event === "transaction_approved") {
+              onPendingApprovalsCallback?.((data as any).validTill);
+            }
+
+            if (event === "transaction_approved") {
               onPendingApprovalsSuccess?.();
             }
+
             return false;
           });
-        } catch (e: unknown) {
-          if (e && typeof e === "object" && (e as { noRetry?: true }).noRetry) {
-            throw new NetworkError(`${(e as Error).message}`);
-          }
-          if (
-            e &&
-            typeof e === "object" &&
-            (e as { name?: string }).name === "AbortError"
-          )
-            throw e;
+        } catch (e: any) {
+          if (e?.noRetry) throw new NetworkError(e.message);
+          if (e?.name === "AbortError") throw e;
         } finally {
           try {
             ws?.close();
-          } catch {
-            /* ignore */
-          }
+          } catch {}
         }
+
         if (signatures?.length) {
           return signatures.map((sig) => ({
             [address]: getBase58Encoder().encode(sig) as SignatureBytes,
           }));
         }
-        if (i < maxAttempts - 1) await sleep(retryDelayMs, signal);
+
+        if (i < maxAttempts - 1) {
+          await sleep(retryDelayMs, signal);
+        }
       }
+
       throw new NetworkError("Transaction manager: missing signatures");
     },
   };

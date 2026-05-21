@@ -23,7 +23,7 @@ pub struct EditDomainConfig<'info> {
     #[account(
         init,
         payer = authority,
-        space = User::size(0, 0, 0),
+        space = User::size(0, 0, 0, 0),
         seeds = [SEED_USER, {
             new_authority.as_ref().ok_or(MultisigError::MissingNewAuthority)?.key.as_ref()
         }],

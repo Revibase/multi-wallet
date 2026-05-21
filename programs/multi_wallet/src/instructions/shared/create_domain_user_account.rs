@@ -27,7 +27,7 @@ pub struct CreateDomainUserAccount<'info> {
     #[account(
         init,
         payer = payer,
-        space = User::size(args.credential_id.len(),args.transports.len(), 0),
+        space = User::size(args.credential_id.len(),args.transports.len(), 0, if settings.is_some() {1} else {0} ),
         seeds = [SEED_USER, &MemberKey::new(crate::utils::KeyType::Secp256r1, args.member.to_bytes())?.get_seed()?],
         bump
     )]
@@ -65,9 +65,7 @@ impl<'info> CreateDomainUserAccount<'info> {
 
             let mut new_members = Vec::with_capacity(2);
 
-            let mut permissions = Vec::with_capacity(3);
-            permissions.push(Permission::VoteTransaction);
-            permissions.push(Permission::ExecuteTransaction);
+            let mut permissions = vec![Permission::VoteTransaction, Permission::ExecuteTransaction];
 
             if let Some(transaction_manager) = &ctx.accounts.transaction_manager_account {
                 require!(
@@ -95,14 +93,14 @@ impl<'info> CreateDomainUserAccount<'info> {
 
             let new_size = Settings::size(new_members.len());
 
-            settings_account.set_members(new_members)?;
-
             resize_account_if_necessary(
                 &settings_account.to_account_info(),
                 &ctx.accounts.payer.to_account_info(),
                 &ctx.accounts.system_program.to_account_info(),
                 new_size,
             )?;
+
+            settings_account.set_members(new_members)?;
 
             settings_account.invariant()?;
         }

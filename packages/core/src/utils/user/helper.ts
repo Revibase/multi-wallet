@@ -1,10 +1,8 @@
 import {
-  getBase58Decoder,
-  getBase58Encoder,
+  getAddressEncoder,
   getBase64Decoder,
   getBase64Encoder,
   type Address,
-  type Base58EncodedBytes,
   type Base64EncodedBytes,
   type GetProgramAccountsMemcmpFilter,
 } from "gill";
@@ -53,8 +51,10 @@ export async function fetchUserAccountByFilters(
     {
       memcmp: {
         offset: BigInt(USER_DOMAIN_CONFIG_OFFSET),
-        encoding: "base58",
-        bytes: domainConfigAddress.toString() as Base58EncodedBytes,
+        encoding: "base64",
+        bytes: getBase64Decoder().decode(
+          getAddressEncoder().encode(domainConfigAddress),
+        ) as Base64EncodedBytes,
       },
     },
   ];
@@ -62,33 +62,38 @@ export async function fetchUserAccountByFilters(
     filters.push({
       memcmp: {
         offset: BigInt(USER_MEMBER_OFFSET),
-        encoding: "base58",
-        bytes: getBase58Decoder().decode(
+        encoding: "base64",
+        bytes: getBase64Decoder().decode(
           getMemberKeyEncoder().encode(convertPubkeyToMemberkey(member)),
-        ) as Base58EncodedBytes,
+        ) as Base64EncodedBytes,
       },
     });
   } else if (credentialId) {
     filters.push({
       memcmp: {
         offset: BigInt(USER_CREDENTIAL_ID_OFFSET),
-        encoding: "base58",
-        bytes: getBase58Decoder().decode(
+        encoding: "base64",
+        bytes: getBase64Decoder().decode(
           base64URLStringToBuffer(credentialId),
-        ) as Base58EncodedBytes,
+        ) as Base64EncodedBytes,
       },
     });
   } else {
     return null;
   }
+
   const result = await getSolanaRpc()
-    .getProgramAccounts(MULTI_WALLET_PROGRAM_ADDRESS, { filters })
+    .getProgramAccounts(MULTI_WALLET_PROGRAM_ADDRESS, {
+      filters,
+      encoding: "base64",
+    })
     .send();
+
   if (!result.length) {
     return null;
   }
   return result.map((x) =>
-    getUserDecoder().decode(getBase58Encoder().encode(x.account.data)),
+    getUserDecoder().decode(getBase64Encoder().encode(x.account.data[0])),
   )[0];
 }
 
@@ -128,8 +133,14 @@ export async function fetchAllSettingsAccountByMember(
     return settingsAccount;
   } else {
     return await Promise.all(
-      user.wallets.map(async (x) =>
-        fetchSettings(getSolanaRpc(), await getSettingsFromIndex(x.index)),
+      user.wallets.map(
+        async (x) =>
+          (
+            await fetchSettings(
+              getSolanaRpc(),
+              await getSettingsFromIndex(x.index),
+            )
+          ).data,
       ),
     );
   }
