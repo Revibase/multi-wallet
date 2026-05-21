@@ -1,11 +1,7 @@
 import { none, some, type Instruction, type TransactionSigner } from "gill";
-import { fetchUser, getEditUserDelegateInstruction } from "../../generated";
+import { getEditUserDelegateInstruction } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
-import {
-  getSettingsFromIndex,
-  getSolanaRpc,
-  getUserAddress,
-} from "../../utils";
+import { getSettingsFromIndex, getUserAddress } from "../../utils";
 import { extractSecp256r1VerificationArgs } from "../../utils/transaction/internal";
 import {
   getSecp256r1VerifyInstruction,
@@ -15,26 +11,18 @@ import {
 export async function editUserDelegate({
   payer,
   user,
+  oldDelegate,
   newDelegate,
 }: {
   payer: TransactionSigner;
   user: TransactionSigner | SignedSecp256r1Key;
+  oldDelegate?: number;
   newDelegate?: number;
 }) {
-  const userAccount = (
-    await fetchUser(
-      getSolanaRpc(),
-      await getUserAddress(
-        user instanceof SignedSecp256r1Key ? user : user.address,
-      ),
-    )
-  ).data;
-
   let oldSettings;
   let newSettings;
-  const old_delegate = userAccount.wallets.find((x) => x.isDelegate);
-  if (old_delegate) {
-    oldSettings = await getSettingsFromIndex(old_delegate.index);
+  if (oldDelegate !== undefined) {
+    oldSettings = await getSettingsFromIndex(oldDelegate);
   }
   if (newDelegate !== undefined) {
     newSettings = await getSettingsFromIndex(newDelegate);

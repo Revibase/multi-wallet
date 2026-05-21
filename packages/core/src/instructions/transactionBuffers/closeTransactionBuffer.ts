@@ -1,25 +1,20 @@
 import type { Address, TransactionSigner } from "gill";
-import {
-  fetchTransactionBuffer,
-  getTransactionBufferCloseInstruction,
-} from "../../generated";
+import { getTransactionBufferCloseInstruction } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
-import { getSolanaRpc } from "../../utils";
 import { extractSecp256r1VerificationArgs } from "../../utils/transaction/internal";
 import { getSecp256r1VerifyInstruction } from "../secp256r1Verify";
 
-export async function closeTransactionBuffer({
+export function closeTransactionBuffer({
   closer,
+  payer,
+  settings,
   transactionBufferAddress,
 }: {
   closer: TransactionSigner | SignedSecp256r1Key;
+  payer: Address;
+  settings: Address;
   transactionBufferAddress: Address;
 }) {
-  const transactionBuffer = await fetchTransactionBuffer(
-    getSolanaRpc(),
-    transactionBufferAddress,
-  );
-  const settings = transactionBuffer.data.multiWalletSettings;
   const { domainConfig, verifyArgs, message, signature, publicKey } =
     extractSecp256r1VerificationArgs(closer);
 
@@ -42,7 +37,7 @@ export async function closeTransactionBuffer({
       domainConfig,
       closer: closer instanceof SignedSecp256r1Key ? undefined : closer,
       settings,
-      payer: transactionBuffer.data.payer,
+      payer,
       secp256r1VerifyArgs: verifyArgs,
       remainingAccounts: [],
     }),
