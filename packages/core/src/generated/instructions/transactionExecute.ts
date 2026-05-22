@@ -139,9 +139,11 @@ export function getTransactionExecuteInstruction<
     keyof typeof originalAccounts,
     ResolvedAccount
   >;
+  // Original args.
+  const args = { ...input };
 
   // Resolver scope.
-  const resolverScope = { programAddress, accounts };
+  const resolverScope = { programAddress, accounts, args };
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
