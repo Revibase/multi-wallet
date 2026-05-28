@@ -18,8 +18,11 @@ import {
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
 import {
   address,
+  getBase58Encoder,
+  getPublicKeyFromAddress,
   getUtf8Encoder,
-  verifySignatureForAddress,
+  signatureBytes,
+  verifySignature,
 } from "@solana/kit";
 import { compactVerify, importJWK } from "jose";
 import { canonicalize } from "json-canonicalize";
@@ -139,9 +142,13 @@ export async function verifyMessage(
       throw new Error("Transaction manager mismatch.");
     }
     if (
-      !(await verifySignatureForAddress(
-        address(payload.transactionManager.publicKey),
-        payload.transactionManager.signature,
+      !(await verifySignature(
+        await getPublicKeyFromAddress(
+          address(payload.transactionManager.publicKey),
+        ),
+        signatureBytes(
+          getBase58Encoder().encode(payload.transactionManager.signature),
+        ),
         expectedChallenge,
       ))
     ) {

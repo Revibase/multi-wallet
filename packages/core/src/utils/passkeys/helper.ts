@@ -23,7 +23,6 @@ import {
   type CompleteTransactionRequest,
   type StartMessageRequest,
   type StartTransactionRequest,
-  type TransactionAuthenticationResponse,
   type TransactionPayload,
   type TransactionPayloadWithBase64MessageBytes,
 } from "../../types";
@@ -76,7 +75,19 @@ export function convertPubkeyCompressedToCose(
 }
 
 export async function getSignedSecp256r1Key(
-  payload: TransactionAuthenticationResponse,
+  payload: {
+    authResponse: AuthenticationResponseJSON;
+    signer: string;
+    slotNumber: string;
+    slotHash: string;
+    client: {
+      clientOrigin: string;
+    } & Record<string, unknown>;
+    device: { jwk: string } & Record<string, unknown>;
+    startRequest: { rid: string } & Record<string, unknown>;
+    originIndex: number;
+    crossOrigin: boolean;
+  } & Record<string, unknown>,
 ): Promise<SignedSecp256r1Key> {
   const { authenticatorData, clientDataJSON, signature } = (
     payload.authResponse as AuthenticationResponseJSON
@@ -98,7 +109,7 @@ export async function getSignedSecp256r1Key(
     rpIdHash: authData.subarray(0, 32),
   });
 
-  return new SignedSecp256r1Key(payload.signer.toString(), {
+  return new SignedSecp256r1Key(payload.signer, {
     verifyArgs: {
       clientDataJson: base64URLStringToBuffer(clientDataJSON),
       truncatedClientDataJson,

@@ -18,9 +18,7 @@ export function hexToUint8Array(hex: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
-export function extractAdditionalFields(
-  clientData: Record<string, unknown>,
-): Uint8Array<ArrayBuffer> {
+export function extractAdditionalFields(clientData: Record<string, unknown>) {
   const knownKeys = new Set(["type", "challenge", "origin", "crossOrigin"]);
 
   const remaining: Record<string, unknown> = {};
@@ -35,7 +33,7 @@ export function extractAdditionalFields(
   }
 
   const serialized = JSON.stringify(remaining);
-  return new TextEncoder().encode(serialized.slice(1, -1));
+  return new Uint8Array(new TextEncoder().encode(serialized.slice(1, -1)));
 }
 
 export function parseOrigins(

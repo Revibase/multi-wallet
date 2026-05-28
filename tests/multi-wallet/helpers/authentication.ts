@@ -116,7 +116,6 @@ export async function mockAuthenticationResponse(
         platform: "web",
       },
     },
-
     originIndex,
     crossOrigin,
     startRequest: {
