@@ -1,6 +1,6 @@
 {
   "name": "@revibase/lite",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "scripts": {
     "build": "rimraf dist & tsup",
     "clean": "rimraf dist",
@@ -38,7 +38,7 @@
   "description": "Passkey-based Solana wallet SDK: sign in and approve transactions in a popup, authorize with a server-side private key.",
   "dependencies": {
     "@revibase/core": "workspace:*",
-    "@simplewebauthn/server": "^13.3.1",
+    "@simplewebauthn/server": "13.2.3",
     "@solana-program/address-lookup-table": "0.11.0",
     "@solana-program/compute-budget": "0.15.0",
     "@solana-program/system": "0.12.0",
