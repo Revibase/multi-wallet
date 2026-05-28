@@ -1,46 +1,36 @@
 import {
-  fetchSettings,
   getSignedSecp256r1Key,
-  getSolanaRpc,
   nativeTransferIntent,
-  retrieveTransactionManager,
+  SignedSecp256r1Key,
   tokenTransferIntent,
   type TransactionAuthenticationResponse,
 } from "@revibase/core";
+import { SYSTEM_PROGRAM_ADDRESS } from "@solana-program/system";
 import {
   address,
   getAddressDecoder,
   getBase64Encoder,
   getU64Decoder,
   type Address,
-  type AddressesByLookupTableAddress,
   type TransactionSigner,
 } from "@solana/kit";
-import { SYSTEM_PROGRAM_ADDRESS } from "@solana-program/system";
-import { withRetry } from "../retry";
 import type { TransactionAuthorizationFlowOptions } from "../types";
 import { signAndSendTransaction } from "./solana-send";
 import {
   fetchAdditionalLoopUpTableIfNecessary,
-  getRandomPayer,
   getTransactionManagerSigner,
 } from "./utils";
 
 export async function processTokenTransfer(params: {
   authResponse: TransactionAuthenticationResponse;
   settings: Address;
-  payer?: TransactionSigner;
+  additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
+  payer: TransactionSigner;
   options?: TransactionAuthorizationFlowOptions;
-  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
 }): Promise<string> {
-  const {
-    authResponse,
-    settings,
-    options,
-    payer,
-    addressesByLookupTableAddress,
-  } = params;
-  const { startRequest, signer } = authResponse;
+  const { authResponse, settings, options, payer, additionalVoters } = params;
+  const { startRequest, transactionManagerAddress, unitsConsumed } =
+    authResponse;
   if (startRequest.data.type !== "transaction")
     throw new Error("Invalid request type.");
 
@@ -56,17 +46,13 @@ export async function processTokenTransfer(params: {
   const destination = getAddressDecoder().decode(message.slice(8, 40));
   const mint = getAddressDecoder().decode(message.slice(40, 72));
 
-  const [feePayer, settingsData, signedSigner] = await Promise.all([
-    payer ?? getRandomPayer(),
-    (await withRetry(() => fetchSettings(getSolanaRpc(), settings))).data,
-    getSignedSecp256r1Key(authResponse),
-  ]);
-
-  const tm = retrieveTransactionManager(signer, settingsData);
+  const signedSigner = await getSignedSecp256r1Key(authResponse);
 
   const transactionManagerSigner = await getTransactionManagerSigner({
     authResponses: [authResponse],
-    transactionManagerAddress: tm?.transactionManagerAddress,
+    transactionManagerAddress: transactionManagerAddress
+      ? address(transactionManagerAddress)
+      : undefined,
     transactionMessageBytes: getBase64Encoder().encode(transactionMessageBytes),
     onPendingApprovalsCallback:
       options?.pendingApprovalsCallback?.onPendingApprovalsCallback,
@@ -76,13 +62,13 @@ export async function processTokenTransfer(params: {
   });
 
   const signers = transactionManagerSigner
-    ? [signedSigner, transactionManagerSigner]
-    : [signedSigner];
+    ? [signedSigner, transactionManagerSigner, ...(additionalVoters ?? [])]
+    : [signedSigner, ...(additionalVoters ?? [])];
 
   const instructions =
     mint !== SYSTEM_PROGRAM_ADDRESS
       ? await tokenTransferIntent({
-          payer: feePayer,
+          payer,
           settings,
           amount,
           signers,
@@ -99,9 +85,9 @@ export async function processTokenTransfer(params: {
 
   return signAndSendTransaction({
     instructions,
-    payer: feePayer,
-    addressesByLookupTableAddress: await fetchAdditionalLoopUpTableIfNecessary(
-      addressesByLookupTableAddress,
-    ),
+    payer,
+    addressesByLookupTableAddress:
+      await fetchAdditionalLoopUpTableIfNecessary(undefined),
+    unitsConsumed: unitsConsumed?.[0],
   });
 }

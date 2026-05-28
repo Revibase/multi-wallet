@@ -1,16 +1,14 @@
+import { getSolanaRpc, type TransactionDetails } from "@revibase/core";
 import {
-  getSolanaRpc,
-  getSolanaRpcEndpoint,
-  type TransactionDetails,
-} from "@revibase/core";
+  getSetComputeUnitLimitInstruction,
+  getSetComputeUnitPriceInstruction,
+} from "@solana-program/compute-budget";
 import {
   AccountRole,
   appendTransactionMessageInstructions,
-  compileTransaction,
   compressTransactionMessageUsingAddressLookupTables,
   createTransactionMessage,
   getBase64EncodedWireTransaction,
-  getBlockhashDecoder,
   getSignatureFromTransaction,
   pipe,
   prependTransactionMessageInstructions,
@@ -21,10 +19,6 @@ import {
   type Rpc,
   type SolanaRpcApi,
 } from "@solana/kit";
-import {
-  getSetComputeUnitLimitInstruction,
-  getSetComputeUnitPriceInstruction,
-} from "@solana-program/compute-budget";
 import type { RevibaseProvider } from "../../provider";
 import { withRetry } from "../retry";
 
@@ -32,6 +26,7 @@ export async function signAndSendTransaction({
   instructions,
   payer,
   addressesByLookupTableAddress,
+  unitsConsumed,
 }: TransactionDetails): Promise<string> {
   const latestBlockHash = await withRetry(() =>
     getSolanaRpc().getLatestBlockhash().send(),
@@ -50,13 +45,11 @@ export async function signAndSendTransaction({
           )
         : tx,
     async (tx) => {
-      const [unitsConsumed, priorityFees] = await Promise.all([
-        getComputeUnitsEstimate(tx),
-        getMedianPriorityFees(
-          getSolanaRpc(),
-          tx.instructions.flatMap((x) => x.accounts ?? []),
-        ),
-      ]);
+      const priorityFees = await getMedianPriorityFees(
+        getSolanaRpc(),
+        tx.instructions.flatMap((x) => x.accounts ?? []),
+      );
+
       const computeUnits = Math.ceil((Number(unitsConsumed) ?? 0) * 1.1);
       return prependTransactionMessageInstructions(
         [
@@ -97,17 +90,7 @@ export async function signAndSendBundledTransactions(
   provider: RevibaseProvider,
   bundle: TransactionDetails[],
 ): Promise<string> {
-  const simulationBundle = await createEncodedBundle(bundle, true);
-  const computeUnits = await simulateBundle(
-    simulationBundle.map(getBase64EncodedWireTransaction),
-    getSolanaRpcEndpoint(),
-  );
-  const encodedBundle = await createEncodedBundle(
-    bundle.map((x, index) => ({
-      ...x,
-      unitsConsumed: computeUnits[index],
-    })),
-  );
+  const encodedBundle = await createEncodedBundle(bundle);
   await withRetry(() =>
     provider.onSendJitoBundleCallback(
       encodedBundle.map(getBase64EncodedWireTransaction),
@@ -116,89 +99,10 @@ export async function signAndSendBundledTransactions(
   return getSignatureFromTransaction(encodedBundle[encodedBundle.length - 1]);
 }
 
-export async function simulateBundle(
-  bundle: string[],
-  connectionUrl: string,
-): Promise<number[]> {
-  const response = await withRetry(() =>
-    fetch(connectionUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        id: "2",
-        method: "simulateBundle",
-        params: [
-          {
-            encodedTransactions: bundle,
-          },
-          {
-            skipSigVerify: true,
-            replaceRecentBlockhash: true,
-            preExecutionAccountsConfigs: bundle.map(() => ({
-              encoding: "base64",
-              addresses: [],
-            })),
-            postExecutionAccountsConfigs: bundle.map(() => ({
-              encoding: "base64",
-              addresses: [],
-            })),
-          },
-        ],
-      }),
-    }),
-  );
-
-  const data = (await response.json()) as {
-    result?: {
-      value: {
-        transactionResults: { unitsConsumed: number }[];
-        summary:
-          | string
-          | {
-              failed?: {
-                error: {
-                  TransactionFailure: [unknown, string];
-                };
-              };
-            };
-      };
-    };
-    error?: unknown;
-  };
-
-  if (!data.result || data.error) {
-    throw new Error(
-      `Unable to simulate bundle: ${JSON.stringify(data.error ?? data.result)}`,
-    );
-  }
-
-  if (
-    typeof data.result.value.summary !== "string" &&
-    data.result.value.summary.failed
-  ) {
-    const { TransactionFailure } = data.result.value.summary.failed.error;
-    const [, programError] = TransactionFailure;
-    throw new Error(`Simulation failed: ${programError}`);
-  }
-
-  return data.result.value.transactionResults.map((x) => x.unitsConsumed);
-}
-
-async function createEncodedBundle(
-  bundle: (TransactionDetails & { unitsConsumed?: number })[],
-  isSimulate = false,
-) {
-  const latestBlockHash = isSimulate
-    ? {
-        blockhash: getBlockhashDecoder().decode(
-          crypto.getRandomValues(new Uint8Array(32)),
-        ),
-        lastValidBlockHeight: BigInt(Number.MAX_SAFE_INTEGER),
-      }
-    : (await withRetry(() => getSolanaRpc().getLatestBlockhash().send())).value;
+async function createEncodedBundle(bundle: TransactionDetails[]) {
+  const latestBlockHash = (
+    await withRetry(() => getSolanaRpc().getLatestBlockhash().send())
+  ).value;
   return await Promise.all(
     bundle.map(async (x) => {
       const tx = await pipe(
@@ -215,7 +119,7 @@ async function createEncodedBundle(
               )
             : tx,
         (tx) => {
-          const computeUnits = Math.ceil((x.unitsConsumed ?? 0) * 1.1);
+          const computeUnits = Math.ceil(Number(x.unitsConsumed ?? 0) * 1.1);
           return computeUnits > 200_000
             ? prependTransactionMessageInstructions(
                 [
@@ -228,53 +132,11 @@ async function createEncodedBundle(
             : tx;
         },
         async (tx) =>
-          isSimulate
-            ? compileTransaction(tx)
-            : await withRetry(() => signTransactionMessageWithSigners(tx)),
+          await withRetry(() => signTransactionMessageWithSigners(tx)),
       );
       return tx;
     }),
   );
-}
-
-async function getComputeUnitsEstimate(
-  transactionMessage: Parameters<typeof compileTransaction>[0],
-) {
-  const transactionMessageWithComputeUnitAndPriorityFees =
-    prependTransactionMessageInstructions(
-      [
-        getSetComputeUnitLimitInstruction({ units: 800_000 }),
-        getSetComputeUnitPriceInstruction({ microLamports: 10_000 }),
-      ],
-      transactionMessage,
-    );
-  const transaction = compileTransaction(
-    transactionMessageWithComputeUnitAndPriorityFees,
-  );
-  const simulatedTransaction = await withRetry(() =>
-    getSolanaRpc()
-      .simulateTransaction(getBase64EncodedWireTransaction(transaction), {
-        encoding: "base64",
-      })
-      .send(),
-  );
-  if (simulatedTransaction.value.err) {
-    if (simulatedTransaction.value.logs) {
-      const errorMessage = [
-        "Transaction simulation failed:",
-        "",
-        ...simulatedTransaction.value.logs,
-      ].join("\n");
-      throw new Error(errorMessage);
-    }
-    const errorMessage = [
-      "Transaction simulation failed:",
-      "",
-      simulatedTransaction.value.err.toString(),
-    ].join("\n");
-    throw new Error(errorMessage);
-  }
-  return simulatedTransaction.value.unitsConsumed;
 }
 
 export async function getMedianPriorityFees(

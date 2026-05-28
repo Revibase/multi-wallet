@@ -1,6 +1,7 @@
 import type {
   CompleteMessageRequest,
   CompleteTransactionRequest,
+  KeyType,
   StartMessageRequest,
   StartTransactionRequest,
   UserInfo,
@@ -20,6 +21,9 @@ export type OnConnectedCallback = (
 ) => Promise<{
   request: StartMessageRequest | StartTransactionRequest;
   signature: string;
+  transactionManagerAddress?: string;
+  additionalSigners?: string[];
+  additionalVoters?: { keyType: KeyType; publicKey: string }[];
 }>;
 
 type SuccessMap = {

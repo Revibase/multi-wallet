@@ -1,22 +1,23 @@
 import {
-  UserInfoSchema,
+  KeyType,
+  SignedSecp256r1Key,
   type CompleteTransactionRequest,
   type TransactionPayloadWithBase64MessageBytes,
   type UserInfo,
 } from "@revibase/core";
+import { SYSTEM_PROGRAM_ADDRESS } from "@solana-program/system";
+import { TOKEN_PROGRAM_ADDRESS } from "@solana-program/token";
 import {
   address,
   getAddressEncoder,
   getBase64Decoder,
   getU64Encoder,
-  type AddressesByLookupTableAddress,
   type TransactionSigner,
 } from "@solana/kit";
-import { SYSTEM_PROGRAM_ADDRESS } from "@solana-program/system";
-import { TOKEN_PROGRAM_ADDRESS } from "@solana-program/token";
 import type { RevibaseProvider } from "../provider/main";
 import { withRetry } from "../utils/retry";
 import { sendTransaction } from "../utils/transactions/sendTransaction";
+import { getRandomPayer } from "../utils/transactions/utils";
 import type { TransactionAuthorizationFlowOptions } from "../utils/types";
 
 /** Transfers SOL or SPL (set mint for SPL). amount &gt; 0, destination required */
@@ -29,7 +30,7 @@ export async function transferTokens(
     mint?: string;
     tokenProgram?: string;
     payer?: TransactionSigner;
-    addressesByLookupTableAddress?: AddressesByLookupTableAddress;
+    additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
   },
   options?: TransactionAuthorizationFlowOptions,
 ): Promise<{ txSig?: string; user: UserInfo }> {
@@ -48,7 +49,7 @@ export async function transferTokens(
     destination,
     signer,
     payer,
-    addressesByLookupTableAddress,
+    additionalVoters,
   } = args;
 
   const onConnectedCallback = async (rid: string, clientOrigin: string) => {
@@ -81,16 +82,23 @@ export async function transferTokens(
     const { signature, validTill } = await withRetry(() =>
       provider.onClientAuthorizationCallback(payload),
     );
-    return { request: { ...payload, rid, validTill }, signature };
+    return {
+      request: { ...payload, rid, validTill },
+      signature,
+      additionalVoters: additionalVoters?.map((x) =>
+        x instanceof SignedSecp256r1Key
+          ? { keyType: KeyType.Secp256r1, publicKey: x.toString() }
+          : { keyType: KeyType.Ed25519, publicKey: x.address.toString() },
+      ),
+      payer: (payer ?? (await getRandomPayer())).address.toString(),
+    };
   };
 
   const onSuccessCallback = async (
     result: CompleteTransactionRequest,
   ): Promise<{ txSig: string; user: UserInfo }> => {
     const { signature } = await provider.onClientAuthorizationCallback(result);
-    const user = UserInfoSchema.parse(result.data.payload.additionalInfo);
     const txSig = await sendTransaction(provider, {
-      user,
       request: {
         ...result,
         data: {
@@ -102,11 +110,11 @@ export async function transferTokens(
         },
       },
       options,
-      addressesByLookupTableAddress,
-      payer,
+      additionalVoters,
+      payer: payer ?? (await getRandomPayer()),
     });
 
-    return { txSig, user };
+    return { txSig, user: result.data.payload.user };
   };
 
   return provider.sendRequestToPopupProvider({

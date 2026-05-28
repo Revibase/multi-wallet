@@ -1,12 +1,11 @@
 import {
-  fetchSettings,
   getSignedSecp256r1Key,
-  getSolanaRpc,
   prepareTransactionBundle,
-  retrieveTransactionManager,
+  SignedSecp256r1Key,
   type TransactionAuthenticationResponse,
 } from "@revibase/core";
 import {
+  address,
   getBase64Encoder,
   type Address,
   type TransactionSigner,
@@ -17,7 +16,6 @@ import type { TransactionAuthorizationFlowOptions } from "../types";
 import { signAndSendBundledTransactions } from "./solana-send";
 import {
   fetchAdditionalLoopUpTableIfNecessary,
-  getRandomPayer,
   getTransactionManagerSigner,
 } from "./utils";
 
@@ -26,13 +24,22 @@ export async function processBundledTransaction(
   params: {
     authResponse: TransactionAuthenticationResponse;
     settings: Address;
-    payer?: TransactionSigner;
+    payer: TransactionSigner;
+    additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
     additionalSigners?: TransactionSigner[];
     options?: TransactionAuthorizationFlowOptions;
   },
 ): Promise<string> {
-  const { authResponse, settings, additionalSigners, options, payer } = params;
-  const { startRequest, signer } = authResponse;
+  const {
+    authResponse,
+    settings,
+    additionalSigners,
+    additionalVoters,
+    options,
+    payer,
+  } = params;
+  const { startRequest, transactionManagerAddress, unitsConsumed } =
+    authResponse;
   if (startRequest.data.type !== "transaction")
     throw new Error("Invalid request type.");
 
@@ -48,18 +55,14 @@ export async function processBundledTransaction(
     );
   }
 
-  const [feePayer, settingsData, signedSigner] = await Promise.all([
-    payer ?? getRandomPayer(),
-    (await withRetry(() => fetchSettings(getSolanaRpc(), settings))).data,
-    getSignedSecp256r1Key(authResponse),
-  ]);
-
-  const tm = retrieveTransactionManager(signer, settingsData);
+  const signedSigner = await getSignedSecp256r1Key(authResponse);
 
   const [transactionManagerSigner, jitoBundlesTipAmount] = await Promise.all([
     getTransactionManagerSigner({
       authResponses: [authResponse],
-      transactionManagerAddress: tm?.transactionManagerAddress,
+      transactionManagerAddress: transactionManagerAddress
+        ? address(transactionManagerAddress)
+        : undefined,
       transactionMessageBytes: getBase64Encoder().encode(
         transactionMessageBytes,
       ),
@@ -80,17 +83,19 @@ export async function processBundledTransaction(
     creator: transactionManagerSigner ?? signedSigner,
     executor: transactionManagerSigner ? signedSigner : undefined,
     jitoBundlesTipAmount,
+    additionalVoters,
     additionalSigners,
-    payer: feePayer,
+    payer,
   });
 
   const bundlesWithLookupTables = await Promise.all(
-    bundle.map(async (x) => ({
+    bundle.map(async (x, index) => ({
       ...x,
       addressesByLookupTableAddress:
         await fetchAdditionalLoopUpTableIfNecessary(
           x.addressesByLookupTableAddress,
         ),
+      unitsConsumed: unitsConsumed?.[index],
     })),
   );
 

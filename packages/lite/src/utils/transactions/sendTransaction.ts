@@ -1,13 +1,9 @@
-import type { UserInfo } from "@revibase/core";
+import type { SignedSecp256r1Key } from "@revibase/core";
 import {
   getSettingsFromIndex,
   type CompleteTransactionRequest,
 } from "@revibase/core";
-import {
-  address,
-  type AddressesByLookupTableAddress,
-  type TransactionSigner,
-} from "@solana/kit";
+import { address, type TransactionSigner } from "@solana/kit";
 import type { RevibaseProvider } from "../../provider";
 import type { TransactionAuthorizationFlowOptions } from "../../utils";
 import { processBundledTransaction } from "../../utils/transactions/processBundledTransaction";
@@ -18,22 +14,15 @@ import { pollTransactionConfirmation } from "./pollTransactionConfirmation";
 export async function sendTransaction(
   provider: RevibaseProvider,
   params: {
-    user: UserInfo;
     request: CompleteTransactionRequest;
+    additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
     additionalSigners?: TransactionSigner[];
     options?: TransactionAuthorizationFlowOptions;
-    payer?: TransactionSigner;
-    addressesByLookupTableAddress?: AddressesByLookupTableAddress;
+    payer: TransactionSigner;
   },
 ): Promise<string> {
-  const {
-    user,
-    request,
-    additionalSigners,
-    options,
-    payer,
-    addressesByLookupTableAddress,
-  } = params;
+  const { request, additionalSigners, options, payer, additionalVoters } =
+    params;
   const { confirmTransaction = true } = options ?? {};
 
   const settings =
@@ -41,8 +30,10 @@ export async function sendTransaction(
     request.data.payload.startRequest.data.payload.transactionActionType !==
       "transfer_intent"
       ? request.data.payload.startRequest.data.payload.transactionAddress
-      : user.settingsIndexWithAddress?.index
-        ? await getSettingsFromIndex(user.settingsIndexWithAddress.index)
+      : request.data.payload.user.settingsIndexWithAddress?.index
+        ? await getSettingsFromIndex(
+            request.data.payload.user.settingsIndexWithAddress.index,
+          )
         : null;
 
   if (!settings) {
@@ -58,7 +49,7 @@ export async function sendTransaction(
         settings: address(settings),
         options,
         payer,
-        addressesByLookupTableAddress,
+        additionalVoters,
       });
       break;
     case "execute":
@@ -67,6 +58,7 @@ export async function sendTransaction(
         authResponse: request.data.payload,
         settings: address(settings),
         additionalSigners,
+        additionalVoters,
         options,
         payer,
       });
@@ -76,6 +68,7 @@ export async function sendTransaction(
         authResponse: request.data.payload,
         settings: address(settings),
         additionalSigners,
+        additionalVoters,
         options,
         payer,
       });

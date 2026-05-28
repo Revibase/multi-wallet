@@ -1,34 +1,40 @@
 import {
-  fetchSettings,
   getSignedSecp256r1Key,
-  getSolanaRpc,
   prepareTransactionSync,
-  retrieveTransactionManager,
+  SignedSecp256r1Key,
   type TransactionAuthenticationResponse,
 } from "@revibase/core";
 import {
+  address,
   getBase64Encoder,
   type Address,
   type TransactionSigner,
 } from "@solana/kit";
-import { withRetry } from "../retry";
 import type { TransactionAuthorizationFlowOptions } from "../types";
 import { signAndSendTransaction } from "./solana-send";
 import {
   fetchAdditionalLoopUpTableIfNecessary,
-  getRandomPayer,
   getTransactionManagerSigner,
 } from "./utils";
 
 export async function processSyncTransaction(params: {
   authResponse: TransactionAuthenticationResponse;
   settings: Address;
-  payer?: TransactionSigner;
+  payer: TransactionSigner;
+  additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
   additionalSigners?: TransactionSigner[];
   options?: TransactionAuthorizationFlowOptions;
 }): Promise<string> {
-  const { authResponse, settings, payer, additionalSigners, options } = params;
-  const { startRequest, signer } = authResponse;
+  const {
+    authResponse,
+    settings,
+    payer,
+    additionalSigners,
+    additionalVoters,
+    options,
+  } = params;
+  const { startRequest, transactionManagerAddress, unitsConsumed } =
+    authResponse;
   if (startRequest.data.type !== "transaction")
     throw new Error("Invalid request type.");
 
@@ -39,17 +45,13 @@ export async function processSyncTransaction(params: {
     throw new Error("Transaction action type must be 'sync'");
   }
 
-  const [feePayer, settingsData, signedSigner] = await Promise.all([
-    payer ?? getRandomPayer(),
-    (await withRetry(() => fetchSettings(getSolanaRpc(), settings))).data,
-    getSignedSecp256r1Key(authResponse),
-  ]);
-
-  const tm = retrieveTransactionManager(signer, settingsData);
+  const signedSigner = await getSignedSecp256r1Key(authResponse);
 
   const transactionManagerSigner = await getTransactionManagerSigner({
     authResponses: [authResponse],
-    transactionManagerAddress: tm?.transactionManagerAddress,
+    transactionManagerAddress: transactionManagerAddress
+      ? address(transactionManagerAddress)
+      : undefined,
     transactionMessageBytes: getBase64Encoder().encode(transactionMessageBytes),
     onPendingApprovalsCallback:
       options?.pendingApprovalsCallback?.onPendingApprovalsCallback,
@@ -59,13 +61,13 @@ export async function processSyncTransaction(params: {
   });
 
   const signers = transactionManagerSigner
-    ? [signedSigner, transactionManagerSigner]
-    : [signedSigner];
+    ? [signedSigner, transactionManagerSigner, ...(additionalVoters ?? [])]
+    : [signedSigner, ...(additionalVoters ?? [])];
 
   const { instructions, addressesByLookupTableAddress } =
     await prepareTransactionSync({
       signers,
-      payer: feePayer,
+      payer,
       transactionMessageBytes: getBase64Encoder().encode(
         transactionMessageBytes,
       ),
@@ -75,9 +77,10 @@ export async function processSyncTransaction(params: {
 
   return signAndSendTransaction({
     instructions,
-    payer: feePayer,
+    payer,
     addressesByLookupTableAddress: await fetchAdditionalLoopUpTableIfNecessary(
       addressesByLookupTableAddress,
     ),
+    unitsConsumed: unitsConsumed?.[0],
   });
 }

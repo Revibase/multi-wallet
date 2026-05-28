@@ -1,8 +1,4 @@
-import {
-  UserInfoSchema,
-  type CompleteMessageRequest,
-  type UserInfo,
-} from "@revibase/core";
+import { type CompleteMessageRequest, type UserInfo } from "@revibase/core";
 import { getBase64Decoder } from "@solana/kit";
 import { RevibaseProvider } from "../provider/main";
 import { createSignInMessageText } from "../utils/internal";
@@ -10,7 +6,6 @@ import { send2FARequestIfNeeded } from "../utils/message";
 import { withRetry } from "../utils/retry";
 import type { SignInAuthorizationFlowOptions } from "../utils/types";
 
-/** Opens auth popup (or channel when options.channelId). Returns user after passkey auth. Options: signal?, channelId?. */
 export async function signIn(
   provider: RevibaseProvider,
   options?: SignInAuthorizationFlowOptions,
@@ -44,12 +39,7 @@ export async function signIn(
   const onSuccessCallback = async (
     result: CompleteMessageRequest,
   ): Promise<{ user: UserInfo }> => {
-    const user = UserInfoSchema.parse(result.data.payload.additionalInfo);
-    const transactionManager = await send2FARequestIfNeeded(
-      user,
-      result,
-      options,
-    );
+    const transactionManager = await send2FARequestIfNeeded(result, options);
     await provider.onClientAuthorizationCallback(
       !transactionManager
         ? result
@@ -61,7 +51,7 @@ export async function signIn(
             },
           },
     );
-    return { user };
+    return { user: result.data.payload.user };
   };
 
   return provider.sendRequestToPopupProvider({

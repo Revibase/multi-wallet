@@ -210,6 +210,7 @@ export const AuthenticationContextSchema = z
         deviceProfile: DeviceProfileSchema,
       })
       .strict(),
+    user: UserInfoSchema,
   })
   .strict();
 
@@ -227,6 +228,8 @@ export const TransactionDetailsSchema = z
     estimatedSlotHashExpiry: z.number(),
     originIndex: z.number(),
     crossOrigin: z.boolean(),
+    transactionManagerAddress: z.string().optional(),
+    unitsConsumed: z.array(z.union([z.number(), z.bigint()])).optional(),
   })
   .strict();
 
