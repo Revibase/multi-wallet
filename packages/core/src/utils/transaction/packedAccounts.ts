@@ -9,13 +9,13 @@ import {
   type TreeInfo,
   TreeType,
 } from "@lightprotocol/stateless.js";
-import { PublicKey } from "@solana/web3.js";
 import {
   type AccountMeta,
   AccountRole,
   type AccountSignerMeta,
   address,
-} from "gill";
+} from "@solana/kit";
+import { PublicKey } from "@solana/web3.js";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
 import { getLightProtocolRpc } from "../initialize";
 

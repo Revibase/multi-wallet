@@ -3,7 +3,7 @@ import {
   type AccountSignerMeta,
   type Address,
   type TransactionSigner,
-} from "gill";
+} from "@solana/kit";
 
 export function parseRemainingAccounts({
   args,

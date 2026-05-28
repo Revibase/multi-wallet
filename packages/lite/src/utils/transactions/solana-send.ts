@@ -20,11 +20,11 @@ import {
   type AccountMeta,
   type Rpc,
   type SolanaRpcApi,
-} from "gill";
+} from "@solana/kit";
 import {
   getSetComputeUnitLimitInstruction,
   getSetComputeUnitPriceInstruction,
-} from "gill/programs";
+} from "@solana-program/compute-budget";
 import type { RevibaseProvider } from "../../provider";
 import { withRetry } from "../retry";
 

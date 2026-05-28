@@ -1,4 +1,4 @@
-import type { TransactionSigner } from "gill";
+import type { TransactionSigner } from "@solana/kit";
 import { getCreateGlobalCounterInstructionAsync as getCreateGlobalCounterInstruction } from "../../generated";
 import { getGlobalCounterAddress } from "../../utils";
 

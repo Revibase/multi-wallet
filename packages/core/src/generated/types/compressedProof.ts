@@ -18,7 +18,7 @@ import {
   type FixedSizeDecoder,
   type FixedSizeEncoder,
   type ReadonlyUint8Array,
-} from "gill";
+} from "@solana/kit";
 
 export type CompressedProof = {
   a: ReadonlyUint8Array;

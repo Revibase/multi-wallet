@@ -13,7 +13,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from "gill";
+} from "@solana/kit";
 
 export enum AccountState {
   Initialized,

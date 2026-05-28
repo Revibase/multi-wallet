@@ -5,7 +5,7 @@ import {
   type Address,
   type Base64EncodedBytes,
   type GetProgramAccountsMemcmpFilter,
-} from "gill";
+} from "@solana/kit";
 import {
   fetchSettings,
   fetchUser,

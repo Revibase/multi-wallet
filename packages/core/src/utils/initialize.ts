@@ -2,19 +2,14 @@ import {
   createRpc,
   Rpc as LightProtocolRpc,
 } from "@lightprotocol/stateless.js";
-import {
-  createSolanaClient,
-  type Rpc,
-  type SendAndConfirmTransactionWithSignersFunction,
-  type SolanaRpcApi,
-} from "gill";
+import { type Rpc, type SolanaRpcApi } from "@solana/kit";
+import { createSolanaRpc } from "@solana/rpc";
 import { NotInitializedError } from "../errors";
 
 type RevibaseGlobalState = {
   solanaRpcEndpoint?: string;
   lightProtocolRpc?: LightProtocolRpc;
   solanaRpc?: Rpc<SolanaRpcApi>;
-  sendAndConfirm?: SendAndConfirmTransactionWithSignersFunction;
 };
 
 const state: RevibaseGlobalState = {};
@@ -40,13 +35,6 @@ export function getSolanaRpc() {
   return state.solanaRpc;
 }
 
-export function getSendAndConfirmTransaction() {
-  if (!state.sendAndConfirm) {
-    throw new NotInitializedError("Send and confirm transaction function");
-  }
-  return state.sendAndConfirm;
-}
-
 export function initialize({
   rpcEndpoint,
   proverEndpoint,
@@ -62,9 +50,6 @@ export function initialize({
     compressionApiEndpoint,
     proverEndpoint,
   );
-  const { rpc, sendAndConfirmTransaction } = createSolanaClient({
-    urlOrMoniker: rpcEndpoint,
-  });
+  const rpc = createSolanaRpc(rpcEndpoint);
   state.solanaRpc = rpc;
-  state.sendAndConfirm = sendAndConfirmTransaction;
 }

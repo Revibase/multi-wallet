@@ -21,7 +21,7 @@ import {
   type Encoder,
   type GetDiscriminatedUnionVariant,
   type GetDiscriminatedUnionVariantContent,
-} from "gill";
+} from "@solana/kit";
 import {
   getSecp256r1VerifyArgsWithDomainConfigIndexDecoder,
   getSecp256r1VerifyArgsWithDomainConfigIndexEncoder,

@@ -6,16 +6,16 @@ import {
   type TransactionAuthDetails,
 } from "@revibase/core";
 import {
+  identifySystemInstruction,
+  SYSTEM_PROGRAM_ADDRESS,
+  SystemInstruction,
+} from "@solana-program/system";
+import {
   getBase64Encoder,
   getCompiledTransactionMessageDecoder,
   getTransactionDecoder,
   type Instruction,
-} from "gill";
-import {
-  identifySystemInstruction,
-  SYSTEM_PROGRAM_ADDRESS,
-  SystemInstruction,
-} from "gill/programs";
+} from "@solana/kit";
 import {
   processChangeConfig,
   processCreateUserAccount,

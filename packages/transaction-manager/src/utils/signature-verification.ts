@@ -12,7 +12,7 @@ import {
   type TransactionBufferCreateInstructionData,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
-import { getUtf8Decoder, getUtf8Encoder } from "gill";
+import { getUtf8Decoder, getUtf8Encoder } from "@solana/kit";
 import { compactVerify, importJWK } from "jose";
 import { canonicalize } from "json-canonicalize";
 import type { ClientDataJSON, WellKnownClientEntry } from "../types";

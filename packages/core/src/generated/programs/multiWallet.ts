@@ -12,7 +12,7 @@ import {
   getBytesEncoder,
   type Address,
   type ReadonlyUint8Array,
-} from "gill";
+} from "@solana/kit";
 import {
   type ParsedChangeConfigInstruction,
   type ParsedCreateDomainConfigInstruction,

@@ -36,6 +36,10 @@
   "homepage": "https://github.com/Revibase/multi-wallet#readme",
   "description": "",
   "dependencies": {
+    "@solana-program/compute-budget": "0.15.0",
+    "@solana-program/memo": "0.11.0",
+    "@solana-program/system": "0.12.0",
+    "@solana/kit": "^6.9.0",
     "@noble/hashes": "2.0.1",
     "@revibase/core": "workspace:*",
     "@simplewebauthn/server": "^13.2.2",

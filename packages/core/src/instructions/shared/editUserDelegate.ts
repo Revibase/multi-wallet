@@ -1,4 +1,9 @@
-import { none, some, type Instruction, type TransactionSigner } from "gill";
+import {
+  none,
+  some,
+  type Instruction,
+  type TransactionSigner,
+} from "@solana/kit";
 import { getEditUserDelegateInstruction } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
 import { getSettingsFromIndex, getUserAddress } from "../../utils";

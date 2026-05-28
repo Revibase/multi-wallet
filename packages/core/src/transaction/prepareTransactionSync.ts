@@ -3,7 +3,7 @@ import type {
   AddressesByLookupTableAddress,
   ReadonlyUint8Array,
   TransactionSigner,
-} from "gill";
+} from "@solana/kit";
 import {
   executeTransactionSync,
   type Secp256r1VerifyInput,

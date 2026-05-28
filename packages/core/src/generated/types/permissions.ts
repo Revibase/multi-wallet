@@ -15,7 +15,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from "gill";
+} from "@solana/kit";
 
 /** Bitmask for permissions. */
 export type IPermissions = { mask: number };

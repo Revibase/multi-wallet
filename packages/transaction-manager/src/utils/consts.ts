@@ -1,10 +1,8 @@
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "@revibase/core";
-import { address, type AddressesByLookupTableAddress } from "gill";
-import {
-  COMPUTE_BUDGET_PROGRAM_ADDRESS,
-  MEMO_PROGRAM_ADDRESS,
-  SYSTEM_PROGRAM_ADDRESS,
-} from "gill/programs";
+import { address, type AddressesByLookupTableAddress } from "@solana/kit";
+import { COMPUTE_BUDGET_PROGRAM_ADDRESS } from "@solana-program/compute-budget";
+import { MEMO_PROGRAM_ADDRESS } from "@solana-program/memo";
+import { SYSTEM_PROGRAM_ADDRESS } from "@solana-program/system";
 
 export const SECP256R1_VERIFY_PROGRAM =
   "Secp256r1SigVerify1111111111111111111111111";

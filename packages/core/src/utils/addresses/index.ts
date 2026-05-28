@@ -6,7 +6,7 @@ import {
   getU8Encoder,
   getUtf8Encoder,
   type Address,
-} from "gill";
+} from "@solana/kit";
 import { ValidationError } from "../../errors";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
 import { Secp256r1Key } from "../../types";

@@ -1,4 +1,4 @@
-import { type Address, type TransactionSigner } from "gill";
+import { type Address, type TransactionSigner } from "@solana/kit";
 import {
   getCreateDomainUserAccountInstruction,
   getSecp256r1PubkeyDecoder,

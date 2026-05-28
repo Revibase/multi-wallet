@@ -4,7 +4,7 @@ import {
   MultiWalletInstruction,
   type TransactionAuthDetails,
 } from "@revibase/core";
-import type { Instruction } from "gill";
+import type { Instruction } from "@solana/kit";
 import type {
   Secp256r1VerifyData,
   TransactionManagerConfig,

@@ -28,7 +28,7 @@ import {
   type Decoder,
   type Encoder,
   type ReadonlyUint8Array,
-} from "gill";
+} from "@solana/kit";
 
 export type Secp256r1VerifyArgs = {
   signedMessageIndex: number;

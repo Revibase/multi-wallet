@@ -17,7 +17,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from "gill";
+} from "@solana/kit";
 
 export type SettingsIndexWithDelegateInfo = {
   index: bigint;

@@ -3,7 +3,7 @@ import {
   type CompleteMessageRequest,
   type UserInfo,
 } from "@revibase/core";
-import { getBase64Decoder } from "gill";
+import { getBase64Decoder } from "@solana/kit";
 import { RevibaseProvider } from "../provider/main";
 import { createSignInMessageText } from "../utils/internal";
 import { send2FARequestIfNeeded } from "../utils/message";

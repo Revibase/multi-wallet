@@ -15,7 +15,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from "gill";
+} from "@solana/kit";
 
 /**
  * Extension indicating the account belongs to a mint with transfer hook.

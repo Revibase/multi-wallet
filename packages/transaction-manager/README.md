@@ -38,7 +38,7 @@ import {
   getBase58Decoder,
   generateExtractableKeyPairSigner,
   extractBytesFromKeyPairSigner,
-} from "gill";
+} from "@solana/kit";
 
 const keypair = await generateExtractableKeyPairSigner();
 const secretKey = await extractBytesFromKeyPairSigner(keypair);
@@ -95,7 +95,7 @@ import {
   getBase58Decoder,
   createKeypairSignerFromBase58,
   signBytes,
-} from "gill";
+} from "@solana/kit";
 import { enforcePolicies } from "@/lib/policy";
 import http from "node:http";
 import { WebSocketServer } from "ws";
@@ -328,14 +328,14 @@ The example below:
 
 ```ts
 import type { ExpectedTransactionSigner } from "@revibase/transaction-manager";
-import type { Instruction } from "gill";
+import type { Instruction } from "@solana/kit";
 import {
   SYSTEM_PROGRAM_ADDRESS,
   identifySystemInstruction,
   parseTransferSolInstruction,
   parseTransferSolWithSeedInstruction,
   SystemInstruction,
-} from "gill";
+} from "@solana/kit";
 
 const ALLOWED_ORIGINS = new Set(["https://app.revibase.com"]);
 const MAX_TRANSFER_LAMPORTS = 1_000_000_000n; // 1 SOL

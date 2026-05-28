@@ -1,5 +1,5 @@
 import { getSolanaRpc } from "@revibase/core";
-import type { Signature } from "gill";
+import type { Signature } from "@solana/kit";
 import { withRetry } from "../retry";
 
 export async function pollTransactionConfirmation(

@@ -21,7 +21,7 @@ import {
   type InstructionWithAccounts,
   type InstructionWithData,
   type ReadonlyUint8Array,
-} from "gill";
+} from "@solana/kit";
 
 const COMPRESSED_PUBKEY_SERIALIZED_SIZE = 33;
 const SIGNATURE_SERIALIZED_SIZE = 64;

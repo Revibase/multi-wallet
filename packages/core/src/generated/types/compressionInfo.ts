@@ -26,7 +26,7 @@ import {
   type FixedSizeDecoder,
   type FixedSizeEncoder,
   type ReadonlyUint8Array,
-} from "gill";
+} from "@solana/kit";
 import {
   getRentConfigDecoder,
   getRentConfigEncoder,

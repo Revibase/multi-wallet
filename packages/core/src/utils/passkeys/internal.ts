@@ -1,7 +1,7 @@
 import { p256 } from "@noble/curves/nist.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
-import type { ReadonlyUint8Array } from "gill";
+import type { ReadonlyUint8Array } from "@solana/kit";
 import { base64URLStringToBuffer } from "./helper";
 
 export function uint8ArrayToHex(bytes: Uint8Array<ArrayBuffer>) {

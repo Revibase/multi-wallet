@@ -15,7 +15,7 @@ import {
   type Codec,
   type Decoder,
   type Encoder,
-} from "gill";
+} from "@solana/kit";
 import {
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,

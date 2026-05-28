@@ -2,7 +2,7 @@ import {
   type Address,
   type AddressesByLookupTableAddress,
   type Instruction,
-} from "gill";
+} from "@solana/kit";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../generated";
 import { vaultTransactionMessageSerialize } from "../types";
 import { compileToWrappedMessageV0 } from "../utils/transactionMessage/compileToWrappedMessageV0";

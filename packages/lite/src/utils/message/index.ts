@@ -9,7 +9,7 @@ import {
   UserRole,
   type CompleteMessageRequest,
 } from "@revibase/core";
-import { address } from "gill";
+import { address } from "@solana/kit";
 import { withRetry } from "../retry";
 import type { SignInAuthorizationFlowOptions } from "../types";
 import { fetchSignatureFromTransactionManager } from "./fetchSIgnatureFromTransactionManager";

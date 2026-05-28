@@ -16,7 +16,11 @@ import {
   UserRole,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
-import { address, getUtf8Encoder, verifySignatureForAddress } from "gill";
+import {
+  address,
+  getUtf8Encoder,
+  verifySignatureForAddress,
+} from "@solana/kit";
 import { compactVerify, importJWK } from "jose";
 import { canonicalize } from "json-canonicalize";
 

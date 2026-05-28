@@ -30,7 +30,7 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from "gill";
+} from "@solana/kit";
 import { parseRemainingAccounts } from "../../hooked";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 import { getAccountMetaFactory, type ResolvedAccount } from "../shared";

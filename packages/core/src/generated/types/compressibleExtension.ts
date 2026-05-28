@@ -17,7 +17,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from "gill";
+} from "@solana/kit";
 import {
   getCompressionInfoDecoder,
   getCompressionInfoEncoder,

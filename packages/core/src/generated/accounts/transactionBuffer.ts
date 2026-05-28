@@ -47,7 +47,7 @@ import {
   type MaybeAccount,
   type MaybeEncodedAccount,
   type ReadonlyUint8Array,
-} from "gill";
+} from "@solana/kit";
 import {
   getExpectedSignerDecoder,
   getExpectedSignerEncoder,

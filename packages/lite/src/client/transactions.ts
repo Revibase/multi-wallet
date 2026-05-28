@@ -17,7 +17,7 @@ import {
   type AddressesByLookupTableAddress,
   type Instruction,
   type TransactionSigner,
-} from "gill";
+} from "@solana/kit";
 import type { RevibaseProvider } from "../provider/main";
 import { withRetry } from "../utils/retry";
 import { sendTransaction } from "../utils/transactions";

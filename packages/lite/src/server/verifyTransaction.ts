@@ -10,7 +10,7 @@ import {
   getSecp256r1MessageHash,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
-import { getUtf8Encoder } from "gill";
+import { getUtf8Encoder } from "@solana/kit";
 import { CompactSign, compactVerify, importJWK } from "jose";
 import { canonicalize } from "json-canonicalize";
 

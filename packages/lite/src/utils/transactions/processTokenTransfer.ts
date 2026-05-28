@@ -15,8 +15,8 @@ import {
   type Address,
   type AddressesByLookupTableAddress,
   type TransactionSigner,
-} from "gill";
-import { SYSTEM_PROGRAM_ADDRESS } from "gill/programs";
+} from "@solana/kit";
+import { SYSTEM_PROGRAM_ADDRESS } from "@solana-program/system";
 import { withRetry } from "../retry";
 import type { TransactionAuthorizationFlowOptions } from "../types";
 import { signAndSendTransaction } from "./solana-send";

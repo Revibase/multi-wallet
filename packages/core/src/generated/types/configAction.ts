@@ -23,7 +23,7 @@ import {
   type Encoder,
   type GetDiscriminatedUnionVariant,
   type GetDiscriminatedUnionVariantContent,
-} from "gill";
+} from "@solana/kit";
 import {
   getAddMemberArgsDecoder,
   getAddMemberArgsEncoder,

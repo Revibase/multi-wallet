@@ -1,4 +1,4 @@
-import type { TransactionSigner } from "gill";
+import type { TransactionSigner } from "@solana/kit";
 import { getDisableDomainConfigInstruction } from "../../generated";
 import { getDomainConfigAddress } from "../../utils";
 

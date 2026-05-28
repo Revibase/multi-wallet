@@ -7,7 +7,7 @@ import {
   address,
   type AddressesByLookupTableAddress,
   type TransactionSigner,
-} from "gill";
+} from "@solana/kit";
 import type { RevibaseProvider } from "../../provider";
 import type { TransactionAuthorizationFlowOptions } from "../../utils";
 import { processBundledTransaction } from "../../utils/transactions/processBundledTransaction";

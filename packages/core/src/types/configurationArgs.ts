@@ -1,4 +1,4 @@
-import type { Address } from "gill";
+import type { Address } from "@solana/kit";
 import { Secp256r1Key } from ".";
 
 export type PermissionArgs = {

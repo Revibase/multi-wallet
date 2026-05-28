@@ -11,8 +11,9 @@ import {
   getU64Encoder,
   type AddressesByLookupTableAddress,
   type TransactionSigner,
-} from "gill";
-import { SYSTEM_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS } from "gill/programs";
+} from "@solana/kit";
+import { SYSTEM_PROGRAM_ADDRESS } from "@solana-program/system";
+import { TOKEN_PROGRAM_ADDRESS } from "@solana-program/token";
 import type { RevibaseProvider } from "../provider/main";
 import { withRetry } from "../utils/retry";
 import { sendTransaction } from "../utils/transactions/sendTransaction";

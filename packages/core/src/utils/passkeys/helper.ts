@@ -13,7 +13,7 @@ import {
   getUtf8Encoder,
   type Address,
   type ReadonlyUint8Array,
-} from "gill";
+} from "@solana/kit";
 import { canonicalize } from "json-canonicalize";
 import { NotFoundError } from "../../errors";
 import { fetchDomainConfig } from "../../generated";

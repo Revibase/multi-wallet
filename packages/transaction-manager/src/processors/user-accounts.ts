@@ -2,7 +2,7 @@ import {
   parseCreateUserAccountInstruction,
   parseEditTransactionManagerUrlInstruction,
 } from "@revibase/core";
-import type { Instruction } from "gill";
+import type { Instruction } from "@solana/kit";
 import type { TransactionManagerConfig } from "../types";
 
 /**

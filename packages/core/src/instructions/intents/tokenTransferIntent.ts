@@ -6,7 +6,6 @@ import {
   type ParsedTokenAccount,
   type ValidityProofWithContext,
 } from "@lightprotocol/stateless.js";
-import { PublicKey } from "@solana/web3.js";
 import {
   AccountRole,
   address,
@@ -24,11 +23,9 @@ import {
   type OptionOrNullable,
   type ReadonlyUint8Array,
   type TransactionSigner,
-} from "gill";
-import {
-  getAssociatedTokenAccountAddress,
-  getTokenDecoder,
-} from "gill/programs";
+} from "@solana/kit";
+import { PublicKey } from "@solana/web3.js";
+import { findAssociatedTokenPda, getTokenDecoder } from "@solana-program/token";
 import { ValidationError } from "../../errors";
 import {
   getExtensionStructDecoder,
@@ -249,9 +246,13 @@ async function resolveAddresses(
     [destinationCTokenAta],
     [splInterfacePda],
   ] = await Promise.all([
-    getAssociatedTokenAccountAddress(mint, walletAddress, tokenProgram),
+    findAssociatedTokenPda({ mint, owner: walletAddress, tokenProgram }).then(
+      ([ata]) => ata,
+    ),
     getCtokenAta(walletAddress),
-    getAssociatedTokenAccountAddress(mint, destination, tokenProgram),
+    findAssociatedTokenPda({ mint, owner: destination, tokenProgram }).then(
+      ([ata]) => ata,
+    ),
     getCtokenAta(destination),
     getProgramDerivedAddress({
       seeds,
