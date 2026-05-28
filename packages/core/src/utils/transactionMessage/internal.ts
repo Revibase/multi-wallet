@@ -8,7 +8,7 @@ import {
   fetchAddressesForLookupTables,
   type ReadonlyUint8Array,
   type TransactionSigner,
-} from "gill";
+} from "@solana/kit";
 import { getSolanaRpc } from "..";
 import { vaultTransactionMessageDeserialize } from "../../types";
 
@@ -80,10 +80,6 @@ export async function accountsForTransactionExecute({
   const transactionMessage = vaultTransactionMessageDeserialize(
     transactionMessageBytes,
   );
-
-  if (transactionMessage.version === "legacy") {
-    throw new Error("Only versioned transaction is allowed.");
-  }
 
   const addressLookupTableAccounts =
     addressesByLookupTableAddress ??

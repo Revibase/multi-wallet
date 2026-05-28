@@ -6,8 +6,7 @@ import {
   type Instruction,
   type ReadonlyUint8Array,
   type TransactionSigner,
-} from "gill";
-import { ValidationError } from "../errors";
+} from "@solana/kit";
 import { getTransactionExecuteSyncInstruction } from "../generated";
 import { SignedSecp256r1Key } from "../types";
 import { getWalletAddressFromSettings } from "../utils";
@@ -85,12 +84,9 @@ export async function executeTransactionSync({
 }
 
 function parseTransactionMessage(
-  transactionMessage: CompiledTransactionMessage,
+  transactionMessage: CompiledTransactionMessage & { version: 0 },
   accountMetas: AccountMeta[],
 ) {
-  if (transactionMessage.version === "legacy") {
-    throw new ValidationError("Only versioned transaction is allowed.");
-  }
   return {
     numSigners: transactionMessage.header.numSignerAccounts,
     numWritableNonSigners:

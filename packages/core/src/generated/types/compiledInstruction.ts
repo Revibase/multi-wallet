@@ -22,7 +22,7 @@ import {
   type Decoder,
   type Encoder,
   type ReadonlyUint8Array,
-} from "gill";
+} from "@solana/kit";
 
 export type CompiledInstruction = {
   programAddressIndex: number;

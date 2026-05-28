@@ -1,4 +1,4 @@
-import { AccountRole, type Address, type TransactionSigner } from "gill";
+import { AccountRole, type Address, type TransactionSigner } from "@solana/kit";
 import {
   getChangeConfigInstruction,
   type ConfigAction,

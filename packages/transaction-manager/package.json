@@ -1,6 +1,6 @@
 {
   "name": "@revibase/transaction-manager",
-  "version": "0.7.2",
+  "version": "0.7.3",
   "scripts": {
     "build": "rimraf dist & tsup",
     "clean": "rimraf dist",
@@ -36,16 +36,21 @@
   "homepage": "https://github.com/Revibase/multi-wallet#readme",
   "description": "",
   "dependencies": {
+    "@solana-program/compute-budget": "0.15.0",
+    "@solana-program/memo": "0.11.0",
+    "@solana-program/system": "0.12.0",
+    "@solana/kit": "^6.9.0",
     "@noble/hashes": "2.0.1",
     "@revibase/core": "workspace:*",
-    "@simplewebauthn/server": "^13.2.2",
-    "jose": "^6.1.3"
+    "@simplewebauthn/server": "^13.3.1",
+    "jose": "^6.1.3",
+    "json-canonicalize": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "24.3.1",
     "prettier": "^3.6.2",
     "rimraf": "^6.0.1",
     "tsup": "8.5.0",
-    "typescript": "6.0.3"
+    "typescript": "5.9.3"
   }
 }

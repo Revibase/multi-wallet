@@ -1,4 +1,4 @@
-import type { Address, Instruction, TransactionSigner } from "gill";
+import type { Address, Instruction, TransactionSigner } from "@solana/kit";
 import { getTransactionBufferVoteInstruction } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";
 import { extractSecp256r1VerificationArgs } from "../../utils/transaction/internal";

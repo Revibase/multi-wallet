@@ -1,4 +1,4 @@
-import { AccountRole, type Address } from "gill";
+import { AccountRole, type Address } from "@solana/kit";
 import {
   type AddMemberArgs,
   type ConfigAction,

@@ -4,7 +4,7 @@ import {
   MultiWalletInstruction,
   type TransactionAuthDetails,
 } from "@revibase/core";
-import { AccountRole, getBase64Encoder, type Instruction } from "gill";
+import { AccountRole, getBase64Encoder, type Instruction } from "@solana/kit";
 import type {
   ProcessingResult,
   Secp256r1VerifyData,

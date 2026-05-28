@@ -4,7 +4,7 @@ import {
   type AddressesByLookupTableAddress,
   type CompiledTransactionMessage,
   type Instruction,
-} from "gill";
+} from "@solana/kit";
 import { CompiledKeys } from "./compiled-keys";
 import { MessageAccountKeys } from "./message-account-keys";
 
@@ -72,5 +72,5 @@ export function compileToWrappedMessageV0({
     lifetimeToken: recentBlockhash,
     staticAccounts,
     addressTableLookups,
-  } as CompiledTransactionMessage;
+  } as CompiledTransactionMessage & { version: 0 };
 }

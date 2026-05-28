@@ -16,7 +16,7 @@ import {
   verifyAuthenticationResponse,
   type AuthenticationResponseJSON,
 } from "@simplewebauthn/server";
-import { getUtf8Decoder } from "gill";
+import { getUtf8Decoder } from "@solana/kit";
 import { compactVerify, importJWK } from "jose";
 import type { ClientDataJSON, WellKnownClientEntry } from "../types";
 import { fetchWellKnownClient } from "./fetch-well-known";

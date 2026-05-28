@@ -16,8 +16,8 @@ import {
   type ReadonlyUint8Array,
   type SignatureBytes,
   type TransactionSigner,
-} from "gill";
-import { fetchMaybeAddressLookupTable } from "gill/programs";
+} from "@solana/kit";
+import { fetchMaybeAddressLookupTable } from "@solana-program/address-lookup-table";
 import {
   REVIBASE_API_ENDPOINT,
   REVIBASE_LOOKUP_TABLE_ADDRESS,

@@ -1,4 +1,4 @@
-import type { Address } from "gill";
+import type { Address } from "@solana/kit";
 import { getTransactionBufferExtendInstruction } from "../../generated";
 
 export function extendTransactionBuffer({

@@ -33,7 +33,7 @@ import {
   type MaybeAccount,
   type MaybeEncodedAccount,
   type ReadonlyUint8Array,
-} from "gill";
+} from "@solana/kit";
 
 export const GLOBAL_COUNTER_DISCRIMINATOR = new Uint8Array([
   42, 206, 176, 58, 175, 129, 130, 233,

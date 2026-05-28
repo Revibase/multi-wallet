@@ -1,7 +1,7 @@
 import { p256 } from "@noble/curves/nist.js";
 import { sha256 } from "@noble/hashes/sha2.js";
 import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
-import type { ReadonlyUint8Array } from "gill";
+import type { ReadonlyUint8Array } from "@solana/kit";
 import { base64URLStringToBuffer } from "./helper";
 
 export function uint8ArrayToHex(bytes: Uint8Array<ArrayBuffer>) {
@@ -18,9 +18,7 @@ export function hexToUint8Array(hex: string): Uint8Array<ArrayBuffer> {
   return bytes;
 }
 
-export function extractAdditionalFields(
-  clientData: Record<string, unknown>,
-): Uint8Array<ArrayBuffer> {
+export function extractAdditionalFields(clientData: Record<string, unknown>) {
   const knownKeys = new Set(["type", "challenge", "origin", "crossOrigin"]);
 
   const remaining: Record<string, unknown> = {};
@@ -35,7 +33,7 @@ export function extractAdditionalFields(
   }
 
   const serialized = JSON.stringify(remaining);
-  return new TextEncoder().encode(serialized.slice(1, -1));
+  return new Uint8Array(new TextEncoder().encode(serialized.slice(1, -1)));
 }
 
 export function parseOrigins(

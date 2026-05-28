@@ -8,8 +8,8 @@ import {
   type OptionOrNullable,
   some,
   type TransactionSigner,
-} from "gill";
-import { getTransferSolInstruction } from "gill/programs";
+} from "@solana/kit";
+import { getTransferSolInstruction } from "@solana-program/system";
 import { JITO_TIP_ACCOUNTS } from "../../constants";
 import { ValidationError } from "../../errors";
 import type {

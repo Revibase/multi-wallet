@@ -6,7 +6,7 @@ import {
   getStructCodec,
   getU8Codec,
   type ReadonlyUint8Array,
-} from "gill";
+} from "@solana/kit";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../generated";
 
 function getCompiledInstructionCodec() {
@@ -35,7 +35,7 @@ const vaultTransactionMessageCodec = getStructCodec([
 ]);
 
 export function vaultTransactionMessageSerialize(
-  compiledMessage: CompiledTransactionMessage,
+  compiledMessage: CompiledTransactionMessage & { version: 0 },
 ) {
   const transactionMessageBytes = vaultTransactionMessageCodec.encode({
     numSigners: compiledMessage.header.numSignerAccounts,
@@ -55,7 +55,7 @@ export function vaultTransactionMessageSerialize(
       };
     }),
     addressTableLookups:
-      compiledMessage.version !== "legacy"
+      compiledMessage.version === 0
         ? (compiledMessage.addressTableLookups?.map((x) => ({
             lookupTableAddress: x.lookupTableAddress,
             readonlyIndexes: x.readonlyIndexes as number[],
@@ -69,7 +69,9 @@ export function vaultTransactionMessageSerialize(
 
 export function vaultTransactionMessageDeserialize(
   transactionMessageBytes: ReadonlyUint8Array,
-): CompiledTransactionMessage & CompiledTransactionMessageWithLifetime {
+): CompiledTransactionMessage & {
+  version: 0;
+} & CompiledTransactionMessageWithLifetime {
   const vaultTransactionMessage = vaultTransactionMessageCodec.decode(
     transactionMessageBytes,
   );

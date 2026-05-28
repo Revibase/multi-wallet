@@ -1,4 +1,4 @@
-import { type Address, none, some, type TransactionSigner } from "gill";
+import { type Address, none, some, type TransactionSigner } from "@solana/kit";
 import { getEditDomainConfigInstruction } from "../../generated";
 import { getUserAddress } from "../../utils";
 

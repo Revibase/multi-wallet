@@ -2,10 +2,11 @@ import type {
   AddressesByLookupTableAddress,
   Instruction,
   TransactionSigner,
-} from "gill";
+} from "@solana/kit";
 
 export type TransactionDetails = {
   payer: TransactionSigner;
   instructions: Instruction[];
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
+  unitsConsumed?: bigint | number;
 };

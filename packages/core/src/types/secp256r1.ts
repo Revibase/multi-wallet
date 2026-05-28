@@ -4,7 +4,7 @@ import {
   getBase58Encoder,
   type Address,
   type ReadonlyUint8Array,
-} from "gill";
+} from "@solana/kit";
 
 const SECP256R1_PUBLIC_KEY_LENGTH = 33;
 type Secp256r1KeyInitData =

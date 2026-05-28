@@ -16,7 +16,7 @@ import {
   type Address,
   type ProgramDerivedAddress,
   type TransactionSigner,
-} from "gill";
+} from "@solana/kit";
 
 /**
  * Asserts that the given value is not null or undefined.

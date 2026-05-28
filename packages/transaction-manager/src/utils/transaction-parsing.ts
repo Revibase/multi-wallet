@@ -20,13 +20,13 @@ import type {
   CompiledTransactionMessageWithLifetime,
   Rpc,
   SolanaRpcApi,
-} from "gill";
+} from "@solana/kit";
 import {
   address,
   decompileTransactionMessage,
   fetchAddressesForLookupTables,
   type Instruction,
-} from "gill";
+} from "@solana/kit";
 import type {
   ExpectedTransactionSigner,
   Secp256r1VerifyData,
@@ -235,6 +235,9 @@ export async function decompileTransactionMessageFetchingLookupTablesWithCache(
     CompiledTransactionMessageWithLifetime,
   rpc: Rpc<SolanaRpcApi>,
 ) {
+  if (compiledMessage.version !== 0) {
+    throw new Error("Only v0 transactions are supported.");
+  }
   const hasLookupTables =
     "addressTableLookups" in compiledMessage &&
     compiledMessage.addressTableLookups !== undefined &&

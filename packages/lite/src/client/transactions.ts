@@ -1,15 +1,15 @@
-import type {
-  CompleteTransactionRequest,
-  TransactionPayloadWithBase64MessageBytes,
-  UserInfo,
-} from "@revibase/core";
 import {
+  convertMemberKeyToString,
   fetchSettings,
   getSettingsFromIndex,
   getSolanaRpc,
+  KeyType,
   prepareTransactionMessage,
-  UserInfoSchema,
+  SignedSecp256r1Key,
   UserRole,
+  type CompleteTransactionRequest,
+  type TransactionPayloadWithBase64MessageBytes,
+  type UserInfo,
 } from "@revibase/core";
 import {
   address,
@@ -17,10 +17,11 @@ import {
   type AddressesByLookupTableAddress,
   type Instruction,
   type TransactionSigner,
-} from "gill";
+} from "@solana/kit";
 import type { RevibaseProvider } from "../provider/main";
 import { withRetry } from "../utils/retry";
 import { sendTransaction } from "../utils/transactions";
+import { getRandomPayer } from "../utils/transactions/utils";
 import type { TransactionAuthorizationFlowOptions } from "../utils/types";
 
 /** Custom transaction. Action from wallet settings (TransactionManager). Provider needs rpcEndpoint. Options: signal?, channelId?. */
@@ -34,6 +35,7 @@ export async function executeTransaction(
       index: number | bigint;
     };
     additionalSigners?: TransactionSigner[];
+    additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
     addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
   options?: TransactionAuthorizationFlowOptions,
@@ -44,6 +46,7 @@ export async function executeTransaction(
     addressesByLookupTableAddress,
     settingsIndexWithAddress,
     additionalSigners,
+    additionalVoters,
     payer,
   } = args;
 
@@ -59,15 +62,15 @@ export async function executeTransaction(
     const settingsData = (
       await withRetry(() => fetchSettings(getSolanaRpc(), settings))
     ).data;
-    const hasTxManager = settingsData.members.some(
+    const transactionManagerAddress = settingsData.members.find(
       (x) => x.role === UserRole.TransactionManager,
-    );
+    )?.pubkey;
     const transactionPayload: TransactionPayloadWithBase64MessageBytes = {
       transactionMessageBytes: getBase64Decoder().decode(
         transactionMessageBytes,
       ),
       transactionAddress: settings,
-      transactionActionType: hasTxManager
+      transactionActionType: transactionManagerAddress
         ? "execute"
         : "create_with_preauthorized_execution",
     };
@@ -87,16 +90,28 @@ export async function executeTransaction(
     const { signature, validTill } = await withRetry(() =>
       provider.onClientAuthorizationCallback(payload),
     );
-    return { request: { ...payload, rid, validTill }, signature };
+    return {
+      request: { ...payload, rid, validTill },
+      signature,
+      transactionManagerAddress: transactionManagerAddress
+        ? convertMemberKeyToString(transactionManagerAddress)
+        : undefined,
+      additionalSigners: additionalSigners?.map((x) => x.address.toString()),
+      additionalVoters: additionalVoters?.map((x) =>
+        x instanceof SignedSecp256r1Key
+          ? { keyType: KeyType.Secp256r1, publicKey: x.toString() }
+          : { keyType: KeyType.Ed25519, publicKey: x.address.toString() },
+      ),
+      payer: (payer ?? (await getRandomPayer())).address.toString(),
+    };
   };
 
   const onSuccessCallback = async (
     result: CompleteTransactionRequest,
   ): Promise<{ txSig: string; user: UserInfo }> => {
     const { signature } = await provider.onClientAuthorizationCallback(result);
-    const user = UserInfoSchema.parse(result.data.payload.additionalInfo);
+
     const txSig = await sendTransaction(provider, {
-      user,
       request: {
         ...result,
         data: {
@@ -109,11 +124,11 @@ export async function executeTransaction(
       },
       options,
       additionalSigners,
-      addressesByLookupTableAddress,
-      payer,
+      additionalVoters,
+      payer: payer ?? (await getRandomPayer()),
     });
 
-    return { user, txSig };
+    return { user: result.data.payload.user, txSig };
   };
 
   return provider.sendRequestToPopupProvider({

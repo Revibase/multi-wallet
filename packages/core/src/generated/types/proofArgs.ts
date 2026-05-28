@@ -19,7 +19,7 @@ import {
   type Encoder,
   type Option,
   type OptionOrNullable,
-} from "gill";
+} from "@solana/kit";
 import {
   getCompressedProofDecoder,
   getCompressedProofEncoder,

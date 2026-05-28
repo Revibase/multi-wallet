@@ -1,15 +1,17 @@
 import {
   changeConfig,
-  getSendAndConfirmTransaction,
   getSettingsFromIndex,
   getSolanaRpc,
+  getSolanaRpcEndpoint,
   prepareChangeConfigArgs,
 } from "@revibase/core";
 import {
   address,
   type AddressesByLookupTableAddress,
   appendTransactionMessageInstructions,
+  assertIsTransactionWithBlockhashLifetime,
   compressTransactionMessageUsingAddressLookupTables,
+  createSolanaClient,
   createTransactionMessage,
   getBase64EncodedWireTransaction,
   getSignatureFromTransaction,
@@ -18,6 +20,7 @@ import {
   lamports,
   pipe,
   prependTransactionMessageInstruction,
+  sendAndConfirmTransactionFactory,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
   signTransactionMessageWithSigners,
@@ -33,6 +36,17 @@ import {
 } from "../constants.ts";
 import type { TestContext } from "../types.ts";
 import { assertTestContext, delay } from "./test-utils.ts";
+
+let cached: ReturnType<typeof sendAndConfirmTransactionFactory> | null = null;
+function getSendAndConfirmTx() {
+  if (cached) return cached;
+  const { rpc, rpcSubscriptions } = createSolanaClient({
+    urlOrMoniker: getSolanaRpcEndpoint(),
+  });
+
+  cached = sendAndConfirmTransactionFactory({ rpc, rpcSubscriptions });
+  return cached;
+}
 
 /**
  * Sends a transaction with the given instructions
@@ -74,10 +88,12 @@ export async function sendTransaction(
 
     console.log(getBase64EncodedWireTransaction(tx).length);
     signature = getSignatureFromTransaction(tx);
-    await getSendAndConfirmTransaction()(tx, {
-      commitment: "confirmed",
+    assertIsTransactionWithBlockhashLifetime(tx);
+    await getSendAndConfirmTx()(tx, {
       skipPreflight: true,
+      commitment: "confirmed",
     });
+
     await delay(TEST_TRANSACTION_DELAY_MS);
     return signature;
   } catch (error) {

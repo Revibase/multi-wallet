@@ -1,4 +1,4 @@
-import { AccountRole, type Address, type Instruction } from "gill";
+import { AccountRole, type Address, type Instruction } from "@solana/kit";
 
 export type CompiledKeyMeta = {
   isSigner: boolean;

@@ -35,7 +35,7 @@ import {
   type MaybeAccount,
   type MaybeEncodedAccount,
   type ReadonlyUint8Array,
-} from "gill";
+} from "@solana/kit";
 
 export const DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([
   201, 232, 212, 229, 59, 241, 106, 197,

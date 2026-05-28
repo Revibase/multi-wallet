@@ -1,4 +1,8 @@
-import { type Address, type Instruction, type TransactionSigner } from "gill";
+import {
+  type Address,
+  type Instruction,
+  type TransactionSigner,
+} from "@solana/kit";
 import { ValidationError } from "../../errors";
 import { getNativeTransferIntentInstruction } from "../../generated";
 import { SignedSecp256r1Key } from "../../types";

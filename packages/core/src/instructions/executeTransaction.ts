@@ -4,7 +4,7 @@ import type {
   Instruction,
   ReadonlyUint8Array,
   TransactionSigner,
-} from "gill";
+} from "@solana/kit";
 import { getTransactionExecuteInstruction } from "../generated";
 import { getWalletAddressFromSettings } from "../utils";
 import { addJitoTip } from "../utils/transaction/internal";

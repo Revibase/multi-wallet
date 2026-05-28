@@ -1,4 +1,3 @@
-import type { UserInfo } from "@revibase/core";
 import {
   convertMemberKeyToString,
   fetchSettings,
@@ -9,13 +8,12 @@ import {
   UserRole,
   type CompleteMessageRequest,
 } from "@revibase/core";
-import { address } from "gill";
+import { address } from "@solana/kit";
 import { withRetry } from "../retry";
 import type { SignInAuthorizationFlowOptions } from "../types";
 import { fetchSignatureFromTransactionManager } from "./fetchSIgnatureFromTransactionManager";
 
 export async function send2FARequestIfNeeded(
-  user: UserInfo,
   request: CompleteMessageRequest,
   options?: SignInAuthorizationFlowOptions,
 ): Promise<{ publicKey: string; signature: string } | null> {
@@ -29,7 +27,9 @@ export async function send2FARequestIfNeeded(
     await withRetry(async () =>
       fetchSettings(
         getSolanaRpc(),
-        await getSettingsFromIndex(user.settingsIndexWithAddress.index),
+        await getSettingsFromIndex(
+          request.data.payload.user.settingsIndexWithAddress.index,
+        ),
       ),
     )
   ).data;

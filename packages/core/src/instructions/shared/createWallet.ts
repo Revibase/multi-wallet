@@ -1,4 +1,4 @@
-import { type TransactionSigner } from "gill";
+import { type TransactionSigner } from "@solana/kit";
 import { getCreateWalletInstruction } from "../../generated";
 import {
   getGlobalCounterAddress,

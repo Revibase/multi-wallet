@@ -5,7 +5,7 @@ import type {
   StartMessageRequest,
   StartTransactionRequest,
 } from "@revibase/core";
-import type { Address, Instruction, ReadonlyUint8Array } from "gill";
+import type { Address, Instruction, ReadonlyUint8Array } from "@solana/kit";
 
 /**
  * Configuration for the Transaction Manager.

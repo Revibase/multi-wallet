@@ -10,7 +10,7 @@ import {
   type ReadonlyUint8Array,
   type SignatureBytes,
   type TransactionSigner,
-} from "gill";
+} from "@solana/kit";
 import {
   NetworkError,
   NotFoundError,

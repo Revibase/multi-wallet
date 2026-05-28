@@ -16,7 +16,13 @@ import {
   UserRole,
 } from "@revibase/core";
 import { verifyAuthenticationResponse } from "@simplewebauthn/server";
-import { address, verifySignatureForAddress } from "gill";
+import {
+  address,
+  getBase58Encoder,
+  getPublicKeyFromAddress,
+  signatureBytes,
+  verifySignature,
+} from "@solana/kit";
 import { compactVerify, importJWK } from "jose";
 
 /** Verifies WebAuthn message, returns user. */
@@ -132,9 +138,13 @@ export async function verifyMessage(
       throw new Error("Transaction manager mismatch.");
     }
     if (
-      !(await verifySignatureForAddress(
-        address(payload.transactionManager.publicKey),
-        payload.transactionManager.signature,
+      !(await verifySignature(
+        await getPublicKeyFromAddress(
+          address(payload.transactionManager.publicKey),
+        ),
+        signatureBytes(
+          getBase58Encoder().encode(payload.transactionManager.signature),
+        ),
         expectedChallenge,
       ))
     ) {

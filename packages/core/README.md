@@ -28,7 +28,7 @@ Create one or more user accounts. Each user is identified by a member key (e.g. 
 
 ```ts
 import { createUserAccounts, UserRole } from "@revibase/core";
-import type { TransactionSigner } from "gill";
+import type { TransactionSigner } from "@solana/kit";
 
 declare const payer: TransactionSigner;
 declare const memberSigner: TransactionSigner;
@@ -54,7 +54,7 @@ import {
   getGlobalCounterAddress,
   getSolanaRpc,
 } from "@revibase/core";
-import type { TransactionSigner } from "gill";
+import type { TransactionSigner } from "@solana/kit";
 
 declare const payer: TransactionSigner;
 declare const memberSigner: TransactionSigner;
@@ -102,7 +102,7 @@ import {
   getUserAddress,
   getWalletAddressFromSettings,
 } from "@revibase/core";
-import type { TransactionSigner } from "gill";
+import type { TransactionSigner } from "@solana/kit";
 
 declare const memberSigner: TransactionSigner;
 
@@ -132,7 +132,7 @@ import {
   nativeTransferIntent,
   retrieveTransactionManager,
 } from "@revibase/core";
-import type { TransactionSigner } from "gill";
+import type { TransactionSigner } from "@solana/kit";
 
 declare const payer: TransactionSigner;
 declare const memberSigner: TransactionSigner;
@@ -183,8 +183,8 @@ import {
   retrieveTransactionManager,
   tokenTransferIntent,
 } from "@revibase/core";
-import type { Address, TransactionSigner } from "gill";
-import { TOKEN_2022_PROGRAM_ADDRESS } from "gill/programs";
+import type { Address, TransactionSigner } from "@solana/kit";
+import { TOKEN_2022_PROGRAM_ADDRESS } from "@solana-program/token-2022";
 
 declare const payer: TransactionSigner;
 declare const memberSigner: TransactionSigner;
@@ -234,8 +234,6 @@ const instructions = await tokenTransferIntent({
 - **Small tx size** → **sync**: `prepareTransactionMessage` → `prepareTransactionSync` → send
 - **Larger tx size** → **chunked bundle**: `prepareTransactionMessage` → `prepareTransactionBundle` → send the returned transactions in order
 
-In both cases, use `getSendAndConfirmTransaction()` (after `initialize()`) or your own Gill client to send.
-
 Prerequisite: `settings`, `walletAddress`, and `settingsAccount` from [Resolve delegated wallet settings](#1-resolve-delegated-wallet-settings).
 
 ### Sync: prepareTransactionSync
@@ -256,8 +254,8 @@ import {
   type Address,
   type AddressesByLookupTableAddress,
   type TransactionSigner,
-} from "gill";
-import { getTransferSolInstruction } from "gill/programs";
+} from "@solana/kit";
+import { getTransferSolInstruction } from "@solana-program/system";
 
 declare const destination: Address;
 declare const payer: TransactionSigner;
@@ -337,8 +335,8 @@ import {
   type Address,
   type AddressesByLookupTableAddress,
   type TransactionSigner,
-} from "gill";
-import { getTransferSolInstruction } from "gill/programs";
+} from "@solana/kit";
+import { getTransferSolInstruction } from "@solana-program/system";
 
 declare const destination: Address;
 declare const payer: TransactionSigner;

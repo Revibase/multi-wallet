@@ -22,7 +22,7 @@ import {
   type Option,
   type OptionOrNullable,
   type ReadonlyUint8Array,
-} from "gill";
+} from "@solana/kit";
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,

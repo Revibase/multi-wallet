@@ -4,7 +4,7 @@ import type {
   UserInfo,
 } from "@revibase/core";
 import { initialize } from "@revibase/core";
-import { getBase64Decoder } from "gill";
+import { getBase64Decoder } from "@solana/kit";
 import type {
   ClientAuthorizationCallback,
   OnConnectedCallback,
@@ -45,9 +45,11 @@ export class RevibaseProvider {
   private render?: NonNullable<RevibaseProviderOptions["ui"]>["render"];
   private popUp: Window | null = null;
   private frame: ReturnType<typeof createProviderFrame> | null = null;
-  private rendered:
-    | { targetWindow: Window; close: () => void; isClosed?: () => boolean }
-    | null = null;
+  private rendered: {
+    targetWindow: Window;
+    close: () => void;
+    isClosed?: () => boolean;
+  } | null = null;
 
   constructor(options: RevibaseProviderOptions) {
     const {
@@ -109,7 +111,9 @@ export class RevibaseProvider {
         if (originalSignal.aborted) {
           flowAbortController.abort();
         } else {
-          originalSignal.addEventListener("abort", forwardAbort, { once: true });
+          originalSignal.addEventListener("abort", forwardAbort, {
+            once: true,
+          });
           detachForwardAbort = () =>
             originalSignal.removeEventListener("abort", forwardAbort);
         }

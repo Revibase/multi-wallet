@@ -4,7 +4,7 @@ import type {
   AddressesByLookupTableAddress,
   Instruction,
   TransactionSigner,
-} from "gill";
+} from "@solana/kit";
 import {
   createTransactionBuffer,
   executeTransaction,

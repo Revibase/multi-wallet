@@ -11,7 +11,7 @@ import {
   type Address,
   type SOLANA_ERROR__INSTRUCTION_ERROR__CUSTOM,
   type SolanaError,
-} from "gill";
+} from "@solana/kit";
 import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
 
 /** InvalidSecp256r1VerifyArg: Malformed or missing WebAuthn verification parameters. Please provide valid secp256r1 signature arguments. */

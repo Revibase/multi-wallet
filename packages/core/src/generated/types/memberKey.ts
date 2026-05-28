@@ -20,7 +20,7 @@ import {
   type FixedSizeDecoder,
   type FixedSizeEncoder,
   type ReadonlyUint8Array,
-} from "gill";
+} from "@solana/kit";
 
 export type MemberKey = { keyType: number; key: ReadonlyUint8Array };
 

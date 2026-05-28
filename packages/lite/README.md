@@ -84,8 +84,8 @@ Custom instructions via `executeTransaction`:
 
 ```ts
 import { RevibaseProvider, signIn, executeTransaction } from "@revibase/lite";
-import { address, createNoopSigner } from "gill";
-import { getTransferSolInstruction } from "gill/programs";
+import { address, createNoopSigner } from "@solana/kit";
+import { getTransferSolInstruction } from "@solana-program/system";
 
 const provider = new RevibaseProvider({
   rpcEndpoint: "https://api.mainnet-beta.solana.com",
