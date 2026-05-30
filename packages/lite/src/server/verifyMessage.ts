@@ -9,8 +9,8 @@ import {
   createMessageChallenge,
   fetchSettings,
   fetchUserAccountByFilters,
+  getDeviceMessageHash,
   getDomainConfigAddress,
-  getSecp256r1MessageHash,
   getSettingsFromIndex,
   getSolanaRpc,
   UserRole,
@@ -20,12 +20,10 @@ import {
   address,
   getBase58Encoder,
   getPublicKeyFromAddress,
-  getUtf8Encoder,
   signatureBytes,
   verifySignature,
 } from "@solana/kit";
 import { compactVerify, importJWK } from "jose";
-import { canonicalize } from "json-canonicalize";
 
 /** Verifies WebAuthn message, returns user. */
 export async function verifyMessage(
@@ -72,12 +70,10 @@ export async function verifyMessage(
     if (
       !equalBytes(
         result.payload,
-        new Uint8Array([
-          ...getSecp256r1MessageHash(request.data.payload.authResponse),
-          ...getUtf8Encoder().encode(
-            canonicalize(payload.device.deviceProfile),
-          ),
-        ]),
+        getDeviceMessageHash(
+          payload.authResponse,
+          payload.device.deviceProfile,
+        ),
       )
     ) {
       throw new Error("Invalid device signature");

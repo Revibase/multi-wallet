@@ -5,7 +5,6 @@ import {
   fetchSettings,
   fetchUserAccountByFilters,
   getDomainConfigAddress,
-  getSecp256r1MessageHash,
   getSettingsFromIndex,
   getSolanaRpc,
   getWalletAddressFromIndex,
@@ -40,7 +39,7 @@ export async function verifyMessage(
     ),
     verifyDeviceSignature(
       payload.data.payload.device,
-      getSecp256r1MessageHash(payload.data.payload.authResponse),
+      payload.data.payload.authResponse,
     ),
     verifyUserSignature(payload),
   ]);
