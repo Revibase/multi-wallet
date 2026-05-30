@@ -38,8 +38,7 @@ export async function processBundledTransaction(
     options,
     payer,
   } = params;
-  const { startRequest, transactionManagerAddress, unitsConsumed } =
-    authResponse;
+  const { startRequest, transactionManagerAddress } = authResponse;
   if (startRequest.data.type !== "transaction")
     throw new Error("Invalid request type.");
 
@@ -89,13 +88,12 @@ export async function processBundledTransaction(
   });
 
   const bundlesWithLookupTables = await Promise.all(
-    bundle.map(async (x, index) => ({
+    bundle.map(async (x) => ({
       ...x,
       addressesByLookupTableAddress:
         await fetchAdditionalLoopUpTableIfNecessary(
           x.addressesByLookupTableAddress,
         ),
-      unitsConsumed: unitsConsumed?.[index],
     })),
   );
 

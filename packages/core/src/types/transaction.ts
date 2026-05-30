@@ -8,5 +8,4 @@ export type TransactionDetails = {
   payer: TransactionSigner;
   instructions: Instruction[];
   addressesByLookupTableAddress?: AddressesByLookupTableAddress;
-  unitsConsumed?: bigint | number;
 };

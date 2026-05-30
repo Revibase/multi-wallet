@@ -229,7 +229,6 @@ export const TransactionDetailsSchema = z
     originIndex: z.number(),
     crossOrigin: z.boolean(),
     transactionManagerAddress: z.string().optional(),
-    unitsConsumed: z.array(z.union([z.number(), z.bigint()])).optional(),
   })
   .strict();
 

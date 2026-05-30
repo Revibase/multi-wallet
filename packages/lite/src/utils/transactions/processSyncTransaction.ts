@@ -33,8 +33,7 @@ export async function processSyncTransaction(params: {
     additionalVoters,
     options,
   } = params;
-  const { startRequest, transactionManagerAddress, unitsConsumed } =
-    authResponse;
+  const { startRequest, transactionManagerAddress } = authResponse;
   if (startRequest.data.type !== "transaction")
     throw new Error("Invalid request type.");
 
@@ -81,6 +80,5 @@ export async function processSyncTransaction(params: {
     addressesByLookupTableAddress: await fetchAdditionalLoopUpTableIfNecessary(
       addressesByLookupTableAddress,
     ),
-    unitsConsumed: unitsConsumed?.[0],
   });
 }

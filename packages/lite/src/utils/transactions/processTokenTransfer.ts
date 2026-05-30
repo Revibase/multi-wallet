@@ -29,8 +29,7 @@ export async function processTokenTransfer(params: {
   options?: TransactionAuthorizationFlowOptions;
 }): Promise<string> {
   const { authResponse, settings, options, payer, additionalVoters } = params;
-  const { startRequest, transactionManagerAddress, unitsConsumed } =
-    authResponse;
+  const { startRequest, transactionManagerAddress } = authResponse;
   if (startRequest.data.type !== "transaction")
     throw new Error("Invalid request type.");
 
@@ -88,6 +87,5 @@ export async function processTokenTransfer(params: {
     payer,
     addressesByLookupTableAddress:
       await fetchAdditionalLoopUpTableIfNecessary(undefined),
-    unitsConsumed: unitsConsumed?.[0],
   });
 }
