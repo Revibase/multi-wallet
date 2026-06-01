@@ -20,7 +20,7 @@ Passkey Solana wallet: sign-in and transactions in popup or on another device (c
 | **Client (frontend)** | `signIn`, `transferTokens`, `executeTransaction`                                                                                                                                                                                                         |
 | **Server (backend)**  | `processClientAuthCallback`, `processSendJitoBundleCallback`, `processEstimateJitoTipsCallback`                                                                                                                                                          |
 | **Types**             | `UserInfo`, `StartMessageRequest`, `StartTransactionRequest`, `CompleteMessageRequest`, `CompleteTransactionRequest`, `ClientAuthorizationCallback`, `SignInAuthorizationFlowOptions`, `TransactionAuthorizationFlowOptions` |
-| **Errors**            | `RevibaseError`, `RevibasePopupBlockedError`, `RevibasePopupClosedError`, `RevibaseTimeoutError`, `RevibaseFlowInProgressError`, `RevibaseAbortedError`, `RevibaseAuthError`, `RevibaseEnvironmentError`, `RevibasePopupNotOpenError` (all have `.code`) |
+| **Errors**            | `RevibaseError`, `RevibaseMissingSignersError`, `RevibasePopupBlockedError`, `RevibasePopupClosedError`, `RevibaseTimeoutError`, `RevibaseFlowInProgressError`, `RevibaseAbortedError`, `RevibaseAuthError`, `RevibaseEnvironmentError`, `RevibasePopupNotOpenError` (all have `.code`) |
 
 ## Main flows
 

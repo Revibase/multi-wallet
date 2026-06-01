@@ -10,6 +10,7 @@ import {
   type Address,
   type TransactionSigner,
 } from "@solana/kit";
+import type { AbortScope } from "../abort";
 import type { TransactionAuthorizationFlowOptions } from "../types";
 import { signAndSendTransaction } from "./solana-send";
 import {
@@ -24,6 +25,7 @@ export async function processSyncTransaction(params: {
   additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
   additionalSigners?: TransactionSigner[];
   options?: TransactionAuthorizationFlowOptions;
+  abortScope: AbortScope;
 }): Promise<string> {
   const {
     authResponse,
@@ -32,6 +34,7 @@ export async function processSyncTransaction(params: {
     additionalSigners,
     additionalVoters,
     options,
+    abortScope,
   } = params;
   const { startRequest, transactionManagerAddress } = authResponse;
   if (startRequest.data.type !== "transaction")
@@ -56,7 +59,7 @@ export async function processSyncTransaction(params: {
       options?.pendingApprovalsCallback?.onPendingApprovalsCallback,
     onPendingApprovalsSuccess:
       options?.pendingApprovalsCallback?.onPendingApprovalsSuccess,
-    abortSignal: options?.signal,
+    abortSignal: abortScope.signal,
   });
 
   const signers = transactionManagerSigner
@@ -82,6 +85,6 @@ export async function processSyncTransaction(params: {
         addressesByLookupTableAddress,
       ),
     },
-    options?.signal,
+    abortScope,
   );
 }
