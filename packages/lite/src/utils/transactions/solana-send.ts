@@ -16,19 +16,21 @@ import {
   getBase64EncodedWireTransaction,
   getBlockhashDecoder,
   getSignatureFromTransaction,
+  isSolanaError,
   pipe,
   prependTransactionMessageInstructions,
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
   signTransactionMessageWithSigners,
+  SOLANA_ERROR__TRANSACTION__SIGNATURES_MISSING,
   type AccountMeta,
   type Rpc,
   type SolanaRpcApi,
 } from "@solana/kit";
 import type { RevibaseProvider } from "../../provider";
 import type { AbortScope } from "../abort";
+import { RevibaseMissingSignersError } from "../errors";
 import { withRetry } from "../retry";
-import { rethrowSigningError } from "./signing-errors";
 
 function throwIfAborted(signal?: AbortSignal): void {
   if (!signal?.aborted) return;
@@ -343,4 +345,17 @@ export async function getMedianPriorityFees(
   } else {
     return fees[mid];
   }
+}
+
+function rethrowSigningError(error: unknown, abortScope?: AbortScope): never {
+  abortScope?.abort(error instanceof Error ? error : undefined);
+
+  if (isSolanaError(error, SOLANA_ERROR__TRANSACTION__SIGNATURES_MISSING)) {
+    const missingAddresses = error.context.addresses.map((a) => String(a));
+    if (missingAddresses.length > 0) {
+      throw new RevibaseMissingSignersError(missingAddresses);
+    }
+  }
+
+  throw error;
 }

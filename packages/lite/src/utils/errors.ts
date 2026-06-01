@@ -82,14 +82,26 @@ export class RevibaseApiError extends RevibaseError {
   }
 }
 
-/** Transaction signing failed (e.g. missing additionalSigners). */
-export { RevibaseMissingSignersError } from "./transactions/signing-errors";
-
 /** Used outside browser. */
 export class RevibaseEnvironmentError extends RevibaseError {
   constructor(message = "Provider can only be used in a browser environment") {
     super(message, "ENVIRONMENT");
     this.name = "RevibaseEnvironmentError";
     Object.setPrototypeOf(this, RevibaseEnvironmentError.prototype);
+  }
+}
+
+export class RevibaseMissingSignersError extends RevibaseError {
+  readonly missingAddresses: readonly string[];
+
+  constructor(missingAddresses: readonly string[]) {
+    const message = [
+      `Missing signature(s) for: ${missingAddresses.join(", ")}.`,
+      "Pass required keypairs in executeTransaction({ additionalSigners: [...] }).",
+    ].join(" ");
+    super(message, "MISSING_SIGNERS");
+    this.name = "RevibaseMissingSignersError";
+    this.missingAddresses = missingAddresses;
+    Object.setPrototypeOf(this, RevibaseMissingSignersError.prototype);
   }
 }
