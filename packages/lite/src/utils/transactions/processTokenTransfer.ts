@@ -14,6 +14,7 @@ import {
   type Address,
   type TransactionSigner,
 } from "@solana/kit";
+import type { AbortScope } from "../abort";
 import type { TransactionAuthorizationFlowOptions } from "../types";
 import { signAndSendTransaction } from "./solana-send";
 import {
@@ -27,8 +28,10 @@ export async function processTokenTransfer(params: {
   additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
   payer: TransactionSigner;
   options?: TransactionAuthorizationFlowOptions;
+  abortScope: AbortScope;
 }): Promise<string> {
-  const { authResponse, settings, options, payer, additionalVoters } = params;
+  const { authResponse, settings, options, payer, additionalVoters, abortScope } =
+    params;
   const { startRequest, transactionManagerAddress } = authResponse;
   if (startRequest.data.type !== "transaction")
     throw new Error("Invalid request type.");
@@ -57,7 +60,7 @@ export async function processTokenTransfer(params: {
       options?.pendingApprovalsCallback?.onPendingApprovalsCallback,
     onPendingApprovalsSuccess:
       options?.pendingApprovalsCallback?.onPendingApprovalsSuccess,
-    abortSignal: options?.signal,
+    abortSignal: abortScope.signal,
   });
 
   const signers = transactionManagerSigner
@@ -89,6 +92,6 @@ export async function processTokenTransfer(params: {
       addressesByLookupTableAddress:
         await fetchAdditionalLoopUpTableIfNecessary(undefined),
     },
-    options?.signal,
+    abortScope,
   );
 }

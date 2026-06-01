@@ -82,6 +82,9 @@ export class RevibaseApiError extends RevibaseError {
   }
 }
 
+/** Transaction signing failed (e.g. missing additionalSigners). */
+export { RevibaseMissingSignersError } from "./transactions/signing-errors";
+
 /** Used outside browser. */
 export class RevibaseEnvironmentError extends RevibaseError {
   constructor(message = "Provider can only be used in a browser environment") {

@@ -5,7 +5,6 @@ import {
   type Address,
   type AddressesByLookupTableAddress,
   type CompiledTransactionMessage,
-  createNoopSigner,
   fetchAddressesForLookupTables,
   type ReadonlyUint8Array,
   type TransactionSigner,
@@ -192,19 +191,6 @@ export async function accountsForTransactionExecute({
     }
   }
 
-  for (let i = 0; i < accountMetas.length; i++) {
-    const x = accountMetas[i];
-    if (
-      (x.role === AccountRole.READONLY_SIGNER ||
-        x.role === AccountRole.WRITABLE_SIGNER) &&
-      !("signer" in x)
-    ) {
-      accountMetas[i] = {
-        ...x,
-        signer: createNoopSigner(x.address),
-      };
-    }
-  }
   return {
     accountMetas,
     addressLookupTableAccounts,

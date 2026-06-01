@@ -11,6 +11,7 @@ import {
   type TransactionSigner,
 } from "@solana/kit";
 import type { RevibaseProvider } from "../../provider";
+import type { AbortScope } from "../abort";
 import { withRetry } from "../retry";
 import type { TransactionAuthorizationFlowOptions } from "../types";
 import { signAndSendBundledTransactions } from "./solana-send";
@@ -28,6 +29,7 @@ export async function processBundledTransaction(
     additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
     additionalSigners?: TransactionSigner[];
     options?: TransactionAuthorizationFlowOptions;
+    abortScope: AbortScope;
   },
 ): Promise<string> {
   const {
@@ -37,6 +39,7 @@ export async function processBundledTransaction(
     additionalVoters,
     options,
     payer,
+    abortScope,
   } = params;
   const { startRequest, transactionManagerAddress } = authResponse;
   if (startRequest.data.type !== "transaction")
@@ -69,7 +72,7 @@ export async function processBundledTransaction(
         options?.pendingApprovalsCallback?.onPendingApprovalsCallback,
       onPendingApprovalsSuccess:
         options?.pendingApprovalsCallback?.onPendingApprovalsSuccess,
-      abortSignal: options?.signal,
+      abortSignal: abortScope.signal,
     }),
     withRetry(() => provider.onEstimateJitoTipsCallback()),
   ]);
@@ -100,6 +103,6 @@ export async function processBundledTransaction(
   return signAndSendBundledTransactions(
     provider,
     bundlesWithLookupTables,
-    options?.signal,
+    abortScope,
   );
 }
