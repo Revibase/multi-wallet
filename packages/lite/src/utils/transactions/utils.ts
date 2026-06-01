@@ -95,7 +95,6 @@ export async function getTransactionManagerSigner(args: {
   transactionMessageBytes?: ReadonlyUint8Array;
   onPendingApprovalsCallback?: (validTill: number) => void;
   onPendingApprovalsSuccess?: () => void;
-  abortController?: AbortController;
   abortSignal?: AbortSignal;
 }) {
   const {
@@ -104,20 +103,8 @@ export async function getTransactionManagerSigner(args: {
     authResponses,
     onPendingApprovalsCallback,
     onPendingApprovalsSuccess,
-    abortController: abortControllerArg,
     abortSignal,
   } = args;
-
-  let abortController = abortControllerArg;
-  if (abortSignal && !abortController) {
-    const ac = new AbortController();
-    if (abortSignal.aborted) {
-      ac.abort();
-    } else {
-      abortSignal.addEventListener("abort", () => ac.abort(), { once: true });
-    }
-    abortController = ac;
-  }
   let url;
   if (transactionManagerAddress) {
     const txManagerUrl = (
@@ -140,7 +127,7 @@ export async function getTransactionManagerSigner(args: {
           transactionMessageBytes,
           onPendingApprovalsCallback,
           onPendingApprovalsSuccess,
-          abortController,
+          abortSignal,
         })
       : null;
 

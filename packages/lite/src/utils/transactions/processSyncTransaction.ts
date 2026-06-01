@@ -74,11 +74,14 @@ export async function processSyncTransaction(params: {
       additionalSigners,
     });
 
-  return signAndSendTransaction({
-    instructions,
-    payer,
-    addressesByLookupTableAddress: await fetchAdditionalLoopUpTableIfNecessary(
-      addressesByLookupTableAddress,
-    ),
-  });
+  return signAndSendTransaction(
+    {
+      instructions,
+      payer,
+      addressesByLookupTableAddress: await fetchAdditionalLoopUpTableIfNecessary(
+        addressesByLookupTableAddress,
+      ),
+    },
+    options?.signal,
+  );
 }

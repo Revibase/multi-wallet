@@ -78,7 +78,7 @@ export async function sendTransaction(
   }
 
   if (confirmTransaction) {
-    await pollTransactionConfirmation(txSig);
+    await pollTransactionConfirmation(txSig, { signal: options?.signal });
   }
 
   return txSig;

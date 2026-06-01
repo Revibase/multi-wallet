@@ -97,5 +97,9 @@ export async function processBundledTransaction(
     })),
   );
 
-  return signAndSendBundledTransactions(provider, bundlesWithLookupTables);
+  return signAndSendBundledTransactions(
+    provider,
+    bundlesWithLookupTables,
+    options?.signal,
+  );
 }

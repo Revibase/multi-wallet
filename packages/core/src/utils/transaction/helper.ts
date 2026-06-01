@@ -104,37 +104,177 @@ function toWebSocketUrl(httpUrl: string) {
   return u.toString();
 }
 
-function openWebSocket(url: string, signal: AbortSignal): Promise<WebSocket> {
+/** When false, signing should not be retried (e.g. TM policy rejection). */
+type TransactionManagerNetworkError = NetworkError & { retryable?: boolean };
+
+function terminalNetworkError(message: string, url?: string): NetworkError {
+  const err = new NetworkError(message, undefined, url) as TransactionManagerNetworkError;
+  err.retryable = false;
+  return err;
+}
+
+function isRetryableTransactionManagerError(error: unknown): boolean {
+  if (error instanceof NetworkError) {
+    return (error as TransactionManagerNetworkError).retryable !== false;
+  }
+  return (
+    error instanceof Error &&
+    (error.message === "WebSocket connection failed" ||
+      error.message === "WebSocket connection timed out")
+  );
+}
+
+const abortErr = () => {
+  const e = new Error("Aborted");
+  e.name = "AbortError";
+  return e;
+};
+
+function isAbortError(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    error.name === "AbortError"
+  );
+}
+
+function throwIfAborted(signal: AbortSignal): void {
+  if (signal.aborted) {
+    throw abortErr();
+  }
+  signal.throwIfAborted?.();
+}
+
+function combineAbortSignals(
+  ...signals: (AbortSignal | undefined)[]
+): AbortSignal {
+  const defined = signals.filter((s): s is AbortSignal => s != null);
+  if (defined.length === 0) {
+    return new AbortController().signal;
+  }
+  if (defined.length === 1) {
+    return defined[0];
+  }
+  if (typeof AbortSignal !== "undefined" && "any" in AbortSignal) {
+    return AbortSignal.any(defined);
+  }
+  const controller = new AbortController();
+  const forwardAbort = () => controller.abort();
+  for (const s of defined) {
+    if (s.aborted) {
+      forwardAbort();
+      break;
+    }
+    s.addEventListener("abort", forwardAbort, { once: true });
+  }
+  return controller.signal;
+}
+
+/** Unix seconds (~1e9) vs milliseconds (~1e12+). */
+function normalizeApprovalValidTill(validTill: number): number {
+  return validTill < 1_000_000_000_000 ? validTill * 1000 : validTill;
+}
+
+function resolveApprovalValidTill(
+  rawValidTill: number | undefined,
+  current: number | null,
+  defaultTimeoutMs: number,
+): number {
+  if (typeof rawValidTill === "number" && Number.isFinite(rawValidTill)) {
+    return normalizeApprovalValidTill(rawValidTill);
+  }
+  if (current !== null) {
+    return current;
+  }
+  return Date.now() + defaultTimeoutMs;
+}
+
+function rethrowTransactionManagerError(
+  error: unknown,
+  url: string,
+): never {
+  if (error instanceof NetworkError) throw error;
+  throw new NetworkError(
+    error instanceof Error ? error.message : "Transaction manager request failed",
+    undefined,
+    url,
+  );
+}
+
+function openWebSocket(
+  url: string,
+  signal: AbortSignal,
+  connectionTimeoutMs?: number,
+): Promise<WebSocket> {
+  if (signal.aborted) {
+    return Promise.reject(abortErr());
+  }
+
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(url);
+    let settled = false;
+
+    const settle = (fn: () => void) => {
+      if (settled) return;
+      settled = true;
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
+      signal.removeEventListener("abort", abort);
+      fn();
+    };
+
+    const timeoutId =
+      connectionTimeoutMs !== undefined
+        ? setTimeout(() => {
+            try {
+              ws.close();
+            } catch {}
+            settle(() =>
+              reject(new Error("WebSocket connection timed out")),
+            );
+          }, connectionTimeoutMs)
+        : undefined;
 
     const abort = () => {
       try {
         ws.close();
       } catch {}
+      settle(() => reject(abortErr()));
     };
 
     signal.addEventListener("abort", abort, { once: true });
 
     ws.onopen = () => {
-      signal.removeEventListener("abort", abort);
-      resolve(ws);
+      if (signal.aborted) {
+        try {
+          ws.close();
+        } catch {}
+        settle(() => reject(abortErr()));
+        return;
+      }
+      settle(() => resolve(ws));
     };
 
     ws.onerror = () => {
-      signal.removeEventListener("abort", abort);
-      reject(new Error("WebSocket connection failed"));
+      settle(() => reject(new Error("WebSocket connection failed")));
+    };
+
+    ws.onclose = () => {
+      settle(() => reject(new Error("WebSocket connection failed")));
     };
   });
 }
 
+/**
+ * Reads WebSocket events until `onEvent` returns true (success) or the socket closes/errors.
+ * @returns true if `onEvent` signaled completion (e.g. signatures received).
+ */
 async function readEvents(
   ws: WebSocket,
   signal: AbortSignal,
   onEvent: (event: string, data: any) => boolean,
-): Promise<void> {
+): Promise<boolean> {
   return new Promise((resolve, reject) => {
     let done = false;
+    let completed = false;
 
     const cleanup = () => {
       ws.removeEventListener("message", onMessage);
@@ -154,9 +294,14 @@ async function readEvents(
       try {
         ws.close();
       } catch {}
+      finish(() => reject(abortErr()));
     };
 
     const onMessage = (ev: MessageEvent) => {
+      if (signal.aborted) {
+        finish(() => reject(abortErr()));
+        return;
+      }
       if (typeof ev.data !== "string") return;
 
       let msg: any;
@@ -170,7 +315,8 @@ async function readEvents(
 
       try {
         if (onEvent(event, msg.data)) {
-          finish(resolve);
+          completed = true;
+          finish(() => resolve(true));
         }
       } catch (e) {
         finish(() => reject(e));
@@ -184,7 +330,7 @@ async function readEvents(
         ),
       );
 
-    const onClose = () => finish(resolve);
+    const onClose = () => finish(() => resolve(completed));
 
     signal.addEventListener("abort", onAbort, { once: true });
     ws.addEventListener("message", onMessage);
@@ -193,27 +339,209 @@ async function readEvents(
   });
 }
 
-const abortErr = () => {
-  const e = new Error("Aborted");
-  e.name = "AbortError";
-  return e;
-};
-
 const sleep = (ms: number, signal: AbortSignal) =>
   new Promise<void>((resolve, reject) => {
     if (signal.aborted) return reject(abortErr());
 
-    const id = setTimeout(resolve, ms);
+    const onAbort = () => {
+      clearTimeout(id);
+      reject(abortErr());
+    };
 
-    signal.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(id);
-        reject(abortErr());
-      },
-      { once: true },
-    );
+    const id = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+
+    signal.addEventListener("abort", onAbort, { once: true });
   });
+
+/** Callbacks for optional out-of-band transaction-manager approval UX. */
+export type TransactionManagerApprovalCallbacks = {
+  onPendingApprovalsCallback?: (validTill: number) => void;
+  onPendingApprovalsSuccess?: () => void;
+};
+
+/** Retry, approval polling, and connection options for TM WebSocket signing. */
+export type TransactionManagerWebSocketSignOptions = {
+  maxAttempts?: number;
+  retryDelayMs?: number;
+  /** Poll interval while waiting for out-of-band approval (ms). */
+  approvalPollMs?: number;
+  /** Used when `pending_transaction_approval` omits `validTill` (ms). */
+  defaultApprovalTimeoutMs?: number;
+  /** Max wait for the WebSocket handshake (ms). */
+  connectionTimeoutMs?: number;
+};
+
+/**
+ * Signs via the transaction-manager WebSocket API (`/sign`).
+ * Sends `payload` (JSON) after connect and resolves when a `signatures` event arrives.
+ *
+ * Used by {@link createTransactionManagerSigner} (`type: "transaction"`) and by
+ * message signing (`type: "message"`).
+ */
+export async function fetchSignaturesFromTransactionManager(args: {
+  url: string;
+  /** JSON string sent on the WebSocket after connect (e.g. `{ type, data }`). */
+  payload: string;
+  /** Required length of the `signatures` array in the TM response. */
+  expectedSignatureCount: number;
+  callbacks?: TransactionManagerApprovalCallbacks;
+  abortSignal?: AbortSignal;
+  opts?: TransactionManagerWebSocketSignOptions;
+}): Promise<string[]> {
+  const {
+    url,
+    payload,
+    expectedSignatureCount,
+    callbacks,
+    abortSignal: abortSignalArg,
+    opts,
+  } = args;
+
+  const signal = combineAbortSignals(abortSignalArg);
+  const wsUrl = toWebSocketUrl(url);
+
+  const maxAttempts = opts?.maxAttempts ?? 10;
+  const retryDelayMs = opts?.retryDelayMs ?? 400;
+  const approvalPollMs = opts?.approvalPollMs ?? 2_000;
+  const defaultApprovalTimeoutMs = opts?.defaultApprovalTimeoutMs ?? 300_000;
+  const connectionTimeoutMs = opts?.connectionTimeoutMs ?? 30_000;
+
+  if (expectedSignatureCount === 0) {
+    throw terminalNetworkError(
+      "Transaction manager: no signatures requested",
+      wsUrl,
+    );
+  }
+
+  let approvalValidTill: number | null = null;
+  let transientFailures = 0;
+
+  const isWaitingForApproval = () =>
+    approvalValidTill !== null && Date.now() < approvalValidTill;
+
+  while (true) {
+    throwIfAborted(signal);
+
+    if (approvalValidTill !== null && Date.now() >= approvalValidTill) {
+      throw terminalNetworkError(
+        "Transaction manager approval timed out",
+        wsUrl,
+      );
+    }
+
+    let ws: WebSocket | undefined;
+    let signatures: string[] | undefined;
+
+    try {
+      ws = await openWebSocket(wsUrl, signal, connectionTimeoutMs);
+      throwIfAborted(signal);
+      ws.send(payload);
+
+      const receivedSignatures = await readEvents(ws, signal, (event, data) => {
+        if (event === "error") {
+          const errMsg =
+            typeof data === "object" &&
+            data &&
+            typeof (data as { error?: string }).error === "string"
+              ? (data as { error: string }).error
+              : "Unknown error";
+
+          throw terminalNetworkError(errMsg, wsUrl);
+        }
+
+        if (event === "signatures") {
+          const sigs = (data as { signatures?: string[] }).signatures;
+          if (!sigs?.length) {
+            return false;
+          }
+          if (sigs.length !== expectedSignatureCount) {
+            throw terminalNetworkError(
+              `Transaction manager returned ${sigs.length} signature(s) but ${expectedSignatureCount} were expected`,
+              wsUrl,
+            );
+          }
+          signatures = sigs;
+          return true;
+        }
+
+        if (event === "pending_transaction_approval") {
+          const rawValidTill = (data as { validTill?: number }).validTill;
+          approvalValidTill = resolveApprovalValidTill(
+            rawValidTill,
+            approvalValidTill,
+            defaultApprovalTimeoutMs,
+          );
+          callbacks?.onPendingApprovalsCallback?.(approvalValidTill);
+        }
+
+        if (event === "transaction_approved") {
+          callbacks?.onPendingApprovalsSuccess?.();
+        }
+
+        return false;
+      });
+
+      if (receivedSignatures) {
+        if (!signatures || signatures.length !== expectedSignatureCount) {
+          throw terminalNetworkError(
+            "Transaction manager sent an invalid signatures event",
+            wsUrl,
+          );
+        }
+        return signatures;
+      }
+
+      throwIfAborted(signal);
+
+      if (!isWaitingForApproval()) {
+        throw new NetworkError(
+          "Transaction manager closed the connection before returning signatures",
+          undefined,
+          wsUrl,
+        );
+      }
+    } catch (e) {
+      if (isAbortError(e)) throw e;
+      throwIfAborted(signal);
+      if (!isRetryableTransactionManagerError(e)) {
+        rethrowTransactionManagerError(e, wsUrl);
+      }
+
+      if (!isWaitingForApproval()) {
+        transientFailures++;
+        if (transientFailures >= maxAttempts) {
+          rethrowTransactionManagerError(e, wsUrl);
+        }
+      }
+    } finally {
+      try {
+        ws?.close();
+      } catch {}
+    }
+
+    throwIfAborted(signal);
+
+    if (isWaitingForApproval()) {
+      const waitMs = Math.min(approvalPollMs, approvalValidTill! - Date.now());
+      await sleep(waitMs > 0 ? waitMs : 1, signal);
+      continue;
+    }
+
+    if (transientFailures > 0) {
+      await sleep(retryDelayMs, signal);
+      continue;
+    }
+
+    throw new NetworkError(
+      "Transaction manager: missing signatures",
+      undefined,
+      wsUrl,
+    );
+  }
+}
 
 export function createTransactionManagerSigner(args: {
   address: Address;
@@ -222,8 +550,8 @@ export function createTransactionManagerSigner(args: {
   transactionMessageBytes?: ReadonlyUint8Array;
   onPendingApprovalsCallback?: (validTill: number) => void;
   onPendingApprovalsSuccess?: () => void;
-  abortController?: AbortController;
-  opts?: { maxAttempts?: number; retryDelayMs?: number };
+  abortSignal?: AbortSignal;
+  opts?: TransactionManagerWebSocketSignOptions;
 }): TransactionSigner {
   const {
     address,
@@ -232,103 +560,92 @@ export function createTransactionManagerSigner(args: {
     transactionMessageBytes,
     onPendingApprovalsCallback,
     onPendingApprovalsSuccess,
-    abortController,
+    abortSignal: abortSignalArg,
     opts,
   } = args;
 
-  const signal = abortController?.signal ?? new AbortController().signal;
+  const wiredSignal = combineAbortSignals(abortSignalArg);
   const wsUrl = toWebSocketUrl(url);
 
-  const maxAttempts = opts?.maxAttempts ?? 10;
-  const retryDelayMs = opts?.retryDelayMs ?? 400;
+  let signQueue: Promise<unknown> = Promise.resolve();
+
+  if (wiredSignal.aborted) {
+    signQueue = Promise.reject(abortErr());
+  }
+
+  wiredSignal.addEventListener(
+    "abort",
+    () => {
+      signQueue = Promise.reject(abortErr());
+    },
+    { once: true },
+  );
 
   return {
     address,
-    async signTransactions(transactions) {
-      if (signal.aborted) throw abortErr();
+    async signTransactions(
+      transactions,
+      config?: { abortSignal?: AbortSignal },
+    ) {
+      const signal = combineAbortSignals(wiredSignal, config?.abortSignal);
+      throwIfAborted(signal);
 
-      const payloadItems = new Array(transactions.length);
+      const result = signQueue.then(async () => {
+        throwIfAborted(signal);
 
-      for (let i = 0; i < transactions.length; i++) {
-        payloadItems[i] = {
-          transaction: getBase64Decoder().decode(
-            getTransactionEncoder().encode(transactions[i]),
-          ),
-          transactionMessageBytes: transactionMessageBytes
-            ? getBase64Decoder().decode(transactionMessageBytes)
-            : undefined,
-          authResponses,
-        };
-      }
+        if (transactions.length === 0) {
+          throw terminalNetworkError(
+            "Transaction manager: no transactions to sign",
+            wsUrl,
+          );
+        }
 
-      const payload = JSON.stringify({
-        type: "transaction",
-        data: {
-          publicKey: address.toString(),
-          payload: payloadItems,
-        },
+        const payloadItems = new Array(transactions.length);
+
+        for (let i = 0; i < transactions.length; i++) {
+          payloadItems[i] = {
+            transaction: getBase64Decoder().decode(
+              getTransactionEncoder().encode(transactions[i]),
+            ),
+            transactionMessageBytes: transactionMessageBytes
+              ? getBase64Decoder().decode(transactionMessageBytes)
+              : undefined,
+            authResponses,
+          };
+        }
+
+        const payload = JSON.stringify({
+          type: "transaction",
+          data: {
+            publicKey: address.toString(),
+            payload: payloadItems,
+          },
+        });
+
+        const signatures = await fetchSignaturesFromTransactionManager({
+          url,
+          payload,
+          expectedSignatureCount: transactions.length,
+          callbacks: {
+            onPendingApprovalsCallback,
+            onPendingApprovalsSuccess,
+          },
+          abortSignal: signal,
+          opts,
+        });
+
+        return signatures.map((sig) => ({
+          [address]: getBase58Encoder().encode(sig) as SignatureBytes,
+        }));
       });
 
-      for (let i = 0; i < maxAttempts; i++) {
-        if (signal.aborted) throw abortErr();
-
-        let ws: WebSocket | undefined;
-        let signatures: string[] | undefined;
-
-        try {
-          ws = await openWebSocket(wsUrl, signal);
-          ws.send(payload);
-
-          await readEvents(ws, signal, (event, data) => {
-            if (event === "error") {
-              const errMsg =
-                typeof data === "object" &&
-                data &&
-                typeof (data as any).error === "string"
-                  ? (data as any).error
-                  : "Unknown error";
-
-              const err: any = new Error(errMsg);
-              err.noRetry = true;
-              throw err;
-            }
-
-            if (event === "signatures") {
-              signatures = (data as any).signatures;
-              return true;
-            }
-
-            if (event === "pending_transaction_approval") {
-              onPendingApprovalsCallback?.((data as any).validTill);
-            }
-
-            if (event === "transaction_approved") {
-              onPendingApprovalsSuccess?.();
-            }
-
-            return false;
-          });
-        } catch (e: any) {
-          if (e?.noRetry) throw new NetworkError(e.message);
-          if (e?.name === "AbortError") throw e;
-        } finally {
-          try {
-            ws?.close();
-          } catch {}
+      signQueue = result.catch((err) => {
+        if (isAbortError(err)) {
+          return Promise.reject(err);
         }
-
-        if (signatures?.length) {
-          return signatures.map((sig) => ({
-            [address]: getBase58Encoder().encode(sig) as SignatureBytes,
-          }));
-        }
-
-        if (i < maxAttempts - 1) {
-          await sleep(retryDelayMs, signal);
-        }
-      }
-
-      throw new NetworkError("Transaction manager: missing signatures");
+        return undefined;
+      });
+      return result;
     },
   };
 }
