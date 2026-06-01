@@ -28,11 +28,19 @@ import {
 import type { RevibaseProvider } from "../../provider";
 import { withRetry } from "../retry";
 
-export async function signAndSendTransaction({
-  instructions,
-  payer,
-  addressesByLookupTableAddress,
-}: TransactionDetails): Promise<string> {
+function throwIfAborted(signal?: AbortSignal): void {
+  if (!signal?.aborted) return;
+  const e = new Error("Aborted");
+  e.name = "AbortError";
+  throw e;
+}
+
+export async function signAndSendTransaction(
+  details: TransactionDetails,
+  signal?: AbortSignal,
+): Promise<string> {
+  const { instructions, payer, addressesByLookupTableAddress } = details;
+  throwIfAborted(signal);
   const latestBlockHash = await withRetry(() =>
     getSolanaRpc().getLatestBlockhash().send(),
   );
@@ -79,8 +87,11 @@ export async function signAndSendTransaction({
       );
     },
     async (tx) =>
-      await withRetry(async () => signTransactionMessageWithSigners(await tx)),
+      await withRetry(async () =>
+        signTransactionMessageWithSigners(await tx, { abortSignal: signal }),
+      ),
   );
+  throwIfAborted(signal);
   await withRetry(() =>
     getSolanaRpc()
       .sendTransaction(getBase64EncodedWireTransaction(tx), {
@@ -96,18 +107,25 @@ export async function signAndSendTransaction({
 export async function signAndSendBundledTransactions(
   provider: RevibaseProvider,
   bundle: TransactionDetails[],
+  signal?: AbortSignal,
 ): Promise<string> {
-  const simulationBundle = await createEncodedBundle(bundle, true);
+  throwIfAborted(signal);
+  const simulationBundle = await createEncodedBundle(bundle, true, signal);
+  throwIfAborted(signal);
   const computeUnits = await simulateBundle(
     simulationBundle.map(getBase64EncodedWireTransaction),
     getSolanaRpcEndpoint(),
   );
+  throwIfAborted(signal);
   const encodedBundle = await createEncodedBundle(
     bundle.map((x, index) => ({
       ...x,
       unitsConsumed: computeUnits[index],
     })),
+    false,
+    signal,
   );
+  throwIfAborted(signal);
   await withRetry(() =>
     provider.onSendJitoBundleCallback(
       encodedBundle.map(getBase64EncodedWireTransaction),
@@ -190,7 +208,9 @@ export async function simulateBundle(
 async function createEncodedBundle(
   bundle: (TransactionDetails & { unitsConsumed?: number })[],
   isSimulate = false,
+  signal?: AbortSignal,
 ) {
+  throwIfAborted(signal);
   const latestBlockHash = isSimulate
     ? {
         blockhash: getBlockhashDecoder().decode(
@@ -201,6 +221,7 @@ async function createEncodedBundle(
     : (await withRetry(() => getSolanaRpc().getLatestBlockhash().send())).value;
   return await Promise.all(
     bundle.map(async (x) => {
+      throwIfAborted(signal);
       const tx = await pipe(
         createTransactionMessage({ version: 0 }),
         (tx) => appendTransactionMessageInstructions(x.instructions, tx),
@@ -230,7 +251,9 @@ async function createEncodedBundle(
         async (tx) =>
           isSimulate
             ? compileTransaction(tx)
-            : await withRetry(() => signTransactionMessageWithSigners(tx)),
+            : await withRetry(() =>
+                signTransactionMessageWithSigners(tx, { abortSignal: signal }),
+              ),
       );
       return tx;
     }),

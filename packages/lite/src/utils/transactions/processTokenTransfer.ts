@@ -82,10 +82,13 @@ export async function processTokenTransfer(params: {
           destination,
         });
 
-  return signAndSendTransaction({
-    instructions,
-    payer,
-    addressesByLookupTableAddress:
-      await fetchAdditionalLoopUpTableIfNecessary(undefined),
-  });
+  return signAndSendTransaction(
+    {
+      instructions,
+      payer,
+      addressesByLookupTableAddress:
+        await fetchAdditionalLoopUpTableIfNecessary(undefined),
+    },
+    options?.signal,
+  );
 }
