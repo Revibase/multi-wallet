@@ -6,7 +6,7 @@ Passkey Solana wallet: sign in and approve transactions in an **iframe overlay (
 pnpm add @revibase/lite
 ```
 
-Frontend: `RevibaseProvider`, `signIn`, `transferTokens`, `executeTransaction`. Backend: `processClientAuthCallback`. See [AGENTS.md](./AGENTS.md) for the full export list.
+Frontend: import from `@revibase/lite`. Backend: import server helpers from `@revibase/lite/server` (requires `@simplewebauthn/server` on the server). See [AGENTS.md](./AGENTS.md) for the full export list.
 
 ---
 
@@ -22,14 +22,20 @@ Get keys at [developers.revibase.com](https://developers.revibase.com). Add `/.w
 
 Expose **POST** at **`/api/clientAuthorization`**. Keep `PRIVATE_KEY` server-only.
 
+Install WebAuthn server verification alongside the SDK:
+
+```bash
+pnpm add @revibase/lite @simplewebauthn/server
+```
+
 ```ts
 import {
-  processClientAuthCallback,
   type CompleteMessageRequest,
   type CompleteTransactionRequest,
   type StartMessageRequest,
   type StartTransactionRequest,
 } from "@revibase/lite";
+import { processClientAuthCallback } from "@revibase/lite/server";
 
 export async function POST(req: Request) {
   try {

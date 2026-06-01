@@ -1,8 +1,8 @@
 {
   "name": "@revibase/lite",
-  "version": "0.7.8",
+  "version": "0.8.0",
   "scripts": {
-    "build": "rimraf dist & tsup",
+    "build": "rimraf dist && tsup",
     "clean": "rimraf dist",
     "generate": "node ./src/utils/codama.ts"
   },
@@ -11,13 +11,15 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
-    "import": {
+    ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    },
-    "require": {
-      "types": "./dist/index.d.cts",
+      "import": "./dist/index.js",
       "require": "./dist/index.cjs"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "require": "./dist/server.cjs"
     }
   },
   "files": [
@@ -38,7 +40,6 @@
   "description": "Passkey-based Solana wallet SDK: sign in and approve transactions in a popup, authorize with a server-side private key.",
   "dependencies": {
     "@revibase/core": "workspace:*",
-    "@simplewebauthn/server": "13.2.3",
     "@solana-program/address-lookup-table": "0.11.0",
     "@solana-program/compute-budget": "0.15.0",
     "@solana-program/system": "0.12.0",
@@ -48,7 +49,16 @@
     "jose": "^6.1.3",
     "zod": "^4.3.5"
   },
+  "peerDependencies": {
+    "@simplewebauthn/server": "^13.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@simplewebauthn/server": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@simplewebauthn/server": "13.2.3",
     "@types/node": "24.3.1",
     "prettier": "^3.6.2",
     "rimraf": "^6.0.1",

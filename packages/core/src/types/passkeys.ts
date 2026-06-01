@@ -1,4 +1,4 @@
-import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
+import type { AuthenticationResponseJSON } from "./webauthn";
 import z from "zod";
 
 export const UserInfoSchema = z.looseObject({

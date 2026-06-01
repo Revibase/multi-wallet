@@ -1,6 +1,6 @@
 {
   "name": "@revibase/core",
-  "version": "0.7.8",
+  "version": "0.8.0",
   "scripts": {
     "build": "rimraf dist && tsup",
     "clean": "rimraf dist",
@@ -39,7 +39,6 @@
     "@levischuck/tiny-cbor": "0.3.2",
     "@noble/curves": "2.0.1",
     "@noble/hashes": "2.0.1",
-    "@simplewebauthn/browser": "13.2.2",
     "@solana-program/system": "0.12.0",
     "@solana-program/token": "0.13.0",
     "@solana/kit": "^6.9.0",

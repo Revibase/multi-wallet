@@ -1,7 +1,10 @@
 import { decodeCBOR, encodeCBOR, type CBORType } from "@levischuck/tiny-cbor";
 import { p256 } from "@noble/curves/nist.js";
 import { sha256 } from "@noble/hashes/sha2.js";
-import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
+import type {
+  AuthenticationResponseJSON,
+  Base64URLString,
+} from "../../types/webauthn";
 import {
   address,
   getBase58Decoder,
