@@ -3,12 +3,15 @@ import { defineConfig } from "tsup";
 import pkg from "./package.json" assert { type: "json" };
 
 export default defineConfig({
-  entry: ["src/index.ts"],
+  entry: {
+    index: "src/index.ts",
+    server: "src/server/index.ts",
+  },
   format: ["cjs", "esm"],
   dts: true,
   sourcemap: true,
   treeshake: true,
-  splitting: true,
+  splitting: false,
   minify: true,
   external: [
     ...Object.keys(pkg.peerDependencies || {}),

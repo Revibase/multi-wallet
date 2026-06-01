@@ -12,15 +12,29 @@ Passkey Solana wallet: sign-in and transactions in popup or on another device (c
 - Build: `pnpm build` (in `packages/lite`)
 - Package: `@revibase/lite` — consumers: `pnpm add @revibase/lite`
 
-## Entry points (import from `@revibase/lite`)
+## Entry points
+
+| Import path | Use for |
+| ----------- | ------- |
+| `@revibase/lite` | Browser / client: provider, flows, shared types, errors |
+| `@revibase/lite/server` | Node / API routes: `processClientAuthCallback`, Jito callbacks (requires peer `@simplewebauthn/server`) |
+
+### `@revibase/lite` (client)
 
 | Category              | Exports                                                                                                                                                                                                                                                  |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Provider**          | `RevibaseProvider`, `RevibaseProviderOptions`                                                                                                                                                                                                            |
 | **Client (frontend)** | `signIn`, `transferTokens`, `executeTransaction`                                                                                                                                                                                                         |
-| **Server (backend)**  | `processClientAuthCallback`, `processSendJitoBundleCallback`, `processEstimateJitoTipsCallback`                                                                                                                                                          |
 | **Types**             | `UserInfo`, `StartMessageRequest`, `StartTransactionRequest`, `CompleteMessageRequest`, `CompleteTransactionRequest`, `ClientAuthorizationCallback`, `SignInAuthorizationFlowOptions`, `TransactionAuthorizationFlowOptions` |
 | **Errors**            | `RevibaseError`, `RevibaseMissingSignersError`, `RevibasePopupBlockedError`, `RevibasePopupClosedError`, `RevibaseTimeoutError`, `RevibaseFlowInProgressError`, `RevibaseAbortedError`, `RevibaseAuthError`, `RevibaseEnvironmentError`, `RevibasePopupNotOpenError` (all have `.code`) |
+
+### `@revibase/lite/server` (backend)
+
+| Category | Exports |
+| -------- | ------- |
+| **Server** | `processClientAuthCallback`, `processSendJitoBundleCallback`, `processEstimateJitoTipsCallback` |
+
+Do **not** import `@revibase/lite/server` from frontend bundles. The main entry must not re-export server code (keeps `@simplewebauthn/server` out of `RevibaseProvider` builds).
 
 ## Main flows
 
@@ -56,7 +70,8 @@ new RevibaseProvider(options: RevibaseProviderOptions)
 
 | Path                   | Contents                                                                 |
 | ---------------------- | ------------------------------------------------------------------------ |
-| `src/index.ts`         | Re-exports from client, provider, server, utils                          |
+| `src/index.ts`         | Client entry: client, provider, utils (no server)                        |
+| `src/server/index.ts`  | Server entry (`@revibase/lite/server`)                                   |
 | `src/client/`          | `signIn`, `transferTokens`, `executeTransaction` |
 | `src/provider/main.ts` | `RevibaseProvider`, options, popup transport                             |
 | `src/server/`          | `processClientAuthCallback`, `startRequest`, `startChannel`, `validateMessage` |

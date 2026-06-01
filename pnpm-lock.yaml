@@ -72,9 +72,6 @@ importers:
       '@noble/hashes':
         specifier: 2.0.1
         version: 2.0.1
-      '@simplewebauthn/browser':
-        specifier: 13.2.2
-        version: 13.2.2
       '@solana-program/system':
         specifier: 0.12.0
         version: 0.12.0(@solana/kit@6.9.0(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10))
@@ -127,9 +124,6 @@ importers:
       '@revibase/core':
         specifier: workspace:*
         version: link:../core
-      '@simplewebauthn/server':
-        specifier: 13.2.3
-        version: 13.2.3
       '@solana-program/address-lookup-table':
         specifier: 0.11.0
         version: 0.11.0(@solana/kit@6.9.0(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10))
@@ -155,6 +149,9 @@ importers:
         specifier: ^4.3.5
         version: 4.3.5
     devDependencies:
+      '@simplewebauthn/server':
+        specifier: 13.2.3
+        version: 13.2.3
       '@types/node':
         specifier: 24.3.1
         version: 24.3.1
@@ -672,9 +669,6 @@ packages:
     resolution: {integrity: sha512-ARz+Bs8kY6FtitYM96PqPEVvPXqEZmPZsSkXvyX19YzDqkCaIlhCieLLMI5hxO9SRZ2XtCtm8wxhy0iJ2jxNfw==}
     cpu: [x64]
     os: [win32]
-
-  '@simplewebauthn/browser@13.2.2':
-    resolution: {integrity: sha512-FNW1oLQpTJyqG5kkDg5ZsotvWgmBaC6jCHR7Ej0qUNep36Wl9tj2eZu7J5rP+uhXgHaLk+QQ3lqcw2vS5MX1IA==}
 
   '@simplewebauthn/server@13.2.3':
     resolution: {integrity: sha512-ZhcVBOw63birYx9jVfbhK6rTehckVes8PeWV324zpmdxr0BUfylospwMzcrxrdMcOi48MHWj2LCA+S528LnGvg==}
@@ -3093,8 +3087,6 @@ snapshots:
 
   '@rollup/rollup-win32-x64-msvc@4.52.2':
     optional: true
-
-  '@simplewebauthn/browser@13.2.2': {}
 
   '@simplewebauthn/server@13.2.3':
     dependencies:
