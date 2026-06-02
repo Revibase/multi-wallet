@@ -1,4 +1,4 @@
-import type { AuthenticationResponseJSON } from "./webauthn";
+import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
 import {
   getBase58Decoder,
   getBase58Encoder,

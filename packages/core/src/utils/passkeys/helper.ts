@@ -1,10 +1,7 @@
 import { decodeCBOR, encodeCBOR, type CBORType } from "@levischuck/tiny-cbor";
 import { p256 } from "@noble/curves/nist.js";
 import { sha256 } from "@noble/hashes/sha2.js";
-import type {
-  AuthenticationResponseJSON,
-  Base64URLString,
-} from "../../types/webauthn";
+import type { AuthenticationResponseJSON } from "@simplewebauthn/browser";
 import {
   address,
   getBase58Decoder,
@@ -93,9 +90,8 @@ export async function getSignedSecp256r1Key(
     crossOrigin: boolean;
   } & Record<string, unknown>,
 ): Promise<SignedSecp256r1Key> {
-  const { authenticatorData, clientDataJSON, signature } = (
-    payload.authResponse as AuthenticationResponseJSON
-  ).response;
+  const { authenticatorData, clientDataJSON, signature } =
+    payload.authResponse.response;
 
   const authData = base64URLStringToBuffer(authenticatorData);
 
