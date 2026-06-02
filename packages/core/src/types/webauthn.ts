@@ -13,17 +13,4 @@ export type AuthenticatorAssertionResponseJSON = {
   userHandle?: Base64URLString;
 };
 
-export type AuthenticationExtensionsClientOutputsJSON = Record<
-  string,
-  unknown
->;
-
-/** WebAuthn authentication assertion in JSON serialization form. */
-export type AuthenticationResponseJSON = {
-  id: Base64URLString;
-  rawId: Base64URLString;
-  response: AuthenticatorAssertionResponseJSON;
-  authenticatorAttachment?: "platform" | "cross-platform";
-  clientExtensionResults: AuthenticationExtensionsClientOutputsJSON;
-  type: "public-key";
-};
+export type AuthenticationExtensionsClientOutputsJSON = Record<string, unknown>;
