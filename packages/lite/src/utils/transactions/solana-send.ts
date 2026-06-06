@@ -11,7 +11,6 @@ import {
   AccountRole,
   appendTransactionMessageInstructions,
   compileTransaction,
-  compressTransactionMessageUsingAddressLookupTables,
   createTransactionMessage,
   getBase64EncodedWireTransaction,
   getBlockhashDecoder,
@@ -43,25 +42,19 @@ export async function signAndSendTransaction(
   details: TransactionDetails,
   abortScope?: AbortScope,
 ): Promise<string> {
-  const { instructions, payer, addressesByLookupTableAddress } = details;
+  const { instructions, payer } = details;
   const signal = abortScope?.signal;
   throwIfAborted(signal);
   const latestBlockHash = await withRetry(() =>
     getSolanaRpc().getLatestBlockhash().send(),
   );
   const tx = await pipe(
-    createTransactionMessage({ version: 0 }),
+    createTransactionMessage({ version: 1 }),
     (tx) => appendTransactionMessageInstructions(instructions, tx),
     (tx) => setTransactionMessageFeePayerSigner(payer, tx),
     (tx) =>
       setTransactionMessageLifetimeUsingBlockhash(latestBlockHash.value, tx),
-    (tx) =>
-      addressesByLookupTableAddress
-        ? compressTransactionMessageUsingAddressLookupTables(
-            tx,
-            addressesByLookupTableAddress,
-          )
-        : tx,
+
     async (tx) => {
       const [unitsConsumed, priorityFees] = await Promise.all([
         getComputeUnitsEstimate(tx),
@@ -229,18 +222,11 @@ async function createEncodedBundle(
     bundle.map(async (x) => {
       throwIfAborted(abortScope?.signal);
       const tx = await pipe(
-        createTransactionMessage({ version: 0 }),
+        createTransactionMessage({ version: 1 }),
         (tx) => appendTransactionMessageInstructions(x.instructions, tx),
         (tx) => setTransactionMessageFeePayerSigner(x.payer, tx),
         (tx) =>
           setTransactionMessageLifetimeUsingBlockhash(latestBlockHash, tx),
-        (tx) =>
-          x.addressesByLookupTableAddress
-            ? compressTransactionMessageUsingAddressLookupTables(
-                tx,
-                x.addressesByLookupTableAddress,
-              )
-            : tx,
         (tx) => {
           const computeUnits = Math.ceil((x.unitsConsumed ?? 0) * 1.1);
           return computeUnits > 200_000

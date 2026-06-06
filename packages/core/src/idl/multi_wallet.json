@@ -2844,36 +2844,6 @@
                 }
               }
             }
-          },
-          {
-            "name": "address_table_lookups",
-            "type": {
-              "vec": {
-                "defined": {
-                  "name": "TransactionMessageAddressTableLookup"
-                }
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "TransactionMessageAddressTableLookup",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "lookup_table_address_index",
-            "type": "u8"
-          },
-          {
-            "name": "writable_indexes",
-            "type": "bytes"
-          },
-          {
-            "name": "readonly_indexes",
-            "type": "bytes"
           }
         ]
       }

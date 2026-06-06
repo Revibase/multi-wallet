@@ -252,7 +252,6 @@ import {
 import {
   createNoopSigner,
   type Address,
-  type AddressesByLookupTableAddress,
   type TransactionSigner,
 } from "@solana/kit";
 import { getTransferSolInstruction } from "@solana-program/system";
@@ -260,7 +259,6 @@ import { getTransferSolInstruction } from "@solana-program/system";
 declare const destination: Address;
 declare const payer: TransactionSigner;
 declare const memberSigner: TransactionSigner;
-declare const addressLookups: AddressesByLookupTableAddress | undefined;
 
 const transferIx = getTransferSolInstruction({
   source: createNoopSigner(walletAddress),
@@ -271,7 +269,6 @@ const transferIx = getTransferSolInstruction({
 const transactionMessageBytes = prepareTransactionMessage({
   payer: walletAddress,
   instructions: [transferIx],
-  addressesByLookupTableAddress: addressLookups,
 });
 
 const tmResult = retrieveTransactionManager(
@@ -304,14 +301,12 @@ const details = await prepareTransactionSync({
     memberSigner,
     ...(transactionManagerSigner ? [transactionManagerSigner] : []),
   ],
-  addressesByLookupTableAddress: addressLookups,
 });
 
 const sendAndConfirm = getSendAndConfirmTransaction();
 const signature = await sendAndConfirm({
   payer: details.payer,
   instructions: details.instructions,
-  addressesByLookupTableAddress: details.addressesByLookupTableAddress,
 });
 ```
 
@@ -333,7 +328,6 @@ import {
 import {
   createNoopSigner,
   type Address,
-  type AddressesByLookupTableAddress,
   type TransactionSigner,
 } from "@solana/kit";
 import { getTransferSolInstruction } from "@solana-program/system";
@@ -341,7 +335,6 @@ import { getTransferSolInstruction } from "@solana-program/system";
 declare const destination: Address;
 declare const payer: TransactionSigner;
 declare const memberSigner: TransactionSigner;
-declare const addressLookups: AddressesByLookupTableAddress | undefined;
 
 const transferIx = getTransferSolInstruction({
   source: createNoopSigner(walletAddress),
@@ -351,7 +344,6 @@ const transferIx = getTransferSolInstruction({
 const transactionMessageBytes = prepareTransactionMessage({
   payer: walletAddress,
   instructions: [transferIx],
-  addressesByLookupTableAddress: addressLookups,
 });
 
 const tmResult = retrieveTransactionManager(
@@ -382,7 +374,6 @@ const bundle = await prepareTransactionBundle({
   transactionMessageBytes,
   creator: transactionManagerSigner ?? memberSigner,
   executor: transactionManagerSigner ? memberSigner : undefined,
-  addressesByLookupTableAddress: addressLookups,
   jitoBundlesTipAmount: 10_000, // optional, lamports
 });
 
@@ -392,7 +383,6 @@ for (const tx of bundle) {
   lastSignature = await sendAndConfirm({
     payer: tx.payer,
     instructions: tx.instructions,
-    addressesByLookupTableAddress: tx.addressesByLookupTableAddress,
   });
 }
 ```

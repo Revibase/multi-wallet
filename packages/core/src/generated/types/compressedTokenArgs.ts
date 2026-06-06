@@ -25,7 +25,7 @@ import {
   type Encoder,
   type Option,
   type OptionOrNullable,
-} from "@solana/kit";
+} from '@solana/kit';
 import {
   getAccountStateDecoder,
   getAccountStateEncoder,
@@ -39,7 +39,7 @@ import {
   type ExtensionStructArgs,
   type PackedMerkleContext,
   type PackedMerkleContextArgs,
-} from ".";
+} from '.';
 
 export type CompressedTokenArgs = {
   version: number;
@@ -61,23 +61,23 @@ export type CompressedTokenArgsArgs = {
 
 export function getCompressedTokenArgsEncoder(): Encoder<CompressedTokenArgsArgs> {
   return getStructEncoder([
-    ["version", getU8Encoder()],
-    ["rootIndex", getU16Encoder()],
-    ["amount", getU64Encoder()],
-    ["merkleContext", getPackedMerkleContextEncoder()],
-    ["tlv", getOptionEncoder(getArrayEncoder(getExtensionStructEncoder()))],
-    ["state", getAccountStateEncoder()],
+    ['version', getU8Encoder()],
+    ['rootIndex', getU16Encoder()],
+    ['amount', getU64Encoder()],
+    ['merkleContext', getPackedMerkleContextEncoder()],
+    ['tlv', getOptionEncoder(getArrayEncoder(getExtensionStructEncoder()))],
+    ['state', getAccountStateEncoder()],
   ]);
 }
 
 export function getCompressedTokenArgsDecoder(): Decoder<CompressedTokenArgs> {
   return getStructDecoder([
-    ["version", getU8Decoder()],
-    ["rootIndex", getU16Decoder()],
-    ["amount", getU64Decoder()],
-    ["merkleContext", getPackedMerkleContextDecoder()],
-    ["tlv", getOptionDecoder(getArrayDecoder(getExtensionStructDecoder()))],
-    ["state", getAccountStateDecoder()],
+    ['version', getU8Decoder()],
+    ['rootIndex', getU16Decoder()],
+    ['amount', getU64Decoder()],
+    ['merkleContext', getPackedMerkleContextDecoder()],
+    ['tlv', getOptionDecoder(getArrayDecoder(getExtensionStructDecoder()))],
+    ['state', getAccountStateDecoder()],
   ]);
 }
 
@@ -87,6 +87,6 @@ export function getCompressedTokenArgsCodec(): Codec<
 > {
   return combineCodec(
     getCompressedTokenArgsEncoder(),
-    getCompressedTokenArgsDecoder(),
+    getCompressedTokenArgsDecoder()
   );
 }

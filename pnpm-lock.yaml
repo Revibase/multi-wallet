@@ -127,9 +127,6 @@ importers:
       '@revibase/core':
         specifier: workspace:*
         version: link:../core
-      '@solana-program/address-lookup-table':
-        specifier: 0.11.0
-        version: 0.11.0(@solana/kit@6.9.0(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10))
       '@solana-program/compute-budget':
         specifier: 0.15.0
         version: 0.15.0(@solana/kit@6.9.0(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10))
@@ -684,11 +681,6 @@ packages:
     resolution: {integrity: sha512-lcp+IYwoFBODhg8vXsh5vpxweLxpSKqjAu8P1LyqQxgk2yqwYmJGA79YKa+lZvsQjP/c0rzIZYWIGxFMMes2zA==}
     peerDependencies:
       '@solana/kit': ^5.0
-
-  '@solana-program/address-lookup-table@0.11.0':
-    resolution: {integrity: sha512-loC6VTEhmhYSq2ElZrv+V9uHp/Te6A7rllLIArk9c3A5+5V7sRhVsxZvsPGcv/WMXLgqmXR+Vl7WF7QSV3tXNQ==}
-    peerDependencies:
-      '@solana/kit': ^6.0
 
   '@solana-program/compute-budget@0.11.0':
     resolution: {integrity: sha512-7f1ePqB/eURkTwTOO9TNIdUXZcyrZoX3Uy2hNo7cXMfNhPFWp9AVgIyRNBc2jf15sdUa9gNpW+PfP2iV8AYAaw==}
@@ -3110,10 +3102,6 @@ snapshots:
   '@solana-program/address-lookup-table@0.10.0(@solana/kit@5.5.1(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10))':
     dependencies:
       '@solana/kit': 5.5.1(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10)
-
-  '@solana-program/address-lookup-table@0.11.0(@solana/kit@6.9.0(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10))':
-    dependencies:
-      '@solana/kit': 6.9.0(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10)
 
   '@solana-program/compute-budget@0.11.0(@solana/kit@5.5.1(bufferutil@4.0.9)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@5.0.10))':
     dependencies:

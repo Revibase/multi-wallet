@@ -17,25 +17,16 @@ function getCompiledInstructionCodec() {
   ]);
 }
 
-function getMessageAddressTableLookupCodec() {
-  return getStructCodec([
-    ["lookupTableAddress", getAddressCodec()],
-    ["writableIndexes", getArrayCodec(getU8Codec())],
-    ["readonlyIndexes", getArrayCodec(getU8Codec())],
-  ]);
-}
-
 const vaultTransactionMessageCodec = getStructCodec([
   ["numSigners", getU8Codec()],
   ["numWritableSigners", getU8Codec()],
   ["numWritableNonSigners", getU8Codec()],
   ["accountKeys", getArrayCodec(getAddressCodec())],
   ["instructions", getArrayCodec(getCompiledInstructionCodec())],
-  ["addressTableLookups", getArrayCodec(getMessageAddressTableLookupCodec())],
 ]);
 
 export function vaultTransactionMessageSerialize(
-  compiledMessage: CompiledTransactionMessage & { version: 0 },
+  compiledMessage: CompiledTransactionMessage & { version: 1 },
 ) {
   const transactionMessageBytes = vaultTransactionMessageCodec.encode({
     numSigners: compiledMessage.header.numSignerAccounts,
@@ -47,21 +38,14 @@ export function vaultTransactionMessageSerialize(
       compiledMessage.header.numSignerAccounts -
       compiledMessage.header.numReadonlyNonSignerAccounts,
     accountKeys: compiledMessage.staticAccounts,
-    instructions: compiledMessage.instructions.map((ix) => {
+    instructions: compiledMessage.instructionPayloads.map((ix, index) => {
       return {
-        programAddressIndex: ix.programAddressIndex,
-        accountIndices: ix.accountIndices ?? [],
-        data: Array.from(ix.data ?? []),
+        programAddressIndex:
+          compiledMessage.instructionHeaders[index].programAccountIndex,
+        accountIndices: ix.instructionAccountIndices ?? [],
+        data: Array.from(ix.instructionData ?? []),
       };
     }),
-    addressTableLookups:
-      compiledMessage.version === 0
-        ? (compiledMessage.addressTableLookups?.map((x) => ({
-            lookupTableAddress: x.lookupTableAddress,
-            readonlyIndexes: x.readonlyIndexes as number[],
-            writableIndexes: x.writableIndexes as number[],
-          })) ?? [])
-        : [],
   });
 
   return transactionMessageBytes;
@@ -70,12 +54,15 @@ export function vaultTransactionMessageSerialize(
 export function vaultTransactionMessageDeserialize(
   transactionMessageBytes: ReadonlyUint8Array,
 ): CompiledTransactionMessage & {
-  version: 0;
+  version: 1;
 } & CompiledTransactionMessageWithLifetime {
   const vaultTransactionMessage = vaultTransactionMessageCodec.decode(
     transactionMessageBytes,
   );
+
   return {
+    configMask: 0,
+    configValues: [],
     header: {
       numSignerAccounts: vaultTransactionMessage.numSigners,
       numReadonlySignerAccounts:
@@ -86,22 +73,19 @@ export function vaultTransactionMessageDeserialize(
         vaultTransactionMessage.numSigners -
         vaultTransactionMessage.numWritableNonSigners,
     },
-    addressTableLookups: vaultTransactionMessage.addressTableLookups.map(
-      (x) => ({
-        lookupTableAddress: x.lookupTableAddress,
-        readonlyIndexes: x.readonlyIndexes.map(Number),
-        writableIndexes: x.writableIndexes.map(Number),
-        readableIndices: x.readonlyIndexes.map(Number),
-        writableIndices: x.writableIndexes.map(Number),
-      }),
-    ),
-    instructions: vaultTransactionMessage.instructions.map((x) => ({
-      accountIndices: x.accountIndices.map(Number),
-      data: new Uint8Array(x.data),
-      programAddressIndex: x.programAddressIndex,
+    instructionHeaders: vaultTransactionMessage.instructions.map((x) => ({
+      numInstructionAccounts: x.accountIndices.length ?? 0,
+      numInstructionDataBytes: x.data?.length ?? 0,
+      programAccountIndex: x.programAddressIndex,
     })),
-    lifetimeToken: MULTI_WALLET_PROGRAM_ADDRESS,
+    instructionPayloads: vaultTransactionMessage.instructions.map((x) => ({
+      instructionAccountIndices: x.accountIndices,
+      instructionData: new Uint8Array(x.data ?? []),
+    })),
+    numInstructions: vaultTransactionMessage.instructions.length,
+    numStaticAccounts: vaultTransactionMessage.accountKeys.length,
     staticAccounts: vaultTransactionMessage.accountKeys,
-    version: 0,
+    version: 1,
+    lifetimeToken: MULTI_WALLET_PROGRAM_ADDRESS,
   };
 }

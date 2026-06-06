@@ -7,10 +7,8 @@ import {
 } from "@revibase/core";
 import {
   address,
-  type AddressesByLookupTableAddress,
   appendTransactionMessageInstructions,
   assertIsTransactionWithBlockhashLifetime,
-  compressTransactionMessageUsingAddressLookupTables,
   createSolanaClient,
   createTransactionMessage,
   getBase64EncodedWireTransaction,
@@ -54,7 +52,6 @@ function getSendAndConfirmTx() {
 export async function sendTransaction(
   instructions: Instruction[],
   payer: TransactionSigner,
-  addressLookupTableAccounts?: AddressesByLookupTableAddress,
 ): Promise<string | undefined> {
   // Get latest blockhash before starting transaction
   const latestBlockHash = await getSolanaRpc().getLatestBlockhash().send();
@@ -76,13 +73,6 @@ export async function sendTransaction(
           tx,
         );
       },
-      (tx) =>
-        addressLookupTableAccounts
-          ? compressTransactionMessageUsingAddressLookupTables(
-              tx,
-              addressLookupTableAccounts,
-            )
-          : tx,
       async (tx) => await signTransactionMessageWithSigners(tx),
     );
 
@@ -158,11 +148,11 @@ export async function addPayerAsNewMember(ctx: TestContext) {
     ],
   });
 
-  const instructions = await changeConfig({
+  const instructions = changeConfig({
     signers: [ctx.wallet],
     payer: ctx.payer,
     changeConfigArgs,
   });
 
-  await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+  await sendTransaction(instructions, ctx.payer);
 }

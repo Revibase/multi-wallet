@@ -1,26 +1,22 @@
 import {
+  compileTransactionMessage,
+  createNoopSigner,
   type Address,
-  type AddressesByLookupTableAddress,
   type Instruction,
 } from "@solana/kit";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../generated";
 import { vaultTransactionMessageSerialize } from "../types";
-import { compileToWrappedMessageV0 } from "../utils/transactionMessage/compileToWrappedMessageV0";
 interface PrepareTransactionMessageArgs {
   instructions: Instruction[];
   payer: Address;
-  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
 }
 export function prepareTransactionMessage({
   instructions,
   payer,
-  addressesByLookupTableAddress,
 }: PrepareTransactionMessageArgs) {
-  const compiledMessage = compileToWrappedMessageV0({
+  const compiledMessage = compileTransactionMessage({
     instructions,
-    payer,
-    recentBlockhash: MULTI_WALLET_PROGRAM_ADDRESS,
-    addressesByLookupTableAddress,
+    feePayer: createNoopSigner(payer),
+    version: 1,
   });
 
   return new Uint8Array(vaultTransactionMessageSerialize(compiledMessage));

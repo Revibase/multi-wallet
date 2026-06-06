@@ -15,13 +15,13 @@ import {
   type Codec,
   type Decoder,
   type Encoder,
-} from "@solana/kit";
+} from '@solana/kit';
 import {
   getSecp256r1VerifyArgsDecoder,
   getSecp256r1VerifyArgsEncoder,
   type Secp256r1VerifyArgs,
   type Secp256r1VerifyArgsArgs,
-} from ".";
+} from '.';
 
 export type Secp256r1VerifyArgsWithDomainConfigIndex = {
   verifyArgs: Secp256r1VerifyArgs;
@@ -35,15 +35,15 @@ export type Secp256r1VerifyArgsWithDomainConfigIndexArgs = {
 
 export function getSecp256r1VerifyArgsWithDomainConfigIndexEncoder(): Encoder<Secp256r1VerifyArgsWithDomainConfigIndexArgs> {
   return getStructEncoder([
-    ["verifyArgs", getSecp256r1VerifyArgsEncoder()],
-    ["domainConfigIndex", getU8Encoder()],
+    ['verifyArgs', getSecp256r1VerifyArgsEncoder()],
+    ['domainConfigIndex', getU8Encoder()],
   ]);
 }
 
 export function getSecp256r1VerifyArgsWithDomainConfigIndexDecoder(): Decoder<Secp256r1VerifyArgsWithDomainConfigIndex> {
   return getStructDecoder([
-    ["verifyArgs", getSecp256r1VerifyArgsDecoder()],
-    ["domainConfigIndex", getU8Decoder()],
+    ['verifyArgs', getSecp256r1VerifyArgsDecoder()],
+    ['domainConfigIndex', getU8Decoder()],
   ]);
 }
 
@@ -53,6 +53,6 @@ export function getSecp256r1VerifyArgsWithDomainConfigIndexCodec(): Codec<
 > {
   return combineCodec(
     getSecp256r1VerifyArgsWithDomainConfigIndexEncoder(),
-    getSecp256r1VerifyArgsWithDomainConfigIndexDecoder(),
+    getSecp256r1VerifyArgsWithDomainConfigIndexDecoder()
   );
 }

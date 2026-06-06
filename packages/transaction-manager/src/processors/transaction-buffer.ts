@@ -127,8 +127,7 @@ async function processStandardBufferCreate(
     throw new Error("Hash mismatch.");
   }
 
-  const innerInstructions =
-    await parseTransactionMessageBytes(transactionMessage);
+  const innerInstructions = parseTransactionMessageBytes(transactionMessage);
 
   return {
     settingsAddress,

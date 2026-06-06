@@ -41,11 +41,7 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
         },
       });
 
-      await sendTransaction(
-        [createUserAccountIx],
-        ctx.payer,
-        ctx.addressLookUpTable,
-      );
+      await sendTransaction([createUserAccountIx], ctx.payer);
 
       const changeConfigArgs = await prepareChangeConfigArgs({
         settings: await getSettingsFromIndex(ctx.index),
@@ -68,7 +64,7 @@ export function runTransactionManagerTests(getCtx: () => TestContext) {
         changeConfigArgs,
       });
 
-      await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+      await sendTransaction(instructions, ctx.payer);
 
       // Verify member was added
       const userAccountData = (

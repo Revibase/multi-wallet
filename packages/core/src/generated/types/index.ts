@@ -34,7 +34,6 @@ export * from './secp256r1VerifyArgsWithDomainConfigIndex';
 export * from './settingsIndexWithDelegateInfo';
 export * from './splInterfacePdaArgs';
 export * from './tokenMetadata';
-export * from './transactionMessageAddressTableLookup';
 export * from './transactionSyncSigners';
 export * from './transferFeeAccountExtension';
 export * from './transferHookAccountExtension';

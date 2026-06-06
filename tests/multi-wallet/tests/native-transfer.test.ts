@@ -54,7 +54,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
           user: ctx.payer,
           newDelegate: Number(ctx.index),
         });
-        await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+        await sendTransaction(instructions, ctx.payer);
 
         const nativeTransfer = await nativeTransferIntent({
           settings: await getSettingsFromIndex(ctx.index),
@@ -63,11 +63,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
           amount: TEST_AMOUNT_SMALL,
         });
 
-        await sendTransaction(
-          [...nativeTransfer],
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction([...nativeTransfer], ctx.payer);
 
         const data = await getSolanaRpc()
           .getAccountInfo(ctx.multiWalletVault)
@@ -115,11 +111,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
         },
       });
 
-      await sendTransaction(
-        [createDomainUserAccountIx],
-        ctx.payer,
-        ctx.addressLookUpTable,
-      );
+      await sendTransaction([createDomainUserAccountIx], ctx.payer);
 
       const signedSigner = await mockAuthenticationResponse(
         {
@@ -143,7 +135,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
         amount: TEST_AMOUNT_SMALL,
       });
 
-      await sendTransaction(nativeTransfer, ctx.payer, ctx.addressLookUpTable);
+      await sendTransaction(nativeTransfer, ctx.payer);
 
       const data = await getSolanaRpc()
         .getAccountInfo(ctx.multiWalletVault)
@@ -164,11 +156,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
           amount: TEST_AMOUNT_SMALL,
         });
 
-        await sendTransaction(
-          duplicateTransfer,
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction(duplicateTransfer, ctx.payer);
       });
     });
   });
@@ -202,11 +190,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
           },
         });
 
-        await sendTransaction(
-          [createUserAccountIx],
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction([createUserAccountIx], ctx.payer);
 
         const secp256r1Keys = generateSecp256r1KeyPair();
         const credentialId = bufferToBase64URLString(
@@ -230,11 +214,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
           },
         });
 
-        await sendTransaction(
-          [createDomainUserAccountIx],
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction([createDomainUserAccountIx], ctx.payer);
 
         const signedSigner = await mockAuthenticationResponse(
           {
@@ -258,11 +238,7 @@ export function runNativeTransferTest(getCtx: () => TestContext) {
           amount: TEST_AMOUNT_SMALL,
         });
 
-        await sendTransaction(
-          [...nativeTransfer],
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction([...nativeTransfer], ctx.payer);
 
         const data = await getSolanaRpc()
           .getAccountInfo(ctx.multiWalletVault)

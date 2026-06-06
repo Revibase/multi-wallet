@@ -1,5 +1,4 @@
 import {
-  getSolanaRpc,
   identifyMultiWalletInstruction,
   MULTI_WALLET_PROGRAM_ADDRESS,
   MultiWalletInstruction,
@@ -11,6 +10,7 @@ import {
   SystemInstruction,
 } from "@solana-program/system";
 import {
+  decompileTransactionMessage,
   getBase64Encoder,
   getCompiledTransactionMessageDecoder,
   getTransactionDecoder,
@@ -30,7 +30,6 @@ import type {
   WellKnownClientEntry,
 } from "./types";
 import { SECP256R1_VERIFY_PROGRAM, WHITELISTED_PROGRAMS } from "./utils/consts";
-import { decompileTransactionMessageFetchingLookupTablesWithCache } from "./utils/transaction-parsing";
 
 /**
  * Decode and verify a serialized Solana transaction.
@@ -58,11 +57,11 @@ export async function verifyTransaction(
   const compiledMessage =
     getCompiledTransactionMessageDecoder().decode(messageBytes);
 
-  const { instructions } =
-    await decompileTransactionMessageFetchingLookupTablesWithCache(
-      compiledMessage,
-      getSolanaRpc(),
-    );
+  if (compiledMessage.version !== 1) {
+    throw new Error("Only v1 transactions are allowed. ");
+  }
+
+  const { instructions } = decompileTransactionMessage(compiledMessage);
 
   const secp256r1VerifyDataList = extractSecp256r1VerifyData(instructions);
 

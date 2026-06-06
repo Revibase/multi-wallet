@@ -191,11 +191,7 @@ function runTestInCompressedMode(getCtx: () => TestContext) {
           },
         });
 
-        await sendTransaction(
-          [createUserAccountIx],
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction([createUserAccountIx], ctx.payer);
 
         const secp256r1Keys = generateSecp256r1KeyPair();
         const credentialId = bufferToBase64URLString(
@@ -219,11 +215,7 @@ function runTestInCompressedMode(getCtx: () => TestContext) {
           },
         });
 
-        await sendTransaction(
-          [createDomainUserAccountIx],
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction([createDomainUserAccountIx], ctx.payer);
 
         await fundMultiWalletVault(ctx, BigInt(TEST_AMOUNT_MEDIUM));
 
@@ -253,11 +245,7 @@ function runTestInCompressedMode(getCtx: () => TestContext) {
           tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
         });
 
-        await sendTransaction(
-          [...tokenTransfer],
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction([...tokenTransfer], ctx.payer);
 
         const ata = getAssociatedTokenAddressInterface(
           new PublicKey(mint),
@@ -325,11 +313,7 @@ const createMintAndMintToSplAccount = async (ctx: TestContext) => {
     mintAuthority: ctx.payer,
     token: ata,
   });
-  await sendTransaction(
-    [createAccount, createMint, ataIx, mintTo],
-    ctx.payer,
-    ctx.addressLookUpTable,
-  );
+  await sendTransaction([createAccount, createMint, ataIx, mintTo], ctx.payer);
 
   return ephemeralKeypair.address;
 };
@@ -392,11 +376,7 @@ const createMintAndMintToCTokenAccount = async (ctx: TestContext) => {
     mintAuthority: ctx.newMember,
     token: senderAta,
   });
-  await sendTransaction(
-    [createAccount, createMint, ataIx, mintTo],
-    ctx.payer,
-    ctx.addressLookUpTable,
-  );
+  await sendTransaction([createAccount, createMint, ataIx, mintTo], ctx.payer);
 
   const mint = new PublicKey(ephemeralKeypair.address.toString());
   const payer = {
@@ -497,11 +477,7 @@ const createMintAndMintToCompressedAccount = async (ctx: TestContext) => {
     mintAuthority: ctx.newMember,
     token: newMemberSplAta,
   });
-  await sendTransaction(
-    [createAccount, createMint, ataIx, mintTo],
-    ctx.payer,
-    ctx.addressLookUpTable,
-  );
+  await sendTransaction([createAccount, createMint, ataIx, mintTo], ctx.payer);
 
   const mint = new PublicKey(ephemeralKeypair.address.toString());
   const payer = {
@@ -584,11 +560,7 @@ const createMintAndMintToSplAndCompressedTokenAccount = async (
     mintAuthority: ctx.newMember,
     token: newMemberSplAta,
   });
-  await sendTransaction(
-    [createAccount, createMint, ataIx, mintTo],
-    ctx.payer,
-    ctx.addressLookUpTable,
-  );
+  await sendTransaction([createAccount, createMint, ataIx, mintTo], ctx.payer);
 
   const mint = new PublicKey(ephemeralKeypair.address.toString());
   const payer = {
@@ -700,11 +672,7 @@ const createMintAndMintToSplAndCTokenAccount = async (ctx: TestContext) => {
     mintAuthority: ctx.newMember,
     token: newMemberSplAta,
   });
-  await sendTransaction(
-    [createAccount, createMint, ataIx, mintTo],
-    ctx.payer,
-    ctx.addressLookUpTable,
-  );
+  await sendTransaction([createAccount, createMint, ataIx, mintTo], ctx.payer);
 
   const mint = new PublicKey(ephemeralKeypair.address.toString());
   const payer = {
@@ -837,11 +805,7 @@ const createMintAndMintToCTokenAndCompressedAccount = async (
     mintAuthority: ctx.newMember,
     token: newMemberSplAta,
   });
-  await sendTransaction(
-    [createAccount, createMint, ataIx, mintTo],
-    ctx.payer,
-    ctx.addressLookUpTable,
-  );
+  await sendTransaction([createAccount, createMint, ataIx, mintTo], ctx.payer);
 
   const mint = new PublicKey(ephemeralKeypair.address.toString());
   const payer = {
@@ -960,11 +924,7 @@ const createMintAndMintToSplAndCTokenAndCompressedAccount = async (
     mintAuthority: ctx.newMember,
     token: newMemberSplAta,
   });
-  await sendTransaction(
-    [createAccount, createMint, ataIx, mintTo],
-    ctx.payer,
-    ctx.addressLookUpTable,
-  );
+  await sendTransaction([createAccount, createMint, ataIx, mintTo], ctx.payer);
 
   const mint = new PublicKey(ephemeralKeypair.address.toString());
   const payer = {
@@ -1065,7 +1025,7 @@ async function createDestinationAta(mint: Address, ctx: TestContext) {
     tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
   });
 
-  await sendTransaction([destinationAtaIx], ctx.payer, ctx.addressLookUpTable);
+  await sendTransaction([destinationAtaIx], ctx.payer);
 }
 
 async function mintForScenario(ctx: TestContext, source: SourceKind) {
@@ -1139,7 +1099,7 @@ async function ensureDelegate(ctx: TestContext) {
     newDelegate: Number(ctx.index),
   });
 
-  await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+  await sendTransaction(instructions, ctx.payer);
 }
 
 async function doTokenTransfer(ctx: TestContext, mint: Address) {
@@ -1155,7 +1115,7 @@ async function doTokenTransfer(ctx: TestContext, mint: Address) {
     tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
   });
 
-  await sendTransaction([...tokenTransfer], ctx.payer, ctx.addressLookUpTable);
+  await sendTransaction([...tokenTransfer], ctx.payer);
 }
 
 async function runScenario(getCtx: () => TestContext, s: Scenario) {

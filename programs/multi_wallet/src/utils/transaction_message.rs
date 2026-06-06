@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::error::MultisigError;
 
-use super::{CompiledInstruction, MessageAddressTableLookup, VaultTransactionMessage};
+use super::{CompiledInstruction, VaultTransactionMessage};
 
 #[derive(AnchorSerialize, AnchorDeserialize, Clone, Default)]
 pub struct TransactionMessage {
@@ -11,14 +11,6 @@ pub struct TransactionMessage {
     pub num_writable_non_signers: u8,
     pub num_account_keys: u8,
     pub instructions: Vec<CompiledInstruction>,
-    pub address_table_lookups: Vec<TransactionMessageAddressTableLookup>,
-}
-
-#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
-pub struct TransactionMessageAddressTableLookup {
-    pub lookup_table_address_index: u8,
-    pub writable_indexes: Vec<u8>,
-    pub readonly_indexes: Vec<u8>,
 }
 
 impl TransactionMessage {
@@ -26,28 +18,13 @@ impl TransactionMessage {
         &self,
         remaining_accounts: &[AccountInfo],
     ) -> Result<VaultTransactionMessage> {
-        let num_lookups = self.address_table_lookups.len();
-        let account_keys_end_index = num_lookups + usize::from(self.num_account_keys);
+        let account_keys_end_index = usize::from(self.num_account_keys);
         let account_keys_slice = remaining_accounts
-            .get(num_lookups..account_keys_end_index)
+            .get(0..account_keys_end_index)
             .ok_or(MultisigError::InvalidNumberOfAccounts)?;
         let mut account_keys = Vec::with_capacity(account_keys_slice.len());
         for account in account_keys_slice {
             account_keys.push(account.key());
-        }
-
-        let mut message_address_table_loopups: Vec<MessageAddressTableLookup> =
-            Vec::with_capacity(self.address_table_lookups.len());
-        for lookup in &self.address_table_lookups {
-            let lookup_table_address = remaining_accounts
-                .get(lookup.lookup_table_address_index as usize)
-                .ok_or(MultisigError::InvalidNumberOfAccounts)?
-                .key();
-            message_address_table_loopups.push(MessageAddressTableLookup {
-                lookup_table_address,
-                writable_indexes: lookup.writable_indexes.clone(),
-                readonly_indexes: lookup.readonly_indexes.clone(),
-            });
         }
 
         Ok(VaultTransactionMessage {
@@ -56,7 +33,6 @@ impl TransactionMessage {
             num_writable_non_signers: self.num_writable_non_signers,
             account_keys,
             instructions: self.instructions.clone(),
-            address_table_lookups: message_address_table_loopups,
         })
     }
 }
@@ -86,7 +62,6 @@ mod tests {
             num_writable_non_signers: 0,
             num_account_keys: 3,
             instructions: vec![],
-            address_table_lookups: vec![],
         };
         let accounts = vec![
             make_account_info(Pubkey::new_unique()),
@@ -94,68 +69,5 @@ mod tests {
         ];
         let res = msg.convert_to_vault_transaction_message(&accounts);
         assert!(res.is_err());
-    }
-
-    #[test]
-    fn test_convert_to_vault_lookup_index_oob_fails() {
-        let msg = TransactionMessage {
-            num_signers: 0,
-            num_writable_signers: 0,
-            num_writable_non_signers: 0,
-            num_account_keys: 1,
-            instructions: vec![],
-            address_table_lookups: vec![TransactionMessageAddressTableLookup {
-                lookup_table_address_index: 5,
-                writable_indexes: vec![],
-                readonly_indexes: vec![],
-            }],
-        };
-        let accounts = vec![make_account_info(Pubkey::new_unique())];
-        let res = msg.convert_to_vault_transaction_message(&accounts);
-        assert!(res.is_err());
-    }
-
-    #[test]
-    fn test_convert_to_vault_valid_no_lookups() {
-        let k0 = Pubkey::new_unique();
-        let k1 = Pubkey::new_unique();
-        let msg = TransactionMessage {
-            num_signers: 1,
-            num_writable_signers: 0,
-            num_writable_non_signers: 0,
-            num_account_keys: 2,
-            instructions: vec![],
-            address_table_lookups: vec![],
-        };
-        let accounts = vec![make_account_info(k0), make_account_info(k1)];
-        let vault = msg.convert_to_vault_transaction_message(&accounts).unwrap();
-        assert_eq!(vault.account_keys.len(), 2);
-        assert_eq!(vault.account_keys[0], k0);
-        assert_eq!(vault.account_keys[1], k1);
-        assert_eq!(vault.num_signers, 1);
-    }
-
-    #[test]
-    fn test_convert_to_vault_valid_with_lookups() {
-        let alt_key = Pubkey::new_unique();
-        let k0 = Pubkey::new_unique();
-        let msg = TransactionMessage {
-            num_signers: 0,
-            num_writable_signers: 0,
-            num_writable_non_signers: 0,
-            num_account_keys: 1,
-            instructions: vec![],
-            address_table_lookups: vec![TransactionMessageAddressTableLookup {
-                lookup_table_address_index: 0,
-                writable_indexes: vec![],
-                readonly_indexes: vec![],
-            }],
-        };
-        let accounts = vec![make_account_info(alt_key), make_account_info(k0)];
-        let vault = msg.convert_to_vault_transaction_message(&accounts).unwrap();
-        assert_eq!(vault.account_keys.len(), 1);
-        assert_eq!(vault.account_keys[0], k0);
-        assert_eq!(vault.address_table_lookups.len(), 1);
-        assert_eq!(vault.address_table_lookups[0].lookup_table_address, alt_key);
     }
 }

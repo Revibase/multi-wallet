@@ -34,21 +34,21 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from "@solana/kit";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+} from '@solana/kit';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
 import {
   expectAddress,
   expectSome,
   getAccountMetaFactory,
   type ResolvedAccount,
-} from "../shared";
+} from '../shared';
 
 export const CREATE_WALLET_DISCRIMINATOR = new Uint8Array([16]);
 
 export function getCreateWalletDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    CREATE_WALLET_DISCRIMINATOR,
+    CREATE_WALLET_DISCRIMINATOR
   );
 }
 
@@ -56,9 +56,8 @@ export type CreateWalletInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountPayer extends string | AccountMeta<string> = string,
   TAccountInitialMember extends string | AccountMeta<string> = string,
-  TAccountSystemProgram extends
-    | string
-    | AccountMeta<string> = "11111111111111111111111111111111",
+  TAccountSystemProgram extends string | AccountMeta<string> =
+    '11111111111111111111111111111111',
   TAccountGlobalCounter extends string | AccountMeta<string> = string,
   TAccountUserAccount extends string | AccountMeta<string> = string,
   TAccountSettings extends string | AccountMeta<string> = string,
@@ -103,17 +102,17 @@ export type CreateWalletInstructionDataArgs = {
 export function getCreateWalletInstructionDataEncoder(): FixedSizeEncoder<CreateWalletInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["settingsIndex", getU128Encoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      ['settingsIndex', getU128Encoder()],
     ]),
-    (value) => ({ ...value, discriminator: CREATE_WALLET_DISCRIMINATOR }),
+    (value) => ({ ...value, discriminator: CREATE_WALLET_DISCRIMINATOR })
   );
 }
 
 export function getCreateWalletInstructionDataDecoder(): FixedSizeDecoder<CreateWalletInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["settingsIndex", getU128Decoder()],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ['settingsIndex', getU128Decoder()],
   ]);
 }
 
@@ -123,7 +122,7 @@ export function getCreateWalletInstructionDataCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getCreateWalletInstructionDataEncoder(),
-    getCreateWalletInstructionDataDecoder(),
+    getCreateWalletInstructionDataDecoder()
   );
 }
 
@@ -145,8 +144,8 @@ export type CreateWalletAsyncInput<
   globalCounter?: Address<TAccountGlobalCounter>;
   userAccount?: Address<TAccountUserAccount>;
   settings?: Address<TAccountSettings>;
-  settingsIndex: CreateWalletInstructionDataArgs["settingsIndex"];
-  remainingAccounts: CreateWalletInstructionExtraArgs["remainingAccounts"];
+  settingsIndex: CreateWalletInstructionDataArgs['settingsIndex'];
+  remainingAccounts: CreateWalletInstructionExtraArgs['remainingAccounts'];
 };
 
 export async function getCreateWalletInstructionAsync<
@@ -166,7 +165,7 @@ export async function getCreateWalletInstructionAsync<
     TAccountUserAccount,
     TAccountSettings
   >,
-  config?: { programAddress?: TProgramAddress },
+  config?: { programAddress?: TProgramAddress }
 ): Promise<
   CreateWalletInstruction<
     TProgramAddress,
@@ -204,7 +203,7 @@ export async function getCreateWalletInstructionAsync<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
   if (!accounts.globalCounter.value) {
     accounts.globalCounter.value = await getProgramDerivedAddress({
@@ -213,7 +212,7 @@ export async function getCreateWalletInstructionAsync<
         getBytesEncoder().encode(
           new Uint8Array([
             103, 108, 111, 98, 97, 108, 95, 99, 111, 117, 110, 116, 101, 114,
-          ]),
+          ])
         ),
       ],
     });
@@ -234,7 +233,7 @@ export async function getCreateWalletInstructionAsync<
         getBytesEncoder().encode(
           new Uint8Array([
             109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116,
-          ]),
+          ])
         ),
         getU128Encoder().encode(expectSome(args.settingsIndex)),
       ],
@@ -245,7 +244,7 @@ export async function getCreateWalletInstructionAsync<
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.payer),
@@ -257,7 +256,7 @@ export async function getCreateWalletInstructionAsync<
       ...remainingAccounts,
     ],
     data: getCreateWalletInstructionDataEncoder().encode(
-      args as CreateWalletInstructionDataArgs,
+      args as CreateWalletInstructionDataArgs
     ),
     programAddress,
   } as CreateWalletInstruction<
@@ -285,8 +284,8 @@ export type CreateWalletInput<
   globalCounter: Address<TAccountGlobalCounter>;
   userAccount: Address<TAccountUserAccount>;
   settings: Address<TAccountSettings>;
-  settingsIndex: CreateWalletInstructionDataArgs["settingsIndex"];
-  remainingAccounts: CreateWalletInstructionExtraArgs["remainingAccounts"];
+  settingsIndex: CreateWalletInstructionDataArgs['settingsIndex'];
+  remainingAccounts: CreateWalletInstructionExtraArgs['remainingAccounts'];
 };
 
 export function getCreateWalletInstruction<
@@ -306,7 +305,7 @@ export function getCreateWalletInstruction<
     TAccountUserAccount,
     TAccountSettings
   >,
-  config?: { programAddress?: TProgramAddress },
+  config?: { programAddress?: TProgramAddress }
 ): CreateWalletInstruction<
   TProgramAddress,
   TAccountPayer,
@@ -342,14 +341,14 @@ export function getCreateWalletInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.payer),
@@ -361,7 +360,7 @@ export function getCreateWalletInstruction<
       ...remainingAccounts,
     ],
     data: getCreateWalletInstructionDataEncoder().encode(
-      args as CreateWalletInstructionDataArgs,
+      args as CreateWalletInstructionDataArgs
     ),
     programAddress,
   } as CreateWalletInstruction<
@@ -397,11 +396,11 @@ export function parseCreateWalletInstruction<
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
-    InstructionWithData<ReadonlyUint8Array>,
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedCreateWalletInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 6) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {

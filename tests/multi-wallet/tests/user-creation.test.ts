@@ -53,11 +53,7 @@ export function runUserCreationTests(getCtx: () => TestContext) {
         },
       });
 
-      await sendTransaction(
-        [createUserAccountIx],
-        ctx.payer,
-        ctx.addressLookUpTable,
-      );
+      await sendTransaction([createUserAccountIx], ctx.payer);
 
       const userAccountData = (
         await fetchUser(getSolanaRpc(), await getUserAddress(user.address))
@@ -96,11 +92,7 @@ export function runUserCreationTests(getCtx: () => TestContext) {
         },
       });
 
-      await sendTransaction(
-        [createUserAccountIx],
-        ctx.payer,
-        ctx.addressLookUpTable,
-      );
+      await sendTransaction([createUserAccountIx], ctx.payer);
 
       const userAccountData = (
         await fetchUser(
@@ -155,11 +147,7 @@ export function runUserCreationTests(getCtx: () => TestContext) {
         },
       });
 
-      await sendTransaction(
-        [createDomainUserAccountIx],
-        ctx.payer,
-        ctx.addressLookUpTable,
-      );
+      await sendTransaction([createDomainUserAccountIx], ctx.payer);
 
       const userAccountData = (
         await fetchUser(getSolanaRpc(), await getUserAddress(secp256r1Key))
@@ -203,11 +191,7 @@ export function runUserCreationTests(getCtx: () => TestContext) {
         },
       });
 
-      await sendTransaction(
-        [createUserAccountIx],
-        ctx.payer,
-        ctx.addressLookUpTable,
-      );
+      await sendTransaction([createUserAccountIx], ctx.payer);
 
       const secp256r1Keys = generateSecp256r1KeyPair();
       const credentialId = bufferToBase64URLString(
@@ -231,11 +215,7 @@ export function runUserCreationTests(getCtx: () => TestContext) {
         },
       });
 
-      await sendTransaction(
-        [createDomainUserAccountIx],
-        ctx.payer,
-        ctx.addressLookUpTable,
-      );
+      await sendTransaction([createDomainUserAccountIx], ctx.payer);
 
       const userAccountData = (
         await fetchUser(getSolanaRpc(), await getUserAddress(secp256r1Key))

@@ -23,9 +23,9 @@ Agents should use this package to implement a single, auditable signing service 
 
 Public exports from `src/index.ts`:
 
-| Category     | Exports                                                                                                     |
-| ------------ | ----------------------------------------------------------------------------------------------------------- |
-| **Function** | `verifyTransaction`, `verifyMessage`                                                                        |
+| Category     | Exports                                                                                                         |
+| ------------ | --------------------------------------------------------------------------------------------------------------- |
+| **Function** | `verifyTransaction`, `verifyMessage`                                                                            |
 | **Types**    | `TransactionManagerConfig`, `VerifyTransactionResult`, `ExpectedTransactionSigner`, `WellKnownClientCacheEntry` |
 
 ### `verifyTransaction`
@@ -106,7 +106,7 @@ To integrate `@revibase/transaction-manager` into a backend:
    - `TX_MANAGER_SECRET_KEY`: Manager secret key (base58 string).
    - `TX_MANAGER_PUBLIC_KEY`: Manager public key (base58).
    - `TX_MANAGER_URL`: Public HTTPS URL of the signing endpoint.
-   - `RPC_URL` (optional): Solana RPC URL for account / LUT lookups.
+   - `RPC_URL` (optional): Solana RPC URL for account.
 
 3. **Create an HTTPS signing endpoint**
    - Endpoint example: `POST /sign` at `https://your-transaction-manager.com/sign`.
@@ -135,7 +135,7 @@ To integrate `@revibase/transaction-manager` into a backend:
 | `src/processors/*.ts`                 | Per-instruction handlers (change config, transfer intents, buffers) |
 | `src/utils/transaction-parsing.ts`    | Transaction message parsing and LUT resolution                      |
 | `src/utils/signature-verification.ts` | WebAuthn / secp256r1 verification helpers                           |
-| `src/utils/consts.ts`                 | Whitelisted programs, lookup table addresses                        |
+| `src/utils/consts.ts`                 | Whitelisted programs                                                |
 | `src/utils/fetch-well-known.ts`       | Fetching and caching well-known client metadata                     |
 
 ## Agent rules

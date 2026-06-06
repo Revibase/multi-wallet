@@ -1,6 +1,5 @@
 import type {
   Address,
-  AddressesByLookupTableAddress,
   Instruction,
   ReadonlyUint8Array,
   TransactionSigner,
@@ -19,7 +18,6 @@ export async function executeTransaction({
   transactionBufferAddress,
   transactionMessageBytes,
   payer,
-  addressesByLookupTableAddress,
   secp256r1VerifyInput = [],
   additionalSigners = [],
   jitoBundlesTipAmount,
@@ -28,20 +26,17 @@ export async function executeTransaction({
   payer: TransactionSigner;
   transactionBufferAddress: Address;
   transactionMessageBytes: ReadonlyUint8Array;
-  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   additionalSigners?: TransactionSigner[];
   jitoBundlesTipAmount?: number;
 }) {
   const walletAddress = await getWalletAddressFromSettings(settings);
 
-  const { accountMetas, addressLookupTableAccounts } =
-    await accountsForTransactionExecute({
-      transactionMessageBytes,
-      walletAddress,
-      additionalSigners,
-      addressesByLookupTableAddress,
-    });
+  const { accountMetas } = await accountsForTransactionExecute({
+    transactionMessageBytes,
+    walletAddress,
+    additionalSigners,
+  });
 
   const instructions: Instruction[] = [];
   if (secp256r1VerifyInput.length > 0) {
@@ -63,6 +58,5 @@ export async function executeTransaction({
 
   return {
     instructions,
-    addressLookupTableAccounts,
   };
 }

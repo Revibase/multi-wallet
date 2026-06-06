@@ -1,8 +1,4 @@
-import {
-  type Address,
-  type AddressesByLookupTableAddress,
-  type KeyPairSigner,
-} from "gill";
+import { type Address, type KeyPairSigner } from "gill";
 
 /**
  * Shared test context that is passed between test files
@@ -17,6 +13,5 @@ export interface TestContext {
   multiWalletVault: Address | undefined;
   rpId: string | undefined;
   origin: string | undefined;
-  addressLookUpTable: AddressesByLookupTableAddress;
   domainConfig: Address | undefined;
 }

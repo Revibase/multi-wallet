@@ -3,13 +3,11 @@ import {
   AccountRole,
   type AccountSignerMeta,
   type Address,
-  type AddressesByLookupTableAddress,
   type CompiledTransactionMessage,
-  fetchAddressesForLookupTables,
+  type CompiledTransactionMessageWithLifetime,
   type ReadonlyUint8Array,
   type TransactionSigner,
 } from "@solana/kit";
-import { getSolanaRpc } from "..";
 import { vaultTransactionMessageDeserialize } from "../../types";
 
 function getAccountRole(
@@ -69,39 +67,22 @@ function isSignerIndex(message: CompiledTransactionMessage, index: number) {
 export async function accountsForTransactionExecute({
   walletAddress,
   transactionMessageBytes,
-  addressesByLookupTableAddress,
   additionalSigners,
 }: {
   transactionMessageBytes: ReadonlyUint8Array;
   walletAddress: Address;
-  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   additionalSigners?: TransactionSigner[];
-}) {
+}): Promise<{
+  accountMetas: (AccountSignerMeta | AccountMeta)[];
+  transactionMessage: CompiledTransactionMessage & {
+    version: 1;
+  } & CompiledTransactionMessageWithLifetime;
+}> {
   const transactionMessage = vaultTransactionMessageDeserialize(
     transactionMessageBytes,
   );
 
-  const addressLookupTableAccounts =
-    addressesByLookupTableAddress ??
-    (transactionMessage.addressTableLookups
-      ? await fetchAddressesForLookupTables(
-          transactionMessage.addressTableLookups.map(
-            (x) => x.lookupTableAddress,
-          ),
-          getSolanaRpc(),
-        )
-      : {});
-
   const accountMetas: (AccountMeta | AccountSignerMeta)[] = [];
-
-  accountMetas.push(
-    ...(transactionMessage.addressTableLookups?.map((lookup) => {
-      return {
-        role: AccountRole.READONLY,
-        address: lookup.lookupTableAddress,
-      };
-    }) ?? []),
-  );
 
   for (const [
     accountIndex,
@@ -116,44 +97,6 @@ export async function accountsForTransactionExecute({
         walletAddress,
       ),
     });
-  }
-
-  if (transactionMessage.addressTableLookups) {
-    for (const lookup of transactionMessage.addressTableLookups) {
-      const lookupTableAccount =
-        addressLookupTableAccounts[lookup.lookupTableAddress];
-      if (!lookupTableAccount) {
-        throw new Error(
-          `Address lookup table account ${lookup.lookupTableAddress} not found`,
-        );
-      }
-
-      for (const accountIndex of lookup.writableIndexes) {
-        const address = lookupTableAccount[accountIndex];
-        if (!address) {
-          throw new Error(
-            `Address lookup table account ${lookup.lookupTableAddress} does not contain address at index ${accountIndex}`,
-          );
-        }
-
-        accountMetas.push({
-          address,
-          role: AccountRole.WRITABLE,
-        });
-      }
-      for (const accountIndex of lookup.readonlyIndexes) {
-        const address = lookupTableAccount[accountIndex];
-        if (!address) {
-          throw new Error(
-            `Address lookup table account ${lookup.lookupTableAddress} does not contain address at index ${accountIndex}`,
-          );
-        }
-        accountMetas.push({
-          address,
-          role: AccountRole.READONLY,
-        });
-      }
-    }
   }
 
   for (const signer of additionalSigners?.filter(
@@ -193,7 +136,6 @@ export async function accountsForTransactionExecute({
 
   return {
     accountMetas,
-    addressLookupTableAccounts,
     transactionMessage,
   };
 }

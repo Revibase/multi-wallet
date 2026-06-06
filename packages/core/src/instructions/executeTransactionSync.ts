@@ -1,7 +1,5 @@
 import {
-  type AccountMeta,
   type Address,
-  type AddressesByLookupTableAddress,
   type CompiledTransactionMessage,
   type Instruction,
   type ReadonlyUint8Array,
@@ -26,7 +24,6 @@ export async function executeTransactionSync({
   transactionMessageBytes,
   additionalSigners,
   signers,
-  addressesByLookupTableAddress,
   secp256r1VerifyInput = [],
 }: {
   settings: Address;
@@ -34,19 +31,16 @@ export async function executeTransactionSync({
   transactionMessageBytes: ReadonlyUint8Array;
   additionalSigners?: TransactionSigner[];
   secp256r1VerifyInput?: Secp256r1VerifyInput;
-  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
 }) {
   const dedupSigners = getDeduplicatedSigners(signers);
   const walletAddress = await getWalletAddressFromSettings(settings);
-  const [{ accountMetas, addressLookupTableAccounts, transactionMessage }] =
-    await Promise.all([
-      accountsForTransactionExecute({
-        transactionMessageBytes,
-        walletAddress,
-        additionalSigners,
-        addressesByLookupTableAddress,
-      }),
-    ]);
+  const [{ accountMetas, transactionMessage }] = await Promise.all([
+    accountsForTransactionExecute({
+      transactionMessageBytes,
+      walletAddress,
+      additionalSigners,
+    }),
+  ]);
 
   const packedAccounts = new PackedAccounts();
   packedAccounts.addPreAccounts(accountMetas);
@@ -63,10 +57,7 @@ export async function executeTransactionSync({
     instructions.push(getSecp256r1VerifyInstruction(finalSecp256r1VerifyInput));
   }
 
-  const customTransactionMessage = parseTransactionMessage(
-    transactionMessage,
-    accountMetas,
-  );
+  const customTransactionMessage = parseTransactionMessage(transactionMessage);
 
   instructions.push(
     getTransactionExecuteSyncInstruction({
@@ -79,36 +70,30 @@ export async function executeTransactionSync({
 
   return {
     instructions,
-    addressLookupTableAccounts,
   };
 }
 
 function parseTransactionMessage(
-  transactionMessage: CompiledTransactionMessage & { version: 0 },
-  accountMetas: AccountMeta[],
+  compiledMessage: CompiledTransactionMessage & { version: 1 },
 ) {
   return {
-    numSigners: transactionMessage.header.numSignerAccounts,
-    numWritableNonSigners:
-      transactionMessage.staticAccounts.length -
-      transactionMessage.header.numSignerAccounts -
-      transactionMessage.header.numReadonlyNonSignerAccounts,
+    numAccountKeys: compiledMessage.numStaticAccounts,
+    numSigners: compiledMessage.header.numSignerAccounts,
     numWritableSigners:
-      transactionMessage.header.numSignerAccounts -
-      transactionMessage.header.numReadonlySignerAccounts,
-    numAccountKeys: transactionMessage.staticAccounts.length,
-    instructions: transactionMessage.instructions.map((x) => ({
-      ...x,
-      accountIndices: new Uint8Array(x.accountIndices ?? []),
-      data: (x.data ?? []) as Uint8Array,
-    })),
-    addressTableLookups:
-      transactionMessage.addressTableLookups?.map((x) => ({
-        lookupTableAddressIndex: accountMetas.findIndex(
-          (y) => y.address === x.lookupTableAddress,
-        ),
-        writableIndexes: new Uint8Array(x.writableIndexes),
-        readonlyIndexes: new Uint8Array(x.readonlyIndexes),
-      })) ?? [],
+      compiledMessage.header.numSignerAccounts -
+      compiledMessage.header.numReadonlySignerAccounts,
+    numWritableNonSigners:
+      compiledMessage.staticAccounts.length -
+      compiledMessage.header.numSignerAccounts -
+      compiledMessage.header.numReadonlyNonSignerAccounts,
+    accountKeys: compiledMessage.staticAccounts,
+    instructions: compiledMessage.instructionPayloads.map((ix, index) => {
+      return {
+        programAddressIndex:
+          compiledMessage.instructionHeaders[index].programAccountIndex,
+        accountIndices: new Uint8Array(ix.instructionAccountIndices ?? []),
+        data: ix.instructionData,
+      };
+    }),
   };
 }

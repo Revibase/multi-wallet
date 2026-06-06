@@ -14,24 +14,24 @@ Passkey Solana wallet: sign-in and transactions in popup or on another device (c
 
 ## Entry points
 
-| Import path | Use for |
-| ----------- | ------- |
-| `@revibase/lite` | Browser / client: provider, flows, shared types, errors |
+| Import path             | Use for                                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------------------------- |
+| `@revibase/lite`        | Browser / client: provider, flows, shared types, errors                                                 |
 | `@revibase/lite/server` | Node / API routes: `processClientAuthCallback`, Jito callbacks (requires peer `@simplewebauthn/server`) |
 
 ### `@revibase/lite` (client)
 
-| Category              | Exports                                                                                                                                                                                                                                                  |
-| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Provider**          | `RevibaseProvider`, `RevibaseProviderOptions`                                                                                                                                                                                                            |
-| **Client (frontend)** | `signIn`, `transferTokens`, `executeTransaction`                                                                                                                                                                                                         |
-| **Types**             | `UserInfo`, `StartMessageRequest`, `StartTransactionRequest`, `CompleteMessageRequest`, `CompleteTransactionRequest`, `ClientAuthorizationCallback`, `SignInAuthorizationFlowOptions`, `TransactionAuthorizationFlowOptions` |
+| Category              | Exports                                                                                                                                                                                                                                                                                 |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Provider**          | `RevibaseProvider`, `RevibaseProviderOptions`                                                                                                                                                                                                                                           |
+| **Client (frontend)** | `signIn`, `transferTokens`, `executeTransaction`                                                                                                                                                                                                                                        |
+| **Types**             | `UserInfo`, `StartMessageRequest`, `StartTransactionRequest`, `CompleteMessageRequest`, `CompleteTransactionRequest`, `ClientAuthorizationCallback`, `SignInAuthorizationFlowOptions`, `TransactionAuthorizationFlowOptions`                                                            |
 | **Errors**            | `RevibaseError`, `RevibaseMissingSignersError`, `RevibasePopupBlockedError`, `RevibasePopupClosedError`, `RevibaseTimeoutError`, `RevibaseFlowInProgressError`, `RevibaseAbortedError`, `RevibaseAuthError`, `RevibaseEnvironmentError`, `RevibasePopupNotOpenError` (all have `.code`) |
 
 ### `@revibase/lite/server` (backend)
 
-| Category | Exports |
-| -------- | ------- |
+| Category   | Exports                                                                                         |
+| ---------- | ----------------------------------------------------------------------------------------------- |
 | **Server** | `processClientAuthCallback`, `processSendJitoBundleCallback`, `processEstimateJitoTipsCallback` |
 
 Do **not** import `@revibase/lite/server` from frontend bundles. The main entry must not re-export server code (keeps `@simplewebauthn/server` out of `RevibaseProvider` builds).
@@ -54,7 +54,7 @@ new RevibaseProvider(options: RevibaseProviderOptions)
 
 - `signIn(provider, options?)` → `Promise<{ user: UserInfo }>`
 - `transferTokens(provider, { amount, destination, signer?, mint?, tokenProgram? }, options?)` → `Promise<{ txSig?, user }>`
-- `executeTransaction(provider, { instructions, signer, settingsIndexWithAddress?, additionalSigners?, addressesByLookupTableAddress? }, options?)` → `Promise<{ txSig?, user }>`
+- `executeTransaction(provider, { instructions, signer, settingsIndexWithAddress?, additionalSigners? }, options?)` → `Promise<{ txSig?, user }>`
 
 `options`: `SignInAuthorizationFlowOptions` / `TransactionAuthorizationFlowOptions` — both support `{ signal? }`.
 
@@ -68,14 +68,14 @@ new RevibaseProvider(options: RevibaseProviderOptions)
 
 ## File map
 
-| Path                   | Contents                                                                 |
-| ---------------------- | ------------------------------------------------------------------------ |
-| `src/index.ts`         | Client entry: client, provider, utils (no server)                        |
-| `src/server/index.ts`  | Server entry (`@revibase/lite/server`)                                   |
-| `src/client/`          | `signIn`, `transferTokens`, `executeTransaction` |
-| `src/provider/main.ts` | `RevibaseProvider`, options, popup transport                             |
+| Path                   | Contents                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------ |
+| `src/index.ts`         | Client entry: client, provider, utils (no server)                              |
+| `src/server/index.ts`  | Server entry (`@revibase/lite/server`)                                         |
+| `src/client/`          | `signIn`, `transferTokens`, `executeTransaction`                               |
+| `src/provider/main.ts` | `RevibaseProvider`, options, popup transport                                   |
 | `src/server/`          | `processClientAuthCallback`, `startRequest`, `startChannel`, `validateMessage` |
-| `src/utils/`           | Types, errors, consts                                                    |
+| `src/utils/`           | Types, errors, consts                                                          |
 
 ## Agent rules
 

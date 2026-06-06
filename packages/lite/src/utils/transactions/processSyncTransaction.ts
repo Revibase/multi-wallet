@@ -13,10 +13,7 @@ import {
 import type { AbortScope } from "../abort";
 import type { TransactionAuthorizationFlowOptions } from "../types";
 import { signAndSendTransaction } from "./solana-send";
-import {
-  fetchAdditionalLoopUpTableIfNecessary,
-  getTransactionManagerSigner,
-} from "./utils";
+import { getTransactionManagerSigner } from "./utils";
 
 export async function processSyncTransaction(params: {
   authResponse: TransactionAuthenticationResponse;
@@ -66,24 +63,18 @@ export async function processSyncTransaction(params: {
     ? [signedSigner, transactionManagerSigner, ...(additionalVoters ?? [])]
     : [signedSigner, ...(additionalVoters ?? [])];
 
-  const { instructions, addressesByLookupTableAddress } =
-    await prepareTransactionSync({
-      signers,
-      payer,
-      transactionMessageBytes: getBase64Encoder().encode(
-        transactionMessageBytes,
-      ),
-      settings,
-      additionalSigners,
-    });
+  const { instructions } = await prepareTransactionSync({
+    signers,
+    payer,
+    transactionMessageBytes: getBase64Encoder().encode(transactionMessageBytes),
+    settings,
+    additionalSigners,
+  });
 
   return signAndSendTransaction(
     {
       instructions,
       payer,
-      addressesByLookupTableAddress: await fetchAdditionalLoopUpTableIfNecessary(
-        addressesByLookupTableAddress,
-      ),
     },
     abortScope,
   );

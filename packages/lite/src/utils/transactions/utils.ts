@@ -7,21 +7,15 @@ import {
 } from "@revibase/core";
 import {
   address,
-  fetchAddressesForLookupTables,
   getBase58Encoder,
   getBase64Decoder,
   getTransactionEncoder,
   type Address,
-  type AddressesByLookupTableAddress,
   type ReadonlyUint8Array,
   type SignatureBytes,
   type TransactionSigner,
 } from "@solana/kit";
-import { fetchMaybeAddressLookupTable } from "@solana-program/address-lookup-table";
-import {
-  REVIBASE_API_ENDPOINT,
-  REVIBASE_LOOKUP_TABLE_ADDRESS,
-} from "../consts";
+import { REVIBASE_API_ENDPOINT } from "../consts";
 import { withRetry } from "../retry";
 
 const payerCache = new Map<string, TransactionSigner>();
@@ -132,37 +126,4 @@ export async function getTransactionManagerSigner(args: {
       : null;
 
   return transactionManagerSigner;
-}
-
-export async function fetchAdditionalLoopUpTableIfNecessary(
-  addressesByLookupTableAddress?: AddressesByLookupTableAddress,
-) {
-  if (!addressesByLookupTableAddress) {
-    return await withRetry(() =>
-      fetchAddressesForLookupTables(
-        [address(REVIBASE_LOOKUP_TABLE_ADDRESS)],
-        getSolanaRpc(),
-      ),
-    );
-  }
-
-  if (REVIBASE_LOOKUP_TABLE_ADDRESS in addressesByLookupTableAddress) {
-    return addressesByLookupTableAddress;
-  }
-
-  const fetched = await withRetry(() =>
-    fetchMaybeAddressLookupTable(
-      getSolanaRpc(),
-      address(REVIBASE_LOOKUP_TABLE_ADDRESS),
-    ),
-  );
-
-  if (fetched.exists) {
-    return {
-      ...addressesByLookupTableAddress,
-      [fetched.address]: fetched.data.addresses,
-    };
-  }
-
-  return addressesByLookupTableAddress;
 }

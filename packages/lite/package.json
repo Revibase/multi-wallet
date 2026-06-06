@@ -40,7 +40,6 @@
   "description": "Passkey-based Solana wallet SDK: sign in and approve transactions in a popup, authorize with a server-side private key.",
   "dependencies": {
     "@revibase/core": "workspace:*",
-    "@solana-program/address-lookup-table": "0.11.0",
     "@solana-program/compute-budget": "0.15.0",
     "@solana-program/system": "0.12.0",
     "@solana-program/token": "0.13.0",

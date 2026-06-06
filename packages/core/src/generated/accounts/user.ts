@@ -47,7 +47,7 @@ import {
   type Option,
   type OptionOrNullable,
   type ReadonlyUint8Array,
-} from "@solana/kit";
+} from '@solana/kit';
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
@@ -65,7 +65,7 @@ import {
   type TransportsArgs,
   type UserRole,
   type UserRoleArgs,
-} from "../types";
+} from '../types';
 
 export const USER_DISCRIMINATOR = new Uint8Array([
   159, 117, 95, 227, 239, 151, 58, 236,
@@ -101,49 +101,49 @@ export type UserArgs = {
 export function getUserEncoder(): Encoder<UserArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 8)],
-      ["domainConfig", getOptionEncoder(getAddressEncoder())],
-      ["member", getMemberKeyEncoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 8)],
+      ['domainConfig', getOptionEncoder(getAddressEncoder())],
+      ['member', getMemberKeyEncoder()],
       [
-        "credentialId",
+        'credentialId',
         getOptionEncoder(
-          addEncoderSizePrefix(getBytesEncoder(), getU32Encoder()),
+          addEncoderSizePrefix(getBytesEncoder(), getU32Encoder())
         ),
       ],
-      ["transports", getOptionEncoder(getArrayEncoder(getTransportsEncoder()))],
-      ["wallets", getArrayEncoder(getSettingsIndexWithDelegateInfoEncoder())],
-      ["role", getUserRoleEncoder()],
+      ['transports', getOptionEncoder(getArrayEncoder(getTransportsEncoder()))],
+      ['wallets', getArrayEncoder(getSettingsIndexWithDelegateInfoEncoder())],
+      ['role', getUserRoleEncoder()],
       [
-        "transactionManagerUrl",
+        'transactionManagerUrl',
         getOptionEncoder(
-          addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder()),
+          addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())
         ),
       ],
-      ["bump", getU8Encoder()],
+      ['bump', getU8Encoder()],
     ]),
-    (value) => ({ ...value, discriminator: USER_DISCRIMINATOR }),
+    (value) => ({ ...value, discriminator: USER_DISCRIMINATOR })
   );
 }
 
 export function getUserDecoder(): Decoder<User> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 8)],
-    ["domainConfig", getOptionDecoder(getAddressDecoder())],
-    ["member", getMemberKeyDecoder()],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 8)],
+    ['domainConfig', getOptionDecoder(getAddressDecoder())],
+    ['member', getMemberKeyDecoder()],
     [
-      "credentialId",
+      'credentialId',
       getOptionDecoder(
-        addDecoderSizePrefix(getBytesDecoder(), getU32Decoder()),
+        addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())
       ),
     ],
-    ["transports", getOptionDecoder(getArrayDecoder(getTransportsDecoder()))],
-    ["wallets", getArrayDecoder(getSettingsIndexWithDelegateInfoDecoder())],
-    ["role", getUserRoleDecoder()],
+    ['transports', getOptionDecoder(getArrayDecoder(getTransportsDecoder()))],
+    ['wallets', getArrayDecoder(getSettingsIndexWithDelegateInfoDecoder())],
+    ['role', getUserRoleDecoder()],
     [
-      "transactionManagerUrl",
+      'transactionManagerUrl',
       getOptionDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
     ],
-    ["bump", getU8Decoder()],
+    ['bump', getU8Decoder()],
   ]);
 }
 
@@ -152,24 +152,24 @@ export function getUserCodec(): Codec<UserArgs, User> {
 }
 
 export function decodeUser<TAddress extends string = string>(
-  encodedAccount: EncodedAccount<TAddress>,
+  encodedAccount: EncodedAccount<TAddress>
 ): Account<User, TAddress>;
 export function decodeUser<TAddress extends string = string>(
-  encodedAccount: MaybeEncodedAccount<TAddress>,
+  encodedAccount: MaybeEncodedAccount<TAddress>
 ): MaybeAccount<User, TAddress>;
 export function decodeUser<TAddress extends string = string>(
-  encodedAccount: EncodedAccount<TAddress> | MaybeEncodedAccount<TAddress>,
+  encodedAccount: EncodedAccount<TAddress> | MaybeEncodedAccount<TAddress>
 ): Account<User, TAddress> | MaybeAccount<User, TAddress> {
   return decodeAccount(
     encodedAccount as MaybeEncodedAccount<TAddress>,
-    getUserDecoder(),
+    getUserDecoder()
   );
 }
 
 export async function fetchUser<TAddress extends string = string>(
   rpc: Parameters<typeof fetchEncodedAccount>[0],
   address: Address<TAddress>,
-  config?: FetchAccountConfig,
+  config?: FetchAccountConfig
 ): Promise<Account<User, TAddress>> {
   const maybeAccount = await fetchMaybeUser(rpc, address, config);
   assertAccountExists(maybeAccount);
@@ -179,7 +179,7 @@ export async function fetchUser<TAddress extends string = string>(
 export async function fetchMaybeUser<TAddress extends string = string>(
   rpc: Parameters<typeof fetchEncodedAccount>[0],
   address: Address<TAddress>,
-  config?: FetchAccountConfig,
+  config?: FetchAccountConfig
 ): Promise<MaybeAccount<User, TAddress>> {
   const maybeAccount = await fetchEncodedAccount(rpc, address, config);
   return decodeUser(maybeAccount);
@@ -188,7 +188,7 @@ export async function fetchMaybeUser<TAddress extends string = string>(
 export async function fetchAllUser(
   rpc: Parameters<typeof fetchEncodedAccounts>[0],
   addresses: Array<Address>,
-  config?: FetchAccountsConfig,
+  config?: FetchAccountsConfig
 ): Promise<Account<User>[]> {
   const maybeAccounts = await fetchAllMaybeUser(rpc, addresses, config);
   assertAccountsExist(maybeAccounts);
@@ -198,7 +198,7 @@ export async function fetchAllUser(
 export async function fetchAllMaybeUser(
   rpc: Parameters<typeof fetchEncodedAccounts>[0],
   addresses: Array<Address>,
-  config?: FetchAccountsConfig,
+  config?: FetchAccountsConfig
 ): Promise<MaybeAccount<User>[]> {
   const maybeAccounts = await fetchEncodedAccounts(rpc, addresses, config);
   return maybeAccounts.map((maybeAccount) => decodeUser(maybeAccount));

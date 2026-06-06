@@ -49,17 +49,11 @@ impl<'info> TransactionExecute<'info> {
         let vault_transaction_message =
             VaultTransactionMessage::deserialize(&mut transaction_buffer.buffer.as_slice())?;
         vault_transaction_message.validate()?;
-        let num_lookups = vault_transaction_message.address_table_lookups.len();
-        let message_end_index = num_lookups + vault_transaction_message.num_all_account_keys();
-
-        let address_lookup_table_account_infos = ctx
-            .remaining_accounts
-            .get(..num_lookups)
-            .ok_or(MultisigError::InvalidNumberOfAccounts)?;
+        let message_end_index = vault_transaction_message.num_all_account_keys();
 
         let message_account_infos = ctx
             .remaining_accounts
-            .get(num_lookups..message_end_index)
+            .get(0..message_end_index)
             .ok_or(MultisigError::InvalidNumberOfAccounts)?;
 
         let vault_signer_seed: &[&[u8]] = &[
@@ -75,7 +69,6 @@ impl<'info> TransactionExecute<'info> {
         let executable_message = ExecutableTransactionMessage::new_validated(
             vault_transaction_message,
             message_account_infos,
-            address_lookup_table_account_infos,
             &vault_pubkey,
         )?;
 

@@ -68,17 +68,11 @@ impl<'info> TransactionExecuteSync<'info> {
         let message_hash =
             Sha256::hash(&writer).map_err(|_| MultisigError::HashComputationFailed)?;
         ctx.accounts.verify_signers(&ctx, &signers, message_hash)?;
-        let num_lookups = vault_transaction_message.address_table_lookups.len();
-        let message_end_index = num_lookups + vault_transaction_message.num_all_account_keys();
-
-        let address_lookup_table_account_infos = ctx
-            .remaining_accounts
-            .get(..num_lookups)
-            .ok_or(MultisigError::InvalidNumberOfAccounts)?;
+        let message_end_index = vault_transaction_message.num_all_account_keys();
 
         let message_account_infos = ctx
             .remaining_accounts
-            .get(num_lookups..message_end_index)
+            .get(0..message_end_index)
             .ok_or(MultisigError::InvalidNumberOfAccounts)?;
 
         let settings = &ctx.accounts.settings;
@@ -96,7 +90,6 @@ impl<'info> TransactionExecuteSync<'info> {
         let executable_message = ExecutableTransactionMessage::new_validated(
             vault_transaction_message,
             message_account_infos,
-            address_lookup_table_account_infos,
             &vault_pubkey,
         )?;
 

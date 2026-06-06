@@ -67,7 +67,6 @@ export function runTransactionTests(getCtx: () => TestContext) {
       const transactionMessageBytes = prepareTransactionMessage({
         payer: ctx.multiWalletVault,
         instructions: [createAccount, createMint],
-        addressesByLookupTableAddress: ctx.addressLookUpTable,
       });
 
       // Prepare transaction
@@ -79,11 +78,7 @@ export function runTransactionTests(getCtx: () => TestContext) {
         settings: await getSettingsFromIndex(ctx.index),
       });
 
-      await sendTransaction(
-        [...result.instructions],
-        ctx.payer,
-        result.addressesByLookupTableAddress,
-      );
+      await sendTransaction([...result.instructions], ctx.payer);
 
       // Verify transaction was successful
       const settings = await getSettingsFromIndex(ctx.index);

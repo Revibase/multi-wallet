@@ -42,7 +42,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
           changeConfigArgs,
         });
 
-        await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+        await sendTransaction(instructions, ctx.payer);
       });
     });
   });
@@ -73,7 +73,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
           changeConfigArgs,
         });
 
-        await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+        await sendTransaction(instructions, ctx.payer);
       });
     });
   });
@@ -104,11 +104,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
             amount: TEST_AMOUNT_MEDIUM, // More than available
           });
 
-          await sendTransaction(
-            [...nativeTransfer],
-            ctx.payer,
-            ctx.addressLookUpTable,
-          );
+          await sendTransaction([...nativeTransfer], ctx.payer);
         }, NATIVE_TRANSFER_INSUFFICIENT_BALANCE);
       },
     );
@@ -143,7 +139,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
           changeConfigArgs,
         });
 
-        await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+        await sendTransaction(instructions, ctx.payer);
       });
     });
   });
@@ -178,11 +174,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
             changeConfigArgs,
           });
 
-          await sendTransaction(
-            instructions,
-            ctx.payer,
-            ctx.addressLookUpTable,
-          );
+          await sendTransaction(instructions, ctx.payer);
         });
       },
     );
@@ -224,7 +216,6 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
             changeConfigArgs: addMemberArgs,
           }),
           ctx.payer,
-          ctx.addressLookUpTable,
         );
 
         // Try to change config using payer (who doesn't have initiate permission)
@@ -245,11 +236,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
             changeConfigArgs,
           });
 
-          await sendTransaction(
-            instructions,
-            ctx.payer,
-            ctx.addressLookUpTable,
-          );
+          await sendTransaction(instructions, ctx.payer);
         });
       },
     );

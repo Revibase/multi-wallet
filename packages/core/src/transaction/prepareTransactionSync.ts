@@ -1,6 +1,5 @@
 import type {
   Address,
-  AddressesByLookupTableAddress,
   ReadonlyUint8Array,
   TransactionSigner,
 } from "@solana/kit";
@@ -16,7 +15,6 @@ interface CreateTransactionSyncArgs {
   transactionMessageBytes: ReadonlyUint8Array;
   signers: (TransactionSigner | SignedSecp256r1Key)[];
   additionalSigners?: TransactionSigner[];
-  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   secp256r1VerifyInput?: Secp256r1VerifyInput;
 }
 
@@ -27,21 +25,17 @@ export async function prepareTransactionSync({
   signers,
   additionalSigners,
   secp256r1VerifyInput,
-  addressesByLookupTableAddress,
 }: CreateTransactionSyncArgs): Promise<TransactionDetails> {
-  const { instructions, addressLookupTableAccounts } =
-    await executeTransactionSync({
-      settings,
-      signers,
-      additionalSigners,
-      transactionMessageBytes,
-      secp256r1VerifyInput,
-      addressesByLookupTableAddress,
-    });
+  const { instructions } = await executeTransactionSync({
+    settings,
+    signers,
+    additionalSigners,
+    transactionMessageBytes,
+    secp256r1VerifyInput,
+  });
 
   return {
     payer,
     instructions,
-    addressesByLookupTableAddress: addressLookupTableAccounts,
   };
 }

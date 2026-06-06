@@ -1,10 +1,5 @@
 import { sha256 } from "@noble/hashes/sha2.js";
-import type {
-  Address,
-  AddressesByLookupTableAddress,
-  Instruction,
-  TransactionSigner,
-} from "@solana/kit";
+import type { Address, Instruction, TransactionSigner } from "@solana/kit";
 import {
   createTransactionBuffer,
   executeTransaction,
@@ -32,7 +27,6 @@ interface CreateTransactionBundleArgs {
   secp256r1VerifyInput?: Secp256r1VerifyInput;
   jitoBundlesTipAmount?: number;
   chunkSize?: number;
-  addressesByLookupTableAddress?: AddressesByLookupTableAddress;
 }
 
 export async function prepareTransactionBundle({
@@ -43,7 +37,6 @@ export async function prepareTransactionBundle({
   executor,
   secp256r1VerifyInput,
   jitoBundlesTipAmount,
-  addressesByLookupTableAddress,
   additionalVoters = [],
   additionalSigners = [],
   chunkSize = Math.ceil(transactionMessageBytes.length / 2),
@@ -114,22 +107,19 @@ export async function prepareTransactionBundle({
     transactionBufferAddress,
   });
 
-  const { instructions: executeIxs, addressLookupTableAccounts } =
-    await executeTransaction({
-      settings,
-      transactionMessageBytes,
-      transactionBufferAddress,
-      payer,
-      additionalSigners,
-      secp256r1VerifyInput,
-      jitoBundlesTipAmount,
-      addressesByLookupTableAddress,
-    });
+  const { instructions: executeIxs } = await executeTransaction({
+    settings,
+    transactionMessageBytes,
+    transactionBufferAddress,
+    payer,
+    additionalSigners,
+    secp256r1VerifyInput,
+    jitoBundlesTipAmount,
+  });
 
   const buildTx = (instructions: Instruction[]): TransactionDetails => ({
     payer,
     instructions,
-    addressesByLookupTableAddress: addressLookupTableAccounts,
   });
 
   const txs = [

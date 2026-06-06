@@ -55,11 +55,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
           },
         });
 
-        await sendTransaction(
-          [createUserAccountIx],
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction([createUserAccountIx], ctx.payer);
 
         const secp256r1Keys = generateSecp256r1KeyPair();
         const credentialId = bufferToBase64URLString(
@@ -83,11 +79,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
           },
         });
 
-        await sendTransaction(
-          [createDomainUserAccountDataIx],
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction([createDomainUserAccountDataIx], ctx.payer);
 
         // Verify Secp256r1Key was added as member
         const settings = await getSettingsFromIndex(ctx.index);
@@ -147,11 +139,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
           },
         });
 
-        await sendTransaction(
-          [createUserAccountIx],
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction([createUserAccountIx], ctx.payer);
 
         const secp256r1Keys = generateSecp256r1KeyPair();
         const credentialId = bufferToBase64URLString(
@@ -172,11 +160,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
           },
         });
 
-        await sendTransaction(
-          [createDomainUserAccountDataIx],
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction([createDomainUserAccountDataIx], ctx.payer);
 
         const changeConfigArgs = await prepareChangeConfigArgs({
           settings: await getSettingsFromIndex(ctx.index),
@@ -214,7 +198,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
           changeConfigArgs,
         });
 
-        await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+        await sendTransaction(instructions, ctx.payer);
 
         // Verify payer was added as member
         const settings = await getSettingsFromIndex(ctx.index);

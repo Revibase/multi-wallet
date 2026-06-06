@@ -14,7 +14,6 @@ import {
 import {
   address,
   getBase64Decoder,
-  type AddressesByLookupTableAddress,
   type Instruction,
   type TransactionSigner,
 } from "@solana/kit";
@@ -36,14 +35,12 @@ export async function executeTransaction(
     };
     additionalSigners?: TransactionSigner[];
     additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
-    addressesByLookupTableAddress?: AddressesByLookupTableAddress;
   },
   options?: TransactionAuthorizationFlowOptions,
 ): Promise<{ txSig?: string; user: UserInfo }> {
   const {
     instructions,
     signer,
-    addressesByLookupTableAddress,
     settingsIndexWithAddress,
     additionalSigners,
     additionalVoters,
@@ -54,7 +51,6 @@ export async function executeTransaction(
     const transactionMessageBytes = prepareTransactionMessage({
       payer: address(signer.walletAddress),
       instructions,
-      addressesByLookupTableAddress,
     });
     const settingsArgs =
       settingsIndexWithAddress ?? signer.settingsIndexWithAddress;

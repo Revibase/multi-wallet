@@ -52,7 +52,7 @@ export function runPermissionsTests(getCtx: () => TestContext) {
         changeConfigArgs,
       });
 
-      await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+      await sendTransaction(instructions, ctx.payer);
       const settings = await getSettingsFromIndex(ctx.index);
       const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
       const payerMember = accountData.members.find(
@@ -109,7 +109,7 @@ export function runPermissionsTests(getCtx: () => TestContext) {
         changeConfigArgs,
       });
 
-      await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+      await sendTransaction(instructions, ctx.payer);
       const settings = await getSettingsFromIndex(ctx.index);
       const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
       const addedMember = accountData.members.find(
@@ -166,7 +166,7 @@ export function runPermissionsTests(getCtx: () => TestContext) {
         changeConfigArgs,
       });
 
-      await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+      await sendTransaction(instructions, ctx.payer);
       const settings = await getSettingsFromIndex(ctx.index);
       const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
       const addedMember = accountData.members.find(
@@ -257,7 +257,6 @@ export function runPermissionsTests(getCtx: () => TestContext) {
           changeConfigArgs: addMembersArgs,
         }),
         ctx.payer,
-        ctx.addressLookUpTable,
       );
 
       // Update both members' permissions
@@ -287,7 +286,6 @@ export function runPermissionsTests(getCtx: () => TestContext) {
           changeConfigArgs: editPermissionsArgs,
         }),
         ctx.payer,
-        ctx.addressLookUpTable,
       );
       const settings = await getSettingsFromIndex(ctx.index);
       const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;

@@ -15,10 +15,7 @@ import type { AbortScope } from "../abort";
 import { withRetry } from "../retry";
 import type { TransactionAuthorizationFlowOptions } from "../types";
 import { signAndSendBundledTransactions } from "./solana-send";
-import {
-  fetchAdditionalLoopUpTableIfNecessary,
-  getTransactionManagerSigner,
-} from "./utils";
+import { getTransactionManagerSigner } from "./utils";
 
 export async function processBundledTransaction(
   provider: RevibaseProvider,
@@ -90,19 +87,5 @@ export async function processBundledTransaction(
     payer,
   });
 
-  const bundlesWithLookupTables = await Promise.all(
-    bundle.map(async (x) => ({
-      ...x,
-      addressesByLookupTableAddress:
-        await fetchAdditionalLoopUpTableIfNecessary(
-          x.addressesByLookupTableAddress,
-        ),
-    })),
-  );
-
-  return signAndSendBundledTransactions(
-    provider,
-    bundlesWithLookupTables,
-    abortScope,
-  );
+  return signAndSendBundledTransactions(provider, bundle, abortScope);
 }

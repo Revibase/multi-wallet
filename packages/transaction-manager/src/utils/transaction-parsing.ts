@@ -4,7 +4,6 @@ import {
   convertMemberKeyToString,
   getSecp256r1MessageHash,
   getSecp256r1VerifyInstructionDataDecoder,
-  getSolanaRpc,
   getWalletAddressFromSettings,
   KeyType,
   Secp256r1Key,
@@ -14,17 +13,9 @@ import {
   type TransactionAuthDetails,
   type TransactionExecuteSyncInstructionData,
 } from "@revibase/core";
-import type {
-  Address,
-  CompiledTransactionMessage,
-  CompiledTransactionMessageWithLifetime,
-  Rpc,
-  SolanaRpcApi,
-} from "@solana/kit";
 import {
   address,
   decompileTransactionMessage,
-  fetchAddressesForLookupTables,
   type Instruction,
 } from "@solana/kit";
 import type {
@@ -34,10 +25,6 @@ import type {
   TransactionManagerConfig,
   WellKnownClientEntry,
 } from "../types";
-import {
-  getRevibaseLookupTableAddresses,
-  REVIBASE_LOOKUP_TABLE_ADDRESS,
-} from "./consts";
 import {
   verifyClientSignature,
   verifyDeviceSignature,
@@ -189,16 +176,12 @@ export async function verifyAndParseSigners(
 /**
  * Parses raw transaction message bytes into decompiled instructions.
  */
-export async function parseTransactionMessageBytes(
+export function parseTransactionMessageBytes(
   transactionMessage: Uint8Array<ArrayBuffer>,
-): Promise<Instruction[]> {
+): Instruction[] {
   const compiledMessage =
     vaultTransactionMessageDeserialize(transactionMessage);
-  const decompiledMessage =
-    await decompileTransactionMessageFetchingLookupTablesWithCache(
-      compiledMessage,
-      getSolanaRpc(),
-    );
+  const decompiledMessage = decompileTransactionMessage(compiledMessage);
   return decompiledMessage.instructions as Instruction[];
 }
 
@@ -213,8 +196,7 @@ export function parseInnerTransaction(
     throw new Error("Invalid instruction accounts.");
   }
 
-  const accountOffset =
-    3 + (innerTransactionMessage.addressTableLookups?.length ?? 0);
+  const accountOffset = 3;
   const availableAccounts = outerInstructionAccounts.slice(accountOffset);
 
   return innerTransactionMessage.instructions.map((compiledInstruction) => ({
@@ -225,59 +207,4 @@ export function parseInnerTransaction(
     programAddress:
       availableAccounts[compiledInstruction.programAddressIndex].address,
   }));
-}
-
-/**
- * Decompiles a transaction message, fetching lookup table addresses with caching.
- */
-export async function decompileTransactionMessageFetchingLookupTablesWithCache(
-  compiledMessage: CompiledTransactionMessage &
-    CompiledTransactionMessageWithLifetime,
-  rpc: Rpc<SolanaRpcApi>,
-) {
-  if (compiledMessage.version !== 0) {
-    throw new Error("Only v0 transactions are supported.");
-  }
-  const hasLookupTables =
-    "addressTableLookups" in compiledMessage &&
-    compiledMessage.addressTableLookups !== undefined &&
-    compiledMessage.addressTableLookups.length > 0;
-
-  const lookupTableAddresses = hasLookupTables
-    ? compiledMessage.addressTableLookups!.map(
-        (lookup) => lookup.lookupTableAddress,
-      )
-    : [];
-
-  const addressesByLookupTableAddress =
-    lookupTableAddresses.length > 0
-      ? await fetchAddressesForLookupTablesWithCache(lookupTableAddresses, rpc)
-      : {};
-
-  return decompileTransactionMessage(compiledMessage, {
-    addressesByLookupTableAddress,
-  });
-}
-
-async function fetchAddressesForLookupTablesWithCache(
-  lookupTableAddresses: Address[],
-  rpc: Rpc<SolanaRpcApi>,
-) {
-  const includesRevibaseLookupTable = lookupTableAddresses.some(
-    (tableAddress) => tableAddress.toString() === REVIBASE_LOOKUP_TABLE_ADDRESS,
-  );
-
-  if (includesRevibaseLookupTable) {
-    const otherLookupTableAddresses = lookupTableAddresses.filter(
-      (tableAddress) =>
-        tableAddress.toString() !== REVIBASE_LOOKUP_TABLE_ADDRESS,
-    );
-
-    return {
-      ...getRevibaseLookupTableAddresses(),
-      ...(await fetchAddressesForLookupTables(otherLookupTableAddresses, rpc)),
-    };
-  }
-
-  return fetchAddressesForLookupTables(lookupTableAddresses, rpc);
 }
