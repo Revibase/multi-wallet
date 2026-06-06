@@ -3,6 +3,7 @@ import {
   fetchSettings,
   getSettingsFromIndex,
   getSolanaRpc,
+  getWalletAddressFromSettings,
   KeyType,
   prepareTransactionMessage,
   SignedSecp256r1Key,
@@ -12,7 +13,6 @@ import {
   type UserInfo,
 } from "@revibase/core";
 import {
-  address,
   getBase64Decoder,
   type AddressesByLookupTableAddress,
   type Instruction,
@@ -51,14 +51,17 @@ export async function executeTransaction(
   } = args;
 
   const onConnectedCallback = async (rid: string, clientOrigin: string) => {
+    const settingsArgs =
+      settingsIndexWithAddress ?? signer.settingsIndexWithAddress;
+    if (!settingsArgs) {
+      throw new Error("Signer is not delegated to any wallet.");
+    }
+    const settings = await getSettingsFromIndex(settingsArgs.index);
     const transactionMessageBytes = prepareTransactionMessage({
-      payer: address(signer.walletAddress),
+      payer: await getWalletAddressFromSettings(settings),
       instructions,
       addressesByLookupTableAddress,
     });
-    const settingsArgs =
-      settingsIndexWithAddress ?? signer.settingsIndexWithAddress;
-    const settings = await getSettingsFromIndex(settingsArgs.index);
     const settingsData = (
       await withRetry(() => fetchSettings(getSolanaRpc(), settings))
     ).data;
