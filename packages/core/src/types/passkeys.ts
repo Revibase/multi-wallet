@@ -3,10 +3,12 @@ import z from "zod";
 
 export const UserInfoSchema = z.looseObject({
   publicKey: z.string(),
-  walletAddress: z.string(),
-  settingsIndexWithAddress: z.object({
-    index: z.union([z.number(), z.bigint()]),
-  }),
+  walletAddress: z.string().optional(),
+  settingsIndexWithAddress: z
+    .object({
+      index: z.union([z.number(), z.bigint()]),
+    })
+    .optional(),
 });
 
 export const DeviceProfileSchema = z
