@@ -40,20 +40,20 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from "@solana/kit";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+} from '@solana/kit';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
 import {
   expectAddress,
   getAccountMetaFactory,
   type ResolvedAccount,
-} from "../shared";
+} from '../shared';
 
 export const CREATE_DOMAIN_CONFIG_DISCRIMINATOR = new Uint8Array([0]);
 
 export function getCreateDomainConfigDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    CREATE_DOMAIN_CONFIG_DISCRIMINATOR,
+    CREATE_DOMAIN_CONFIG_DISCRIMINATOR
   );
 }
 
@@ -62,9 +62,8 @@ export type CreateDomainConfigInstruction<
   TAccountDomainConfig extends string | AccountMeta<string> = string,
   TAccountPayer extends string | AccountMeta<string> = string,
   TAccountAuthority extends string | AccountMeta<string> = string,
-  TAccountSystemProgram extends
-    | string
-    | AccountMeta<string> = "11111111111111111111111111111111",
+  TAccountSystemProgram extends string | AccountMeta<string> =
+    '11111111111111111111111111111111',
   TAccountUserAccount extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
@@ -106,28 +105,25 @@ export type CreateDomainConfigInstructionDataArgs = {
 export function getCreateDomainConfigInstructionDataEncoder(): Encoder<CreateDomainConfigInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["rpId", addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      ['rpId', addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())],
       [
-        "origins",
+        'origins',
         getArrayEncoder(
-          addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder()),
+          addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder())
         ),
       ],
     ]),
-    (value) => ({
-      ...value,
-      discriminator: CREATE_DOMAIN_CONFIG_DISCRIMINATOR,
-    }),
+    (value) => ({ ...value, discriminator: CREATE_DOMAIN_CONFIG_DISCRIMINATOR })
   );
 }
 
 export function getCreateDomainConfigInstructionDataDecoder(): Decoder<CreateDomainConfigInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["rpId", addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ['rpId', addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())],
     [
-      "origins",
+      'origins',
       getArrayDecoder(addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder())),
     ],
   ]);
@@ -139,7 +135,7 @@ export function getCreateDomainConfigInstructionDataCodec(): Codec<
 > {
   return combineCodec(
     getCreateDomainConfigInstructionDataEncoder(),
-    getCreateDomainConfigInstructionDataDecoder(),
+    getCreateDomainConfigInstructionDataDecoder()
   );
 }
 
@@ -159,9 +155,9 @@ export type CreateDomainConfigAsyncInput<
   authority: TransactionSigner<TAccountAuthority>;
   systemProgram?: Address<TAccountSystemProgram>;
   userAccount?: Address<TAccountUserAccount>;
-  rpId: CreateDomainConfigInstructionDataArgs["rpId"];
-  origins: CreateDomainConfigInstructionDataArgs["origins"];
-  remainingAccounts: CreateDomainConfigInstructionExtraArgs["remainingAccounts"];
+  rpId: CreateDomainConfigInstructionDataArgs['rpId'];
+  origins: CreateDomainConfigInstructionDataArgs['origins'];
+  remainingAccounts: CreateDomainConfigInstructionExtraArgs['remainingAccounts'];
 };
 
 export async function getCreateDomainConfigInstructionAsync<
@@ -179,7 +175,7 @@ export async function getCreateDomainConfigInstructionAsync<
     TAccountSystemProgram,
     TAccountUserAccount
   >,
-  config?: { programAddress?: TProgramAddress },
+  config?: { programAddress?: TProgramAddress }
 ): Promise<
   CreateDomainConfigInstruction<
     TProgramAddress,
@@ -215,7 +211,7 @@ export async function getCreateDomainConfigInstructionAsync<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
   if (!accounts.userAccount.value) {
     accounts.userAccount.value = await getProgramDerivedAddress({
@@ -231,7 +227,7 @@ export async function getCreateDomainConfigInstructionAsync<
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.domainConfig),
@@ -242,7 +238,7 @@ export async function getCreateDomainConfigInstructionAsync<
       ...remainingAccounts,
     ],
     data: getCreateDomainConfigInstructionDataEncoder().encode(
-      args as CreateDomainConfigInstructionDataArgs,
+      args as CreateDomainConfigInstructionDataArgs
     ),
     programAddress,
   } as CreateDomainConfigInstruction<
@@ -267,9 +263,9 @@ export type CreateDomainConfigInput<
   authority: TransactionSigner<TAccountAuthority>;
   systemProgram?: Address<TAccountSystemProgram>;
   userAccount: Address<TAccountUserAccount>;
-  rpId: CreateDomainConfigInstructionDataArgs["rpId"];
-  origins: CreateDomainConfigInstructionDataArgs["origins"];
-  remainingAccounts: CreateDomainConfigInstructionExtraArgs["remainingAccounts"];
+  rpId: CreateDomainConfigInstructionDataArgs['rpId'];
+  origins: CreateDomainConfigInstructionDataArgs['origins'];
+  remainingAccounts: CreateDomainConfigInstructionExtraArgs['remainingAccounts'];
 };
 
 export function getCreateDomainConfigInstruction<
@@ -287,7 +283,7 @@ export function getCreateDomainConfigInstruction<
     TAccountSystemProgram,
     TAccountUserAccount
   >,
-  config?: { programAddress?: TProgramAddress },
+  config?: { programAddress?: TProgramAddress }
 ): CreateDomainConfigInstruction<
   TProgramAddress,
   TAccountDomainConfig,
@@ -321,14 +317,14 @@ export function getCreateDomainConfigInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.domainConfig),
@@ -339,7 +335,7 @@ export function getCreateDomainConfigInstruction<
       ...remainingAccounts,
     ],
     data: getCreateDomainConfigInstructionDataEncoder().encode(
-      args as CreateDomainConfigInstructionDataArgs,
+      args as CreateDomainConfigInstructionDataArgs
     ),
     programAddress,
   } as CreateDomainConfigInstruction<
@@ -373,11 +369,11 @@ export function parseCreateDomainConfigInstruction<
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
-    InstructionWithData<ReadonlyUint8Array>,
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedCreateDomainConfigInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 5) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -395,7 +391,7 @@ export function parseCreateDomainConfigInstruction<
       userAccount: getNextAccount(),
     },
     data: getCreateDomainConfigInstructionDataDecoder().decode(
-      instruction.data,
+      instruction.data
     ),
   };
 }

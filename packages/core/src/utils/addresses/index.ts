@@ -111,11 +111,3 @@ export async function getWalletAddressFromIndex(index: number | bigint) {
   const address = await getWalletAddressFromSettings(settings);
   return address;
 }
-
-export async function getLightCpiSigner() {
-  const [lightCpiSigner] = await getProgramDerivedAddress({
-    programAddress: MULTI_WALLET_PROGRAM_ADDRESS,
-    seeds: [getUtf8Encoder().encode("cpi_authority")],
-  });
-  return lightCpiSigner;
-}

@@ -30,13 +30,6 @@ export async function nativeTransferIntent({
   const dedupSigners = getDeduplicatedSigners(signers);
   const walletAddress = await getWalletAddressFromSettings(settings);
 
-  const { value } = await getSolanaRpc()
-    .getAccountInfo(walletAddress, { encoding: "base64" })
-    .send();
-
-  if ((value?.lamports ?? 0) < BigInt(amount)) {
-    throw new ValidationError("Insufficient balance for native transfer.");
-  }
   const packedAccounts = new PackedAccounts();
   const { secp256r1VerifyInput, transactionSyncSigners } = buildSignerAccounts(
     dedupSigners,

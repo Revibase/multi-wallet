@@ -1,23 +1,9 @@
 import {
-  type AccountProofInput,
-  getLightSystemAccountMetasV2,
-  type NewAddressProofInput,
-  type PackedAddressTreeInfo,
-  type PackedStateTreeInfo,
-  type PackedTreeInfos,
-  selectStateTreeInfo,
-  type TreeInfo,
-  TreeType,
-} from "@lightprotocol/stateless.js";
-import {
   type AccountMeta,
   AccountRole,
   type AccountSignerMeta,
   address,
 } from "@solana/kit";
-import { PublicKey } from "@solana/web3.js";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../../generated";
-import { getLightProtocolRpc } from "../initialize";
 
 interface MapData {
   index: number;
@@ -25,29 +11,19 @@ interface MapData {
 }
 
 export class PackedAccounts {
-  systemAccounts: AccountMeta[];
-
   nextPreIndex: number;
   preMap: Map<string, MapData>;
 
-  nextPackedIndex: number;
-  packedMap: Map<string, MapData>;
-  outputTreeIndex: number;
-
   constructor() {
-    this.systemAccounts = [];
     this.nextPreIndex = 0;
     this.preMap = new Map();
-    this.nextPackedIndex = 0;
-    this.packedMap = new Map();
-    this.outputTreeIndex = -1;
   }
 
   addPreAccounts(
     accounts: (AccountMeta | AccountSignerMeta)[],
   ): Map<string, MapData> {
     for (const acc of accounts) {
-      this.insertOrGet(acc.address.toString(), acc, false);
+      this.insertOrGet(acc.address.toString(), acc);
     }
     return this.preMap;
   }
@@ -62,107 +38,19 @@ export class PackedAccounts {
     }
   }
 
-  async addSystemAccounts(): Promise<void> {
-    this.systemAccounts.push(
-      ...getLightSystemAccountMetasV2({
-        selfProgram: new PublicKey(MULTI_WALLET_PROGRAM_ADDRESS.toString()),
-      }).map((x) => ({
-        address: address(x.pubkey.toString()),
-        role: this.getAccountRole(x.isSigner, x.isWritable),
-      })),
-    );
-  }
-
   insertOrGet(
     pubkey: string,
     accountMeta: AccountMeta | AccountSignerMeta = {
       address: address(pubkey),
       role: AccountRole.WRITABLE,
     },
-    isPacked = true,
   ): number {
-    const map = isPacked ? this.packedMap : this.preMap;
+    const map = this.preMap;
     if (!map.has(pubkey)) {
-      const index = isPacked ? this.nextPackedIndex++ : this.nextPreIndex++;
+      const index = this.nextPreIndex++;
       map.set(pubkey, { index, accountMeta });
     }
     return map.get(pubkey)!.index;
-  }
-
-  packOutputTreeIndex(outputStateTreeInfo: TreeInfo) {
-    if (outputStateTreeInfo.treeType === TreeType.StateV1) {
-      return this.insertOrGet(outputStateTreeInfo.tree.toString());
-    } else if (outputStateTreeInfo.treeType === TreeType.StateV2) {
-      return this.insertOrGet(outputStateTreeInfo.queue.toString());
-    }
-    throw new Error("Tree type not supported");
-  }
-
-  async getOutputTreeIndex() {
-    if (this.outputTreeIndex !== -1) {
-      return this.outputTreeIndex;
-    }
-    const stateTreeInfos = await getLightProtocolRpc().getStateTreeInfos();
-    const selectedStateTree = selectStateTreeInfo(stateTreeInfos);
-    const outputStateTreeIndex = this.packOutputTreeIndex(selectedStateTree);
-    return outputStateTreeIndex;
-  }
-
-  packTreeInfos(
-    accountProofInputs: AccountProofInput[],
-    newAddressProofInputs: NewAddressProofInput[],
-  ): PackedTreeInfos {
-    const stateTreeInfos: PackedStateTreeInfo[] = [];
-    const addressTreeInfos: PackedAddressTreeInfo[] = [];
-
-    for (const account of accountProofInputs) {
-      const merkleTreePubkeyIndex = this.insertOrGet(
-        account.treeInfo.tree.toString(),
-      );
-      const queuePubkeyIndex = this.insertOrGet(
-        account.treeInfo.queue.toString(),
-      );
-
-      stateTreeInfos.push({
-        rootIndex: account.rootIndex,
-        merkleTreePubkeyIndex,
-        queuePubkeyIndex,
-        leafIndex: account.leafIndex,
-        proveByIndex: account.proveByIndex,
-      });
-
-      const treeToUse = account.treeInfo.nextTreeInfo ?? account.treeInfo;
-      const index = this.packOutputTreeIndex(treeToUse);
-      if (this.outputTreeIndex === -1) {
-        this.outputTreeIndex = index;
-      }
-    }
-
-    for (const account of newAddressProofInputs) {
-      const addressMerkleTreePubkeyIndex = this.insertOrGet(
-        account.treeInfo.tree.toString(),
-      );
-      const addressQueuePubkeyIndex = this.insertOrGet(
-        account.treeInfo.queue.toString(),
-      );
-
-      addressTreeInfos.push({
-        rootIndex: account.rootIndex,
-        addressMerkleTreePubkeyIndex,
-        addressQueuePubkeyIndex,
-      });
-    }
-
-    return {
-      stateTrees:
-        stateTreeInfos.length > 0
-          ? {
-              packedTreeInfos: stateTreeInfos,
-              outputTreeIndex: this.outputTreeIndex,
-            }
-          : undefined,
-      addressTrees: addressTreeInfos,
-    };
   }
 
   hashSetAccountsToMetas(map: Map<string, MapData>): AccountMeta[] {
@@ -172,26 +60,11 @@ export class PackedAccounts {
     return packedAccounts;
   }
 
-  getOffsets(preAccountLength: number): [number, number] {
-    const systemAccountsStartOffset = preAccountLength;
-    const packedAccountsStartOffset =
-      systemAccountsStartOffset + this.systemAccounts.length;
-    return [systemAccountsStartOffset, packedAccountsStartOffset];
-  }
-
   toAccountMetas(): {
     remainingAccounts: AccountMeta[];
-    systemOffset: number;
-    packedOffset: number;
   } {
     const preAccounts = this.hashSetAccountsToMetas(this.preMap);
-    const packedAccounts = this.hashSetAccountsToMetas(this.packedMap);
-    const [systemOffset, packedOffset] = this.getOffsets(preAccounts.length);
-    const remainingAccounts = [
-      ...preAccounts,
-      ...this.systemAccounts,
-      ...packedAccounts,
-    ];
-    return { remainingAccounts, systemOffset, packedOffset };
+
+    return { remainingAccounts: preAccounts };
   }
 }

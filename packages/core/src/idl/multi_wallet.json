@@ -12,7 +12,9 @@
       "docs": [
         "Applies one or more configuration changes to an existing multi-wallet."
       ],
-      "discriminator": [8],
+      "discriminator": [
+        8
+      ],
       "accounts": [
         {
           "name": "settings",
@@ -65,7 +67,9 @@
       "docs": [
         "Initializes a new domain configuration used for WebAuthn (secp256r1) verification."
       ],
-      "discriminator": [0],
+      "discriminator": [
+        0
+      ],
       "accounts": [
         {
           "name": "domain_config",
@@ -91,7 +95,12 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [117, 115, 101, 114]
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114
+                ]
               },
               {
                 "kind": "account",
@@ -114,8 +123,12 @@
     },
     {
       "name": "create_domain_user_account",
-      "docs": ["Create Domain User Account for WebAuthn"],
-      "discriminator": [4],
+      "docs": [
+        "Create Domain User Account for WebAuthn"
+      ],
+      "discriminator": [
+        4
+      ],
       "accounts": [
         {
           "name": "payer",
@@ -160,8 +173,12 @@
     },
     {
       "name": "create_global_counter",
-      "docs": ["Create a global counter to index all multi wallets"],
-      "discriminator": [3],
+      "docs": [
+        "Create a global counter to index all multi wallets"
+      ],
+      "discriminator": [
+        3
+      ],
       "accounts": [
         {
           "name": "global_counter",
@@ -171,7 +188,19 @@
               {
                 "kind": "const",
                 "value": [
-                  103, 108, 111, 98, 97, 108, 95, 99, 111, 117, 110, 116, 101,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116,
+                  101,
                   114
                 ]
               }
@@ -195,7 +224,9 @@
       "docs": [
         "Create User Account (for linking a pubkey to a multisig wallet)"
       ],
-      "discriminator": [5],
+      "discriminator": [
+        5
+      ],
       "accounts": [
         {
           "name": "payer",
@@ -217,7 +248,12 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [117, 115, 101, 114]
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114
+                ]
               },
               {
                 "kind": "account",
@@ -243,7 +279,9 @@
       "docs": [
         "Creates a new multi-wallet with the specified permissions and ownership."
       ],
-      "discriminator": [16],
+      "discriminator": [
+        16
+      ],
       "accounts": [
         {
           "name": "payer",
@@ -266,7 +304,19 @@
               {
                 "kind": "const",
                 "value": [
-                  103, 108, 111, 98, 97, 108, 95, 99, 111, 117, 110, 116, 101,
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108,
+                  95,
+                  99,
+                  111,
+                  117,
+                  110,
+                  116,
+                  101,
                   114
                 ]
               }
@@ -280,7 +330,12 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [117, 115, 101, 114]
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114
+                ]
               },
               {
                 "kind": "account",
@@ -297,7 +352,18 @@
               {
                 "kind": "const",
                 "value": [
-                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
+                  109,
+                  117,
+                  108,
+                  116,
+                  105,
+                  95,
+                  119,
+                  97,
+                  108,
+                  108,
+                  101,
+                  116
                 ]
               },
               {
@@ -320,7 +386,9 @@
       "docs": [
         "Enables or disables a domain configuration. Useful for temporary suspension."
       ],
-      "discriminator": [2],
+      "discriminator": [
+        2
+      ],
       "accounts": [
         {
           "name": "domain_config",
@@ -343,7 +411,9 @@
       "docs": [
         "Updates an existing domain configuration used for WebAuthn (secp256r1) verification."
       ],
-      "discriminator": [1],
+      "discriminator": [
+        1
+      ],
       "accounts": [
         {
           "name": "domain_config",
@@ -382,8 +452,12 @@
     },
     {
       "name": "edit_transaction_manager_url",
-      "docs": ["Edit Transaction Manager Url"],
-      "discriminator": [6],
+      "docs": [
+        "Edit Transaction Manager Url"
+      ],
+      "discriminator": [
+        6
+      ],
       "accounts": [
         {
           "name": "signer",
@@ -396,7 +470,12 @@
             "seeds": [
               {
                 "kind": "const",
-                "value": [117, 115, 101, 114]
+                "value": [
+                  117,
+                  115,
+                  101,
+                  114
+                ]
               },
               {
                 "kind": "account",
@@ -415,8 +494,12 @@
     },
     {
       "name": "edit_user_delegate",
-      "docs": ["Edit User Delegate"],
-      "discriminator": [7],
+      "docs": [
+        "Edit User Delegate"
+      ],
+      "discriminator": [
+        7
+      ],
       "accounts": [
         {
           "name": "fee_payer",
@@ -482,7 +565,9 @@
         "Creates a native SOL transfer intent with on chain settings.",
         "Intents are one-step transfers that bypass the transaction buffer flow."
       ],
-      "discriminator": [17],
+      "discriminator": [
+        17
+      ],
       "accounts": [
         {
           "name": "settings",
@@ -505,7 +590,18 @@
               {
                 "kind": "const",
                 "value": [
-                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
+                  109,
+                  117,
+                  108,
+                  116,
+                  105,
+                  95,
+                  119,
+                  97,
+                  108,
+                  108,
+                  101,
+                  116
                 ]
               },
               {
@@ -514,7 +610,13 @@
               },
               {
                 "kind": "const",
-                "value": [118, 97, 117, 108, 116]
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
               }
             ]
           }
@@ -551,7 +653,9 @@
         "Creates a token transfer intent with on chain settings.",
         "Intents are one-step transfers that bypass the transaction buffer flow."
       ],
-      "discriminator": [18],
+      "discriminator": [
+        18
+      ],
       "accounts": [
         {
           "name": "settings",
@@ -578,7 +682,18 @@
               {
                 "kind": "const",
                 "value": [
-                  109, 117, 108, 116, 105, 95, 119, 97, 108, 108, 101, 116
+                  109,
+                  117,
+                  108,
+                  116,
+                  105,
+                  95,
+                  119,
+                  97,
+                  108,
+                  108,
+                  101,
+                  116
                 ]
               },
               {
@@ -587,7 +702,13 @@
               },
               {
                 "kind": "const",
-                "value": [118, 97, 117, 108, 116]
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
               }
             ]
           }
@@ -613,41 +734,38 @@
             "program": {
               "kind": "const",
               "value": [
-                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
-                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
-                219, 233, 248, 89
-              ]
-            }
-          }
-        },
-        {
-          "name": "source_ctoken_token_account",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "source"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114,
-                  105, 156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65,
-                  142, 128, 151, 91, 68
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114, 105,
-                156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65, 142,
-                128, 151, 91, 68
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
               ]
             }
           }
@@ -658,7 +776,6 @@
         {
           "name": "destination_spl_token_account",
           "writable": true,
-          "optional": true,
           "pda": {
             "seeds": [
               {
@@ -677,42 +794,38 @@
             "program": {
               "kind": "const",
               "value": [
-                140, 151, 37, 143, 78, 36, 137, 241, 187, 61, 16, 41, 20, 142,
-                13, 131, 11, 90, 19, 153, 218, 255, 16, 132, 4, 142, 123, 216,
-                219, 233, 248, 89
-              ]
-            }
-          }
-        },
-        {
-          "name": "destination_ctoken_token_account",
-          "writable": true,
-          "optional": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "destination"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114,
-                  105, 156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65,
-                  142, 128, 151, 91, 68
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                9, 21, 163, 87, 35, 121, 78, 143, 182, 93, 7, 91, 107, 114, 105,
-                156, 56, 221, 2, 229, 148, 139, 117, 176, 229, 160, 65, 142,
-                128, 151, 91, 68
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
               ]
             }
           }
@@ -721,69 +834,22 @@
           "name": "token_program"
         },
         {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
           "name": "mint",
           "writable": true
         },
         {
           "name": "system_program",
           "address": "11111111111111111111111111111111"
-        },
-        {
-          "name": "compressed_token_program_authority",
-          "address": "GXtd2izAiMJPwMEjfgTRH3d7k9mjn4Jq3JrWFv9gySYy"
-        },
-        {
-          "name": "spl_interface_pda",
-          "writable": true,
-          "optional": true
-        },
-        {
-          "name": "compressible_config"
-        },
-        {
-          "name": "rent_sponsor",
-          "writable": true,
-          "optional": true
-        },
-        {
-          "name": "compressed_token_program",
-          "address": "cTokenmWW8bLPjZEBAUgYy3zKxQZW6VKi7bqNFEVv3m"
         }
       ],
       "args": [
         {
-          "name": "spl_interface_pda_args",
-          "type": {
-            "option": {
-              "defined": {
-                "name": "SplInterfacePdaArgs"
-              }
-            }
-          }
-        },
-        {
           "name": "amount",
           "type": "u64"
-        },
-        {
-          "name": "source_compressed_token_accounts",
-          "type": {
-            "vec": {
-              "defined": {
-                "name": "CompressedTokenArgs"
-              }
-            }
-          }
-        },
-        {
-          "name": "compressed_proof_args",
-          "type": {
-            "option": {
-              "defined": {
-                "name": "ProofArgs"
-              }
-            }
-          }
         },
         {
           "name": "signers",
@@ -799,8 +865,12 @@
     },
     {
       "name": "transaction_buffer_close",
-      "docs": ["Closes and cleans up a transaction buffer."],
-      "discriminator": [12],
+      "docs": [
+        "Closes and cleans up a transaction buffer."
+      ],
+      "discriminator": [
+        12
+      ],
       "accounts": [
         {
           "name": "settings",
@@ -852,7 +922,9 @@
       "docs": [
         "Creates a new transaction buffer to stage a transaction before execution."
       ],
-      "discriminator": [9],
+      "discriminator": [
+        9
+      ],
       "accounts": [
         {
           "name": "settings"
@@ -912,8 +984,12 @@
     },
     {
       "name": "transaction_buffer_execute",
-      "docs": ["Executes a previously approved transaction buffer."],
-      "discriminator": [13],
+      "docs": [
+        "Executes a previously approved transaction buffer."
+      ],
+      "discriminator": [
+        13
+      ],
       "accounts": [
         {
           "name": "settings",
@@ -961,7 +1037,9 @@
       "docs": [
         "Extends an existing transaction buffer to allow for updated data or additional time."
       ],
-      "discriminator": [11],
+      "discriminator": [
+        11
+      ],
       "accounts": [
         {
           "name": "settings"
@@ -980,8 +1058,12 @@
     },
     {
       "name": "transaction_buffer_vote",
-      "docs": ["Signs a transaction buffer to register approval."],
-      "discriminator": [10],
+      "docs": [
+        "Signs a transaction buffer to register approval."
+      ],
+      "discriminator": [
+        10
+      ],
       "accounts": [
         {
           "name": "settings"
@@ -1029,8 +1111,12 @@
     },
     {
       "name": "transaction_execute",
-      "docs": ["Executes a staged transaction from a buffer."],
-      "discriminator": [14],
+      "docs": [
+        "Executes a staged transaction from a buffer."
+      ],
+      "discriminator": [
+        14
+      ],
       "accounts": [
         {
           "name": "settings",
@@ -1052,7 +1138,9 @@
       "docs": [
         "Executes a transaction synchronously by directly submitting the message and verifying it."
       ],
-      "discriminator": [15],
+      "discriminator": [
+        15
+      ],
       "accounts": [
         {
           "name": "settings",
@@ -1093,23 +1181,68 @@
   "accounts": [
     {
       "name": "DomainConfig",
-      "discriminator": [201, 232, 212, 229, 59, 241, 106, 197]
+      "discriminator": [
+        201,
+        232,
+        212,
+        229,
+        59,
+        241,
+        106,
+        197
+      ]
     },
     {
       "name": "GlobalCounter",
-      "discriminator": [42, 206, 176, 58, 175, 129, 130, 233]
+      "discriminator": [
+        42,
+        206,
+        176,
+        58,
+        175,
+        129,
+        130,
+        233
+      ]
     },
     {
       "name": "Settings",
-      "discriminator": [223, 179, 163, 190, 177, 224, 67, 173]
+      "discriminator": [
+        223,
+        179,
+        163,
+        190,
+        177,
+        224,
+        67,
+        173
+      ]
     },
     {
       "name": "TransactionBuffer",
-      "discriminator": [90, 36, 35, 219, 93, 225, 110, 96]
+      "discriminator": [
+        90,
+        36,
+        35,
+        219,
+        93,
+        225,
+        110,
+        96
+      ]
     },
     {
       "name": "User",
-      "discriminator": [159, 117, 95, 227, 239, 151, 58, 236]
+      "discriminator": [
+        159,
+        117,
+        95,
+        227,
+        239,
+        151,
+        58,
+        236
+      ]
     }
   ],
   "errors": [
@@ -1491,23 +1624,6 @@
   ],
   "types": [
     {
-      "name": "AccountState",
-      "repr": {
-        "kind": "rust"
-      },
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Initialized"
-          },
-          {
-            "name": "Frozen"
-          }
-        ]
-      }
-    },
-    {
       "name": "AddMemberArgs",
       "type": {
         "kind": "struct",
@@ -1532,27 +1648,6 @@
       }
     },
     {
-      "name": "AdditionalMetadata",
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "key",
-            "docs": ["The key of the metadata"],
-            "type": "bytes"
-          },
-          {
-            "name": "value",
-            "docs": ["The value of the metadata"],
-            "type": "bytes"
-          }
-        ]
-      }
-    },
-    {
       "name": "CompiledInstruction",
       "type": {
         "kind": "struct",
@@ -1568,255 +1663,6 @@
           {
             "name": "data",
             "type": "bytes"
-          }
-        ]
-      }
-    },
-    {
-      "name": "CompressedOnlyExtension",
-      "docs": [
-        "CompressedOnly extension for compressed token accounts.",
-        "This extension marks a compressed account as decompress-only (cannot be transferred).",
-        "It stores the delegated amount from the source Token account when it was compressed-and-closed."
-      ],
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "delegated_amount",
-            "docs": [
-              "The delegated amount from the source Token account's delegate field.",
-              "When decompressing, the decompression amount must match this value."
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "withheld_transfer_fee",
-            "docs": [
-              "Withheld transfer fee amount from the source Token account."
-            ],
-            "type": "u64"
-          },
-          {
-            "name": "is_ata",
-            "docs": [
-              "Whether the source was an ATA (1) or regular token account (0).",
-              "When is_ata=1, decompress must verify ATA derivation matches."
-            ],
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "CompressedProof",
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "a",
-            "type": {
-              "array": ["u8", 32]
-            }
-          },
-          {
-            "name": "b",
-            "type": {
-              "array": ["u8", 64]
-            }
-          },
-          {
-            "name": "c",
-            "type": {
-              "array": ["u8", 32]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "CompressedTokenArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "version",
-            "type": "u8"
-          },
-          {
-            "name": "root_index",
-            "type": "u16"
-          },
-          {
-            "name": "amount",
-            "type": "u64"
-          },
-          {
-            "name": "merkle_context",
-            "type": {
-              "defined": {
-                "name": "PackedMerkleContext"
-              }
-            }
-          },
-          {
-            "name": "tlv",
-            "type": {
-              "option": {
-                "vec": {
-                  "defined": {
-                    "name": "ExtensionStruct"
-                  }
-                }
-              }
-            }
-          },
-          {
-            "name": "state",
-            "type": {
-              "defined": {
-                "name": "AccountState"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "CompressibleExtension",
-      "docs": [
-        "Compressible extension for token accounts.",
-        "This extension contains compression configuration and timing data."
-      ],
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "decimals_option",
-            "docs": ["Option discriminator for decimals (0 = None, 1 = Some)"],
-            "type": "u8"
-          },
-          {
-            "name": "decimals",
-            "docs": ["Token decimals (only valid when decimals_option == 1)"],
-            "type": "u8"
-          },
-          {
-            "name": "compression_only",
-            "docs": [
-              "Whether this account is compression-only (cannot decompress)"
-            ],
-            "type": "bool"
-          },
-          {
-            "name": "is_ata",
-            "docs": [
-              "Whether the source account is an ATA (1 = ATA, 0 = regular account)",
-              "Used during compress_and_close to set is_ata in CompressedOnlyExtension"
-            ],
-            "type": "u8"
-          },
-          {
-            "name": "info",
-            "docs": ["Compression configuration and timing data"],
-            "type": {
-              "defined": {
-                "name": "CompressionInfo"
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
-      "name": "CompressionInfo",
-      "docs": ["Compressible extension for ctoken accounts."],
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "config_account_version",
-            "type": "u16"
-          },
-          {
-            "name": "compress_to_pubkey",
-            "docs": ["Compress to account pubkey instead of account owner."],
-            "type": "u8"
-          },
-          {
-            "name": "account_version",
-            "docs": [
-              "Version of the compressed token account when ctoken account is",
-              "compressed and closed. (The account_version specifies the hashing scheme.)"
-            ],
-            "type": "u8"
-          },
-          {
-            "name": "lamports_per_write",
-            "docs": [
-              "Lamports amount the account is topped up with at every write",
-              "by the fee payer."
-            ],
-            "type": "u32"
-          },
-          {
-            "name": "compression_authority",
-            "docs": ["Authority that can compress and close the account."],
-            "type": {
-              "array": ["u8", 32]
-            }
-          },
-          {
-            "name": "rent_sponsor",
-            "docs": [
-              "Recipient for rent exemption lamports up on account closure."
-            ],
-            "type": {
-              "array": ["u8", 32]
-            }
-          },
-          {
-            "name": "last_claimed_slot",
-            "docs": ["Last slot rent was claimed from this account."],
-            "type": "u64"
-          },
-          {
-            "name": "rent_exemption_paid",
-            "docs": [
-              "Rent exemption lamports paid at account creation.",
-              "Used instead of querying the Rent sysvar to ensure rent sponsor",
-              "gets back exactly what they paid regardless of future rent changes."
-            ],
-            "type": "u32"
-          },
-          {
-            "name": "_reserved",
-            "docs": ["Reserved for future use."],
-            "type": "u32"
-          },
-          {
-            "name": "rent_config",
-            "docs": [
-              "Rent function parameters,",
-              "used to calculate whether the account is compressible."
-            ],
-            "type": {
-              "defined": {
-                "name": "RentConfig"
-              }
-            }
           }
         ]
       }
@@ -1864,7 +1710,9 @@
           },
           {
             "name": "SetThreshold",
-            "fields": ["u8"]
+            "fields": [
+              "u8"
+            ]
           }
         ]
       }
@@ -1963,7 +1811,10 @@
           {
             "name": "rp_id_hash",
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           },
           {
@@ -1985,13 +1836,19 @@
           {
             "name": "rp_id",
             "type": {
-              "array": ["u8", 255]
+              "array": [
+                "u8",
+                255
+              ]
             }
           },
           {
             "name": "origins",
             "type": {
-              "array": ["u8", 515]
+              "array": [
+                "u8",
+                515
+              ]
             }
           }
         ]
@@ -2054,168 +1911,12 @@
             "name": "message_hash",
             "type": {
               "option": {
-                "array": ["u8", 32]
+                "array": [
+                  "u8",
+                  32
+                ]
               }
             }
-          }
-        ]
-      }
-    },
-    {
-      "name": "ExtensionStruct",
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "enum",
-        "variants": [
-          {
-            "name": "Placeholder0"
-          },
-          {
-            "name": "Placeholder1"
-          },
-          {
-            "name": "Placeholder2"
-          },
-          {
-            "name": "Placeholder3"
-          },
-          {
-            "name": "Placeholder4"
-          },
-          {
-            "name": "Placeholder5"
-          },
-          {
-            "name": "Placeholder6"
-          },
-          {
-            "name": "Placeholder7"
-          },
-          {
-            "name": "Placeholder8"
-          },
-          {
-            "name": "Placeholder9"
-          },
-          {
-            "name": "Placeholder10"
-          },
-          {
-            "name": "Placeholder11"
-          },
-          {
-            "name": "Placeholder12"
-          },
-          {
-            "name": "Placeholder13"
-          },
-          {
-            "name": "Placeholder14"
-          },
-          {
-            "name": "Placeholder15"
-          },
-          {
-            "name": "Placeholder16"
-          },
-          {
-            "name": "Placeholder17"
-          },
-          {
-            "name": "Placeholder18"
-          },
-          {
-            "name": "TokenMetadata",
-            "fields": [
-              {
-                "defined": {
-                  "name": "TokenMetadata"
-                }
-              }
-            ]
-          },
-          {
-            "name": "Placeholder20"
-          },
-          {
-            "name": "Placeholder21"
-          },
-          {
-            "name": "Placeholder22"
-          },
-          {
-            "name": "Placeholder23"
-          },
-          {
-            "name": "Placeholder24"
-          },
-          {
-            "name": "Placeholder25"
-          },
-          {
-            "name": "Placeholder26"
-          },
-          {
-            "name": "PausableAccount",
-            "fields": [
-              {
-                "defined": {
-                  "name": "PausableAccountExtension"
-                }
-              }
-            ]
-          },
-          {
-            "name": "PermanentDelegateAccount",
-            "fields": [
-              {
-                "defined": {
-                  "name": "PermanentDelegateAccountExtension"
-                }
-              }
-            ]
-          },
-          {
-            "name": "TransferFeeAccount",
-            "fields": [
-              {
-                "defined": {
-                  "name": "TransferFeeAccountExtension"
-                }
-              }
-            ]
-          },
-          {
-            "name": "TransferHookAccount",
-            "fields": [
-              {
-                "defined": {
-                  "name": "TransferHookAccountExtension"
-                }
-              }
-            ]
-          },
-          {
-            "name": "CompressedOnly",
-            "fields": [
-              {
-                "defined": {
-                  "name": "CompressedOnlyExtension"
-                }
-              }
-            ]
-          },
-          {
-            "name": "Compressible",
-            "fields": [
-              {
-                "defined": {
-                  "name": "CompressibleExtension"
-                }
-              }
-            ]
           }
         ]
       }
@@ -2290,76 +1991,20 @@
           {
             "name": "key",
             "type": {
-              "array": ["u8", 33]
+              "array": [
+                "u8",
+                33
+              ]
             }
           }
         ]
       }
     },
     {
-      "name": "PackedMerkleContext",
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "merkle_tree_pubkey_index",
-            "type": "u8"
-          },
-          {
-            "name": "queue_pubkey_index",
-            "type": "u8"
-          },
-          {
-            "name": "leaf_index",
-            "type": "u32"
-          },
-          {
-            "name": "prove_by_index",
-            "type": "bool"
-          }
-        ]
-      }
-    },
-    {
-      "name": "PausableAccountExtension",
-      "docs": [
-        "Marker extension indicating the account belongs to a pausable mint.",
-        "This is a zero-size marker (no data) that indicates the token account's",
-        "mint has the SPL Token 2022 Pausable extension.",
-        "",
-        "When present, token operations must check the SPL mint's PausableConfig",
-        "to determine if the mint is paused before allowing transfers."
-      ],
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct"
-      }
-    },
-    {
-      "name": "PermanentDelegateAccountExtension",
-      "docs": [
-        "Marker extension indicating the account belongs to a mint with permanent delegate.",
-        "This is a zero-size marker (no data) that indicates the token account's",
-        "mint has the SPL Token 2022 Permanent Delegate extension.",
-        "",
-        "When present, token operations must check the SPL mint's PermanentDelegate",
-        "to determine the delegate authority before allowing transfers/burns."
-      ],
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct"
-      }
-    },
-    {
       "name": "Permissions",
-      "docs": ["Bitmask for permissions."],
+      "docs": [
+        "Bitmask for permissions."
+      ],
       "repr": {
         "kind": "c"
       },
@@ -2368,28 +2013,6 @@
         "fields": [
           {
             "name": "mask",
-            "type": "u8"
-          }
-        ]
-      }
-    },
-    {
-      "name": "ProofArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "proof",
-            "type": {
-              "option": {
-                "defined": {
-                  "name": "CompressedProof"
-                }
-              }
-            }
-          },
-          {
-            "name": "light_cpi_accounts_start_index",
             "type": "u8"
           }
         ]
@@ -2412,54 +2035,15 @@
       }
     },
     {
-      "name": "RentConfig",
-      "docs": [
-        "Rent function parameters,",
-        "used to calculate whether the account is compressible."
-      ],
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "base_rent",
-            "docs": [
-              "Base rent constant: rent = base_rent + num_bytes * lamports_per_byte_per_epoch"
-            ],
-            "type": "u16"
-          },
-          {
-            "name": "compression_cost",
-            "type": "u16"
-          },
-          {
-            "name": "lamports_per_byte_per_epoch",
-            "type": "u8"
-          },
-          {
-            "name": "max_funded_epochs",
-            "type": "u8"
-          },
-          {
-            "name": "max_top_up",
-            "docs": [
-              "Maximum lamports that can be charged per top-up operation.",
-              "Protects against griefing by accounts with high lamports_per_write."
-            ],
-            "type": "u16"
-          }
-        ]
-      }
-    },
-    {
       "name": "Secp256r1Pubkey",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "array": ["u8", 33]
+            "array": [
+              "u8",
+              33
+            ]
           }
         ]
       }
@@ -2492,7 +2076,10 @@
           {
             "name": "client_and_device_hash",
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           }
         ]
@@ -2577,96 +2164,29 @@
       }
     },
     {
-      "name": "SplInterfacePdaArgs",
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "index",
-            "type": "u8"
-          },
-          {
-            "name": "restricted",
-            "type": "bool"
-          }
-        ]
-      }
-    },
-    {
-      "name": "TokenMetadata",
-      "docs": ["Used for onchain serialization"],
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "update_authority",
-            "docs": [
-              "The authority that can sign to update the metadata",
-              "None if zero"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "mint",
-            "docs": [
-              "The associated mint, used to counter spoofing to be sure that metadata",
-              "belongs to a particular mint"
-            ],
-            "type": "pubkey"
-          },
-          {
-            "name": "name",
-            "docs": ["The longer name of the token"],
-            "type": "bytes"
-          },
-          {
-            "name": "symbol",
-            "docs": ["The shortened symbol for the token"],
-            "type": "bytes"
-          },
-          {
-            "name": "uri",
-            "docs": ["The URI pointing to richer metadata"],
-            "type": "bytes"
-          },
-          {
-            "name": "additional_metadata",
-            "docs": [
-              "Any additional metadata about the token as key-value pairs. The program",
-              "must avoid storing the same key twice."
-            ],
-            "type": {
-              "vec": {
-                "defined": {
-                  "name": "AdditionalMetadata"
-                }
-              }
-            }
-          }
-        ]
-      }
-    },
-    {
       "name": "TransactionBuffer",
       "type": {
         "kind": "struct",
         "fields": [
           {
             "name": "multi_wallet_settings",
-            "docs": ["The multisig settings this belongs to."],
+            "docs": [
+              "The multisig settings this belongs to."
+            ],
             "type": "pubkey"
           },
           {
             "name": "multi_wallet_bump",
-            "docs": ["The bump for the multi_wallet"],
+            "docs": [
+              "The bump for the multi_wallet"
+            ],
             "type": "u8"
           },
           {
             "name": "can_execute",
-            "docs": ["Flag to allow transaction to be executed"],
+            "docs": [
+              "Flag to allow transaction to be executed"
+            ],
             "type": "bool"
           },
           {
@@ -2682,29 +2202,42 @@
           },
           {
             "name": "payer",
-            "docs": ["Payer for the transaction buffer"],
+            "docs": [
+              "Payer for the transaction buffer"
+            ],
             "type": "pubkey"
           },
           {
             "name": "bump",
-            "docs": ["transaction bump"],
+            "docs": [
+              "transaction bump"
+            ],
             "type": "u8"
           },
           {
             "name": "buffer_index",
-            "docs": ["Index to seed address derivation"],
+            "docs": [
+              "Index to seed address derivation"
+            ],
             "type": "u8"
           },
           {
             "name": "final_buffer_hash",
-            "docs": ["Hash of the final assembled transaction message."],
+            "docs": [
+              "Hash of the final assembled transaction message."
+            ],
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           },
           {
             "name": "final_buffer_size",
-            "docs": ["The size of the final assembled transaction message."],
+            "docs": [
+              "The size of the final assembled transaction message."
+            ],
             "type": "u16"
           },
           {
@@ -2731,16 +2264,23 @@
           },
           {
             "name": "buffer_extend_hashes",
-            "docs": ["Buffer hash for all the buffer extend instruction"],
+            "docs": [
+              "Buffer hash for all the buffer extend instruction"
+            ],
             "type": {
               "vec": {
-                "array": ["u8", 32]
+                "array": [
+                  "u8",
+                  32
+                ]
               }
             }
           },
           {
             "name": "voters",
-            "docs": ["Members that voted for this transaction"],
+            "docs": [
+              "Members that voted for this transaction"
+            ],
             "type": {
               "vec": {
                 "defined": {
@@ -2764,7 +2304,9 @@
           },
           {
             "name": "buffer",
-            "docs": ["The buffer of the transaction message."],
+            "docs": [
+              "The buffer of the transaction message."
+            ],
             "type": "bytes"
           }
         ]
@@ -2787,14 +2329,20 @@
             "name": "buffer_extend_hashes",
             "type": {
               "vec": {
-                "array": ["u8", 32]
+                "array": [
+                  "u8",
+                  32
+                ]
               }
             }
           },
           {
             "name": "final_buffer_hash",
             "type": {
-              "array": ["u8", 32]
+              "array": [
+                "u8",
+                32
+              ]
             }
           },
           {
@@ -2885,7 +2433,9 @@
         "variants": [
           {
             "name": "Ed25519",
-            "fields": ["u8"]
+            "fields": [
+              "u8"
+            ]
           },
           {
             "name": "Secp256r1",
@@ -2896,54 +2446,6 @@
                 }
               }
             ]
-          }
-        ]
-      }
-    },
-    {
-      "name": "TransferFeeAccountExtension",
-      "docs": [
-        "Transfer fee extension for Token accounts.",
-        "Stores withheld fees that accumulate during transfers.",
-        "Mirrors SPL Token-2022's TransferFeeAmount extension."
-      ],
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "withheld_amount",
-            "docs": [
-              "Amount withheld during transfers, to be harvested on decompress"
-            ],
-            "type": "u64"
-          }
-        ]
-      }
-    },
-    {
-      "name": "TransferHookAccountExtension",
-      "docs": [
-        "Extension indicating the account belongs to a mint with transfer hook.",
-        "Contains a `transferring` flag used as a reentrancy guard during hook CPI.",
-        "Consistent with SPL Token-2022 TransferHookAccount layout."
-      ],
-      "repr": {
-        "kind": "c"
-      },
-      "type": {
-        "kind": "struct",
-        "fields": [
-          {
-            "name": "transferring",
-            "docs": [
-              "Flag to indicate that the account is in the middle of a transfer.",
-              "Used as reentrancy guard when transfer hook program is called via CPI.",
-              "Always false at rest since we only support nil program_id (no hook invoked)."
-            ],
-            "type": "u8"
           }
         ]
       }

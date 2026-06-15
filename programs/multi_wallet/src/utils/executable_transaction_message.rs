@@ -278,7 +278,7 @@ mod tests {
         let owner = leak_pubkey(owner);
         let lamports: &'static mut u64 = Box::leak(Box::new(0u64));
         let data: &'static mut [u8] = Box::leak(vec![0u8; data_len].into_boxed_slice());
-        AccountInfo::new(key, is_signer, is_writable, lamports, data, owner, false, 0)
+        AccountInfo::new(key, is_signer, is_writable, lamports, data, owner, false)
     }
 
     #[test]

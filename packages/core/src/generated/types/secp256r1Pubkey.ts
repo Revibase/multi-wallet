@@ -18,7 +18,7 @@ import {
   type FixedSizeDecoder,
   type FixedSizeEncoder,
   type ReadonlyUint8Array,
-} from "@solana/kit";
+} from '@solana/kit';
 
 export type Secp256r1Pubkey = readonly [ReadonlyUint8Array];
 

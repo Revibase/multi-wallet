@@ -44,7 +44,7 @@ impl<'info> TransactionExecute<'info> {
     }
 
     #[access_control(ctx.accounts.validate())]
-    pub fn process(ctx: Context<'_, '_, '_, 'info, Self>) -> Result<()> {
+    pub fn process(ctx: Context<'info, Self>) -> Result<()> {
         let transaction_buffer = &ctx.accounts.transaction_buffer;
         let vault_transaction_message =
             VaultTransactionMessage::deserialize(&mut transaction_buffer.buffer.as_slice())?;

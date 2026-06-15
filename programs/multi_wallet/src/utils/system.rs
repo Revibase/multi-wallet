@@ -1,7 +1,6 @@
 use crate::{error::MultisigError, utils::MemberKey};
 use anchor_lang::{
     prelude::*,
-    solana_program::sysvar::instructions,
     system_program::{self, transfer, Transfer},
 };
 
@@ -17,7 +16,7 @@ pub fn durable_nonce_check<'info>(
         .all(|f| f.get_type().eq(&crate::utils::KeyType::Ed25519))
     {
         let ix: anchor_lang::solana_program::instruction::Instruction =
-            instructions::load_instruction_at_checked(0, instructions_sysvar)?;
+            solana_instructions_sysvar::load_instruction_at_checked(0, instructions_sysvar)?;
 
         require!(
             !(ix.program_id == system_program::ID && ix.data.first() == Some(&4)),
@@ -41,7 +40,7 @@ pub fn resize_account_if_necessary<'info>(
         let top_up = target_lamports - current_lamports;
         transfer(
             CpiContext::new(
-                system_program.to_account_info(),
+                system_program.key(),
                 Transfer {
                     from: payer.to_account_info(),
                     to: account.to_account_info(),

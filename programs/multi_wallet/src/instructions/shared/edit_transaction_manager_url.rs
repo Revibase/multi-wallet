@@ -18,7 +18,7 @@ pub struct EditTransactionManagerUrl<'info> {
 
 impl<'info> EditTransactionManagerUrl<'info> {
     pub fn process(
-        ctx: Context<'_, '_, 'info, 'info, Self>,
+        ctx: Context<'info, Self>,
         transaction_manager_url: String,
     ) -> Result<()> {
         let user_account = &mut ctx.accounts.transaction_manager_account;

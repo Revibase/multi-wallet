@@ -35,7 +35,7 @@ pub struct EditDomainConfig<'info> {
 
 impl<'info> EditDomainConfig<'info> {
     pub fn process(
-        ctx: Context<'_, '_, '_, 'info, Self>,
+        ctx: Context<'info, Self>,
         args: EditDomainConfigArgs,
     ) -> Result<()> {
         let domain_config = &mut ctx.accounts.domain_config.load_mut()?;

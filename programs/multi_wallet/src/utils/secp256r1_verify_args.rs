@@ -3,9 +3,9 @@ use crate::{
     TransactionActionType, COMPRESSED_PUBKEY_SERIALIZED_SIZE, SECP256R1_PROGRAM_ID,
     SIGNATURE_OFFSETS_SERIALIZED_SIZE, SIGNATURE_OFFSETS_START,
 };
-use anchor_lang::{prelude::*, solana_program::sysvar::instructions};
+use anchor_lang::prelude::*;
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
-use light_sdk::light_hasher::{Hasher, Sha256};
+use sha2::{Digest, Sha256};
 
 #[allow(dead_code)]
 struct Secp256r1SignatureOffsets {
@@ -265,7 +265,7 @@ impl Secp256r1VerifyArgs {
         instructions_sysvar: &UncheckedAccount,
         expected_signers: &[ExpectedSigner],
     ) -> Result<([u8; 32], [u8; 32])> {
-        let instruction = instructions::get_instruction_relative(-1, instructions_sysvar)?;
+        let instruction = solana_instructions_sysvar::get_instruction_relative(-1, instructions_sysvar)?;
 
         require!(
             instruction.program_id.eq(&SECP256R1_PROGRAM_ID),
@@ -307,8 +307,8 @@ impl Secp256r1VerifyArgs {
                 .message_hash
                 .ok_or(MultisigError::InvalidArguments)?;
 
-            let computed_hash =
-                Sha256::hash(message).map_err(|_| MultisigError::HashComputationFailed)?;
+            let computed_hash :[u8;32]=
+                Sha256::digest(message).into();
 
             require!(
                 extracted_message_hash.eq(&computed_hash),
@@ -336,7 +336,7 @@ impl Secp256r1VerifyArgs {
         let instructions_sysvar = instructions_sysvar
             .as_ref()
             .ok_or(MultisigError::MissingInstructionsSysvar)?;
-        let instruction = instructions::get_instruction_relative(-1, instructions_sysvar)?;
+        let instruction = solana_instructions_sysvar::get_instruction_relative(-1, instructions_sysvar)?;
 
         require!(
             instruction.program_id.eq(&SECP256R1_PROGRAM_ID),
@@ -411,13 +411,12 @@ impl Secp256r1VerifyArgs {
         buffer.extend_from_slice(self.client_and_device_hash.as_ref());
 
         let expected_challenge =
-            Sha256::hash(&buffer).map_err(|_| MultisigError::HashComputationFailed)?;
+            Sha256::digest(&buffer).into();
 
         let generated_client_data_json =
             self.generate_client_data_json(expected_origin, expected_challenge)?;
 
-        let expected_client_data_hash = Sha256::hash(&generated_client_data_json)
-            .map_err(|_| MultisigError::HashComputationFailed)?;
+        let expected_client_data_hash :[u8;32]= Sha256::digest(&generated_client_data_json).into();
 
         if client_data_hash.ne(&expected_client_data_hash) {
             msg!(
@@ -529,7 +528,6 @@ mod tests {
             &mut data_boxed,
             &owner,
             false,
-            0,
         );
         let unchecked: UncheckedAccount = UncheckedAccount::try_from(&account_info);
         let hash = args.fetch_slot_hash(&Some(unchecked)).unwrap();

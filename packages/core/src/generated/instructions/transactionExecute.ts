@@ -25,16 +25,16 @@ import {
   type InstructionWithData,
   type ReadonlyUint8Array,
   type WritableAccount,
-} from "@solana/kit";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from '@solana/kit';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 
 export const TRANSACTION_EXECUTE_DISCRIMINATOR = new Uint8Array([14]);
 
 export function getTransactionExecuteDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    TRANSACTION_EXECUTE_DISCRIMINATOR,
+    TRANSACTION_EXECUTE_DISCRIMINATOR
   );
 }
 
@@ -69,14 +69,14 @@ export type TransactionExecuteInstructionDataArgs = {};
 
 export function getTransactionExecuteInstructionDataEncoder(): FixedSizeEncoder<TransactionExecuteInstructionDataArgs> {
   return transformEncoder(
-    getStructEncoder([["discriminator", fixEncoderSize(getBytesEncoder(), 1)]]),
-    (value) => ({ ...value, discriminator: TRANSACTION_EXECUTE_DISCRIMINATOR }),
+    getStructEncoder([['discriminator', fixEncoderSize(getBytesEncoder(), 1)]]),
+    (value) => ({ ...value, discriminator: TRANSACTION_EXECUTE_DISCRIMINATOR })
   );
 }
 
 export function getTransactionExecuteInstructionDataDecoder(): FixedSizeDecoder<TransactionExecuteInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
   ]);
 }
 
@@ -86,7 +86,7 @@ export function getTransactionExecuteInstructionDataCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getTransactionExecuteInstructionDataEncoder(),
-    getTransactionExecuteInstructionDataDecoder(),
+    getTransactionExecuteInstructionDataDecoder()
   );
 }
 
@@ -102,7 +102,7 @@ export type TransactionExecuteInput<
   settings: Address<TAccountSettings>;
   payer: Address<TAccountPayer>;
   transactionBuffer: Address<TAccountTransactionBuffer>;
-  remainingAccounts: TransactionExecuteInstructionExtraArgs["remainingAccounts"];
+  remainingAccounts: TransactionExecuteInstructionExtraArgs['remainingAccounts'];
 };
 
 export function getTransactionExecuteInstruction<
@@ -116,7 +116,7 @@ export function getTransactionExecuteInstruction<
     TAccountPayer,
     TAccountTransactionBuffer
   >,
-  config?: { programAddress?: TProgramAddress },
+  config?: { programAddress?: TProgramAddress }
 ): TransactionExecuteInstruction<
   TProgramAddress,
   TAccountSettings,
@@ -139,17 +139,15 @@ export function getTransactionExecuteInstruction<
     keyof typeof originalAccounts,
     ResolvedAccount
   >;
-  // Original args.
-  const args = { ...input };
 
   // Resolver scope.
-  const resolverScope = { programAddress, accounts, args };
+  const resolverScope = { programAddress, accounts };
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.settings),
@@ -186,11 +184,11 @@ export function parseTransactionExecuteInstruction<
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
-    InstructionWithData<ReadonlyUint8Array>,
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedTransactionExecuteInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 3) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -206,7 +204,7 @@ export function parseTransactionExecuteInstruction<
       transactionBuffer: getNextAccount(),
     },
     data: getTransactionExecuteInstructionDataDecoder().decode(
-      instruction.data,
+      instruction.data
     ),
   };
 }

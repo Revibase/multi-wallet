@@ -1,10 +1,9 @@
 use crate::{
-    error::MultisigError,
     state::{DomainConfig, User},
     utils::{MemberKey, UserRole, SEED_DOMAIN_CONFIG, SEED_USER},
 };
 use anchor_lang::prelude::*;
-use light_sdk::hasher::{Hasher, Sha256};
+use sha2::{Digest, Sha256};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct CreateDomainConfigArgs {
@@ -20,8 +19,7 @@ pub struct CreateDomainConfig<'info> {
         payer = payer,
         space = DomainConfig::size(),
         seeds = [SEED_DOMAIN_CONFIG, {
-            Sha256::hash(args.rp_id.as_bytes())
-                .expect("Failed to hash rp_id for domain config seeds")
+            Sha256::digest(args.rp_id.as_bytes())
                 .as_ref()
         }],
         bump,
@@ -43,7 +41,7 @@ pub struct CreateDomainConfig<'info> {
 
 impl<'info> CreateDomainConfig<'info> {
     pub fn process(
-        ctx: Context<'_, '_, '_, 'info, Self>,
+        ctx: Context<'info, Self>,
         args: CreateDomainConfigArgs,
     ) -> Result<()> {
         #[cfg(feature = "mainnet")]
@@ -67,8 +65,7 @@ impl<'info> CreateDomainConfig<'info> {
         user.invariant()?;
 
         let domain_config = &mut ctx.accounts.domain_config.load_init()?;
-        domain_config.rp_id_hash = Sha256::hash(args.rp_id.as_bytes())
-            .map_err(|_| MultisigError::HashComputationFailed)?;
+        domain_config.rp_id_hash = Sha256::digest(args.rp_id.as_bytes()).into();
         domain_config.write_rp_id(args.rp_id)?;
         domain_config.write_origins(&args.origins)?;
         domain_config.authority = authority_key;

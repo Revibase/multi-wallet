@@ -40,7 +40,7 @@ pub struct CreateDomainUserAccount<'info> {
 
 impl<'info> CreateDomainUserAccount<'info> {
     pub fn process(
-        ctx: Context<'_, '_, 'info, 'info, Self>,
+        ctx: Context<'info, Self>,
         args: CreateDomainUserAccountArgs,
     ) -> Result<()> {
         let mut wallets = Vec::with_capacity(1);

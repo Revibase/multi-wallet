@@ -1,5 +1,4 @@
 use crate::{
-    error::MultisigError,
     state::{Settings, User, UserWalletOperation},
     utils::{
         resize_account_if_necessary, MultisigSettings, TransactionActionType,
@@ -8,7 +7,7 @@ use crate::{
     ConfigAction,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use light_sdk::hasher::{Hasher, Sha256};
+use sha2::{Digest, Sha256};
 
 #[derive(Accounts)]
 pub struct ChangeConfig<'info> {
@@ -32,7 +31,7 @@ pub struct ChangeConfig<'info> {
 impl<'info> ChangeConfig<'info> {
     fn validate(
         &self,
-        ctx: &Context<'_, '_, 'info, 'info, Self>,
+        ctx: &Context<'info, Self>,
         config_actions: &[ConfigAction],
         signers: &[TransactionSyncSigners],
     ) -> Result<()> {
@@ -46,7 +45,7 @@ impl<'info> ChangeConfig<'info> {
         let mut writer = Vec::new();
         config_actions.serialize(&mut writer)?;
         let message_hash =
-            Sha256::hash(&writer).map_err(|_| MultisigError::HashComputationFailed)?;
+            Sha256::digest(&writer).into();
 
         TransactionSyncSigners::verify(
             signers,
@@ -65,7 +64,7 @@ impl<'info> ChangeConfig<'info> {
 
     #[access_control(ctx.accounts.validate(&ctx, &config_actions, &signers))]
     pub fn process(
-        ctx: Context<'_, '_, 'info, 'info, Self>,
+        ctx: Context<'info, Self>,
         config_actions: Vec<ConfigAction>,
         signers: Vec<TransactionSyncSigners>,
     ) -> Result<()> {

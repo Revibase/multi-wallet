@@ -13,22 +13,19 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from "@solana/kit";
+} from '@solana/kit';
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
   getPermissionsDecoder,
   getPermissionsEncoder,
-  type IPermissions,
   type MemberKey,
   type MemberKeyArgs,
+  type IPermissions,
   type PermissionsArgs,
-} from ".";
+} from '.';
 
-export type EditMemberArgs = {
-  memberKey: MemberKey;
-  permissions: IPermissions;
-};
+export type EditMemberArgs = { memberKey: MemberKey; permissions: IPermissions };
 
 export type EditMemberArgsArgs = {
   memberKey: MemberKeyArgs;
@@ -37,15 +34,15 @@ export type EditMemberArgsArgs = {
 
 export function getEditMemberArgsEncoder(): FixedSizeEncoder<EditMemberArgsArgs> {
   return getStructEncoder([
-    ["memberKey", getMemberKeyEncoder()],
-    ["permissions", getPermissionsEncoder()],
+    ['memberKey', getMemberKeyEncoder()],
+    ['permissions', getPermissionsEncoder()],
   ]);
 }
 
 export function getEditMemberArgsDecoder(): FixedSizeDecoder<EditMemberArgs> {
   return getStructDecoder([
-    ["memberKey", getMemberKeyDecoder()],
-    ["permissions", getPermissionsDecoder()],
+    ['memberKey', getMemberKeyDecoder()],
+    ['permissions', getPermissionsDecoder()],
   ]);
 }
 
