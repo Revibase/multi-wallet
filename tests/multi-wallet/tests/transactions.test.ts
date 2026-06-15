@@ -66,8 +66,7 @@ export function runTransactionTests(getCtx: () => TestContext) {
       // Prepare transaction message
       const transactionMessageBytes = prepareTransactionMessage({
         payer: ctx.multiWalletVault,
-        instructions: [createAccount, createMint],
-        addressesByLookupTableAddress: ctx.addressLookUpTable,
+        instructions: [createAccount, createMint]
       });
 
       // Prepare transaction

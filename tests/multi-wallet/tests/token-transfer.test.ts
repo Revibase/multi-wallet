@@ -6,7 +6,7 @@ import {
   getSettingsFromIndex,
   getSolanaRpc,
   getUserAddress,
-  nativeTransferIntent,
+  getWalletAddressFromIndex,
   Secp256r1Key,
   tokenTransferIntent,
   Transports,
@@ -16,18 +16,20 @@ import { expect } from "chai";
 import {
   createKeyPairSignerFromPrivateKeyBytes,
   getAddressEncoder,
+  getBase64Encoder,
   getU64Encoder,
 } from "gill";
 import {
+  findAssociatedTokenPda,
   getAssociatedTokenAccountAddress,
   getCreateAccountInstruction,
   getCreateAssociatedTokenIdempotentInstruction,
   getInitializeMintInstruction,
   getMintSize,
   getMintToCheckedInstruction,
+  getTokenDecoder,
   SYSTEM_PROGRAM_ADDRESS,
   TOKEN_2022_PROGRAM_ADDRESS,
-  TOKEN_PROGRAM_ADDRESS,
 } from "gill/programs";
 import {
   TEST_AMOUNT_LARGE,
@@ -51,7 +53,7 @@ import type { TestContext } from "../types.ts";
 export function runTokenTransferTest(getCtx: () => TestContext) {
   it("should add payer as new member and successfully transfer mint", async () => {
     await withErrorHandling(
-      "native transfer with payer as member",
+      "token transfer with payer as member",
       async () => {
         let ctx = getCtx();
         ctx = await createMultiWallet(ctx);
@@ -70,7 +72,7 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
           user: ctx.payer,
           newDelegate: Number(ctx.index),
         });
-        await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+        await sendTransaction(instructions, ctx.payer);
 
         const mint = await createMintAndMintToSplAccount(ctx);
 
@@ -84,20 +86,29 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
           tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
         });
 
-        await sendTransaction(
-          [...tokenTransfer],
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction([...tokenTransfer], ctx.payer);
 
         const data = await getSolanaRpc()
-          .getAccountInfo(ctx.multiWalletVault)
+          .getAccountInfo(
+            (
+              await findAssociatedTokenPda({
+                mint,
+                owner: await getWalletAddressFromIndex(ctx.index),
+                tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+              })
+            )[0],
+            { encoding: "base64" },
+          )
           .send();
 
-        const expectedBalance = TEST_AMOUNT_MEDIUM - TEST_AMOUNT_SMALL;
+        const expectedBalance = TEST_AMOUNT_LARGE - TEST_AMOUNT_SMALL;
         expect(
-          Number(data.value?.lamports),
-          "Wallet vault should have correct SOL balance after transfer",
+          Number(
+            getTokenDecoder().decode(
+              getBase64Encoder().encode(data.value?.data[0]!),
+            ).amount,
+          ),
+          "Wallet vault should have correct mint balance after transfer",
         ).to.equal(expectedBalance);
       },
     );
@@ -136,20 +147,18 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
         },
       });
 
-      await sendTransaction(
-        [createDomainUserAccountIx],
-        ctx.payer,
-        ctx.addressLookUpTable,
-      );
+      await sendTransaction([createDomainUserAccountIx], ctx.payer);
+
+      const mint = await createMintAndMintToSplAccount(ctx);
 
       const signedSigner = await mockAuthenticationResponse(
         {
           transactionActionType: "transfer_intent",
-          transactionAddress: SYSTEM_PROGRAM_ADDRESS.toString(),
+          transactionAddress: TOKEN_2022_PROGRAM_ADDRESS.toString(),
           transactionMessageBytes: new Uint8Array([
             ...getU64Encoder().encode(BigInt(TEST_AMOUNT_SMALL)),
             ...getAddressEncoder().encode(ctx.wallet.address),
-            ...getAddressEncoder().encode(SYSTEM_PROGRAM_ADDRESS),
+            ...getAddressEncoder().encode(mint),
           ]),
         },
         secp256r1Keys.privateKey,
@@ -157,50 +166,60 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
         ctx,
       );
 
-      const mint = await createMintAndMintToSplAccount(ctx);
 
       const tokenTransfer = await tokenTransferIntent({
         settings: await getSettingsFromIndex(ctx.index),
-        signers: [ctx.payer],
+        signers: [signedSigner],
         destination: ctx.wallet.address,
         amount: TEST_AMOUNT_SMALL,
         payer: ctx.payer,
         mint,
         tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
       });
-      await sendTransaction(tokenTransfer, ctx.payer, ctx.addressLookUpTable);
+      await sendTransaction(tokenTransfer, ctx.payer);
 
       const data = await getSolanaRpc()
-        .getAccountInfo(ctx.multiWalletVault)
+        .getAccountInfo(
+          (
+            await findAssociatedTokenPda({
+              mint,
+              owner: await getWalletAddressFromIndex(ctx.index),
+              tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+            })
+          )[0],
+          { encoding: "base64" },
+        )
         .send();
 
-      const expectedBalance = TEST_AMOUNT_MEDIUM - TEST_AMOUNT_SMALL;
+      const expectedBalance = TEST_AMOUNT_LARGE - TEST_AMOUNT_SMALL;
       expect(
-        Number(data.value?.lamports),
-        "Wallet vault should have correct balance after first transfer",
+        Number(
+          getTokenDecoder().decode(
+            getBase64Encoder().encode(data.value?.data[0]!),
+          ).amount,
+        ),
+        "Wallet vault should have correct mint balance after transfer",
       ).to.equal(expectedBalance);
-
       // Attempt to submit the same intent again - should fail
       await expectFailure(async () => {
-        const duplicateTransfer = await nativeTransferIntent({
+        const duplicateTransfer = await tokenTransferIntent({
           settings: await getSettingsFromIndex(ctx.index),
           signers: [signedSigner],
           destination: ctx.wallet.address,
           amount: TEST_AMOUNT_SMALL,
+          payer: ctx.payer,
+          mint,
+          tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
         });
 
-        await sendTransaction(
-          duplicateTransfer,
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction(duplicateTransfer, ctx.payer);
       });
     });
   });
 
-  it("should successfully transfer SOL using Secp256r1 signer with transaction manager", async () => {
+  it("should successfully transfer mint using Secp256r1 signer with transaction manager", async () => {
     await withErrorHandling(
-      "native transfer with Secp256r1 and transaction manager",
+      "token transfer with Secp256r1 and transaction manager",
       async () => {
         let ctx = getCtx();
         ctx = await createMultiWallet(ctx);
@@ -227,11 +246,7 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
           },
         });
 
-        await sendTransaction(
-          [createUserAccountIx],
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction([createUserAccountIx], ctx.payer);
 
         const secp256r1Keys = generateSecp256r1KeyPair();
         const credentialId = bufferToBase64URLString(
@@ -255,20 +270,18 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
           },
         });
 
-        await sendTransaction(
-          [createDomainUserAccountIx],
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction([createDomainUserAccountIx], ctx.payer);
+
+        const mint = await createMintAndMintToSplAccount(ctx);
 
         const signedSigner = await mockAuthenticationResponse(
           {
             transactionActionType: "transfer_intent",
-            transactionAddress: SYSTEM_PROGRAM_ADDRESS.toString(),
+            transactionAddress: TOKEN_2022_PROGRAM_ADDRESS.toString(),
             transactionMessageBytes: new Uint8Array([
               ...getU64Encoder().encode(BigInt(TEST_AMOUNT_SMALL)),
               ...getAddressEncoder().encode(ctx.wallet.address),
-              ...getAddressEncoder().encode(SYSTEM_PROGRAM_ADDRESS),
+              ...getAddressEncoder().encode(mint),
             ]),
           },
           secp256r1Keys.privateKey,
@@ -276,11 +289,10 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
           ctx,
         );
 
-        const mint = await createMintAndMintToSplAccount(ctx);
 
         const tokenTransfer = await tokenTransferIntent({
           settings: await getSettingsFromIndex(ctx.index),
-          signers: [ctx.payer],
+          signers: [transactionManager, signedSigner],
           destination: ctx.wallet.address,
           amount: TEST_AMOUNT_SMALL,
           payer: ctx.payer,
@@ -288,20 +300,29 @@ export function runTokenTransferTest(getCtx: () => TestContext) {
           tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
         });
 
-        await sendTransaction(
-          [...tokenTransfer],
-          ctx.payer,
-          ctx.addressLookUpTable,
-        );
+        await sendTransaction([...tokenTransfer], ctx.payer);
 
         const data = await getSolanaRpc()
-          .getAccountInfo(ctx.multiWalletVault)
+          .getAccountInfo(
+            (
+              await findAssociatedTokenPda({
+                mint,
+                owner: await getWalletAddressFromIndex(ctx.index),
+                tokenProgram: TOKEN_2022_PROGRAM_ADDRESS,
+              })
+            )[0],
+            { encoding: "base64" },
+          )
           .send();
 
-        const expectedBalance = TEST_AMOUNT_MEDIUM - TEST_AMOUNT_SMALL;
+        const expectedBalance = TEST_AMOUNT_LARGE - TEST_AMOUNT_SMALL;
         expect(
-          Number(data.value?.lamports),
-          "Wallet vault should have correct SOL balance after Secp256r1 transfer",
+          Number(
+            getTokenDecoder().decode(
+              getBase64Encoder().encode(data.value?.data[0]!),
+            ).amount,
+          ),
+          "Wallet vault should have correct mint balance after transfer",
         ).to.equal(expectedBalance);
       },
     );
@@ -353,11 +374,7 @@ const createMintAndMintToSplAccount = async (ctx: TestContext) => {
     mintAuthority: ctx.payer,
     token: ata,
   });
-  await sendTransaction(
-    [createAccount, createMint, ataIx, mintTo],
-    ctx.payer,
-    ctx.addressLookUpTable,
-  );
+  await sendTransaction([createAccount, createMint, ataIx, mintTo], ctx.payer);
 
   return ephemeralKeypair.address;
 };

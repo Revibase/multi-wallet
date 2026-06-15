@@ -46,13 +46,13 @@ export function runPermissionsTests(getCtx: () => TestContext) {
         ],
       });
 
-      const instructions = await changeConfig({
+      const instructions = changeConfig({
         signers: [ctx.wallet],
         payer: ctx.payer,
         changeConfigArgs,
       });
 
-      await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+      await sendTransaction(instructions, ctx.payer);
       const settings = await getSettingsFromIndex(ctx.index);
       const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
       const payerMember = accountData.members.find(
@@ -103,13 +103,13 @@ export function runPermissionsTests(getCtx: () => TestContext) {
         ],
       });
 
-      const instructions = await changeConfig({
+      const instructions = changeConfig({
         signers: [ctx.wallet],
         payer: ctx.payer,
         changeConfigArgs,
       });
 
-      await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+      await sendTransaction(instructions, ctx.payer);
       const settings = await getSettingsFromIndex(ctx.index);
       const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
       const addedMember = accountData.members.find(
@@ -160,13 +160,13 @@ export function runPermissionsTests(getCtx: () => TestContext) {
         ],
       });
 
-      const instructions = await changeConfig({
+      const instructions = changeConfig({
         signers: [ctx.wallet],
         payer: ctx.payer,
         changeConfigArgs,
       });
 
-      await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+      await sendTransaction(instructions, ctx.payer);
       const settings = await getSettingsFromIndex(ctx.index);
       const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
       const addedMember = accountData.members.find(
@@ -251,13 +251,13 @@ export function runPermissionsTests(getCtx: () => TestContext) {
       });
 
       await sendTransaction(
-        await changeConfig({
+        changeConfig({
           signers: [ctx.wallet],
           payer: ctx.payer,
           changeConfigArgs: addMembersArgs,
         }),
         ctx.payer,
-        ctx.addressLookUpTable,
+        
       );
 
       // Update both members' permissions
@@ -281,13 +281,13 @@ export function runPermissionsTests(getCtx: () => TestContext) {
       });
 
       await sendTransaction(
-        await changeConfig({
+        changeConfig({
           signers: [ctx.wallet],
           payer: ctx.payer,
           changeConfigArgs: editPermissionsArgs,
         }),
         ctx.payer,
-        ctx.addressLookUpTable,
+        
       );
       const settings = await getSettingsFromIndex(ctx.index);
       const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;

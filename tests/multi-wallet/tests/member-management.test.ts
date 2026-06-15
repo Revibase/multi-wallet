@@ -78,13 +78,13 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
         ],
       });
 
-      const instructions = await changeConfig({
+      const instructions = changeConfig({
         signers: [ctx.wallet],
         payer: ctx.payer,
         changeConfigArgs,
       });
 
-      await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+      await sendTransaction(instructions, ctx.payer);
 
       // Verify permissions were updated
       const userAccountData = (
@@ -119,13 +119,13 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
         ],
       });
 
-      const instructions = await changeConfig({
+      const instructions = changeConfig({
         signers: [ctx.wallet],
         payer: ctx.payer,
         changeConfigArgs,
       });
 
-      await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+      await sendTransaction(instructions, ctx.payer);
 
       // Verify member was removed
       const settings = await getSettingsFromIndex(ctx.index);
@@ -186,7 +186,6 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
       await sendTransaction(
         [createDomainUserAccountDataIx],
         ctx.payer,
-        ctx.addressLookUpTable,
       );
 
       const changeConfigArgs = await prepareChangeConfigArgs({
@@ -203,13 +202,13 @@ export function runMemberManagementTests(getCtx: () => TestContext) {
           },
         ],
       });
-      const instructions = await changeConfig({
+      const instructions = changeConfig({
         signers: [ctx.wallet],
         payer: ctx.payer,
         changeConfigArgs,
       });
 
-      await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+      await sendTransaction(instructions, ctx.payer);
 
       // Verify member was added
       const settings = await getSettingsFromIndex(ctx.index);
