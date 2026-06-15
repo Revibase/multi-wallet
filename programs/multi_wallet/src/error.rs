@@ -175,17 +175,8 @@ pub enum MultisigError {
     #[msg("The given origin index is not in the whitelisted origins.")]
     OriginIndexOutOfBounds,
 
-    #[msg("Failed to compute hash. This may indicate a system error.")]
-    HashComputationFailed,
-
     #[msg("Member key conversion failed. The provided key format is invalid.")]
     InvalidMemberKeyFormat,
-
-    #[msg("Compressed proof arguments are missing. Required for compressed account operations.")]
-    MissingCompressedProofArgs,
-
-    #[msg("Light CPI accounts are missing. Required for compressed account operations.")]
-    MissingLightCpiAccounts,
 
     #[msg("Member not found in settings. Cannot remove a member that does not exist.")]
     MemberNotFound,
@@ -198,20 +189,8 @@ pub enum MultisigError {
     )]
     PayerMismatch,
 
-    #[msg("Missing compressed token account. Required for token transfer operations.")]
-    MissingCompressedTokenAccount,
-
-    #[msg("Missing SPL interface PDA. Required for token transfer operations.")]
-    MissingSplInterfacePda,
-
     #[msg("Missing instructions sysvar account. Required for secp256r1 signature verification.")]
     MissingInstructionsSysvar,
-
-    #[msg("Light CPI account operation failed. The account may be invalid or uninitialized.")]
-    LightCpiAccountError,
-
-    #[msg("Invalid source type for token transfer. The source account type is not supported.")]
-    InvalidTokenSourceType,
 
     #[msg("Invalid account index in transaction message. The account index is out of bounds.")]
     InvalidAccountIndex,
@@ -227,9 +206,6 @@ pub enum MultisigError {
 
     #[msg("Invalid user configuration. Credential ID and transports must be none for ed25519 members.")]
     InvalidUserEd25519Config,
-
-    #[msg("Missing destination token account. Required for token transfer operations.")]
-    MissingDestinationTokenAccount,
 
     #[msg("Missing settings account. Required for delegate operations.")]
     MissingSettingsAccountForDelegate,

@@ -11,8 +11,8 @@ import {
   type Address,
   type SOLANA_ERROR__INSTRUCTION_ERROR__CUSTOM,
   type SolanaError,
-} from "@solana/kit";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+} from '@solana/kit';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
 
 /** InvalidSecp256r1VerifyArg: Malformed or missing WebAuthn verification parameters. Please provide valid secp256r1 signature arguments. */
 export const MULTI_WALLET_ERROR__INVALID_SECP256R1_VERIFY_ARG = 0x1770; // 6000
@@ -124,46 +124,30 @@ export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_DISABLED = 0x17a4; // 6052
 export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_IS_MISSING = 0x17a5; // 6053
 /** OriginIndexOutOfBounds: The given origin index is not in the whitelisted origins. */
 export const MULTI_WALLET_ERROR__ORIGIN_INDEX_OUT_OF_BOUNDS = 0x17a6; // 6054
-/** HashComputationFailed: Failed to compute hash. This may indicate a system error. */
-export const MULTI_WALLET_ERROR__HASH_COMPUTATION_FAILED = 0x17a7; // 6055
 /** InvalidMemberKeyFormat: Member key conversion failed. The provided key format is invalid. */
-export const MULTI_WALLET_ERROR__INVALID_MEMBER_KEY_FORMAT = 0x17a8; // 6056
-/** MissingCompressedProofArgs: Compressed proof arguments are missing. Required for compressed account operations. */
-export const MULTI_WALLET_ERROR__MISSING_COMPRESSED_PROOF_ARGS = 0x17a9; // 6057
-/** MissingLightCpiAccounts: Light CPI accounts are missing. Required for compressed account operations. */
-export const MULTI_WALLET_ERROR__MISSING_LIGHT_CPI_ACCOUNTS = 0x17aa; // 6058
+export const MULTI_WALLET_ERROR__INVALID_MEMBER_KEY_FORMAT = 0x17a7; // 6055
 /** MemberNotFound: Member not found in settings. Cannot remove a member that does not exist. */
-export const MULTI_WALLET_ERROR__MEMBER_NOT_FOUND = 0x17ab; // 6059
+export const MULTI_WALLET_ERROR__MEMBER_NOT_FOUND = 0x17a8; // 6056
 /** SettingsKeyMismatch: Settings key mismatch. The provided settings key does not match the expected value. */
-export const MULTI_WALLET_ERROR__SETTINGS_KEY_MISMATCH = 0x17ac; // 6060
+export const MULTI_WALLET_ERROR__SETTINGS_KEY_MISMATCH = 0x17a9; // 6057
 /** PayerMismatch: Payer account mismatch. The provided payer does not match the transaction buffer payer. */
-export const MULTI_WALLET_ERROR__PAYER_MISMATCH = 0x17ad; // 6061
-/** MissingCompressedTokenAccount: Missing compressed token account. Required for token transfer operations. */
-export const MULTI_WALLET_ERROR__MISSING_COMPRESSED_TOKEN_ACCOUNT = 0x17ae; // 6062
-/** MissingSplInterfacePda: Missing SPL interface PDA. Required for token transfer operations. */
-export const MULTI_WALLET_ERROR__MISSING_SPL_INTERFACE_PDA = 0x17af; // 6063
+export const MULTI_WALLET_ERROR__PAYER_MISMATCH = 0x17aa; // 6058
 /** MissingInstructionsSysvar: Missing instructions sysvar account. Required for secp256r1 signature verification. */
-export const MULTI_WALLET_ERROR__MISSING_INSTRUCTIONS_SYSVAR = 0x17b0; // 6064
-/** LightCpiAccountError: Light CPI account operation failed. The account may be invalid or uninitialized. */
-export const MULTI_WALLET_ERROR__LIGHT_CPI_ACCOUNT_ERROR = 0x17b1; // 6065
-/** InvalidTokenSourceType: Invalid source type for token transfer. The source account type is not supported. */
-export const MULTI_WALLET_ERROR__INVALID_TOKEN_SOURCE_TYPE = 0x17b2; // 6066
+export const MULTI_WALLET_ERROR__MISSING_INSTRUCTIONS_SYSVAR = 0x17ab; // 6059
 /** InvalidAccountIndex: Invalid account index in transaction message. The account index is out of bounds. */
-export const MULTI_WALLET_ERROR__INVALID_ACCOUNT_INDEX = 0x17b3; // 6067
+export const MULTI_WALLET_ERROR__INVALID_ACCOUNT_INDEX = 0x17ac; // 6060
 /** DomainConfigKeyMismatch: Domain configuration account key mismatch. The provided domain config does not match the expected value. */
-export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_KEY_MISMATCH = 0x17b4; // 6068
+export const MULTI_WALLET_ERROR__DOMAIN_CONFIG_KEY_MISMATCH = 0x17ad; // 6061
 /** UnauthorizedAdminOnly: Unauthorized: Only the admin account is allowed to perform this action. */
-export const MULTI_WALLET_ERROR__UNAUTHORIZED_ADMIN_ONLY = 0x17b5; // 6069
+export const MULTI_WALLET_ERROR__UNAUTHORIZED_ADMIN_ONLY = 0x17ae; // 6062
 /** InvalidUserTransactionManagerConfig: Invalid user configuration. Transaction manager URL must be empty for non-transaction-manager users. */
-export const MULTI_WALLET_ERROR__INVALID_USER_TRANSACTION_MANAGER_CONFIG = 0x17b6; // 6070
+export const MULTI_WALLET_ERROR__INVALID_USER_TRANSACTION_MANAGER_CONFIG = 0x17af; // 6063
 /** InvalidUserEd25519Config: Invalid user configuration. Credential ID and transports must be none for ed25519 members. */
-export const MULTI_WALLET_ERROR__INVALID_USER_ED25519_CONFIG = 0x17b7; // 6071
-/** MissingDestinationTokenAccount: Missing destination token account. Required for token transfer operations. */
-export const MULTI_WALLET_ERROR__MISSING_DESTINATION_TOKEN_ACCOUNT = 0x17b8; // 6072
+export const MULTI_WALLET_ERROR__INVALID_USER_ED25519_CONFIG = 0x17b0; // 6064
 /** MissingSettingsAccountForDelegate: Missing settings account. Required for delegate operations. */
-export const MULTI_WALLET_ERROR__MISSING_SETTINGS_ACCOUNT_FOR_DELEGATE = 0x17b9; // 6073
+export const MULTI_WALLET_ERROR__MISSING_SETTINGS_ACCOUNT_FOR_DELEGATE = 0x17b1; // 6065
 /** MissingNewAuthority: Missing new authority account. Required for domain configuration updates. */
-export const MULTI_WALLET_ERROR__MISSING_NEW_AUTHORITY = 0x17ba; // 6074
+export const MULTI_WALLET_ERROR__MISSING_NEW_AUTHORITY = 0x17b2; // 6066
 
 export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__ALREADY_DELEGATED
@@ -181,7 +165,6 @@ export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__FINAL_BUFFER_HASH_MISMATCH
   | typeof MULTI_WALLET_ERROR__FINAL_BUFFER_SIZE_EXCEEDED
   | typeof MULTI_WALLET_ERROR__FINAL_BUFFER_SIZE_MISMATCH
-  | typeof MULTI_WALLET_ERROR__HASH_COMPUTATION_FAILED
   | typeof MULTI_WALLET_ERROR__INSUFFICIENT_SIGNERS_WITH_VOTE_PERMISSION
   | typeof MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_EXECUTE_PERMISSION
   | typeof MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_INITIATE_PERMISSION
@@ -201,26 +184,19 @@ export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__INVALID_SLOT_NUMBER
   | typeof MULTI_WALLET_ERROR__INVALID_SYSVAR_DATA_FORMAT
   | typeof MULTI_WALLET_ERROR__INVALID_THRESHOLD
-  | typeof MULTI_WALLET_ERROR__INVALID_TOKEN_SOURCE_TYPE
   | typeof MULTI_WALLET_ERROR__INVALID_TRANSACTION_MANAGER_CONFIG
   | typeof MULTI_WALLET_ERROR__INVALID_TRANSACTION_MANAGER_PERMISSION
   | typeof MULTI_WALLET_ERROR__INVALID_TRANSACTION_MESSAGE
   | typeof MULTI_WALLET_ERROR__INVALID_USER_ED25519_CONFIG
   | typeof MULTI_WALLET_ERROR__INVALID_USER_ROLE
   | typeof MULTI_WALLET_ERROR__INVALID_USER_TRANSACTION_MANAGER_CONFIG
-  | typeof MULTI_WALLET_ERROR__LIGHT_CPI_ACCOUNT_ERROR
   | typeof MULTI_WALLET_ERROR__MALFORMED_SIGNED_MESSAGE
   | typeof MULTI_WALLET_ERROR__MAX_LENGTH_EXCEEDED
   | typeof MULTI_WALLET_ERROR__MEMBER_NOT_FOUND
   | typeof MULTI_WALLET_ERROR__MISSING_ACCOUNT
-  | typeof MULTI_WALLET_ERROR__MISSING_COMPRESSED_PROOF_ARGS
-  | typeof MULTI_WALLET_ERROR__MISSING_COMPRESSED_TOKEN_ACCOUNT
-  | typeof MULTI_WALLET_ERROR__MISSING_DESTINATION_TOKEN_ACCOUNT
   | typeof MULTI_WALLET_ERROR__MISSING_INSTRUCTIONS_SYSVAR
-  | typeof MULTI_WALLET_ERROR__MISSING_LIGHT_CPI_ACCOUNTS
   | typeof MULTI_WALLET_ERROR__MISSING_NEW_AUTHORITY
   | typeof MULTI_WALLET_ERROR__MISSING_SETTINGS_ACCOUNT_FOR_DELEGATE
-  | typeof MULTI_WALLET_ERROR__MISSING_SPL_INTERFACE_PDA
   | typeof MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY
   | typeof MULTI_WALLET_ERROR__NO_SIGNER_FOUND
   | typeof MULTI_WALLET_ERROR__ONLY_ONE_ADMINISTRATOR_ALLOWED
@@ -243,7 +219,7 @@ export type MultiWalletError =
   | typeof MULTI_WALLET_ERROR__UNEXPECTED_SIGNER;
 
 let multiWalletErrorMessages: Record<MultiWalletError, string> | undefined;
-if (process.env.NODE_ENV !== "production") {
+if (process.env.NODE_ENV !== 'production') {
   multiWalletErrorMessages = {
     [MULTI_WALLET_ERROR__ALREADY_DELEGATED]: `This member is already delegated to another wallet.`,
     [MULTI_WALLET_ERROR__CLIENT_DATA_HASH_MISMATCH]: `The clientDataJSON hash extracted from the signature does not match the generated hash.`,
@@ -260,7 +236,6 @@ if (process.env.NODE_ENV !== "production") {
     [MULTI_WALLET_ERROR__FINAL_BUFFER_HASH_MISMATCH]: `Final buffer hash mismatch: the serialized data may be corrupted or altered.`,
     [MULTI_WALLET_ERROR__FINAL_BUFFER_SIZE_EXCEEDED]: `The serialized transaction buffer exceeds the maximum size of 10,128 bytes.`,
     [MULTI_WALLET_ERROR__FINAL_BUFFER_SIZE_MISMATCH]: `Declared buffer size does not match the actual serialized size.`,
-    [MULTI_WALLET_ERROR__HASH_COMPUTATION_FAILED]: `Failed to compute hash. This may indicate a system error.`,
     [MULTI_WALLET_ERROR__INSUFFICIENT_SIGNERS_WITH_VOTE_PERMISSION]: `Not enough members with vote permission to meet the approval threshold.`,
     [MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_EXECUTE_PERMISSION]: `At least one signer with execute permission is required to proceed.`,
     [MULTI_WALLET_ERROR__INSUFFICIENT_SIGNER_WITH_INITIATE_PERMISSION]: `At least one signer with initiate permission is required to perform this action.`,
@@ -280,26 +255,19 @@ if (process.env.NODE_ENV !== "production") {
     [MULTI_WALLET_ERROR__INVALID_SLOT_NUMBER]: `The specified slot number is not recent enough. Slot must be within the recent slot history window.`,
     [MULTI_WALLET_ERROR__INVALID_SYSVAR_DATA_FORMAT]: `Failed to parse the Slot History sysvar: data format is invalid or corrupted.`,
     [MULTI_WALLET_ERROR__INVALID_THRESHOLD]: `Invalid threshold: must be at least 1 and cannot exceed the number of voting-eligible members.`,
-    [MULTI_WALLET_ERROR__INVALID_TOKEN_SOURCE_TYPE]: `Invalid source type for token transfer. The source account type is not supported.`,
     [MULTI_WALLET_ERROR__INVALID_TRANSACTION_MANAGER_CONFIG]: `User with Transaction Manager role requires a valid transaction manager url, be a ed25519 Signer and have no delegated wallet.`,
     [MULTI_WALLET_ERROR__INVALID_TRANSACTION_MANAGER_PERMISSION]: `Invalid Transaction Manager permissions. Only initiate is allowed.`,
     [MULTI_WALLET_ERROR__INVALID_TRANSACTION_MESSAGE]: `Malformed transaction message: structure or formatting does not match the expected layout.`,
     [MULTI_WALLET_ERROR__INVALID_USER_ED25519_CONFIG]: `Invalid user configuration. Credential ID and transports must be none for ed25519 members.`,
     [MULTI_WALLET_ERROR__INVALID_USER_ROLE]: `One or more provided user accounts failed validation. Verify that only users with appropriate roles are allowed to perform this action.`,
     [MULTI_WALLET_ERROR__INVALID_USER_TRANSACTION_MANAGER_CONFIG]: `Invalid user configuration. Transaction manager URL must be empty for non-transaction-manager users.`,
-    [MULTI_WALLET_ERROR__LIGHT_CPI_ACCOUNT_ERROR]: `Light CPI account operation failed. The account may be invalid or uninitialized.`,
     [MULTI_WALLET_ERROR__MALFORMED_SIGNED_MESSAGE]: `The extracted WebAuthn signed message payload is malformed.`,
     [MULTI_WALLET_ERROR__MAX_LENGTH_EXCEEDED]: `An input string exceeds the maximum allowed character length.`,
     [MULTI_WALLET_ERROR__MEMBER_NOT_FOUND]: `Member not found in settings. Cannot remove a member that does not exist.`,
     [MULTI_WALLET_ERROR__MISSING_ACCOUNT]: `A required account is missing from the instruction context.`,
-    [MULTI_WALLET_ERROR__MISSING_COMPRESSED_PROOF_ARGS]: `Compressed proof arguments are missing. Required for compressed account operations.`,
-    [MULTI_WALLET_ERROR__MISSING_COMPRESSED_TOKEN_ACCOUNT]: `Missing compressed token account. Required for token transfer operations.`,
-    [MULTI_WALLET_ERROR__MISSING_DESTINATION_TOKEN_ACCOUNT]: `Missing destination token account. Required for token transfer operations.`,
     [MULTI_WALLET_ERROR__MISSING_INSTRUCTIONS_SYSVAR]: `Missing instructions sysvar account. Required for secp256r1 signature verification.`,
-    [MULTI_WALLET_ERROR__MISSING_LIGHT_CPI_ACCOUNTS]: `Light CPI accounts are missing. Required for compressed account operations.`,
     [MULTI_WALLET_ERROR__MISSING_NEW_AUTHORITY]: `Missing new authority account. Required for domain configuration updates.`,
     [MULTI_WALLET_ERROR__MISSING_SETTINGS_ACCOUNT_FOR_DELEGATE]: `Missing settings account. Required for delegate operations.`,
-    [MULTI_WALLET_ERROR__MISSING_SPL_INTERFACE_PDA]: `Missing SPL interface PDA. Required for token transfer operations.`,
     [MULTI_WALLET_ERROR__MISSING_SYSVAR_SLOT_HISTORY]: `Missing required sysvar: Slot History must be included as an account in this instruction.`,
     [MULTI_WALLET_ERROR__NO_SIGNER_FOUND]: `No valid signer found in this transaction.`,
     [MULTI_WALLET_ERROR__ONLY_ONE_ADMINISTRATOR_ALLOWED]: `Only one administrator is allowed per wallet.`,
@@ -324,11 +292,11 @@ if (process.env.NODE_ENV !== "production") {
 }
 
 export function getMultiWalletErrorMessage(code: MultiWalletError): string {
-  if (process.env.NODE_ENV !== "production") {
+  if (process.env.NODE_ENV !== 'production') {
     return (multiWalletErrorMessages as Record<MultiWalletError, string>)[code];
   }
 
-  return "Error message not available in production bundles.";
+  return 'Error message not available in production bundles.';
 }
 
 export function isMultiWalletError<TProgramErrorCode extends MultiWalletError>(
@@ -336,13 +304,13 @@ export function isMultiWalletError<TProgramErrorCode extends MultiWalletError>(
   transactionMessage: {
     instructions: Record<number, { programAddress: Address }>;
   },
-  code?: TProgramErrorCode,
+  code?: TProgramErrorCode
 ): error is SolanaError<typeof SOLANA_ERROR__INSTRUCTION_ERROR__CUSTOM> &
   Readonly<{ context: Readonly<{ code: TProgramErrorCode }> }> {
   return isProgramError<TProgramErrorCode>(
     error,
     transactionMessage,
     MULTI_WALLET_PROGRAM_ADDRESS,
-    code,
+    code
   );
 }

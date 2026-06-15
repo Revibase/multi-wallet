@@ -1,13 +1,13 @@
 use crate::{
     utils::{MultisigSettings, TransactionSyncSigners},
-    MultisigError, Settings, TransactionActionType, SEED_MULTISIG, SEED_VAULT,
+    Settings, TransactionActionType, SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{
     prelude::*,
     solana_program::sysvar::SysvarId,
     system_program::{transfer, Transfer},
 };
-use light_sdk::light_hasher::{Hasher, Sha256};
+use sha2::{Digest, Sha256};
 
 #[derive(Accounts)]
 pub struct NativeTransferIntent<'info> {
@@ -65,7 +65,7 @@ impl<'info> NativeTransferIntent<'info> {
         buffer.extend_from_slice(destination.key().as_ref());
         buffer.extend_from_slice(system_program.key().as_ref());
         let message_hash =
-            Sha256::hash(&buffer).map_err(|_| MultisigError::HashComputationFailed)?;
+            Sha256::digest(&buffer).into();
 
         TransactionSyncSigners::verify(
             signers,
@@ -84,7 +84,7 @@ impl<'info> NativeTransferIntent<'info> {
 
     #[access_control(ctx.accounts.validate(amount, &ctx.remaining_accounts, &signers))]
     pub fn process(
-        ctx: Context<'_, '_, 'info, 'info, Self>,
+        ctx: Context<'info, Self>,
         amount: u64,
         signers: Vec<TransactionSyncSigners>,
     ) -> Result<()> {
@@ -99,7 +99,7 @@ impl<'info> NativeTransferIntent<'info> {
 
         transfer(
             CpiContext::new(
-                ctx.accounts.system_program.to_account_info(),
+                ctx.accounts.system_program.key(),
                 Transfer {
                     from: ctx.accounts.source.to_account_info(),
                     to: ctx.accounts.destination.to_account_info(),

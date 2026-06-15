@@ -17,6 +17,5 @@ export interface TestContext {
   multiWalletVault: Address | undefined;
   rpId: string | undefined;
   origin: string | undefined;
-  addressLookUpTable: AddressesByLookupTableAddress;
   domainConfig: Address | undefined;
 }

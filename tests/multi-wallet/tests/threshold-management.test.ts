@@ -35,13 +35,13 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
         ],
       });
 
-      const instructions = await changeConfig({
+      const instructions = changeConfig({
         signers: [ctx.wallet],
         payer: ctx.payer,
         changeConfigArgs,
       });
 
-      await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+      await sendTransaction(instructions, ctx.payer);
       const settings = await getSettingsFromIndex(ctx.index);
       const accountData = (await fetchSettings(getSolanaRpc(), settings)).data;
       expect(
@@ -82,13 +82,13 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
         });
 
         await sendTransaction(
-          await changeConfig({
+          changeConfig({
             signers: [ctx.wallet],
             payer: ctx.payer,
             changeConfigArgs: setThresholdArgs,
           }),
           ctx.payer,
-          ctx.addressLookUpTable,
+          
         );
 
         // Try to remove payer member - this should fail because threshold is 2
@@ -105,13 +105,13 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
 
         await expectFailure(async () => {
           await sendTransaction(
-            await changeConfig({
+            changeConfig({
               signers: [ctx.wallet],
               payer: ctx.payer,
               changeConfigArgs: removeMemberArgs,
             }),
             ctx.payer,
-            ctx.addressLookUpTable,
+            
           );
         });
 
@@ -158,13 +158,13 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
         });
 
         await sendTransaction(
-          await changeConfig({
+          changeConfig({
             signers: [ctx.wallet],
             payer: ctx.payer,
             changeConfigArgs: setThresholdArgs,
           }),
           ctx.payer,
-          ctx.addressLookUpTable,
+          
         );
 
         // First reduce threshold to 1
@@ -179,13 +179,13 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
         });
 
         await sendTransaction(
-          await changeConfig({
+          changeConfig({
             signers: [ctx.wallet, ctx.payer],
             payer: ctx.payer,
             changeConfigArgs: reduceThresholdArgs,
           }),
           ctx.payer,
-          ctx.addressLookUpTable,
+          
         );
 
         // Now remove payer member - this should succeed
@@ -200,13 +200,13 @@ export function runThresholdManagementTests(getCtx: () => TestContext) {
         });
 
         await sendTransaction(
-          await changeConfig({
+          changeConfig({
             signers: [ctx.wallet],
             payer: ctx.payer,
             changeConfigArgs: removeMemberArgs,
           }),
           ctx.payer,
-          ctx.addressLookUpTable,
+          
         );
         const settings = await getSettingsFromIndex(ctx.index);
         const accountData = (await fetchSettings(getSolanaRpc(), settings))

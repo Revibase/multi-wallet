@@ -1,6 +1,6 @@
 use crate::{MemberKey, MultisigError};
 use anchor_lang::prelude::*;
-use light_sdk::light_hasher::{Hasher, Sha256};
+use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 
 // Maximum PDA allocation size in an inner ix is 10240 bytes.
@@ -156,8 +156,8 @@ impl TransactionBuffer {
     }
 
     pub fn validate_hash(&self) -> Result<()> {
-        let message_buffer_hash =
-            Sha256::hash(&self.buffer).map_err(|_| MultisigError::HashComputationFailed)?;
+        let message_buffer_hash :[u8; 32]=
+            Sha256::digest(&self.buffer).into();
         require!(
             message_buffer_hash == self.final_buffer_hash,
             MultisigError::FinalBufferHashMismatch
@@ -228,8 +228,8 @@ impl TransactionBuffer {
             .get(0)
             .ok_or(MultisigError::InvalidBuffer)?;
 
-        let current_buffer_hash =
-            Sha256::hash(chunk).map_err(|_| MultisigError::HashComputationFailed)?;
+        let current_buffer_hash :[u8; 32]=
+            Sha256::digest(chunk).into();
 
         require!(
             required_buffer_hash.eq(&current_buffer_hash),
@@ -563,8 +563,7 @@ mod tests {
 
     #[test]
     fn test_validate_extend_chunk_exceeds_remaining_space_fails() {
-        use light_sdk::light_hasher::{Hasher, Sha256};
-        let chunk_hash = Sha256::hash(&[1u8; 10]).unwrap();
+        let chunk_hash = Sha256::digest(&[1u8; 10]).into();
         let buffer = TransactionBuffer {
             multi_wallet_settings: Pubkey::new_unique(),
             multi_wallet_bump: 0,
@@ -589,8 +588,7 @@ mod tests {
 
     #[test]
     fn test_validate_extend_chunk_wrong_hash_fails() {
-        use light_sdk::light_hasher::{Hasher, Sha256};
-        let wrong_hash = Sha256::hash(&[99u8; 5]).unwrap();
+        let wrong_hash = Sha256::digest(&[99u8; 5]).into();
         let buffer = TransactionBuffer {
             multi_wallet_settings: Pubkey::new_unique(),
             multi_wallet_bump: 0,
@@ -615,9 +613,8 @@ mod tests {
 
     #[test]
     fn test_validate_extend_chunk_ok() {
-        use light_sdk::light_hasher::{Hasher, Sha256};
         let chunk = [1u8; 10];
-        let chunk_hash = Sha256::hash(&chunk).unwrap();
+        let chunk_hash = Sha256::digest(&chunk).into();
         let buffer = TransactionBuffer {
             multi_wallet_settings: Pubkey::new_unique(),
             multi_wallet_bump: 0,

@@ -22,13 +22,13 @@ import {
   type Option,
   type OptionOrNullable,
   type ReadonlyUint8Array,
-} from "@solana/kit";
+} from '@solana/kit';
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
   type MemberKey,
   type MemberKeyArgs,
-} from ".";
+} from '.';
 
 export type ExpectedSigner = {
   memberKey: MemberKey;
@@ -42,15 +42,15 @@ export type ExpectedSignerArgs = {
 
 export function getExpectedSignerEncoder(): Encoder<ExpectedSignerArgs> {
   return getStructEncoder([
-    ["memberKey", getMemberKeyEncoder()],
-    ["messageHash", getOptionEncoder(fixEncoderSize(getBytesEncoder(), 32))],
+    ['memberKey', getMemberKeyEncoder()],
+    ['messageHash', getOptionEncoder(fixEncoderSize(getBytesEncoder(), 32))],
   ]);
 }
 
 export function getExpectedSignerDecoder(): Decoder<ExpectedSigner> {
   return getStructDecoder([
-    ["memberKey", getMemberKeyDecoder()],
-    ["messageHash", getOptionDecoder(fixDecoderSize(getBytesDecoder(), 32))],
+    ['memberKey', getMemberKeyDecoder()],
+    ['messageHash', getOptionDecoder(fixDecoderSize(getBytesDecoder(), 32))],
   ]);
 }
 

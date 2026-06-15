@@ -58,7 +58,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         await sendTransaction(
           [createUserAccountIx],
           ctx.payer,
-          ctx.addressLookUpTable,
+          
         );
 
         const secp256r1Keys = generateSecp256r1KeyPair();
@@ -86,7 +86,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         await sendTransaction(
           [createDomainUserAccountDataIx],
           ctx.payer,
-          ctx.addressLookUpTable,
+          
         );
 
         // Verify Secp256r1Key was added as member
@@ -150,7 +150,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         await sendTransaction(
           [createUserAccountIx],
           ctx.payer,
-          ctx.addressLookUpTable,
+          
         );
 
         const secp256r1Keys = generateSecp256r1KeyPair();
@@ -175,7 +175,7 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
         await sendTransaction(
           [createDomainUserAccountDataIx],
           ctx.payer,
-          ctx.addressLookUpTable,
+          
         );
 
         const changeConfigArgs = await prepareChangeConfigArgs({
@@ -208,13 +208,13 @@ export function runSecp256r1Tests(getCtx: () => TestContext) {
           ctx,
         );
 
-        const instructions = await changeConfig({
+        const instructions = changeConfig({
           signers: [signedSigner],
           payer: ctx.payer,
           changeConfigArgs,
         });
 
-        await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+        await sendTransaction(instructions, ctx.payer);
 
         // Verify payer was added as member
         const settings = await getSettingsFromIndex(ctx.index);

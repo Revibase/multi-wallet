@@ -39,7 +39,7 @@ pub struct CreateWallet<'info> {
 }
 
 impl<'info> CreateWallet<'info> {
-    pub fn process(ctx: Context<'_, '_, 'info, 'info, Self>, settings_index: u128) -> Result<()> {
+    pub fn process(ctx: Context<'info, Self>, settings_index: u128) -> Result<()> {
         let global_counter = &mut ctx.accounts.global_counter.load_mut()?;
 
         require!(

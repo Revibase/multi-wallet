@@ -81,7 +81,7 @@ impl<'info> TransactionBufferExecute<'info> {
     }
 
     pub fn process(
-        ctx: Context<'_, '_, '_, 'info, Self>,
+        ctx: Context<'info, Self>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
         let maybe_signer = ctx.accounts.validate(&secp256r1_verify_args)?;

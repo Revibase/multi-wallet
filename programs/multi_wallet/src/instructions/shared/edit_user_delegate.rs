@@ -7,7 +7,7 @@ use crate::{
     },
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use light_sdk::hasher::{Hasher, Sha256};
+use sha2::{Digest, Sha256};
 
 #[derive(Accounts)]
 #[instruction(secp256r1_verify_args: Option<Secp256r1VerifyArgs>)]
@@ -57,7 +57,7 @@ impl<'info> EditUserDelegate<'info> {
     }
 
     pub fn process(
-        ctx: Context<'_, '_, 'info, 'info, Self>,
+        ctx: Context<'info, Self>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         delegate_to: Option<u128>,
     ) -> Result<()> {
@@ -169,7 +169,7 @@ impl<'info> EditUserDelegate<'info> {
             );
             buffer.extend_from_slice(user_account.key().as_ref());
             let message_hash =
-                Sha256::hash(&buffer).map_err(|_| MultisigError::HashComputationFailed)?;
+                Sha256::digest(&buffer).into();
 
             secp256r1_verify_data.verify_webauthn(
                 &ctx.accounts.slot_hash_sysvar,

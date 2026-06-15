@@ -290,7 +290,7 @@ mod tests {
         let owner = leak_pubkey(Pubkey::new_unique());
         let lamports: &'static mut u64 = Box::leak(Box::new(0u64));
         let data: &'static mut [u8] = Box::leak(data.into_boxed_slice());
-        let account_info = AccountInfo::new(key, false, false, lamports, data, owner, false, 0);
+        let account_info = AccountInfo::new(key, false, false, lamports, data, owner, false);
         let account_info: &'static AccountInfo<'static> = Box::leak(Box::new(account_info));
         UncheckedAccount::try_from(account_info)
     }

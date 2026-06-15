@@ -6,7 +6,7 @@ use crate::{
     SEED_MULTISIG, SEED_VAULT,
 };
 use anchor_lang::{prelude::*, solana_program::sysvar::SysvarId};
-use light_sdk::light_hasher::{Hasher, Sha256};
+use sha2::{Digest, Sha256};
 
 #[derive(Accounts)]
 pub struct TransactionExecuteSync<'info> {
@@ -27,7 +27,7 @@ pub struct TransactionExecuteSync<'info> {
 impl<'info> TransactionExecuteSync<'info> {
     fn verify_signers(
         &self,
-        ctx: &Context<'_, '_, 'info, 'info, Self>,
+        ctx: &Context<'info, Self>,
         signers: &[TransactionSyncSigners],
         message_hash: [u8; 32],
     ) -> Result<()> {
@@ -56,7 +56,7 @@ impl<'info> TransactionExecuteSync<'info> {
     }
 
     pub fn process(
-        ctx: Context<'_, '_, 'info, 'info, Self>,
+        ctx: Context<'info, Self>,
         transaction_message: TransactionMessage,
         signers: Vec<TransactionSyncSigners>,
     ) -> Result<()> {
@@ -66,7 +66,7 @@ impl<'info> TransactionExecuteSync<'info> {
         let mut writer = Vec::new();
         vault_transaction_message.serialize(&mut writer)?;
         let message_hash =
-            Sha256::hash(&writer).map_err(|_| MultisigError::HashComputationFailed)?;
+            Sha256::digest(&writer).into();
         ctx.accounts.verify_signers(&ctx, &signers, message_hash)?;
         let num_lookups = vault_transaction_message.address_table_lookups.len();
         let message_end_index = num_lookups + vault_transaction_message.num_all_account_keys();

@@ -36,13 +36,13 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
       });
 
       await expectFailure(async () => {
-        const instructions = await changeConfig({
+        const instructions = changeConfig({
           signers: [ctx.wallet],
           payer: ctx.payer,
           changeConfigArgs,
         });
 
-        await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+        await sendTransaction(instructions, ctx.payer);
       });
     });
   });
@@ -67,13 +67,13 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
       });
 
       await expectFailure(async () => {
-        const instructions = await changeConfig({
+        const instructions = changeConfig({
           signers: [ctx.wallet],
           payer: ctx.payer,
           changeConfigArgs,
         });
 
-        await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+        await sendTransaction(instructions, ctx.payer);
       });
     });
   });
@@ -107,7 +107,6 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
           await sendTransaction(
             [...nativeTransfer],
             ctx.payer,
-            ctx.addressLookUpTable,
           );
         }, NATIVE_TRANSFER_INSUFFICIENT_BALANCE);
       },
@@ -137,13 +136,13 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
       });
 
       await expectFailure(async () => {
-        const instructions = await changeConfig({
+        const instructions = changeConfig({
           signers: [ctx.wallet],
           payer: ctx.payer,
           changeConfigArgs,
         });
 
-        await sendTransaction(instructions, ctx.payer, ctx.addressLookUpTable);
+        await sendTransaction(instructions, ctx.payer,);
       });
     });
   });
@@ -172,7 +171,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
         });
 
         await expectFailure(async () => {
-          const instructions = await changeConfig({
+          const instructions = changeConfig({
             signers: [ctx.wallet],
             payer: ctx.payer,
             changeConfigArgs,
@@ -181,7 +180,6 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
           await sendTransaction(
             instructions,
             ctx.payer,
-            ctx.addressLookUpTable,
           );
         });
       },
@@ -218,13 +216,12 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
         });
 
         await sendTransaction(
-          await changeConfig({
+          changeConfig({
             signers: [ctx.wallet],
             payer: ctx.payer,
             changeConfigArgs: addMemberArgs,
           }),
           ctx.payer,
-          ctx.addressLookUpTable,
         );
 
         // Try to change config using payer (who doesn't have initiate permission)
@@ -239,7 +236,7 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
         });
 
         await expectFailure(async () => {
-          const instructions = await changeConfig({
+          const instructions = changeConfig({
             signers: [ctx.payer], // Payer doesn't have initiate permission
             payer: ctx.payer,
             changeConfigArgs,
@@ -248,7 +245,6 @@ export function runErrorCasesTests(getCtx: () => TestContext) {
           await sendTransaction(
             instructions,
             ctx.payer,
-            ctx.addressLookUpTable,
           );
         });
       },

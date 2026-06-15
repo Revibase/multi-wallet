@@ -13,24 +13,24 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from "@solana/kit";
+} from '@solana/kit';
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
   type MemberKey,
   type MemberKeyArgs,
-} from ".";
+} from '.';
 
 export type RemoveMemberArgs = { memberKey: MemberKey };
 
 export type RemoveMemberArgsArgs = { memberKey: MemberKeyArgs };
 
 export function getRemoveMemberArgsEncoder(): FixedSizeEncoder<RemoveMemberArgsArgs> {
-  return getStructEncoder([["memberKey", getMemberKeyEncoder()]]);
+  return getStructEncoder([['memberKey', getMemberKeyEncoder()]]);
 }
 
 export function getRemoveMemberArgsDecoder(): FixedSizeDecoder<RemoveMemberArgs> {
-  return getStructDecoder([["memberKey", getMemberKeyDecoder()]]);
+  return getStructDecoder([['memberKey', getMemberKeyDecoder()]]);
 }
 
 export function getRemoveMemberArgsCodec(): FixedSizeCodec<
@@ -39,6 +39,6 @@ export function getRemoveMemberArgsCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getRemoveMemberArgsEncoder(),
-    getRemoveMemberArgsDecoder(),
+    getRemoveMemberArgsDecoder()
   );
 }

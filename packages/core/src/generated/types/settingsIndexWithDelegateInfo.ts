@@ -17,7 +17,7 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from "@solana/kit";
+} from '@solana/kit';
 
 export type SettingsIndexWithDelegateInfo = {
   index: bigint;
@@ -31,15 +31,15 @@ export type SettingsIndexWithDelegateInfoArgs = {
 
 export function getSettingsIndexWithDelegateInfoEncoder(): FixedSizeEncoder<SettingsIndexWithDelegateInfoArgs> {
   return getStructEncoder([
-    ["index", getU128Encoder()],
-    ["isDelegate", getBooleanEncoder()],
+    ['index', getU128Encoder()],
+    ['isDelegate', getBooleanEncoder()],
   ]);
 }
 
 export function getSettingsIndexWithDelegateInfoDecoder(): FixedSizeDecoder<SettingsIndexWithDelegateInfo> {
   return getStructDecoder([
-    ["index", getU128Decoder()],
-    ["isDelegate", getBooleanDecoder()],
+    ['index', getU128Decoder()],
+    ['isDelegate', getBooleanDecoder()],
   ]);
 }
 
@@ -49,6 +49,6 @@ export function getSettingsIndexWithDelegateInfoCodec(): FixedSizeCodec<
 > {
   return combineCodec(
     getSettingsIndexWithDelegateInfoEncoder(),
-    getSettingsIndexWithDelegateInfoDecoder(),
+    getSettingsIndexWithDelegateInfoDecoder()
   );
 }

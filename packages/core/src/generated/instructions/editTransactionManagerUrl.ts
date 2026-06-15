@@ -36,29 +36,28 @@ import {
   type ReadonlyUint8Array,
   type TransactionSigner,
   type WritableAccount,
-} from "@solana/kit";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
+} from '@solana/kit';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
 import {
   expectAddress,
   getAccountMetaFactory,
   type ResolvedAccount,
-} from "../shared";
+} from '../shared';
 
 export const EDIT_TRANSACTION_MANAGER_URL_DISCRIMINATOR = new Uint8Array([6]);
 
 export function getEditTransactionManagerUrlDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    EDIT_TRANSACTION_MANAGER_URL_DISCRIMINATOR,
+    EDIT_TRANSACTION_MANAGER_URL_DISCRIMINATOR
   );
 }
 
 export type EditTransactionManagerUrlInstruction<
   TProgram extends string = typeof MULTI_WALLET_PROGRAM_ADDRESS,
   TAccountSigner extends string | AccountMeta<string> = string,
-  TAccountTransactionManagerAccount extends
-    | string
-    | AccountMeta<string> = string,
+  TAccountTransactionManagerAccount extends string | AccountMeta<string> =
+    string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -87,24 +86,24 @@ export type EditTransactionManagerUrlInstructionDataArgs = {
 export function getEditTransactionManagerUrlInstructionDataEncoder(): Encoder<EditTransactionManagerUrlInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
       [
-        "transactionManagerUrl",
+        'transactionManagerUrl',
         addEncoderSizePrefix(getUtf8Encoder(), getU32Encoder()),
       ],
     ]),
     (value) => ({
       ...value,
       discriminator: EDIT_TRANSACTION_MANAGER_URL_DISCRIMINATOR,
-    }),
+    })
   );
 }
 
 export function getEditTransactionManagerUrlInstructionDataDecoder(): Decoder<EditTransactionManagerUrlInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
     [
-      "transactionManagerUrl",
+      'transactionManagerUrl',
       addDecoderSizePrefix(getUtf8Decoder(), getU32Decoder()),
     ],
   ]);
@@ -116,7 +115,7 @@ export function getEditTransactionManagerUrlInstructionDataCodec(): Codec<
 > {
   return combineCodec(
     getEditTransactionManagerUrlInstructionDataEncoder(),
-    getEditTransactionManagerUrlInstructionDataDecoder(),
+    getEditTransactionManagerUrlInstructionDataDecoder()
   );
 }
 
@@ -130,8 +129,8 @@ export type EditTransactionManagerUrlAsyncInput<
 > = {
   signer: TransactionSigner<TAccountSigner>;
   transactionManagerAccount?: Address<TAccountTransactionManagerAccount>;
-  transactionManagerUrl: EditTransactionManagerUrlInstructionDataArgs["transactionManagerUrl"];
-  remainingAccounts: EditTransactionManagerUrlInstructionExtraArgs["remainingAccounts"];
+  transactionManagerUrl: EditTransactionManagerUrlInstructionDataArgs['transactionManagerUrl'];
+  remainingAccounts: EditTransactionManagerUrlInstructionExtraArgs['remainingAccounts'];
 };
 
 export async function getEditTransactionManagerUrlInstructionAsync<
@@ -143,7 +142,7 @@ export async function getEditTransactionManagerUrlInstructionAsync<
     TAccountSigner,
     TAccountTransactionManagerAccount
   >,
-  config?: { programAddress?: TProgramAddress },
+  config?: { programAddress?: TProgramAddress }
 ): Promise<
   EditTransactionManagerUrlInstruction<
     TProgramAddress,
@@ -188,7 +187,7 @@ export async function getEditTransactionManagerUrlInstructionAsync<
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.signer),
@@ -196,7 +195,7 @@ export async function getEditTransactionManagerUrlInstructionAsync<
       ...remainingAccounts,
     ],
     data: getEditTransactionManagerUrlInstructionDataEncoder().encode(
-      args as EditTransactionManagerUrlInstructionDataArgs,
+      args as EditTransactionManagerUrlInstructionDataArgs
     ),
     programAddress,
   } as EditTransactionManagerUrlInstruction<
@@ -212,8 +211,8 @@ export type EditTransactionManagerUrlInput<
 > = {
   signer: TransactionSigner<TAccountSigner>;
   transactionManagerAccount: Address<TAccountTransactionManagerAccount>;
-  transactionManagerUrl: EditTransactionManagerUrlInstructionDataArgs["transactionManagerUrl"];
-  remainingAccounts: EditTransactionManagerUrlInstructionExtraArgs["remainingAccounts"];
+  transactionManagerUrl: EditTransactionManagerUrlInstructionDataArgs['transactionManagerUrl'];
+  remainingAccounts: EditTransactionManagerUrlInstructionExtraArgs['remainingAccounts'];
 };
 
 export function getEditTransactionManagerUrlInstruction<
@@ -225,7 +224,7 @@ export function getEditTransactionManagerUrlInstruction<
     TAccountSigner,
     TAccountTransactionManagerAccount
   >,
-  config?: { programAddress?: TProgramAddress },
+  config?: { programAddress?: TProgramAddress }
 ): EditTransactionManagerUrlInstruction<
   TProgramAddress,
   TAccountSigner,
@@ -257,7 +256,7 @@ export function getEditTransactionManagerUrlInstruction<
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.signer),
@@ -265,7 +264,7 @@ export function getEditTransactionManagerUrlInstruction<
       ...remainingAccounts,
     ],
     data: getEditTransactionManagerUrlInstructionDataEncoder().encode(
-      args as EditTransactionManagerUrlInstructionDataArgs,
+      args as EditTransactionManagerUrlInstructionDataArgs
     ),
     programAddress,
   } as EditTransactionManagerUrlInstruction<
@@ -293,11 +292,11 @@ export function parseEditTransactionManagerUrlInstruction<
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
-    InstructionWithData<ReadonlyUint8Array>,
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedEditTransactionManagerUrlInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 2) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -312,7 +311,7 @@ export function parseEditTransactionManagerUrlInstruction<
       transactionManagerAccount: getNextAccount(),
     },
     data: getEditTransactionManagerUrlInstructionDataDecoder().decode(
-      instruction.data,
+      instruction.data
     ),
   };
 }

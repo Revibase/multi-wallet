@@ -36,10 +36,10 @@ import {
   type TransactionSigner,
   type WritableAccount,
   type WritableSignerAccount,
-} from "@solana/kit";
-import { parseRemainingAccounts } from "../../hooked";
-import { MULTI_WALLET_PROGRAM_ADDRESS } from "../programs";
-import { getAccountMetaFactory, type ResolvedAccount } from "../shared";
+} from '@solana/kit';
+import { parseRemainingAccounts } from '../../hooked';
+import { MULTI_WALLET_PROGRAM_ADDRESS } from '../programs';
+import { getAccountMetaFactory, type ResolvedAccount } from '../shared';
 import {
   getSecp256r1PubkeyDecoder,
   getSecp256r1PubkeyEncoder,
@@ -53,13 +53,13 @@ import {
   type TransportsArgs,
   type UserRole,
   type UserRoleArgs,
-} from "../types";
+} from '../types';
 
 export const CREATE_DOMAIN_USER_ACCOUNT_DISCRIMINATOR = new Uint8Array([4]);
 
 export function getCreateDomainUserAccountDiscriminatorBytes() {
   return fixEncoderSize(getBytesEncoder(), 1).encode(
-    CREATE_DOMAIN_USER_ACCOUNT_DISCRIMINATOR,
+    CREATE_DOMAIN_USER_ACCOUNT_DISCRIMINATOR
   );
 }
 
@@ -69,13 +69,11 @@ export type CreateDomainUserAccountInstruction<
   TAccountDomainConfig extends string | AccountMeta<string> = string,
   TAccountAuthority extends string | AccountMeta<string> = string,
   TAccountUserAccount extends string | AccountMeta<string> = string,
-  TAccountTransactionManagerAccount extends
-    | string
-    | AccountMeta<string> = string,
+  TAccountTransactionManagerAccount extends string | AccountMeta<string> =
+    string,
   TAccountSettings extends string | AccountMeta<string> = string,
-  TAccountSystemProgram extends
-    | string
-    | AccountMeta<string> = "11111111111111111111111111111111",
+  TAccountSystemProgram extends string | AccountMeta<string> =
+    '11111111111111111111111111111111',
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
   InstructionWithData<ReadonlyUint8Array> &
@@ -126,29 +124,29 @@ export type CreateDomainUserAccountInstructionDataArgs = {
 export function getCreateDomainUserAccountInstructionDataEncoder(): Encoder<CreateDomainUserAccountInstructionDataArgs> {
   return transformEncoder(
     getStructEncoder([
-      ["discriminator", fixEncoderSize(getBytesEncoder(), 1)],
-      ["member", getSecp256r1PubkeyEncoder()],
-      ["role", getUserRoleEncoder()],
+      ['discriminator', fixEncoderSize(getBytesEncoder(), 1)],
+      ['member', getSecp256r1PubkeyEncoder()],
+      ['role', getUserRoleEncoder()],
       [
-        "credentialId",
+        'credentialId',
         addEncoderSizePrefix(getBytesEncoder(), getU32Encoder()),
       ],
-      ["transports", getArrayEncoder(getTransportsEncoder())],
+      ['transports', getArrayEncoder(getTransportsEncoder())],
     ]),
     (value) => ({
       ...value,
       discriminator: CREATE_DOMAIN_USER_ACCOUNT_DISCRIMINATOR,
-    }),
+    })
   );
 }
 
 export function getCreateDomainUserAccountInstructionDataDecoder(): Decoder<CreateDomainUserAccountInstructionData> {
   return getStructDecoder([
-    ["discriminator", fixDecoderSize(getBytesDecoder(), 1)],
-    ["member", getSecp256r1PubkeyDecoder()],
-    ["role", getUserRoleDecoder()],
-    ["credentialId", addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
-    ["transports", getArrayDecoder(getTransportsDecoder())],
+    ['discriminator', fixDecoderSize(getBytesDecoder(), 1)],
+    ['member', getSecp256r1PubkeyDecoder()],
+    ['role', getUserRoleDecoder()],
+    ['credentialId', addDecoderSizePrefix(getBytesDecoder(), getU32Decoder())],
+    ['transports', getArrayDecoder(getTransportsDecoder())],
   ]);
 }
 
@@ -158,7 +156,7 @@ export function getCreateDomainUserAccountInstructionDataCodec(): Codec<
 > {
   return combineCodec(
     getCreateDomainUserAccountInstructionDataEncoder(),
-    getCreateDomainUserAccountInstructionDataDecoder(),
+    getCreateDomainUserAccountInstructionDataDecoder()
   );
 }
 
@@ -182,11 +180,11 @@ export type CreateDomainUserAccountInput<
   transactionManagerAccount?: Address<TAccountTransactionManagerAccount>;
   settings?: Address<TAccountSettings>;
   systemProgram?: Address<TAccountSystemProgram>;
-  member: CreateDomainUserAccountInstructionDataArgs["member"];
-  role: CreateDomainUserAccountInstructionDataArgs["role"];
-  credentialId: CreateDomainUserAccountInstructionDataArgs["credentialId"];
-  transports: CreateDomainUserAccountInstructionDataArgs["transports"];
-  remainingAccounts: CreateDomainUserAccountInstructionExtraArgs["remainingAccounts"];
+  member: CreateDomainUserAccountInstructionDataArgs['member'];
+  role: CreateDomainUserAccountInstructionDataArgs['role'];
+  credentialId: CreateDomainUserAccountInstructionDataArgs['credentialId'];
+  transports: CreateDomainUserAccountInstructionDataArgs['transports'];
+  remainingAccounts: CreateDomainUserAccountInstructionExtraArgs['remainingAccounts'];
 };
 
 export function getCreateDomainUserAccountInstruction<
@@ -208,7 +206,7 @@ export function getCreateDomainUserAccountInstruction<
     TAccountSettings,
     TAccountSystemProgram
   >,
-  config?: { programAddress?: TProgramAddress },
+  config?: { programAddress?: TProgramAddress }
 ): CreateDomainUserAccountInstruction<
   TProgramAddress,
   TAccountPayer,
@@ -249,14 +247,14 @@ export function getCreateDomainUserAccountInstruction<
   // Resolve default values.
   if (!accounts.systemProgram.value) {
     accounts.systemProgram.value =
-      "11111111111111111111111111111111" as Address<"11111111111111111111111111111111">;
+      '11111111111111111111111111111111' as Address<'11111111111111111111111111111111'>;
   }
 
   // Remaining accounts.
   const remainingAccounts: AccountMeta[] =
     parseRemainingAccounts(resolverScope);
 
-  const getAccountMeta = getAccountMetaFactory(programAddress, "programId");
+  const getAccountMeta = getAccountMetaFactory(programAddress, 'programId');
   return Object.freeze({
     accounts: [
       getAccountMeta(accounts.payer),
@@ -269,7 +267,7 @@ export function getCreateDomainUserAccountInstruction<
       ...remainingAccounts,
     ],
     data: getCreateDomainUserAccountInstructionDataEncoder().encode(
-      args as CreateDomainUserAccountInstructionDataArgs,
+      args as CreateDomainUserAccountInstructionDataArgs
     ),
     programAddress,
   } as CreateDomainUserAccountInstruction<
@@ -307,11 +305,11 @@ export function parseCreateDomainUserAccountInstruction<
 >(
   instruction: Instruction<TProgram> &
     InstructionWithAccounts<TAccountMetas> &
-    InstructionWithData<ReadonlyUint8Array>,
+    InstructionWithData<ReadonlyUint8Array>
 ): ParsedCreateDomainUserAccountInstruction<TProgram, TAccountMetas> {
   if (instruction.accounts.length < 7) {
     // TODO: Coded error.
-    throw new Error("Not enough accounts");
+    throw new Error('Not enough accounts');
   }
   let accountIndex = 0;
   const getNextAccount = () => {
@@ -337,7 +335,7 @@ export function parseCreateDomainUserAccountInstruction<
       systemProgram: getNextAccount(),
     },
     data: getCreateDomainUserAccountInstructionDataDecoder().decode(
-      instruction.data,
+      instruction.data
     ),
   };
 }

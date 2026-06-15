@@ -21,39 +21,39 @@ import {
   type Encoder,
   type GetDiscriminatedUnionVariant,
   type GetDiscriminatedUnionVariantContent,
-} from "@solana/kit";
+} from '@solana/kit';
 import {
   getSecp256r1VerifyArgsWithDomainConfigIndexDecoder,
   getSecp256r1VerifyArgsWithDomainConfigIndexEncoder,
   type Secp256r1VerifyArgsWithDomainConfigIndex,
   type Secp256r1VerifyArgsWithDomainConfigIndexArgs,
-} from ".";
+} from '.';
 
 export type TransactionSyncSigners =
-  | { __kind: "Ed25519"; fields: readonly [number] }
+  | { __kind: 'Ed25519'; fields: readonly [number] }
   | {
-      __kind: "Secp256r1";
+      __kind: 'Secp256r1';
       fields: readonly [Secp256r1VerifyArgsWithDomainConfigIndex];
     };
 
 export type TransactionSyncSignersArgs =
-  | { __kind: "Ed25519"; fields: readonly [number] }
+  | { __kind: 'Ed25519'; fields: readonly [number] }
   | {
-      __kind: "Secp256r1";
+      __kind: 'Secp256r1';
       fields: readonly [Secp256r1VerifyArgsWithDomainConfigIndexArgs];
     };
 
 export function getTransactionSyncSignersEncoder(): Encoder<TransactionSyncSignersArgs> {
   return getDiscriminatedUnionEncoder([
     [
-      "Ed25519",
-      getStructEncoder([["fields", getTupleEncoder([getU8Encoder()])]]),
+      'Ed25519',
+      getStructEncoder([['fields', getTupleEncoder([getU8Encoder()])]]),
     ],
     [
-      "Secp256r1",
+      'Secp256r1',
       getStructEncoder([
         [
-          "fields",
+          'fields',
           getTupleEncoder([
             getSecp256r1VerifyArgsWithDomainConfigIndexEncoder(),
           ]),
@@ -66,14 +66,14 @@ export function getTransactionSyncSignersEncoder(): Encoder<TransactionSyncSigne
 export function getTransactionSyncSignersDecoder(): Decoder<TransactionSyncSigners> {
   return getDiscriminatedUnionDecoder([
     [
-      "Ed25519",
-      getStructDecoder([["fields", getTupleDecoder([getU8Decoder()])]]),
+      'Ed25519',
+      getStructDecoder([['fields', getTupleDecoder([getU8Decoder()])]]),
     ],
     [
-      "Secp256r1",
+      'Secp256r1',
       getStructDecoder([
         [
-          "fields",
+          'fields',
           getTupleDecoder([
             getSecp256r1VerifyArgsWithDomainConfigIndexDecoder(),
           ]),
@@ -89,37 +89,37 @@ export function getTransactionSyncSignersCodec(): Codec<
 > {
   return combineCodec(
     getTransactionSyncSignersEncoder(),
-    getTransactionSyncSignersDecoder(),
+    getTransactionSyncSignersDecoder()
   );
 }
 
 // Data Enum Helpers.
 export function transactionSyncSigners(
-  kind: "Ed25519",
+  kind: 'Ed25519',
   data: GetDiscriminatedUnionVariantContent<
     TransactionSyncSignersArgs,
-    "__kind",
-    "Ed25519"
-  >["fields"],
+    '__kind',
+    'Ed25519'
+  >['fields']
 ): GetDiscriminatedUnionVariant<
   TransactionSyncSignersArgs,
-  "__kind",
-  "Ed25519"
+  '__kind',
+  'Ed25519'
 >;
 export function transactionSyncSigners(
-  kind: "Secp256r1",
+  kind: 'Secp256r1',
   data: GetDiscriminatedUnionVariantContent<
     TransactionSyncSignersArgs,
-    "__kind",
-    "Secp256r1"
-  >["fields"],
+    '__kind',
+    'Secp256r1'
+  >['fields']
 ): GetDiscriminatedUnionVariant<
   TransactionSyncSignersArgs,
-  "__kind",
-  "Secp256r1"
+  '__kind',
+  'Secp256r1'
 >;
 export function transactionSyncSigners<
-  K extends TransactionSyncSignersArgs["__kind"],
+  K extends TransactionSyncSignersArgs['__kind'],
   Data,
 >(kind: K, data?: Data) {
   return Array.isArray(data)
@@ -128,10 +128,10 @@ export function transactionSyncSigners<
 }
 
 export function isTransactionSyncSigners<
-  K extends TransactionSyncSigners["__kind"],
+  K extends TransactionSyncSigners['__kind'],
 >(
   kind: K,
-  value: TransactionSyncSigners,
+  value: TransactionSyncSigners
 ): value is TransactionSyncSigners & { __kind: K } {
   return value.__kind === kind;
 }

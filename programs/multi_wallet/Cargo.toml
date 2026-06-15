@@ -15,15 +15,13 @@ cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
-idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build", "light-sdk/idl-build",]
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build",]
 
 [dependencies]
-anchor-lang = {version = "0.31.1", features = ["init-if-needed"]}
-anchor-spl = "0.31.1"
+anchor-lang = {version = "1.0.2", features = ["init-if-needed"]}
+anchor-spl = "1.0.2"
+sha2 = "0.11.0"
 bytemuck = {version = "1.23.0",  features = ["min_const_generics"]}
 base64 = "0.22.1"
-light-sdk = {version = "0.23.0", features = ["anchor", "v2", "sha256"] }
-light-token = {version="0.23.0", features = ["anchor"] }
-light-compressed-token-sdk = {version = "0.23.0", features= ["anchor"]}
-light-token-interface = "0.5.0"
 solana-address-lookup-table-interface = {version ="3.0.0", features = ["bytemuck", "bincode"]}
+solana-instructions-sysvar = "3.0"

@@ -7,16 +7,12 @@ mod utils;
 use anchor_lang::prelude::*;
 use error::*;
 use instructions::*;
-use light_sdk::{cpi::CpiSigner, derive_light_cpi_signer};
 use state::*;
 use utils::*;
 
 declare_id!("reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT");
 
 pub const ADMIN: Pubkey = pubkey!("AMn21jT5RMZrv5hSvtkrWCMJFp3cUyeAx4AxKvF59xJZ");
-
-pub const LIGHT_CPI_SIGNER: CpiSigner =
-    derive_light_cpi_signer!("reviR1xysEChySVSWGa43a6oJ2boJYTJhwRjo8KJhhT");
 
 #[program]
 pub mod multi_wallet {
@@ -26,7 +22,7 @@ pub mod multi_wallet {
     /// Initializes a new domain configuration used for WebAuthn (secp256r1) verification.
     #[instruction(discriminator = 0)]
     pub fn create_domain_config<'info>(
-        ctx: Context<'_, '_, '_, 'info, CreateDomainConfig<'info>>,
+        ctx: Context<'info, CreateDomainConfig<'info>>,
         args: CreateDomainConfigArgs,
     ) -> Result<()> {
         CreateDomainConfig::process(ctx, args)
@@ -35,7 +31,7 @@ pub mod multi_wallet {
     /// Updates an existing domain configuration used for WebAuthn (secp256r1) verification.
     #[instruction(discriminator = 1)]
     pub fn edit_domain_config<'info>(
-        ctx: Context<'_, '_, '_, 'info, EditDomainConfig<'info>>,
+        ctx: Context<'info, EditDomainConfig<'info>>,
         args: EditDomainConfigArgs,
     ) -> Result<()> {
         EditDomainConfig::process(ctx, args)
@@ -56,7 +52,7 @@ pub mod multi_wallet {
     /// Create Domain User Account for WebAuthn
     #[instruction(discriminator = 4)]
     pub fn create_domain_user_account<'info>(
-        ctx: Context<'_, '_, 'info, 'info, CreateDomainUserAccount<'info>>,
+        ctx: Context<'info, CreateDomainUserAccount<'info>>,
         create_user_args: CreateDomainUserAccountArgs,
     ) -> Result<()> {
         CreateDomainUserAccount::process(ctx, create_user_args)
@@ -65,7 +61,7 @@ pub mod multi_wallet {
     /// Create User Account (for linking a pubkey to a multisig wallet)
     #[instruction(discriminator = 5)]
     pub fn create_user_account<'info>(
-        ctx: Context<'_, '_, 'info, 'info, CreateUserAccount<'info>>,
+        ctx: Context<'info, CreateUserAccount<'info>>,
         create_user_args: CreateUserAccountArgs,
     ) -> Result<()> {
         CreateUserAccount::process(ctx, create_user_args)
@@ -74,7 +70,7 @@ pub mod multi_wallet {
     /// Edit Transaction Manager Url
     #[instruction(discriminator = 6)]
     pub fn edit_transaction_manager_url<'info>(
-        ctx: Context<'_, '_, 'info, 'info, EditTransactionManagerUrl<'info>>,
+        ctx: Context<'info, EditTransactionManagerUrl<'info>>,
         transaction_manager_url: String,
     ) -> Result<()> {
         EditTransactionManagerUrl::process(ctx, transaction_manager_url)
@@ -83,7 +79,7 @@ pub mod multi_wallet {
     /// Edit User Delegate
     #[instruction(discriminator = 7)]
     pub fn edit_user_delegate<'info>(
-        ctx: Context<'_, '_, 'info, 'info, EditUserDelegate<'info>>,
+        ctx: Context<'info, EditUserDelegate<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
         delegate_to: Option<u128>,
     ) -> Result<()> {
@@ -93,7 +89,7 @@ pub mod multi_wallet {
     /// Applies one or more configuration changes to an existing multi-wallet.
     #[instruction(discriminator = 8)]
     pub fn change_config<'info>(
-        ctx: Context<'_, '_, 'info, 'info, ChangeConfig<'info>>,
+        ctx: Context<'info, ChangeConfig<'info>>,
         config_actions: Vec<ConfigAction>,
         signers: Vec<TransactionSyncSigners>,
     ) -> Result<()> {
@@ -103,7 +99,7 @@ pub mod multi_wallet {
     /// Creates a new transaction buffer to stage a transaction before execution.
     #[instruction(discriminator = 9)]
     pub fn transaction_buffer_create<'info>(
-        ctx: Context<'_, '_, '_, 'info, TransactionBufferCreate<'info>>,
+        ctx: Context<'info, TransactionBufferCreate<'info>>,
         args: TransactionBufferCreateArgs,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
@@ -113,7 +109,7 @@ pub mod multi_wallet {
     /// Signs a transaction buffer to register approval.
     #[instruction(discriminator = 10)]
     pub fn transaction_buffer_vote<'info>(
-        ctx: Context<'_, '_, '_, 'info, TransactionBufferVote<'info>>,
+        ctx: Context<'info, TransactionBufferVote<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
         TransactionBufferVote::process(ctx, secp256r1_verify_args)
@@ -122,7 +118,7 @@ pub mod multi_wallet {
     /// Extends an existing transaction buffer to allow for updated data or additional time.
     #[instruction(discriminator = 11)]
     pub fn transaction_buffer_extend<'info>(
-        ctx: Context<'_, '_, '_, 'info, TransactionBufferExtend<'info>>,
+        ctx: Context<'info, TransactionBufferExtend<'info>>,
         buffer: Vec<u8>,
     ) -> Result<()> {
         TransactionBufferExtend::process(ctx, buffer)
@@ -131,7 +127,7 @@ pub mod multi_wallet {
     /// Closes and cleans up a transaction buffer.
     #[instruction(discriminator = 12)]
     pub fn transaction_buffer_close<'info>(
-        ctx: Context<'_, '_, '_, 'info, TransactionBufferClose<'info>>,
+        ctx: Context<'info, TransactionBufferClose<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
         TransactionBufferClose::process(ctx, secp256r1_verify_args)
@@ -140,7 +136,7 @@ pub mod multi_wallet {
     /// Executes a previously approved transaction buffer.
     #[instruction(discriminator = 13)]
     pub fn transaction_buffer_execute<'info>(
-        ctx: Context<'_, '_, '_, 'info, TransactionBufferExecute<'info>>,
+        ctx: Context<'info, TransactionBufferExecute<'info>>,
         secp256r1_verify_args: Option<Secp256r1VerifyArgs>,
     ) -> Result<()> {
         TransactionBufferExecute::process(ctx, secp256r1_verify_args)
@@ -149,7 +145,7 @@ pub mod multi_wallet {
     /// Executes a staged transaction from a buffer.
     #[instruction(discriminator = 14)]
     pub fn transaction_execute<'info>(
-        ctx: Context<'_, '_, '_, 'info, TransactionExecute<'info>>,
+        ctx: Context<'info, TransactionExecute<'info>>,
     ) -> Result<()> {
         TransactionExecute::process(ctx)
     }
@@ -157,7 +153,7 @@ pub mod multi_wallet {
     /// Executes a transaction synchronously by directly submitting the message and verifying it.
     #[instruction(discriminator = 15)]
     pub fn transaction_execute_sync<'info>(
-        ctx: Context<'_, '_, 'info, 'info, TransactionExecuteSync<'info>>,
+        ctx: Context<'info, TransactionExecuteSync<'info>>,
         transaction_message: TransactionMessage,
         signers: Vec<TransactionSyncSigners>,
     ) -> Result<()> {
@@ -167,7 +163,7 @@ pub mod multi_wallet {
     /// Creates a new multi-wallet with the specified permissions and ownership.
     #[instruction(discriminator = 16)]
     pub fn create_wallet<'info>(
-        ctx: Context<'_, '_, 'info, 'info, CreateWallet<'info>>,
+        ctx: Context<'info, CreateWallet<'info>>,
         settings_index: u128,
     ) -> Result<()> {
         CreateWallet::process(ctx, settings_index)
@@ -177,7 +173,7 @@ pub mod multi_wallet {
     /// Intents are one-step transfers that bypass the transaction buffer flow.
     #[instruction(discriminator = 17)]
     pub fn native_transfer_intent<'info>(
-        ctx: Context<'_, '_, 'info, 'info, NativeTransferIntent<'info>>,
+        ctx: Context<'info, NativeTransferIntent<'info>>,
         amount: u64,
         signers: Vec<TransactionSyncSigners>,
     ) -> Result<()> {
@@ -188,19 +184,13 @@ pub mod multi_wallet {
     /// Intents are one-step transfers that bypass the transaction buffer flow.
     #[instruction(discriminator = 18)]
     pub fn token_transfer_intent<'info>(
-        ctx: Context<'_, '_, 'info, 'info, TokenTransferIntent<'info>>,
-        spl_interface_pda_args: Option<SplInterfacePdaArgs>,
+        ctx: Context<'info, TokenTransferIntent<'info>>,
         amount: u64,
-        source_compressed_token_accounts: Vec<CompressedTokenArgs>,
-        compressed_proof_args: Option<ProofArgs>,
         signers: Vec<TransactionSyncSigners>,
     ) -> Result<()> {
         TokenTransferIntent::process(
-            ctx,
-            spl_interface_pda_args,
+            ctx, 
             amount,
-            source_compressed_token_accounts,
-            compressed_proof_args,
             signers,
         )
     }

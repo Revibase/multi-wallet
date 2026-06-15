@@ -26,7 +26,7 @@ pub struct CreateUserAccount<'info> {
 
 impl<'info> CreateUserAccount<'info> {
     pub fn process(
-        ctx: Context<'_, '_, 'info, 'info, Self>,
+        ctx: Context<'info, Self>,
         args: CreateUserAccountArgs,
     ) -> Result<()> {
         let user = &mut ctx.accounts.user_account;

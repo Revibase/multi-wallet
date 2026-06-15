@@ -56,7 +56,7 @@ export function runUserCreationTests(getCtx: () => TestContext) {
       await sendTransaction(
         [createUserAccountIx],
         ctx.payer,
-        ctx.addressLookUpTable,
+        
       );
 
       const userAccountData = (
@@ -99,7 +99,7 @@ export function runUserCreationTests(getCtx: () => TestContext) {
       await sendTransaction(
         [createUserAccountIx],
         ctx.payer,
-        ctx.addressLookUpTable,
+        
       );
 
       const userAccountData = (
@@ -158,7 +158,7 @@ export function runUserCreationTests(getCtx: () => TestContext) {
       await sendTransaction(
         [createDomainUserAccountIx],
         ctx.payer,
-        ctx.addressLookUpTable,
+        
       );
 
       const userAccountData = (
@@ -206,7 +206,7 @@ export function runUserCreationTests(getCtx: () => TestContext) {
       await sendTransaction(
         [createUserAccountIx],
         ctx.payer,
-        ctx.addressLookUpTable,
+        
       );
 
       const secp256r1Keys = generateSecp256r1KeyPair();
@@ -234,7 +234,7 @@ export function runUserCreationTests(getCtx: () => TestContext) {
       await sendTransaction(
         [createDomainUserAccountIx],
         ctx.payer,
-        ctx.addressLookUpTable,
+        
       );
 
       const userAccountData = (

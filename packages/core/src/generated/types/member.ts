@@ -15,17 +15,17 @@ import {
   type FixedSizeCodec,
   type FixedSizeDecoder,
   type FixedSizeEncoder,
-} from "@solana/kit";
+} from '@solana/kit';
 import {
   getMemberKeyDecoder,
   getMemberKeyEncoder,
   getPermissionsDecoder,
   getPermissionsEncoder,
-  type IPermissions,
   type MemberKey,
   type MemberKeyArgs,
+  type IPermissions,
   type PermissionsArgs,
-} from ".";
+} from '.';
 
 export type Member = {
   pubkey: MemberKey;
@@ -45,21 +45,21 @@ export type MemberArgs = {
 
 export function getMemberEncoder(): FixedSizeEncoder<MemberArgs> {
   return getStructEncoder([
-    ["pubkey", getMemberKeyEncoder()],
-    ["role", getU8Encoder()],
-    ["permissions", getPermissionsEncoder()],
-    ["padding", getU8Encoder()],
-    ["isDelegate", getU8Encoder()],
+    ['pubkey', getMemberKeyEncoder()],
+    ['role', getU8Encoder()],
+    ['permissions', getPermissionsEncoder()],
+    ['padding', getU8Encoder()],
+    ['isDelegate', getU8Encoder()],
   ]);
 }
 
 export function getMemberDecoder(): FixedSizeDecoder<Member> {
   return getStructDecoder([
-    ["pubkey", getMemberKeyDecoder()],
-    ["role", getU8Decoder()],
-    ["permissions", getPermissionsDecoder()],
-    ["padding", getU8Decoder()],
-    ["isDelegate", getU8Decoder()],
+    ['pubkey', getMemberKeyDecoder()],
+    ['role', getU8Decoder()],
+    ['permissions', getPermissionsDecoder()],
+    ['padding', getU8Decoder()],
+    ['isDelegate', getU8Decoder()],
   ]);
 }
 
