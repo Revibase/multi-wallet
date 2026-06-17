@@ -13,7 +13,7 @@ import {
 import type { RevibaseProvider } from "../../provider";
 import type { AbortScope } from "../abort";
 import { withRetry } from "../retry";
-import type { TransactionAuthorizationFlowOptions } from "../types";
+import type { InternalTransactionFlowOptions } from "../types";
 import { signAndSendBundledTransactions } from "./solana-send";
 import {
   fetchAdditionalLoopUpTableIfNecessary,
@@ -28,7 +28,7 @@ export async function processBundledTransaction(
     payer: TransactionSigner;
     additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
     additionalSigners?: TransactionSigner[];
-    options?: TransactionAuthorizationFlowOptions;
+    options?: InternalTransactionFlowOptions;
     abortScope: AbortScope;
   },
 ): Promise<string> {
@@ -68,10 +68,10 @@ export async function processBundledTransaction(
       transactionMessageBytes: getBase64Encoder().encode(
         transactionMessageBytes,
       ),
-      onPendingApprovalsCallback:
-        options?.pendingApprovalsCallback?.onPendingApprovalsCallback,
-      onPendingApprovalsSuccess:
-        options?.pendingApprovalsCallback?.onPendingApprovalsSuccess,
+      onPendingApprovalsCallback: (validTill) =>
+        options?.reportStatus?.({ phase: "pending_approval", validTill }),
+      onPendingApprovalsSuccess: () =>
+        options?.reportStatus?.({ phase: "approved" }),
       abortSignal: abortScope.signal,
     }),
     withRetry(() => provider.onEstimateJitoTipsCallback()),

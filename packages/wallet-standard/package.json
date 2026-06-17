@@ -1,0 +1,58 @@
+{
+  "name": "@revibase/wallet-standard",
+  "version": "0.8.5",
+  "scripts": {
+    "build": "rimraf dist && tsup",
+    "clean": "rimraf dist"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Revibase/multi-wallet.git",
+    "directory": "packages/wallet-standard"
+  },
+  "author": "jychab",
+  "bugs": {
+    "url": "https://github.com/Revibase/multi-wallet/issues"
+  },
+  "homepage": "https://github.com/Revibase/multi-wallet/blob/master/packages/wallet-standard",
+  "description": "Wallet Standard wrapper for @revibase/lite: makes the Revibase passkey wallet discoverable by Solana dApps (desktop and mobile web).",
+  "dependencies": {
+    "@revibase/core": "workspace:*",
+    "@revibase/lite": "workspace:*",
+    "@solana/kit": "^6.9.0",
+    "@wallet-standard/wallet": "^1.1.0"
+  },
+  "peerDependencies": {
+    "@solana/wallet-standard-chains": "^1.1.0",
+    "@solana/wallet-standard-features": "^1.3.0",
+    "@wallet-standard/base": "^1.1.0",
+    "@wallet-standard/features": "^1.1.0"
+  },
+  "devDependencies": {
+    "@wallet-standard/app": "^1.1.0",
+    "@solana/wallet-standard-chains": "^1.1.0",
+    "@solana/wallet-standard-features": "^1.3.0",
+    "@wallet-standard/base": "^1.1.0",
+    "@wallet-standard/features": "^1.1.0",
+    "@types/node": "24.3.1",
+    "prettier": "^3.6.2",
+    "rimraf": "^6.0.1",
+    "tsup": "8.5.0",
+    "typescript": "5.9.3"
+  }
+}

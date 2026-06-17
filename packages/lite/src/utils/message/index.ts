@@ -10,12 +10,12 @@ import {
 } from "@revibase/core";
 import { address } from "@solana/kit";
 import { withRetry } from "../retry";
-import type { SignInAuthorizationFlowOptions } from "../types";
+import type { InternalMessageFlowOptions } from "../types";
 import { fetchSignatureFromTransactionManager } from "./fetchSIgnatureFromTransactionManager";
 
 export async function send2FARequestIfNeeded(
   request: CompleteMessageRequest,
-  options?: SignInAuthorizationFlowOptions,
+  options?: InternalMessageFlowOptions,
 ): Promise<{ publicKey: string; signature: string } | null> {
   const { startRequest } = request.data.payload;
 

@@ -1,10 +1,7 @@
-import type {
-  CompleteMessageRequest,
-  CompleteTransactionRequest,
-  UserInfo,
-} from "@revibase/core";
+import type { UserInfo } from "@revibase/core";
 import { initialize } from "@revibase/core";
 import { getBase64Decoder } from "@solana/kit";
+import { linkAbortSignal, type AbortScope } from "../utils/abort";
 import type {
   ClientAuthorizationCallback,
   OnConnectedCallback,
@@ -28,9 +25,12 @@ import {
   defaultEstimateJitoTipsCallback,
   defaultSendJitoBundleCallback,
   HEARTBEAT_INTERVAL,
+  RESULT_SAFETY_TIMEOUT,
+  SUCCESS_DISPLAY_TIMEOUT,
   type Pending,
   type PopupConnectMessage,
   type PopupPortMessage,
+  type ProviderPortMessage,
   type RevibaseProviderOptions,
 } from "./utils";
 
@@ -168,64 +168,84 @@ export class RevibaseProvider {
       resolve,
     } = params;
 
-    const abortHandler = () => {
-      fail(new RevibaseAbortedError());
-    };
-    signal?.addEventListener("abort", abortHandler, { once: true });
+    // Flow lifecycle. The key change vs. the old design: passkey approval
+    // ("popup-complete") no longer ends the flow — it begins the PROCESSING
+    // phase, during which the popup stays open and the provider streams status
+    // and the final result over the port. Promise settlement (resolve/reject)
+    // is decoupled from UI teardown (closing the popup).
+    type Phase = "connecting" | "awaiting" | "processing" | "result";
+    let phase: Phase = "connecting";
+    let settled = false; // resolve/reject fired
+    let toreDown = false; // UI/listeners closed
 
     let port: MessagePort | null = null;
-    let finished = false;
+    let processingAbort: AbortScope | null = null;
+    let lastPong = Date.now();
 
     let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
     let connectTimeoutId: ReturnType<typeof setTimeout> | null = null;
     let requestTimeoutId: ReturnType<typeof setTimeout> | null = null;
+    let resultTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
-    const cleanup = (): void => {
-      // Remove all event listeners
+    const post = (msg: ProviderPortMessage): void => {
+      try {
+        port?.postMessage(msg);
+      } catch {
+        // Ignore post errors; heartbeat will detect a dead channel.
+      }
+    };
+
+    const clearTimers = (): void => {
+      for (const id of [
+        heartbeatInterval,
+        connectTimeoutId,
+        requestTimeoutId,
+        resultTimeoutId,
+      ]) {
+        if (id) clearTimeout(id as ReturnType<typeof setTimeout>);
+      }
+      if (heartbeatInterval) clearInterval(heartbeatInterval);
+      heartbeatInterval = null;
+      connectTimeoutId = null;
+      requestTimeoutId = null;
+      resultTimeoutId = null;
+    };
+
+    const teardown = (): void => {
+      if (toreDown) return;
+      toreDown = true;
+
       window.removeEventListener("message", onConnect);
       signal?.removeEventListener("abort", abortHandler);
+      clearTimers();
 
-      // Clear all timers
-      if (heartbeatInterval) {
-        clearInterval(heartbeatInterval);
-        heartbeatInterval = null;
-      }
-      if (connectTimeoutId) {
-        clearTimeout(connectTimeoutId);
-        connectTimeoutId = null;
-      }
-      if (requestTimeoutId) {
-        clearTimeout(requestTimeoutId);
-        requestTimeoutId = null;
+      try {
+        processingAbort?.dispose();
+      } catch {
+        // ignore
       }
 
-      // Close message port
       try {
         port?.close();
-      } catch (err) {
-        // Ignore close errors
+      } catch {
+        // ignore
       }
       port = null;
 
-      // Close UI
       try {
-        if (this.popUp && !this.popUp.closed) {
-          this.popUp.close();
-        }
-      } catch (err) {
-        // Ignore close errors
+        if (this.popUp && !this.popUp.closed) this.popUp.close();
+      } catch {
+        // ignore
       }
-
       try {
         this.frame?.close();
-      } catch (err) {
-        // Ignore close errors
+      } catch {
+        // ignore
       }
-
       try {
         this.rendered?.close();
-      } catch (err) {
-        // Ignore close errors
+      } catch {
+        // ignore
       }
 
       this.popUp = null;
@@ -233,36 +253,104 @@ export class RevibaseProvider {
       this.rendered = null;
     };
 
-    const fail = (err: Error): void => {
-      if (finished) return;
-      finished = true;
-      cleanup();
+    const settleResolve = (
+      value: { user: UserInfo } | { user: UserInfo; txSig: string },
+    ): void => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+
+    const settleReject = (err: Error): void => {
+      if (settled) return;
+      settled = true;
       reject(err);
     };
 
-    const succeed = (
-      value: CompleteMessageRequest | CompleteTransactionRequest,
+    // Terminal failure with no further UI display (abort, rejection, setup
+    // errors): reject and tear down immediately.
+    const finishWithError = (err: Error): void => {
+      processingAbort?.abort();
+      settleReject(err);
+      teardown();
+    };
+
+    // The user closed the popup. If the flow hasn't settled yet, abort any
+    // in-flight work and reject; either way tear the UI down.
+    const handlePopupClosed = (message: string): void => {
+      if (!settled) {
+        processingAbort?.abort();
+        settleReject(new RevibasePopupClosedError(message));
+      }
+      teardown();
+    };
+
+    const abortHandler = () => {
+      finishWithError(new RevibaseAbortedError());
+    };
+    signal?.addEventListener("abort", abortHandler, { once: true });
+
+    const uiIsClosed = (): boolean => {
+      if (this.rendered?.isClosed) return this.rendered.isClosed();
+      if (this.rendered) return false; // can't detect without isClosed()
+      if (this.uiMode === "iframe") return !this.frame?.iframe.isConnected;
+      return !!this.popUp?.closed;
+    };
+
+    // Passkey approved — keep the popup open and run the actual completion
+    // (backend complete + broadcast + optional 2FA wait + confirmation),
+    // streaming progress to the popup, then send the final result.
+    const runProcessing = (
+      payload: Extract<PopupPortMessage, { type: "popup-complete" }>["payload"],
     ): void => {
-      if (finished) return;
-      finished = true;
-      cleanup();
-      onSuccessCallback(value as any)
+      phase = "processing";
+
+      // The request-expiry timeout bounded the passkey wait, not the network
+      // work that follows (which has its own internal timeouts).
+      if (requestTimeoutId) {
+        clearTimeout(requestTimeoutId);
+        requestTimeoutId = null;
+      }
+
+      processingAbort = linkAbortSignal(signal);
+      post({ type: "status", phase: "submitting" });
+
+      Promise.resolve(
+        onSuccessCallback(payload as any, {
+          reportStatus: (status) => post({ type: "status", ...status }),
+          signal: processingAbort.signal,
+        }),
+      )
         .then((result) => {
-          resolve(result);
+          if (settled) return;
+          phase = "result";
+          post({ type: "result", ok: true });
+          settleResolve(result);
+          // Brief grace so the popup can paint success, then close it.
+          resultTimeoutId = setTimeout(teardown, SUCCESS_DISPLAY_TIMEOUT);
         })
-        .catch((err) => {
-          reject(err);
+        .catch((err: unknown) => {
+          if (settled) return;
+          phase = "result";
+          const error = err instanceof Error ? err : new Error(String(err));
+          post({ type: "result", ok: false, error: error.message });
+          settleReject(error);
+          // Keep the popup open so it can display the error; the popup sends
+          // popup-closed when the user dismisses. Safety net if it never does.
+          resultTimeoutId = setTimeout(teardown, RESULT_SAFETY_TIMEOUT);
         });
     };
 
     // Connection timeout - handles popup closed before connection
     connectTimeoutId = setTimeout(() => {
-      fail(new RevibaseTimeoutError("Popup connection timed out after 20s"));
+      finishWithError(
+        new RevibaseTimeoutError("Popup connection timed out after 20s"),
+      );
     }, CONNECT_TIMEOUT);
 
     const onConnect = (event: MessageEvent) => {
       // Prevent race condition - only process once
-      if (finished || port) return;
+      if (toreDown || port) return;
 
       // Validate message origin
       if (event.origin !== this.providerOrigin) return;
@@ -284,67 +372,38 @@ export class RevibaseProvider {
       port = channel.port1;
       port.start();
 
-      let lastPong = Date.now();
+      lastPong = Date.now();
 
-      // Start heartbeat ONLY AFTER connection established
+      // Heartbeat: detect popup dismissal in every phase until teardown. A
+      // close during connecting/awaiting/processing aborts the flow; after the
+      // result is shown it just tears the UI down.
       heartbeatInterval = setInterval(() => {
-        if (finished) {
-          if (heartbeatInterval) {
-            clearInterval(heartbeatInterval);
-            heartbeatInterval = null;
-          }
+        if (toreDown) {
+          if (heartbeatInterval) clearInterval(heartbeatInterval);
+          heartbeatInterval = null;
           return;
         }
 
-        if (this.rendered?.isClosed) {
-          if (this.rendered.isClosed()) {
-            fail(new RevibasePopupClosedError("Provider UI was closed"));
-            return;
-          }
-        } else if (this.rendered) {
-          // If consumer didn't provide isClosed, we can't reliably detect.
-        } else if (this.uiMode === "iframe") {
-          // If the iframe is removed, treat as closed
-          if (!this.frame?.iframe.isConnected) {
-            fail(new RevibasePopupClosedError("Provider iframe was closed"));
-            return;
-          }
-        } else {
-          if (this.popUp?.closed) {
-            fail(new RevibasePopupClosedError("Popup was closed"));
-            return;
-          }
+        if (uiIsClosed()) {
+          handlePopupClosed("Provider UI was closed");
+          return;
         }
 
-        // Check if port is still available
         if (!port) {
-          fail(new RevibasePopupClosedError("Message channel lost"));
+          handlePopupClosed("Message channel lost");
           return;
         }
 
-        const now = Date.now();
-
-        // Check if we've lost connection (no pong in 2x heartbeat interval)
-        if (now - lastPong > HEARTBEAT_INTERVAL * 2) {
-          fail(
-            new RevibasePopupClosedError(
-              "Lost connection to popup (heartbeat timeout)",
-            ),
-          );
+        if (Date.now() - lastPong > HEARTBEAT_INTERVAL * 2) {
+          handlePopupClosed("Lost connection to popup (heartbeat timeout)");
           return;
         }
 
-        // Send ping
-        try {
-          port.postMessage({ type: "ping" });
-        } catch (err) {
-          fail(new RevibasePopupClosedError("Failed to send heartbeat"));
-        }
+        post({ type: "ping" });
       }, HEARTBEAT_INTERVAL);
 
       // Handle messages from popup
       port.onmessage = (ev: MessageEvent<PopupPortMessage>): void => {
-        if (finished) return;
         const msg = ev.data;
 
         switch (msg.type) {
@@ -353,23 +412,26 @@ export class RevibaseProvider {
             break;
 
           case "popup-complete":
+            if (phase !== "awaiting") return; // ignore stray/duplicate
             if (msg.payload) {
-              succeed(msg.payload);
+              runProcessing(msg.payload);
             } else {
-              fail(new RevibaseAuthError("Invalid completion payload"));
+              finishWithError(new RevibaseAuthError("Invalid completion payload"));
             }
             break;
 
           case "popup-rejected":
-            fail(new RevibaseAuthError("User rejected the operation"));
+            finishWithError(new RevibaseAuthError("User rejected the operation"));
             break;
 
           case "popup-error":
-            fail(new RevibaseAuthError(msg.error || "Unknown popup error"));
+            finishWithError(
+              new RevibaseAuthError(msg.error || "Unknown popup error"),
+            );
             break;
 
           case "popup-closed":
-            fail(new RevibasePopupClosedError("User closed popup"));
+            handlePopupClosed("User closed popup");
             break;
 
           default:
@@ -379,41 +441,31 @@ export class RevibaseProvider {
 
       // Handle port errors
       port.onmessageerror = () => {
-        fail(new RevibaseAuthError("Message deserialization error"));
+        finishWithError(new RevibaseAuthError("Message deserialization error"));
       };
 
       // Send init message to popup with port2
       try {
+        const initMessage: ProviderPortMessage = { type: "popup-init", rid };
         if (this.rendered) {
-          this.rendered.targetWindow.postMessage(
-            {
-              type: "popup-init",
-              rid,
-            },
-            this.providerOrigin,
-            [channel.port2],
-          );
+          this.rendered.targetWindow.postMessage(initMessage, this.providerOrigin, [
+            channel.port2,
+          ]);
         } else if (this.uiMode === "iframe") {
           this.frame?.iframe.contentWindow?.postMessage(
-            {
-              type: "popup-init",
-              rid,
-            },
+            initMessage,
             this.providerOrigin,
             [channel.port2],
           );
         } else {
-          this.popUp?.postMessage(
-            {
-              type: "popup-init",
-              rid,
-            },
-            this.providerOrigin,
-            [channel.port2],
-          );
+          this.popUp?.postMessage(initMessage, this.providerOrigin, [
+            channel.port2,
+          ]);
         }
       } catch (err) {
-        fail(new RevibaseAuthError(`Failed to initialize popup: ${err}`));
+        finishWithError(
+          new RevibaseAuthError(`Failed to initialize popup: ${err}`),
+        );
         return;
       }
 
@@ -421,48 +473,40 @@ export class RevibaseProvider {
       onConnectedCallback(rid, clientOrigin)
         .then((result) => {
           // Verify we're still active
-          if (finished || !port) {
-            return;
-          }
-          if (this.rendered?.isClosed) {
-            if (this.rendered.isClosed()) return;
-          } else if (this.uiMode === "iframe") {
-            if (!this.frame?.iframe.isConnected) return;
-          } else {
-            if (this.popUp?.closed) return;
-          }
+          if (toreDown || settled || !port || uiIsClosed()) return;
 
           // Send the request to popup
           try {
-            port.postMessage({
-              type: "popup-start",
-              payload: result,
-            });
+            post({ type: "popup-start", payload: result });
           } catch (err) {
-            fail(
+            finishWithError(
               new RevibaseAuthError(`Failed to send request to popup: ${err}`),
             );
             return;
           }
 
-          // Clear any existing request timeout
+          phase = "awaiting";
+
+          // Bound the time we wait for the user to approve with their passkey.
           if (requestTimeoutId) {
             clearTimeout(requestTimeoutId);
             requestTimeoutId = null;
           }
-
-          // Calculate TTL and set new timeout
           const timeoutDuration = Math.max(
             0,
             result.request.validTill - Date.now(),
           );
-
           requestTimeoutId = setTimeout(() => {
-            fail(new RevibaseTimeoutError("Request expired"));
+            // Only meaningful while still waiting for approval.
+            if (phase === "awaiting") {
+              finishWithError(new RevibaseTimeoutError("Request expired"));
+            }
           }, timeoutDuration);
         })
-        .catch((err) => {
-          fail(err);
+        .catch((err: unknown) => {
+          finishWithError(
+            err instanceof Error ? err : new Error(String(err)),
+          );
         });
     };
 

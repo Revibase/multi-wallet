@@ -16,7 +16,39 @@ Frontend: import from `@revibase/lite`. Backend: import server helpers from `@re
 
 ### 1. Keys
 
-Get keys at [developers.revibase.com](https://developers.revibase.com). Add `/.well-known/revibase.json` with `clientJwk`, `title`, `description`.
+Generate your own client keypair (an **Ed25519 / EdDSA** JWK pair) in your terminal — no account or signup needed. Save this as `gen-keys.mjs` and run `node gen-keys.mjs`:
+
+```js
+// gen-keys.mjs — uses only Node built-ins, no dependencies
+import { generateKeyPairSync } from "node:crypto";
+
+const alg = "EdDSA";
+const { publicKey, privateKey } = generateKeyPairSync("ed25519");
+const b64 = (key) =>
+  Buffer.from(
+    JSON.stringify({ ...key.export({ format: "jwk" }), alg, use: "sig" }),
+  ).toString("base64");
+
+console.log("PRIVATE_KEY=" + b64(privateKey)); // keep secret, server-only
+console.log("PUBLIC_KEY=" + b64(publicKey)); // safe to publish
+```
+
+This prints two base64 strings:
+
+- **`PRIVATE_KEY`** — set as a server-only env var (signs authorization requests). Never expose it to the browser or commit it.
+- **`PUBLIC_KEY`** — set as an env var for the backend, and publish the same value at `/.well-known/revibase.json`.
+
+Then serve `/.well-known/revibase.json` at your app's origin:
+
+```json
+{
+  "clientJwk": "<your PUBLIC_KEY>",
+  "title": "Your App",
+  "description": "Short description shown in the approval prompt"
+}
+```
+
+Revibase's auth UI fetches this file to verify requests came from your origin and to show users which app is asking for approval.
 
 ### 2. Backend
 
@@ -46,7 +78,7 @@ export async function POST(req: Request) {
       | CompleteTransactionRequest;
     const result = await processClientAuthCallback({
       request,
-      publicKey: process.env.PUBLIC_KEY!, // Revibase client public key (base64)
+      publicKey: process.env.PUBLIC_KEY!, // your PUBLIC_KEY from step 1 (base64)
       allowedClientOrigins: [process.env.CLIENT_ORIGIN!], // e.g. "https://your-app.com"
       privateKey: process.env.PRIVATE_KEY!,
     });

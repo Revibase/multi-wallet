@@ -8,3 +8,5 @@ test-ledger
 program_key.json
 program_key_v2.json
 program_key_v3.json
+graphify-out
+.cursor

@@ -4,7 +4,10 @@ import { RevibaseProvider } from "../provider/main";
 import { createSignInMessageText } from "../utils/internal";
 import { send2FARequestIfNeeded } from "../utils/message";
 import { withRetry } from "../utils/retry";
-import type { SignInAuthorizationFlowOptions } from "../utils/types";
+import type {
+  OnSuccessContext,
+  SignInAuthorizationFlowOptions,
+} from "../utils/types";
 
 export async function signIn(
   provider: RevibaseProvider,
@@ -38,8 +41,13 @@ export async function signIn(
 
   const onSuccessCallback = async (
     result: CompleteMessageRequest,
+    { reportStatus, signal }: OnSuccessContext,
   ): Promise<{ user: UserInfo }> => {
-    const transactionManager = await send2FARequestIfNeeded(result, options);
+    const transactionManager = await send2FARequestIfNeeded(result, {
+      ...options,
+      signal,
+      reportStatus,
+    });
     await provider.onClientAuthorizationCallback(
       !transactionManager
         ? result

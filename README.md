@@ -17,10 +17,12 @@ Use the packages together to add passkey-based wallets, configurable policies, a
 | Package                                                           | Description                                                                                                                            |
 | ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | **[@revibase/lite](packages/lite)**                               | Passkey wallet: sign-in and approve transactions in a popup (or on another device). Backend authorizes via `/api/clientAuthorization`. |
+| **[@revibase/wallet-standard](packages/wallet-standard)**         | Wallet Standard wrapper around `@revibase/lite` so Solana dApps discover Revibase via `registerWallet()` / `getWallets()` (desktop and mobile web). |
 | **[@revibase/core](packages/core)**                               | Core types and helpers                                                                                                                 |
 | **[@revibase/transaction-manager](packages/transaction-manager)** | Server-side verifier and signer: decode and verify transaction intents, apply your policy, then sign with an Ed25519 key.              |
 
 - **Lite** and **core** are used in the frontend (and core in backend too) to build and submit transactions.
+- **Wallet-standard** wraps lite so existing dApps (`@solana/wallet-adapter`, wallet-standard modals) detect Revibase without bespoke integration.
 - **Transaction-manager** runs in your backend: it verifies each request and signs only when your policy allows.
 
 Each package has its own README; see the links above. For automation and agents, see [AGENTS.md](./AGENTS.md).
@@ -42,6 +44,7 @@ pnpm install
 cd packages/core && pnpm build && cd ../..
 cd packages/transaction-manager && pnpm build && cd ../..
 cd packages/lite && pnpm build && cd ../..
+cd packages/wallet-standard && pnpm build && cd ../..
 ```
 
 ### Run tests

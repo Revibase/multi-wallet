@@ -5,7 +5,7 @@ import {
 } from "@revibase/core";
 import { address, type TransactionSigner } from "@solana/kit";
 import type { RevibaseProvider } from "../../provider";
-import type { TransactionAuthorizationFlowOptions } from "../../utils";
+import type { InternalTransactionFlowOptions } from "../../utils";
 import { linkAbortSignal } from "../abort";
 import { processBundledTransaction } from "../../utils/transactions/processBundledTransaction";
 import { processSyncTransaction } from "../../utils/transactions/processSyncTransaction";
@@ -18,14 +18,14 @@ export async function sendTransaction(
     request: CompleteTransactionRequest;
     additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
     additionalSigners?: TransactionSigner[];
-    options?: TransactionAuthorizationFlowOptions;
+    options?: InternalTransactionFlowOptions;
     payer: TransactionSigner;
   },
 ): Promise<string> {
   const { request, additionalSigners, options, payer, additionalVoters } =
     params;
   const abortScope = linkAbortSignal(options?.signal);
-  const scopedOptions: TransactionAuthorizationFlowOptions = {
+  const scopedOptions: InternalTransactionFlowOptions = {
     ...options,
     signal: abortScope.signal,
   };
@@ -89,6 +89,7 @@ export async function sendTransaction(
     }
 
     if (confirmTransaction) {
+      scopedOptions.reportStatus?.({ phase: "confirming" });
       await pollTransactionConfirmation(txSig, { signal: abortScope.signal });
     }
 

@@ -22,7 +22,10 @@ import type { RevibaseProvider } from "../provider/main";
 import { withRetry } from "../utils/retry";
 import { sendTransaction } from "../utils/transactions";
 import { getRandomPayer } from "../utils/transactions/utils";
-import type { TransactionAuthorizationFlowOptions } from "../utils/types";
+import type {
+  OnSuccessContext,
+  TransactionAuthorizationFlowOptions,
+} from "../utils/types";
 
 /** Custom transaction. Action from wallet settings (TransactionManager). Provider needs rpcEndpoint. Options: signal?, channelId?. */
 export async function executeTransaction(
@@ -111,6 +114,7 @@ export async function executeTransaction(
 
   const onSuccessCallback = async (
     result: CompleteTransactionRequest,
+    { reportStatus, signal }: OnSuccessContext,
   ): Promise<{ txSig: string; user: UserInfo }> => {
     const { signature } = await provider.onClientAuthorizationCallback(result);
 
@@ -125,7 +129,7 @@ export async function executeTransaction(
           },
         },
       },
-      options,
+      options: { ...options, signal, reportStatus },
       additionalSigners,
       additionalVoters,
       payer: payer ?? (await getRandomPayer()),

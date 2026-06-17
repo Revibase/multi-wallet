@@ -18,7 +18,10 @@ import type { RevibaseProvider } from "../provider/main";
 import { withRetry } from "../utils/retry";
 import { sendTransaction } from "../utils/transactions/sendTransaction";
 import { getRandomPayer } from "../utils/transactions/utils";
-import type { TransactionAuthorizationFlowOptions } from "../utils/types";
+import type {
+  OnSuccessContext,
+  TransactionAuthorizationFlowOptions,
+} from "../utils/types";
 
 /** Transfers SOL or SPL (set mint for SPL). amount &gt; 0, destination required */
 export async function transferTokens(
@@ -96,6 +99,7 @@ export async function transferTokens(
 
   const onSuccessCallback = async (
     result: CompleteTransactionRequest,
+    { reportStatus, signal }: OnSuccessContext,
   ): Promise<{ txSig: string; user: UserInfo }> => {
     const { signature } = await provider.onClientAuthorizationCallback(result);
     const txSig = await sendTransaction(provider, {
@@ -109,7 +113,7 @@ export async function transferTokens(
           },
         },
       },
-      options,
+      options: { ...options, signal, reportStatus },
       additionalVoters,
       payer: payer ?? (await getRandomPayer()),
     });
