@@ -38,8 +38,7 @@ Do **not** import `@revibase/lite/server` from frontend bundles. The main entry 
 
 ## Main flows
 
-1. **Iframe (default)** — `new RevibaseProvider({ rpcEndpoint })`, then `signIn(provider)`, `transferTokens(provider, args)`, or `executeTransaction(provider, args)`. Auth in same-device iframe overlay. The SDK cleans up the iframe when the flow finishes or is dismissed.
-2. **Popup (opt-in)** — pass `new RevibaseProvider({ rpcEndpoint, ui: { mode: "popup" } })` to open a popup window instead of an iframe.
+1. **Popup (default)** — `new RevibaseProvider({ rpcEndpoint })`, then `signIn(provider)`, `transferTokens(provider, args)`, or `executeTransaction(provider, args)`. Opens revibase-auth in a popup window.
 
 ## Provider constructor
 
@@ -47,7 +46,7 @@ Do **not** import `@revibase/lite/server` from frontend bundles. The main entry 
 new RevibaseProvider(options: RevibaseProviderOptions)
 ```
 
-- `RevibaseProviderOptions`: `rpcEndpoint` required. Optional: `providerOrigin?`, `rpId?`, `ui?: { mode?: "popup" | "iframe"; render?: (url) => ({ targetWindow, close, isClosed? }) }`, `onClientAuthorizationCallback?`, `logger?`.
+- `RevibaseProviderOptions`: `rpcEndpoint` required. Optional: `providerOrigin?`, `rpId?`, `onClientAuthorizationCallback?`, `logger?`.
 - `ClientAuthorizationCallback`: overloads for `StartMessageRequest` / `StartTransactionRequest` and their completion payloads. Start returns `{ ok: true; signature: string; validTill: number }`. Complete-message returns `{ ok: true }`. Complete-transaction returns `{ ok: true; signature: string }`.
 
 ## Client function signatures

@@ -1,6 +1,6 @@
 # @revibase/lite
 
-Passkey Solana wallet: sign in and approve transactions in an **iframe overlay (default)** or **popup (opt-in)**. Backend authorizes with a server-side private key.
+Passkey Solana wallet: sign in and approve transactions in a **popup window**. Backend authorizes with a server-side private key.
 
 ```bash
 pnpm add @revibase/lite
@@ -142,50 +142,4 @@ const { txSig } = await executeTransaction(provider, {
 });
 ```
 
-Default: iframe overlay.
-
-### Popup mode (opt-in)
-
-Use a popup instead of the default iframe:
-
-```ts
-const provider = new RevibaseProvider({
-  rpcEndpoint: "https://api.mainnet-beta.solana.com",
-  ui: { mode: "popup" },
-});
-```
-
-### When iframe mode can be unusable (use popup instead)
-
-If embedded auth is flaky (passkey prompt doesn’t show, broken sessions, unresponsive UI), switch to popup (or provide `ui.render`), especially in:
-
-- **In-app browsers / webviews** (e.g. links opened inside social apps): WebAuthn + storage policies can be incomplete or inconsistent.
-- **Apps already embedded in an iframe** (nested iframes): privacy and permissions restrictions get stricter.
-- **Apps with aggressive event/scroll locking**: touch/focus handling can interfere with an iframe overlay.
-
-Your CSP must allow the provider origin in `frame-src` (or `child-src`) and must not block your configured `providerOrigin`.
-
-### Iframe mode (best practice): render it yourself
-
-For strict CSP / custom modals / theming, provide `ui.render`. Return the iframe `targetWindow` plus `close()` cleanup.
-
-```ts
-const provider = new RevibaseProvider({
-  rpcEndpoint: "https://api.mainnet-beta.solana.com",
-  ui: {
-    mode: "iframe",
-    render: (url) => {
-      const iframe = document.createElement("iframe");
-      iframe.src = url;
-      iframe.allow = "publickey-credentials-get *";
-      document.querySelector("#revibase-modal")!.appendChild(iframe);
-
-      return {
-        targetWindow: iframe.contentWindow!,
-        close: () => iframe.remove(),
-        isClosed: () => !iframe.isConnected,
-      };
-    },
-  },
-});
-```
+Revibase opens a popup for passkey approval. Ensure popups are allowed for your origin.

@@ -20,7 +20,6 @@ import {
 import {
   CONNECT_TIMEOUT,
   createPopUp,
-  createProviderFrame,
   defaultClientAuthorizationCallback,
   defaultEstimateJitoTipsCallback,
   defaultSendJitoBundleCallback,
@@ -41,22 +40,13 @@ export class RevibaseProvider {
   public onEstimateJitoTipsCallback: () => Promise<number>;
   public providerOrigin: string;
   public rpId: string;
-  private uiMode: "popup" | "iframe";
-  private render?: NonNullable<RevibaseProviderOptions["ui"]>["render"];
   private popUp: Window | null = null;
-  private frame: ReturnType<typeof createProviderFrame> | null = null;
-  private rendered: {
-    targetWindow: Window;
-    close: () => void;
-    isClosed?: () => boolean;
-  } | null = null;
 
   constructor(options: RevibaseProviderOptions) {
     const {
       rpId,
       rpcEndpoint,
       providerOrigin,
-      ui,
       onClientAuthorizationCallback,
       onSendJitoBundleCallback,
       onEstimateJitoTipsCallback,
@@ -71,8 +61,6 @@ export class RevibaseProvider {
       onEstimateJitoTipsCallback ?? defaultEstimateJitoTipsCallback;
     this.providerOrigin = providerOrigin ?? REVIBASE_AUTH_URL;
     this.rpId = rpId ?? REVIBASE_RP_ID;
-    this.uiMode = ui?.mode ?? "iframe";
-    this.render = ui?.render;
   }
 
   async sendRequestToPopupProvider({
@@ -88,7 +76,7 @@ export class RevibaseProvider {
       throw new RevibaseEnvironmentError();
     }
 
-    if (this.popUp || this.frame || this.rendered) {
+    if (this.popUp) {
       throw new RevibaseFlowInProgressError();
     }
 
@@ -98,40 +86,9 @@ export class RevibaseProvider {
     const clientOrigin = window.location.origin;
     const popupUrl = `${this.providerOrigin}?clientOrigin=${encodeURIComponent(clientOrigin)}&rid=${encodeURIComponent(rid)}`;
 
-    let detachForwardAbort: (() => void) | undefined;
-
-    if (this.render) {
-      this.rendered = this.render(popupUrl);
-    } else if (this.uiMode === "iframe") {
-      // We need a controller here so backdrop-dismiss can "abort" the flow.
-      const flowAbortController = new AbortController();
-      const forwardAbort = () => flowAbortController.abort();
-      const originalSignal = signal;
-      if (originalSignal) {
-        if (originalSignal.aborted) {
-          flowAbortController.abort();
-        } else {
-          originalSignal.addEventListener("abort", forwardAbort, {
-            once: true,
-          });
-          detachForwardAbort = () =>
-            originalSignal.removeEventListener("abort", forwardAbort);
-        }
-      }
-
-      this.frame = createProviderFrame(
-        popupUrl,
-        flowAbortController.signal,
-        () => flowAbortController.abort(),
-      );
-
-      // Replace the provided signal so transport + cleanup treat backdrop-dismiss as abort.
-      signal = flowAbortController.signal;
-    } else {
-      this.popUp = createPopUp(popupUrl);
-      if (!this.popUp) {
-        throw new RevibasePopupBlockedError();
-      }
+    this.popUp = createPopUp(popupUrl);
+    if (!this.popUp) {
+      throw new RevibasePopupBlockedError();
     }
 
     return new Promise<{ user: UserInfo } | { txSig: string; user: UserInfo }>(
@@ -148,13 +105,7 @@ export class RevibaseProvider {
           });
         }, 0);
       },
-    ).finally(() => {
-      try {
-        detachForwardAbort?.();
-      } catch {
-        // ignore
-      }
-    });
+    );
   }
 
   private attachTransport(params: Pending) {
@@ -237,20 +188,8 @@ export class RevibaseProvider {
       } catch {
         // ignore
       }
-      try {
-        this.frame?.close();
-      } catch {
-        // ignore
-      }
-      try {
-        this.rendered?.close();
-      } catch {
-        // ignore
-      }
 
       this.popUp = null;
-      this.frame = null;
-      this.rendered = null;
     };
 
     const settleResolve = (
@@ -290,12 +229,7 @@ export class RevibaseProvider {
     };
     signal?.addEventListener("abort", abortHandler, { once: true });
 
-    const uiIsClosed = (): boolean => {
-      if (this.rendered?.isClosed) return this.rendered.isClosed();
-      if (this.rendered) return false; // can't detect without isClosed()
-      if (this.uiMode === "iframe") return !this.frame?.iframe.isConnected;
-      return !!this.popUp?.closed;
-    };
+    const uiIsClosed = (): boolean => !!this.popUp?.closed;
 
     // Passkey approved — keep the popup open and run the actual completion
     // (backend complete + broadcast + optional 2FA wait + confirmation),
@@ -447,21 +381,9 @@ export class RevibaseProvider {
       // Send init message to popup with port2
       try {
         const initMessage: ProviderPortMessage = { type: "popup-init", rid };
-        if (this.rendered) {
-          this.rendered.targetWindow.postMessage(initMessage, this.providerOrigin, [
-            channel.port2,
-          ]);
-        } else if (this.uiMode === "iframe") {
-          this.frame?.iframe.contentWindow?.postMessage(
-            initMessage,
-            this.providerOrigin,
-            [channel.port2],
-          );
-        } else {
-          this.popUp?.postMessage(initMessage, this.providerOrigin, [
-            channel.port2,
-          ]);
-        }
+        this.popUp?.postMessage(initMessage, this.providerOrigin, [
+          channel.port2,
+        ]);
       } catch (err) {
         finishWithError(
           new RevibaseAuthError(`Failed to initialize popup: ${err}`),
