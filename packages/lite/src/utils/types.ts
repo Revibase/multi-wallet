@@ -33,7 +33,7 @@ type SuccessMap = {
 /**
  * Progress of the post-approval phase (after the passkey is approved, while the
  * request is being completed/broadcast). The provider streams these to the
- * popup/iframe over the message channel for display; the host app does not see
+ * popup over the message channel for display; the host app does not see
  * them directly.
  */
 export type FlowStatusReport =
