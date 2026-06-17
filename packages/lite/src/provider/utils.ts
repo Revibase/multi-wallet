@@ -7,6 +7,7 @@ import {
   RevibaseApiError,
   RevibaseAuthError,
   type ClientAuthorizationCallback,
+  type FlowStatusReport,
   type OnConnectedCallback,
   type OnSuccessCallback,
 } from "../utils";
@@ -14,7 +15,12 @@ import {
 export const DEFAULT_TIMEOUT = 3 * 60 * 1000;
 export const HEARTBEAT_INTERVAL = 2000;
 export const CONNECT_TIMEOUT = 20000;
+/** On success, keep the UI up briefly so the popup can paint its success state before teardown. */
+export const SUCCESS_DISPLAY_TIMEOUT = 800;
+/** On failure, keep the UI up (showing the error) at most this long if the popup never sends popup-closed. */
+export const RESULT_SAFETY_TIMEOUT = 60_000;
 
+/** Messages the popup/iframe sends back to the provider over the message port. */
 export type PopupPortMessage =
   | { type: "pong" }
   | {
@@ -24,6 +30,20 @@ export type PopupPortMessage =
   | { type: "popup-rejected"; rid: string }
   | { type: "popup-error"; error: string }
   | { type: "popup-closed" };
+
+/**
+ * Messages the provider sends to the popup/iframe over the message port.
+ * `popup-init`/`popup-start`/`ping` drive setup; `status`/`result` drive the
+ * post-approval display so the popup can stay open until the request actually
+ * completes.
+ */
+export type ProviderPortMessage =
+  | { type: "popup-init"; rid: string }
+  | { type: "popup-start"; payload: Awaited<ReturnType<OnConnectedCallback>> }
+  | { type: "ping" }
+  | ({ type: "status" } & FlowStatusReport)
+  | { type: "result"; ok: true }
+  | { type: "result"; ok: false; error: string };
 
 export type PopupConnectMessage = {
   type: "popup-connect";
@@ -171,6 +191,7 @@ export function createPopUp(url: string): Window | null {
 
   return window.open(url, "_blank", features);
 }
+
 export interface ProviderFrame {
   iframe: HTMLIFrameElement;
   close: () => void;
@@ -184,8 +205,6 @@ export function createProviderFrame(
   if (typeof window === "undefined") {
     throw new Error("Function can only be called in a browser environment");
   }
-
-  const isMobile = window.matchMedia("(max-width: 768px)").matches;
 
   // ----------------------------------------
   // Scroll lock (iOS-safe)
@@ -257,7 +276,7 @@ export function createProviderFrame(
     inset: "0",
 
     display: "flex",
-    alignItems: isMobile ? "flex-end" : "center",
+    alignItems: "center",
     justifyContent: "center",
 
     background: "rgba(0,0,0,0.45)",
@@ -267,11 +286,8 @@ export function createProviderFrame(
     pointerEvents: "auto",
 
     overscrollBehavior: "contain",
-    touchAction: "none",
 
     WebkitTapHighlightColor: "transparent",
-
-    paddingBottom: "env(safe-area-inset-bottom)",
 
     fontFamily:
       'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
@@ -280,7 +296,7 @@ export function createProviderFrame(
   shadow.appendChild(overlay);
 
   // ----------------------------------------
-  // Frame wrapper
+  // Frame wrapper (dialog)
   // ----------------------------------------
 
   const frameWrapper = document.createElement("div");
@@ -292,14 +308,13 @@ export function createProviderFrame(
 
     display: "flex",
 
-    width: isMobile ? "100%" : "500px",
-
-    height: isMobile ? "90dvh" : "600px",
+    width: "min(500px, calc(100vw - 32px))",
+    height: "min(700px, calc(100dvh - 32px))",
 
     maxWidth: "100vw",
     maxHeight: "100dvh",
 
-    borderRadius: isMobile ? "16px 16px 0 0" : "16px",
+    borderRadius: "20px",
 
     overflow: "hidden",
 
@@ -360,11 +375,11 @@ export function createProviderFrame(
 
     position: "absolute",
 
-    top: isMobile ? "12px" : "14px",
-    right: isMobile ? "12px" : "14px",
+    top: "12px",
+    right: "12px",
 
-    width: "44px",
-    height: "44px",
+    width: "40px",
+    height: "40px",
 
     display: "grid",
     placeItems: "center",
@@ -375,7 +390,7 @@ export function createProviderFrame(
 
     color: "#111",
 
-    fontSize: "28px",
+    fontSize: "24px",
 
     lineHeight: "1",
 

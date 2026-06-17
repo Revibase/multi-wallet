@@ -7,6 +7,7 @@ Monorepo for the Revibase Solana multi-wallet SDK. Human-facing overview: [READM
 | Package | Purpose | Docs |
 | ------- | ------- | ---- |
 | `@revibase/lite` | Passkey wallet: sign-in + txs in popup or other device; backend auth via `/api/clientAuthorization` | [packages/lite/AGENTS.md](packages/lite/AGENTS.md) |
+| `@revibase/wallet-standard` | Wallet Standard wrapper over lite: `registerRevibaseWallet(provider)` so dApps discover Revibase via `getWallets()` | [packages/wallet-standard/README.md](packages/wallet-standard/README.md) |
 | `@revibase/core` | Transfer intents, custom transactions (sync/Jito), create users/wallets | [packages/core/README.md](packages/core/README.md) |
 | `@revibase/transaction-manager` | Server-side tx verification and policy-based signing | [packages/transaction-manager/README.md](packages/transaction-manager/README.md), [packages/transaction-manager/AGENTS.md](packages/transaction-manager/AGENTS.md) |
 
@@ -23,6 +24,7 @@ Monorepo for the Revibase Solana multi-wallet SDK. Human-facing overview: [READM
 ## Repository layout
 
 - `packages/lite` — passkey provider, client flows, server auth
+- `packages/wallet-standard` — Wallet Standard wrapper (`registerRevibaseWallet`, `RevibaseWallet`)
 - `packages/core` — intents, transactions, Jito, generated IDL types
 - `packages/transaction-manager` — verify + policy + sign
 - `programs/multi_wallet` — Solana program (Anchor/Rust)

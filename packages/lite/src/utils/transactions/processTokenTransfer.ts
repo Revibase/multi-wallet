@@ -15,7 +15,7 @@ import {
   type TransactionSigner,
 } from "@solana/kit";
 import type { AbortScope } from "../abort";
-import type { TransactionAuthorizationFlowOptions } from "../types";
+import type { InternalTransactionFlowOptions } from "../types";
 import { signAndSendTransaction } from "./solana-send";
 import {
   fetchAdditionalLoopUpTableIfNecessary,
@@ -27,7 +27,7 @@ export async function processTokenTransfer(params: {
   settings: Address;
   additionalVoters?: (TransactionSigner | SignedSecp256r1Key)[];
   payer: TransactionSigner;
-  options?: TransactionAuthorizationFlowOptions;
+  options?: InternalTransactionFlowOptions;
   abortScope: AbortScope;
 }): Promise<string> {
   const { authResponse, settings, options, payer, additionalVoters, abortScope } =
@@ -56,10 +56,10 @@ export async function processTokenTransfer(params: {
       ? address(transactionManagerAddress)
       : undefined,
     transactionMessageBytes: getBase64Encoder().encode(transactionMessageBytes),
-    onPendingApprovalsCallback:
-      options?.pendingApprovalsCallback?.onPendingApprovalsCallback,
-    onPendingApprovalsSuccess:
-      options?.pendingApprovalsCallback?.onPendingApprovalsSuccess,
+    onPendingApprovalsCallback: (validTill) =>
+      options?.reportStatus?.({ phase: "pending_approval", validTill }),
+    onPendingApprovalsSuccess: () =>
+      options?.reportStatus?.({ phase: "approved" }),
     abortSignal: abortScope.signal,
   });
 
